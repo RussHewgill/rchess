@@ -4,6 +4,9 @@
 #![allow(unused_mut)]
 
 pub mod types;
+pub mod bitboard;
+pub mod coords;
+
 pub mod search;
 
 use crate::types::*;
@@ -21,31 +24,31 @@ fn main() {
     // a <<= 1;
     // eprintln!("a = 0b{:08b}", a);
 
-    let mut b = BitBoard(0);
-    b.flip(Coord(2,0));
-    // let b: u8 = 0b0000_0010;
-    eprintln!("board = {:08b}", &b.0);
+    // let mut b = BitBoard(0);
+    // b.flip(Coord(2,0));
+    // // let b: u8 = 0b0000_0010;
+    // eprintln!("board = {:08b}", &b.0);
 
-    for k in 0..3 {
-        println!("====");
+    // for k in 0..3 {
+    //     println!("====");
+    //     let k0 = b.get(Coord(k,0));
+    //     eprintln!("k0 = {:?}", k0);
+    // }
 
-        // let x = 1 << k;
-        // eprintln!("x = {:08b}", x);
-        // let y = b & x;
-        // eprintln!("y = {:08b}", y);
+    // let s = BitBoard::index_square(Coord(0, 0));
+    // // let s = 2;
+    // let r = BitBoard::index_rank(s);
+    // let f = BitBoard::index_file(s);
 
-        let k0 = b.get(Coord(k,0));
-        eprintln!("k0 = {:?}", k0);
+    // eprintln!("r = {:?}", r);
+    // eprintln!("f = {:?}", f);
 
-        // let k = 1 << p;
-        // eprintln!("k0 = {:08b}", k);
+    let b = BitBoard::new(&vec![Coord(1,1)]);
 
-        // let k = k & b.0;
-        // eprintln!("k1 = {:08b}", k);
+    // eprintln!("b = {:64b}", b.0);
 
-        // eprintln!("k0 = {:?}", k0);
-    }
-
+    eprintln!("{:?}", b);
+    // debug_bitboard(b);
 
     // main2()
 }
