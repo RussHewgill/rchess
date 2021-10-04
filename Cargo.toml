@@ -1,0 +1,10 @@
+[workspace]
+
+members = [
+    # "rchess_game",
+    "rchess_engine",
+]
+
+[profile.dev.package."*"]
+opt-level = 3
+
