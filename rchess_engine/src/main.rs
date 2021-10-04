@@ -43,17 +43,27 @@ fn main() {
     // eprintln!("r = {:?}", r);
     // eprintln!("f = {:?}", f);
 
-    // let b = BitBoard::new(&vec![Coord(1,1)]);
-    // eprintln!("{:?}", b);
+    // let g = Game::new();
 
-    let c0 = Coord(1,1);
 
-    let c1 = c0.shift(D::N);
+    // let mut x: u64 = (!0u8) as u64 | (((!0u8) as u64) << 8);
+    let mut x: u64 = 15u8 as u64 | ((15u8 as u64) << 8);
 
-    eprintln!("c1 = {:?}", c1);
+    let b = BitBoard(x);
 
-    // eprintln!("b = {:64b}", b.0);
-    // debug_bitboard(b);
+    // let b = b.flip_vert();
+
+    // let b = BitBoard::new(&vec![Coord(0,1)]);
+
+    // let b0 = b.shift_unwrapped(D::W);
+    // let b0 = BitBoard(b.0 << -1i64);
+
+    eprintln!("{:?}", b);
+
+    // let b0: u8 = 0b0000_1111;
+    // eprintln!("b0 = {:?}", b0);
+    // let b1 = b0.reverse_bits();
+    // eprintln!("b1 = {:0>8b}", b1);
 
     // main2()
 }

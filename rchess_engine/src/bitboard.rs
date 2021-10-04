@@ -13,14 +13,14 @@ impl BitBoard {
     pub fn new(cs: &[Coord]) -> BitBoard {
         let mut b = BitBoard::empty();
         for c in cs.iter() {
-            b.flip(*c);
+            b.flip_mut(*c);
         }
         b
     }
 
     pub fn single(c: Coord) -> BitBoard {
         let mut b = BitBoard::empty();
-        b.flip(c);
+        b.flip_mut(c);
         b
     }
 
@@ -30,10 +30,17 @@ impl BitBoard {
         k == 1
     }
 
-    pub fn flip(&mut self, c: Coord) {
+    pub fn flip_mut(&mut self, c: Coord) {
         let p = Self::index_square(c);
+        // eprintln!("c, p = {:?}, {:?}", c, p);
         let k = 1 << p;
         self.0 |= k;
+    }
+
+    pub fn flip_mut_mult(&mut self, cs: &[Coord]) {
+        for c in cs.iter() {
+            self.flip_mut(*c);
+        }
     }
 
     pub fn index_square(c: Coord) -> u64 {
@@ -51,6 +58,36 @@ impl BitBoard {
         s & 7
     }
 
+    pub fn mask_file(f: u64) -> Self {
+        unimplemented!()
+    }
+
+}
+
+impl BitBoard {
+
+    pub fn flip_vert(&self) -> Self {
+        let mut x = self.0;
+        let x = x.reverse_bits();
+        Self(x)
+    }
+
+    pub fn shift_unwrapped(&self, d: D) -> Self {
+
+        let k = d.shift();
+
+        // let b = self.0 << k;
+        let b = if k > 0 {
+            self.0 << (k as u64)
+        } else {
+            self.0 >> (k.abs() as u64)
+        };
+
+        // TODO: unwrap
+
+        Self(b)
+        // unimplemented!()
+    }
 }
 
 impl std::fmt::Debug for BitBoard {

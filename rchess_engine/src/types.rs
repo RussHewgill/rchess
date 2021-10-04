@@ -22,17 +22,17 @@ pub enum Piece {
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Game {
-    side_to_move: Color,
+    pub side_to_move: Color,
     // TODO: castling
     // TODO: en passant
-    pawns:        BitBoard,
-    rooks:        BitBoard,
-    knights:      BitBoard,
-    bishops:      BitBoard,
-    queens:       BitBoard,
-    kings:        BitBoard,
-    white:        BitBoard,
-    black:        BitBoard,
+    pub pawns:        BitBoard,
+    pub rooks:        BitBoard,
+    pub knights:      BitBoard,
+    pub bishops:      BitBoard,
+    pub queens:       BitBoard,
+    pub kings:        BitBoard,
+    pub white:        BitBoard,
+    pub black:        BitBoard,
 }
 
 impl Game {
@@ -69,8 +69,23 @@ impl Game {
         // let queens  = BitBoard::new(&vec![Coord(3,0),Coord(3,7)]);
         let kings   = BitBoard::new(&vec![Coord(4,0),Coord(4,7)]);
 
-        let white = BitBoard::empty();
-        let black = BitBoard::empty();
+        let mut white = BitBoard::empty();
+        let mut black = BitBoard::empty();
+        // for x in 0..8 {
+        //     for y in 0..3 {
+        //         white.flip_mut(Coord(x,y));
+        //     }
+        //     for y in 6..8 {
+        //         black.flip_mut(Coord(x,y));
+        //     }
+        // }
+
+        let k = (!0u8) as u64 | (((!0u8) as u64) << 8);
+        white.0 |= k;
+        black.0 |= k << (6 * 8);
+
+        white &= pawns | rooks | knights | bishops | queens | kings;
+        black &= pawns | rooks | knights | bishops | queens | kings;
 
         Game {
             side_to_move: White,
