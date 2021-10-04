@@ -5,39 +5,6 @@ use crate::types::*;
 #[derive(Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct BitBoard(pub u64);
 
-impl std::fmt::Debug for BitBoard {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut ss: &str = &format!("{:0>64b}", self.0);
-
-        // let mut out = String::new();
-
-        f.write_str(&format!("\nBitBoard:\n"))?;
-
-        // println!("BitBoard:\n{:?}", b);
-        for y in 0..8 {
-            let (c, rest) = ss.split_at(8);
-            let c = c.chars().rev().collect::<String>();
-            // out.push_str(&c);
-            f.write_str(&format!("{}\n", c))?;
-            // println!("{}", c);
-            ss = rest;
-        }
-
-        Ok(())
-        // unimplemented!()
-    }
-}
-
-// pub fn debug_bitboard(b: BitBoard) {
-//     let mut ss: &str = &format!("{:0>64b}", b.0);
-//     for y in 0..8 {
-//         let (c, rest) = ss.split_at(8);
-//         let c = c.chars().rev().collect::<String>();
-//         println!("{}", c);
-//         ss = rest;
-//     }
-// }
-
 impl BitBoard {
 
     pub fn empty() -> BitBoard {
@@ -84,6 +51,20 @@ impl BitBoard {
         s & 7
     }
 
+}
+
+impl std::fmt::Debug for BitBoard {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut ss: &str = &format!("{:0>64b}", self.0);
+        f.write_str(&format!("\nBitBoard:\n"))?;
+        for y in 0..8 {
+            let (c, rest) = ss.split_at(8);
+            let c = c.chars().rev().collect::<String>();
+            f.write_str(&format!("{}\n", c))?;
+            ss = rest;
+        }
+        Ok(())
+    }
 }
 
 pub mod bits {

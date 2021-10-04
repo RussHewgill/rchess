@@ -43,11 +43,16 @@ fn main() {
     // eprintln!("r = {:?}", r);
     // eprintln!("f = {:?}", f);
 
-    let b = BitBoard::new(&vec![Coord(1,1)]);
+    // let b = BitBoard::new(&vec![Coord(1,1)]);
+    // eprintln!("{:?}", b);
+
+    let c0 = Coord(1,1);
+
+    let c1 = c0.shift(D::N);
+
+    eprintln!("c1 = {:?}", c1);
 
     // eprintln!("b = {:64b}", b.0);
-
-    eprintln!("{:?}", b);
     // debug_bitboard(b);
 
     // main2()
