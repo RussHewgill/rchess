@@ -6,15 +6,22 @@
 pub mod types;
 pub mod bitboard;
 pub mod coords;
+pub mod tables;
+pub mod game;
 
 pub mod search;
 
 use crate::types::*;
+use crate::search::*;
+use crate::tables::*;
 
 use log::{debug, error, log_enabled, info, Level};
 use gag::Redirect;
 
 fn main() {
+
+    println!("start");
+    let now = std::time::Instant::now();
 
     // let game = Game::new();
 
@@ -43,27 +50,47 @@ fn main() {
     // eprintln!("r = {:?}", r);
     // eprintln!("f = {:?}", f);
 
-    // let g = Game::new();
+    let mut g = Game::new();
 
+    let b = g.search_king(White);
+
+    // let b = g.get(Pawn, Black);
+
+    // let k = std::mem::size_of::<Coord>();
+    // eprintln!("k = {:?}", k);
+
+    // let b = g.get(King, White);
+    // let b = BitBoard::new(&vec![Coord(1,1)]);
+    // assert_eq!(!BitBoard::mask_file(7).0, 0x7f7f7f7f7f7f7f7fu64);
+
+    // let b = Tables::gen_knight_move(Coord(2,2));
+
+    // let b = BitBoard(0xfcfcfcfcfcfcfcfcu64);
+    // let b = BitBoard(!(BitBoard::mask_file(6).0 | BitBoard::mask_file(7).0));
+
+    eprintln!("{:?}", b);
 
     // let mut x: u64 = (!0u8) as u64 | (((!0u8) as u64) << 8);
-    let mut x: u64 = 15u8 as u64 | ((15u8 as u64) << 8);
+    // let mut x: u64 = 15u8 as u64 | ((15u8 as u64) << 8);
 
-    let b = BitBoard(x);
+    // let b = BitBoard(x);
 
-    // let b = b.flip_vert();
+    // let b = BitBoard::new(&vec![Coord(1,1)]);
+    // let b = BitBoard::mask_rank(7);
 
-    // let b = BitBoard::new(&vec![Coord(0,1)]);
+    // let b = b.flip_diag();
 
     // let b0 = b.shift_unwrapped(D::W);
     // let b0 = BitBoard(b.0 << -1i64);
 
-    eprintln!("{:?}", b);
+    // eprintln!("{:?}", b);
 
     // let b0: u8 = 0b0000_1111;
     // eprintln!("b0 = {:?}", b0);
     // let b1 = b0.reverse_bits();
     // eprintln!("b1 = {:0>8b}", b1);
+
+    // println!("finished in {} seconds.", now.elapsed().as_secs_f64());
 
     // main2()
 }

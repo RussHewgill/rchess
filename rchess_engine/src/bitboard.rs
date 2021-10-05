@@ -33,7 +33,8 @@ impl BitBoard {
     pub fn flip_mut(&mut self, c: Coord) {
         let p = Self::index_square(c);
         // eprintln!("c, p = {:?}, {:?}", c, p);
-        let k = 1 << p;
+        // let k = 1 << p;
+        let k = 1u64.overflowing_shl(p as u32).0;
         self.0 |= k;
     }
 
@@ -50,6 +51,20 @@ impl BitBoard {
         p
     }
 
+    pub fn mask_rank(r: u32) -> BitBoard {
+        assert!(r < 8);
+        let k = (!0u8) as u64;
+        BitBoard(k.overflowing_shl(r * 8).0)
+    }
+
+    pub fn mask_file(f: u32) -> BitBoard {
+        assert!(f < 8);
+        let k = 0x0101010101010101u64;
+        BitBoard(k.overflowing_shl(f).0)
+    }
+
+    // pub fn mask_diagonal_ltr()
+
     pub fn index_rank(s: u64) -> u64 {
         s >> 3
     }
@@ -58,7 +73,12 @@ impl BitBoard {
         s & 7
     }
 
-    pub fn mask_file(f: u64) -> Self {
+    pub fn bitscan(&self) -> u32 {
+        // self.0.leading_zeros()
+        self.0.trailing_zeros()
+    }
+
+    pub fn serialize(&self) -> Vec<Coord> {
         unimplemented!()
     }
 
@@ -66,28 +86,82 @@ impl BitBoard {
 
 impl BitBoard {
 
-    pub fn flip_vert(&self) -> Self {
+    pub fn flip_diag(&self) -> Self {
         let mut x = self.0;
         let x = x.reverse_bits();
         Self(x)
     }
 
-    pub fn shift_unwrapped(&self, d: D) -> Self {
+    pub fn shift(&self, d: D) -> Self {
 
-        let k = d.shift();
+        // let k = d.shift();
+        // let b = if k > 0 {
+        //     self.shift_left(k as u32)
+        // } else {
+        //     self.shift_right(k.abs() as u32)
+        // };
 
-        // let b = self.0 << k;
-        let b = if k > 0 {
-            self.0 << (k as u64)
-        } else {
-            self.0 >> (k.abs() as u64)
-        };
-
+        // let k = d.shift();
+        // // let b = self.0 << k;
+        // let b = if k > 0 {
+        //     self.0.overflowing_shl(k.abs() as u32).0
+        //         & (!BitBoard::mask_file(0)).0
+        // } else {
+        //     self.0.overflowing_shr(k.abs() as u32).0
+        //         & (!BitBoard::mask_file(7)).0
+        // };
         // TODO: unwrap
 
-        Self(b)
+        let b = match d {
+            D::N  => {
+                self.0.overflowing_shl(8 as u32).0
+            },
+            D::NE => {
+                self.0.overflowing_shl(9 as u32).0
+                    & (!BitBoard::mask_file(0)).0
+            },
+            D::E  => {
+                self.0.overflowing_shl(1 as u32).0
+                    & (!BitBoard::mask_file(0)).0
+            },
+            D::SE => {
+                self.0.overflowing_shr(7 as u32).0
+                    & (!BitBoard::mask_file(0)).0
+            },
+            D::S  => {
+                self.0.overflowing_shr(8 as u32).0
+            },
+            D::SW => {
+                self.0.overflowing_shr(9 as u32).0
+                    & (!BitBoard::mask_file(7)).0
+            },
+            D::W  => {
+                self.0.overflowing_shr(1 as u32).0
+                    & (!BitBoard::mask_file(7)).0
+            },
+            D::NW => {
+                self.0.overflowing_shl(7 as u32).0
+                    & (!BitBoard::mask_file(7)).0
+            },
+        };
+
+        BitBoard(b)
         // unimplemented!()
     }
+
+    pub fn shift_mult(&self, ds: &[D]) -> Self {
+        ds.iter()
+            .fold(*self, |acc, d| acc.shift(*d))
+    }
+
+    // pub fn shift_left(&self, k: u32) -> Self {
+    //     BitBoard(self.0.overflowing_shl(k).0 & (!BitBoard::mask_file(0)).0)
+    // }
+
+    // pub fn shift_right(&self, k: u32) -> Self {
+    //     BitBoard(self.0.overflowing_shr(k).0 & (!BitBoard::mask_file(7)).0)
+    // }
+
 }
 
 impl std::fmt::Debug for BitBoard {
