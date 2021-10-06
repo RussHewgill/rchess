@@ -1,7 +1,7 @@
 [workspace]
 
 members = [
-    # "rchess_game",
+    "rchess_uci",
     "rchess_engine",
 ]
 

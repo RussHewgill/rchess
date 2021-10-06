@@ -34,13 +34,13 @@ fn main() {
     // g.insert_piece_mut_unchecked(Coord(3,1), Pawn, White);
     // g.insert_piece_mut_unchecked(Coord(2,2), Pawn, Black);
 
-    // g.insert_piece_mut_unchecked(Coord(1,1), Rook, White);
-    // g.insert_piece_mut_unchecked(Coord(3,1), Pawn, White);
-    // g.insert_piece_mut_unchecked(Coord(1,3), Pawn, Black);
+    g.insert_piece_mut_unchecked(Coord(1,1), Rook, White);
+    g.insert_piece_mut_unchecked(Coord(3,1), Pawn, White);
+    g.insert_piece_mut_unchecked(Coord(1,3), Pawn, Black);
 
-    g.insert_piece_mut_unchecked(Coord(0,0), Rook, White);
-    g.insert_piece_mut_unchecked(Coord(2,0), Pawn, White);
-    g.insert_piece_mut_unchecked(Coord(0,2), Pawn, Black);
+    // g.insert_piece_mut_unchecked(Coord(0,0), Rook, White);
+    // g.insert_piece_mut_unchecked(Coord(2,0), Pawn, White);
+    // g.insert_piece_mut_unchecked(Coord(0,2), Pawn, Black);
 
     // eprintln!("{:?}", g);
 
@@ -48,15 +48,10 @@ fn main() {
 
     let ts = Tables::new();
 
-    // let b = ts.get_rook(Coord(0,2));
-    // // let b = b.get_dir(N);
-    // let b = b.n;
+    // let b = ts.get_rook(Coord(1,1));
+    // let b = b.w;
 
     // eprintln!("{:?}", b);
-
-    // let ms = Tables::gen_rook_move(Coord(0,0));
-    // let b = Tables::rook_n(Coord(0,2).into());
-    // let b = ms.n;
 
     let mut ms = g.search_rooks(&ts, White);
     // let ms = g.search_pawns(White);
@@ -66,12 +61,12 @@ fn main() {
         eprintln!("m = {:?}", m);
     }
 
-    let ms2 = vec![
-        Move::Capture { from: Coord(0, 0), to: Coord(0, 2) },
-        Move::Quiet { from: Coord(0, 0), to: Coord(0, 1) },
-        Move::Quiet { from: Coord(0, 0), to: Coord(1, 0) },
-    ];
-    assert_eq!(ms, ms2);
+    // let ms2 = vec![
+    //     Move::Capture { from: Coord(0, 0), to: Coord(0, 2) },
+    //     Move::Quiet { from: Coord(0, 0), to: Coord(0, 1) },
+    //     Move::Quiet { from: Coord(0, 0), to: Coord(1, 0) },
+    // ];
+    // assert_eq!(ms, ms2);
 
     // let mut ms2: Vec<Move> = (0..9).into_iter()
     //     .zip(0..9)

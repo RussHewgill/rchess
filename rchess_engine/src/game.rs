@@ -213,6 +213,10 @@ pub fn square_color(Coord(x,y): Coord) -> Color {
     }
 }
 
+impl Game {
+    // pub fn show_moveset(&self, moves: BitBoard) 
+}
+
 impl std::fmt::Debug for Game {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 

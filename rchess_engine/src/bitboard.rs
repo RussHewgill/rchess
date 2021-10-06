@@ -85,6 +85,11 @@ impl BitBoard {
         Self::single(x.into())
     }
 
+    pub fn bitscan_rev_isolate(&self) -> Self {
+        let x = self.bitscan_rev();
+        Self::single(x.into())
+    }
+
     pub fn bitscan_reset(&self) -> (Self, u32) {
         let x = self.bitscan();
         // (*self & BitBoard(self.0.overflowing_sub(1).0),x)
@@ -140,7 +145,7 @@ impl BitBoard {
         }
     }
 
-    pub fn iter_rev_bitscan<F>(&self, mut f: F)
+    pub fn iter_bitscan_rev<F>(&self, mut f: F)
     where F: FnMut(u32) {
         let mut b = *self;
         while b.0 != 0 {

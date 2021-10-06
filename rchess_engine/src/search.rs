@@ -31,30 +31,50 @@ impl Game {
             let occ = self.all_occupied();
 
             for (dir,moves) in ms.to_vec().iter() {
-                let blocks = *moves & occ;
-                if blocks.0 != 0 {
-                    let square = blocks.bitscan_isolate();
-                    if (square & self.get_color(!c)).0 != 0 {
-                        let sq: Coord = square.bitscan().into();
-                        // capture
-                        eprintln!("sq = {:?}", sq);
-                        let nots = ts.get_rook(sq).get_dir(*dir);
-
-                        // eprintln!("{:?}", nots);
-
-                        let ms = *moves ^ *nots;
-                        // eprintln!("{:?}", ms);
-                        let ms = ms & !square;
-
-                        out.push(Move::Capture { from: p0.into(), to: sq });
-
-                        ms.iter_bitscan(|t| {
-                            out.push(Move::Quiet { from: p0.into(), to: t.into() });
-                        });
-
-                    } else {
-                        // friendly block
-                    }
+                match dir {
+                    N | E => {
+                        let blocks = *moves & occ;
+                        if blocks.0 != 0 {
+                            let square = blocks.bitscan_isolate();
+                            let sq: Coord = square.bitscan().into();
+                            let nots = ts.get_rook(sq).get_dir(*dir);
+                            let mm = *moves ^ *nots;
+                            let mm = mm & !square;
+                            if (square & self.get_color(!c)).0 != 0 {
+                                // capture
+                                out.push(Move::Capture { from: p0.into(), to: sq });
+                            }
+                            mm.iter_bitscan(|t| {
+                                out.push(Move::Quiet { from: p0.into(), to: t.into() });
+                            });
+                        } else {
+                            moves.iter_bitscan(|t| {
+                                out.push(Move::Quiet { from: p0.into(), to: t.into() });
+                            });
+                        }
+                    },
+                    S | W => {
+                        let blocks = *moves & occ;
+                        if blocks.0 != 0 {
+                            let square = blocks.bitscan_rev_isolate();
+                            let sq: Coord = square.bitscan_rev().into();
+                            let nots = ts.get_rook(sq).get_dir(*dir);
+                            let mm = *moves ^ *nots;
+                            let mm = mm & !square;
+                            if (square & self.get_color(!c)).0 != 0 {
+                                // capture
+                                out.push(Move::Capture { from: p0.into(), to: sq });
+                            }
+                            mm.iter_bitscan_rev(|t| {
+                                out.push(Move::Quiet { from: p0.into(), to: t.into() });
+                            });
+                        } else {
+                            moves.iter_bitscan_rev(|t| {
+                                out.push(Move::Quiet { from: p0.into(), to: t.into() });
+                            });
+                        }
+                    },
+                    _ => panic!("search_rooks: Diagonal rook?")
                 }
 
             }
