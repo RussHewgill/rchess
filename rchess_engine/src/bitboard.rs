@@ -30,6 +30,22 @@ impl BitBoard {
         k == 1
     }
 
+    pub fn set_one(&self, c: Coord) -> Self {
+        let b = Self::empty().flip(c);
+        *self | b
+    }
+
+    pub fn set_zero(&self, c: Coord) -> Self {
+        let b = Self::empty().flip(c);
+        *self & !b
+    }
+
+    pub fn flip(&self, c: Coord) -> Self {
+        let p = Self::index_square(c);
+        let k = 1u64.overflowing_shl(p as u32).0;
+        BitBoard(self.0 | k)
+    }
+
     pub fn flip_mut(&mut self, c: Coord) {
         let p = Self::index_square(c);
         // eprintln!("c, p = {:?}, {:?}", c, p);
@@ -42,13 +58,6 @@ impl BitBoard {
         for c in cs.iter() {
             self.flip_mut(*c);
         }
-    }
-
-    pub fn index_square(c: Coord) -> u64 {
-        // Little Endian Rank File Mapping
-        // Least Significant File Mapping
-        let p: u64 = c.0 as u64 + 8 * c.1 as u64;
-        p
     }
 
     pub fn mask_rank(r: u32) -> BitBoard {
@@ -65,21 +74,103 @@ impl BitBoard {
 
     // pub fn mask_diagonal_ltr()
 
+    pub fn bitscan(&self) -> u32 {
+        // Bitscan Forward
+        // self.0.leading_zeros()
+        self.0.trailing_zeros()
+    }
+
+    pub fn bitscan_isolate(&self) -> Self {
+        let x = self.bitscan();
+        Self::single(x.into())
+    }
+
+    pub fn bitscan_reset(&self) -> (Self, u32) {
+        let x = self.bitscan();
+        // (*self & BitBoard(self.0.overflowing_sub(1).0),x)
+        (*self & !Self::single(x.into()),x)
+    }
+
+    pub fn bitscan_reset_mut(&mut self) -> u32 {
+        let (b,x) = self.bitscan_reset();
+        *self = b;
+        x
+    }
+
+    pub fn bitscan_rev(&self) -> u32 {
+        // Bitscan Reverse
+        self.0.leading_zeros()
+        // self.0.trailing_zeros()
+    }
+
+    pub fn bitscan_rev_reset(&self) -> (Self, u32) {
+        let x = self.bitscan_rev();
+        (*self & !Self::single(x.into()),x)
+    }
+
+    pub fn bitscan_rev_reset_mut(&mut self) -> u32 {
+        let (b,x) = self.bitscan_rev_reset();
+        *self = b;
+        x
+    }
+
+    pub fn serialize(&self) -> Vec<Coord> {
+        let mut b = *self;
+        let mut out = vec![];
+        let mut x;
+        loop {
+            x = b.bitscan_reset_mut();
+            // out.push(Self::index_bit(x as u64));
+            out.push(x.into());
+            if b.0 == 0 {
+                break;
+            }
+        }
+        out
+    }
+
+}
+
+impl BitBoard {
+    pub fn iter_bitscan<F>(&self, mut f: F)
+    where F: FnMut(u32) {
+        let mut b = *self;
+        while b.0 != 0 {
+            let p = b.bitscan_reset_mut();
+            f(p);
+        }
+    }
+
+    pub fn iter_rev_bitscan<F>(&self, mut f: F)
+    where F: FnMut(u32) {
+        let mut b = *self;
+        while b.0 != 0 {
+            let p = b.bitscan_rev_reset_mut();
+            f(p);
+        }
+    }
+
+}
+
+impl BitBoard {
+
+    pub fn index_square(c: Coord) -> u64 {
+        // Little Endian Rank File Mapping
+        // Least Significant File Mapping
+        let p: u64 = c.0 as u64 + 8 * c.1 as u64;
+        p
+    }
+
+    pub fn index_bit<T: Into<u64> + Copy>(s: T) -> Coord {
+        Coord(Self::index_file(s.into()) as u8,Self::index_rank(s.into()) as u8)
+    }
+
     pub fn index_rank(s: u64) -> u64 {
         s >> 3
     }
 
     pub fn index_file(s: u64) -> u64 {
         s & 7
-    }
-
-    pub fn bitscan(&self) -> u32 {
-        // self.0.leading_zeros()
-        self.0.trailing_zeros()
-    }
-
-    pub fn serialize(&self) -> Vec<Coord> {
-        unimplemented!()
     }
 
 }

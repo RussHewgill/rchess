@@ -9,6 +9,7 @@ pub mod coords;
 pub mod tables;
 pub mod game;
 
+pub mod evaluate;
 pub mod search;
 
 use crate::types::*;
@@ -20,55 +21,74 @@ use gag::Redirect;
 
 fn main() {
 
-    println!("start");
+    // println!("start");
     let now = std::time::Instant::now();
 
     // let game = Game::new();
 
-    // let mut a: u8 = 0b0000_1000;
-    // eprintln!("a = {:?}", a);
-    // eprintln!("a = 0b{:08b}", a);
-    // a <<= 1;
-    // eprintln!("a = 0b{:08b}", a);
+    // let mut g = Game::new();
+    let mut g = Game::empty();
 
-    // let mut b = BitBoard(0);
-    // b.flip(Coord(2,0));
-    // // let b: u8 = 0b0000_0010;
-    // eprintln!("board = {:08b}", &b.0);
+    // g.insert_piece_mut_unchecked(Coord(1,1), Pawn, White);
+    // g.insert_piece_mut_unchecked(Coord(2,1), Pawn, White);
+    // g.insert_piece_mut_unchecked(Coord(3,1), Pawn, White);
+    // g.insert_piece_mut_unchecked(Coord(2,2), Pawn, Black);
 
-    // for k in 0..3 {
-    //     println!("====");
-    //     let k0 = b.get(Coord(k,0));
-    //     eprintln!("k0 = {:?}", k0);
+    g.insert_piece_mut_unchecked(Coord(1,1), Rook, White);
+    // g.insert_piece_mut_unchecked(Coord(3,1), Pawn, White);
+    // g.insert_piece_mut_unchecked(Coord(1,3), Pawn, Black);
+
+    // eprintln!("{:?}", g);
+
+    // let c = Coord(3,3);
+
+    let ts = Tables::new();
+    // let b = ts.rook_moves.get(&Coord(3,3)).unwrap();
+    // let b = Tables::gen_rook_move(c);
+
+    let ms = g.search_rooks(&ts, White);
+    // let ms = g.search_pawns(White);
+
+    // for m in ms.iter() {
+    //     eprintln!("m = {:?}", m);
     // }
 
-    // let s = BitBoard::index_square(Coord(0, 0));
-    // // let s = 2;
-    // let r = BitBoard::index_rank(s);
-    // let f = BitBoard::index_file(s);
+    g.insert_piece_mut_unchecked(Coord(1,0), Pawn, White);
+    g.insert_piece_mut_unchecked(Coord(3,0), Pawn, Black);
 
-    // eprintln!("r = {:?}", r);
-    // eprintln!("f = {:?}", f);
+    let b = g.get_piece(Pawn);
+    let (x,b) = b.bitscan_rev_reset();
 
-    let mut g = Game::new();
+    eprintln!("x = {:?}", x);
+    eprintln!("{:?}", b);
 
-    let b = g.search_king(White);
+    // // let b = g.get(Pawn, White);
+    // let b = g.get_piece(Pawn);
+    // eprintln!("{:?}", b);
 
-    // let b = g.get(Pawn, Black);
+    // let c0 = Pawn.print(White);
+    // eprintln!("c0 = {:?}", c0);
+
+    // let b = BitBoard::new(&vec![Coord(1,0), Coord(2,0)]);
+
+    // let (b0,x) = b.bitscan_reset();
+
+    // let b = g.search_king(White);
+
+    // let cs = b.serialize();
+
+    // eprintln!("{:?}", b);
 
     // let k = std::mem::size_of::<Coord>();
     // eprintln!("k = {:?}", k);
 
     // let b = g.get(King, White);
-    // let b = BitBoard::new(&vec![Coord(1,1)]);
     // assert_eq!(!BitBoard::mask_file(7).0, 0x7f7f7f7f7f7f7f7fu64);
 
     // let b = Tables::gen_knight_move(Coord(2,2));
 
     // let b = BitBoard(0xfcfcfcfcfcfcfcfcu64);
     // let b = BitBoard(!(BitBoard::mask_file(6).0 | BitBoard::mask_file(7).0));
-
-    eprintln!("{:?}", b);
 
     // let mut x: u64 = (!0u8) as u64 | (((!0u8) as u64) << 8);
     // let mut x: u64 = 15u8 as u64 | ((15u8 as u64) << 8);

@@ -1,6 +1,8 @@
 
 use crate::types::*;
 
+pub use self::D::*;
+
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub enum D {
     N,
@@ -16,17 +18,60 @@ pub enum D {
 #[derive(Debug,Eq,Hash,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Coord(pub u8, pub u8);
 
+impl std::convert::From<u32> for Coord {
+    fn from(sq: u32) -> Self {
+        BitBoard::index_bit(sq)
+    }
+}
+
+impl std::convert::From<u64> for Coord {
+    fn from(sq: u64) -> Self {
+        BitBoard::index_bit(sq)
+    }
+}
+
 impl D {
-    pub fn shift(&self) -> i8 {
+
+    // pub fn shift(&self) -> i8 {
+    //     match *self {
+    //         D::N  => 8,
+    //         D::NE => 9,
+    //         D::E  => 1,
+    //         D::SE => -7,
+    //         D::S  => -8,
+    //         D::SW => -9,
+    //         D::W  => -1,
+    //         D::NW => 7,
+    //     }
+    // }
+
+    pub fn shift(&self, x: u32) -> u32 {
         match *self {
-            D::N  => 8,
-            D::NE => 9,
-            D::E  => 1,
-            D::SE => -7,
-            D::S  => -8,
-            D::SW => -9,
-            D::W  => -1,
-            D::NW => 7,
+            D::N  => x + 8,
+            D::NE => x + 9,
+            D::E  => x + 1,
+            D::SE => x - 7,
+            D::S  => x - 8,
+            D::SW => x - 9,
+            D::W  => x - 1,
+            D::NW => x + 7,
+        }
+    }
+
+}
+
+impl std::ops::Not for D {
+    type Output = Self;
+    fn not(self) -> Self::Output {
+        match self {
+            N  => S,
+            NE => SW,
+            E  => W,
+            SE => NW,
+            S  => N,
+            SW => NE,
+            W  => E,
+            NW => SE,
         }
     }
 }
