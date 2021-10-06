@@ -20,13 +20,21 @@ pub struct Coord(pub u8, pub u8);
 
 impl std::convert::From<u32> for Coord {
     fn from(sq: u32) -> Self {
+        // assert!(sq < 64);
         BitBoard::index_bit(sq)
     }
 }
 
 impl std::convert::From<u64> for Coord {
     fn from(sq: u64) -> Self {
+        // assert!(sq < 64);
         BitBoard::index_bit(sq)
+    }
+}
+
+impl std::convert::From<Coord> for u32 {
+    fn from(c: Coord) -> Self {
+        BitBoard::index_square(c)
     }
 }
 

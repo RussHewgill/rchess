@@ -15,12 +15,38 @@ impl MoveSetRook {
     pub fn to_vec(&self) -> Vec<(D,BitBoard)> {
         vec![(N,self.n),(E,self.e),(W,self.w),(S,self.s)]
     }
+    pub fn empty() -> Self {
+        Self {
+            n: BitBoard::empty(),
+            e: BitBoard::empty(),
+            w: BitBoard::empty(),
+            s: BitBoard::empty(),
+        }
+    }
+
+    pub fn get_dir(&self, d: D) -> &BitBoard {
+        match d {
+            N => &self.n,
+            E => &self.e,
+            W => &self.w,
+            S => &self.s,
+            _ => panic!("MoveSetRook::get Diagonal rook?")
+        }
+    }
 }
 
 pub struct Tables {
-    pub knight_moves: HashMap<Coord, BitBoard>,
-    pub rook_moves:   HashMap<Coord, MoveSetRook>,
+    // pub knight_moves: HashMap<Coord, BitBoard>,
+    // pub rook_moves:   HashMap<Coord, MoveSetRook>,
+    knight_moves: [[BitBoard; 8]; 8],
+    rook_moves:   [[MoveSetRook; 8]; 8],
     // endgames: 
+}
+
+impl Tables {
+    pub fn get_rook(&self, Coord(x,y): Coord) -> &MoveSetRook {
+        &self.rook_moves[x as usize][y as usize]
+    }
 }
 
 impl Tables {
@@ -32,14 +58,21 @@ impl Tables {
         }
     }
 
-    fn gen_rooks() -> HashMap<Coord, MoveSetRook> {
-        (0..9).into_iter()
-            .zip(0..9)
-            .map(|(x,y)| (Coord(x,y), Self::gen_rook_move(Coord(x,y))))
-            .collect()
+    // fn gen_rooks() -> HashMap<Coord, MoveSetRook> {
+    fn gen_rooks() -> [[MoveSetRook; 8]; 8] {
+        let m0 = MoveSetRook::empty();
+        let mut out = [[m0; 8]; 8];
+
+        for y in 0..8 {
+            for x in 0..8 {
+                out[x as usize][y as usize] = Self::gen_rook_move(Coord(x,y));
+            }
+        }
+
+        out
     }
 
-    pub fn gen_rook_move(c: Coord) -> MoveSetRook {
+    fn gen_rook_move(c: Coord) -> MoveSetRook {
 
         let sq = BitBoard::index_square(c) as u32;
 
@@ -77,15 +110,29 @@ impl Tables {
 }
 
 impl Tables {
+    // fn gen_bishops() -> 
 }
 
 impl Tables {
 
-    fn gen_knights() -> HashMap<Coord, BitBoard> {
-        (0..9).into_iter()
-            .zip(0..9)
-            .map(|(x,y)| (Coord(x,y), Self::gen_knight_move(Coord(x,y))))
-            .collect()
+    // fn gen_knights() -> HashMap<Coord, BitBoard> {
+    fn gen_knights() -> [[BitBoard; 8]; 8] {
+        let mut out = [[BitBoard::empty(); 8]; 8];
+
+        for y in 0..8 {
+            for x in 0..8 {
+                out[x as usize][y as usize] = Self::gen_knight_move(Coord(x,y));
+            }
+        }
+        out
+
+        // (0..8).into_iter()
+        //     .zip(0..8)
+        //     .for_each(|(x,y)| out[x as usize][y as usize] = Self::gen_knight_move(Coord(x,y)));
+        // (0..9).into_iter()
+        //     .zip(0..9)
+        //     .map(|(x,y)| (Coord(x,y), Self::gen_knight_move(Coord(x,y))))
+        //     .collect()
     }
 
     fn gen_knight_move(c: Coord) -> BitBoard {

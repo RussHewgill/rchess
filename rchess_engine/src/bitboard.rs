@@ -99,8 +99,7 @@ impl BitBoard {
 
     pub fn bitscan_rev(&self) -> u32 {
         // Bitscan Reverse
-        self.0.leading_zeros()
-        // self.0.trailing_zeros()
+        63 - self.0.leading_zeros()
     }
 
     pub fn bitscan_rev_reset(&self) -> (Self, u32) {
@@ -154,10 +153,10 @@ impl BitBoard {
 
 impl BitBoard {
 
-    pub fn index_square(c: Coord) -> u64 {
+    pub fn index_square(c: Coord) -> u32 {
         // Little Endian Rank File Mapping
         // Least Significant File Mapping
-        let p: u64 = c.0 as u64 + 8 * c.1 as u64;
+        let p = c.0 as u32 + 8 * c.1 as u32;
         p
     }
 

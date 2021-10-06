@@ -34,33 +34,55 @@ fn main() {
     // g.insert_piece_mut_unchecked(Coord(3,1), Pawn, White);
     // g.insert_piece_mut_unchecked(Coord(2,2), Pawn, Black);
 
-    g.insert_piece_mut_unchecked(Coord(1,1), Rook, White);
+    // g.insert_piece_mut_unchecked(Coord(1,1), Rook, White);
     // g.insert_piece_mut_unchecked(Coord(3,1), Pawn, White);
     // g.insert_piece_mut_unchecked(Coord(1,3), Pawn, Black);
+
+    g.insert_piece_mut_unchecked(Coord(0,0), Rook, White);
+    g.insert_piece_mut_unchecked(Coord(2,0), Pawn, White);
+    g.insert_piece_mut_unchecked(Coord(0,2), Pawn, Black);
 
     // eprintln!("{:?}", g);
 
     // let c = Coord(3,3);
 
     let ts = Tables::new();
-    // let b = ts.rook_moves.get(&Coord(3,3)).unwrap();
-    // let b = Tables::gen_rook_move(c);
 
-    let ms = g.search_rooks(&ts, White);
+    // let b = ts.get_rook(Coord(0,2));
+    // // let b = b.get_dir(N);
+    // let b = b.n;
+
+    // eprintln!("{:?}", b);
+
+    // let ms = Tables::gen_rook_move(Coord(0,0));
+    // let b = Tables::rook_n(Coord(0,2).into());
+    // let b = ms.n;
+
+    let mut ms = g.search_rooks(&ts, White);
     // let ms = g.search_pawns(White);
+    // ms.sort_by(|a,b| a.partial_cmp(b).unwrap());
 
-    // for m in ms.iter() {
+    for m in ms.iter() {
+        eprintln!("m = {:?}", m);
+    }
+
+    let ms2 = vec![
+        Move::Capture { from: Coord(0, 0), to: Coord(0, 2) },
+        Move::Quiet { from: Coord(0, 0), to: Coord(0, 1) },
+        Move::Quiet { from: Coord(0, 0), to: Coord(1, 0) },
+    ];
+    assert_eq!(ms, ms2);
+
+    // let mut ms2: Vec<Move> = (0..9).into_iter()
+    //     .zip(0..9)
+    //     .map(|(x,y)| (Move::Quiet { from: Coord(1,1), to: Coord(x,y) }))
+    //     .collect();
+    // ms2.sort_by(|a,b| a.partial_cmp(b).unwrap());
+
+    // println!("====");
+    // for m in ms2.iter() {
     //     eprintln!("m = {:?}", m);
     // }
-
-    g.insert_piece_mut_unchecked(Coord(1,0), Pawn, White);
-    g.insert_piece_mut_unchecked(Coord(3,0), Pawn, Black);
-
-    let b = g.get_piece(Pawn);
-    let (x,b) = b.bitscan_rev_reset();
-
-    eprintln!("x = {:?}", x);
-    eprintln!("{:?}", b);
 
     // // let b = g.get(Pawn, White);
     // let b = g.get_piece(Pawn);

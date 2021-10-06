@@ -58,8 +58,9 @@ impl Piece {
     }
 
     pub fn print(&self, c: Color) -> char {
+        // backward on dark terminal
         match c {
-            White => match self {
+            Black => match self {
                 Pawn   => char::from_u32(0x2659).unwrap(),
                 Rook   => char::from_u32(0x2656).unwrap(),
                 Knight => char::from_u32(0x2658).unwrap(),
@@ -67,7 +68,7 @@ impl Piece {
                 Queen  => char::from_u32(0x2655).unwrap(),
                 King   => char::from_u32(0x2654).unwrap(),
             },
-            Black => match self {
+            White => match self {
                 Pawn   => char::from_u32(0x265F).unwrap(),
                 Rook   => char::from_u32(0x265C).unwrap(),
                 Knight => char::from_u32(0x265E).unwrap(),

@@ -25,38 +25,93 @@ impl Game {
         let mut out = vec![];
 
         rooks.iter_bitscan(|p0| {
-            let ms = ts.rook_moves.get(&p0.into()).unwrap();
+            // let ms: &MoveSetRook = ts.rook_moves.get(&p0.into()).unwrap();
+            let ms: &MoveSetRook = ts.get_rook(p0.into());
 
-            let oc = self.all_occupied();
+            let occ = self.all_occupied();
 
-            for (d,bb) in ms.to_vec().iter() {
-                // TODO: needs reverse bitscan
-                let blocks = *bb & oc;
-                if blocks.0 == 0 {
-                    bb.iter_bitscan(|t| {
-                        out.push(Move::Quiet { from: p0.into(), to: t.into() });
-                    });
-                } else {
-                    let capture = blocks.bitscan_isolate() & self.get_color(!c);
+            for (dir,moves) in ms.to_vec().iter() {
+                let blocks = *moves & occ;
+                if blocks.0 != 0 {
+                    let square = blocks.bitscan_isolate();
+                    if (square & self.get_color(!c)).0 != 0 {
+                        let sq: Coord = square.bitscan().into();
+                        // capture
+                        eprintln!("sq = {:?}", sq);
+                        let nots = ts.get_rook(sq).get_dir(*dir);
 
-                    // if capture.0 != 0 {
-                    //     out.push(Move::Capture { from: p0.into(), to: capture.bitscan().into() });
-                    // }
+                        // eprintln!("{:?}", nots);
 
-                    // TODO: mask squares past first block?
+                        let ms = *moves ^ *nots;
+                        // eprintln!("{:?}", ms);
+                        let ms = ms & !square;
 
-                    bb.iter_bitscan(|t| {
-                        // unimplemented!()
-                    });
+                        out.push(Move::Capture { from: p0.into(), to: sq });
 
+                        ms.iter_bitscan(|t| {
+                            out.push(Move::Quiet { from: p0.into(), to: t.into() });
+                        });
+
+                    } else {
+                        // friendly block
+                    }
                 }
+
             }
+
+            //     // TODO: needs reverse bitscan
+            //     let blocks = *moves & occ;
+            //     if blocks.0 == 0 {
+            //         moves.iter_bitscan(|t| {
+            //             out.push(Move::Quiet { from: p0.into(), to: t.into() });
+            //         });
+            //     } else {
+            //         match dir {
+            //             N | E => {
+            //                 let capture = blocks.bitscan_isolate() & self.get_color(!c);
+            //                 if capture.0 != 0 {
+            //                     // let capture_sq = capture.bitscan_isolate().0.next_power_of_two() - 1;
+            //                     // println!("capture_sq = {:?}", BitBoard(capture_sq));
+            //                     // let ms = *moves & BitBoard(capture_sq);
+            //                     eprintln!("{:?}", moves);
+            //                 }
+
+            //                 moves.iter_bitscan(|t| {
+            //                     // unimplemented!()
+            //                 });
+            //             },
+            //             S | W => {
+            //             },
+            //             _     => panic!("diagonal rook?"),
+            //         }
+
+            //         // if capture.0 != 0 {
+            //         //     out.push(Move::Capture { from: p0.into(), to: capture.bitscan().into() });
+            //         // }
+
+            //         // TODO: mask squares past first block?
+
+
+            //     }
+            // }
 
 
         });
 
         out
         // unimplemented!()
+    }
+
+    pub fn search_bishops(&self, c: Color) -> Vec<Move> {
+        unimplemented!()
+    }
+
+    pub fn search_knights(&self, c: Color) -> Vec<Move> {
+        unimplemented!()
+    }
+
+    pub fn search_queen(&self, c: Color) -> Vec<Move> {
+        unimplemented!()
     }
 
     pub fn search_pawns(&self, c: Color) -> Vec<Move> {
