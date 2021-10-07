@@ -35,17 +35,55 @@ impl MoveSetRook {
     }
 }
 
+#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+pub struct MoveSetBishop {
+    pub ne: BitBoard,
+    pub nw: BitBoard,
+    pub se: BitBoard,
+    pub sw: BitBoard,
+}
+
+impl MoveSetBishop {
+    pub fn to_vec(&self) -> Vec<(D,BitBoard)> {
+        vec![(NE,self.ne),(NW,self.nw),(SE,self.se),(SW,self.sw)]
+    }
+    pub fn empty() -> Self {
+        Self {
+            ne: BitBoard::empty(),
+            nw: BitBoard::empty(),
+            se: BitBoard::empty(),
+            sw: BitBoard::empty(),
+        }
+    }
+    pub fn get_dir(&self, d: D) -> &BitBoard {
+        match d {
+            NE => &self.ne,
+            NW => &self.nw,
+            SE => &self.se,
+            SW => &self.sw,
+            _ => panic!("MoveSetBishop::get Rank or File Bishop?")
+        }
+    }
+}
+
 pub struct Tables {
     // pub knight_moves: HashMap<Coord, BitBoard>,
     // pub rook_moves:   HashMap<Coord, MoveSetRook>,
     knight_moves: [[BitBoard; 8]; 8],
     rook_moves:   [[MoveSetRook; 8]; 8],
+    bishop_moves: [[MoveSetBishop; 8]; 8],
     // endgames: 
 }
 
 impl Tables {
     pub fn get_rook(&self, Coord(x,y): Coord) -> &MoveSetRook {
         &self.rook_moves[x as usize][y as usize]
+    }
+    pub fn get_bishop(&self, Coord(x,y): Coord) -> &MoveSetBishop {
+        &self.bishop_moves[x as usize][y as usize]
+    }
+    pub fn get_knight(&self, Coord(x,y): Coord) -> &BitBoard {
+        &self.knight_moves[x as usize][y as usize]
     }
 }
 
@@ -55,8 +93,13 @@ impl Tables {
         Self {
             knight_moves: Self::gen_knights(),
             rook_moves:   Self::gen_rooks(),
+            bishop_moves: Self::gen_bishops(),
         }
     }
+
+}
+
+impl Tables {
 
     // fn gen_rooks() -> HashMap<Coord, MoveSetRook> {
     fn gen_rooks() -> [[MoveSetRook; 8]; 8] {
@@ -110,7 +153,111 @@ impl Tables {
 }
 
 impl Tables {
-    // fn gen_bishops() -> 
+
+    fn gen_bishops() -> [[MoveSetBishop; 8]; 8] {
+        let m0 = MoveSetBishop::empty();
+        let mut out = [[m0; 8]; 8];
+        for y in 0..8 {
+            for x in 0..8 {
+                out[x as usize][y as usize] = Self::gen_bishop_move(Coord(x,y));
+            }
+        }
+        out
+    }
+
+    fn gen_bishop_move(c: Coord) -> MoveSetBishop {
+        let sq: u32 = c.into();
+
+        let ne = Self::gen_diagonal(c, true);
+        let sw = Self::gen_diagonal(c, false);
+
+        let se = Self::gen_antidiagonal(c, true);
+        let nw = Self::gen_antidiagonal(c, false);
+
+        MoveSetBishop {ne, nw, se, sw}
+    }
+
+    fn gen_diagonal(Coord(x,y): Coord, positive: bool) -> BitBoard {
+        let mut out = BitBoard::empty();
+        if positive {
+            for k in (x + 1)..8 {
+                out.flip_mut(Coord(k,k));
+            }
+        } else {
+            for k in 0..x {
+                out.flip_mut(Coord(k,k));
+            }
+        }
+        out
+    }
+
+    fn gen_antidiagonal(c0: Coord, positive: bool) -> BitBoard {
+        let mut out = BitBoard::single(c0);
+        let mut c = c0;
+        let d = if positive { SE } else { NW };
+        while let Some(k) = d.shift_coord(c) {
+            c = k;
+            out.flip_mut(c)
+        }
+        out &= !BitBoard::single(c0);
+        out
+    }
+
+    // fn gen_antidiagonal(c: Coord, positive: bool) -> BitBoard {
+    //     // let mut out = BitBoard::single(c);
+    //     let mut out = BitBoard::empty();
+    //     if positive {
+    //         // out |= out.shift(SE);
+    //         for k in c.0..8 {
+    //             out.flip_mut(Coord(k+1,c.1));
+    //             eprintln!("{:?}\n", out);
+    //         }
+    //     } else {
+    //     }
+    //     out
+    // }
+
+    // fn gen_diagonal(c: Coord) -> BitBoard {
+    //     let v: Vec<Coord> = (0..8).map(|x| Coord(x,x)).collect();
+    //     let b0 = BitBoard::new(&v);
+    //     if c.0 == c.1 {
+    //         b0
+    //     } else if c.0 > c.1 {
+    //         b0.shift_mult(E, c.0.into())
+    //     } else {
+    //         b0.shift_mult(N, c.1.into())
+    //     }
+    // }
+
+    // fn gen_antidiagonal(c: Coord) -> BitBoard {
+    //     let v: Vec<Coord> = (0..8).map(|x| Coord(x,7-x)).collect();
+    //     let b0 = BitBoard::new(&v);
+    //     if (7 - c.0) == c.1 {
+    //         b0
+    //     } else if (7 - c.0) > c.1 {
+    //         b0.shift_mult(W, (7 - c.0).into())
+    //     } else {
+    //         b0.shift_mult(N, c.1.into())
+    //     }
+    // }
+
+    fn index_diagonal(Coord(x,y): Coord) -> u8 {
+        y.overflowing_sub(x).0 & 15
+    }
+
+    fn index_antidiagonal(Coord(x,y): Coord) -> u8 {
+        (y + x) ^ 7
+    }
+
+    // pub fn gen_bishop_block_mask(c: Coord) -> BitBoard {
+    //     unimplemented!()
+    // }
+
+    // pub fn gen_bishop_block_board(c: Coord) -> BitBoard {
+    //     unimplemented!()
+    // }
+
+
 }
 
 impl Tables {

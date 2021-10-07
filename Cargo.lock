@@ -195,6 +195,7 @@ dependencies = [
  "env_logger",
  "gag",
  "log",
+ "rchess_engine",
 ]
 
 [[package]]

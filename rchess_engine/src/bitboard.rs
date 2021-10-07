@@ -181,9 +181,83 @@ impl BitBoard {
 
 impl BitBoard {
 
-    pub fn flip_diag(&self) -> Self {
+    pub fn mirror_vert(&self) -> Self {
+        Self(self.0.swap_bytes())
+    }
+
+    pub fn mirror_horiz(&self) -> Self {
+        // https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating#Horizontal
         let mut x = self.0;
-        let x = x.reverse_bits();
+        const K1: u64 = 0x5555555555555555;
+        const K2: u64 = 0x3333333333333333;
+        const K4: u64 = 0x0f0f0f0f0f0f0f0f;
+        x = ((x >> 1) & K1) +  2*(x & K1);
+        x = ((x >> 2) & K2) +  4*(x & K2);
+        x = ((x >> 4) & K4) + 16*(x & K4);
+        Self(x)
+    }
+
+    pub fn rotate_90_cw(&self) -> Self {
+        self.flip_diag().mirror_vert()
+    }
+
+    pub fn rotate_90_ccw(&self) -> Self {
+        self.mirror_vert().flip_diag()
+    }
+
+    pub fn rotate_45_cw(&self) -> Self {
+        const K1: u64 = 0xAAAAAAAAAAAAAAAA;
+        const K2: u64 = 0xCCCCCCCCCCCCCCCC;
+        const K4: u64 = 0xF0F0F0F0F0F0F0F0;
+        let mut x = self.0;
+        x ^= K1 & (x ^ x.rotate_right(8));
+        x ^= K2 & (x ^ x.rotate_right(16));
+        x ^= K4 & (x ^ x.rotate_right(32));
+        Self(x)
+        // unimplemented!()
+    }
+
+    pub fn rotate_45_ccw(&self) -> Self {
+        const K1: u64 = 0x5555555555555555;
+        const K2: u64 = 0x3333333333333333;
+        const K4: u64 = 0x0f0f0f0f0f0f0f0f;
+        let mut x = self.0;
+        x ^= K1 & (x ^ x.rotate_right(8));
+        x ^= K2 & (x ^ x.rotate_right(16));
+        x ^= K4 & (x ^ x.rotate_right(32));
+        Self(x)
+        // unimplemented!()
+    }
+
+    pub fn rotate_180(&self) -> Self {
+        Self(self.0.reverse_bits())
+    }
+
+    pub fn flip_antidiag(&self) -> Self {
+        const K1: u64 = 0xaa00aa00aa00aa00;
+        const K2: u64 = 0xcccc0000cccc0000;
+        const K4: u64 = 0xf0f0f0f00f0f0f0f;
+        let mut x = self.0;
+        let mut t  = x ^ (x << 36) ;
+        x ^= K4 & (t ^ (x >> 36));
+        t  = K2 & (x ^ (x << 18));
+        x ^=       t ^ (t >> 18) ;
+        t  = K1 & (x ^ (x <<  9));
+        x ^=       t ^ (t >>  9) ;
+        Self(x)
+    }
+
+    pub fn flip_diag(&self) -> Self {
+        const K1: u64 = 0x5500550055005500;
+        const K2: u64 = 0x3333000033330000;
+        const K4: u64 = 0x0f0f0f0f00000000;
+        let mut x  = self.0;
+        let mut t  = K4 & (x ^ (x << 28));
+        x ^= t ^ (t >> 28) ;
+        t = K2 & (x ^ (x << 14));
+        x ^= t ^ (t >> 14) ;
+        t = K1 & (x ^ (x <<  7));
+        x ^= t ^ (t >>  7) ;
         Self(x)
     }
 
@@ -244,7 +318,51 @@ impl BitBoard {
         // unimplemented!()
     }
 
-    pub fn shift_mult(&self, ds: &[D]) -> Self {
+    // pub fn shift_wrapped(&self, d: D) -> Self {
+    //     let b = match d {
+    //         D::N  => {
+    //             self.0.overflowing_shl(8 as u32).0
+    //         },
+    //         D::NE => {
+    //             self.0.overflowing_shl(9 as u32).0
+    //                 & (!BitBoard::mask_file(0)).0
+    //         },
+    //         D::E  => {
+    //             self.0.overflowing_shl(1 as u32).0
+    //                 & (!BitBoard::mask_file(0)).0
+    //         },
+    //         D::SE => {
+    //             self.0.overflowing_shr(7 as u32).0
+    //                 & (!BitBoard::mask_file(0)).0
+    //         },
+    //         D::S  => {
+    //             self.0.overflowing_shr(8 as u32).0
+    //         },
+    //         D::SW => {
+    //             self.0.overflowing_shr(9 as u32).0
+    //                 & (!BitBoard::mask_file(7)).0
+    //         },
+    //         D::W  => {
+    //             self.0.overflowing_shr(1 as u32).0
+    //                 & (!BitBoard::mask_file(7)).0
+    //         },
+    //         D::NW => {
+    //             self.0.overflowing_shl(7 as u32).0
+    //                 & (!BitBoard::mask_file(7)).0
+    //         },
+    //     };
+    //     BitBoard(b)
+    // }
+
+    pub fn shift_mult(&self, d: D, n: u64) -> Self {
+        let mut out = *self;
+        for _ in 0..n {
+            out = out.shift(d);
+        }
+        out
+    }
+
+    pub fn shift_vec(&self, ds: &[D]) -> Self {
         ds.iter()
             .fold(*self, |acc, d| acc.shift(*d))
     }
@@ -262,11 +380,15 @@ impl BitBoard {
 impl std::fmt::Debug for BitBoard {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut ss: &str = &format!("{:0>64b}", self.0);
-        f.write_str(&format!("\nBitBoard:\n"))?;
+        f.write_str(&format!("BitBoard:\n"))?;
         for y in 0..8 {
             let (c, rest) = ss.split_at(8);
             let c = c.chars().rev().collect::<String>();
-            f.write_str(&format!("{}\n", c))?;
+            if y == 7 {
+                f.write_str(&format!("{}", c))?;
+            } else {
+                f.write_str(&format!("{}\n", c))?;
+            }
             ss = rest;
         }
         Ok(())

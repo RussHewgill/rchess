@@ -3,18 +3,10 @@
 #![allow(dead_code)]
 #![allow(unused_mut)]
 
-pub mod types;
-pub mod bitboard;
-pub mod coords;
-pub mod tables;
-pub mod game;
-
-pub mod evaluate;
-pub mod search;
-
-use crate::types::*;
-use crate::search::*;
-use crate::tables::*;
+// use crate::lib::*;
+use rchess_engine_lib::types::*;
+use rchess_engine_lib::search::*;
+use rchess_engine_lib::tables::*;
 
 use log::{debug, error, log_enabled, info, Level};
 use gag::Redirect;
@@ -34,32 +26,80 @@ fn main() {
     // g.insert_piece_mut_unchecked(Coord(3,1), Pawn, White);
     // g.insert_piece_mut_unchecked(Coord(2,2), Pawn, Black);
 
-    g.insert_piece_mut_unchecked(Coord(1,1), Rook, White);
-    g.insert_piece_mut_unchecked(Coord(3,1), Pawn, White);
-    g.insert_piece_mut_unchecked(Coord(1,3), Pawn, Black);
+    // g.insert_piece_mut_unchecked(Coord(1,1), Rook, White);
+    // g.insert_piece_mut_unchecked(Coord(3,1), Pawn, White);
+    // g.insert_piece_mut_unchecked(Coord(1,3), Pawn, Black);
 
     // g.insert_piece_mut_unchecked(Coord(0,0), Rook, White);
     // g.insert_piece_mut_unchecked(Coord(2,0), Pawn, White);
     // g.insert_piece_mut_unchecked(Coord(0,2), Pawn, Black);
 
+    // g.insert_piece_mut_unchecked(Coord(2,2), King, White);
+    // g.insert_piece_mut_unchecked(Coord(3,2), Pawn, White);
+    // g.insert_piece_mut_unchecked(Coord(2,3), Pawn, Black);
+
+    g.insert_piece_mut_unchecked(Coord(3,3), Bishop, White);
+    g.insert_piece_mut_unchecked(Coord(5,1), Pawn, White);
+    g.insert_piece_mut_unchecked(Coord(4,4), Pawn, White);
+    g.insert_piece_mut_unchecked(Coord(2,4), Pawn, White);
+    g.insert_piece_mut_unchecked(Coord(1,1), Pawn, Black);
+
     // eprintln!("{:?}", g);
 
-    // let c = Coord(3,3);
-
     let ts = Tables::new();
+    // let g = Game::new();
 
-    // let b = ts.get_rook(Coord(1,1));
-    // let b = b.w;
+    eprintln!("{:?}", g);
 
-    // eprintln!("{:?}", b);
-
-    let mut ms = g.search_rooks(&ts, White);
+    // let ms = g.search_all(&ts, White);
+    // let ms = g.search_king(White);
+    // let mut ms = g.search_rooks(&ts, White);
+    // let ms = g.search_knights(&ts, White);
+    let ms = g.search_bishops(&ts, White);
     // let ms = g.search_pawns(White);
     // ms.sort_by(|a,b| a.partial_cmp(b).unwrap());
+
+    eprintln!("ms.len() = {:?}", ms.len());
 
     for m in ms.iter() {
         eprintln!("m = {:?}", m);
     }
+
+    // let b = BitBoard::new(&vec![
+    //     Coord(1,1),
+    //     Coord(1,0),
+    //     Coord(0,1),
+    //     Coord(2,1),
+    //     Coord(1,2),
+    //     Coord(1,3),
+
+    //     Coord(7,0),
+    //     Coord(0,7),
+
+    //     // Coord(0,0),
+    //     // Coord(7,7),
+
+    // ]);
+
+    // // let v: Vec<Coord> = (0..8).map(|x| Coord(1,x)).collect();
+    // // let v: Vec<Coord> = (0..8).map(|x| Coord(x,x)).collect();
+    // let v: Vec<Coord> = (0..8).map(|x| Coord(x,7-x)).collect();
+    // let b = BitBoard::new(&v);
+    // eprintln!("{:?}\n", b);
+
+    // // let b = b.mirror_vert();
+    // // let b = b.mirror_horiz();
+    // // let b = b.flip_diag();
+    // // let b = b.flip_antidiag();
+    // // let b = b.rotate_180();
+    // // let b = b.rotate_90_ccw();
+    // // let b = b.rotate_45_cw();
+    // let b = b.rotate_45_ccw();
+
+    // eprintln!("{:?}", b);
+    // // let x: u64 = 2u64.pow(63);
+    // // eprintln!("b = {:0>64b}", x);
+    // // eprintln!("b = {:0>64b}", x as i64);
 
     // let ms2 = vec![
     //     Move::Capture { from: Coord(0, 0), to: Coord(0, 2) },

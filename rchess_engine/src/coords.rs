@@ -15,7 +15,7 @@ pub enum D {
     NW,
 }
 
-#[derive(Debug,Eq,Hash,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Eq,Hash,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Coord(pub u8, pub u8);
 
 impl std::convert::From<u32> for Coord {
@@ -53,17 +53,85 @@ impl D {
     //     }
     // }
 
-    pub fn shift(&self, x: u32) -> u32 {
+    // pub fn shift_sq(&self, x: u32) -> Option<u32> {
+    //     match *self {
+    //         // D::N  => x + 8,
+    //         // D::NE => x + 9,
+    //         // D::E  => x + 1,
+    //         // D::SE => x - 7,
+    //         // D::S  => x - 8,
+    //         // D::SW => x - 9,
+    //         // D::W  => x - 1,
+    //         // D::NW => x + 7,
+    //         D::SE => x.checked_sub(7),
+    //         D::S  => x.checked_sub(8),
+    //         D::SW => x.checked_sub(9),
+    //         D::W  => x.checked_sub(1),
+    //         D::N  => {
+    //             let k = x + 8;
+    //             if k > 63 { None } else { Some(k) }
+    //         },
+    //         D::NE  => {
+    //             let k = x + 9;
+    //             if k > 63 { None } else { Some(k) }
+    //         },
+    //         D::E  => {
+    //             let k = x + 1;
+    //             if k > 63 { None } else { Some(k) }
+    //         },
+    //         D::NW  => {
+    //             let k = x + 7;
+    //             if k > 63 { None } else { Some(k) }
+    //         },
+    //     }
+    //     // panic!("D::shift")
+    // }
+
+    pub fn shift_coord(&self, Coord(x0,y0): Coord) -> Option<Coord> {
         match *self {
-            D::N  => x + 8,
-            D::NE => x + 9,
-            D::E  => x + 1,
-            D::SE => x - 7,
-            D::S  => x - 8,
-            D::SW => x - 9,
-            D::W  => x - 1,
-            D::NW => x + 7,
+            N => {
+                if y0 > 7 { None } else {
+                    Some(Coord(x0,y0+1))
+                }
+            },
+            NE => {
+                if (y0 > 7) | (x0 > 7) { None } else {
+                    Some(Coord(x0+1,y0+1))
+                }
+            },
+            E => {
+                if x0 > 7 { None } else {
+                    Some(Coord(x0+1,y0))
+                }
+            },
+            NW => {
+                if (y0 > 7) | (x0 == 0) { None } else {
+                    Some(Coord(x0-1,y0+1))
+                }
+            },
+            S => {
+                if y0 == 0 { None } else {
+                    Some(Coord(x0,y0-1))
+                }
+            },
+            SE => {
+                if (y0 == 0) | (x0 > 7) { None } else {
+                    Some(Coord(x0+1,y0-1))
+                }
+            },
+            SW => {
+                if (y0 == 0) | (x0 == 0) { None } else {
+                    Some(Coord(x0-1,y0-1))
+                }
+            },
+            W => {
+                if x0 == 0 { None } else {
+                    Some(Coord(x0-1,y0))
+                }
+            },
         }
+        // let k = self.shift_sq(c.into())?;
+        // Some(k.into())
     }
 
 }
@@ -81,6 +149,16 @@ impl std::ops::Not for D {
             W  => E,
             NW => SE,
         }
+    }
+}
+
+impl std::fmt::Debug for Coord {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let letters: [char; 8] = ['A','B','C','D','E','F','G','H'];
+        let r = letters[self.0 as usize];
+        // f.write_str(&format!("Coord({}{})", r, self.1+1))?;
+        f.write_str(&format!("{}{}", r, self.1+1))?;
+        Ok(())
     }
 }
 

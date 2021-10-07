@@ -7,6 +7,8 @@ edition = "2018"
 
 [dependencies]
 
+rchess_engine = { path = "../rchess_engine" }
+
 log = "0.4.*"
 env_logger = "0.9.*"
 gag = "1.0.0"
