@@ -177,21 +177,33 @@ impl Tables {
         MoveSetBishop {ne, nw, se, sw}
     }
 
-    fn gen_diagonal(Coord(x,y): Coord, positive: bool) -> BitBoard {
-        let mut out = BitBoard::empty();
-        if positive {
-            for k in (x + 1)..8 {
-                out.flip_mut(Coord(k,k));
-            }
-        } else {
-            for k in 0..x {
-                out.flip_mut(Coord(k,k));
-            }
+    // pub fn gen_diagonal(Coord(x,y): Coord, positive: bool) -> BitBoard {
+    //     let mut out = BitBoard::empty();
+    //     if positive {
+    //         for k in (x + 1)..8 {
+    //             out.flip_mut(Coord(k,k));
+    //         }
+    //     } else {
+    //         for k in 0..x {
+    //             out.flip_mut(Coord(k,k));
+    //         }
+    //     }
+    //     out
+    // }
+
+    pub fn gen_diagonal(c0: Coord, positive: bool) -> BitBoard {
+        let mut out = BitBoard::single(c0);
+        let mut c = c0;
+        let d = if positive { NE } else { SW };
+        while let Some(k) = d.shift_coord(c) {
+            c = k;
+            out.flip_mut(c)
         }
+        out &= !BitBoard::single(c0);
         out
     }
 
-    fn gen_antidiagonal(c0: Coord, positive: bool) -> BitBoard {
+    pub fn gen_antidiagonal(c0: Coord, positive: bool) -> BitBoard {
         let mut out = BitBoard::single(c0);
         let mut c = c0;
         let d = if positive { SE } else { NW };

@@ -8,6 +8,7 @@ pub mod bitboard;
 pub mod coords;
 pub mod tables;
 pub mod game;
+pub mod parsing;
 
 pub mod evaluate;
 pub mod search;

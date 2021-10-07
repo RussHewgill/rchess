@@ -23,6 +23,65 @@ pub struct GameState {
 }
 
 impl Game {
+    pub fn make_move_unchecked(&self, m: &Move) -> Option<Self> {
+        let out = match m {
+            Move::Quiet      { from, to } => {
+                let (c,pc) = self.get_at(*from)?;
+                let mut out = self.clone();
+                out.delete_piece_mut_unchecked(*from, pc, c);
+                out.insert_piece_mut_unchecked(*to, pc, c);
+                Some(out)
+            },
+            Move::PawnDouble { from, to } => {
+                let (c,pc) = self.get_at(*from)?;
+                let mut out = self.clone();
+                out.delete_piece_mut_unchecked(*from, pc, c);
+                out.insert_piece_mut_unchecked(*to, pc, c);
+                Some(out)
+            },
+            Move::Capture    { from, to } => {
+                let (c0,pc0) = self.get_at(*from)?;
+                let (c1,pc1) = self.get_at(*to)?;
+                let mut out = self.clone();
+                out.delete_piece_mut_unchecked(*from, pc0, c0);
+                out.delete_piece_mut_unchecked(*to, pc1, c1);
+                out.insert_piece_mut_unchecked(*to, pc0, c0);
+                Some(out)
+            },
+            Move::EnPassant  { from, to } => {
+                unimplemented!()
+            },
+            Move::Promotion  { from, to, new_piece} => {
+                unimplemented!()
+            },
+            Move::Castle     { from, to, rook } => {
+                unimplemented!()
+            },
+        };
+
+        if let Some(mut x) = out {
+            x.state.side_to_move = !x.state.side_to_move;
+            x.move_history.push(*m);
+            Some(x)
+        } else {
+            panic!("Game::make_move?");
+        }
+
+    }
+
+    fn delete_piece_mut_unchecked<T: Into<Coord>>(&mut self, at: T, p: Piece, c: Color) {
+        let at = at.into();
+
+        let mut bc = self.get_color_mut(c);
+        *bc = bc.set_zero(at);
+
+        let mut bp = self.get_piece_mut(p);
+        *bp = bp.set_zero(at);
+    }
+
+}
+
+impl Game {
 
     pub fn get_color(&self, c: Color) -> BitBoard {
         match c {
@@ -77,13 +136,24 @@ impl Game {
         !self.all_occupied()
     }
 
-    pub fn insert_piece_mut_unchecked(&mut self, at: Coord, p: Piece, c: Color) {
+    pub fn insert_piece_mut_unchecked<T: Into<Coord>>(&mut self, at: T, p: Piece, c: Color) {
+        let at = at.into();
+
         let mut bc = self.get_color_mut(c);
         *bc = bc.set_one(at);
 
         let mut bp = self.get_piece_mut(p);
         *bp = bp.set_one(at);
     }
+
+    pub fn insert_pieces_mut_unchecked<T: Into<Coord> + Clone>(&mut self, ps: &[(T, Piece, Color)]) {
+        for (at,p,c) in ps.iter() {
+            self.insert_piece_mut_unchecked(at.clone(), *p, *c);
+        }
+    }
+}
+
+impl Game {
 
     pub fn empty() -> Game {
         let state = GameState {
@@ -148,8 +218,8 @@ impl Game {
             state,
         }
     }
-}
 
+}
 
 impl Game {
 
@@ -197,7 +267,7 @@ impl Game {
 
 }
 
-pub fn square_color(Coord(x,y): Coord) -> Color {
+fn square_color(Coord(x,y): Coord) -> Color {
     if y % 2 == 0 {
         if x % 2 == 0 {
             Black

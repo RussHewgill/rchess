@@ -3,10 +3,13 @@
 #![allow(dead_code)]
 #![allow(unused_mut)]
 
+use std::str::FromStr;
+
 // use crate::lib::*;
 use rchess_engine_lib::types::*;
 use rchess_engine_lib::search::*;
 use rchess_engine_lib::tables::*;
+use rchess_engine_lib::parsing::*;
 
 use log::{debug, error, log_enabled, info, Level};
 use gag::Redirect;
@@ -19,7 +22,7 @@ fn main() {
     // let game = Game::new();
 
     // let mut g = Game::new();
-    let mut g = Game::empty();
+    // let mut g = Game::empty();
 
     // g.insert_piece_mut_unchecked(Coord(1,1), Pawn, White);
     // g.insert_piece_mut_unchecked(Coord(2,1), Pawn, White);
@@ -38,32 +41,70 @@ fn main() {
     // g.insert_piece_mut_unchecked(Coord(3,2), Pawn, White);
     // g.insert_piece_mut_unchecked(Coord(2,3), Pawn, Black);
 
-    g.insert_piece_mut_unchecked(Coord(3,3), Bishop, White);
-    g.insert_piece_mut_unchecked(Coord(5,1), Pawn, White);
-    g.insert_piece_mut_unchecked(Coord(4,4), Pawn, White);
-    g.insert_piece_mut_unchecked(Coord(2,4), Pawn, White);
-    g.insert_piece_mut_unchecked(Coord(1,1), Pawn, Black);
+    // g.insert_piece_mut_unchecked(Coord(3,3), Bishop, White);
+    // g.insert_piece_mut_unchecked(Coord(5,1), Pawn, White);
+    // g.insert_piece_mut_unchecked(Coord(4,4), Pawn, White);
+    // g.insert_piece_mut_unchecked(Coord(2,4), Pawn, White);
+    // g.insert_piece_mut_unchecked(Coord(1,1), Pawn, Black);
 
-    // eprintln!("{:?}", g);
+    // let mut g = Game::empty();
+
+    // g.insert_pieces_mut_unchecked(&vec![
+    //     ("C7", Pawn, Black),
+    //     ("D6", Pawn, Black),
+    //     ("F4", Pawn, Black),
+    //     ("H4", Rook, Black),
+    //     ("H3", King, Black),
+    //     ("A5", King, White),
+    //     ("B5", Pawn, White),
+    //     ("B4", Rook, White),
+    //     ("B5", Pawn, White),
+    // ]);
+
+    // g.insert_pieces_mut_unchecked(&vec![
+    //     ("D4", Queen, White),
+    //     ("B2", Pawn, White),
+    //     ("D2", Pawn, White),
+    //     ("F2", Pawn, White),
+    //     ("B4", Pawn, White),
+    //     ("F4", Pawn, White),
+    //     ("B6", Pawn, White),
+    //     ("D6", Pawn, White),
+    //     ("F6", Pawn, White),
+    // ]);
 
     let ts = Tables::new();
     // let g = Game::new();
 
+    let g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -").unwrap();
+
     eprintln!("{:?}", g);
 
-    // let ms = g.search_all(&ts, White);
-    // let ms = g.search_king(White);
-    // let mut ms = g.search_rooks(&ts, White);
-    // let ms = g.search_knights(&ts, White);
-    let ms = g.search_bishops(&ts, White);
-    // let ms = g.search_pawns(White);
-    // ms.sort_by(|a,b| a.partial_cmp(b).unwrap());
+    // let moves = g.search_all(&ts, g.state.side_to_move);
+    // let ms = ts.get_knight("B1".into());
+    // let moves = ms.to_vec();
 
-    eprintln!("ms.len() = {:?}", ms.len());
+    // let g2 = g.make_move_unchecked(&m).unwrap();
+    // eprintln!("{:?}", g2);
 
-    for m in ms.iter() {
-        eprintln!("m = {:?}", m);
-    }
+    // eprintln!("moves.len() = {:?}", moves.len());
+    // for m in moves.iter() {
+    //     eprintln!("m = {:?}", m);
+    // }
+
+    let depth = 1;
+    let k = g.perft(&ts, depth, true);
+
+    eprintln!("k = {:?}", k);
+
+    // // let ms = g.search_all(&ts, White);
+    // // let ms = g.search_king(White);
+    // // let ms = g.search_knights(&ts, White);
+    // // let ms = g.search_sliding(Rook, &ts, White);
+    // // let ms = g.search_sliding(Bishop, &ts, White);
+    // let ms = g.search_sliding(Queen, &ts, White);
+    // // let ms = g.search_pawns(White);
+    // // ms.sort_by(|a,b| a.partial_cmp(b).unwrap());
 
     // let b = BitBoard::new(&vec![
     //     Coord(1,1),

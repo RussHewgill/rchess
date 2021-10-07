@@ -3,6 +3,8 @@ use crate::types::*;
 
 pub use self::D::*;
 
+use std::str::FromStr;
+
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub enum D {
     N,
@@ -25,12 +27,12 @@ impl std::convert::From<u32> for Coord {
     }
 }
 
-impl std::convert::From<u64> for Coord {
-    fn from(sq: u64) -> Self {
-        // assert!(sq < 64);
-        BitBoard::index_bit(sq)
-    }
-}
+// impl std::convert::From<u64> for Coord {
+//     fn from(sq: u64) -> Self {
+//         // assert!(sq < 64);
+//         BitBoard::index_bit(sq)
+//     }
+// }
 
 impl std::convert::From<Coord> for u32 {
     fn from(c: Coord) -> Self {
@@ -159,6 +161,44 @@ impl std::fmt::Debug for Coord {
         // f.write_str(&format!("Coord({}{})", r, self.1+1))?;
         f.write_str(&format!("{}{}", r, self.1+1))?;
         Ok(())
+    }
+}
+
+impl std::convert::From<&str> for Coord {
+    fn from(sq: &str) -> Self {
+        Coord::from_str(sq).unwrap()
+    }
+}
+
+impl FromStr for Coord {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        assert_eq!(s.len(), 2);
+        let letters: [char; 8] = ['A','B','C','D','E','F','G','H'];
+
+        let x = s.chars().nth(0).unwrap();
+        let x = x.to_ascii_uppercase();
+        let x = letters.iter().position(|k| k == &x).unwrap();
+
+        let y = format!("{}", s.chars().nth(1).unwrap());
+        let y = y.parse::<u8>()?;
+        let y = if y == 0 { 0 } else { y - 1 };
+
+        assert!(x < 8);
+        assert!(y < 8);
+
+        Ok(Coord(x as u8,y))
+
+        // let coords: Vec<&str> = s.trim_matches(|p| p == '(' || p == ')' )
+        //     .split(',')
+        //     .collect();
+
+        // let x_fromstr = coords[0].parse::<i32>()?;
+        // let y_fromstr = coords[1].parse::<i32>()?;
+
+        // Ok(Point { x: x_fromstr, y: y_fromstr })
+        // unimplemented!()
     }
 }
 

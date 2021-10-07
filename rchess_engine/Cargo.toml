@@ -19,5 +19,7 @@ log = "0.4.*"
 env_logger = "0.9.*"
 gag = "1.0.0"
 
+nom = "7.0.0"
+
 # byteorder = "1.4.3"
 
