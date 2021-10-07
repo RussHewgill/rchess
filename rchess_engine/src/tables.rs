@@ -177,20 +177,6 @@ impl Tables {
         MoveSetBishop {ne, nw, se, sw}
     }
 
-    // pub fn gen_diagonal(Coord(x,y): Coord, positive: bool) -> BitBoard {
-    //     let mut out = BitBoard::empty();
-    //     if positive {
-    //         for k in (x + 1)..8 {
-    //             out.flip_mut(Coord(k,k));
-    //         }
-    //     } else {
-    //         for k in 0..x {
-    //             out.flip_mut(Coord(k,k));
-    //         }
-    //     }
-    //     out
-    // }
-
     pub fn gen_diagonal(c0: Coord, positive: bool) -> BitBoard {
         let mut out = BitBoard::single(c0);
         let mut c = c0;
@@ -311,6 +297,36 @@ impl Tables {
                  | h2.overflowing_shl(8).0
                  | h2.overflowing_shr(8).0
         )
+    }
+
+}
+
+impl Tables {
+
+    fn gen_pawns() -> [[(BitBoard,BitBoard); 8]; 8] {
+        const X: usize = 8;
+
+        // let mut out = [[(BitBoard::empty()); 8]; 8];
+        let mut out: [[(BitBoard,BitBoard); X]; X];
+
+        for y in 0..X {
+            for x in 0..X {
+                out[x as usize][y as usize] = Self::gen_pawn_move(Coord(x as u8,y as u8));
+            }
+        }
+        out
+    }
+
+    fn gen_pawn_move(c0: Coord) -> (BitBoard,BitBoard) {
+        let mut bw = BitBoard::empty();
+        if let Some(w0) = NE.shift_coord(c0) { bw.set_one(w0); }
+        if let Some(w1) = NW.shift_coord(c0) { bw.set_one(w1); }
+
+        let mut bb = BitBoard::empty();
+        if let Some(b0) = SE.shift_coord(c0) { bb.set_one(b0); }
+        if let Some(b1) = SW.shift_coord(c0) { bb.set_one(b1); }
+
+        (bw,bb)
     }
 
 }

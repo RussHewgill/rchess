@@ -43,7 +43,14 @@ impl Game {
 
 impl Game {
 
-    pub fn find_attacks_to(&self, col: Color) -> Vec<Move> {
+    pub fn find_attacks_to(&self, ts: &Tables, c: Coord, col: Color) -> Vec<Move> {
+
+        // let knights = self.get(Knight, col);
+        // let kings   = self.get(King, col);
+
+        let attacks_r = ts.get_rook(c);
+        let attacks_b = ts.get_bishop(c);
+        let attacks_n = ts.get_knight(c);
 
         unimplemented!()
     }
