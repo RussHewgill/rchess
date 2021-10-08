@@ -23,13 +23,90 @@ pub enum Piece {
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub enum Move {
-    Quiet      { from: Coord, to: Coord },
-    PawnDouble { from: Coord, to: Coord },
+    Quiet              { from: Coord, to: Coord },
+    PawnDouble         { from: Coord, to: Coord },
     // Capture    { from: Coord, to: Coord, victim: Piece },
-    Capture    { from: Coord, to: Coord },
-    EnPassant  { from: Coord, to: Coord },
-    Promotion  { from: Coord, to: Coord, new_piece: Piece },
-    Castle     { from: Coord, to: Coord, rook: Coord },
+    Capture            { from: Coord, to: Coord },
+    EnPassant          { from: Coord, to: Coord },
+    Promotion          { from: Coord, to: Coord, new_piece: Piece },
+    PromotionCapture   { from: Coord, to: Coord, new_piece: Piece },
+    Castle             { from: Coord, to: Coord, rook: Coord },
+}
+
+impl Move {
+
+    pub fn filter_quiet(&self) -> bool {
+        match self {
+            &Move::Quiet { .. }      => true,
+            // TODO: ?
+            // &Move::PawnDouble { .. } => true,
+            _                        => false,
+        }
+    }
+
+    pub fn filter_capture(&self) -> bool {
+        match self {
+            &Move::Capture { .. } => true,
+            _                   => false,
+        }
+    }
+
+    pub fn from(&self) -> Coord {
+        match self {
+            &Move::Quiet { from, .. } => from,
+            &Move::PawnDouble { from, .. } => from,
+            &Move::Capture { from, .. } => from,
+            &Move::EnPassant { from, .. } => from,
+            &Move::Promotion { from, .. } => from,
+            &Move::PromotionCapture { from, .. } => from,
+            &Move::Castle { from, .. } => from,
+            // _ => unimplemented!(),
+        }
+    }
+
+    pub fn to(&self) -> Coord {
+        match self {
+            &Move::Quiet { to, .. } => to,
+            &Move::PawnDouble { to, .. } => to,
+            &Move::Capture { to, .. } => to,
+            &Move::EnPassant { to, .. } => to,
+            &Move::Promotion { to, .. } => to,
+            &Move::PromotionCapture { to, .. } => to,
+            &Move::Castle { to, .. } => to,
+            // _ => unimplemented!(),
+        }
+    }
+
+}
+
+impl Move {
+
+    pub fn reverse(&self) -> Self {
+        match *self {
+            Move::Quiet      { from, to } => {
+                Move::Quiet      { from: to, to: from }
+            },
+            Move::PawnDouble { from, to } => {
+                Move::PawnDouble { from: to, to: from }
+            },
+            Move::Capture    { from, to } => {
+                Move::Capture    { from: to, to: from }
+            },
+            Move::EnPassant  { from, to } => {
+                Move::EnPassant  { from: to, to: from }
+            },
+            Move::Promotion  { from, to, new_piece } => {
+                Move::Promotion  { from: to, to: from, new_piece }
+            },
+            Move::PromotionCapture  { from, to, new_piece } => {
+                Move::PromotionCapture  { from: to, to: from, new_piece }
+            },
+            Move::Castle     { from, to, rook } => {
+                Move::Castle     { from: to, to: from, rook }
+            },
+        }
+    }
+
 }
 
 impl Color {

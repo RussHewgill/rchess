@@ -92,22 +92,22 @@ impl D {
     pub fn shift_coord(&self, Coord(x0,y0): Coord) -> Option<Coord> {
         match *self {
             N => {
-                if y0 > 7 { None } else {
+                if y0 >= 7 { None } else {
                     Some(Coord(x0,y0+1))
                 }
             },
             NE => {
-                if (y0 > 7) | (x0 > 7) { None } else {
+                if (y0 >= 7) | (x0 >= 7) { None } else {
                     Some(Coord(x0+1,y0+1))
                 }
             },
             E => {
-                if x0 > 7 { None } else {
+                if x0 >= 7 { None } else {
                     Some(Coord(x0+1,y0))
                 }
             },
             NW => {
-                if (y0 > 7) | (x0 == 0) { None } else {
+                if (y0 >= 7) | (x0 == 0) { None } else {
                     Some(Coord(x0-1,y0+1))
                 }
             },
@@ -117,7 +117,7 @@ impl D {
                 }
             },
             SE => {
-                if (y0 == 0) | (x0 > 7) { None } else {
+                if (y0 == 0) | (x0 >= 7) { None } else {
                     Some(Coord(x0+1,y0-1))
                 }
             },

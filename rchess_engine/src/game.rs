@@ -54,6 +54,9 @@ impl Game {
             Move::Promotion  { from, to, new_piece} => {
                 unimplemented!()
             },
+            Move::PromotionCapture  { from, to, new_piece} => {
+                unimplemented!()
+            },
             Move::Castle     { from, to, rook } => {
                 unimplemented!()
             },

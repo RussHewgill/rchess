@@ -13,3 +13,6 @@ pub mod parsing;
 pub mod evaluate;
 pub mod search;
 
+#[cfg(test)]
+pub mod tests;
+

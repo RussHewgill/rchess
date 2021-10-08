@@ -47,7 +47,7 @@ fn main() {
     // g.insert_piece_mut_unchecked(Coord(2,4), Pawn, White);
     // g.insert_piece_mut_unchecked(Coord(1,1), Pawn, Black);
 
-    // let mut g = Game::empty();
+    let mut g = Game::empty();
 
     // g.insert_pieces_mut_unchecked(&vec![
     //     ("C7", Pawn, Black),
@@ -73,16 +73,45 @@ fn main() {
     //     ("F6", Pawn, White),
     // ]);
 
+    // g.insert_pieces_mut_unchecked(&vec![
+    //     ("H2", Rook, Black),
+    //     ("A2", King, White),
+    //     ("B2", Pawn, White),
+    // ]);
+
+    g.insert_pieces_mut_unchecked(&vec![
+        ("A1", King, White),
+        ("C3", Pawn, White),
+        ("H8", Bishop, Black),
+    ]);
+
     let ts = Tables::new();
     // let g = Game::new();
 
-    let g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -").unwrap();
+    // let g = Game::from_fen("8/8/8/8/1nb5/1p6/7r/K7 w - - 0 1").unwrap();
+    // let g = Game::from_fen("8/8/8/8/8/1p6/8/K7 w - - 0 1").unwrap();
+    // let g = Game::from_fen("8/8/8/8/8/1p6/7r/K7 w - - 0 1").unwrap();
+    // let g = Game::from_fen("8/8/8/8/8/k7/8/K7 w - - 0 1").unwrap();
+    // let g = Game::from_fen("8/8/8/8/2b5/k7/8/K7 w - - 0 1").unwrap();
+
+    // let g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -").unwrap();
+
+    // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 w - - 0 1").unwrap();
+    // g.state.side_to_move = Black;
 
     eprintln!("{:?}", g);
 
     // let moves = g.search_all(&ts, g.state.side_to_move);
-    // let ms = ts.get_knight("B1".into());
-    // let moves = ms.to_vec();
+
+    // let moves = g.find_attacks_to(&ts, "A2".into(), Black);
+    // let moves: Vec<Move> = moves.collect();
+
+    // let k = g.find_attacks_by_side(&ts, "B1".into(), Black);
+    // eprintln!("k = {:?}", k);
+
+    // let moves = g.search_king(&ts, White);
+
+    // let moves = g.search_sliding(Rook, &ts, White);
 
     // let g2 = g.make_move_unchecked(&m).unwrap();
     // eprintln!("{:?}", g2);
@@ -92,10 +121,16 @@ fn main() {
     //     eprintln!("m = {:?}", m);
     // }
 
-    let depth = 1;
-    let k = g.perft(&ts, depth, true);
+    // let b = g.find_xray_rook(&ts, "A2".into(), Black, Some(White));
+    // let b = g.find_xray_rook(&ts, "A2".into(), Black, None);
 
-    eprintln!("k = {:?}", k);
+    let b = g.find_xray_bishop(&ts, "H8".into(), Black);
+    eprintln!("b = {:?}", b);
+
+    // let depth = 1;
+    // let (ns,cs) = g.perft(&ts, depth, true);
+    // eprintln!("\nperft total    = {:?}", ns);
+    // eprintln!("perft captures = {:?}", cs);
 
     // // let ms = g.search_all(&ts, White);
     // // let ms = g.search_king(White);

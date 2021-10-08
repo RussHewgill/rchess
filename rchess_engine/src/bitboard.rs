@@ -30,14 +30,26 @@ impl BitBoard {
         k == 1
     }
 
+    #[must_use]
     pub fn set_one(&self, c: Coord) -> Self {
-        let b = Self::empty().flip(c);
+        let b = Self::single(c);
         *self | b
     }
 
+    #[must_use]
     pub fn set_zero(&self, c: Coord) -> Self {
-        let b = Self::empty().flip(c);
+        let b = Self::single(c);
         *self & !b
+    }
+
+    pub fn set_one_mut(&mut self, c: Coord) {
+        let b = Self::single(c);
+        *self |= b;
+    }
+
+    pub fn set_zero_mut(&mut self, c: Coord) {
+        let b = Self::single(c);
+        *self &= !b;
     }
 
     pub fn flip(&self, c: Coord) -> Self {

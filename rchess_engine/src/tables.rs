@@ -33,6 +33,9 @@ impl MoveSetRook {
             _ => panic!("MoveSetRook::get Diagonal rook?")
         }
     }
+    pub fn concat(&self) -> BitBoard {
+        self.n | self.e | self.w | self.s
+    }
 }
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
@@ -64,26 +67,90 @@ impl MoveSetBishop {
             _ => panic!("MoveSetBishop::get Rank or File Bishop?")
         }
     }
+    pub fn concat(&self) -> BitBoard {
+        self.ne | self.nw | self.se | self.sw
+    }
 }
 
+#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+pub struct MoveSetPawn {
+    pub white_quiet:   BitBoard,
+    pub black_quiet:   BitBoard,
+    pub white_capture: BitBoard,
+    pub black_capture: BitBoard,
+}
+
+impl MoveSetPawn {
+    pub fn empty() -> Self {
+        Self {
+            white_quiet:   BitBoard::empty(),
+            black_quiet:   BitBoard::empty(),
+            white_capture: BitBoard::empty(),
+            black_capture: BitBoard::empty(),
+        }
+    }
+    pub fn new(white_quiet:   BitBoard,
+               black_quiet:   BitBoard,
+               white_capture: BitBoard,
+               black_capture: BitBoard) -> Self {
+        Self {
+            white_quiet,
+            black_quiet,
+            white_capture,
+            black_capture,
+        }
+    }
+    pub fn get_quiet(&self, c: Color) -> &BitBoard {
+        match c {
+            White => &self.white_quiet,
+            Black => &self.black_quiet,
+        }
+    }
+    pub fn get_capture(&self, c: Color) -> &BitBoard {
+        match c {
+            White => &self.white_capture,
+            Black => &self.black_capture,
+        }
+    }
+}
+
+#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Tables {
     // pub knight_moves: HashMap<Coord, BitBoard>,
     // pub rook_moves:   HashMap<Coord, MoveSetRook>,
     knight_moves: [[BitBoard; 8]; 8],
     rook_moves:   [[MoveSetRook; 8]; 8],
     bishop_moves: [[MoveSetBishop; 8]; 8],
+    pawn_moves:   [[MoveSetPawn; 8]; 8],
+    king_moves:   [[BitBoard; 8]; 8],
     // endgames: 
 }
 
 impl Tables {
-    pub fn get_rook(&self, Coord(x,y): Coord) -> &MoveSetRook {
+    // pub fn get_rook(&self, Coord(x,y): Coord) -> &MoveSetRook {
+    pub fn get_rook<T: Into<Coord>>(&self, c: T) -> &MoveSetRook {
+        let Coord(x,y) = c.into();
         &self.rook_moves[x as usize][y as usize]
     }
-    pub fn get_bishop(&self, Coord(x,y): Coord) -> &MoveSetBishop {
+    // pub fn get_bishop(&self, Coord(x,y): Coord) -> &MoveSetBishop {
+    pub fn get_bishop<T: Into<Coord>>(&self, c: T) -> &MoveSetBishop {
+        let Coord(x,y) = c.into();
         &self.bishop_moves[x as usize][y as usize]
     }
-    pub fn get_knight(&self, Coord(x,y): Coord) -> &BitBoard {
+    // pub fn get_knight(&self, Coord(x,y): Coord) -> &BitBoard {
+    pub fn get_knight<T: Into<Coord>>(&self, c: T) -> &BitBoard {
+        let Coord(x,y) = c.into();
         &self.knight_moves[x as usize][y as usize]
+    }
+    // pub fn get_pawn(&self, Coord(x,y): Coord) -> &MoveSetPawn {
+    pub fn get_pawn<T: Into<Coord>>(&self, c: T) -> &MoveSetPawn {
+        let Coord(x,y) = c.into();
+        &self.pawn_moves[x as usize][y as usize]
+    }
+    // pub fn get_king(&self, Coord(x,y): Coord) -> &BitBoard {
+    pub fn get_king<T: Into<Coord>>(&self, c: T) -> &BitBoard {
+        let Coord(x,y) = c.into();
+        &self.king_moves[x as usize][y as usize]
     }
 }
 
@@ -94,6 +161,8 @@ impl Tables {
             knight_moves: Self::gen_knights(),
             rook_moves:   Self::gen_rooks(),
             bishop_moves: Self::gen_bishops(),
+            pawn_moves:   Self::gen_pawns(),
+            king_moves:   Self::gen_kings(),
         }
     }
 
@@ -165,7 +234,7 @@ impl Tables {
         out
     }
 
-    fn gen_bishop_move(c: Coord) -> MoveSetBishop {
+    pub fn gen_bishop_move(c: Coord) -> MoveSetBishop {
         let sq: u32 = c.into();
 
         let ne = Self::gen_diagonal(c, true);
@@ -183,7 +252,7 @@ impl Tables {
         let d = if positive { NE } else { SW };
         while let Some(k) = d.shift_coord(c) {
             c = k;
-            out.flip_mut(c)
+            out.flip_mut(c);
         }
         out &= !BitBoard::single(c0);
         out
@@ -303,30 +372,61 @@ impl Tables {
 
 impl Tables {
 
-    fn gen_pawns() -> [[(BitBoard,BitBoard); 8]; 8] {
-        const X: usize = 8;
+    pub fn gen_kings() -> [[BitBoard; 8]; 8] {
+        let mut out = [[BitBoard::empty(); 8]; 8];
 
-        // let mut out = [[(BitBoard::empty()); 8]; 8];
-        let mut out: [[(BitBoard,BitBoard); X]; X];
+        for y in 0..8 {
+            for x in 0..8 {
+                out[x as usize][y as usize] = Self::gen_king_move(Coord(x as u8,y as u8));
+            }
+        }
+        out
+    }
 
-        for y in 0..X {
-            for x in 0..X {
+    fn gen_king_move(c0: Coord) -> BitBoard {
+        let b0 = BitBoard::single(c0);
+        let b1 = b0
+            | b0.shift(W)
+            | b0.shift(E);
+        let b2 = b1
+            | b1.shift(N)
+            | b1.shift(S);
+
+        b2 & !b0
+    }
+
+}
+
+impl Tables {
+
+    fn gen_pawns() -> [[MoveSetPawn; 8]; 8] {
+        let mut out = [[MoveSetPawn::empty(); 8]; 8];
+
+        for y in 0..8 {
+            for x in 0..8 {
                 out[x as usize][y as usize] = Self::gen_pawn_move(Coord(x as u8,y as u8));
             }
         }
         out
     }
 
-    fn gen_pawn_move(c0: Coord) -> (BitBoard,BitBoard) {
-        let mut bw = BitBoard::empty();
-        if let Some(w0) = NE.shift_coord(c0) { bw.set_one(w0); }
-        if let Some(w1) = NW.shift_coord(c0) { bw.set_one(w1); }
+    fn gen_pawn_move(c0: Coord) -> MoveSetPawn {
 
-        let mut bb = BitBoard::empty();
-        if let Some(b0) = SE.shift_coord(c0) { bb.set_one(b0); }
-        if let Some(b1) = SW.shift_coord(c0) { bb.set_one(b1); }
+        let mut wq = BitBoard::empty();
+        if let Some(b) = N.shift_coord(c0) { wq = wq.set_one(b); }
 
-        (bw,bb)
+        let mut bq = BitBoard::empty();
+        if let Some(b) = S.shift_coord(c0) { bq = bq.set_one(b); }
+
+        let mut wc = BitBoard::empty();
+        if let Some(w0) = NE.shift_coord(c0) { wc = wc.set_one(w0); }
+        if let Some(w1) = NW.shift_coord(c0) { wc = wc.set_one(w1); }
+
+        let mut bc = BitBoard::empty();
+        if let Some(b0) = SE.shift_coord(c0) { bc = bc.set_one(b0); }
+        if let Some(b1) = SW.shift_coord(c0) { bc = bc.set_one(b1); }
+
+        MoveSetPawn::new(wq, bq, wc, bc)
     }
 
 }
