@@ -18,6 +18,11 @@ impl Game {
         out.extend(&self.search_knights(&ts, c));
         out.extend(&self.search_pawns(&ts, c));
 
+        let out = out.into_iter().filter(|m| {
+            self.move_is_legal(&ts, m)
+        }).collect();
+
+
         out
     }
 
@@ -58,14 +63,14 @@ impl Game {
 
 impl Game {
 
-    pub fn move_is_legal(&self, ts: &Tables, m: Move) -> bool {
+    pub fn move_is_legal(&self, ts: &Tables, m: &Move) -> bool {
 
         // TODO: En Passant Captures
         // TODO: Castling
 
         match self.get_at(m.from()) {
             Some((col,King)) => {
-                unimplemented!()
+                !self.find_attacks_by_side(&ts, m.to(), !col)
             },
             Some((col,pc)) => {
                 unimplemented!()
@@ -78,59 +83,133 @@ impl Game {
         unimplemented!()
     }
 
-    pub fn find_xray_rook(&self, ts: &Tables, c0: Coord, col: Color, blocks: Option<Color>) -> BitBoard {
-        let ms = ts.get_rook(c0);
-        let attacks = ms.n | ms.e | ms.w | ms.s;
-        // eprintln!("attacks = {:?}", attacks);
-
-        let occ = match blocks {
-            Some(cc) => self.get_color(cc),
-            None     => self.all_occupied(),
+    pub fn find_xray_rook(&self, ts: &Tables, p0: Coord, blocks: BitBoard, col: Color) -> BitBoard {
+        let attacks = {
+            let (_,_,c,d) = self._search_sliding_single(p0, Rook, blocks, &ts, col);
+            c | d
         };
-
-        let blockers = occ & attacks;
-        eprintln!("blockers = {:?}", blockers);
-
-        // let ms2 = ts.get_rook(c)
-        // let attacks2 = ms2.n | ms2.e | ms2.w | ms2.s;
-        let blocks2 = occ ^ blockers;
-        let attacks2 = self._search_sliding_2(Some(c0), Some(blocks2), Rook, &ts, col);
-        // eprintln!("attacks2 = {:?}", attacks2);
-        // attacks ^ 
-        unimplemented!()
+        let blocks2 = blocks & attacks;
+        let attacks2 = {
+            let (_,_,c,d) = self._search_sliding_single(p0, Rook, self.all_occupied() ^ blocks, &ts, col);
+            c | d
+        };
+        let attacks3 = attacks ^ attacks2;
+        attacks
     }
 
-    pub fn find_xray_bishop(&self, ts: &Tables, p0: Coord, col: Color) -> BitBoard {
+    pub fn find_xray_bishop(&self, ts: &Tables, p0: Coord, blocks: BitBoard, col: Color) -> BitBoard {
 
-        let blocks = self.get_color(!col);
         let attacks = {
             let (_,_,c,d) = self._search_sliding_single(p0, Bishop, blocks, &ts, col);
             c | d
         };
-        eprintln!("attacks = {:?}", attacks);
+        // eprintln!("attacks = {:?}", attacks);
 
         let blocks2 = blocks & attacks;
         let attacks2 = {
             let (_,_,c,d) = self._search_sliding_single(p0, Bishop, self.all_occupied() ^ blocks, &ts, col);
             c | d
         };
-        eprintln!("attacks2 = {:?}", attacks2);
+        // eprintln!("attacks2 = {:?}", attacks2);
 
         let attacks3 = attacks ^ attacks2;
-        eprintln!("attacks3 = {:?}", attacks3);
+        // eprintln!("attacks3 = {:?}", attacks3);
 
-        unimplemented!()
+        attacks
+        // unimplemented!()
     }
 
     pub fn find_pins_absolute(&self, ts: &Tables, col: Color) -> BitBoard {
         let king: Coord = self.get(King, col).bitscan().into();
-        // let king_rays = ts.get_rook(king).concat() | ts.get_bishop(king).concat();
 
-        let other_rooks   = self.get(Rook, !col) | self.get(Queen, !col);
-        let other_bishops = self.get(Bishop, !col) | self.get(Queen, !col);
+        let mut pinned = BitBoard::empty();
 
-        unimplemented!()
+        let mut pinner = self.find_xray_bishop(&ts, king, self.get_color(!col), col);
+        // eprintln!("pinner = {:?}", pinner);
+        pinner.iter_bitscan(|sq| {
+            let ob = self.obstructed(&ts, sq.into(), king);
+            if ob.bitscan_reset().0.0 == 0 {
+                pinned |= ob & self.get_color(col);
+            }
+        });
+
+        let mut pinner = self.find_xray_rook(&ts, king, self.get_color(!col), col);
+        // eprintln!("pinner = {:?}", pinner);
+
+        pinner.iter_bitscan(|sq| {
+            let ob = self.obstructed(&ts, sq.into(), king);
+            if ob.bitscan_reset().0.0 == 0 {
+                pinned |= ob & self.get_color(col);
+            }
+        });
+
+        pinned
+        // unimplemented!()
     }
+
+    pub fn obstructed(&self, ts: &Tables, c0: Coord, c1: Coord) -> BitBoard {
+
+        let oc = self.all_occupied();
+        let m = BitBoard::mask_between(&ts, c0, c1);
+
+        oc & m
+    }
+
+    // pub fn mask_between(&self, ts: &Tables, c0: Coord, c1: Coord) -> BitBoard {
+    // // pub fn obstructed(&self, ts: &Tables, c0: Coord, c1: Coord) -> BitBoard {
+
+    //     let Coord(x0,y0) = c0;
+    //     let Coord(x1,y1) = c1;
+
+    //     if x0 == x1 {
+    //         // File
+    //         let (x0,x1) = (x0.min(x1),x0.max(x1));
+    //         let (y0,y1) = (y0.min(y1),y0.max(y1));
+    //         let b0 = BitBoard::single(Coord(x0,y0));
+    //         let b1 = BitBoard::single(Coord(x1,y1));
+    //         let b = BitBoard(2 * b1.0 - b0.0);
+    //         let m = BitBoard::mask_file(x0.into());
+    //         (b & m) & !(b0 | b1)
+    //     } else if y0 == y1 {
+    //         // Rank
+    //         let (x0,x1) = (x0.min(x1),x0.max(x1));
+    //         let (y0,y1) = (y0.min(y1),y0.max(y1));
+    //         let b0 = BitBoard::single(Coord(x0,y0));
+    //         let b1 = BitBoard::single(Coord(x1,y1));
+    //         let b = BitBoard(2 * b1.0 - b0.0);
+    //         let m = BitBoard::mask_rank(y0.into());
+    //         (b & m) & !(b0 | b1)
+    //     // } else if (x1 - x0) == (y1 - y0) {
+    //     } else if (x1 as i64 - x0 as i64).abs() == (y1 as i64 - y0 as i64).abs() {
+    //         // Diagonal
+    //         let b0 = BitBoard::single(Coord(x0,y0));
+    //         let b1 = BitBoard::single(Coord(x1,y1));
+    //         // let b = BitBoard::new(&[Coord(x0,y0),Coord(x1,y1)])
+
+    //         let (bb0,bb1) = (b0.0.min(b1.0),b0.0.max(b1.0));
+
+    //         let b = BitBoard(2 * bb1 - bb0);
+    //         // let b = BitBoard(2 * b0.0 - b1.0);
+    //         // eprintln!("b = {:?}", b);
+    //         // let m = BitBoard::mask_rank(y0.into());
+    //         let m = ts.get_bishop(c0);
+
+    //         let xx = x1 as i64 - x0 as i64;
+    //         let yy = y1 as i64 - y0 as i64;
+
+    //         let m = if xx.signum() == yy.signum() {
+    //             m.ne | m.sw
+    //         } else {
+    //             m.nw | m.se
+    //         };
+
+    //         (b & m) & !(b0 | b1)
+    //     } else {
+    //         // println!("wat 2");
+    //         // unimplemented!()
+    //         BitBoard::empty()
+    //     }
+    // }
 
     pub fn find_attacks_by_side(&self, ts: &Tables, c0: Coord, col: Color) -> bool {
 

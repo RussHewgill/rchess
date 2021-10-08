@@ -77,11 +77,16 @@ fn main() {
     //     ("H2", Rook, Black),
     //     ("A2", King, White),
     //     ("B2", Pawn, White),
+    //     // ("A8", Rook, Black),
+    //     // ("A1", King, White),
+    //     // ("A2", Pawn, White),
     // ]);
 
     g.insert_pieces_mut_unchecked(&vec![
         ("A1", King, White),
-        ("C3", Pawn, White),
+        // ("C3", Pawn, White),
+        // ("C3", Pawn, Black),
+        ("D4", Pawn, White),
         ("H8", Bishop, Black),
     ]);
 
@@ -100,6 +105,10 @@ fn main() {
     // g.state.side_to_move = Black;
 
     eprintln!("{:?}", g);
+
+    let b = g.find_pins_absolute(&ts, White);
+
+    eprintln!("b = {:?}", b);
 
     // let moves = g.search_all(&ts, g.state.side_to_move);
 
@@ -121,11 +130,15 @@ fn main() {
     //     eprintln!("m = {:?}", m);
     // }
 
+    // let b = g.find_xray_bishop(&ts, "H8".into(), Black);
+
+    // let c1: Coord = "A1".into();
+    // let c0: Coord = "H8".into();
+
+    // let b = g.obstructed(&ts, c0, c1);
+
     // let b = g.find_xray_rook(&ts, "A2".into(), Black, Some(White));
     // let b = g.find_xray_rook(&ts, "A2".into(), Black, None);
-
-    let b = g.find_xray_bishop(&ts, "H8".into(), Black);
-    eprintln!("b = {:?}", b);
 
     // let depth = 1;
     // let (ns,cs) = g.perft(&ts, depth, true);
