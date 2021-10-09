@@ -6,17 +6,29 @@ use crate::tables::*;
 
 impl Game {
 
-    pub fn search_all(&self, ts: &Tables, c: Color) -> Vec<Move> {
+    pub fn search_all(&self, ts: &Tables, col: Color) -> Vec<Move> {
+        match self.state.checkers {
+            Some(cs) if !cs.is_empty() => {
+                // println!("wat check");
+                self._search_in_check(&ts, col)
+            },
+            _                          => {
+                // println!("wat all");
+                self._search_all(&ts, col)
+            },
+        }
+    }
 
+    pub fn _search_all(&self, ts: &Tables, col: Color) -> Vec<Move> {
         let mut out = vec![];
 
-        out.extend(&self.search_king(&ts, c));
+        out.extend(&self.search_king(&ts, col));
 
-        out.extend(&self.search_sliding(Bishop, &ts, c));
-        out.extend(&self.search_sliding(Rook, &ts, c));
-        out.extend(&self.search_sliding(Queen, &ts, c));
-        out.extend(&self.search_knights(&ts, c));
-        out.extend(&self.search_pawns(&ts, c));
+        out.extend(&self.search_sliding(Bishop, &ts, col));
+        out.extend(&self.search_sliding(Rook, &ts, col));
+        out.extend(&self.search_sliding(Queen, &ts, col));
+        out.extend(&self.search_knights(&ts, col));
+        out.extend(&self.search_pawns(&ts, col));
 
         let out = out.into_iter().filter(|m| {
             self.move_is_legal(&ts, m)
@@ -25,11 +37,59 @@ impl Game {
         out
     }
 
-    pub fn search_in_check(&self, ts: &Tables, col: Color) -> Vec<Move> {
-        unimplemented!()
+    pub fn _search_in_check(&self, ts: &Tables, col: Color) -> Vec<Move> {
+        let mut out = vec![];
+
+        out.extend(&self.search_king(&ts, col));
+
+        let mut x = 0;
+        self.state.checkers.unwrap().iter_bitscan(|sq| x += 1);
+        if x == 1 {
+            out.extend(&self.search_sliding(Bishop, &ts, col));
+            out.extend(&self.search_sliding(Rook, &ts, col));
+            out.extend(&self.search_sliding(Queen, &ts, col));
+            out.extend(&self.search_knights(&ts, col));
+            out.extend(&self.search_pawns(&ts, col));
+        }
+
+        let out = out.into_iter().filter(|m| {
+            self.move_is_legal(&ts, m)
+        }).collect();
+
+        out
     }
 
-    pub fn perft(&self, ts: &Tables, depth: u64, root: bool) -> (u64,u64) {
+    pub fn perft(&self, ts: &Tables, depth: u64) -> (u64,Vec<(Move,u64)>) {
+        let mut nodes = 0;
+        let mut captures = 0;
+
+        if depth == 0 { return (1,vec![]); }
+
+        let moves = self.search_all(&ts, self.state.side_to_move);
+
+        // eprintln!("moves.len() = {:?}", moves.len());
+        let mut k = 0;
+        let mut out = vec![];
+        for m in moves.iter() {
+            if let Some(g2) = self.make_move_unchecked(&ts, m) {
+                let (ns,cs) = g2._perft(ts, depth - 1, false);
+                match *m {
+                    Move::Capture { .. } => captures += 1,
+                    _                    => {},
+                }
+                // if root {
+                //     eprintln!("{:>2}: {:?}: ({}, {})", k, m, ns, cs);
+                // }
+                captures += cs;
+                nodes += ns;
+                out.push((*m, ns));
+                k += 1;
+            } else { panic!("move: {:?}\n{:?}", m, self); }
+        }
+        (nodes, out)
+    }
+
+    pub fn _perft(&self, ts: &Tables, depth: u64, root: bool) -> (u64,u64) {
         let mut nodes = 0;
         let mut captures = 0;
 
@@ -41,7 +101,7 @@ impl Game {
         let mut k = 0;
         for m in moves.iter() {
             if let Some(g2) = self.make_move_unchecked(&ts, m) {
-                let (ns,cs) = g2.perft(ts, depth - 1, false);
+                let (ns,cs) = g2._perft(ts, depth - 1, false);
                 match *m {
                     Move::Capture { .. } => captures += 1,
                     _                    => {},
@@ -69,22 +129,40 @@ impl Game {
 
         match self.get_at(m.sq_from()) {
             Some((col,King)) => {
-                !self.find_attacks_by_side(&ts, m.sq_to(), !col)
+                !self.find_attacks_by_side(&ts, m.sq_to(), !col, true)
             },
             Some((col,pc)) => {
                 let pins = self.get_pins(col);
 
-                ((BitBoard::single(m.sq_from()) & pins).0 == 0)
-                    | (ts.aligned(m.sq_from(), m.sq_to(), self.get(King, col).bitscan().into()).0 != 0)
-                    // TODO: 
+                let x =
+                    // Not pinned
+                    ((BitBoard::single(m.sq_from()) & pins).0 == 0)
+                    // OR moving along pin ray
+                    | (ts.aligned(m.sq_from(), m.sq_to(), self.get(King, col).bitscan().into()).0 != 0);
+
+                // not in check
+                let x0 = x & self.find_checkers(&ts, col).is_empty();
+
+                // OR capturing checking piece
+                let x1 = m.sq_to() == self.state.checkers.unwrap().bitscan().into();
+
+                x0 | x1
+                // unimplemented!()
+                // (x & self.find_checkers(&ts, col).is_empty())
+                //     | (m.filter_all_captures() & (m.to() == ))
                 // unimplemented!()
             },
             None => panic!(),
         }
     }
 
-    pub fn find_check(&self, ts: &Tables, col: Color) -> bool {
-        unimplemented!()
+    pub fn find_checkers(&self, ts: &Tables, col: Color) -> BitBoard {
+        let col = self.state.side_to_move;
+        let p0: Coord = self.get(King, col).bitscan().into();
+
+        let moves = self.find_attackers_to(&ts, p0);
+        let moves = moves & self.get_color(!col);
+        moves
     }
 
     pub fn find_xray_rook(&self, ts: &Tables, p0: Coord, blocks: BitBoard, col: Color) -> BitBoard {
@@ -182,7 +260,7 @@ impl Game {
         oc & m
     }
 
-    pub fn find_attacks_by_side(&self, ts: &Tables, c0: Coord, col: Color) -> bool {
+    pub fn find_attacks_by_side(&self, ts: &Tables, c0: Coord, col: Color, king: bool) -> bool {
 
         let moves_k = ts.get_king(c0);
         if (*moves_k & self.get(King, col)).0 != 0 { return true; }
@@ -196,19 +274,25 @@ impl Game {
         // let moves_b = self._search_sliding(Some(c0), Bishop, &ts, col);
         // let moves_r = self._search_sliding(Some(c0), Rook, &ts, col);
 
+        let occ = if king {
+            self.all_occupied() & !self.get(King, !col)
+        } else {
+            self.all_occupied()
+        };
+
         let moves_r = {
-            let (a,b,c,d) = self._search_sliding_single(c0, Rook, self.all_occupied(), &ts, !col);
+            let (a,b,c,d) = self._search_sliding_single(c0, Rook, occ, &ts, !col);
             a | b | c | d
         };
         if ((moves_r & self.get(Rook, col)).0 != 0)
             | ((moves_r & self.get(Queen, col)).0 != 0) { return true; }
 
-        let moves_r = {
-            let (a,b,c,d) = self._search_sliding_single(c0, Bishop, self.all_occupied(), &ts, !col);
+        let moves_b = {
+            let (a,b,c,d) = self._search_sliding_single(c0, Bishop, occ, &ts, !col);
             a | b | c | d
         };
-        if ((moves_r & self.get(Bishop, col)).0 != 0)
-            | ((moves_r & self.get(Queen, col)).0 != 0) { return true; }
+        if ((moves_b & self.get(Bishop, col)).0 != 0)
+            | ((moves_b & self.get(Queen, col)).0 != 0) { return true; }
 
         false
         // unimplemented!()
@@ -278,12 +362,61 @@ impl Game {
             .map(|m| m.reverse())
     }
 
+    pub fn find_attackers_to(&self, ts: &Tables, c0: Coord) -> BitBoard {
+
+        let pawns = ts.get_pawn(c0);
+        let pawns = *pawns.get_capture(White) | *pawns.get_capture(Black);
+        let pawns = pawns & self.get_piece(Pawn);
+
+        let knights = *ts.get_knight(c0) & self.get_piece(Knight);
+
+        let moves_r = {
+            let (a,b,c,d) = self._search_sliding_single(c0, Rook, self.all_occupied(), &ts, White);
+            let (e,f,g,h) = self._search_sliding_single(c0, Rook, self.all_occupied(), &ts, Black);
+            a | b | c | d | e | f | g | h
+        };
+        let rooks = moves_r & (self.get_piece(Rook) | self.get_piece(Queen));
+
+        let moves_b = {
+            let (a,b,c,d) = self._search_sliding_single(c0, Bishop, self.all_occupied(), &ts, White);
+            let (e,f,g,h) = self._search_sliding_single(c0, Bishop, self.all_occupied(), &ts, Black);
+            a | b | c | d | e | f | g | h
+        };
+        let bishops = moves_b & (self.get_piece(Bishop) | self.get_piece(Queen));
+
+        // let king = self._search_king_single(p0, &ts, col, false);
+        let king = self._search_king_attacks(&ts, c0);
+        let king = king & self.get_piece(King);
+
+        pawns
+            | knights
+            | rooks
+            | bishops
+            | king
+        // unimplemented!()
+    }
+
     // pub fn find_threatened(&self, col: Color) -> BitBoard {
     //     unimplemented!()
     // }
 }
 
 impl Game {
+
+    pub fn _search_king_attacks(&self, ts: &Tables, c0: Coord) -> BitBoard {
+        let kings = self.get_piece(King);
+        let mut out = BitBoard::empty();
+
+        kings.iter_bitscan(|sq| {
+            let moves = *ts.get_king(sq);
+            if let Some((col,_)) = self.get_at(sq.into()) {
+                let captures = moves & self.get_color(!col);
+                out |= captures;
+            }
+        });
+
+        out
+    }
 
     pub fn search_king(&self, ts: &Tables, col: Color) -> Vec<Move> {
         self._search_king(&ts, col, true)
@@ -319,7 +452,7 @@ impl Game {
             let go = if forbid_check {
                 // let mut threats = self.find_attacks_to(&ts, sq.into(), !col);
                 // threats.next().is_none()
-                !self.find_attacks_by_side(&ts, sq.into(), !col)
+                !self.find_attacks_by_side(&ts, sq.into(), !col, false)
             } else {
                 true
             };
@@ -332,7 +465,7 @@ impl Game {
             let go = if forbid_check {
                 // let mut threats = self.find_attacks_to(&ts, sq.into(), !col);
                 // threats.next().is_none()
-                !self.find_attacks_by_side(&ts, sq.into(), !col)
+                !self.find_attacks_by_side(&ts, sq.into(), !col, false)
             } else {
                 true
             };

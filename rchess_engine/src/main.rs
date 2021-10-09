@@ -3,6 +3,7 @@
 #![allow(dead_code)]
 #![allow(unused_mut)]
 
+use std::collections::HashMap;
 use std::str::FromStr;
 
 // use crate::lib::*;
@@ -10,11 +11,22 @@ use rchess_engine_lib::types::*;
 use rchess_engine_lib::search::*;
 use rchess_engine_lib::tables::*;
 use rchess_engine_lib::parsing::*;
+use rchess_engine_lib::util::*;
 
 use log::{debug, error, log_enabled, info, Level};
 use gag::Redirect;
 
-fn main() {
+fn main() -> std::io::Result<()> {
+
+    let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
+    let n = 3;
+
+    test_stockfish(fen, n)?;
+
+    Ok(())
+}
+
+fn main3() {
 
     // println!("start");
     let now = std::time::Instant::now();
@@ -23,29 +35,6 @@ fn main() {
 
     // let mut g = Game::new();
     // let mut g = Game::empty();
-
-    // g.insert_piece_mut_unchecked(Coord(1,1), Pawn, White);
-    // g.insert_piece_mut_unchecked(Coord(2,1), Pawn, White);
-    // g.insert_piece_mut_unchecked(Coord(3,1), Pawn, White);
-    // g.insert_piece_mut_unchecked(Coord(2,2), Pawn, Black);
-
-    // g.insert_piece_mut_unchecked(Coord(1,1), Rook, White);
-    // g.insert_piece_mut_unchecked(Coord(3,1), Pawn, White);
-    // g.insert_piece_mut_unchecked(Coord(1,3), Pawn, Black);
-
-    // g.insert_piece_mut_unchecked(Coord(0,0), Rook, White);
-    // g.insert_piece_mut_unchecked(Coord(2,0), Pawn, White);
-    // g.insert_piece_mut_unchecked(Coord(0,2), Pawn, Black);
-
-    // g.insert_piece_mut_unchecked(Coord(2,2), King, White);
-    // g.insert_piece_mut_unchecked(Coord(3,2), Pawn, White);
-    // g.insert_piece_mut_unchecked(Coord(2,3), Pawn, Black);
-
-    // g.insert_piece_mut_unchecked(Coord(3,3), Bishop, White);
-    // g.insert_piece_mut_unchecked(Coord(5,1), Pawn, White);
-    // g.insert_piece_mut_unchecked(Coord(4,4), Pawn, White);
-    // g.insert_piece_mut_unchecked(Coord(2,4), Pawn, White);
-    // g.insert_piece_mut_unchecked(Coord(1,1), Pawn, Black);
 
     let mut g = Game::empty();
 
@@ -106,8 +95,14 @@ fn main() {
 
     // let mut g = Game::from_fen("8/7k/8/8/8/K2P3r/8/8 w - - 0 1").unwrap();
     // let mut g = Game::from_fen("8/7k/8/8/8/K2p3r/8/8 w - - 0 1").unwrap();
-    let mut g = Game::from_fen("8/7k/8/8/8/3P3r/K7/8 b - - 1 1").unwrap();
-    // let mut g = Game::from_fen("8/7k/8/8/8/3P4/K7/7r w - - 2 2").unwrap();
+    // let mut g = Game::from_fen("8/7k/8/8/8/3P3r/K7/8 b - - 1 1").unwrap();
+    // let mut g = Game::from_fen("8/7k/8/8/8/3P4/K6r/8 w - - 2 2").unwrap();
+
+    // let mut g = Game::from_fen("8/1r6/8/8/1K2r2k/3P4/8/8 w - - 0 1").unwrap();
+
+    // let mut g = Game::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ").unwrap();
+    // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ").unwrap();
+    let mut g = Game::from_fen("8/2p5/3p4/Kr6/1R3p1k/4P3/6P1/8 w - - 0 2").unwrap();
 
     // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 b - - 0 1").unwrap();
     // g.state.side_to_move = Black;
@@ -115,12 +110,35 @@ fn main() {
     // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 w - - 0 1").unwrap();
 
     let ts = Tables::new();
-    // let g = Game::new();
+    // let mut g = Game::new();
 
     g.recalc_gameinfo_mut(&ts);
-    // g.update_pins_mut(&ts);
+
+    // let m = Move::Quiet { from: "G2".into(), to: "G4".into() };
+    // let mut g = g.make_move_unchecked(&ts, &m).unwrap();
+    // g.recalc_gameinfo_mut(&ts);
 
     eprintln!("{:?}", g);
+
+    // // let b = g.state.checkers.unwrap();
+    // let b = g.find_attackers_to(&ts, "H4".into());
+    // eprintln!("b = {:?}", b);
+
+    // let depth = 3;
+    // let (ns,cs) = g._perft(&ts, depth, true);
+    // eprintln!("\nperft total    = {:?}", ns);
+    // eprintln!("perft captures = {:?}", cs);
+
+    let moves = g.search_all(&ts, g.state.side_to_move);
+
+    // let m = Move::Capture { from: "B4".into(), to: "B5".into()};
+    // let x = g.move_is_legal(&ts, &m);
+    // eprintln!("x = {:?}", x);
+
+    eprintln!("moves.len() = {:?}", moves.len());
+    for m in moves.iter() {
+        eprintln!("m = {:?}", m);
+    }
 
     // let (blockers,pinners) = g.find_slider_blockers(&ts, "A3".into());
 
@@ -134,8 +152,6 @@ fn main() {
 
     // let b = g.find_pins_absolute(&ts, White);
     // eprintln!("b = {:?}", b);
-
-    // let moves = g.search_all(&ts, g.state.side_to_move);
 
     // let moves = g.find_attacks_to(&ts, "A2".into(), Black);
     // let moves: Vec<Move> = moves.collect();
@@ -157,16 +173,6 @@ fn main() {
 
     // let xs = g.find_attacks_by_side(&ts, "A1".into(), Black);
     // eprintln!("xs = {:?}", xs);
-
-    // eprintln!("moves.len() = {:?}", moves.len());
-    // for m in moves.iter() {
-    //     eprintln!("m = {:?}", m);
-    // }
-
-    let depth = 1;
-    let (ns,cs) = g.perft(&ts, depth, true);
-    eprintln!("\nperft total    = {:?}", ns);
-    eprintln!("perft captures = {:?}", cs);
 
     // // let ms = g.search_all(&ts, White);
     // // let ms = g.search_king(White);

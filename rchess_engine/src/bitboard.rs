@@ -10,6 +10,11 @@ impl BitBoard {
     pub fn empty() -> BitBoard {
         BitBoard(0)
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0 == 0
+    }
+
     pub fn new(cs: &[Coord]) -> BitBoard {
         let mut b = BitBoard::empty();
         for c in cs.iter() {

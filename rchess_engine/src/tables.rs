@@ -17,6 +17,7 @@ pub struct Tables {
     // endgames: 
 }
 
+/// Piece getters
 impl Tables {
     // pub fn get_rook(&self, Coord(x,y): Coord) -> &MoveSetRook {
     pub fn get_rook<T: Into<Coord>>(&self, c: T) -> &MoveSetRook {
@@ -63,7 +64,7 @@ impl Tables {
 
 }
 
-// Lookup table getters
+/// Lookup table getters
 impl Tables {
 
     /// Excludes s1, Includes s2
@@ -86,7 +87,7 @@ impl Tables {
 
 }
 
-// Lookup table Generators
+/// Lookup table Generators
 impl Tables {
 
     fn gen_betweenbb(bishops: [[MoveSetBishop; 8]; 8]) -> [[BitBoard; 64]; 64] {
@@ -203,7 +204,7 @@ impl Tables {
 
 }
 
-// Rooks
+/// Rooks
 impl Tables {
 
     // fn gen_rooks() -> HashMap<Coord, MoveSetRook> {
@@ -257,7 +258,7 @@ impl Tables {
 
 }
 
-// Bishops
+/// Bishops
 impl Tables {
 
     fn gen_bishops() -> [[MoveSetBishop; 8]; 8] {
@@ -364,7 +365,7 @@ impl Tables {
 
 }
 
-// Knights
+/// Knights
 impl Tables {
 
     // fn gen_knights() -> HashMap<Coord, BitBoard> {
@@ -408,7 +409,7 @@ impl Tables {
 
 }
 
-// Kings
+/// Kings
 impl Tables {
 
     pub fn gen_kings() -> [[BitBoard; 8]; 8] {
@@ -436,7 +437,7 @@ impl Tables {
 
 }
 
-// Pawns
+/// Pawns
 impl Tables {
 
     fn gen_pawns() -> [[MoveSetPawn; 8]; 8] {
@@ -474,6 +475,10 @@ impl Tables {
 mod movesets {
     use crate::types::*;
 
+    /// pub n: BitBoard,
+    /// pub e: BitBoard,
+    /// pub w: BitBoard,
+    /// pub s: BitBoard,
     #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
     pub struct MoveSetRook {
         pub n: BitBoard,
@@ -509,6 +514,10 @@ mod movesets {
         }
     }
 
+    /// pub ne: BitBoard,
+    /// pub nw: BitBoard,
+    /// pub se: BitBoard,
+    /// pub sw: BitBoard,
     #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
     pub struct MoveSetBishop {
         pub ne: BitBoard,
@@ -543,6 +552,10 @@ mod movesets {
         }
     }
 
+    /// pub white_quiet:   BitBoard,
+    /// pub black_quiet:   BitBoard,
+    /// pub white_capture: BitBoard,
+    /// pub black_capture: BitBoard,
     #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
     pub struct MoveSetPawn {
         pub white_quiet:   BitBoard,

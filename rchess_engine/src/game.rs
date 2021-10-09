@@ -68,6 +68,7 @@ impl Castling {
 
 impl Game {
 
+    #[must_use]
     pub fn make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Self> {
         let out = match m {
             Move::Quiet      { from, to } => {
@@ -136,6 +137,7 @@ impl Game {
         self.state.pinners       = None;
 
         self.update_pins_mut(&ts);
+        self.update_checkers_mut(&ts);
 
     }
 
@@ -145,7 +147,6 @@ impl Game {
         self.state.king_blocks_b = None;
         self.state.pinners       = None;
     }
-
 
     fn update_pins_mut(&mut self, ts: &Tables) {
         // let pw = self.find_pins_absolute(&ts, White);
@@ -167,7 +168,17 @@ impl Game {
     }
 
     fn update_checkers_mut(&mut self, ts: &Tables) {
-        unimplemented!()
+        // let col = self.state.side_to_move;
+        // let p0: Coord = self.get(King, col).bitscan().into();
+
+        // let moves = self.find_attackers_to(&ts, p0);
+        // let moves = moves & self.get_color(!col);
+        // eprintln!("moves = {:?}", moves);
+        let moves = self.find_checkers(&ts, self.state.side_to_move);
+
+        self.state.checkers = Some(moves);
+
+        // unimplemented!()
     }
 
     // fn update_checkers_mut(&mut self, ts: &Tables) {
