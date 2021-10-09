@@ -12,17 +12,21 @@ impl Game {
 
     pub fn from_fen(s: &str) -> Option<Game> {
 
-        let (_,ss) = parse_piece_lines(&s).unwrap();
+        let (s,ss) = parse_piece_lines(&s).unwrap();
         // eprintln!("ss = {:?}", ss);
 
-        let g = build_from_fen(ss);
+        let (s,side) = parse_side(&s).unwrap();
+        // let (s,castle) = parse_castle(&s).unwrap();
+        // let (s,ep) = parse_enpassant(&s).unwrap();
+
+        let mut g = build_from_fen(ss, side);
+        // g.recalc_gameinfo_mut();
 
         Some(g)
     }
 
 }
-
-fn build_from_fen(v: Vec<Vec<Option<(Piece,Color)>>>) -> Game {
+fn build_from_fen(v: Vec<Vec<Option<(Piece,Color)>>>, col: Color) -> Game {
     let mut out = Game::empty();
 
     for (rank,y) in v.iter().rev().zip(0..8) {
@@ -35,11 +39,26 @@ fn build_from_fen(v: Vec<Vec<Option<(Piece,Color)>>>) -> Game {
             }
         }
     }
+    out.state.side_to_move = col;
     out
 }
 
-fn parse_fen(s: &str) -> IResult<&str, Game> {
+fn parse_side(s: &str) -> IResult<&str, Color> {
+    let (s,_) = tag(" ")(s)?;
+    let (s,c) = nom::character::complete::one_of("w,b")(s)?;
 
+    match c {
+        'w' => Ok((s,White)),
+        'b' => Ok((s,Black)),
+        _   => panic!(),
+    }
+}
+
+fn parse_castle(s: &str) -> IResult<&str, ()> {
+    unimplemented!()
+}
+
+fn parse_enpassent(s: &str) -> IResult<&str, Option<Coord>> {
     unimplemented!()
 }
 

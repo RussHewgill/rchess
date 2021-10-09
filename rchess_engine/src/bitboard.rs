@@ -146,8 +146,6 @@ impl BitBoard {
         }
     }
 
-    // pub fn mask_diagonal(i: u32) -> BitBoard
-
     pub fn bitscan(&self) -> u32 {
         // Bitscan Forward
         // self.0.leading_zeros()
@@ -449,6 +447,12 @@ impl BitBoard {
     //     BitBoard(self.0.overflowing_shr(k).0 & (!BitBoard::mask_file(7)).0)
     // }
 
+}
+
+impl Default for BitBoard {
+    fn default() -> Self {
+        Self::empty()
+    }
 }
 
 impl std::fmt::Debug for BitBoard {

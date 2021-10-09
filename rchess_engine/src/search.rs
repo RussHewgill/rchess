@@ -22,7 +22,6 @@ impl Game {
             self.move_is_legal(&ts, m)
         }).collect();
 
-
         out
     }
 
@@ -41,7 +40,7 @@ impl Game {
         // eprintln!("moves.len() = {:?}", moves.len());
         let mut k = 0;
         for m in moves.iter() {
-            if let Some(g2) = self.make_move_unchecked(m) {
+            if let Some(g2) = self.make_move_unchecked(&ts, m) {
                 let (ns,cs) = g2.perft(ts, depth - 1, false);
                 match *m {
                     Move::Capture { .. } => captures += 1,
@@ -68,12 +67,17 @@ impl Game {
         // TODO: En Passant Captures
         // TODO: Castling
 
-        match self.get_at(m.from()) {
+        match self.get_at(m.sq_from()) {
             Some((col,King)) => {
-                !self.find_attacks_by_side(&ts, m.to(), !col)
+                !self.find_attacks_by_side(&ts, m.sq_to(), !col)
             },
             Some((col,pc)) => {
-                unimplemented!()
+                let pins = self.get_pins(col);
+
+                ((BitBoard::single(m.sq_from()) & pins).0 == 0)
+                    | (ts.aligned(m.sq_from(), m.sq_to(), self.get(King, col).bitscan().into()).0 != 0)
+                    // TODO: 
+                // unimplemented!()
             },
             None => panic!(),
         }
@@ -147,6 +151,29 @@ impl Game {
         // unimplemented!()
     }
 
+    pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord) -> (BitBoard, BitBoard) {
+        let mut blockers = BitBoard::empty();
+        let mut pinners = BitBoard::empty();
+
+        let mut snipers = ts.get_rook(c0).concat() & (self.get_piece(Rook) | self.get_piece(Queen))
+            | ts.get_bishop(c0).concat() & (self.get_piece(Bishop) | self.get_piece(Queen));
+
+        let occ = self.all_occupied() ^ snipers;
+        let (col0, _) = self.get_at(c0).unwrap();
+        snipers.iter_bitscan(|sq| {
+            let b = ts.between(c0, sq.into()) & occ;
+
+            // if (b.0 != 0) & !((b & BitBoard(b.0 - 1)).0 != 0) {
+            if (b.0 != 0) & !((b & BitBoard(b.0.overflowing_sub(1).0)).0 != 0) {
+                blockers |= b;
+                if let Some((col1,_)) = self.get_at(sq.into()) {
+                    pinners.set_one_mut(sq.into());
+                }
+            }
+        });
+        (blockers, pinners)
+    }
+
     pub fn obstructed(&self, ts: &Tables, c0: Coord, c1: Coord) -> BitBoard {
 
         let oc = self.all_occupied();
@@ -154,62 +181,6 @@ impl Game {
 
         oc & m
     }
-
-    // pub fn mask_between(&self, ts: &Tables, c0: Coord, c1: Coord) -> BitBoard {
-    // // pub fn obstructed(&self, ts: &Tables, c0: Coord, c1: Coord) -> BitBoard {
-
-    //     let Coord(x0,y0) = c0;
-    //     let Coord(x1,y1) = c1;
-
-    //     if x0 == x1 {
-    //         // File
-    //         let (x0,x1) = (x0.min(x1),x0.max(x1));
-    //         let (y0,y1) = (y0.min(y1),y0.max(y1));
-    //         let b0 = BitBoard::single(Coord(x0,y0));
-    //         let b1 = BitBoard::single(Coord(x1,y1));
-    //         let b = BitBoard(2 * b1.0 - b0.0);
-    //         let m = BitBoard::mask_file(x0.into());
-    //         (b & m) & !(b0 | b1)
-    //     } else if y0 == y1 {
-    //         // Rank
-    //         let (x0,x1) = (x0.min(x1),x0.max(x1));
-    //         let (y0,y1) = (y0.min(y1),y0.max(y1));
-    //         let b0 = BitBoard::single(Coord(x0,y0));
-    //         let b1 = BitBoard::single(Coord(x1,y1));
-    //         let b = BitBoard(2 * b1.0 - b0.0);
-    //         let m = BitBoard::mask_rank(y0.into());
-    //         (b & m) & !(b0 | b1)
-    //     // } else if (x1 - x0) == (y1 - y0) {
-    //     } else if (x1 as i64 - x0 as i64).abs() == (y1 as i64 - y0 as i64).abs() {
-    //         // Diagonal
-    //         let b0 = BitBoard::single(Coord(x0,y0));
-    //         let b1 = BitBoard::single(Coord(x1,y1));
-    //         // let b = BitBoard::new(&[Coord(x0,y0),Coord(x1,y1)])
-
-    //         let (bb0,bb1) = (b0.0.min(b1.0),b0.0.max(b1.0));
-
-    //         let b = BitBoard(2 * bb1 - bb0);
-    //         // let b = BitBoard(2 * b0.0 - b1.0);
-    //         // eprintln!("b = {:?}", b);
-    //         // let m = BitBoard::mask_rank(y0.into());
-    //         let m = ts.get_bishop(c0);
-
-    //         let xx = x1 as i64 - x0 as i64;
-    //         let yy = y1 as i64 - y0 as i64;
-
-    //         let m = if xx.signum() == yy.signum() {
-    //             m.ne | m.sw
-    //         } else {
-    //             m.nw | m.se
-    //         };
-
-    //         (b & m) & !(b0 | b1)
-    //     } else {
-    //         // println!("wat 2");
-    //         // unimplemented!()
-    //         BitBoard::empty()
-    //     }
-    // }
 
     pub fn find_attacks_by_side(&self, ts: &Tables, c0: Coord, col: Color) -> bool {
 
@@ -222,8 +193,22 @@ impl Game {
         let bq = self.get(Queen, col);
 
         // let moves_b = ts.get_bishop(c0);
-        let moves_b = self._search_sliding(Some(c0), Bishop, &ts, col);
-        // if ((moves_b & self.get(Bishop, col)) | (moves_b & bq)).0 != 0 { return true; }
+        // let moves_b = self._search_sliding(Some(c0), Bishop, &ts, col);
+        // let moves_r = self._search_sliding(Some(c0), Rook, &ts, col);
+
+        let moves_r = {
+            let (a,b,c,d) = self._search_sliding_single(c0, Rook, self.all_occupied(), &ts, !col);
+            a | b | c | d
+        };
+        if ((moves_r & self.get(Rook, col)).0 != 0)
+            | ((moves_r & self.get(Queen, col)).0 != 0) { return true; }
+
+        let moves_r = {
+            let (a,b,c,d) = self._search_sliding_single(c0, Bishop, self.all_occupied(), &ts, !col);
+            a | b | c | d
+        };
+        if ((moves_r & self.get(Bishop, col)).0 != 0)
+            | ((moves_r & self.get(Queen, col)).0 != 0) { return true; }
 
         false
         // unimplemented!()
@@ -427,11 +412,11 @@ impl Game {
 
 
     pub fn _search_sliding_single(&self,
-                              p0:       Coord,
-                              pc:       Piece,
-                              blocks:   BitBoard,
-                              ts:       &Tables,
-                              col:      Color,
+                                  p0:       Coord,
+                                  pc:       Piece,
+                                  blocks:   BitBoard,
+                                  ts:       &Tables,
+                                  col:      Color,
     ) -> (BitBoard,BitBoard,BitBoard,BitBoard) {
 
         let mut out_quiets_pos   = BitBoard::empty();

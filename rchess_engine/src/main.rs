@@ -82,16 +82,18 @@ fn main() {
     //     // ("A2", Pawn, White),
     // ]);
 
-    g.insert_pieces_mut_unchecked(&vec![
-        ("A1", King, White),
-        // ("C3", Pawn, White),
-        // ("C3", Pawn, Black),
-        ("D4", Pawn, White),
-        ("H8", Bishop, Black),
-    ]);
+    // g.insert_pieces_mut_unchecked(&vec![
+    //     ("H6", King, Black),
+    //     ("A1", King, White),
+    //     // ("C3", Pawn, White),
+    //     // ("C3", Pawn, Black),
+    //     // ("D4", Pawn, White),
+    //     ("D4", Bishop, White),
+    //     ("H8", Bishop, Black),
+    // ]);
 
-    let ts = Tables::new();
-    // let g = Game::new();
+    // let x = std::mem::size_of::<[[BitBoard; 64]; 64]>();
+    // eprintln!("x = {:?}", x);
 
     // let g = Game::from_fen("8/8/8/8/1nb5/1p6/7r/K7 w - - 0 1").unwrap();
     // let g = Game::from_fen("8/8/8/8/8/1p6/8/K7 w - - 0 1").unwrap();
@@ -99,16 +101,39 @@ fn main() {
     // let g = Game::from_fen("8/8/8/8/8/k7/8/K7 w - - 0 1").unwrap();
     // let g = Game::from_fen("8/8/8/8/2b5/k7/8/K7 w - - 0 1").unwrap();
 
-    // let g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -").unwrap();
+    // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -").unwrap();
+    // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 b - - 0 1").unwrap();
+
+    // let mut g = Game::from_fen("8/7k/8/8/8/K2P3r/8/8 w - - 0 1").unwrap();
+    // let mut g = Game::from_fen("8/7k/8/8/8/K2p3r/8/8 w - - 0 1").unwrap();
+    let mut g = Game::from_fen("8/7k/8/8/8/3P3r/K7/8 b - - 1 1").unwrap();
+    // let mut g = Game::from_fen("8/7k/8/8/8/3P4/K7/7r w - - 2 2").unwrap();
+
+    // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 b - - 0 1").unwrap();
+    // g.state.side_to_move = Black;
 
     // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 w - - 0 1").unwrap();
-    // g.state.side_to_move = Black;
+
+    let ts = Tables::new();
+    // let g = Game::new();
+
+    g.recalc_gameinfo_mut(&ts);
+    // g.update_pins_mut(&ts);
 
     eprintln!("{:?}", g);
 
-    let b = g.find_pins_absolute(&ts, White);
+    // let (blockers,pinners) = g.find_slider_blockers(&ts, "A3".into());
 
-    eprintln!("b = {:?}", b);
+    // let b = g.state.pinners;
+    // eprintln!("b = {:?}", b);
+
+    // let c0: Coord = "A1".into();
+    // let c1: Coord = "B3".into();
+    // let b = ts.between(c0, c1);
+    // eprintln!("b = {:?}", b);
+
+    // let b = g.find_pins_absolute(&ts, White);
+    // eprintln!("b = {:?}", b);
 
     // let moves = g.search_all(&ts, g.state.side_to_move);
 
@@ -125,25 +150,23 @@ fn main() {
     // let g2 = g.make_move_unchecked(&m).unwrap();
     // eprintln!("{:?}", g2);
 
+    // let moves = g.search_king(&ts, White);
+    // let m = Move::Quiet { from: "A2".into(), to: "A1".into() };
+    // let x = g.move_is_legal(&ts, &m);
+    // eprintln!("x = {:?}", x);
+
+    // let xs = g.find_attacks_by_side(&ts, "A1".into(), Black);
+    // eprintln!("xs = {:?}", xs);
+
     // eprintln!("moves.len() = {:?}", moves.len());
     // for m in moves.iter() {
     //     eprintln!("m = {:?}", m);
     // }
 
-    // let b = g.find_xray_bishop(&ts, "H8".into(), Black);
-
-    // let c1: Coord = "A1".into();
-    // let c0: Coord = "H8".into();
-
-    // let b = g.obstructed(&ts, c0, c1);
-
-    // let b = g.find_xray_rook(&ts, "A2".into(), Black, Some(White));
-    // let b = g.find_xray_rook(&ts, "A2".into(), Black, None);
-
-    // let depth = 1;
-    // let (ns,cs) = g.perft(&ts, depth, true);
-    // eprintln!("\nperft total    = {:?}", ns);
-    // eprintln!("perft captures = {:?}", cs);
+    let depth = 1;
+    let (ns,cs) = g.perft(&ts, depth, true);
+    eprintln!("\nperft total    = {:?}", ns);
+    eprintln!("perft captures = {:?}", cs);
 
     // // let ms = g.search_all(&ts, White);
     // // let ms = g.search_king(White);

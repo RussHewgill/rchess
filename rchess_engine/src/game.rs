@@ -1,29 +1,74 @@
 
 use crate::types::*;
+use crate::tables::*;
 
-#[derive(Eq,PartialEq,PartialOrd,Clone)]
+use bitflags::bitflags;
+
+#[derive(PartialEq,PartialOrd,Clone)]
 pub struct Game {
     pub move_history: Vec<Move>,
     pub state:        GameState
 }
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+// #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Debug,Default,PartialEq,PartialOrd,Clone,Copy)]
 pub struct GameState {
-    pub side_to_move: Color,
-    // TODO: castling
-    // TODO: en passant
-    pub pawns:        BitBoard,
-    pub rooks:        BitBoard,
-    pub knights:      BitBoard,
-    pub bishops:      BitBoard,
-    pub queens:       BitBoard,
-    pub kings:        BitBoard,
-    pub white:        BitBoard,
-    pub black:        BitBoard,
+    pub side_to_move:   Color,
+
+    pub white:          BitBoard,
+    pub black:          BitBoard,
+
+    pub pawns:          BitBoard,
+    pub rooks:          BitBoard,
+    pub knights:        BitBoard,
+    pub bishops:        BitBoard,
+    pub queens:         BitBoard,
+    pub kings:          BitBoard,
+
+    pub en_passent:     Option<Coord>,
+    pub castling:       Castling,
+
+    pub score:          Score,
+
+    pub checkers:       Option<BitBoard>,
+    pub king_blocks_w:  Option<BitBoard>,
+    pub king_blocks_b:  Option<BitBoard>,
+    pub pinners:        Option<BitBoard>,
+    // pub pinned:         Option<(BitBoard,BitBoard)>,
+}
+
+pub type Score = f64;
+
+#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+pub struct Castling {
+    pub white_queen:   bool,
+    pub white_king:    bool,
+    pub black_queen:   bool,
+    pub black_king:    bool,
+}
+
+impl Castling {
+    pub fn new() -> Castling {
+        Castling {
+            white_queen:   true,
+            white_king:    true,
+            black_queen:   true,
+            black_king:    true,
+        }
+    }
+    pub fn new_with(b: bool) -> Castling {
+        Castling {
+            white_queen:   b,
+            white_king:    b,
+            black_queen:   b,
+            black_king:    b,
+        }
+    }
 }
 
 impl Game {
-    pub fn make_move_unchecked(&self, m: &Move) -> Option<Self> {
+
+    pub fn make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Self> {
         let out = match m {
             Move::Quiet      { from, to } => {
                 let (c,pc) = self.get_at(*from)?;
@@ -65,6 +110,8 @@ impl Game {
         if let Some(mut x) = out {
             x.state.side_to_move = !x.state.side_to_move;
             x.move_history.push(*m);
+            x.reset_gameinfo_mut();
+            x.recalc_gameinfo_mut(&ts);
             Some(x)
         } else {
             panic!("Game::make_move?");
@@ -81,6 +128,51 @@ impl Game {
         let mut bp = self.get_piece_mut(p);
         *bp = bp.set_zero(at);
     }
+
+    pub fn recalc_gameinfo_mut(&mut self, ts: &Tables) {
+        self.state.checkers      = None;
+        self.state.king_blocks_w = None;
+        self.state.king_blocks_b = None;
+        self.state.pinners       = None;
+
+        self.update_pins_mut(&ts);
+
+    }
+
+    fn reset_gameinfo_mut(&mut self) {
+        self.state.checkers      = None;
+        self.state.king_blocks_w = None;
+        self.state.king_blocks_b = None;
+        self.state.pinners       = None;
+    }
+
+
+    fn update_pins_mut(&mut self, ts: &Tables) {
+        // let pw = self.find_pins_absolute(&ts, White);
+        // let pb = self.find_pins_absolute(&ts, Black);
+        // self.state.pinned = Some((pw,pb));
+        let c0 = self.get(King, White);
+        let c0 = c0.bitscan().into();
+        let (bs_w, ps_b) = self.find_slider_blockers(&ts, c0);
+
+        let c1 = self.get(King, Black);
+        let c1 = c1.bitscan().into();
+        let (bs_b, ps_w) = self.find_slider_blockers(&ts, c1);
+
+        self.state.king_blocks_w = Some(bs_w);
+        self.state.king_blocks_b = Some(bs_b);
+
+        self.state.pinners = Some(ps_b | ps_w);
+
+    }
+
+    fn update_checkers_mut(&mut self, ts: &Tables) {
+        unimplemented!()
+    }
+
+    // fn update_checkers_mut(&mut self, ts: &Tables) {
+    //     unimplemented!()
+    // }
 
 }
 
@@ -122,8 +214,29 @@ impl Game {
         }
     }
 
-    pub fn get(&self, piece: Piece, c: Color) -> BitBoard {
-        self.get_color(c) & self.get_piece(piece)
+    pub fn get(&self, piece: Piece, col: Color) -> BitBoard {
+        self.get_color(col) & self.get_piece(piece)
+    }
+
+    pub fn get_pins(&self, col: Color) -> BitBoard {
+
+        if let Some(pins) = match col {
+            White => self.state.king_blocks_w,
+            Black => self.state.king_blocks_b,
+        } {
+            return pins;
+        } else {
+            panic!("no pinned BBs?");
+        }
+
+        // match self.state.pinned {
+        //     None => panic!("no pinned BBs?"),
+        //     Some((w,b)) => match col {
+        //         White => w,
+        //         Black => b,
+        //     }
+        // }
+
     }
 
     pub fn all_occupied(&self) -> BitBoard {
@@ -159,41 +272,41 @@ impl Game {
 impl Game {
 
     pub fn empty() -> Game {
-        let state = GameState {
-            side_to_move: White,
-            pawns:        BitBoard::empty(),
-            rooks:        BitBoard::empty(),
-            knights:      BitBoard::empty(),
-            bishops:      BitBoard::empty(),
-            queens:       BitBoard::empty(),
-            kings:        BitBoard::empty(),
-            white:        BitBoard::empty(),
-            black:        BitBoard::empty(),
-        };
         Game {
             move_history: vec![],
-            state,
+            // state: GameState::empty(),
+            state: GameState::default(),
         }
     }
 
     pub fn new() -> Game {
 
+        // let mut state = GameState::empty();
+        let mut state = GameState::default();
+
         let mut pawns   = BitBoard::empty();
         pawns |= BitBoard::mask_rank(1) | BitBoard::mask_rank(6);
+        state.pawns = pawns;
 
         let rooks   = BitBoard::new(&vec![
             Coord(0,0),Coord(7,0),Coord(0,7),Coord(7,7),
         ]);
+        state.rooks = rooks;
+
         let knights = BitBoard::new(&vec![
             Coord(1,0),Coord(6,0),Coord(1,7),Coord(6,7),
         ]);
+        state.knights = knights;
+
         let bishops = BitBoard::new(&vec![
             Coord(2,0),Coord(5,0),Coord(2,7),Coord(5,7),
         ]);
+        state.bishops = bishops;
 
-        // let queens  = BitBoard::empty();
-        let queens  = BitBoard::new(&vec![Coord(3,0),Coord(3,7)]);
-        let kings   = BitBoard::new(&vec![Coord(4,0),Coord(4,7)]);
+        let queens   = BitBoard::new(&vec![Coord(3,0),Coord(3,7)]);
+        state.queens = queens;
+        let kings    = BitBoard::new(&vec![Coord(4,0),Coord(4,7)]);
+        state.kings  = kings;
 
         let mut white = BitBoard::empty();
         let mut black = BitBoard::empty();
@@ -205,21 +318,30 @@ impl Game {
         white &= pawns | rooks | knights | bishops | queens | kings;
         black &= pawns | rooks | knights | bishops | queens | kings;
 
-        let state = GameState {
-            side_to_move: White,
-            pawns,
-            rooks,
-            knights,
-            bishops,
-            queens,
-            kings,
-            white,
-            black,
-        };
-        Game {
+        state.side_to_move = White;
+        state.castling = Castling::new_with(true);
+
+        // let state = GameState {
+        //     side_to_move: White,
+        //     pawns,
+        //     rooks,
+        //     knights,
+        //     bishops,
+        //     queens,
+        //     kings,
+        //     white,
+        //     black,
+        //     pinned:     None,
+        //     en_passent: None,
+        //     castling:   Castling::new_with(true),
+        // };
+
+        let mut g = Game {
             move_history: vec![],
             state,
-        }
+        };
+        // g.recalc_gameinfo_mut();
+        g
     }
 
 }
@@ -242,32 +364,6 @@ impl Game {
         unimplemented!()
     }
 
-    // pub fn print(&self) {
-    //     let w = char::from_u32(0x25A1).unwrap();
-    //     let b = char::from_u32(0x25A0).unwrap();
-    //     for y0 in 0..8 {
-    //         let y = 7-y0;
-    //         let mut line = String::new();
-    //         line.push_str(&format!("{}  ", y + 1));
-    //         for x in 0..8 {
-    //             let ch: char = match self.get_at(Coord(x,y)) {
-    //                 Some((c,p)) => p.print(c),
-    //                 None        => w,
-    //             };
-    //             line.push(ch);
-    //             line.push(' ');
-    //         }
-    //         println!("{}", line);
-    //     }
-    //     let mut line = String::new();
-    //     line.push_str(&format!("   "));
-    //     let cs = vec!['A','B','C','D','E','F','G','H'];
-    //     for x in 0..8 {
-    //         line.push_str(&format!("{} ", cs[x]));
-    //     }
-    //     println!("{}", line);
-    // }
-
 }
 
 fn square_color(Coord(x,y): Coord) -> Color {
@@ -288,6 +384,36 @@ fn square_color(Coord(x,y): Coord) -> Color {
 
 impl Game {
     // pub fn show_moveset(&self, moves: BitBoard) 
+}
+
+impl GameState {
+
+    // pub fn empty() -> GameState {
+    //     GameState {
+    //         side_to_move: White,
+
+    //         white:        BitBoard::empty(),
+    //         black:        BitBoard::empty(),
+
+    //         pawns:        BitBoard::empty(),
+    //         rooks:        BitBoard::empty(),
+    //         knights:      BitBoard::empty(),
+    //         bishops:      BitBoard::empty(),
+    //         queens:       BitBoard::empty(),
+    //         kings:        BitBoard::empty(),
+
+    //         en_passent:   None,
+    //         castling:     Castling::new_with(false),
+
+    //         score:        0.0,
+    //         pinned:       None,
+    //     }
+    // }
+
+}
+
+impl Default for Castling {
+    fn default() -> Self { Self::new_with(true) }
 }
 
 impl std::fmt::Debug for Game {

@@ -44,14 +44,16 @@ impl Move {
         }
     }
 
-    pub fn filter_capture(&self) -> bool {
+    pub fn filter_all_captures(&self) -> bool {
         match self {
-            &Move::Capture { .. } => true,
-            _                   => false,
+            &Move::Capture { .. }          => true,
+            &Move::EnPassant { .. }        => true,
+            &Move::PromotionCapture { .. } => true,
+            _                              => false,
         }
     }
 
-    pub fn from(&self) -> Coord {
+    pub fn sq_from(&self) -> Coord {
         match self {
             &Move::Quiet { from, .. } => from,
             &Move::PawnDouble { from, .. } => from,
@@ -64,7 +66,7 @@ impl Move {
         }
     }
 
-    pub fn to(&self) -> Coord {
+    pub fn sq_to(&self) -> Coord {
         match self {
             &Move::Quiet { to, .. } => to,
             &Move::PawnDouble { to, .. } => to,
@@ -155,6 +157,10 @@ impl Piece {
             },
         }
     }
+}
+
+impl Default for Color {
+    fn default() -> Self { White }
 }
 
 impl std::ops::Not for Color {
