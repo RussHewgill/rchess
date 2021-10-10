@@ -30,7 +30,7 @@ pub enum Move {
     EnPassant          { from: Coord, to: Coord },
     Promotion          { from: Coord, to: Coord, new_piece: Piece },
     PromotionCapture   { from: Coord, to: Coord, new_piece: Piece },
-    Castle             { from: Coord, to: Coord, rook: Coord },
+    Castle             { from: Coord, to: Coord, rook_from: Coord, rook_to: Coord },
 }
 
 impl Move {
@@ -103,8 +103,8 @@ impl Move {
             Move::PromotionCapture  { from, to, new_piece } => {
                 Move::PromotionCapture  { from: to, to: from, new_piece }
             },
-            Move::Castle     { from, to, rook } => {
-                Move::Castle     { from: to, to: from, rook }
+            Move::Castle     { from, to, rook_from, rook_to } => {
+                Move::Castle     { from: to, to: from, rook_from, rook_to }
             },
         }
     }

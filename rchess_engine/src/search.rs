@@ -146,7 +146,7 @@ impl Game {
                 // OR capturing checking piece
                 let x1 = m.sq_to() == self.state.checkers.unwrap().bitscan().into();
 
-                x0 | x1
+                x0 | (x1 & x)
                 // unimplemented!()
                 // (x & self.find_checkers(&ts, col).is_empty())
                 //     | (m.filter_all_captures() & (m.to() == ))
@@ -403,6 +403,58 @@ impl Game {
 
 impl Game {
 
+    pub fn _search_castles(&self, ts: &Tables) -> Vec<Move> {
+        let mut out = vec![];
+        let col = self.state.side_to_move;
+        let (kingside,queenside) = self.state.castling.get_color(col);
+
+        if self.state.checkers.unwrap().is_not_empty() { return out; }
+
+        let king: Coord = self.get(King, col).bitscan().into();
+
+        if kingside {
+            let rook: Coord = if col == White { "H1".into() } else { "H8".into() };
+            let between = ts.between_exclusive(king, rook);
+
+            if (between & self.all_occupied()).is_empty() {
+                let mut go = true;
+                for sq in between.into_iter() {
+                    if self.find_attacks_by_side(&ts, sq.into(), !col, true) {
+                        go = false;
+                        break;
+                    }
+                }
+                if go {
+                    let to = if col == White { "G1".into() } else { "G8".into() };
+                    let rook_to = if col == White { "F1".into() } else { "F8".into() };
+                    out.push(Move::Castle { from: king, to, rook_from: rook, rook_to });
+                }
+            }
+
+        }
+        if queenside {
+            let rook: Coord = if col == White { "A1".into() } else { "H1".into() };
+            let between = ts.between_exclusive(king, rook);
+
+            if (between & self.all_occupied()).is_empty() {
+                let mut go = true;
+                for sq in between.into_iter() {
+                    if self.find_attacks_by_side(&ts, sq.into(), !col, true) {
+                        go = false;
+                        break;
+                    }
+                }
+                if go {
+                    let to      = if col == White { "C1".into() } else { "C8".into() };
+                    let rook_to = if col == White { "D1".into() } else { "D8".into() };
+                    out.push(Move::Castle { from: king, to, rook_from: rook, rook_to });
+                }
+            }
+        }
+
+        out
+    }
+
     pub fn _search_king_attacks(&self, ts: &Tables, c0: Coord) -> BitBoard {
         let kings = self.get_piece(King);
         let mut out = BitBoard::empty();
@@ -542,7 +594,6 @@ impl Game {
 
         out
     }
-
 
     pub fn _search_sliding_single(&self,
                                   p0:       Coord,
@@ -779,136 +830,21 @@ impl Game {
             }
         });
 
+        if let Some(ep) = self.state.en_passant {
+            let attacks = ts.get_pawn(ep).get_capture(!col);
+            let attacks = *attacks & ps;
+
+            attacks.iter_bitscan(|sq| {
+                out.push(Move::EnPassant { from: sq.into(), to: ep });
+            });
+
+        }
+
         // pushes.serialize()
         // unimplemented!()
         // vec![]
         out
     }
-
-    /*
-    fn search_rooks2(&self, ts: &Tables, c: Color) -> Vec<Move> {
-        let mut rooks = self.get(Rook, c);
-        let mut out = vec![];
-        let occ = self.all_occupied();
-
-        rooks.iter_bitscan(|p0| {
-            // let ms: &MoveSetRook = ts.rook_moves.get(&p0.into()).unwrap();
-            let ms: &MoveSetRook = ts.get_rook(p0);
-
-            for (dir,moves) in ms.to_vec().iter() {
-                match dir {
-                    N | E => {
-                        let blocks = *moves & occ;
-                        if blocks.0 != 0 {
-                            let square = blocks.bitscan_isolate();
-                            let sq: Coord = square.bitscan().into();
-                            let nots = ts.get_rook(sq).get_dir(*dir);
-                            let mm = *moves ^ *nots;
-                            let mm = mm & !square;
-                            if (square & self.get_color(!c)).0 != 0 {
-                                // capture
-                                out.push(Move::Capture { from: p0.into(), to: sq });
-                            }
-                            mm.iter_bitscan(|t| {
-                                out.push(Move::Quiet { from: p0.into(), to: t.into() });
-                            });
-                        } else {
-                            moves.iter_bitscan(|t| {
-                                out.push(Move::Quiet { from: p0.into(), to: t.into() });
-                            });
-                        }
-                    },
-                    S | W => {
-                        let blocks = *moves & occ;
-                        if blocks.0 != 0 {
-                            let square = blocks.bitscan_rev_isolate();
-                            let sq: Coord = square.bitscan_rev().into();
-                            let nots = ts.get_rook(sq).get_dir(*dir);
-                            let mm = *moves ^ *nots;
-                            let mm = mm & !square;
-                            if (square & self.get_color(!c)).0 != 0 {
-                                // capture
-                                out.push(Move::Capture { from: p0.into(), to: sq });
-                            }
-                            mm.iter_bitscan_rev(|t| {
-                                out.push(Move::Quiet { from: p0.into(), to: t.into() });
-                            });
-                        } else {
-                            moves.iter_bitscan_rev(|t| {
-                                out.push(Move::Quiet { from: p0.into(), to: t.into() });
-                            });
-                        }
-                    },
-                    _ => panic!("search_rooks: Diagonal rook?")
-                }
-
-            }
-
-        });
-
-        out
-    }
-    fn search_bishops2(&self, ts: &Tables, c: Color) -> Vec<Move> {
-        let bishops = self.get(Bishop, c);
-        let mut out = vec![];
-        let occ = self.all_occupied();
-
-        bishops.iter_bitscan(|p0| {
-            let ms: &MoveSetBishop = ts.get_bishop(p0);
-
-            for (dir,moves) in ms.to_vec().iter() {
-                match dir {
-                    NE | NW => {
-                        let blocks = *moves & occ;
-                        if blocks.0 != 0 {
-                            let square = blocks.bitscan_isolate();
-                            let sq: Coord = square.bitscan().into();
-                            let nots = ts.get_bishop(sq).get_dir(*dir);
-                            let mm = *moves ^ *nots;
-                            let mm = mm & !square;
-                            if (square & self.get_color(!c)).0 != 0 {
-                                // capture
-                                out.push(Move::Capture { from: p0.into(), to: sq });
-                            }
-                            mm.iter_bitscan(|t| {
-                                out.push(Move::Quiet { from: p0.into(), to: t.into() });
-                            });
-                        } else {
-                            moves.iter_bitscan(|t| {
-                                out.push(Move::Quiet { from: p0.into(), to: t.into() });
-                            });
-                        }
-                    },
-                    SE | SW => {
-                        let blocks = *moves & occ;
-                        if blocks.0 != 0 {
-                            let square = blocks.bitscan_rev_isolate();
-                            let sq: Coord = square.bitscan_rev().into();
-                            let nots = ts.get_bishop(sq).get_dir(*dir);
-                            let mm = *moves ^ *nots;
-                            let mm = mm & !square;
-                            if (square & self.get_color(!c)).0 != 0 {
-                                // capture
-                                out.push(Move::Capture { from: p0.into(), to: sq });
-                            }
-                            mm.iter_bitscan_rev(|t| {
-                                out.push(Move::Quiet { from: p0.into(), to: t.into() });
-                            });
-                        } else {
-                            moves.iter_bitscan_rev(|t| {
-                                out.push(Move::Quiet { from: p0.into(), to: t.into() });
-                            });
-                        }
-                    },
-                    _ => panic!("MoveSetBishop::get Rank or File Bishop?")
-                }
-            }
-
-        });
-
-        out
-    }
-    */
 
 }
 

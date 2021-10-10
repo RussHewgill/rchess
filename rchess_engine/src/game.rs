@@ -2,8 +2,6 @@
 use crate::types::*;
 use crate::tables::*;
 
-use bitflags::bitflags;
-
 #[derive(PartialEq,PartialOrd,Clone)]
 pub struct Game {
     pub move_history: Vec<Move>,
@@ -25,7 +23,7 @@ pub struct GameState {
     pub queens:         BitBoard,
     pub kings:          BitBoard,
 
-    pub en_passent:     Option<Coord>,
+    pub en_passant:     Option<Coord>,
     pub castling:       Castling,
 
     pub score:          Score,
@@ -48,22 +46,23 @@ pub struct Castling {
 }
 
 impl Castling {
-    pub fn new() -> Castling {
+
+    pub fn new_with(w: bool, b: bool) -> Castling {
         Castling {
-            white_queen:   true,
-            white_king:    true,
-            black_queen:   true,
-            black_king:    true,
-        }
-    }
-    pub fn new_with(b: bool) -> Castling {
-        Castling {
-            white_queen:   b,
-            white_king:    b,
+            white_queen:   w,
+            white_king:    w,
             black_queen:   b,
             black_king:    b,
         }
     }
+
+    pub fn get_color(&self, col: Color) -> (bool, bool) {
+        match col {
+            White => (self.white_king,self.white_queen),
+            Black => (self.black_king,self.black_queen),
+        }
+    }
+
 }
 
 impl Game {
@@ -71,40 +70,48 @@ impl Game {
     #[must_use]
     pub fn make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Self> {
         let out = match m {
-            Move::Quiet      { from, to } => {
-                let (c,pc) = self.get_at(*from)?;
+            &Move::Quiet      { from, to } => {
+                let (c,pc) = self.get_at(from)?;
                 let mut out = self.clone();
-                out.delete_piece_mut_unchecked(*from, pc, c);
-                out.insert_piece_mut_unchecked(*to, pc, c);
+                out.delete_piece_mut_unchecked(from, pc, c);
+                out.insert_piece_mut_unchecked(to, pc, c);
                 Some(out)
             },
-            Move::PawnDouble { from, to } => {
-                let (c,pc) = self.get_at(*from)?;
+            &Move::PawnDouble { from, to } => {
+                let (c,pc) = self.get_at(from)?;
                 let mut out = self.clone();
-                out.delete_piece_mut_unchecked(*from, pc, c);
-                out.insert_piece_mut_unchecked(*to, pc, c);
+                out.delete_piece_mut_unchecked(from, pc, c);
+                out.insert_piece_mut_unchecked(to, pc, c);
+
+                out.state.en_passant = Some(ts.between_exclusive(from, to).bitscan().into());
+
                 Some(out)
             },
-            Move::Capture    { from, to } => {
-                let (c0,pc0) = self.get_at(*from)?;
-                let (c1,pc1) = self.get_at(*to)?;
+            &Move::Capture    { from, to } => {
+                let (c0,pc0) = self.get_at(from)?;
+                let (c1,pc1) = self.get_at(to)?;
                 let mut out = self.clone();
-                out.delete_piece_mut_unchecked(*from, pc0, c0);
-                out.delete_piece_mut_unchecked(*to, pc1, c1);
-                out.insert_piece_mut_unchecked(*to, pc0, c0);
+                out.delete_piece_mut_unchecked(from, pc0, c0);
+                out.delete_piece_mut_unchecked(to, pc1, c1);
+                out.insert_piece_mut_unchecked(to, pc0, c0);
                 Some(out)
             },
-            Move::EnPassant  { from, to } => {
+            &Move::EnPassant  { from, to } => {
                 unimplemented!()
             },
-            Move::Promotion  { from, to, new_piece} => {
+            &Move::Promotion  { from, to, new_piece} => {
                 unimplemented!()
             },
-            Move::PromotionCapture  { from, to, new_piece} => {
+            &Move::PromotionCapture  { from, to, new_piece} => {
                 unimplemented!()
             },
-            Move::Castle     { from, to, rook } => {
-                unimplemented!()
+            &Move::Castle     { from, to, rook_from, rook_to } => {
+                let mut out = self.clone();
+                let col = self.state.side_to_move;
+                out.delete_piece_mut_unchecked(from, King, col);
+                out.delete_piece_mut_unchecked(rook_from, Rook, col);
+                out.insert_pieces_mut_unchecked(&[(to,King,col),(rook_to,Rook,col)]);
+                Some(out)
             },
         };
 
@@ -118,16 +125,6 @@ impl Game {
             panic!("Game::make_move?");
         }
 
-    }
-
-    fn delete_piece_mut_unchecked<T: Into<Coord>>(&mut self, at: T, p: Piece, c: Color) {
-        let at = at.into();
-
-        let mut bc = self.get_color_mut(c);
-        *bc = bc.set_zero(at);
-
-        let mut bp = self.get_piece_mut(p);
-        *bp = bp.set_zero(at);
     }
 
     pub fn recalc_gameinfo_mut(&mut self, ts: &Tables) {
@@ -184,6 +181,37 @@ impl Game {
     // fn update_checkers_mut(&mut self, ts: &Tables) {
     //     unimplemented!()
     // }
+
+}
+
+/// Insertion and Deletion of Pieces
+impl Game {
+
+    fn delete_piece_mut_unchecked<T: Into<Coord>>(&mut self, at: T, p: Piece, c: Color) {
+        let at = at.into();
+
+        let mut bc = self.get_color_mut(c);
+        *bc = bc.set_zero(at);
+
+        let mut bp = self.get_piece_mut(p);
+        *bp = bp.set_zero(at);
+    }
+
+    pub fn insert_piece_mut_unchecked<T: Into<Coord>>(&mut self, at: T, p: Piece, c: Color) {
+        let at = at.into();
+
+        let mut bc = self.get_color_mut(c);
+        *bc = bc.set_one(at);
+
+        let mut bp = self.get_piece_mut(p);
+        *bp = bp.set_one(at);
+    }
+
+    pub fn insert_pieces_mut_unchecked<T: Into<Coord> + Clone>(&mut self, ps: &[(T, Piece, Color)]) {
+        for (at,p,c) in ps.iter() {
+            self.insert_piece_mut_unchecked(at.clone(), *p, *c);
+        }
+    }
 
 }
 
@@ -263,21 +291,6 @@ impl Game {
         !self.all_occupied()
     }
 
-    pub fn insert_piece_mut_unchecked<T: Into<Coord>>(&mut self, at: T, p: Piece, c: Color) {
-        let at = at.into();
-
-        let mut bc = self.get_color_mut(c);
-        *bc = bc.set_one(at);
-
-        let mut bp = self.get_piece_mut(p);
-        *bp = bp.set_one(at);
-    }
-
-    pub fn insert_pieces_mut_unchecked<T: Into<Coord> + Clone>(&mut self, ps: &[(T, Piece, Color)]) {
-        for (at,p,c) in ps.iter() {
-            self.insert_piece_mut_unchecked(at.clone(), *p, *c);
-        }
-    }
 }
 
 impl Game {
@@ -330,7 +343,7 @@ impl Game {
         black &= pawns | rooks | knights | bishops | queens | kings;
 
         state.side_to_move = White;
-        state.castling = Castling::new_with(true);
+        state.castling = Castling::new_with(true, true);
 
         // let state = GameState {
         //     side_to_move: White,
@@ -424,7 +437,7 @@ impl GameState {
 }
 
 impl Default for Castling {
-    fn default() -> Self { Self::new_with(true) }
+    fn default() -> Self { Self::new_with(false, false) }
 }
 
 impl std::fmt::Debug for Game {

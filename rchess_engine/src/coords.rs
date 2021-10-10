@@ -27,13 +27,6 @@ impl std::convert::From<u32> for Coord {
     }
 }
 
-// impl std::convert::From<u64> for Coord {
-//     fn from(sq: u64) -> Self {
-//         // assert!(sq < 64);
-//         BitBoard::index_bit(sq)
-//     }
-// }
-
 impl std::convert::From<Coord> for u32 {
     fn from(c: Coord) -> Self {
         BitBoard::index_square(c)
@@ -88,6 +81,15 @@ impl D {
     //     }
     //     // panic!("D::shift")
     // }
+
+    pub fn shift_coord_mult(&self, c0: Coord, n: u32) -> Option<Coord> {
+        if n > 0 {
+            let c1 = self.shift_coord(c0)?;
+            self.shift_coord_mult(c1, n - 1)
+        } else {
+            Some(c0)
+        }
+    }
 
     pub fn shift_coord(&self, Coord(x0,y0): Coord) -> Option<Coord> {
         match *self {
@@ -175,6 +177,7 @@ impl FromStr for Coord {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         assert_eq!(s.len(), 2);
+        let s = s.to_ascii_uppercase();
         let letters: [char; 8] = ['A','B','C','D','E','F','G','H'];
 
         let x = s.chars().nth(0).unwrap();

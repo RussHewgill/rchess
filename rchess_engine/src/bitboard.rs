@@ -5,6 +5,21 @@ use crate::tables::*;
 #[derive(Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct BitBoard(pub u64);
 
+impl Iterator for BitBoard {
+    type Item = u32;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.is_empty() {
+            None
+        } else {
+            Some(self.bitscan_reset_mut())
+        }
+    }
+}
+
+// impl BitBoard {
+//     pub fn into_bitscan_iter(&self) -> 
+// }
+
 impl BitBoard {
 
     pub fn empty() -> BitBoard {
@@ -13,6 +28,10 @@ impl BitBoard {
 
     pub fn is_empty(&self) -> bool {
         self.0 == 0
+    }
+
+    pub fn is_not_empty(&self) -> bool {
+        self.0 != 0
     }
 
     pub fn new(cs: &[Coord]) -> BitBoard {
@@ -213,6 +232,7 @@ impl BitBoard {
 }
 
 impl BitBoard {
+
     pub fn iter_bitscan<F>(&self, mut f: F)
     where F: FnMut(u32) {
         let mut b = *self;

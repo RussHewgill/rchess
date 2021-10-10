@@ -200,7 +200,6 @@ dependencies = [
 name = "rchess_engine"
 version = "0.1.0"
 dependencies = [
- "bitflags",
  "env_logger",
  "gag",
  "log",

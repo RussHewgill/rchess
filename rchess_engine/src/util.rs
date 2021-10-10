@@ -7,6 +7,33 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::process::{Command,Stdio};
 
+pub fn read_json_fens(path: &str) -> std::io::Result<Vec<(u64,u64,Game)>> {
+    let file = std::fs::read_to_string(path)?;
+    let lines = file.lines();
+
+    let mut out = vec![];
+    for line in lines.into_iter() {
+        let line = line.split("; ").collect::<Vec<&str>>();
+        if line.len() == 2 {
+            let fen = line[0];
+            // eprintln!("fen = {:?}", fen);
+            let mut line = line[1].split(" = ");
+            // eprintln!("line = {:?}", line);
+            let depth = line.next().unwrap().replace("perft ", "");
+            let depth = u64::from_str(&depth).unwrap();
+            // eprintln!("depth = {:?}", depth);
+            let nodes = line.next().unwrap();
+            // eprintln!("nodes = {:?}", nodes);
+            let nodes = u64::from_str(&nodes).unwrap();
+
+            let g = Game::from_fen(&fen).unwrap();
+            out.push((depth, nodes, g))
+        }
+    }
+
+    Ok(out)
+}
+
 pub fn test_stockfish(fen: &str, n: u64) -> std::io::Result<()> {
 
     let mut child = Command::new("stockfish")
@@ -31,7 +58,7 @@ pub fn test_stockfish(fen: &str, n: u64) -> std::io::Result<()> {
     g.recalc_gameinfo_mut(&ts);
     eprintln!("g = {:?}", g);
 
-    let (ns, ms) = g.perft(&ts, n);
+    let (ns0, ms) = g.perft(&ts, n);
 
     let mut nodes0: HashMap<String, i64> = HashMap::new();
     for (m,k) in ms.into_iter() {
@@ -44,6 +71,11 @@ pub fn test_stockfish(fen: &str, n: u64) -> std::io::Result<()> {
         let mut out = raw_output.lines();
         out.next().unwrap();
         let mut out: Vec<&str> = out.collect();
+
+        let ns1 = out[out.len() - 2];
+        let ns1: Vec<&str> = ns1.split(": ").collect();
+        let ns1 = u64::from_str(ns1[1]).unwrap();
+
         out.truncate(out.len() - 3);
 
         let mut nodes1: HashMap<String, i64> = HashMap::new();
@@ -72,6 +104,14 @@ pub fn test_stockfish(fen: &str, n: u64) -> std::io::Result<()> {
 
             // assert!(v0 == v1);
 
+        }
+
+        // eprintln!("ns1 = {:?}", ns1);
+        if ns0 == ns1 {
+            eprintln!("rchess, stockfish = {:>2} / {:>2}", ns0, ns1);
+        } else {
+            eprintln!("rchess, stockfish = {:>2} / {:>2} / failed ({})",
+                      ns0, ns1, ns0 as i64 - ns1 as i64);
         }
 
         // let words = raw_output.split_whitespace()

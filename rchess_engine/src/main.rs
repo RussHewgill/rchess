@@ -16,17 +16,23 @@ use rchess_engine_lib::util::*;
 use log::{debug, error, log_enabled, info, Level};
 use gag::Redirect;
 
-fn main() -> std::io::Result<()> {
+fn main3() -> std::io::Result<()> {
 
-    let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
-    let n = 3;
+    // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
+    let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ";
+    let n = 1;
 
     test_stockfish(fen, n)?;
 
     Ok(())
 }
 
-fn main3() {
+fn main() {
+    let games = read_json_fens("perft_fens.txt").unwrap();
+
+}
+
+fn main4() {
 
     // println!("start");
     let now = std::time::Instant::now();
@@ -39,84 +45,54 @@ fn main3() {
     let mut g = Game::empty();
 
     // g.insert_pieces_mut_unchecked(&vec![
-    //     ("C7", Pawn, Black),
-    //     ("D6", Pawn, Black),
-    //     ("F4", Pawn, Black),
-    //     ("H4", Rook, Black),
-    //     ("H3", King, Black),
-    //     ("A5", King, White),
-    //     ("B5", Pawn, White),
-    //     ("B4", Rook, White),
-    //     ("B5", Pawn, White),
-    // ]);
-
-    // g.insert_pieces_mut_unchecked(&vec![
-    //     ("D4", Queen, White),
+    //     ("E1", King, White),
+    //     ("E8", King, Black),
     //     ("B2", Pawn, White),
-    //     ("D2", Pawn, White),
-    //     ("F2", Pawn, White),
-    //     ("B4", Pawn, White),
-    //     ("F4", Pawn, White),
-    //     ("B6", Pawn, White),
-    //     ("D6", Pawn, White),
-    //     ("F6", Pawn, White),
+    //     ("C4", Pawn, Black),
     // ]);
+    // // g.state.side_to_move = Black;
+    // g.state.castling = Castling::new_with(true, true);
 
-    // g.insert_pieces_mut_unchecked(&vec![
-    //     ("H2", Rook, Black),
-    //     ("A2", King, White),
-    //     ("B2", Pawn, White),
-    //     // ("A8", Rook, Black),
-    //     // ("A1", King, White),
-    //     // ("A2", Pawn, White),
-    // ]);
-
-    // g.insert_pieces_mut_unchecked(&vec![
-    //     ("H6", King, Black),
-    //     ("A1", King, White),
-    //     // ("C3", Pawn, White),
-    //     // ("C3", Pawn, Black),
-    //     // ("D4", Pawn, White),
-    //     ("D4", Bishop, White),
-    //     ("H8", Bishop, Black),
-    // ]);
-
-    // let x = std::mem::size_of::<[[BitBoard; 64]; 64]>();
-    // eprintln!("x = {:?}", x);
-
-    // let g = Game::from_fen("8/8/8/8/1nb5/1p6/7r/K7 w - - 0 1").unwrap();
-    // let g = Game::from_fen("8/8/8/8/8/1p6/8/K7 w - - 0 1").unwrap();
-    // let g = Game::from_fen("8/8/8/8/8/1p6/7r/K7 w - - 0 1").unwrap();
-    // let g = Game::from_fen("8/8/8/8/8/k7/8/K7 w - - 0 1").unwrap();
-    // let g = Game::from_fen("8/8/8/8/2b5/k7/8/K7 w - - 0 1").unwrap();
-
-    // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - -").unwrap();
-    // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 b - - 0 1").unwrap();
-
-    // let mut g = Game::from_fen("8/7k/8/8/8/K2P3r/8/8 w - - 0 1").unwrap();
-    // let mut g = Game::from_fen("8/7k/8/8/8/K2p3r/8/8 w - - 0 1").unwrap();
-    // let mut g = Game::from_fen("8/7k/8/8/8/3P3r/K7/8 b - - 1 1").unwrap();
-    // let mut g = Game::from_fen("8/7k/8/8/8/3P4/K6r/8 w - - 2 2").unwrap();
-
-    // let mut g = Game::from_fen("8/1r6/8/8/1K2r2k/3P4/8/8 w - - 0 1").unwrap();
+    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ";
+    // let fen = "4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1";
+    let fen = "4k3/8/8/8/1Pp5/8/8/4K3 b - b3 0 1";
 
     // let mut g = Game::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ").unwrap();
     // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ").unwrap();
-    let mut g = Game::from_fen("8/2p5/3p4/Kr6/1R3p1k/4P3/6P1/8 w - - 0 2").unwrap();
+    // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 b - - 0 1").unwrap();
+    // let mut g = Game::from_fen(fen).unwrap();
 
     // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 b - - 0 1").unwrap();
     // g.state.side_to_move = Black;
 
     // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 w - - 0 1").unwrap();
 
+    let mut g = Game::from_fen(fen).unwrap();
+
     let ts = Tables::new();
     // let mut g = Game::new();
 
     g.recalc_gameinfo_mut(&ts);
 
-    // let m = Move::Quiet { from: "G2".into(), to: "G4".into() };
+    // // let m = Move::Quiet { from: "G2".into(), to: "G4".into() };
+    // let m = Move::Castle {
+    //     from:        "E1".into(),
+    //     to:          "G1".into(),
+    //     rook_from:   "H1".into(),
+    //     rook_to:     "F1".into(),
+    // };
     // let mut g = g.make_move_unchecked(&ts, &m).unwrap();
     // g.recalc_gameinfo_mut(&ts);
+
+    // // let moves = g._search_castles(&ts);
+    // let moves = g._search_pawns(None, &ts, White);
+    // let m = moves[0];
+    // eprintln!("m = {:?}", m);
+    // let mut g = g.make_move_unchecked(&ts, &m).unwrap();
+    // g.recalc_gameinfo_mut(&ts);
+
+    // let ep = g.state.en_passant;
+    // eprintln!("ep = {:?}", ep);
 
     eprintln!("{:?}", g);
 
@@ -129,7 +105,9 @@ fn main3() {
     // eprintln!("\nperft total    = {:?}", ns);
     // eprintln!("perft captures = {:?}", cs);
 
-    let moves = g.search_all(&ts, g.state.side_to_move);
+    // let moves = g.search_all(&ts, g.state.side_to_move);
+
+    let moves = g._search_pawns(None, &ts, g.state.side_to_move);
 
     // let m = Move::Capture { from: "B4".into(), to: "B5".into()};
     // let x = g.move_is_legal(&ts, &m);
