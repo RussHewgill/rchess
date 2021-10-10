@@ -16,23 +16,87 @@ use rchess_engine_lib::util::*;
 use log::{debug, error, log_enabled, info, Level};
 use gag::Redirect;
 
-fn main3() -> std::io::Result<()> {
+fn main() {
+
+    // let logpath = "log.log";
+    // use std::fs::OpenOptions;
+    // let logfile = OpenOptions::new()
+    //     .truncate(true)
+    //     .read(true)
+    //     .create(true)
+    //     .write(true)
+    //     .open(logpath)
+    //     .unwrap();
+
+    // let err_redirect = Redirect::stderr(logfile).unwrap();
+
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
+    // .format(|buf, record| {
+    //     writeln!(buf, "{}")
+    // })
+        .format_timestamp(None)
+        .init();
+
+
+    // main2();
+    main4();
+
+    // main3();
+
+}
+
+
+fn main4() {
 
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
     let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ";
+    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R4K1R b kq - 1 1";
+    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R2K3R b kq - 1 1";
+    // let fen = "1r2k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K1R1 w KQkq -";
+
     let n = 1;
 
-    test_stockfish(fen, n)?;
+    let ts = Tables::new();
+    // let mut g = Game::from_fen(fen).unwrap();
+    // g.recalc_gameinfo_mut(&ts);
+    // eprintln!("g = {:?}", g);
 
-    Ok(())
+    let (t,(_,_)) = test_stockfish(fen, n, true).unwrap();
+    // let (t,(_,_)) = test_stockfish(fen, n, false).unwrap();
+    println!("perft done in {} seconds.", t);
+
+    // let (bad_move, bad_fen) = find_move_error(&ts, fen, n, None).unwrap().unwrap();
+    // eprintln!("bad_fen  = {:?}", bad_fen);
+    // eprintln!("bad_move = {:?}", bad_move);
+    // let g = Game::from_fen(&bad_fen).unwrap();
+    // eprintln!("g = {:?}", g);
+
 }
 
-fn main() {
+fn main3() {
     let games = read_json_fens("perft_fens.txt").unwrap();
 
+    let mut games = games;
+    games.truncate(1);
+
+    for (depth,nodes,fen) in games.into_iter() {
+        let depth = 4;
+        println!("FEN: {}", &fen);
+        let (done, ((ns0,nodes0),(ns1,nodes1))) = test_stockfish(&fen, depth, false).unwrap();
+        println!("perft depth {} done in {}", depth, done);
+
+        if ns0 == ns1 {
+            eprintln!("rchess, stockfish = {:>2} / {:>2}", ns0, ns1);
+        } else {
+            eprintln!("rchess, stockfish = {:>2} / {:>2} / failed ({})",
+                      ns0, ns1, ns0 as i64 - ns1 as i64);
+        }
+
+    }
+
 }
 
-fn main4() {
+fn main2() {
 
     // println!("start");
     let now = std::time::Instant::now();
@@ -55,7 +119,10 @@ fn main4() {
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ";
     // let fen = "4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1";
-    let fen = "4k3/8/8/8/1Pp5/8/8/4K3 b - b3 0 1";
+    // let fen = "4k3/8/8/8/1Pp5/8/8/4K3 b - b3 0 1";
+    // let fen = "r1bqkbnr/p1pppppp/n7/1p6/8/N7/PPPPPPPP/R1BQKBNR b Kkq - 1 3";
+    // let fen = "8/2p5/3p4/KP5r/1R3pPk/8/4P3/8 b - g3";
+    let fen = "r3k3/p1ppqpb1/bn2pnp1/3PN3/1p2P2r/2N1Q2p/PPPBBPPP/R3K2R w KQq - 2 2";
 
     // let mut g = Game::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ").unwrap();
     // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ").unwrap();
@@ -84,9 +151,12 @@ fn main4() {
     // let mut g = g.make_move_unchecked(&ts, &m).unwrap();
     // g.recalc_gameinfo_mut(&ts);
 
-    // // let moves = g._search_castles(&ts);
-    // let moves = g._search_pawns(None, &ts, White);
-    // let m = moves[0];
+    eprintln!("{:?}", g);
+
+    // // // let moves = g._search_castles(&ts);
+    // // let moves = g._search_pawns(None, &ts, White);
+    // let moves = g._search_pawns(None, &ts, g.state.side_to_move);
+    // let m = moves[1];
     // eprintln!("m = {:?}", m);
     // let mut g = g.make_move_unchecked(&ts, &m).unwrap();
     // g.recalc_gameinfo_mut(&ts);
@@ -94,7 +164,7 @@ fn main4() {
     // let ep = g.state.en_passant;
     // eprintln!("ep = {:?}", ep);
 
-    eprintln!("{:?}", g);
+    // eprintln!("{:?}", g);
 
     // // let b = g.state.checkers.unwrap();
     // let b = g.find_attackers_to(&ts, "H4".into());
@@ -105,20 +175,31 @@ fn main4() {
     // eprintln!("\nperft total    = {:?}", ns);
     // eprintln!("perft captures = {:?}", cs);
 
-    // let moves = g.search_all(&ts, g.state.side_to_move);
+    // // let moves = g.search_all(&ts, g.state.side_to_move);
+    // let moves = g.search_sliding(Bishop, &ts, White);
+    // let m = moves[1];
+    // eprintln!("m = {:?}", m);
 
-    let moves = g._search_pawns(None, &ts, g.state.side_to_move);
-
-    // let m = Move::Capture { from: "B4".into(), to: "B5".into()};
     // let x = g.move_is_legal(&ts, &m);
     // eprintln!("x = {:?}", x);
 
-    eprintln!("moves.len() = {:?}", moves.len());
-    for m in moves.iter() {
-        eprintln!("m = {:?}", m);
-    }
+    // let x = g.find_attacks_by_side(&ts, "C8".into(), White, false);
+    // eprintln!("x = {:?}", x);
+
+    // eprintln!("moves.len() = {:?}", moves.len());
+    // for m in moves.iter() {
+    //     eprintln!("m = {:?}", m);
+    // }
 
     // let (blockers,pinners) = g.find_slider_blockers(&ts, "A3".into());
+
+    // let c0 = g.get(King, White);
+    // let c0 = c0.bitscan().into();
+    let c0: Coord = "E1".into();
+    let (bs_w, ps_b) = g.find_slider_blockers(&ts, c0, White);
+
+    eprintln!("bs_w = {:?}", bs_w);
+    eprintln!("ps_b = {:?}", ps_b);
 
     // let b = g.state.pinners;
     // eprintln!("b = {:?}", b);
@@ -267,31 +348,5 @@ fn main4() {
 
     // main2()
 }
-
-fn main2() {
-
-    let logpath = "log.log";
-    use std::fs::OpenOptions;
-    let logfile = OpenOptions::new()
-        .truncate(true)
-        .read(true)
-        .create(true)
-        .write(true)
-        .open(logpath)
-        .unwrap();
-
-    let err_redirect = Redirect::stderr(logfile).unwrap();
-
-
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
-    // .format(|buf, record| {
-    //     writeln!(buf, "{}")
-    // })
-        .format_timestamp(None)
-        .init();
-
-
-}
-
 
 

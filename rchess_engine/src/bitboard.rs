@@ -34,6 +34,11 @@ impl BitBoard {
         self.0 != 0
     }
 
+    pub fn more_than_one(&self) -> bool {
+        let b = self.bitscan_reset().0;
+        b.is_not_empty()
+    }
+
     pub fn new(cs: &[Coord]) -> BitBoard {
         let mut b = BitBoard::empty();
         for c in cs.iter() {

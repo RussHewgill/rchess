@@ -30,6 +30,8 @@ impl Game {
         out.extend(&self.search_knights(&ts, col));
         out.extend(&self.search_pawns(&ts, col));
 
+        out.extend(&self._search_castles(&ts));
+
         let out = out.into_iter().filter(|m| {
             self.move_is_legal(&ts, m)
         }).collect();
@@ -127,12 +129,22 @@ impl Game {
         // TODO: En Passant Captures
         // TODO: Castling
 
+        if m.filter_en_passant() {
+            if let Some(g2) = self.clone().make_move_unchecked(&ts, &m) {
+                let b = g2.state.checkers.unwrap();
+                return b.is_empty();
+            } else { return false; }
+        }
+
         match self.get_at(m.sq_from()) {
             Some((col,King)) => {
                 !self.find_attacks_by_side(&ts, m.sq_to(), !col, true)
             },
             Some((col,pc)) => {
                 let pins = self.get_pins(col);
+
+                // let k = BitBoard::single(m.sq_from()) & pins;
+                // eprintln!("k = {:?}", k);
 
                 let x =
                     // Not pinned
@@ -146,6 +158,10 @@ impl Game {
                 // OR capturing checking piece
                 let x1 = m.sq_to() == self.state.checkers.unwrap().bitscan().into();
 
+                // eprintln!("x = {:?}", x);
+                // eprintln!("x0 = {:?}", x0);
+                // eprintln!("x1 = {:?}", x1);
+
                 x0 | (x1 & x)
                 // unimplemented!()
                 // (x & self.find_checkers(&ts, col).is_empty())
@@ -157,7 +173,6 @@ impl Game {
     }
 
     pub fn find_checkers(&self, ts: &Tables, col: Color) -> BitBoard {
-        let col = self.state.side_to_move;
         let p0: Coord = self.get(King, col).bitscan().into();
 
         let moves = self.find_attackers_to(&ts, p0);
@@ -229,25 +244,58 @@ impl Game {
         // unimplemented!()
     }
 
-    pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord) -> (BitBoard, BitBoard) {
+    pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord, col: Color) -> (BitBoard, BitBoard) {
         let mut blockers = BitBoard::empty();
         let mut pinners = BitBoard::empty();
 
-        let mut snipers = ts.get_rook(c0).concat() & (self.get_piece(Rook) | self.get_piece(Queen))
+        let snipers = ts.get_rook(c0).concat() & (self.get_piece(Rook) | self.get_piece(Queen))
             | ts.get_bishop(c0).concat() & (self.get_piece(Bishop) | self.get_piece(Queen));
 
+        let snipers = snipers & self.get_color(!col);
+
+        // let mut snipers = ts.get_rook(c0).concat() & (self.get_piece(Rook) | self.get_piece(Queen));
+        // eprintln!("snipers = {:?}", snipers);
+
+        // let mut snipers = {
+        //     let (a,b,c,d) = self._search_sliding_single(c0, Rook, blocks, &ts, col);
+        //     let (e,f,g,h) = self._search_sliding_single(c0, Bishop, blocks, &ts, col);
+        //     ((a | b | c | d) & (self.get_piece(Rook) | self.get_piece(Queen)))
+        //         | ((e | f | g | h) & (self.get_piece(Bishop) | self.get_piece(Queen)))
+        // };
+
         let occ = self.all_occupied() ^ snipers;
-        let (col0, _) = self.get_at(c0).unwrap();
+        // eprintln!("occ = {:?}", occ);
+
+        // let (col0, _) = self.get_at(c0).unwrap();
+
         snipers.iter_bitscan(|sq| {
             let b = ts.between(c0, sq.into()) & occ;
+            // eprintln!("b = {:?}", b);
+            // let cc: Coord = sq.into();
+            // eprintln!("cc = {:?}", cc);
 
-            // if (b.0 != 0) & !((b & BitBoard(b.0 - 1)).0 != 0) {
-            if (b.0 != 0) & !((b & BitBoard(b.0.overflowing_sub(1).0)).0 != 0) {
+            if b.is_not_empty() & !b.more_than_one() {
+                // eprintln!("b = {:?}", b);
                 blockers |= b;
                 if let Some((col1,_)) = self.get_at(sq.into()) {
-                    pinners.set_one_mut(sq.into());
+                    // println!("wat 1");
+                    if col != col1 {
+                        pinners.set_one_mut(sq.into());
+                    }
                 }
             }
+
+
+            // // if (b.0 != 0) & !((b & BitBoard(b.0 - 1)).0 != 0) {
+            // if (b.0 != 0) & !((b & BitBoard(b.0.overflowing_sub(1).0)).0 != 0) {
+            //     // println!("wat 0");
+            //     blockers |= b;
+            //     if let Some((col1,_)) = self.get_at(sq.into()) {
+            //         // println!("wat 1");
+            //         pinners.set_one_mut(sq.into());
+            //     }
+            // }
+
         });
         (blockers, pinners)
     }
@@ -263,16 +311,20 @@ impl Game {
     pub fn find_attacks_by_side(&self, ts: &Tables, c0: Coord, col: Color, king: bool) -> bool {
 
         let moves_k = ts.get_king(c0);
-        if (*moves_k & self.get(King, col)).0 != 0 { return true; }
+        if (*moves_k & self.get(King, col)).is_not_empty() { return true; }
 
         let moves_p = ts.get_pawn(c0).get_capture(!col);
-        if (*moves_p & self.get(Pawn, col)).0 != 0 { return true; }
+        if (*moves_p & self.get(Pawn, col)).is_not_empty() { return true; }
 
         let bq = self.get(Queen, col);
 
         // let moves_b = ts.get_bishop(c0);
         // let moves_b = self._search_sliding(Some(c0), Bishop, &ts, col);
         // let moves_r = self._search_sliding(Some(c0), Rook, &ts, col);
+
+        let moves_n = ts.get_knight(c0);
+        // eprintln!("moves_n = {:?}", moves_n);
+        if (*moves_n & self.get(Knight, col)).is_not_empty() { return true; }
 
         let occ = if king {
             self.all_occupied() & !self.get(King, !col)
@@ -284,15 +336,15 @@ impl Game {
             let (a,b,c,d) = self._search_sliding_single(c0, Rook, occ, &ts, !col);
             a | b | c | d
         };
-        if ((moves_r & self.get(Rook, col)).0 != 0)
-            | ((moves_r & self.get(Queen, col)).0 != 0) { return true; }
+        if ((moves_r & self.get(Rook, col)).is_not_empty())
+            | ((moves_r & self.get(Queen, col)).is_not_empty()) { return true; }
 
         let moves_b = {
             let (a,b,c,d) = self._search_sliding_single(c0, Bishop, occ, &ts, !col);
             a | b | c | d
         };
-        if ((moves_b & self.get(Bishop, col)).0 != 0)
-            | ((moves_b & self.get(Queen, col)).0 != 0) { return true; }
+        if ((moves_b & self.get(Bishop, col)).is_not_empty())
+            | ((moves_b & self.get(Queen, col)).is_not_empty()) { return true; }
 
         false
         // unimplemented!()
@@ -414,40 +466,48 @@ impl Game {
 
         if kingside {
             let rook: Coord = if col == White { "H1".into() } else { "H8".into() };
-            let between = ts.between_exclusive(king, rook);
+            if let Some((_,Rook)) = self.get_at(rook) {
+                let between = ts.between_exclusive(king, rook);
 
-            if (between & self.all_occupied()).is_empty() {
-                let mut go = true;
-                for sq in between.into_iter() {
-                    if self.find_attacks_by_side(&ts, sq.into(), !col, true) {
-                        go = false;
-                        break;
+                if (between & self.all_occupied()).is_empty() {
+                    let mut go = true;
+                    for sq in between.into_iter() {
+                        if self.find_attacks_by_side(&ts, sq.into(), !col, true) {
+                            go = false;
+                            break;
+                        }
                     }
-                }
-                if go {
-                    let to = if col == White { "G1".into() } else { "G8".into() };
-                    let rook_to = if col == White { "F1".into() } else { "F8".into() };
-                    out.push(Move::Castle { from: king, to, rook_from: rook, rook_to });
+                    if go {
+                        let to = if col == White { "G1".into() } else { "G8".into() };
+                        let rook_to = if col == White { "F1".into() } else { "F8".into() };
+                        out.push(Move::Castle { from: king, to, rook_from: rook, rook_to });
+                    }
                 }
             }
 
         }
         if queenside {
-            let rook: Coord = if col == White { "A1".into() } else { "H1".into() };
-            let between = ts.between_exclusive(king, rook);
+            let rook: Coord = if col == White { "A1".into() } else { "A8".into() };
+            if let Some((_,Rook)) = self.get_at(rook) {
+                let between = ts.between_exclusive(king, rook);
 
-            if (between & self.all_occupied()).is_empty() {
-                let mut go = true;
-                for sq in between.into_iter() {
-                    if self.find_attacks_by_side(&ts, sq.into(), !col, true) {
-                        go = false;
-                        break;
+                if (between & self.all_occupied()).is_empty() {
+                    let mut go = true;
+                    let king_moves = if col == White { BitBoard(0xc) } else { BitBoard(0xc00000000000000) };
+                    for sq in king_moves.into_iter() {
+                        // let cc: Coord = sq.into();
+                        // eprintln!("cc = {:?}", cc);
+
+                        if self.find_attacks_by_side(&ts, sq.into(), !col, true) {
+                            go = false;
+                            break;
+                        }
                     }
-                }
-                if go {
-                    let to      = if col == White { "C1".into() } else { "C8".into() };
-                    let rook_to = if col == White { "D1".into() } else { "D8".into() };
-                    out.push(Move::Castle { from: king, to, rook_from: rook, rook_to });
+                    if go {
+                        let to      = if col == White { "C1".into() } else { "C8".into() };
+                        let rook_to = if col == White { "D1".into() } else { "D8".into() };
+                        out.push(Move::Castle { from: king, to, rook_from: rook, rook_to });
+                    }
                 }
             }
         }

@@ -97,7 +97,15 @@ impl Game {
                 Some(out)
             },
             &Move::EnPassant  { from, to } => {
-                unimplemented!()
+                let col = self.state.side_to_move;
+                let (c0,pc0) = self.get_at(from)?;
+                let to1 = if col == White { S.shift_coord(to)? } else { N.shift_coord(to)? };
+                let (c1,pc1) = self.get_at(to1)?;
+                let mut out = self.clone();
+                out.delete_piece_mut_unchecked(from, pc0, c0);
+                out.delete_piece_mut_unchecked(to1, pc1, c1);
+                out.insert_piece_mut_unchecked(to, pc0, c0);
+                Some(out)
             },
             &Move::Promotion  { from, to, new_piece} => {
                 unimplemented!()
@@ -116,6 +124,35 @@ impl Game {
         };
 
         if let Some(mut x) = out {
+            match m {
+                Move::PawnDouble { .. }                   => {},
+                Move::Quiet { from, .. } | Move::Capture { from, .. } => {
+                    match (self.state.side_to_move, self.get_at(*from)) {
+                        (White, Some((_,Rook))) => {
+                            if *from == "H1".into() { x.state.castling.white_king; };
+                            if *from == "A1".into() { x.state.castling.white_queen; };
+                        },
+                        (Black, Some((_,Rook))) => {
+                            if *from == "H8".into() { x.state.castling.black_king; };
+                            if *from == "A8".into() { x.state.castling.black_queen; };
+                        },
+                        _              => {},
+                    }
+                },
+                Move::Castle { .. }                       => {
+                    match self.state.side_to_move {
+                        White => {
+                            x.state.castling.white_king  = false;
+                            x.state.castling.white_queen = false;
+                        },
+                        Black => {
+                            x.state.castling.black_king  = false;
+                            x.state.castling.black_queen = false;
+                        },
+                    }
+                },
+                _                                         => x.state.en_passant = None,
+            }
             x.state.side_to_move = !x.state.side_to_move;
             x.move_history.push(*m);
             x.reset_gameinfo_mut();
@@ -151,11 +188,14 @@ impl Game {
         // self.state.pinned = Some((pw,pb));
         let c0 = self.get(King, White);
         let c0 = c0.bitscan().into();
-        let (bs_w, ps_b) = self.find_slider_blockers(&ts, c0);
+        let (bs_w, ps_b) = self.find_slider_blockers(&ts, c0, White);
 
         let c1 = self.get(King, Black);
         let c1 = c1.bitscan().into();
-        let (bs_b, ps_w) = self.find_slider_blockers(&ts, c1);
+        let (bs_b, ps_w) = self.find_slider_blockers(&ts, c1, Black);
+
+        // let bs_w = bs_w & self.get_color(White);
+        // let bs_b = bs_b & self.get_color(Black);
 
         self.state.king_blocks_w = Some(bs_w);
         self.state.king_blocks_b = Some(bs_b);
@@ -172,6 +212,9 @@ impl Game {
         // let moves = moves & self.get_color(!col);
         // eprintln!("moves = {:?}", moves);
         let moves = self.find_checkers(&ts, self.state.side_to_move);
+
+        // XXX: trim this unless needed?
+        let moves = moves | self.find_checkers(&ts, !self.state.side_to_move);
 
         self.state.checkers = Some(moves);
 
@@ -408,6 +451,74 @@ fn square_color(Coord(x,y): Coord) -> Color {
 
 impl Game {
     // pub fn show_moveset(&self, moves: BitBoard) 
+
+    pub fn to_fen(&self) -> String {
+        let mut out = String::new();
+
+        for y0 in 0..8 {
+            let y = 7-y0;
+
+            let pieces = (0..8)
+                .map(|x| self.get_at(Coord(x,y)));
+                // .collect::<Vec<Option<(Color,Piece)>>>();
+
+            let mut n = 0;
+            for pc in pieces {
+                match pc {
+                    None     => n += 1,
+                    Some((col,pc)) => {
+                        if n != 0 {
+                            out.push_str(&format!("{}", n));
+                        }
+                        n = 0;
+                        let mut c = match pc {
+                            Pawn   => 'p',
+                            Rook   => 'r',
+                            Knight => 'n',
+                            Bishop => 'b',
+                            Queen  => 'q',
+                            King   => 'k',
+                        };
+                        if col == White { c = c.to_ascii_uppercase(); }
+                        out.push_str(&format!("{}", c));
+                    },
+                }
+            }
+            if n != 0 {
+                out.push_str(&format!("{}", n));
+            }
+            out.push_str(&"/");
+        }
+        out.truncate(out.len() - 1);
+
+        let s = if self.state.side_to_move == White { 'w' } else { 'b' };
+        out.push_str(&format!(" {} ", s));
+
+        let c = self.state.castling;
+
+        if !c.white_king & !c.white_queen & !c.black_king & !c.black_queen { out.push('-'); }
+
+        if c.white_king  { out.push_str(&"K"); }
+        if c.white_queen { out.push_str(&"Q"); }
+        if c.black_king  { out.push_str(&"k"); }
+        if c.black_queen { out.push_str(&"q"); }
+
+        if let Some(ep) = self.state.en_passant {
+            let s = format!(" {:?}", ep);
+            out.push_str(&s.to_ascii_lowercase());
+        } else {
+            out.push_str(&" -");
+        }
+
+        // out.push_str(&" 0 ");
+        // if self.state.side_to_move == White {
+        //     out.push_str(&"");
+        // }
+
+        out
+        // unimplemented!()
+    }
+
 }
 
 impl GameState {
@@ -469,6 +580,22 @@ impl std::fmt::Debug for Game {
             line.push_str(&format!("{} ", cs[x]));
         }
         f.write_str(&format!("{}\n", line))?;
+
+        f.write_str(&format!("En Passant: {:?}\n", self.state.en_passant))?;
+        let c = self.state.castling;
+        f.write_str(&format!("Castling (KQkq): {} {} {} {}\n",
+                             c.white_king,
+                             c.white_queen,
+                             c.black_king,
+                             c.black_queen,
+        ))?;
+
+        // f.write_str(&format!("Moves: \n"))?;
+        // let mut k = 0;
+        // for m in self.move_history.iter() {
+        //     f.write_str(&format!("{:>2}: {:?}\n", k, m))?;
+        //     k += 1;
+        // }
 
         Ok(())
     }

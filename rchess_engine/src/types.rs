@@ -53,6 +53,13 @@ impl Move {
         }
     }
 
+    pub fn filter_en_passant(&self) -> bool {
+        match self {
+            &Move::EnPassant { .. }        => true,
+            _                              => false,
+        }
+    }
+
     pub fn sq_from(&self) -> Coord {
         match self {
             &Move::Quiet { from, .. } => from,
