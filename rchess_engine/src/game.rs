@@ -11,28 +11,30 @@ pub struct Game {
 // #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
 #[derive(Debug,Default,PartialEq,PartialOrd,Clone,Copy)]
 pub struct GameState {
-    pub side_to_move:   Color,
+    pub side_to_move:       Color,
 
-    pub white:          BitBoard,
-    pub black:          BitBoard,
+    pub white:              BitBoard,
+    pub black:              BitBoard,
 
-    pub pawns:          BitBoard,
-    pub rooks:          BitBoard,
-    pub knights:        BitBoard,
-    pub bishops:        BitBoard,
-    pub queens:         BitBoard,
-    pub kings:          BitBoard,
+    pub pawns:              BitBoard,
+    pub rooks:              BitBoard,
+    pub knights:            BitBoard,
+    pub bishops:            BitBoard,
+    pub queens:             BitBoard,
+    pub kings:              BitBoard,
 
-    pub en_passant:     Option<Coord>,
-    pub castling:       Castling,
+    pub en_passant:         Option<Coord>,
+    pub castling:           Castling,
 
-    pub score:          Score,
+    pub score:              Score,
 
-    pub checkers:       Option<BitBoard>,
-    pub king_blocks_w:  Option<BitBoard>,
-    pub king_blocks_b:  Option<BitBoard>,
-    pub pinners:        Option<BitBoard>,
+    pub checkers:           Option<BitBoard>,
+    pub king_blocks_w:      Option<BitBoard>,
+    pub king_blocks_b:      Option<BitBoard>,
+    pub pinners:            Option<BitBoard>,
     // pub pinned:         Option<(BitBoard,BitBoard)>,
+
+    pub check_block_mask:   Option<BitBoard>,
 }
 
 pub type Score = f64;
@@ -108,10 +110,20 @@ impl Game {
                 Some(out)
             },
             &Move::Promotion  { from, to, new_piece} => {
-                unimplemented!()
+                let (c0,pc0) = self.get_at(from)?;
+                let mut out = self.clone();
+                out.delete_piece_mut_unchecked(from, pc0, c0);
+                out.insert_piece_mut_unchecked(to, new_piece, c0);
+                Some(out)
             },
             &Move::PromotionCapture  { from, to, new_piece} => {
-                unimplemented!()
+                let (c0,pc0) = self.get_at(from)?;
+                let (c1,pc1) = self.get_at(to)?;
+                let mut out = self.clone();
+                out.delete_piece_mut_unchecked(from, pc0, c0);
+                out.delete_piece_mut_unchecked(to, pc1, c1);
+                out.insert_piece_mut_unchecked(to, new_piece, c0);
+                Some(out)
             },
             &Move::Castle     { from, to, rook_from, rook_to } => {
                 let mut out = self.clone();
@@ -126,15 +138,26 @@ impl Game {
         if let Some(mut x) = out {
             match m {
                 Move::PawnDouble { .. }                   => {},
+                _                                         => x.state.en_passant = None,
+            }
+            match m {
                 Move::Quiet { from, .. } | Move::Capture { from, .. } => {
                     match (self.state.side_to_move, self.get_at(*from)) {
+                        (White, Some((_,King))) => {
+                            x.state.castling.white_king = false;
+                            x.state.castling.white_queen = false;
+                        }
+                        (Black, Some((_,King))) => {
+                            x.state.castling.black_king = false;
+                            x.state.castling.black_queen = false;
+                        }
                         (White, Some((_,Rook))) => {
-                            if *from == "H1".into() { x.state.castling.white_king; };
-                            if *from == "A1".into() { x.state.castling.white_queen; };
+                            if *from == "H1".into() { x.state.castling.white_king = false; };
+                            if *from == "A1".into() { x.state.castling.white_queen = false; };
                         },
                         (Black, Some((_,Rook))) => {
-                            if *from == "H8".into() { x.state.castling.black_king; };
-                            if *from == "A8".into() { x.state.castling.black_queen; };
+                            if *from == "H8".into() { x.state.castling.black_king = false; };
+                            if *from == "A8".into() { x.state.castling.black_queen = false; };
                         },
                         _              => {},
                     }
@@ -151,8 +174,9 @@ impl Game {
                         },
                     }
                 },
-                _                                         => x.state.en_passant = None,
+                _ => {},
             }
+
             x.state.side_to_move = !x.state.side_to_move;
             x.move_history.push(*m);
             x.reset_gameinfo_mut();
@@ -172,6 +196,7 @@ impl Game {
 
         self.update_pins_mut(&ts);
         self.update_checkers_mut(&ts);
+        self.update_check_block_mut(&ts);
 
     }
 
@@ -187,10 +212,16 @@ impl Game {
         // let pb = self.find_pins_absolute(&ts, Black);
         // self.state.pinned = Some((pw,pb));
         let c0 = self.get(King, White);
+        if c0.is_empty() {
+            panic!("No King? g = {:?}", self);
+        }
         let c0 = c0.bitscan().into();
         let (bs_w, ps_b) = self.find_slider_blockers(&ts, c0, White);
 
         let c1 = self.get(King, Black);
+        if c1.is_empty() {
+            panic!("No King? g = {:?}", self);
+        }
         let c1 = c1.bitscan().into();
         let (bs_b, ps_w) = self.find_slider_blockers(&ts, c1, Black);
 
@@ -219,6 +250,19 @@ impl Game {
         self.state.checkers = Some(moves);
 
         // unimplemented!()
+    }
+
+    fn update_check_block_mut(&mut self, ts: &Tables) {
+        let c0 = self.state.checkers.unwrap();
+        if c0.is_empty() | c0.more_than_one() {
+            self.state.check_block_mask = Some(BitBoard::empty());
+            return;
+        }
+
+        let king = self.get(King, self.state.side_to_move).bitscan();
+        let b = ts.between_exclusive(king, c0.bitscan());
+
+        self.state.check_block_mask = Some(b);
     }
 
     // fn update_checkers_mut(&mut self, ts: &Tables) {
@@ -590,12 +634,12 @@ impl std::fmt::Debug for Game {
                              c.black_queen,
         ))?;
 
-        // f.write_str(&format!("Moves: \n"))?;
-        // let mut k = 0;
-        // for m in self.move_history.iter() {
-        //     f.write_str(&format!("{:>2}: {:?}\n", k, m))?;
-        //     k += 1;
-        // }
+        f.write_str(&format!("Moves: \n"))?;
+        let mut k = 0;
+        for m in self.move_history.iter() {
+            f.write_str(&format!("{:>2}: {:?}\n", k, m))?;
+            k += 1;
+        }
 
         Ok(())
     }

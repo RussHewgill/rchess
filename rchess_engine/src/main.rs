@@ -48,13 +48,12 @@ fn main() {
 
 fn main4() {
 
-    // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
-    let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ";
-    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R4K1R b kq - 1 1";
-    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R2K3R b kq - 1 1";
-    // let fen = "1r2k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K1R1 w KQkq -";
+    // let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
+    // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ";
+    // let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
 
-    let n = 1;
+    let n = 4;
 
     let ts = Tables::new();
     // let mut g = Game::from_fen(fen).unwrap();
@@ -124,6 +123,13 @@ fn main2() {
     // let fen = "8/2p5/3p4/KP5r/1R3pPk/8/4P3/8 b - g3";
     let fen = "r3k3/p1ppqpb1/bn2pnp1/3PN3/1p2P2r/2N1Q2p/PPPBBPPP/R3K2R w KQq - 2 2";
 
+    let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    // let fen = "1rbqkbnr/pppppppp/n7/8/3P4/8/PPPKPPPP/RNBQ1BNR w k - 3 3";
+
+    let fen = "8/2p5/3p4/KP5r/1R3pP1/4P2k/8/8 b - - 0 2";
+
+    let fen = "rnQq1k1r/pp3ppp/2pQ4/8/2B5/8/PPP1NnPP/RNB1K2R b KQ - 0 9";
+
     // let mut g = Game::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ").unwrap();
     // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ").unwrap();
     // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 b - - 0 1").unwrap();
@@ -175,15 +181,38 @@ fn main2() {
     // eprintln!("\nperft total    = {:?}", ns);
     // eprintln!("perft captures = {:?}", cs);
 
-    // // let moves = g.search_all(&ts, g.state.side_to_move);
-    // let moves = g.search_sliding(Bishop, &ts, White);
-    // let m = moves[1];
-    // eprintln!("m = {:?}", m);
+    // g.recalc_gameinfo_mut(&ts);
+    // let b = g.state.checkers;
+    // eprintln!("b = {:?}", b);
 
-    // let x = g.move_is_legal(&ts, &m);
-    // eprintln!("x = {:?}", x);
+    // let cs = g.find_checkers(&ts, g.state.side_to_move);
+    // eprintln!("cs = {:?}", cs);
 
-    // let x = g.find_attacks_by_side(&ts, "C8".into(), White, false);
+    let col = Black;
+    // let p0: Coord = g.get(King, col).bitscan().into();
+    let p0: Coord = "F8".into();
+
+    // let moves = g.find_attackers_to(&ts, p0, col);
+    // let moves = moves & g.get_color(!col);
+
+    // let moves = g.state.king_blocks_b;
+
+    // eprintln!("moves = {:?}", moves);
+
+    let m = Move::Quiet { from: "D8".into(), to: "E7".into() };
+
+    let x = g.move_is_legal(&ts, &m);
+    eprintln!("x = {:?}", x);
+
+    // let moves = g.search_all(&ts, g.state.side_to_move);
+    // // let moves = g.search_sliding(Bishop, &ts, White);
+    // // let moves = g._search_pawns(None, &ts, Black);
+    // // let moves = g._search_promotions(&ts, None, White);
+    // // let m = moves[10];
+    // // eprintln!("m = {:?}", m);
+
+    // let x = g.state.checkers;
+    // // let x = g.move_is_legal(&ts, &m3);
     // eprintln!("x = {:?}", x);
 
     // eprintln!("moves.len() = {:?}", moves.len());
@@ -193,13 +222,13 @@ fn main2() {
 
     // let (blockers,pinners) = g.find_slider_blockers(&ts, "A3".into());
 
-    // let c0 = g.get(King, White);
-    // let c0 = c0.bitscan().into();
-    let c0: Coord = "E1".into();
-    let (bs_w, ps_b) = g.find_slider_blockers(&ts, c0, White);
+    // // let c0 = g.get(King, White);
+    // // let c0 = c0.bitscan().into();
+    // let c0: Coord = "E1".into();
+    // let (bs_w, ps_b) = g.find_slider_blockers(&ts, c0, White);
 
-    eprintln!("bs_w = {:?}", bs_w);
-    eprintln!("ps_b = {:?}", ps_b);
+    // eprintln!("bs_w = {:?}", bs_w);
+    // eprintln!("ps_b = {:?}", ps_b);
 
     // let b = g.state.pinners;
     // eprintln!("b = {:?}", b);

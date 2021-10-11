@@ -29,6 +29,7 @@ impl Game {
         out.extend(&self.search_sliding(Queen, &ts, col));
         out.extend(&self.search_knights(&ts, col));
         out.extend(&self.search_pawns(&ts, col));
+        out.extend(&self._search_promotions(&ts, None, col));
 
         out.extend(&self._search_castles(&ts));
 
@@ -52,6 +53,7 @@ impl Game {
             out.extend(&self.search_sliding(Queen, &ts, col));
             out.extend(&self.search_knights(&ts, col));
             out.extend(&self.search_pawns(&ts, col));
+            out.extend(&self._search_promotions(&ts, None, col));
         }
 
         let out = out.into_iter().filter(|m| {
@@ -130,10 +132,14 @@ impl Game {
         // TODO: Castling
 
         if m.filter_en_passant() {
-            if let Some(g2) = self.clone().make_move_unchecked(&ts, &m) {
+            if self.state.en_passant.is_none() {
+                return false;
+            } else if let Some(g2) = self.clone().make_move_unchecked(&ts, &m) {
                 let b = g2.state.checkers.unwrap();
                 return b.is_empty();
-            } else { return false; }
+            } else {
+                return false;
+            }
         }
 
         match self.get_at(m.sq_from()) {
@@ -158,11 +164,16 @@ impl Game {
                 // OR capturing checking piece
                 let x1 = m.sq_to() == self.state.checkers.unwrap().bitscan().into();
 
+                // OR (Not pinned & Blocking check)
+                let x2 = {
+                    (BitBoard::single(m.sq_to()) & self.state.check_block_mask.unwrap()).is_not_empty()
+                };
+
                 // eprintln!("x = {:?}", x);
                 // eprintln!("x0 = {:?}", x0);
                 // eprintln!("x1 = {:?}", x1);
 
-                x0 | (x1 & x)
+                x0 | (x & x1) | (x & x2)
                 // unimplemented!()
                 // (x & self.find_checkers(&ts, col).is_empty())
                 //     | (m.filter_all_captures() & (m.to() == ))
@@ -175,7 +186,7 @@ impl Game {
     pub fn find_checkers(&self, ts: &Tables, col: Color) -> BitBoard {
         let p0: Coord = self.get(King, col).bitscan().into();
 
-        let moves = self.find_attackers_to(&ts, p0);
+        let moves = self.find_attackers_to(&ts, p0, col);
         let moves = moves & self.get_color(!col);
         moves
     }
@@ -414,10 +425,11 @@ impl Game {
             .map(|m| m.reverse())
     }
 
-    pub fn find_attackers_to(&self, ts: &Tables, c0: Coord) -> BitBoard {
+    pub fn find_attackers_to(&self, ts: &Tables, c0: Coord, col: Color) -> BitBoard {
 
         let pawns = ts.get_pawn(c0);
-        let pawns = *pawns.get_capture(White) | *pawns.get_capture(Black);
+        // let pawns = *pawns.get_capture(White) | *pawns.get_capture(Black);
+        let pawns = *pawns.get_capture(col);
         let pawns = pawns & self.get_piece(Pawn);
 
         let knights = *ts.get_knight(c0) & self.get_piece(Knight);
@@ -851,6 +863,7 @@ impl Game {
             White => (N,NW,NE),
             Black => (S,SW,SE),
         };
+        let ps = ps & !(if col == White { BitBoard::mask_rank(6) } else { BitBoard::mask_rank(1) });
 
         let pushes = ps.shift(dir);
         let pushes = pushes & !(oc);
@@ -903,6 +916,52 @@ impl Game {
         // pushes.serialize()
         // unimplemented!()
         // vec![]
+        out
+    }
+
+    pub fn _search_promotions(&self, ts: &Tables, single: Option<Coord>, col: Color) -> Vec<Move> {
+        let mut out = vec![];
+        let oc = self.all_occupied();
+
+        let (dir,dw,de) = match col {
+            White => (N,NW,NE),
+            Black => (S,SW,SE),
+        };
+
+        let ps = match single {
+            Some(c0) => BitBoard::single(c0),
+            None     => self.get(Pawn, col),
+        };
+        let ps = ps & if col == White { BitBoard::mask_rank(6) } else { BitBoard::mask_rank(1) };
+
+        let pushes = ps.shift(dir);
+        let pushes = pushes & !(oc);
+
+        pushes.iter_bitscan(|t| {
+            let t = t.into();
+            if let Some(f) = (!dir).shift_coord(t) {
+                // out.push(Move::Quiet { from: f, to: t });
+                out.push(Move::Promotion { from: f, to: t, new_piece: Queen });
+                out.push(Move::Promotion { from: f, to: t, new_piece: Knight });
+                out.push(Move::Promotion { from: f, to: t, new_piece: Rook });
+                out.push(Move::Promotion { from: f, to: t, new_piece: Bishop });
+            }
+        });
+
+        ps.iter_bitscan(|p0| {
+            let f  = BitBoard::index_bit(p0);
+            let bb = BitBoard::empty().flip(f);
+            let mut cs = (bb.shift(dw) & self.get_color(!col))
+                | (bb.shift(de) & self.get_color(!col));
+            while cs.0 != 0 {
+                let t = cs.bitscan_reset_mut().into();
+                out.push(Move::PromotionCapture { from: f, to: t, new_piece: Queen });
+                out.push(Move::PromotionCapture { from: f, to: t, new_piece: Knight });
+                out.push(Move::PromotionCapture { from: f, to: t, new_piece: Rook });
+                out.push(Move::PromotionCapture { from: f, to: t, new_piece: Bishop });
+            }
+        });
+
         out
     }
 

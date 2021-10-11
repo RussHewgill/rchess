@@ -22,6 +22,9 @@ impl Tables {
     // pub fn get_rook(&self, Coord(x,y): Coord) -> &MoveSetRook {
     pub fn get_rook<T: Into<Coord>>(&self, c: T) -> &MoveSetRook {
         let Coord(x,y) = c.into();
+        if (x > 7) | (y > 7) {
+            panic!("x,y = {}, {}", x, y);
+        }
         &self.rook_moves[x as usize][y as usize]
     }
     // pub fn get_bishop(&self, Coord(x,y): Coord) -> &MoveSetBishop {
