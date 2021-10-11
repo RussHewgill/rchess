@@ -130,7 +130,20 @@ impl Color {
     }
 }
 
+// impl Iterator for Piece {
+//     type Item = Piece;
+//     fn next(&mut self) -> Option<Self::Item> {
+//         match self {
+//         }
+//     }
+// }
+
 impl Piece {
+
+    pub fn iter_pieces() -> impl Iterator<Item = Piece> {
+        let xs = vec![Pawn,Rook,Knight,Bishop,Queen,King];
+        xs.into_iter()
+    }
 
     pub fn score(&self) -> i32 {
         match self {

@@ -4,6 +4,8 @@ use std::str::FromStr;
 use crate::types::*;
 use crate::tables::*;
 
+// use rayon::prelude::*;
+
 impl Game {
 
     pub fn search_all(&self, ts: &Tables, col: Color) -> Vec<Move> {
@@ -20,6 +22,23 @@ impl Game {
     }
 
     pub fn _search_all(&self, ts: &Tables, col: Color) -> Vec<Move> {
+
+        // let xs = [
+        //     || self.search_king(&ts, col),
+        //     || self.search_sliding(Bishop, &ts, col),
+        //     || self.search_sliding(Rook, &ts, col),
+        //     || self.search_sliding(Queen, &ts, col),
+        //     || self.search_knights(&ts, col),
+        //     || self.search_pawns(&ts, col),
+        //     || self._search_promotions(&ts, None, col),
+        //     || self._search_castles(&ts),
+        // ];
+
+        // rayon::scope(|s| {
+        // });
+
+        // let out: Vec<Move> = xs.par_iter().collect();
+
         let mut out = vec![];
 
         out.extend(&self.search_king(&ts, col));
@@ -680,18 +699,35 @@ impl Game {
         let mut out_captures_pos = BitBoard::empty();
         let mut out_captures_neg = BitBoard::empty();
 
+        let rooks = ts.get_rook(p0).to_vec();
+        let bishops = ts.get_bishop(p0).to_vec();
+
+        let both = [rooks[0],rooks[1],rooks[2],rooks[3],
+                    bishops[0],bishops[1],bishops[2],bishops[3]];
+
         let ms = match pc {
-            Rook   => ts.get_rook(p0).to_vec(),
-            Bishop => ts.get_bishop(p0).to_vec(),
+            Rook   => rooks.iter(),
+            Bishop => bishops.iter(),
             Queen  => {
-                let mut m: Vec<(D, BitBoard)> = ts.get_bishop(p0).to_vec();
-                m.append(&mut ts.get_rook(p0).to_vec());
-                m
+                // let mut m0 = ts.get_bishop(p0).to_vec().iter();
+                // let m1 = ts.get_rook(p0).to_vec().iter();
+                // m0.chain(m1).into()
+                // unimplemented!()
+                // ts.get_bishop(p0).to_vec_with_rook(ts.get_rook(p0).to_vec()).iter()
+
+                both.iter()
+                // unimplemented!()
+
+                // let mut m: Vec<(D, BitBoard)> = ts.get_bishop(p0).to_vec();
+                // m.append(&mut ts.get_rook(p0).to_vec());
+                // m
+                // unimplemented!()
             },
             _      => panic!("search_sliding: wrong piece: {:?}", pc),
         };
 
         for (dir,moves) in ms {
+            let (dir,moves) = (*dir,*moves);
             match dir {
 
                 // Rook Positive

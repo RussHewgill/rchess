@@ -1,6 +1,7 @@
 
 use crate::types::*;
 use crate::tables::*;
+use crate::evaluate::*;
 
 #[derive(PartialEq,PartialOrd,Clone)]
 pub struct Game {
@@ -26,7 +27,7 @@ pub struct GameState {
     pub en_passant:         Option<Coord>,
     pub castling:           Castling,
 
-    pub score:              Score,
+    // pub score:              Score,
 
     pub checkers:           Option<BitBoard>,
     pub king_blocks_w:      Option<BitBoard>,
@@ -36,8 +37,6 @@ pub struct GameState {
 
     pub check_block_mask:   Option<BitBoard>,
 }
-
-pub type Score = f64;
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Castling {
@@ -459,21 +458,31 @@ impl Game {
 
 impl Game {
 
-    pub fn get_at(&self, c: Coord) -> Option<(Color, Piece)> {
-        let b = BitBoard::empty().flip(c);
-        if (b & self.all_occupied()).0 == 0 { return None; }
-
-        let color = if (b & self.get_color(White)).0 != 0 { White } else { Black };
-        // eprintln!("color = {:?}", color);
-
-        for p in vec![Pawn,Rook,Knight,Bishop,Queen,King].iter() {
-            if (b & self.get_piece(*p)).0 != 0 {
-                return Some((color,*p));
-            }
-        }
-
-        unimplemented!()
+    pub fn get_at(&self, c0: Coord) -> Option<(Color, Piece)> {
+        let b0 = BitBoard::single(c0);
+        if (self.all_occupied() & b0).is_empty() { return None; }
+        let color = if (b0 & self.get_color(White)).is_not_empty() { White } else { Black };
+        if (b0 & self.state.pawns).is_not_empty()   { return Some((color,Pawn)); }
+        if (b0 & self.state.rooks).is_not_empty()   { return Some((color,Rook)); }
+        if (b0 & self.state.knights).is_not_empty() { return Some((color,Knight)); }
+        if (b0 & self.state.bishops).is_not_empty() { return Some((color,Bishop)); }
+        if (b0 & self.state.queens).is_not_empty()  { return Some((color,Queen)); }
+        if (b0 & self.state.kings).is_not_empty()   { return Some((color,King)); }
+        None
     }
+
+    // pub fn get_at(&self, c: Coord) -> Option<(Color, Piece)> {
+    //     let b = BitBoard::empty().flip(c);
+    //     if (b & self.all_occupied()).0 == 0 { return None; }
+    //     let color = if (b & self.get_color(White)).0 != 0 { White } else { Black };
+    //     // eprintln!("color = {:?}", color);
+    //     for p in vec![Pawn,Rook,Knight,Bishop,Queen,King].iter() {
+    //         if (b & self.get_piece(*p)).0 != 0 {
+    //             return Some((color,*p));
+    //         }
+    //     }
+    //     unimplemented!()
+    // }
 
 }
 

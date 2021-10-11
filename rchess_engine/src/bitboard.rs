@@ -234,6 +234,20 @@ impl BitBoard {
         out
     }
 
+    pub fn popcount(&self) -> u32 {
+        const K1: u64 = 0x5555555555555555; /*  -1/3   */
+        const K2: u64 = 0x3333333333333333; /*  -1/5   */
+        const K4: u64 = 0x0f0f0f0f0f0f0f0f; /*  -1/17  */
+        const KF: u64 = 0x0101010101010101; /*  -1/255 */
+        let mut x: u64 = self.0;
+        x =  x       - ((x >> 1)  & K1); /* put count of each 2 bits into those 2 bits */
+        x = (x & K2) + ((x >> 2)  & K2); /* put count of each 4 bits into those 4 bits */
+        x = (x       +  (x >> 4)) & K4 ; /* put count of each 8 bits into those 8 bits */
+        /* returns 8 most significant bits of x + (x<<8) + (x<<16) + (x<<24) + ...  */
+        x = (x.overflowing_mul(KF)).0 >> 56;
+        x as u32
+    }
+
 }
 
 impl BitBoard {
@@ -281,6 +295,7 @@ impl BitBoard {
 
 }
 
+/// Shift, Rotate, Mirror, etc
 impl BitBoard {
 
     pub fn mirror_vert(&self) -> Self {
@@ -420,42 +435,6 @@ impl BitBoard {
         // unimplemented!()
     }
 
-    // pub fn shift_wrapped(&self, d: D) -> Self {
-    //     let b = match d {
-    //         D::N  => {
-    //             self.0.overflowing_shl(8 as u32).0
-    //         },
-    //         D::NE => {
-    //             self.0.overflowing_shl(9 as u32).0
-    //                 & (!BitBoard::mask_file(0)).0
-    //         },
-    //         D::E  => {
-    //             self.0.overflowing_shl(1 as u32).0
-    //                 & (!BitBoard::mask_file(0)).0
-    //         },
-    //         D::SE => {
-    //             self.0.overflowing_shr(7 as u32).0
-    //                 & (!BitBoard::mask_file(0)).0
-    //         },
-    //         D::S  => {
-    //             self.0.overflowing_shr(8 as u32).0
-    //         },
-    //         D::SW => {
-    //             self.0.overflowing_shr(9 as u32).0
-    //                 & (!BitBoard::mask_file(7)).0
-    //         },
-    //         D::W  => {
-    //             self.0.overflowing_shr(1 as u32).0
-    //                 & (!BitBoard::mask_file(7)).0
-    //         },
-    //         D::NW => {
-    //             self.0.overflowing_shl(7 as u32).0
-    //                 & (!BitBoard::mask_file(7)).0
-    //         },
-    //     };
-    //     BitBoard(b)
-    // }
-
     pub fn shift_mult(&self, d: D, n: u64) -> Self {
         let mut out = *self;
         for _ in 0..n {
@@ -477,6 +456,13 @@ impl BitBoard {
     //     BitBoard(self.0.overflowing_shr(k).0 & (!BitBoard::mask_file(7)).0)
     // }
 
+}
+
+/// Display
+impl BitBoard {
+    pub fn print_hex(&self) -> String {
+        format!("hex: {:#8x}", self.0)
+    }
 }
 
 impl Default for BitBoard {

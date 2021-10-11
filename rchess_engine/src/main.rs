@@ -6,19 +6,22 @@
 use std::collections::HashMap;
 use std::str::FromStr;
 
+use rchess_engine_lib::explore::Explorer;
 // use crate::lib::*;
 use rchess_engine_lib::types::*;
 use rchess_engine_lib::search::*;
 use rchess_engine_lib::tables::*;
 use rchess_engine_lib::parsing::*;
 use rchess_engine_lib::util::*;
+use rchess_engine_lib::evaluate::*;
 
 use log::{debug, error, log_enabled, info, Level};
 use gag::Redirect;
 
+const STARTPOS: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 fn main() {
 
-    // let logpath = "log.log";
     // use std::fs::OpenOptions;
     // let logfile = OpenOptions::new()
     //     .truncate(true)
@@ -38,22 +41,59 @@ fn main() {
         .init();
 
 
+    main5()
     // main2();
-    main4();
+    // main4();
+
+    // let b = Tables::gen_blockermask_bishop("D4".into());
+    // eprintln!("b = {:?}", b);
+
+    // Tables::gen_magics_rook("D4".into());
 
     // main3();
 
 }
 
+fn main5() {
+
+    // let fen = "8/1N1p4/4k3/2p5/8/3p4/8/7K w - - 0 1";
+    // let fen = "8/1N1p4/4k3/r1p5/8/3p4/8/7K w - - 0 1";
+    // let fen = "8/3p4/8/2Nk4/8/3p4/8/7K w - - 1 2";
+    // let fen = "3p4/1N2k3/8/2p5/8/8/8/7K w - - 0 1";
+    // let fen = "8/1N6/8/p1pk4/8/8/8/7K w - - 0 1";
+    // let fen = "8/8/8/p1pk4/1P6/8/8/7K w - - 0 1";
+    let fen = STARTPOS;
+
+    let n = 5;
+
+    let ts = Tables::new();
+    let mut g = Game::from_fen(fen).unwrap();
+    g.recalc_gameinfo_mut(&ts);
+    eprintln!("g = {:?}", g);
+
+    let ex = Explorer::new(White, g.clone());
+
+    let t = std::time::Instant::now();
+
+    let m = ex.explore(&ts, n);
+    eprintln!("m = {:?}", m);
+
+    println!("perft done in {} seconds.", t.elapsed().as_secs_f64());
+
+    // let k = g.evaluate(&ts, White);
+    // eprintln!("k = {:?}", k);
+
+}
 
 fn main4() {
 
     // let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
+    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ";
     // let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
+    let fen = STARTPOS;
 
-    let n = 4;
+    let n = 5;
 
     let ts = Tables::new();
     // let mut g = Game::from_fen(fen).unwrap();
@@ -130,6 +170,8 @@ fn main2() {
 
     let fen = "rnQq1k1r/pp3ppp/2pQ4/8/2B5/8/PPP1NnPP/RNB1K2R b KQ - 0 9";
 
+    let fen = "8/8/8/p1Nk4/8/8/8/7K b - - 0 1";
+
     // let mut g = Game::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ").unwrap();
     // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ").unwrap();
     // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 b - - 0 1").unwrap();
@@ -188,37 +230,21 @@ fn main2() {
     // let cs = g.find_checkers(&ts, g.state.side_to_move);
     // eprintln!("cs = {:?}", cs);
 
-    let col = Black;
-    // let p0: Coord = g.get(King, col).bitscan().into();
-    let p0: Coord = "F8".into();
-
-    // let moves = g.find_attackers_to(&ts, p0, col);
-    // let moves = moves & g.get_color(!col);
-
-    // let moves = g.state.king_blocks_b;
-
-    // eprintln!("moves = {:?}", moves);
-
-    let m = Move::Quiet { from: "D8".into(), to: "E7".into() };
-
-    let x = g.move_is_legal(&ts, &m);
-    eprintln!("x = {:?}", x);
-
-    // let moves = g.search_all(&ts, g.state.side_to_move);
-    // // let moves = g.search_sliding(Bishop, &ts, White);
-    // // let moves = g._search_pawns(None, &ts, Black);
-    // // let moves = g._search_promotions(&ts, None, White);
-    // // let m = moves[10];
-    // // eprintln!("m = {:?}", m);
+    let moves = g.search_all(&ts, g.state.side_to_move);
+    // let moves = g.search_sliding(Bishop, &ts, White);
+    // let moves = g._search_pawns(None, &ts, Black);
+    // let moves = g._search_promotions(&ts, None, White);
+    // let m = moves[10];
+    // eprintln!("m = {:?}", m);
 
     // let x = g.state.checkers;
     // // let x = g.move_is_legal(&ts, &m3);
     // eprintln!("x = {:?}", x);
 
-    // eprintln!("moves.len() = {:?}", moves.len());
-    // for m in moves.iter() {
-    //     eprintln!("m = {:?}", m);
-    // }
+    eprintln!("moves.len() = {:?}", moves.len());
+    for m in moves.iter() {
+        eprintln!("m = {:?}", m);
+    }
 
     // let (blockers,pinners) = g.find_slider_blockers(&ts, "A3".into());
 

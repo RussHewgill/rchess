@@ -2,6 +2,7 @@
 use crate::types::*;
 
 pub use self::movesets::*;
+pub use self::magics::*;
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Tables {
@@ -481,8 +482,115 @@ impl Tables {
 
 }
 
+mod magics {
+    use crate::types::*;
+    use crate::tables::*;
+
+    #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+    pub struct Magic {
+        ptr:   usize,
+        mask:  BitBoard,
+        magic: BitBoard,
+        shift: u32,
+    }
+
+    impl Magic {
+        pub fn new(ptr: usize, magic: BitBoard, shift: u32) -> Self {
+            Self {
+                ptr,
+                mask: BitBoard(0xff818181818181ff),
+                magic,
+                shift,
+            }
+        }
+    }
+
+    impl Tables {
+
+        pub fn gen_magics_rook(c0: Coord) {
+            let mut rng = rand::thread_rng();
+
+            let blockermask = Self::gen_blockermask_rook(c0);
+            // let blockerboard = Self::gen_blockerboard(blockermask, c0);
+
+            let shift = 64 - blockermask.popcount();
+
+            let occ = BitBoard::empty();
+
+            let blockers = occ & blockermask;
+
+            unimplemented!()
+        }
+
+        pub fn gen_blockermask_rook(c0: Coord) -> BitBoard {
+            let b0 = BitBoard(0xff818181818181ff);
+            let b1 = BitBoard::mask_file(c0.0 as u32)
+                | BitBoard::mask_rank(c0.1 as u32);
+            (!b0 & b1).set_zero(c0)
+        }
+
+        pub fn gen_blockermask_bishop(c0: Coord) -> BitBoard {
+            let b0 = BitBoard(0xff818181818181ff);
+
+            let b1 = Self::gen_diagonal(c0, true)
+                | Self::gen_diagonal(c0, false)
+                | Self::gen_antidiagonal(c0, true)
+                | Self::gen_antidiagonal(c0, false);
+
+            (!b0 & b1).set_zero(c0)
+        }
+
+        fn gen_moveboard_rook(blockerboard: BitBoard, c0: Coord) -> BitBoard {
+            unimplemented!()
+        }
+
+        fn gen_moveboard_bishop(blockerboard: BitBoard, c0: Coord) -> BitBoard {
+            unimplemented!()
+        }
+
+        fn gen_blockerboard(blockermask: BitBoard, index: usize) -> BitBoard {
+            unimplemented!()
+        }
+    }
+
+}
+
 mod movesets {
     use crate::types::*;
+
+    // #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+    // pub struct MoveIter {
+    //     n:     Option<usize>,
+    //     moves: [(D,BitBoard); 8],
+    // }
+
+    // impl Iterator for MoveIter {
+    //     type Item = (D,BitBoard);
+    //     fn next(&mut self) -> Option<Self::Item> {
+    //         match self.n {
+    //             None => None,
+    //             Some(0) => {
+    //                 let out = self.moves[0];
+    //                 self.n = None;
+    //                 Some(out)
+    //             },
+    //             Some(nn) => {
+    //                 let out = self.moves[7 - nn];
+    //                 self.n = Some(nn - 1);
+    //                 Some(out)
+    //             },
+    //         }
+    //     }
+    // }
+
+    // impl MoveIter {
+    //     pub fn new_4(ms: [(D,BitBoard); 4]) -> Self {
+    //         Self {
+    //             n:     Some(3),
+    //             moves: 
+    //         }
+    //     }
+    // }
 
     /// pub n: BitBoard,
     /// pub e: BitBoard,
@@ -497,9 +605,28 @@ mod movesets {
     }
 
     impl MoveSetRook {
-        pub fn to_vec(&self) -> Vec<(D,BitBoard)> {
-            vec![(N,self.n),(E,self.e),(W,self.w),(S,self.s)]
+
+        // pub fn to_iter<'a>(&'a self) -> impl Iterator<Item = (D,BitBoard)> + 'a {
+        //     let xs: [(D,BitBoard); 4] = [(N,self.n),(E,self.e),(W,self.w),(S,self.s)];
+        //     xs.into_iter().cloned()
+        // }
+
+        // pub fn to_iter(&self) -> impl Iterator<Item = (D,BitBoard)> {
+        //     unimplemented!()
+        // }
+
+        pub fn to_vec(&self) -> [(D,BitBoard); 4] {
+            [(N,self.n),(E,self.e),(W,self.w),(S,self.s)]
         }
+
+        pub fn to_vec_with_bishop(&self, ms: [(D,BitBoard); 4]) -> [(D,BitBoard); 8] {
+            [(N,self.n),(E,self.e),(W,self.w),(S,self.s),ms[0],ms[1],ms[2],ms[3]]
+        }
+
+        // pub fn to_vec(&self) -> Vec<(D,BitBoard)> {
+        //     vec![(N,self.n),(E,self.e),(W,self.w),(S,self.s)]
+        // }
+
         pub fn empty() -> Self {
             Self {
                 n: BitBoard::empty(),
@@ -536,9 +663,22 @@ mod movesets {
     }
 
     impl MoveSetBishop {
-        pub fn to_vec(&self) -> Vec<(D,BitBoard)> {
-            vec![(NE,self.ne),(NW,self.nw),(SE,self.se),(SW,self.sw)]
+
+        // pub fn to_iter(&self) -> MoveIter {
+        // }
+
+        pub fn to_vec(&self) -> [(D,BitBoard); 4] {
+            [(NE,self.ne),(NW,self.nw),(SE,self.se),(SW,self.sw)]
         }
+
+        pub fn to_vec_with_rook(&self, ms: [(D,BitBoard); 4]) -> [(D,BitBoard); 8] {
+            [(NE,self.ne),(NW,self.nw),(SE,self.se),(SW,self.sw),ms[0],ms[1],ms[2],ms[3]]
+        }
+
+        // pub fn to_vec(&self) -> Vec<(D,BitBoard)> {
+        //     vec![(NE,self.ne),(NW,self.nw),(SE,self.se),(SW,self.sw)]
+        // }
+
         pub fn empty() -> Self {
             Self {
                 ne: BitBoard::empty(),

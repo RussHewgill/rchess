@@ -10,8 +10,9 @@ pub mod tables;
 pub mod game;
 pub mod parsing;
 
-pub mod evaluate;
 pub mod search;
+pub mod explore;
+pub mod evaluate;
 
 pub mod util;
 

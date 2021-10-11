@@ -204,6 +204,7 @@ dependencies = [
  "gag",
  "log",
  "nom",
+ "rand",
 ]
 
 [[package]]
