@@ -8,6 +8,29 @@ use crate::tables::*;
 
 impl Game {
 
+    // XXX: slower than could be
+    pub fn search_all_single(&self, ts: &Tables, c0: Coord, col: Color) -> Vec<Move> {
+        // let mut out = vec![];
+        // match self.get_at(c0) {
+        //     Some((col1,Pawn))                  => {
+
+        //     },
+        //     Some((col1,King))                  => {},
+        //     Some((col1,Knight))                => {},
+        //     Some((col1,Bishop | Rook | Queen)) => {},
+        //     None                               => {},
+        // }
+        // out
+
+        let ms = self.search_all(&ts, col);
+
+        let out: Vec<Move> = ms.into_iter()
+            .filter(|m| m.sq_from() == c0)
+            .collect();
+
+        out
+    }
+
     pub fn search_all(&self, ts: &Tables, col: Color) -> Vec<Move> {
         match self.state.checkers {
             Some(cs) if !cs.is_empty() => {

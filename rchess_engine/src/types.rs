@@ -11,7 +11,7 @@ pub enum Color {
     Black,
 }
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
 pub enum Piece {
     Pawn,
     Rook,

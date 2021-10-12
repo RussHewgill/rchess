@@ -486,7 +486,7 @@ impl Game {
 
 }
 
-fn square_color(Coord(x,y): Coord) -> Color {
+pub fn square_color(Coord(x,y): Coord) -> Color {
     if y % 2 == 0 {
         if x % 2 == 0 {
             Black
