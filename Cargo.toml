@@ -4,6 +4,10 @@ members = [
     "rchess_uci",
     "rchess_engine",
 ]
+exclude = [
+    "rchess_game",
+]
+
 
 [profile.dev.package."*"]
 opt-level = 3
