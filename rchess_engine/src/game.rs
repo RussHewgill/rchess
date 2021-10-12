@@ -68,9 +68,8 @@ impl Castling {
 
 impl Game {
 
-    #[must_use]
-    pub fn make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Self> {
-        let out = match m {
+    fn _make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Game> {
+        match m {
             &Move::Quiet      { from, to } => {
                 let (c,pc) = self.get_at(from)?;
                 let mut out = self.clone();
@@ -97,14 +96,14 @@ impl Game {
                 out.insert_piece_mut_unchecked(to, pc0, c0);
                 Some(out)
             },
-            &Move::EnPassant  { from, to } => {
+            &Move::EnPassant  { from, to, capture } => {
                 let col = self.state.side_to_move;
                 let (c0,pc0) = self.get_at(from)?;
-                let to1 = if col == White { S.shift_coord(to)? } else { N.shift_coord(to)? };
-                let (c1,pc1) = self.get_at(to1)?;
+                // let to1 = if col == White { S.shift_coord(to)? } else { N.shift_coord(to)? };
+                let (c1,pc1) = self.get_at(capture)?;
                 let mut out = self.clone();
                 out.delete_piece_mut_unchecked(from, pc0, c0);
-                out.delete_piece_mut_unchecked(to1, pc1, c1);
+                out.delete_piece_mut_unchecked(capture, pc1, c1);
                 out.insert_piece_mut_unchecked(to, pc0, c0);
                 Some(out)
             },
@@ -132,7 +131,33 @@ impl Game {
                 out.insert_pieces_mut_unchecked(&[(to,King,col),(rook_to,Rook,col)]);
                 Some(out)
             },
-        };
+        }
+    }
+
+    #[must_use]
+    // pub fn make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Self> {
+    pub fn make_move_unchecked(&self, ts: &Tables, m: &Move) -> GameResult<Game> {
+
+        // match m {
+        //     &Move::Quiet      { from, to } => {
+        //         let (c,pc) = self.get_at(from)?;
+        //         let mut out = self.clone();
+        //         out.delete_piece_mut_unchecked(from, pc, c);
+        //         out.insert_piece_mut_unchecked(to, pc, c);
+        //         Some(out)
+        //     },
+        //     _ => unimplemented!(),
+        // }
+
+        // let (c,pc) = self.get_at(m.sq_from()).unwrap();
+        // eprintln!("x0 = {:?}", (c,pc));
+        // let mut out = self.clone();
+        // out.delete_piece_mut_unchecked(m.sq_from(), pc, c);
+        // out.insert_piece_mut_unchecked(m.sq_to(), pc, c);
+        // let mut out = Some(out);
+
+        let out = self._make_move_unchecked(&ts, &m);
+        if out.is_none() { return Err(GameEnd::Error); }
 
         if let Some(mut x) = out {
             match m {
@@ -179,15 +204,23 @@ impl Game {
             x.state.side_to_move = !x.state.side_to_move;
             x.move_history.push(*m);
             x.reset_gameinfo_mut();
-            x.recalc_gameinfo_mut(&ts);
-            Some(x)
+
+            match x.recalc_gameinfo_mut(&ts) {
+                Err(win) => panic!("wot"),
+                Ok(_)    => Ok(x),
+            }
         } else {
             panic!("Game::make_move?");
         }
-
     }
 
-    pub fn recalc_gameinfo_mut(&mut self, ts: &Tables) {
+    pub fn recalc_gameinfo_mut(&mut self, ts: &Tables) -> GameResult<()> {
+
+        let king = self.get(King, self.state.side_to_move);
+        if king.is_empty() {
+            return Err(GameEnd::Checkmate{ win: !self.state.side_to_move});
+        }
+
         self.state.checkers      = None;
         self.state.king_blocks_w = None;
         self.state.king_blocks_b = None;
@@ -197,6 +230,7 @@ impl Game {
         self.update_checkers_mut(&ts);
         self.update_check_block_mut(&ts);
 
+        Ok(())
     }
 
     fn reset_gameinfo_mut(&mut self) {

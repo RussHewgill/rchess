@@ -175,7 +175,7 @@ impl std::convert::From<&str> for Coord {
 impl FromStr for Coord {
     type Err = std::num::ParseIntError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         assert_eq!(s.len(), 2);
         let s = s.to_ascii_uppercase();
         let letters: [char; 8] = ['A','B','C','D','E','F','G','H'];

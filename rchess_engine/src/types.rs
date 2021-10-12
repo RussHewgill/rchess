@@ -27,10 +27,57 @@ pub enum Move {
     PawnDouble         { from: Coord, to: Coord },
     // Capture    { from: Coord, to: Coord, victim: Piece },
     Capture            { from: Coord, to: Coord },
-    EnPassant          { from: Coord, to: Coord },
+    EnPassant          { from: Coord, to: Coord, capture: Coord },
     Promotion          { from: Coord, to: Coord, new_piece: Piece },
     PromotionCapture   { from: Coord, to: Coord, new_piece: Piece },
     Castle             { from: Coord, to: Coord, rook_from: Coord, rook_to: Coord },
+}
+
+#[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
+pub enum GameEnd {
+    Checkmate { win: Color },
+    Stalemate,
+    Draw,
+    Error,
+}
+
+pub type GameResult<T> = std::result::Result<T, GameEnd>;
+
+// impl<T> MoveResult<T> {
+//     pub fn unwrap(self) -> T {
+//         match self {
+//             Self::Legal(t) => t,
+//             _              => panic!("MoveResult unwrap panic"),
+//         }
+//     }
+// }
+
+#[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
+pub enum Outcome {
+    Checkmate(Color),
+    Stalemate,
+    Moves(Vec<Move>),
+}
+
+impl Outcome {
+    pub fn is_end(&self) -> bool {
+        match self {
+            Self::Moves(_) => false,
+            _              => true,
+        }
+    }
+}
+
+impl IntoIterator for Outcome {
+    type Item = Move;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            Self::Moves(ms) => ms.into_iter(),
+            // _               => vec![].into_iter(),
+            _ => panic!("iterating over checkmate"),
+        }
+    }
 }
 
 impl Move {
@@ -101,8 +148,8 @@ impl Move {
             Move::Capture    { from, to } => {
                 Move::Capture    { from: to, to: from }
             },
-            Move::EnPassant  { from, to } => {
-                Move::EnPassant  { from: to, to: from }
+            Move::EnPassant  { from, to, capture } => {
+                Move::EnPassant  { from: to, to: from, capture }
             },
             Move::Promotion  { from, to, new_piece } => {
                 Move::Promotion  { from: to, to: from, new_piece }

@@ -62,22 +62,45 @@ fn main5() {
     // let fen = "3p4/1N2k3/8/2p5/8/8/8/7K w - - 0 1";
     // let fen = "8/1N6/8/p1pk4/8/8/8/7K w - - 0 1";
     // let fen = "8/8/8/p1pk4/1P6/8/8/7K w - - 0 1";
-    let fen = STARTPOS;
+    // let fen = "8/1N6/8/p1pk4/8/8/8/7K w - - 0 1";
 
-    let n = 5;
+    // let fen = "8/8/3k4/8/8/4K3/8/Q6R w - - 0 1"; // Mate in 3
+    // let fen = "8/8/7R/2k5/8/4K3/8/Q7 w - - 0 1"; // Mate in 2
+    // let fen = "8/8/7R/3k4/Q7/4K3/8/8 w - - 0 1"; // Mate in 1
+    // let fen = "8/8/7R/3k4/3Q4/4K3/8/8 w - - 0 1"; // Mate
+
+    // let fen = "8/8/7R/3k4/8/4K3/8/Q7 w - - 0 1";
+    let fen = "6k1/p4pp1/7p/1P6/8/P4QKP/5PP1/2qRr2q w - - 0 35";
+
+    // let fen = "1k6/6pR/1K6/8/8/8/8/8 w - - 0 1"; // Mate in 1
+    // let fen = "1k5R/6p1/1K6/8/8/8/8/8 b - - 1 1"; // Mate
+
+
+    // let fen = "8/8/7R/3k4/8/4K3/8/2Q5 b - - 1 1";
+
+    // let fen = STARTPOS;
+
+    let n = 4;
 
     let ts = Tables::new();
     let mut g = Game::from_fen(fen).unwrap();
-    g.recalc_gameinfo_mut(&ts);
+    let _ = g.recalc_gameinfo_mut(&ts);
     eprintln!("g = {:?}", g);
 
-    let ex = Explorer::new(White, g.clone());
+    // let m = Move::Quiet { from: "A1".into(), to: "D4".into() };
+    // let m = Move::Quiet { from: "A1".into(), to: "C1".into() };
+
+    // let g2 = g.make_move_unchecked(&ts, &m).unwrap();
+    // eprintln!("g2 = {:?}", g2);
+    // let moves = g2.search_all(&ts, g2.state.side_to_move);
+    // eprintln!("moves = {:?}", moves);
+
+    let ex = Explorer::new(g.state.side_to_move, g.clone(), n);
+    // ex.rank_moves(&ts, true);
 
     let t = std::time::Instant::now();
-
-    let m = ex.explore(&ts, n);
+    let m = ex.explore(&ts, ex.depth);
     eprintln!("m = {:?}", m);
-
     println!("perft done in {} seconds.", t.elapsed().as_secs_f64());
 
     // let k = g.evaluate(&ts, White);
@@ -171,6 +194,7 @@ fn main2() {
     let fen = "rnQq1k1r/pp3ppp/2pQ4/8/2B5/8/PPP1NnPP/RNB1K2R b KQ - 0 9";
 
     let fen = "8/8/8/p1Nk4/8/8/8/7K b - - 0 1";
+    let fen = "rnbqkbnr/pppp1pp1/7p/3Pp3/8/8/PPP1PPPP/RNBQKBNR w KQkq e6 0 3";
 
     // let mut g = Game::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ").unwrap();
     // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ").unwrap();
@@ -187,7 +211,7 @@ fn main2() {
     let ts = Tables::new();
     // let mut g = Game::new();
 
-    g.recalc_gameinfo_mut(&ts);
+    let _ = g.recalc_gameinfo_mut(&ts);
 
     // // let m = Move::Quiet { from: "G2".into(), to: "G4".into() };
     // let m = Move::Castle {
@@ -206,31 +230,20 @@ fn main2() {
     // let moves = g._search_pawns(None, &ts, g.state.side_to_move);
     // let m = moves[1];
     // eprintln!("m = {:?}", m);
+
+    // let m = Move::EnPassant { from: "D5".into(), to: "E6".into() };
+
     // let mut g = g.make_move_unchecked(&ts, &m).unwrap();
     // g.recalc_gameinfo_mut(&ts);
 
-    // let ep = g.state.en_passant;
-    // eprintln!("ep = {:?}", ep);
-
     // eprintln!("{:?}", g);
-
-    // // let b = g.state.checkers.unwrap();
-    // let b = g.find_attackers_to(&ts, "H4".into());
-    // eprintln!("b = {:?}", b);
 
     // let depth = 3;
     // let (ns,cs) = g._perft(&ts, depth, true);
     // eprintln!("\nperft total    = {:?}", ns);
     // eprintln!("perft captures = {:?}", cs);
 
-    // g.recalc_gameinfo_mut(&ts);
-    // let b = g.state.checkers;
-    // eprintln!("b = {:?}", b);
-
-    // let cs = g.find_checkers(&ts, g.state.side_to_move);
-    // eprintln!("cs = {:?}", cs);
-
-    let moves = g.search_all(&ts, g.state.side_to_move);
+    // let moves = g.search_all(&ts, g.state.side_to_move);
     // let moves = g.search_sliding(Bishop, &ts, White);
     // let moves = g._search_pawns(None, &ts, Black);
     // let moves = g._search_promotions(&ts, None, White);
@@ -241,10 +254,10 @@ fn main2() {
     // // let x = g.move_is_legal(&ts, &m3);
     // eprintln!("x = {:?}", x);
 
-    eprintln!("moves.len() = {:?}", moves.len());
-    for m in moves.iter() {
-        eprintln!("m = {:?}", m);
-    }
+    // eprintln!("moves.len() = {:?}", moves.len());
+    // for m in moves.iter() {
+    //     eprintln!("m = {:?}", m);
+    // }
 
     // let (blockers,pinners) = g.find_slider_blockers(&ts, "A3".into());
 

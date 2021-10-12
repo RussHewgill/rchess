@@ -9,7 +9,7 @@ use crate::tables::*;
 impl Game {
 
     // XXX: slower than could be
-    pub fn search_all_single(&self, ts: &Tables, c0: Coord, col: Color) -> Vec<Move> {
+    pub fn search_all_single(&self, ts: &Tables, c0: Coord, col: Color) -> Outcome {
         // let mut out = vec![];
         // match self.get_at(c0) {
         //     Some((col1,Pawn))                  => {
@@ -23,17 +23,25 @@ impl Game {
         // out
 
         let ms = self.search_all(&ts, col);
-
-        let out: Vec<Move> = ms.into_iter()
-            .filter(|m| m.sq_from() == c0)
-            .collect();
-
-        out
+        match ms {
+            Outcome::Checkmate(_) => unimplemented!(),
+            Outcome::Stalemate    => unimplemented!(),
+            Outcome::Moves(ms)    => {
+                let out: Vec<Move> = ms.into_iter()
+                    .filter(|m| m.sq_from() == c0)
+                    .collect();
+                Outcome::Moves(out)
+            },
+        }
     }
 
-    pub fn search_all(&self, ts: &Tables, col: Color) -> Vec<Move> {
+    // pub fn search_all(&self, ts: &Tables, col: Color) -> Option<Vec<Move>> {
+    pub fn search_all(&self, ts: &Tables, col: Color) -> Outcome {
         match self.state.checkers {
             Some(cs) if !cs.is_empty() => {
+                // if let Some(win) = self.is_checkmate(&ts) {
+                //     return Outcome::Checkmate(win);
+                // }
                 // println!("wat check");
                 self._search_in_check(&ts, col)
             },
@@ -44,7 +52,7 @@ impl Game {
         }
     }
 
-    pub fn _search_all(&self, ts: &Tables, col: Color) -> Vec<Move> {
+    pub fn _search_all(&self, ts: &Tables, col: Color) -> Outcome {
 
         // let xs = [
         //     || self.search_king(&ts, col),
@@ -75,14 +83,18 @@ impl Game {
 
         out.extend(&self._search_castles(&ts));
 
-        let out = out.into_iter().filter(|m| {
+        let out: Vec<Move> = out.into_iter().filter(|m| {
             self.move_is_legal(&ts, m)
         }).collect();
 
-        out
+        if out.is_empty() {
+            Outcome::Stalemate
+        } else {
+            Outcome::Moves(out)
+        }
     }
 
-    pub fn _search_in_check(&self, ts: &Tables, col: Color) -> Vec<Move> {
+    pub fn _search_in_check(&self, ts: &Tables, col: Color) -> Outcome {
         let mut out = vec![];
 
         out.extend(&self.search_king(&ts, col));
@@ -98,12 +110,24 @@ impl Game {
             out.extend(&self._search_promotions(&ts, None, col));
         }
 
-        let out = out.into_iter().filter(|m| {
+        let out: Vec<Move> = out.into_iter().filter(|m| {
             self.move_is_legal(&ts, m)
         }).collect();
 
-        out
+        if out.is_empty() {
+            Outcome::Checkmate(!self.state.side_to_move)
+        } else {
+            Outcome::Moves(out)
+        }
     }
+
+    // pub fn is_checkmate(&self, ts: &Tables) -> Option<Color> {
+    //     unimplemented!()
+    // }
+
+    // pub fn is_stalemate(&self, ts: &Tables) -> bool {
+    //     unimplemented!()
+    // }
 
     pub fn perft(&self, ts: &Tables, depth: u64) -> (u64,Vec<(Move,u64)>) {
         let mut nodes = 0;
@@ -116,10 +140,10 @@ impl Game {
         // eprintln!("moves.len() = {:?}", moves.len());
         let mut k = 0;
         let mut out = vec![];
-        for m in moves.iter() {
-            if let Some(g2) = self.make_move_unchecked(&ts, m) {
+        for m in moves.into_iter() {
+            if let Ok(g2) = self.make_move_unchecked(&ts, &m) {
                 let (ns,cs) = g2._perft(ts, depth - 1, false);
-                match *m {
+                match m {
                     Move::Capture { .. } => captures += 1,
                     _                    => {},
                 }
@@ -128,7 +152,7 @@ impl Game {
                 // }
                 captures += cs;
                 nodes += ns;
-                out.push((*m, ns));
+                out.push((m, ns));
                 k += 1;
             } else { panic!("move: {:?}\n{:?}", m, self); }
         }
@@ -145,10 +169,10 @@ impl Game {
 
         // eprintln!("moves.len() = {:?}", moves.len());
         let mut k = 0;
-        for m in moves.iter() {
-            if let Some(g2) = self.make_move_unchecked(&ts, m) {
+        for m in moves.into_iter() {
+            if let Ok(g2) = self.make_move_unchecked(&ts, &m) {
                 let (ns,cs) = g2._perft(ts, depth - 1, false);
-                match *m {
+                match m {
                     Move::Capture { .. } => captures += 1,
                     _                    => {},
                 }
@@ -176,7 +200,7 @@ impl Game {
         if m.filter_en_passant() {
             if self.state.en_passant.is_none() {
                 return false;
-            } else if let Some(g2) = self.clone().make_move_unchecked(&ts, &m) {
+            } else if let Ok(g2) = self.clone().make_move_unchecked(&ts, &m) {
                 let b = g2.state.checkers.unwrap();
                 return b.is_empty();
             } else {
@@ -967,7 +991,10 @@ impl Game {
             let attacks = *attacks & ps;
 
             attacks.iter_bitscan(|sq| {
-                out.push(Move::EnPassant { from: sq.into(), to: ep });
+                let capture = if col == White { S.shift_coord(ep) } else { N.shift_coord(ep) };
+                let capture = capture
+                    .expect(&format!("en passant bug? ep: {:?}, capture: {:?}", ep, capture));
+                out.push(Move::EnPassant { from: sq.into(), to: ep, capture });
             });
 
         }

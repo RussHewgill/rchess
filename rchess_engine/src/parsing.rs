@@ -137,7 +137,7 @@ fn parse_piece_lines(s0: &str) -> IResult<&str, Vec<Vec<Option<(Piece,Color)>>>>
     Ok((s, out))
 }
 
-fn parse_piece(c: char) -> Result<(Piece,Color), u8> {
+fn parse_piece(c: char) -> std::result::Result<(Piece,Color), u8> {
     // nom::character::complete::one_of("0123456789PNBRQKpnbrqk")(s)
     if c.is_digit(10) {
         Err(u8::from_str(&format!("{}", c)).unwrap())

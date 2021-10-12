@@ -71,11 +71,11 @@ pub fn find_move_error(
             // perft after move finds error
             if v0 != v1 {
                 let mut g = Game::from_fen(&fen).unwrap();
-                g.recalc_gameinfo_mut(&ts);
+                let _ = g.recalc_gameinfo_mut(&ts);
                 // eprintln!("g0 = {:?}", g);
 
                 let mut g = g.make_move_unchecked(&ts, m0).unwrap();
-                g.recalc_gameinfo_mut(&ts);
+                let _ = g.recalc_gameinfo_mut(&ts);
                 // eprintln!("g1 = {:?}", g);
                 let fen2 = g.to_fen();
 
@@ -116,7 +116,7 @@ pub fn test_stockfish(
 
     let mut g = Game::from_fen(&fen).unwrap();
     let ts = Tables::new();
-    g.recalc_gameinfo_mut(&ts);
+    let _ = g.recalc_gameinfo_mut(&ts);
     // eprintln!("g = {:?}", g);
 
     let now = std::time::Instant::now();
