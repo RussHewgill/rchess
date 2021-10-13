@@ -47,10 +47,20 @@ impl BitBoard {
         b.is_not_empty()
     }
 
-    pub fn new(cs: &[Coord]) -> BitBoard {
+    // pub fn new(cs: &[Coord]) -> BitBoard {
+    //     let mut b = BitBoard::empty();
+    //     for c in cs.iter() {
+    //         b.flip_mut(*c);
+    //     }
+    //     b
+    // }
+
+    pub fn new<T>(cs: &[T]) -> BitBoard where
+        T: Into<Coord> + Copy,
+    {
         let mut b = BitBoard::empty();
         for c in cs.iter() {
-            b.flip_mut(*c);
+            b.flip_mut((*c).into());
         }
         b
     }
