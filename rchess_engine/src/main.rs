@@ -41,9 +41,10 @@ fn main() {
         .init();
 
 
-    main5()
+    // main5()
     // main2();
     // main4();
+    main3();
 
     // let b = BitBoard(b0);
     // eprintln!("b = {:?}", b);
@@ -80,7 +81,8 @@ fn main5() {
     // let fen = "8/8/7R/3k4/3Q4/4K3/8/8 w - - 0 1"; // Mate
 
     // let fen = "8/8/7R/3k4/8/4K3/8/Q7 w - - 0 1";
-    let fen = "6k1/p4pp1/7p/1P6/8/P4QKP/5PP1/2qRr2q w - - 0 35";
+    // let fen = "6k1/p4pp1/7p/1P6/8/P4QKP/5PP1/2qRr2q w - - 0 35";
+    let fen = "1k1r4/pp1b1R2/3q2pp/4p3/2B5/4Q3/PPP2B2/2K5 b - -";
 
     // let fen = "1k6/6pR/1K6/8/8/8/8/8 w - - 0 1"; // Mate in 1
     // let fen = "1k5R/6p1/1K6/8/8/8/8/8 b - - 1 1"; // Mate
@@ -92,7 +94,8 @@ fn main5() {
 
     let n = 4;
 
-    let ts = Tables::new();
+    let ts = Tables::new(true);
+    // let ts = Tables::new(false);
     let mut g = Game::from_fen(fen).unwrap();
     let _ = g.recalc_gameinfo_mut(&ts);
     eprintln!("g = {:?}", g);
@@ -125,10 +128,12 @@ fn main4() {
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ";
     // let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
     let fen = STARTPOS;
+    let fen = "1k1r4/pp1b1R2/3q2pp/4p3/2B5/4Q3/PPP2B2/2K5 b - - 0 1";
+    let fen = "1kbr4/pp3R2/3q2pp/4p3/2B5/4Q3/PPP2B2/2K5 w - - 1 2";
 
-    let n = 5;
+    let n = 2;
 
-    let ts = Tables::new();
+    let ts = Tables::new(true);
     // let mut g = Game::from_fen(fen).unwrap();
     // g.recalc_gameinfo_mut(&ts);
     // eprintln!("g = {:?}", g);
@@ -146,25 +151,23 @@ fn main4() {
 }
 
 fn main3() {
-    let games = read_json_fens("perft_fens.txt").unwrap();
+    let games = read_ccr_onehour("perft_fens.txt").unwrap();
 
-    let mut games = games;
-    games.truncate(1);
-
-    for (depth,nodes,fen) in games.into_iter() {
-        let depth = 4;
-        println!("FEN: {}", &fen);
-        let (done, ((ns0,nodes0),(ns1,nodes1))) = test_stockfish(&fen, depth, false).unwrap();
-        println!("perft depth {} done in {}", depth, done);
-
-        if ns0 == ns1 {
-            eprintln!("rchess, stockfish = {:>2} / {:>2}", ns0, ns1);
-        } else {
-            eprintln!("rchess, stockfish = {:>2} / {:>2} / failed ({})",
-                      ns0, ns1, ns0 as i64 - ns1 as i64);
-        }
-
-    }
+    // let games = read_json_fens("perft_fens.txt").unwrap();
+    // let mut games = games;
+    // games.truncate(1);
+    // for (depth,nodes,fen) in games.into_iter() {
+    //     let depth = 4;
+    //     println!("FEN: {}", &fen);
+    //     let (done, ((ns0,nodes0),(ns1,nodes1))) = test_stockfish(&fen, depth, false).unwrap();
+    //     println!("perft depth {} done in {}", depth, done);
+    //     if ns0 == ns1 {
+    //         eprintln!("rchess, stockfish = {:>2} / {:>2}", ns0, ns1);
+    //     } else {
+    //         eprintln!("rchess, stockfish = {:>2} / {:>2} / failed ({})",
+    //                   ns0, ns1, ns0 as i64 - ns1 as i64);
+    //     }
+    // }
 
 }
 
@@ -205,6 +208,10 @@ fn main2() {
 
     let fen = "8/8/8/p1Nk4/8/8/8/7K b - - 0 1";
     let fen = "rnbqkbnr/pppp1pp1/7p/3Pp3/8/8/PPP1PPPP/RNBQKBNR w KQkq e6 0 3";
+    let fen = "8/8/3p3k/8/3R4/7K/3P4/8 w - - 0 1";
+
+    let fen = "1k1r4/pp1b1R2/3q2p1/4p2p/2B5/4Q3/PPP2B2/2K5 w - - 0 2";
+    let fen = "1k1r4/pp1b1R2/6pp/4p3/2B5/4Q3/PPP2B2/2Kq4 w - - 1 2";
 
     // let mut g = Game::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ").unwrap();
     // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ").unwrap();
@@ -218,7 +225,7 @@ fn main2() {
 
     let mut g = Game::from_fen(fen).unwrap();
 
-    let ts = Tables::new();
+    let ts = Tables::new(true);
     // let mut g = Game::new();
 
     let _ = g.recalc_gameinfo_mut(&ts);
@@ -234,6 +241,30 @@ fn main2() {
     // g.recalc_gameinfo_mut(&ts);
 
     eprintln!("{:?}", g);
+
+    // let b = g.find_attacks_by_side(&ts, "B1".into(), !g.state.side_to_move, false);
+    // eprintln!("b = {:?}", b);
+
+    // let b = g.all_occupied() & !g.get(King, Black);
+    // let b = !g.get(King, Black);
+    // eprintln!("b = {:?}", b);
+
+    // let moves = g._search_king(&ts, g.state.side_to_move, true);
+    // // let moves = g.search_all(&ts, g.state.side_to_move);
+    // // let moves = g.search_sliding(&ts, Rook, g.state.side_to_move);
+    // // let moves = g._search_sliding_single(&ts, Rook, "D4".into(), g.state.side_to_move);
+    // // eprintln!("moves = {:?}", moves);
+
+    // // let m = Move::Quiet { from: "C1".into(), to: "D1".into() };
+    // let m = Move::Quiet { from: "C1".into(), to: "B1".into() };
+    // let b = g.move_is_legal(&ts, &m);
+    // eprintln!("b = {:?}", b);
+
+    // // eprintln!("moves.len() = {:?}", moves.get_moves_unsafe().len());
+    // eprintln!("moves.len() = {:?}", moves.len());
+    // for m in moves.into_iter() {
+    //     eprintln!("m = {:?}", m);
+    // }
 
     // // // let moves = g._search_castles(&ts);
     // // let moves = g._search_pawns(None, &ts, White);

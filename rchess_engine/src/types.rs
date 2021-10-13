@@ -61,9 +61,11 @@ pub enum Outcome {
 
 impl Outcome {
 
-    pub fn get_moves_unsafe(self) -> Vec<Move> {
+    // pub fn get_moves_unsafe(&self) -> &[Move] {
+    pub fn get_moves_unsafe(&self) -> Vec<Move> {
         match self {
-            Self::Moves(v) => v,
+            // Self::Moves(v) => &v,
+            Self::Moves(v) => v.clone(),
             _              => panic!("get_moves_unsafe"),
         }
     }

@@ -74,12 +74,23 @@ impl Tables {
 
 impl Tables {
 
-    pub fn new() -> Self {
+    pub fn new(magics: bool) -> Self {
         let rook_moves   = Self::gen_rooks();
         let bishop_moves = Self::gen_bishops();
 
-        let (magics_bishop, table_bishop) = Tables::_gen_magics(true).unwrap();
-        let (magics_rook, table_rook) = Tables::_gen_magics(false).unwrap_err();
+        let (magics_rook, table_rook) = if magics {
+            Tables::_gen_magics(false).unwrap_err()
+        } else {
+            ([Magic::new(0, BitBoard::empty(), BitBoard::empty(), 0); 64],
+             [BitBoard::empty(); 0x19000])
+        };
+
+        let (magics_bishop, table_bishop) = if magics {
+            Tables::_gen_magics(true).unwrap()
+        } else {
+            ([Magic::new(0, BitBoard::empty(), BitBoard::empty(), 0); 64],
+            [BitBoard::empty(); 0x1480])
+        };
 
         Self {
             knight_moves: Self::gen_knights(),
@@ -556,24 +567,34 @@ mod magics {
 
     impl Tables {
 
-        pub fn attacks_rook(c0: Coord, occ: BitBoard, magics: [Magic; 64], tables: [BitBoard; 0x19000]) -> BitBoard {
+        // pub fn attacks_rook(c0: Coord, occ: BitBoard, magics: [Magic; 64], tables: [BitBoard; 0x19000]) -> BitBoard {
+        //     let sq: u32 = c0.into();
+        //     let m = magics[sq as usize];
+        //     let mut occ = occ;
+        //     let occ = (occ & m.mask).0;
+        //     let occ = occ.overflowing_mul(m.magic.0).0;
+        //     let occ = occ.overflowing_shr(m.shift).0;
+        //     tables[m.attacks + occ as usize]
+        // }
+
+        pub fn attacks_rook(&self, c0: Coord, occ: BitBoard) -> BitBoard {
             let sq: u32 = c0.into();
-            let m = magics[sq as usize];
+            let m = self.magics_rook[sq as usize];
             let mut occ = occ;
             let occ = (occ & m.mask).0;
             let occ = occ.overflowing_mul(m.magic.0).0;
             let occ = occ.overflowing_shr(m.shift).0;
-            tables[m.attacks + occ as usize]
+            self.table_rook[m.attacks + occ as usize]
         }
 
-        pub fn attacks_bishop(c0: Coord, occ: BitBoard, magics: [Magic; 64], tables: [BitBoard; 0x1480]) -> BitBoard {
+        pub fn attacks_bishop(&self, c0: Coord, occ: BitBoard) -> BitBoard {
             let sq: u32 = c0.into();
-            let m = magics[sq as usize];
+            let m = self.magics_bishop[sq as usize];
             let mut occ = occ;
             let occ = (occ & m.mask).0;
             let occ = occ.overflowing_mul(m.magic.0).0;
             let occ = occ.overflowing_shr(m.shift).0;
-            tables[m.attacks + occ as usize]
+            self.table_bishop[m.attacks + occ as usize]
         }
 
         fn sparse_rand(rng: &mut rand::rngs::ThreadRng) -> u64 {

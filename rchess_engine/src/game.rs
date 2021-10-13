@@ -206,7 +206,8 @@ impl Game {
             x.reset_gameinfo_mut();
 
             match x.recalc_gameinfo_mut(&ts) {
-                Err(win) => panic!("wot"),
+                // Err(win) => panic!("wot"),
+                Err(win) => Err(win),
                 Ok(_)    => Ok(x),
             }
         } else {

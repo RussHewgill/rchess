@@ -7,6 +7,18 @@ use std::collections::{HashMap,HashSet};
 use std::io::Write;
 use std::process::{Command,Stdio};
 
+pub fn read_ccr_onehour(path: &str) -> std::io::Result<Vec<(String, String)>> {
+    let file = std::fs::read_to_string(path)?;
+    let lines = file.lines();
+    let mut out = vec![];
+
+    for line in lines.into_iter() {
+        unimplemented!()
+    }
+
+    Ok(out)
+}
+
 pub fn read_json_fens(path: &str) -> std::io::Result<Vec<(u64,u64,String)>> {
     let file = std::fs::read_to_string(path)?;
     let lines = file.lines();
@@ -115,7 +127,7 @@ pub fn test_stockfish(
     let output = child.wait_with_output()?;
 
     let mut g = Game::from_fen(&fen).unwrap();
-    let ts = Tables::new();
+    let ts = Tables::new(true);
     let _ = g.recalc_gameinfo_mut(&ts);
     // eprintln!("g = {:?}", g);
 
