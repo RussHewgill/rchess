@@ -20,6 +20,25 @@ pub enum D {
 #[derive(Eq,Hash,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Coord(pub u8, pub u8);
 
+impl Coord {
+    // pub fn distance(&self, other: Self) -> 
+
+    pub fn file_dist(&self, c1: Coord) -> u8 {
+        (self.0 as i8 - c1.0 as i8).abs() as u8
+    }
+
+    pub fn rank_dist(&self, c1: Coord) -> u8 {
+        (self.1 as i8 - c1.1 as i8).abs() as u8
+    }
+
+    pub fn square_dist(&self, c1: Coord) -> u8 {
+        let r = self.rank_dist(c1);
+        let f = self.file_dist(c1);
+        r.max(f)
+    }
+
+}
+
 impl std::convert::From<u32> for Coord {
     fn from(sq: u32) -> Self {
         // assert!(sq < 64);

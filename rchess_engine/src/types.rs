@@ -60,6 +60,14 @@ pub enum Outcome {
 }
 
 impl Outcome {
+
+    pub fn get_moves_unsafe(self) -> Vec<Move> {
+        match self {
+            Self::Moves(v) => v,
+            _              => panic!("get_moves_unsafe"),
+        }
+    }
+
     pub fn is_end(&self) -> bool {
         match self {
             Self::Moves(_) => false,

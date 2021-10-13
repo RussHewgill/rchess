@@ -41,14 +41,43 @@ fn main() {
         .init();
 
 
-    main5()
+    // main5()
     // main2();
     // main4();
 
     // let b = Tables::gen_blockermask_bishop("D4".into());
     // eprintln!("b = {:?}", b);
 
+    let c0: Coord = "D4".into();
+
     // Tables::gen_magics_rook("D4".into());
+    let magics = Tables::gen_magics_rook();
+
+    // for m in magics {
+    //     eprintln!("m = {:?}", m);
+    // }
+    eprintln!("magics.len() = {:?}", magics.len());
+
+    // // let mask = Tables::gen_blockermask_rook(c0);
+    // // // let shift = 64 - mask.popcount();
+    // let occ = BitBoard::new(&[
+    //     "A1".into(),
+    //     "B1".into(),
+    //     // "A3".into(),
+    // ]);
+
+    // let bs = occ.iter_subsets();
+
+    // for b in bs {
+    //     eprintln!("b = {:?}", b);
+    // }
+
+    // let b = Tables::gen_moveboard_rook(occ, mask, c0);
+    // eprintln!("b = {:?}", b);
+
+    // // let x: u64 = 0x19000;
+    // let x = BitBoard(0xff);
+    // eprintln!("x = {:?}", x);
 
     // main3();
 

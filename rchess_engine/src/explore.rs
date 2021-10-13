@@ -3,6 +3,8 @@ use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
 
+use rayon::prelude::*;
+
 #[derive(Debug,PartialEq,PartialOrd,Clone)]
 pub struct Explorer {
     pub side:       Color,
@@ -93,17 +95,29 @@ impl Explorer {
         //     Move::Quiet { from: "A1".into(), to: "A4".into() }, // mate in 2
         // ];
 
-        for m in moves.into_iter() {
-            // eprintln!("m = {:?}", m);
-            let g2 = self.game.make_move_unchecked(&ts, &m).unwrap();
-            // let alpha = (None,i32::MIN,None);
-            // let beta  = (None,i32::MAX,None);
-            let alpha = (None,i32::MIN);
-            let beta  = (None,i32::MAX);
-            // let (m2,score,mate) = self._ab_search(&ts, g2, self.depth, 1, Some(m), alpha, beta);
-            let (m2,score) = self._ab_search(&ts, g2, self.depth, 1, Some(m), alpha, beta);
-            out.push((m,score))
-        }
+        let moves = moves.get_moves_unsafe();
+        // let mut out: Vec<(Move,i32)> = moves.into_par_iter()
+        let mut out: Vec<(Move,i32)> = moves.into_iter()
+            .map(|m| {
+                let g2 = self.game.make_move_unchecked(&ts, &m).unwrap();
+                let alpha = (None,i32::MIN);
+                let beta  = (None,i32::MAX);
+                let (m2,score) = self._ab_search(&ts, g2, self.depth, 1, Some(m), alpha, beta);
+                (m,score)
+            })
+            .collect();
+
+        // for m in moves.into_iter() {
+        //     // eprintln!("m = {:?}", m);
+        //     let g2 = self.game.make_move_unchecked(&ts, &m).unwrap();
+        //     // let alpha = (None,i32::MIN,None);
+        //     // let beta  = (None,i32::MAX,None);
+        //     let alpha = (None,i32::MIN);
+        //     let beta  = (None,i32::MAX);
+        //     // let (m2,score,mate) = self._ab_search(&ts, g2, self.depth, 1, Some(m), alpha, beta);
+        //     let (m2,score) = self._ab_search(&ts, g2, self.depth, 1, Some(m), alpha, beta);
+        //     out.push((m,score))
+        // }
 
         out.sort_by(|a,b| a.1.cmp(&b.1));
         out.reverse();

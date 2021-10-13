@@ -4,6 +4,24 @@ use crate::types::*;
 pub use self::movesets::*;
 pub use self::magics::*;
 
+use rand::Rng;
+use lazy_static::lazy_static;
+use itertools::Itertools;
+
+lazy_static! {
+    pub static ref SQUAREDIST: [[u8; 64]; 64] = {
+        let mut out = [[0; 64]; 64];
+        for s1 in 0..8 {
+            for s2 in 0..8 {
+                let (c1,c2): (Coord,Coord) = (s1.into(),s1.into());
+                out[s1 as usize][s2 as usize] = c1.square_dist(c2);
+            }
+        }
+        out
+    };
+
+}
+
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Tables {
     // pub knight_moves: HashMap<Coord, BitBoard>,
@@ -483,43 +501,147 @@ impl Tables {
 }
 
 mod magics {
+    use itertools::iproduct;
+    use rand::Rng;
+
     use crate::types::*;
     use crate::tables::*;
 
     #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
     pub struct Magic {
-        ptr:   usize,
-        mask:  BitBoard,
-        magic: BitBoard,
-        shift: u32,
+        attacks:   usize,
+        mask:      BitBoard,
+        magic:     BitBoard,
+        shift:     u32,
     }
 
     impl Magic {
-        pub fn new(ptr: usize, magic: BitBoard, shift: u32) -> Self {
+        pub fn new(attacks: usize, mask: BitBoard, magic: BitBoard, shift: u32) -> Self {
             Self {
-                ptr,
-                mask: BitBoard(0xff818181818181ff),
+                attacks,
+                // mask: BitBoard(0xff818181818181ff),
+                mask,
                 magic,
                 shift,
             }
         }
+
+        pub fn index(mask: BitBoard, magic: BitBoard, shift: u32, occ: BitBoard) -> u64 {
+            // unsigned lo = unsigned(occupied) & unsigned(mask);
+            let lo = occ.0 & mask.0;
+            // unsigned hi = unsigned(occupied >> 32) & unsigned(mask >> 32);
+            let hi = occ.0.overflowing_shr(32).0 & mask.0.overflowing_shr(32).0;
+
+            // return (lo * unsigned(magic) ^ hi * unsigned(magic >> 32)) >> shift;
+            let k0 = lo.overflowing_mul(magic.0.overflowing_pow(hi as u32).0).0
+                .overflowing_mul(magic.0.overflowing_shr(32).0).0;
+            let k1 = k0.overflowing_shr(shift).0;
+
+            k1
+        }
+
     }
 
     impl Tables {
 
-        pub fn gen_magics_rook(c0: Coord) {
+        pub fn gen_magics_rook() -> [Magic; 64] {
             let mut rng = rand::thread_rng();
 
-            let blockermask = Self::gen_blockermask_rook(c0);
             // let blockerboard = Self::gen_blockerboard(blockermask, c0);
 
-            let shift = 64 - blockermask.popcount();
+            // let occ = BitBoard::empty();
+            // let blockers = occ & blockermask;
 
-            let occ = BitBoard::empty();
+            let mut occupancy: [BitBoard; 4096] = [BitBoard::empty(); 4096];
+            let mut reference: [BitBoard; 4096] = [BitBoard::empty(); 4096];
+            let edges = BitBoard(0xff818181818181ff);
+            // let edges: BitBoard;
+            // let b: u64;
+            // let mut b: BitBoard;
 
-            let blockers = occ & blockermask;
+            let mut table: [BitBoard; 0x19000] = [BitBoard::empty(); 0x19000];
+            // let mut magics: [Magic; 64];
+            let mut magics: [Option<Magic>; 64] = [None; 64];
+            let mut epoch = [0; 4096];
+            let mut cnt   = 0;
+            let mut size: usize = 0;
 
-            unimplemented!()
+            // let c0: Coord = "A1".into();
+            // let c0: Coord = "B2".into();
+
+            // let edges: BitBoard =
+            //     ((BitBoard::mask_rank(0) | BitBoard::mask_rank(7)) & !BitBoard::mask_rank(c0.1 as u32))
+            //     | ((BitBoard::mask_file(0) | BitBoard::mask_file(7)) & !BitBoard::mask_rank(c0.0 as u32));
+
+            // eprintln!("edges = {:?}", edges);
+
+            for sq in 0..64 {
+            // for sq in 0..1 {
+                // let c0: Coord = "D4".into();
+                let c0: Coord = sq.into();
+
+                let mask = Self::gen_blockermask_rook(c0);
+                let shift = 64 - mask.popcount();
+
+                let attacks = if sq == 0 {
+                    // table
+                    0
+                } else {
+                    magics[sq as usize - 1].unwrap().attacks + size
+                };
+
+                let mbs = mask.iter_subsets();
+
+                let mut m = Magic::new(attacks, mask, BitBoard::empty(), shift);
+                // let mut m = &mut magics[sq];
+
+                for (s,b) in mbs.iter().enumerate() {
+                    occupancy[s] = *b;
+                    reference[s] = Self::gen_moveboard_rook(*b, c0);
+                    size = s;
+                }
+
+                let mut rng = rand::thread_rng();
+                let mut mm: u64 = rng.gen();
+                for (s,b) in mbs.iter().enumerate() {
+
+                    let k0 = b.0.overflowing_mul(mm).0;
+                    let k1 = 2u64.pow(mask.popcount());
+                    let k2 = 64u64.overflowing_sub(k1).0;
+                    let k3 = k0.overflowing_shr(k2 as u32).0;
+                    if k3 != 0 {
+                        // eprintln!("magic? = {:?}", BitBoard(mm));
+                        m.magic = BitBoard(mm);
+
+                        cnt += 1;
+                        for i in 0..size {
+                            let idx = Magic::index(mask, BitBoard(mm), shift, occupancy[i]) as usize;
+
+                            if epoch[idx] < cnt {
+                                epoch[idx] = cnt;
+                                table[attacks + idx] = reference[i];
+                            } else if table[attacks + idx] != reference[i] {
+                                break;
+                            }
+
+                        }
+
+                    }
+                }
+
+                magics[sq as usize] = Some(m);
+
+            }
+
+            for x in 0..64 {
+                let k = magics[x];
+                eprintln!("x = {}: {:?}", x, k);
+            }
+
+            // let out: [Magic; 64] = array_init::try_array_init(|x| magics[x].ok_or(|nope| match nope {} ));
+            let out: [Magic; 64] = array_init::array_init(|x| magics[x].unwrap());
+            out
+            // unimplemented!()
         }
 
         pub fn gen_blockermask_rook(c0: Coord) -> BitBoard {
@@ -540,17 +662,44 @@ mod magics {
             (!b0 & b1).set_zero(c0)
         }
 
-        fn gen_moveboard_rook(blockerboard: BitBoard, c0: Coord) -> BitBoard {
-            unimplemented!()
+        pub fn gen_moveboard_rook(occ: BitBoard, c0: Coord) -> BitBoard {
+            let mut out = BitBoard::empty();
+            let ds_rook   = [N,E,W,S];
+            for d in ds_rook.iter() {
+                let mut c1 = c0;
+                loop {
+                    if let Some(c2) = d.shift_coord(c1) {
+                        if (c1.square_dist(c2) <= 2) & occ.is_zero_at(c2) {
+                            out.set_one_mut(c2);
+                            c1 = c2;
+                        } else { break; }
+                    } else { break; }
+                }
+            }
+            out
         }
 
-        fn gen_moveboard_bishop(blockerboard: BitBoard, c0: Coord) -> BitBoard {
-            unimplemented!()
+        fn gen_moveboard_bishop(occ: BitBoard, mask: BitBoard, c0: Coord) -> BitBoard {
+            let mut out = BitBoard::empty();
+            let ds_bishop = [NE,NW,SE,SW];
+            for d in ds_bishop.iter() {
+                let mut c1 = c0;
+                loop {
+                    if let Some(c2) = d.shift_coord(c1) {
+                        if (c1.square_dist(c2) <= 2) & occ.is_zero_at(c2) {
+                            out.set_one_mut(c2);
+                            c1 = c2;
+                        } else { break; }
+                    } else { break; }
+                }
+            }
+            out
         }
 
         fn gen_blockerboard(blockermask: BitBoard, index: usize) -> BitBoard {
             unimplemented!()
         }
+
     }
 
 }

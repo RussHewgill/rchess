@@ -4,7 +4,7 @@ use std::str::FromStr;
 use crate::types::*;
 use crate::tables::*;
 
-// use rayon::prelude::*;
+use rayon::prelude::*;
 
 impl Game {
 
@@ -70,19 +70,22 @@ impl Game {
 
         // let out: Vec<Move> = xs.par_iter().collect();
 
-        let mut out = vec![];
+        // let mut out = vec![];
 
-        out.extend(&self.search_king(&ts, col));
+        let k = self.search_king(&ts, col);
 
-        out.extend(&self.search_sliding(Bishop, &ts, col));
-        out.extend(&self.search_sliding(Rook, &ts, col));
-        out.extend(&self.search_sliding(Queen, &ts, col));
-        out.extend(&self.search_knights(&ts, col));
-        out.extend(&self.search_pawns(&ts, col));
-        out.extend(&self._search_promotions(&ts, None, col));
+        let b = self.search_sliding(Bishop, &ts, col);
+        let r = self.search_sliding(Rook, &ts, col);
+        let q = self.search_sliding(Queen, &ts, col);
+        let n = self.search_knights(&ts, col);
+        let p = self.search_pawns(&ts, col);
+        let pp = self._search_promotions(&ts, None, col);
 
-        out.extend(&self._search_castles(&ts));
+        let cs = self._search_castles(&ts);
 
+        let out = vec![k,b,r,q,n,p,pp].concat();
+
+        // let out: Vec<Move> = out.into_par_iter().filter(|m| {
         let out: Vec<Move> = out.into_iter().filter(|m| {
             self.move_is_legal(&ts, m)
         }).collect();

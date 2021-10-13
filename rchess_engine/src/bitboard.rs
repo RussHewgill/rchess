@@ -34,6 +34,14 @@ impl BitBoard {
         self.0 != 0
     }
 
+    pub fn is_zero_at<T: Into<Coord>>(&self, c0: T) -> bool {
+        (*self & BitBoard::single(c0.into())).is_empty()
+    }
+
+    pub fn is_one_at<T: Into<Coord>>(&self, c0: T) -> bool {
+        (*self & BitBoard::single(c0.into())).is_not_empty()
+    }
+
     pub fn more_than_one(&self) -> bool {
         let b = self.bitscan_reset().0;
         b.is_not_empty()
@@ -268,6 +276,23 @@ impl BitBoard {
             let p = b.bitscan_rev_reset_mut();
             f(p);
         }
+    }
+
+    // pub fn iter_subsets(&self) -> impl Iterator<Item = BitBoard> {
+    pub fn iter_subsets(&self) -> Vec<BitBoard> {
+        let mut out = vec![];
+        let mut n: u64 = 0;
+
+        loop {
+            out.push(BitBoard(n));
+
+            // n = (n - self.0) & self.0;
+            n = (n.overflowing_sub(self.0).0) & self.0;
+
+            if n == 0 { break; }
+        }
+
+        out
     }
 
 }
