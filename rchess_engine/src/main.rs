@@ -40,11 +40,12 @@ fn main() {
         .format_timestamp(None)
         .init();
 
+    // let ps = PcTables::new();
 
-    // main5() // search + eval position
+    main5() // search + eval position
     // main2();
     // main4(); // perft
-    main3(); // read from file and test
+    // main3(); // read from file and test
 
     // let b = BitBoard(b0);
     // eprintln!("b = {:?}", b);
@@ -107,8 +108,9 @@ fn main5() {
 
     let ex = Explorer::new(g.state.side_to_move, g.clone(), n);
 
-    // let b = g.state.checkers;
-    // eprintln!("b = {:?}", b);
+    // let s = g.evaluate(&ts);
+    // eprintln!("sw = {:?}", s.sum_color(White));
+    // eprintln!("sb = {:?}", s.sum_color(Black));
 
     // let m = Move::Capture { from: "G5".into(), to: "H7".into() };
     // let g2 = g.make_move_unchecked(&ts, &m).unwrap();

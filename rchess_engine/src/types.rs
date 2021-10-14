@@ -241,6 +241,17 @@ impl Color {
 
 impl Piece {
 
+    pub fn index(self) -> usize {
+        match self {
+            Pawn   => 0,
+            Rook   => 1,
+            Knight => 2,
+            Bishop => 3,
+            Queen  => 4,
+            King   => 5,
+        }
+    }
+
     pub fn iter_pieces() -> impl Iterator<Item = Piece> {
         let xs = vec![Pawn,Rook,Knight,Bishop,Queen,King];
         xs.into_iter()

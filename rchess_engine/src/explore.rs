@@ -173,7 +173,7 @@ impl Explorer {
     fn quiescence(&self, ts: &Tables, g: Game, moves: Option<Outcome>, k: i32, mut alpha: i32, mut beta: i32
     ) -> i32 {
         // println!("quiescence 0");
-        let stand_pat = g.evaluate(&ts).diff();
+        let stand_pat = g.evaluate(&ts).sum();
 
         if stand_pat >= beta {
             return beta;
@@ -256,7 +256,7 @@ impl Explorer {
             match g.make_move_unchecked(&ts, &m) {
                 Ok(g2)   => {
                     let score = g2.evaluate(&ts);
-                    let score = score.diff();
+                    let score = score.sum();
 
                     if maximizing {
                         // maximize self

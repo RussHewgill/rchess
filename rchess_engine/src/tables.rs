@@ -4,6 +4,7 @@ use crate::types::*;
 pub use self::movesets::*;
 pub use self::magics::*;
 pub use self::endgames::*;
+pub use self::eval::*;
 
 use rand::Rng;
 use lazy_static::lazy_static;
@@ -12,8 +13,8 @@ use itertools::Itertools;
 lazy_static! {
     pub static ref SQUAREDIST: [[u8; 64]; 64] = {
         let mut out = [[0; 64]; 64];
-        for s1 in 0..8 {
-            for s2 in 0..8 {
+        for s1 in 0u32..8 {
+            for s2 in 0u32..8 {
                 let (c1,c2): (Coord,Coord) = (s1.into(),s1.into());
                 out[s1 as usize][s2 as usize] = c1.square_dist(c2);
             }
@@ -38,6 +39,7 @@ pub struct Tables {
     table_rook:    [BitBoard; 0x19000],
     magics_bishop: [Magic; 64],
     table_bishop:  [BitBoard; 0x1480],
+    pub piece_tables:  PcTables,
     // endgames: 
 }
 
@@ -73,6 +75,7 @@ impl Tables {
     }
 }
 
+/// init
 impl Tables {
 
     pub fn new() -> Self {
@@ -97,6 +100,8 @@ impl Tables {
             [BitBoard::empty(); 0x1480])
         };
 
+        let piece_tables = PcTables::new();
+
         Self {
             knight_moves: Self::gen_knights(),
             rook_moves,
@@ -109,6 +114,7 @@ impl Tables {
             table_rook,
             magics_bishop,
             table_bishop,
+            piece_tables,
         }
     }
 
@@ -148,8 +154,8 @@ impl Tables {
 
     fn gen_betweenbb(bishops: [[MoveSetBishop; 8]; 8]) -> [[BitBoard; 64]; 64] {
         let mut out = [[BitBoard::empty(); 64]; 64];
-        for x in 0..64 {
-            for y in 0..64 {
+        for x in 0u32..64 {
+            for y in 0u32..64 {
                 let b = Self::mask_between(bishops, x.into(), y.into());
                 let b = b | BitBoard::single(y.into());
                 out[x as usize][y as usize] = b;
@@ -528,6 +534,118 @@ impl Tables {
 
 }
 
+mod eval {
+    use crate::types::*;
+    use crate::tables::*;
+    use crate::evaluate::*;
+
+    #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+    pub struct PcTables {
+        tables:    [[Score; 64]; 6],
+    }
+
+    impl PcTables {
+
+        pub fn print_table(ss: [Score; 64]) {
+            // for y in 0..8 {
+            //     let y = 7 - y;
+            //     for x in 0..8 {
+            //         // println!("(x,y) = ({},{}), coord = {:?}", x, y, Coord(x,y));
+            //         print!("{:>3?},", ps.get(Pawn, Coord(x,y)));
+            //     }
+            //     print!("\n");
+            // }
+        }
+
+        pub fn get<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
+            let c1: Coord = c0.into();
+            let c1 = if col == White { c1 } else { Coord(c1.0,7-c1.1) };
+            let sq: usize = c1.into();
+            self.tables[pc.index()][sq]
+        }
+
+        pub fn new() -> Self {
+            let pawns = Self::gen_pawns();
+
+            Self {
+                tables: [pawns,
+                         [0; 64],
+                         [0; 64],
+                         [0; 64],
+                         [0; 64],
+                         [0; 64]],
+            }
+            // unimplemented!()
+        }
+
+        // [
+        //     0,  0,  0,  0,  0,  0,  0,  0,
+        //     50, 50, 50, 50, 50, 50, 50, 50,
+        //     0,  0,  0,  0,  0,  0,  0,  0,
+        //     0,  0,  0,  0,  0,  0,  0,  0,
+        //     0,  0,  0,  0,  0,  0,  0,  0,
+        //     5, -5,-10,  0,  0,-10, -5,  5,
+        //     5, 10, 10,-20,-20, 10, 10,  5,
+        //     0,  0,  0,  0,  0,  0,  0,  0,
+        // ]
+
+        fn gen_pawns() -> [Score; 64] {
+            // let mut out = [0; 64];
+            let mut scores: Vec<(&str,Score)> = vec![];
+
+            // Castles
+            scores.push(("A2",5));
+            scores.push(("B2",10));
+            scores.push(("C2",10));
+
+            // Castle holes
+            scores.push(("A3",5));
+            scores.push(("B3",-5));
+            scores.push(("C3",-10));
+
+            // King/Queen Pawns
+            scores.push(("D2",-20));
+
+            // Center pawns
+            scores.push(("D4",20));
+
+            // Rank 5 pawns
+            scores.push(("A5",5));
+            scores.push(("B5",5));
+            scores.push(("C5",10));
+            scores.push(("D5",25));
+
+            // Rank 6 pawns
+            scores.push(("A6",10));
+            scores.push(("B6",10));
+            scores.push(("C6",20));
+            scores.push(("D6",30));
+
+            // Rank 7 pawns
+            scores.push(("A7",50));
+            scores.push(("B7",50));
+            scores.push(("C7",50));
+            scores.push(("D7",50));
+
+            let mut out = [0; 64];
+
+            for (c,s) in scores.into_iter() {
+                let c0: Coord = c.into();
+                let sq: usize = c0.into();
+                out[sq] = s;
+                let c1 = Coord(7-c0.0,c0.1);
+                let sq: usize = c1.into();
+                out[sq] = s;
+            }
+
+            out
+        }
+
+
+    }
+
+}
+
 mod endgames {
     use crate::types::*;
     use crate::tables::*;
@@ -624,34 +742,34 @@ mod magics {
             // unimplemented!()
         }
 
-        pub fn gen_magics_rook2() -> ([Magic; 64], [BitBoard; 0x19000]) {
-            let mut rng = rand::thread_rng();
-            let mut reference: [BitBoard; 4096] = [BitBoard::empty(); 4096];
-            let mut table: [BitBoard; 0x19000] = [BitBoard::empty(); 0x19000];
-            let mut magics: [Option<Magic>; 64] = [None; 64];
-            let mut size: usize = 0;
-            let (r1bb,r8bb) = (BitBoard::mask_rank(0),BitBoard::mask_rank(7));
-            let (f1bb,f8bb) = (BitBoard::mask_file(0),BitBoard::mask_file(7));
-            let mut epoch = [0; 4096];
-            let mut cnt   = 0;
-            let mut size: usize = 0;
+        // pub fn gen_magics_rook2() -> ([Magic; 64], [BitBoard; 0x19000]) {
+        //     let mut rng = rand::thread_rng();
+        //     let mut reference: [BitBoard; 4096] = [BitBoard::empty(); 4096];
+        //     let mut table: [BitBoard; 0x19000] = [BitBoard::empty(); 0x19000];
+        //     let mut magics: [Option<Magic>; 64] = [None; 64];
+        //     let mut size: usize = 0;
+        //     let (r1bb,r8bb) = (BitBoard::mask_rank(0),BitBoard::mask_rank(7));
+        //     let (f1bb,f8bb) = (BitBoard::mask_file(0),BitBoard::mask_file(7));
+        //     let mut epoch = [0; 4096];
+        //     let mut cnt   = 0;
+        //     let mut size: usize = 0;
 
-            for sq in 0..64 {
-                let c0: Coord = sq.into();
-
-
-                // let mask = Self::gen_blockermask_rook(c0) & !edges;
+        //     for sq in 0u64..64 {
+        //         let c0: Coord = sq.into();
 
 
-                // let m = Magic::new(attacks, mask, BitBoard(mm), shift);
-                // magics[sq as usize] = Some(m);
+        //         // let mask = Self::gen_blockermask_rook(c0) & !edges;
 
-            }
 
-            // let magics: [Magic; 64] = array_init::array_init(|x| magics[x].unwrap());
-            // (magics, table)
-            unimplemented!()
-        }
+        //         // let m = Magic::new(attacks, mask, BitBoard(mm), shift);
+        //         // magics[sq as usize] = Some(m);
+
+        //     }
+
+        //     // let magics: [Magic; 64] = array_init::array_init(|x| magics[x].unwrap());
+        //     // (magics, table)
+        //     unimplemented!()
+        // }
 
         pub fn _gen_magics(bishop: bool)
                            -> std::result::Result<([Magic; 64], [BitBoard; 0x1480]), ([Magic; 64], [BitBoard; 0x19000])>
@@ -669,7 +787,7 @@ mod magics {
             let mut cnt   = 0;
             let mut size: usize = 0;
 
-            for sq in 0..64 {
+            for sq in 0u32..64 {
             // for sq in 0..1 {
                 // let c0: Coord = "A1".into();
                 // let sq: u32 = c0.into();

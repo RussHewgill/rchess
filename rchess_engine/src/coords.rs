@@ -52,6 +52,18 @@ impl std::convert::From<Coord> for u32 {
     }
 }
 
+impl std::convert::From<Coord> for usize {
+    fn from(c: Coord) -> Self {
+        BitBoard::index_square(c) as usize
+    }
+}
+
+impl std::convert::From<usize> for Coord {
+    fn from(sq: usize) -> Self {
+        BitBoard::index_bit(sq as u32)
+    }
+}
+
 impl D {
 
     // pub fn shift(&self) -> i8 {
