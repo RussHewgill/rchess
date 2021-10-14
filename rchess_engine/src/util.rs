@@ -7,18 +7,40 @@ use std::collections::{HashMap,HashSet};
 use std::io::Write;
 use std::process::{Command,Stdio};
 
-pub fn read_ccr_onehour(path: &str) -> std::io::Result<Vec<(String, String)>> {
+pub fn read_ccr_onehour(path: &str) -> std::io::Result<Vec<(String, Vec<String>)>> {
     let file = std::fs::read_to_string(path)?;
     let lines = file.lines();
     let mut out = vec![];
+
+    // let mut lines = lines.collect::<Vec<&str>>();
+    // lines.truncate(5);
 
     for line in lines.into_iter() {
         let line = line.split("id").collect::<Vec<&str>>();
         let fen = line[0];
         let ms = &line[1..line.len()];
         // let m = "".to_string();
-        let m = ms.concat();
-        out.push((fen.to_string(),m.to_string()))
+        // let m = ms.concat().to_string();
+        let m: String = ms.concat();
+        let mut m = m.split("; ").collect::<Vec<&str>>();
+        m.reverse();
+        // m.truncate(m.len() - 1);
+        m.pop();
+        // let m = &m[1..m.len()-1];
+        // let m = m.concat();
+
+        // eprintln!("m = {:?}", m);
+        // let m = "";
+        let m = m.into_iter().map(|s| {
+            s.to_string()
+                .replace(";","")
+                .replace("am","")
+                .replace("bm","")
+                .replace(" ","")
+                .replace("+","")
+        }).collect();
+
+        out.push((fen.to_string(),m))
     }
 
     Ok(out)

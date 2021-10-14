@@ -41,10 +41,10 @@ fn main() {
         .init();
 
 
-    main5() // search + eval position
+    // main5() // search + eval position
     // main2();
     // main4(); // perft
-    // main3(); // read from file and test
+    main3(); // read from file and test
 
     // let b = BitBoard(b0);
     // eprintln!("b = {:?}", b);
@@ -117,9 +117,9 @@ fn main5() {
     // eprintln!("moves = {:?}", moves);
     // let ex = Explorer::new(g2.state.side_to_move, g2.clone(), n);
 
-    // let s = g.score_material();
-    let s = g.evaluate(&ts);
-    eprintln!("score = {:?}", s);
+    // // let s = g.score_material();
+    // let s = g.evaluate(&ts);
+    // eprintln!("score = {:?}", s);
 
     // let moves = vec![
     //     Move::Quiet { from: "E5".into(), to: "G5".into() },
@@ -180,23 +180,30 @@ fn main4() {
 fn main3() {
     let mut games = read_ccr_onehour("ccr_onehour.txt").unwrap();
 
-    games.truncate(1);
+    // for (fen,ms) in games.iter() {
+    //     // eprintln!("fen, ms = {:?}: {:?}", fen, ms);
+    //     eprintln!("ms = {:?}", ms);
+    // }
+
+    let g = &games[1];
+    let games = vec![g.clone()];
 
     let n = 4;
 
     let ts = Tables::new();
 
     for (fen,m) in games.into_iter() {
-
         let mut g = Game::from_fen(&fen).unwrap();
         let _ = g.recalc_gameinfo_mut(&ts);
         eprintln!("g = {:?}", g);
 
-        let ex = Explorer::new(g.state.side_to_move, g, n);
-
+        let ex = Explorer::new(g.state.side_to_move, g.clone(), n);
         let m0 = ex.explore(&ts, ex.depth);
-        eprintln!("m0 = {:?}", m0);
-        eprintln!("correct: {}", &m);
+
+        eprintln!("m0 = {:?}", m0.map(|x| x.to_long_algebraic()));
+        // eprintln!("m0 = {:?}", m0.map(|x| x.to_algebraic(&g)));
+        eprintln!("m0 = {:?}", m0.unwrap().to_algebraic(&g));
+        eprintln!("correct: {}", m.join(", "));
     }
 
     // let games = read_json_fens("perft_fens.txt").unwrap();

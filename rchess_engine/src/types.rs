@@ -143,10 +143,6 @@ impl Move {
         }
     }
 
-}
-
-impl Move {
-
     pub fn reverse(&self) -> Self {
         match *self {
             Move::Quiet      { from, to } => {
@@ -170,6 +166,54 @@ impl Move {
             Move::Castle     { from, to, rook_from, rook_to } => {
                 Move::Castle     { from: to, to: from, rook_from, rook_to }
             },
+        }
+    }
+
+    pub fn to_long_algebraic(&self) -> String {
+        match self {
+            Move::Promotion { new_piece, .. } | Move::PromotionCapture { new_piece, .. } => {
+                let c = match new_piece {
+                    Queen  => 'q',
+                    Knight => 'n',
+                    Rook   => 'r',
+                    Bishop => 'b',
+                    _      => panic!("Bad promotion"),
+                };
+                format!("{:?}{:?}{}", self.sq_from(), self.sq_to(), c).to_ascii_lowercase()
+            },
+            _ => {
+                format!("{:?}{:?}", self.sq_from(), self.sq_to()).to_ascii_lowercase()
+            },
+        }
+    }
+
+    pub fn to_algebraic(&self, g: &Game) -> String {
+
+        if let Some((_,pc)) = g.get_at(self.sq_from()) {
+            let from = format!("{:?}", self.sq_from()).to_ascii_lowercase();
+            let to = format!("{:?}", self.sq_to()).to_ascii_lowercase();
+            match pc {
+                Pawn   => {
+                    format!("{}", to)
+                },
+                Rook   => {
+                    unimplemented!()
+                },
+                Knight => {
+                    unimplemented!()
+                },
+                Bishop => {
+                    unimplemented!()
+                },
+                Queen  => {
+                    format!("Q{:?}", self.sq_to())
+                },
+                King   => {
+                    unimplemented!()
+                },
+            }
+        } else {
+            unimplemented!()
         }
     }
 

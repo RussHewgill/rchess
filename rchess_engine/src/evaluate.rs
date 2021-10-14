@@ -4,6 +4,7 @@ use crate::tables::*;
 
 #[derive(Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Eval {
+    // pub material: []
     pub score_material:    Score,
     pub score_position:    Score,
     // contempt: i32,
@@ -112,12 +113,22 @@ impl Game {
 }
 
 impl Piece {
-    pub fn score(&self) -> i32 {
+    pub fn score_basic(&self) -> i32 {
         match self {
             Pawn   => 100,
             Rook   => 500,
             Knight => 300,
             Bishop => 300,
+            Queen  => 900,
+            King   => 1000000,
+        }
+    }
+    pub fn score(&self) -> i32 {
+        match self {
+            Pawn   => 100,
+            Rook   => 500,
+            Knight => 320,
+            Bishop => 330,
             Queen  => 900,
             King   => 1000000,
         }
@@ -181,6 +192,10 @@ impl Game {
 impl Game {
 
     pub fn score_position(&self) -> Score {
+        unimplemented!()
+    }
+
+    fn score_positions_pawns(&self) -> Score {
         unimplemented!()
     }
 
