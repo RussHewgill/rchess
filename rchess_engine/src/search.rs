@@ -24,9 +24,9 @@ impl Game {
 
         let ms = self.search_all(&ts, col);
         match ms {
-            Outcome::Checkmate(_) => unimplemented!(),
-            Outcome::Stalemate    => unimplemented!(),
-            Outcome::Moves(ms)    => {
+            Outcome::Checkmate(win) => Outcome::Checkmate(win),
+            Outcome::Stalemate      => Outcome::Stalemate,
+            Outcome::Moves(ms)      => {
                 let out: Vec<Move> = ms.into_iter()
                     .filter(|m| m.sq_from() == c0)
                     .collect();

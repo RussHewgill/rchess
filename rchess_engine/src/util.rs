@@ -7,6 +7,43 @@ use std::collections::{HashMap,HashSet};
 use std::io::Write;
 use std::process::{Command,Stdio};
 
+// pub fn read_epd(path: &str) -> std::io::Result<Vec<(String, Vec<String>)>> {
+pub fn read_epd(path: &str) -> std::io::Result<Vec<(String, String)>> {
+    let file = std::fs::read_to_string(path)?;
+    let lines = file.lines();
+    let mut out = vec![];
+
+    // let mut lines = lines.collect::<Vec<&str>>();
+    // lines.truncate(1);
+
+    for line in lines.into_iter() {
+        let mut line = line.split("bm").collect::<Vec<&str>>();
+        out.push((line[0].to_string(), line[1].to_string()));
+
+        // let mut line = line.split("/").collect::<Vec<&str>>();
+        // let last = line.pop().unwrap();
+        // let last = last.split(" ").collect::<Vec<&str>>();
+        // // eprintln!("last = {:?}", last);
+        // line.push(last[0].clone());
+        // let line = line.join("/");
+        // // eprintln!("line = {:?}", line);
+        // let line = vec![line, last[1].to_string(), last[2].to_string(), last[3].to_string()];
+        // let line = line.join(" ");
+        // eprintln!("line = {:?}", line);
+        // let last = &last[4..last.len()];
+        // eprintln!("last = {:?}", last);
+
+        // let last = &last[1..last.len()];
+        // eprintln!("last = {:?}", last);
+        // eprintln!("line.len() = {:?}", line.len());
+        // let fen: String = line[0..8].join("/");
+        // eprintln!("fen = {:?}", fen);
+    }
+
+    // unimplemented!()
+    Ok(out)
+}
+
 pub fn read_ccr_onehour(path: &str) -> std::io::Result<Vec<(String, Vec<String>)>> {
     let file = std::fs::read_to_string(path)?;
     let lines = file.lines();

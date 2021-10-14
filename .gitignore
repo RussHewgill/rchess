@@ -3,3 +3,5 @@ perf.data*
 flamegraph.svg
 rchess_game/target/*
 *.epd
+*.pgn
+*.zip

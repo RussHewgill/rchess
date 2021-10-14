@@ -68,37 +68,12 @@ fn main() {
 
 fn main5() {
 
-    // let fen = "8/1N1p4/4k3/2p5/8/3p4/8/7K w - - 0 1";
-    // let fen = "8/1N1p4/4k3/r1p5/8/3p4/8/7K w - - 0 1";
-    // let fen = "8/3p4/8/2Nk4/8/3p4/8/7K w - - 1 2";
-    // let fen = "3p4/1N2k3/8/2p5/8/8/8/7K w - - 0 1";
-    // let fen = "8/1N6/8/p1pk4/8/8/8/7K w - - 0 1";
-    // let fen = "8/8/8/p1pk4/1P6/8/8/7K w - - 0 1";
-    // let fen = "8/1N6/8/p1pk4/8/8/8/7K w - - 0 1";
+    let fen = STARTPOS;
 
-    // let fen = "8/8/3k4/8/8/4K3/8/Q6R w - - 0 1"; // Mate in 3
-    // let fen = "8/8/7R/2k5/8/4K3/8/Q7 w - - 0 1"; // Mate in 2
-    // let fen = "8/8/7R/3k4/Q7/4K3/8/8 w - - 0 1"; // Mate in 1
-    // let fen = "8/8/7R/3k4/3Q4/4K3/8/8 w - - 0 1"; // Mate
+    // let fen = "3b4/1pN5/1P1p4/3pN2R/3kP3/K2B1bP1/1P3P2/6B1 w - - 0 1";
+    let fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
 
-    // let fen = "8/8/7R/3k4/8/4K3/8/Q7 w - - 0 1";
-    // let fen = "6k1/p4pp1/7p/1P6/8/P4QKP/5PP1/2qRr2q w - - 0 35";
-    // let fen = "1k1r4/pp1b1R2/3q2pp/4p3/2B5/4Q3/PPP2B2/2K5 b - -";
-
-    // let fen = "1k6/6pR/1K6/8/8/8/8/8 w - - 0 1"; // Mate in 1
-    // let fen = "1k5R/6p1/1K6/8/8/8/8/8 b - - 1 1"; // Mate
-
-    // let fen = "3k4/2pP4/2P5/4R3/4P3/8/8/6K1 w - - 0 1";
-    // let fen = "3k4/2pP4/2P4p/4R1p1/4P3/8/8/6K1 w - - 0 1";
-    // let fen = "1k1b3r/p1pPp3/1pP1P2p/4R1p1/4P3/8/8/6K1 w - - 0 1";
-
-    // let fen = "5r1k/4Qpq1/4p3/1p1p2P1/2p2P2/1p2P3/3P4/BK6 b - -"; // Horizon Effect
-
-    let fen = "2bq2k1/5p1n/2p1r2Q/2Pp2N1/3b4/7P/5PP1/6K1 w - - 0 25";
-
-    // let fen = STARTPOS;
-
-    let n = 4;
+    let n = 1;
 
     let ts = Tables::new();
     // let ts = Tables::_new(false);
@@ -123,17 +98,36 @@ fn main5() {
     // let s = g.evaluate(&ts);
     // eprintln!("score = {:?}", s);
 
+    let moves = vec![
+        Move::Quiet { from: "H7".into(), to: "H6".into() },
+        Move::Quiet { from: "E7".into(), to: "E5".into() },
+    ];
+
     // let moves = vec![
-    //     Move::Quiet { from: "E5".into(), to: "G5".into() },
-    //     Move::Quiet { from: "E5".into(), to: "D5".into() },
+    //     Move::Quiet { from: "H2".into(), to: "H3".into() },
+    //     Move::Quiet { from: "E2".into(), to: "E4".into() },
     // ];
-    // let s0 = ex.ab_search(&ts, moves[0]);
-    // eprintln!("s0 = {:?} : {:?}", s0, moves[0]);
-    // let s1 = ex.ab_search(&ts, moves[1]);
-    // eprintln!("s1 = {:?} : {:?}", s1, moves[1]);
 
     // ex.rank_moves(&ts, true);
     // ex.rank_moves_list(&ts, true, moves);
+
+    // let s = g.evaluate(&ts);
+    // eprintln!("s = {:?}", s.sum());
+
+    // let g2 = g.make_move_unchecked(&ts, &moves[0]).unwrap();
+    // // eprintln!("g2 = {:?}", g2);
+    // let s = g2.evaluate(&ts);
+    // eprintln!("s = {:?}", s.sum_color(Black));
+    // eprintln!("s = {:?}\n", s.sum_color(!Black));
+
+    // let g2 = g.make_move_unchecked(&ts, &moves[1]).unwrap();
+    // // eprintln!("g2 = {:?}", g2);
+    // let s = g2.evaluate(&ts);
+    // eprintln!("s = {:?}", s.sum_color(Black));
+    // eprintln!("s = {:?}", s.sum_color(!Black));
+
+    // let s = g.evaluate(&ts);
+    // eprintln!("s = {:?}", s.sum());
 
     let t = std::time::Instant::now();
     let m = ex.explore(&ts, ex.depth);
@@ -180,7 +174,8 @@ fn main4() {
 }
 
 fn main3() {
-    let mut games = read_ccr_onehour("ccr_onehour.txt").unwrap();
+    // let mut games = read_ccr_onehour("ccr_onehour.txt").unwrap();
+    let mut games = read_epd("Midgames250.epd").unwrap();
 
     // for (fen,ms) in games.iter() {
     //     // eprintln!("fen, ms = {:?}: {:?}", fen, ms);
@@ -198,14 +193,14 @@ fn main3() {
         let mut g = Game::from_fen(&fen).unwrap();
         let _ = g.recalc_gameinfo_mut(&ts);
         eprintln!("g = {:?}", g);
-
         let ex = Explorer::new(g.state.side_to_move, g.clone(), n);
         let m0 = ex.explore(&ts, ex.depth);
 
         eprintln!("m0 = {:?}", m0.map(|x| x.to_long_algebraic()));
         // eprintln!("m0 = {:?}", m0.map(|x| x.to_algebraic(&g)));
         eprintln!("m0 = {:?}", m0.unwrap().to_algebraic(&g));
-        eprintln!("correct: {}", m.join(", "));
+        // eprintln!("correct: {}", m.join(", "));
+        eprintln!("correct: {}", m);
     }
 
     // let games = read_json_fens("perft_fens.txt").unwrap();
@@ -269,6 +264,8 @@ fn main2() {
     let fen = "1k1r4/pp1b1R2/6pp/4p3/2B5/4Q3/PPP2B2/2Kq4 w - - 1 2";
     let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
 
+    let fen = "B5KR/1r5B/6R1/2b1p1p1/2P1k1P1/1p2P2p/1P2P2P/3N1N2 w - - 0 1";
+
     // let mut g = Game::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ").unwrap();
     // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ").unwrap();
     // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 b - - 0 1").unwrap();
@@ -306,7 +303,7 @@ fn main2() {
     // eprintln!("b = {:?}", b);
 
     // let moves = g._search_castles(&ts);
-    let moves = g.search_all(&ts, g.state.side_to_move);
+    // let moves = g.search_all(&ts, g.state.side_to_move);
     // let moves = g.search_sliding(&ts, Rook, g.state.side_to_move);
     // let moves = g._search_sliding_single(&ts, Rook, "D4".into(), g.state.side_to_move);
     // eprintln!("moves = {:?}", moves);
@@ -316,13 +313,14 @@ fn main2() {
     // let b = g.move_is_legal(&ts, &m);
     // eprintln!("b = {:?}", b);
 
-    eprintln!("moves.len() = {:?}", moves.get_moves_unsafe().len());
-    // eprintln!("moves.len() = {:?}", moves.len());
-    for m in moves.into_iter() {
-        eprintln!("m = {:?}", m);
-        // let b = g.move_is_legal(&ts, &m);
-        // eprintln!("b = {:?}", b);
-    }
+
+    // eprintln!("moves.len() = {:?}", moves.get_moves_unsafe().len());
+    // // eprintln!("moves.len() = {:?}", moves.len());
+    // for m in moves.into_iter() {
+    //     eprintln!("m = {:?}", m);
+    //     // let b = g.move_is_legal(&ts, &m);
+    //     // eprintln!("b = {:?}", b);
+    // }
 
     // // // let moves = g._search_castles(&ts);
     // // let moves = g._search_pawns(None, &ts, White);

@@ -85,7 +85,7 @@ impl Explorer {
                 let g2 = self.game.make_move_unchecked(&ts, &m).unwrap();
                 let alpha = (None,i32::MIN);
                 let beta  = (None,i32::MAX);
-                let (m2,score) = self._ab_search(&ts, g2, self.depth, 1, Some(m), alpha, beta);
+                let (m2,score) = self._ab_search(&ts, g2, self.depth, 0, Some(m), alpha, beta);
                 (m,score)
             })
             .collect();
@@ -170,10 +170,16 @@ impl Explorer {
         }
     }
 
-    fn quiescence(&self, ts: &Tables, g: Game, moves: Option<Outcome>, k: i32, mut alpha: i32, mut beta: i32
+    fn quiescence(&self,
+                  ts: &Tables,
+                  g: Game,
+                  moves: Option<Outcome>,
+                  k: i32,
+                  mut alpha: i32,
+                  mut beta: i32
     ) -> i32 {
         // println!("quiescence 0");
-        let stand_pat = g.evaluate(&ts).sum();
+        let stand_pat = g.evaluate(&ts).sum(self.side);
 
         if stand_pat >= beta {
             return beta;
@@ -248,15 +254,15 @@ impl Explorer {
         // }
 
         if depth == 0 {
-            // return (m0,g.evaluate(&ts).diff());
-            return (m0,self.quiescence(&ts, g, Some(moves), k, alpha.1, beta.1));
+            return (m0,g.evaluate(&ts).sum(self.side));
+            // return (m0,self.quiescence(&ts, g, Some(moves), k, alpha.1, beta.1));
         }
 
         for m in moves.into_iter() {
             match g.make_move_unchecked(&ts, &m) {
                 Ok(g2)   => {
                     let score = g2.evaluate(&ts);
-                    let score = score.sum();
+                    let score = score.sum(self.side);
 
                     if maximizing {
                         // maximize self
