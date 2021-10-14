@@ -41,10 +41,10 @@ fn main() {
         .init();
 
 
-    // main5()
+    main5() // search + eval position
     // main2();
-    // main4();
-    main3();
+    // main4(); // perft
+    // main3(); // read from file and test
 
     // let b = BitBoard(b0);
     // eprintln!("b = {:?}", b);
@@ -82,38 +82,61 @@ fn main5() {
 
     // let fen = "8/8/7R/3k4/8/4K3/8/Q7 w - - 0 1";
     // let fen = "6k1/p4pp1/7p/1P6/8/P4QKP/5PP1/2qRr2q w - - 0 35";
-    let fen = "1k1r4/pp1b1R2/3q2pp/4p3/2B5/4Q3/PPP2B2/2K5 b - -";
+    // let fen = "1k1r4/pp1b1R2/3q2pp/4p3/2B5/4Q3/PPP2B2/2K5 b - -";
 
     // let fen = "1k6/6pR/1K6/8/8/8/8/8 w - - 0 1"; // Mate in 1
     // let fen = "1k5R/6p1/1K6/8/8/8/8/8 b - - 1 1"; // Mate
 
+    // let fen = "3k4/2pP4/2P5/4R3/4P3/8/8/6K1 w - - 0 1";
+    // let fen = "3k4/2pP4/2P4p/4R1p1/4P3/8/8/6K1 w - - 0 1";
+    // let fen = "1k1b3r/p1pPp3/1pP1P2p/4R1p1/4P3/8/8/6K1 w - - 0 1";
 
-    // let fen = "8/8/7R/3k4/8/4K3/8/2Q5 b - - 1 1";
+    // let fen = "5r1k/4Qpq1/4p3/1p1p2P1/2p2P2/1p2P3/3P4/BK6 b - -"; // Horizon Effect
+
+    let fen = "2bq2k1/5p1n/2p1r2Q/2Pp2N1/3b4/7P/5PP1/6K1 w - - 0 25";
 
     // let fen = STARTPOS;
 
     let n = 4;
 
-    let ts = Tables::new(true);
-    // let ts = Tables::new(false);
+    let ts = Tables::new();
+    // let ts = Tables::_new(false);
     let mut g = Game::from_fen(fen).unwrap();
     let _ = g.recalc_gameinfo_mut(&ts);
     eprintln!("g = {:?}", g);
 
-    // let m = Move::Quiet { from: "A1".into(), to: "D4".into() };
-    // let m = Move::Quiet { from: "A1".into(), to: "C1".into() };
+    let ex = Explorer::new(g.state.side_to_move, g.clone(), n);
 
+    // let b = g.state.checkers;
+    // eprintln!("b = {:?}", b);
+
+    // let m = Move::Capture { from: "G5".into(), to: "H7".into() };
     // let g2 = g.make_move_unchecked(&ts, &m).unwrap();
     // eprintln!("g2 = {:?}", g2);
     // let moves = g2.search_all(&ts, g2.state.side_to_move);
     // eprintln!("moves = {:?}", moves);
+    // let ex = Explorer::new(g2.state.side_to_move, g2.clone(), n);
 
-    let ex = Explorer::new(g.state.side_to_move, g.clone(), n);
+    // let s = g.score_material();
+    let s = g.evaluate(&ts);
+    eprintln!("score = {:?}", s);
+
+    // let moves = vec![
+    //     Move::Quiet { from: "E5".into(), to: "G5".into() },
+    //     Move::Quiet { from: "E5".into(), to: "D5".into() },
+    // ];
+    // let s0 = ex.ab_search(&ts, moves[0]);
+    // eprintln!("s0 = {:?} : {:?}", s0, moves[0]);
+    // let s1 = ex.ab_search(&ts, moves[1]);
+    // eprintln!("s1 = {:?} : {:?}", s1, moves[1]);
+
     // ex.rank_moves(&ts, true);
+    // ex.rank_moves_list(&ts, true, moves);
 
     let t = std::time::Instant::now();
     let m = ex.explore(&ts, ex.depth);
     eprintln!("m = {:?}", m);
+    // ex.rank_moves(&ts, true);
     println!("perft done in {} seconds.", t.elapsed().as_secs_f64());
 
     // let k = g.evaluate(&ts, White);
@@ -131,12 +154,16 @@ fn main4() {
     let fen = "1k1r4/pp1b1R2/3q2pp/4p3/2B5/4Q3/PPP2B2/2K5 b - - 0 1";
     let fen = "1kbr4/pp3R2/3q2pp/4p3/2B5/4Q3/PPP2B2/2K5 w - - 1 2";
 
-    let n = 2;
+    let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
+    let fen = "r3k2r/p1ppqpb1/bn2pQp1/3PN3/1p2P3/2N4p/PPPBBPPP/R3K2R b KQkq - 0 1";
+    let fen = "r2qk2r/p1pp1pb1/bn2pQp1/3PN3/1p2P3/2N4p/PPPBBPPP/R3K2R w KQkq - 1 2";
 
-    let ts = Tables::new(true);
-    // let mut g = Game::from_fen(fen).unwrap();
-    // g.recalc_gameinfo_mut(&ts);
-    // eprintln!("g = {:?}", g);
+    let n = 4;
+
+    let ts = Tables::new();
+    let mut g = Game::from_fen(fen).unwrap();
+    let _ = g.recalc_gameinfo_mut(&ts);
+    eprintln!("g = {:?}", g);
 
     let (t,(_,_)) = test_stockfish(fen, n, true).unwrap();
     // let (t,(_,_)) = test_stockfish(fen, n, false).unwrap();
@@ -151,7 +178,26 @@ fn main4() {
 }
 
 fn main3() {
-    let games = read_ccr_onehour("perft_fens.txt").unwrap();
+    let mut games = read_ccr_onehour("ccr_onehour.txt").unwrap();
+
+    games.truncate(1);
+
+    let n = 4;
+
+    let ts = Tables::new();
+
+    for (fen,m) in games.into_iter() {
+
+        let mut g = Game::from_fen(&fen).unwrap();
+        let _ = g.recalc_gameinfo_mut(&ts);
+        eprintln!("g = {:?}", g);
+
+        let ex = Explorer::new(g.state.side_to_move, g, n);
+
+        let m0 = ex.explore(&ts, ex.depth);
+        eprintln!("m0 = {:?}", m0);
+        eprintln!("correct: {}", &m);
+    }
 
     // let games = read_json_fens("perft_fens.txt").unwrap();
     // let mut games = games;
@@ -212,6 +258,7 @@ fn main2() {
 
     let fen = "1k1r4/pp1b1R2/3q2p1/4p2p/2B5/4Q3/PPP2B2/2K5 w - - 0 2";
     let fen = "1k1r4/pp1b1R2/6pp/4p3/2B5/4Q3/PPP2B2/2Kq4 w - - 1 2";
+    let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
 
     // let mut g = Game::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ").unwrap();
     // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ").unwrap();
@@ -225,7 +272,7 @@ fn main2() {
 
     let mut g = Game::from_fen(fen).unwrap();
 
-    let ts = Tables::new(true);
+    let ts = Tables::new();
     // let mut g = Game::new();
 
     let _ = g.recalc_gameinfo_mut(&ts);
@@ -249,22 +296,24 @@ fn main2() {
     // let b = !g.get(King, Black);
     // eprintln!("b = {:?}", b);
 
-    // let moves = g._search_king(&ts, g.state.side_to_move, true);
-    // // let moves = g.search_all(&ts, g.state.side_to_move);
-    // // let moves = g.search_sliding(&ts, Rook, g.state.side_to_move);
-    // // let moves = g._search_sliding_single(&ts, Rook, "D4".into(), g.state.side_to_move);
-    // // eprintln!("moves = {:?}", moves);
+    // let moves = g._search_castles(&ts);
+    let moves = g.search_all(&ts, g.state.side_to_move);
+    // let moves = g.search_sliding(&ts, Rook, g.state.side_to_move);
+    // let moves = g._search_sliding_single(&ts, Rook, "D4".into(), g.state.side_to_move);
+    // eprintln!("moves = {:?}", moves);
 
     // // let m = Move::Quiet { from: "C1".into(), to: "D1".into() };
     // let m = Move::Quiet { from: "C1".into(), to: "B1".into() };
     // let b = g.move_is_legal(&ts, &m);
     // eprintln!("b = {:?}", b);
 
-    // // eprintln!("moves.len() = {:?}", moves.get_moves_unsafe().len());
+    eprintln!("moves.len() = {:?}", moves.get_moves_unsafe().len());
     // eprintln!("moves.len() = {:?}", moves.len());
-    // for m in moves.into_iter() {
-    //     eprintln!("m = {:?}", m);
-    // }
+    for m in moves.into_iter() {
+        eprintln!("m = {:?}", m);
+        // let b = g.move_is_legal(&ts, &m);
+        // eprintln!("b = {:?}", b);
+    }
 
     // // // let moves = g._search_castles(&ts);
     // // let moves = g._search_pawns(None, &ts, White);

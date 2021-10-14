@@ -669,6 +669,12 @@ impl std::fmt::Debug for Game {
         }
         f.write_str(&format!("{}\n", line))?;
 
+        if self.state.checkers.unwrap().is_not_empty() {
+            f.write_str(&format!("In Check\n"))?;
+        } else {
+            f.write_str(&format!("Not In Check\n"))?;
+        }
+
         f.write_str(&format!("En Passant: {:?}\n", self.state.en_passant))?;
         let c = self.state.castling;
         f.write_str(&format!("Castling (KQkq): {} {} {} {}\n",

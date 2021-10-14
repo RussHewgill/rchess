@@ -3,6 +3,7 @@ use crate::types::*;
 
 pub use self::movesets::*;
 pub use self::magics::*;
+pub use self::endgames::*;
 
 use rand::Rng;
 use lazy_static::lazy_static;
@@ -74,7 +75,11 @@ impl Tables {
 
 impl Tables {
 
-    pub fn new(magics: bool) -> Self {
+    pub fn new() -> Self {
+        Self::_new(true)
+    }
+
+    pub(crate) fn _new(magics: bool) -> Self {
         let rook_moves   = Self::gen_rooks();
         let bishop_moves = Self::gen_bishops();
 
@@ -523,6 +528,13 @@ impl Tables {
 
 }
 
+mod endgames {
+    use crate::types::*;
+    use crate::tables::*;
+
+
+}
+
 mod magics {
     use itertools::iproduct;
     use rand::Rng;
@@ -567,19 +579,12 @@ mod magics {
 
     impl Tables {
 
-        // pub fn attacks_rook(c0: Coord, occ: BitBoard, magics: [Magic; 64], tables: [BitBoard; 0x19000]) -> BitBoard {
-        //     let sq: u32 = c0.into();
-        //     let m = magics[sq as usize];
-        //     let mut occ = occ;
-        //     let occ = (occ & m.mask).0;
-        //     let occ = occ.overflowing_mul(m.magic.0).0;
-        //     let occ = occ.overflowing_shr(m.shift).0;
-        //     tables[m.attacks + occ as usize]
-        // }
-
         pub fn attacks_rook(&self, c0: Coord, occ: BitBoard) -> BitBoard {
             let sq: u32 = c0.into();
             let m = self.magics_rook[sq as usize];
+            if m.magic.0 == 0 {
+                panic!("Magics not initialized");
+            }
             let mut occ = occ;
             let occ = (occ & m.mask).0;
             let occ = occ.overflowing_mul(m.magic.0).0;
@@ -590,6 +595,9 @@ mod magics {
         pub fn attacks_bishop(&self, c0: Coord, occ: BitBoard) -> BitBoard {
             let sq: u32 = c0.into();
             let m = self.magics_bishop[sq as usize];
+            if m.magic.0 == 0 {
+                panic!("Magics not initialized");
+            }
             let mut occ = occ;
             let occ = (occ & m.mask).0;
             let occ = occ.overflowing_mul(m.magic.0).0;

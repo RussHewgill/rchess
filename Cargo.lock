@@ -333,6 +333,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rchess_magics"
+version = "0.1.0"
+dependencies = [
+ "rchess_engine",
+]
+
+[[package]]
 name = "rchess_uci"
 version = "0.1.0"
 dependencies = [

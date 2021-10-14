@@ -3,6 +3,7 @@
 members = [
     "rchess_uci",
     "rchess_engine",
+    "rchess_magics",
 ]
 exclude = [
     "rchess_game",
@@ -12,6 +13,6 @@ exclude = [
 [profile.dev.package."*"]
 opt-level = 3
 
-[profile.release]
-debug = true
+# [profile.release]
+# debug = true
 

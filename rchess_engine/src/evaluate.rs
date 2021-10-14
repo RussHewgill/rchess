@@ -103,25 +103,85 @@ impl Eval {
 }
 
 impl Game {
-
-    pub fn score_material(&self) -> Score {
-        let (mut w,mut b) = (0,0);
-        for pc in Piece::iter_pieces() {
-            w += pc.score() * self.get(pc, White).popcount() as i32;
-            b += pc.score() * self.get(pc, Black).popcount() as i32;
-        }
-        Score::new(w,b)
-    }
-
-    pub fn score_position(&self) -> Score {
-        unimplemented!()
-    }
-
     pub fn evaluate(&self, ts: &Tables) -> Eval {
         let mut out = Eval::default();
         out.score_material = self.score_material();
         // out.score_position = self.score_position();
         out
+    }
+}
+
+impl Piece {
+    pub fn score(&self) -> i32 {
+        match self {
+            Pawn   => 100,
+            Rook   => 500,
+            Knight => 300,
+            Bishop => 300,
+            Queen  => 900,
+            King   => 1000000,
+        }
+    }
+}
+
+/// Material Scoring
+impl Game {
+
+    pub fn score_material(&self) -> Score {
+        let mut cols = [White,Black];
+
+        let out: Vec<i32> = cols.iter().map(|&col| {
+            Piece::iter_pieces().map(|pc| {
+                self._score_material(pc, col)
+            }).sum()
+        }).collect();
+
+        // for pc in Piece::iter_pieces() {
+        //     match pc {
+        //         Bishop => {
+        //             let sw = self.get(pc, White).popcount() as i32;
+        //             let sb = self.get(pc, Black).popcount() as i32;
+        //             w += if sw == 2 { pc.score() * sw } else {
+        //             }
+        //             pc.score() * sw;
+        //             b += pc.score() * sw;
+        //         },
+        //         _ => {
+        //             w += pc.score() * self.get(pc, White).popcount() as i32;
+        //             b += pc.score() * self.get(pc, Black).popcount() as i32;
+        //         }
+        //     }
+        // }
+
+        Score::new(out[0],out[1])
+    }
+
+    fn _score_material(&self, pc: Piece, col: Color) -> i32 {
+        match pc {
+            // Rook   => {},
+            // Knight => {},
+            Bishop => {
+                let n = self.get(pc, col).popcount() as i32;
+                if n > 1 {
+                    // 2 bishops = 0.5 pawn
+                    pc.score() * n + 50
+                } else {
+                    pc.score() * n
+                }
+            },
+            _      => {
+                pc.score() * self.get(pc, col).popcount() as i32
+            },
+        }
+    }
+
+}
+
+/// Positional Scoring
+impl Game {
+
+    pub fn score_position(&self) -> Score {
+        unimplemented!()
     }
 
 }
@@ -143,7 +203,7 @@ impl std::fmt::Debug for Eval {
 impl std::fmt::Debug for Score {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // f.write_str(&format!("Coord({}{})", r, self.1+1))?;
-        f.write_str(&format!("Score({}/{})", self.white, self.black))?;
+        f.write_str(&format!("Score({})({}/{})", self.white - self.black, self.white, self.black))?;
         Ok(())
     }
 }

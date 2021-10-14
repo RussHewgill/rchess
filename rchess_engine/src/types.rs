@@ -202,17 +202,6 @@ impl Piece {
         xs.into_iter()
     }
 
-    pub fn score(&self) -> i32 {
-        match self {
-            Pawn   => 1,
-            Rook   => 5,
-            Knight => 3,
-            Bishop => 3,
-            Queen  => 9,
-            King   => 10000,
-        }
-    }
-
     pub fn print(&self, c: Color) -> char {
         // backward on dark terminal
         match c {

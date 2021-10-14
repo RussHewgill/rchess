@@ -13,7 +13,12 @@ pub fn read_ccr_onehour(path: &str) -> std::io::Result<Vec<(String, String)>> {
     let mut out = vec![];
 
     for line in lines.into_iter() {
-        unimplemented!()
+        let line = line.split("id").collect::<Vec<&str>>();
+        let fen = line[0];
+        let ms = &line[1..line.len()];
+        // let m = "".to_string();
+        let m = ms.concat();
+        out.push((fen.to_string(),m.to_string()))
     }
 
     Ok(out)
@@ -127,7 +132,7 @@ pub fn test_stockfish(
     let output = child.wait_with_output()?;
 
     let mut g = Game::from_fen(&fen).unwrap();
-    let ts = Tables::new(true);
+    let ts = Tables::new();
     let _ = g.recalc_gameinfo_mut(&ts);
     // eprintln!("g = {:?}", g);
 

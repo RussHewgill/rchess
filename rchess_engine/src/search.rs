@@ -83,7 +83,7 @@ impl Game {
 
         let cs = self._search_castles(&ts);
 
-        let out = vec![k,b,r,q,n,p,pp].concat();
+        let out = vec![k,b,r,q,n,p,pp,cs].concat();
 
         // let out: Vec<Move> = out.into_par_iter().filter(|m| {
         let out: Vec<Move> = out.into_iter().filter(|m| {
@@ -139,11 +139,12 @@ impl Game {
         if depth == 0 { return (1,vec![]); }
 
         let moves = self.search_all(&ts, self.state.side_to_move);
-        if moves.is_end() { return (1,vec![]); }
+        if moves.is_end() { return (0,vec![]); }
 
         // eprintln!("moves.len() = {:?}", moves.len());
         let mut k = 0;
         let mut out = vec![];
+
         for m in moves.into_iter() {
             if let Ok(g2) = self.make_move_unchecked(&ts, &m) {
                 let (ns,cs) = g2._perft(ts, depth - 1, false);
@@ -162,6 +163,7 @@ impl Game {
                 // panic!("move: {:?}\n{:?}", m, self);
             }
         }
+
         (nodes, out)
     }
 
@@ -172,7 +174,7 @@ impl Game {
         if depth == 0 { return (1,0); }
 
         let moves = self.search_all(&ts, self.state.side_to_move);
-        if moves.is_end() { return (1,0); }
+        if moves.is_end() { return (0,0); }
 
         // eprintln!("moves.len() = {:?}", moves.len());
         let mut k = 0;
