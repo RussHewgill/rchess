@@ -5,7 +5,7 @@ pub use crate::game::*;
 
 pub use self::{Color::*,Piece::*};
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Debug,Hash,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub enum Color {
     White,
     Black,
@@ -22,7 +22,7 @@ pub enum Piece {
 }
 
 // #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
-// pub struct Move {
+// pub struct SimpleMove {
 //     from: Coord,
 //     to:   Coord,
 // }

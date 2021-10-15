@@ -125,16 +125,6 @@ impl Piece {
 /// Material Scoring
 impl Game {
 
-    // pub fn score_material(&self) -> (Score,Score) {
-    //     let mut cols = [White,Black];
-    //     let out: Vec<i32> = cols.iter().map(|&col| {
-    //         Piece::iter_pieces().map(|pc| {
-    //             self._score_material(pc, col)
-    //         }).sum()
-    //     }).collect();
-    //     (out[0],out[1])
-    // }
-
     fn score_material(&self, pc: Piece, col: Color) -> i32 {
         match pc {
             // Rook   => {},
@@ -160,22 +150,23 @@ impl Game {
 impl Game {
 
     fn score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> Score {
-        self._score_positions(&ts, pc, col)
-        // match pc {
-        //     Pawn   => self.score_positions_pawns(&ts, col),
-        //     Rook   => unimplemented!(),
-        //     Knight => unimplemented!(),
-        //     Bishop => unimplemented!(),
-        //     Queen  => unimplemented!(),
-        //     King   => unimplemented!(),
-        // }
+        match pc {
+            // Pawn   => self.score_positions_pawns(&ts, col),
+            // Rook   => unimplemented!(),
+            // Knight => unimplemented!(),
+            // Bishop => unimplemented!(),
+            // Queen  => unimplemented!(),
+            // King   => unimplemented!(),
+            _      => self._score_positions(&ts, pc, col),
+        }
     }
 
     fn _score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> Score {
         let pieces = self.get(pc, col);
         let mut score = 0;
         pieces.iter_bitscan(|sq| {
-            score += ts.piece_tables.get(pc, col, sq);
+            // TODO: interpolate
+            score += ts.piece_tables_opening.get(pc, col, sq);
         });
         score
     }

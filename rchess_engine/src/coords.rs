@@ -1,5 +1,6 @@
 
 use crate::types::*;
+use crate::tables::*;
 
 pub use self::D::*;
 
@@ -20,8 +21,26 @@ pub enum D {
 #[derive(Eq,Hash,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Coord(pub u8, pub u8);
 
+impl<T> std::ops::Index<Coord> for [T; 64] {
+    type Output = T;
+    fn index(&self, c1: Coord) -> &Self::Output {
+        let sq: usize = c1.into();
+        &self[sq]
+    }
+}
+
+impl<T> std::ops::IndexMut<Coord> for [T; 64] {
+    fn index_mut(&mut self, c1: Coord) -> &mut Self::Output {
+        let sq: usize = c1.into();
+        &mut self[sq]
+    }
+}
+
 impl Coord {
-    // pub fn distance(&self, other: Self) -> 
+
+    pub fn center_distance(&self) -> u8 {
+        CENTERDIST[*self]
+    }
 
     pub fn file_dist(&self, c1: Coord) -> u8 {
         (self.0 as i8 - c1.0 as i8).abs() as u8
@@ -32,9 +51,10 @@ impl Coord {
     }
 
     pub fn square_dist(&self, c1: Coord) -> u8 {
-        let r = self.rank_dist(c1);
-        let f = self.file_dist(c1);
-        r.max(f)
+        // let r = self.rank_dist(c1);
+        // let f = self.file_dist(c1);
+        // r.max(f)
+        SQUAREDIST[*self][c1]
     }
 
 }

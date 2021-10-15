@@ -2,7 +2,7 @@
 use crate::types::*;
 use crate::tables::*;
 
-#[derive(Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Hash,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct BitBoard(pub u64);
 
 impl Iterator for BitBoard {
@@ -16,15 +16,33 @@ impl Iterator for BitBoard {
     }
 }
 
-// impl BitBoard {
-//     pub fn into_bitscan_iter(&self) -> 
-// }
-
+/// creation
 impl BitBoard {
+
+    pub fn new<T>(cs: &[T]) -> BitBoard where
+        T: Into<Coord> + Copy,
+    {
+        let mut b = BitBoard::empty();
+        for c in cs.iter() {
+            b.flip_mut((*c).into());
+        }
+        b
+    }
 
     pub fn empty() -> BitBoard {
         BitBoard(0)
     }
+
+    pub fn single(c: Coord) -> BitBoard {
+        let mut b = BitBoard::empty();
+        b.flip_mut(c);
+        b
+    }
+
+}
+
+/// Queries
+impl BitBoard {
 
     pub fn is_empty(&self) -> bool {
         self.0 == 0
@@ -47,35 +65,16 @@ impl BitBoard {
         b.is_not_empty()
     }
 
-    // pub fn new(cs: &[Coord]) -> BitBoard {
-    //     let mut b = BitBoard::empty();
-    //     for c in cs.iter() {
-    //         b.flip_mut(*c);
-    //     }
-    //     b
-    // }
-
-    pub fn new<T>(cs: &[T]) -> BitBoard where
-        T: Into<Coord> + Copy,
-    {
-        let mut b = BitBoard::empty();
-        for c in cs.iter() {
-            b.flip_mut((*c).into());
-        }
-        b
-    }
-
-    pub fn single(c: Coord) -> BitBoard {
-        let mut b = BitBoard::empty();
-        b.flip_mut(c);
-        b
-    }
-
     pub fn get(&self, c: Coord) -> bool {
         let p = Self::index_square(c);
         let k = (self.0 >> p) & 1;
         k == 1
     }
+
+}
+
+/// Modification
+impl BitBoard {
 
     #[must_use]
     pub fn set_one(&self, c: Coord) -> Self {
@@ -118,6 +117,10 @@ impl BitBoard {
             self.flip_mut(*c);
         }
     }
+
+}
+
+impl BitBoard {
 
     pub fn mask_rank(r: u32) -> BitBoard {
         assert!(r < 8);
@@ -268,20 +271,7 @@ impl BitBoard {
 
 }
 
-// impl Iterator for BitBoard {
-//     type Item = u32;
-//     fn next(&mut self) -> Option<Self::Item> {
-//         if self.is_empty() {
-//             None
-//         } else {
-//         }
-//     }
-// }
-
 impl BitBoard {
-
-    // pub fn iter_bitscan2(&self) -> impl Iterator<Item = u32> {
-    // }
 
     pub fn iter_bitscan<F>(&self, mut f: F)
     where F: FnMut(u32) {

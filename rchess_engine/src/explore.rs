@@ -4,7 +4,13 @@ use crate::tables::*;
 use crate::evaluate::*;
 pub use crate::timer::*;
 
+// use std::sync::RwLock;
+use parking_lot::RwLock;
+
+use rayon::Scope;
 use rayon::prelude::*;
+
+use rustc_hash::FxHashMap;
 
 #[derive(Debug,Clone)]
 pub struct Explorer {
@@ -14,6 +20,33 @@ pub struct Explorer {
     pub depth:         u32,
     // pub should_stop:   
     pub timer:         Timer,
+    pub parallel:      bool,
+    pub trans_table:   TransTable,
+}
+
+// #[derive(Debug,Default,Clone)]
+// pub struct TransTable {
+//     pub map:      FxHashMap<GameState, SearchInfo>,
+// }
+pub type TransTable = FxHashMap<GameState, SearchInfo>;
+
+#[derive(Debug,Hash,PartialEq,PartialOrd,Clone,Copy)]
+pub struct SearchInfo {
+    // pub best_move:          Move,
+    // pub refutation_move:    Move,
+    pub depth_searched:     u32,
+    pub evaluation:         Score,
+
+    /// https://www.chessprogramming.org/Integrated_Bounds_and_Values
+    pub node_type:          i32,
+    // pub node_type:          NodeType,
+}
+
+#[derive(Debug,Eq,PartialEq,Hash,Clone,Copy)]
+pub enum NodeType {
+    NodePV,
+    NodeAll, // Score = upper bound
+    NodeCut, // Score = lower bound
 }
 
 impl Explorer {
@@ -29,9 +62,24 @@ impl Explorer {
             // stats: ABStats::new(),
             depth,
             timer: Timer::new(should_stop, settings),
+            parallel: true,
+            trans_table: TransTable::default(),
         }
     }
 }
+
+impl SearchInfo {
+    pub fn new(depth_searched: u32, evaluation: Score, node_type: i32) -> Self {
+        Self {
+            depth_searched,
+            evaluation,
+            node_type,
+        }
+    }
+}
+
+// impl Ord for SearchInfo {
+// }
 
 #[derive(Debug,PartialEq,PartialOrd,Clone,Copy)]
 pub struct ABStats {
@@ -88,13 +136,16 @@ impl Explorer {
     }
 
     pub fn rank_moves_list(&self, ts: &Tables, print: bool, moves: Vec<Move>) -> Vec<(Move,i32)> {
+
+        let tt = RwLock::new(self.trans_table.clone());
+
         // let mut out: Vec<(Move,i32)> = moves.into_par_iter()
         let mut out: Vec<(Move,i32)> = moves.into_iter()
             .map(|m| {
                 let g2 = self.game.make_move_unchecked(&ts, &m).unwrap();
                 let alpha = (None,i32::MIN);
                 let beta  = (None,i32::MAX);
-                let (_,score) = self._ab_search(&ts, g2, self.depth, 1, Some(m), alpha, beta);
+                let (_,score) = self._ab_search(&ts, &tt, g2, self.depth, 1, Some(m), alpha, beta);
                 (m,score)
             })
             .collect();
@@ -109,8 +160,6 @@ impl Explorer {
     }
 
     pub fn rank_moves(&self, ts: &Tables, print: bool) -> Vec<(Move,i32)> {
-        // let mut out = vec![];
-
         let moves = self.game.search_all(&ts, self.game.state.side_to_move);
 
         if moves.is_end() {
@@ -119,51 +168,18 @@ impl Explorer {
         let moves = moves.get_moves_unsafe();
 
         self.rank_moves_list(&ts, print, moves)
-
-        // let mut out: Vec<(Move,i32)> = moves.into_par_iter()
-        //     .map(|m| {
-        //         let g2 = self.game.make_move_unchecked(&ts, &m).unwrap();
-        //         let alpha = (None,i32::MIN);
-        //         let beta  = (None,i32::MAX);
-        //         let (m2,score) = self._ab_search(&ts, g2, self.depth, 1, Some(m), alpha, beta);
-        //         (m,score)
-        //     })
-        //     .collect();
-
-        // for m in moves.into_iter() {
-        //     // eprintln!("m = {:?}", m);
-        //     let g2 = self.game.make_move_unchecked(&ts, &m).unwrap();
-        //     // let alpha = (None,i32::MIN,None);
-        //     // let beta  = (None,i32::MAX,None);
-        //     let alpha = (None,i32::MIN);
-        //     let beta  = (None,i32::MAX);
-        //     // let (m2,score,mate) = self._ab_search(&ts, g2, self.depth, 1, Some(m), alpha, beta);
-        //     let (m2,score) = self._ab_search(&ts, g2, self.depth, 1, Some(m), alpha, beta);
-        //     out.push((m,score))
-        // }
-
-        // out.sort_by(|a,b| a.1.cmp(&b.1));
-        // out.reverse();
-
-        // if print {
-        //     // for (m,s) in out[0..8].iter() {
-        //     for (m,s) in out.iter() {
-        //         eprintln!("{:?}: {:?}", s, m);
-        //     }
-        // }
-
-        // out
-        // unimplemented!()
     }
 
     pub fn ab_search(&self, ts: &Tables, m0: Move) -> i32 {
         let g = self.game.clone();
 
+        let tt = RwLock::new(self.trans_table.clone());
+
         match g.make_move_unchecked(&ts, &m0) {
             Ok(g2) => {
                 let alpha = (None,i32::MIN);
                 let beta  = (None,i32::MAX);
-                let (m2,score) = self._ab_search(&ts, g2, self.depth, 1, Some(m0), alpha, beta);
+                let (m2,score) = self._ab_search(&ts, &tt, g2, self.depth, 1, Some(m0), alpha, beta);
                 score
             },
             Err(win) => {
@@ -221,13 +237,14 @@ impl Explorer {
 
     pub fn _ab_search(
         &self,
-        ts:         &Tables,
-        g:          Game,
-        depth:      u32,
-        k:          i32,
-        m0:         Option<Move>,
-        mut alpha:  (Option<Move>,i32),
-        mut beta:   (Option<Move>,i32),
+        ts:                 &Tables,
+        trans_table:        &RwLock<TransTable>,
+        g:                  Game,
+        depth:              u32,
+        k:                  i32,
+        m0:                 Option<Move>,
+        mut alpha:          (Option<Move>,i32),
+        mut beta:           (Option<Move>,i32),
     ) -> (Option<Move>,i32) {
         // eprintln!("m0 = {:?}", m0);
 
@@ -258,48 +275,118 @@ impl Explorer {
             // return (m0,self.quiescence(&ts, g, Some(moves), k, alpha.1, beta.1));
         }
 
-        for m in moves.into_iter() {
+        let mut gs = moves.into_iter().flat_map(|m| {
             match g.make_move_unchecked(&ts, &m) {
-                Ok(g2)   => {
-                    let score = g2.evaluate(&ts);
-                    let score = score.sum(self.side);
-
-                    if maximizing {
-                        // maximize self
-                        let val2 = self._ab_search(&ts, g2, depth - 1, k + 1, Some(m), alpha, beta);
-                        val = val.max(val2.1);
-
-                        if val >= beta.1 {
-                            return beta;
-                        }
-
-                        if alpha.0.is_none() {
-                            alpha = (Some(m), val);
-                        } else if val > alpha.1 {
-                            alpha = (Some(m), val);
-                        }
-
+                Ok(g2) => {
+                    if let Some(prev) = trans_table.read().get(&g2.state) {
+                        Some((m,Some(*prev),g2))
                     } else {
-                        // minimize other
-                        let val2 = self._ab_search(&ts, g2, depth - 1, k + 1, Some(m), alpha, beta);
-                        val = val.min(val2.1);
-
-                        if val <= alpha.1 {
-                            return alpha;
-                        }
-
-                        if beta.0.is_none() {
-                            beta = (Some(m), val);
-                        } else if val < beta.1 {
-                            beta = (Some(m), val);
-                        }
+                        Some((m,None,g2))
                     }
                 },
                 Err(end) => {
                     panic!()
                 },
             }
+        });
+            // .collect::<Vec<(Move,Option<SearchInfo>, Game)>>();
+
+        // gs.sort_unstable_by(|a,b| {
+        //     a.1.partial_cmp(&b.1).unwrap()
+        // });
+
+        for (m,p,g2) in gs {
+            // match p {
+            //     Some(prev) => {
+            //     },
+            //     None => {
+            //         panic!()
+            //     },
+            // }
+
+            let score = g2.evaluate(&ts);
+            let score = score.sum(self.side);
+
+            if maximizing {
+                // maximize self
+                let val2 = self._ab_search(
+                    &ts, &trans_table, g2, depth - 1, k + 1, Some(m), alpha, beta);
+                val = val.max(val2.1);
+
+                if val >= beta.1 {
+                    return beta;
+                }
+
+                if alpha.0.is_none() {
+                    alpha = (Some(m), val);
+                } else if val > alpha.1 {
+                    alpha = (Some(m), val);
+                }
+
+            } else {
+                // minimize other
+                let val2 = self._ab_search(
+                    &ts, &trans_table, g2, depth - 1, k + 1, Some(m), alpha, beta);
+                val = val.min(val2.1);
+
+                if val <= alpha.1 {
+                    return alpha;
+                }
+
+                if beta.0.is_none() {
+                    beta = (Some(m), val);
+                } else if val < beta.1 {
+                    beta = (Some(m), val);
+                }
+            }
+
         }
+
+
+        // for m in moves.into_iter() {
+        //     match g.make_move_unchecked(&ts, &m) {
+        //         Ok(g2)   => {
+        //             let score = g2.evaluate(&ts);
+        //             let score = score.sum(self.side);
+
+        //             if maximizing {
+        //                 // maximize self
+        //                 let val2 = self._ab_search(
+        //                     &ts, &trans_table, g2, depth - 1, k + 1, Some(m), alpha, beta);
+        //                 val = val.max(val2.1);
+
+        //                 if val >= beta.1 {
+        //                     return beta;
+        //                 }
+
+        //                 if alpha.0.is_none() {
+        //                     alpha = (Some(m), val);
+        //                 } else if val > alpha.1 {
+        //                     alpha = (Some(m), val);
+        //                 }
+
+        //             } else {
+        //                 // minimize other
+        //                 let val2 = self._ab_search(
+        //                     &ts, &trans_table, g2, depth - 1, k + 1, Some(m), alpha, beta);
+        //                 val = val.min(val2.1);
+
+        //                 if val <= alpha.1 {
+        //                     return alpha;
+        //                 }
+
+        //                 if beta.0.is_none() {
+        //                     beta = (Some(m), val);
+        //                 } else if val < beta.1 {
+        //                     beta = (Some(m), val);
+        //                 }
+        //             }
+        //         },
+        //         Err(end) => {
+        //             panic!()
+        //         },
+        //     }
+        // }
 
         if maximizing {
             alpha
@@ -389,4 +476,23 @@ impl Explorer {
 
 }
 
+// impl PartialOrd for NodeType {
+//     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+//         use std::cmp::Ordering;
+//         use NodeType::*;
+//         let out = match (self, other) {
+//             (x, y) if x == y => Ordering::Equal,
+//             (NodePV, _)      => Ordering::Greater,
+//             (_, NodePV)      => Ordering::Less,
+//             _                => unimplemented!()
+//         };
+//         Some(out)
+//     }
+// }
+
+// impl Ord for NodeType {
+//     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+//         self.partial_cmp(&other).unwrap()
+//     }
+// }
 

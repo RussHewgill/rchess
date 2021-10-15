@@ -15,6 +15,7 @@ use rchess_engine_lib::parsing::*;
 use rchess_engine_lib::util::*;
 use rchess_engine_lib::evaluate::*;
 use rchess_engine_lib::explore::*;
+use rchess_engine_lib::tuning::*;
 
 use log::{debug, error, log_enabled, info, Level};
 use gag::Redirect;
@@ -43,6 +44,38 @@ fn main() {
 
     // let ps = PcTables::new();
 
+    // let s = std::mem::size_of::<GameState>();
+    // eprintln!("s = {:?}", s);
+
+    // let mut v = vec![
+    //     Some(SearchInfo::new(1, 0, NodeType::NodePV)),
+    //     Some(SearchInfo::new(1, 1, NodeType::NodePV)),
+    //     Some(SearchInfo::new(1, 2, NodeType::NodePV)),
+    //     // (Some(SearchInfo::new(1, 0, NodeType::NodeAll))),
+    //     None,
+    // ];
+
+    let mut v = vec![NodeType::NodePV, NodeType::NodeAll];
+
+    // v.sort();
+    // let v = v.iter().max();
+    // let v = v.pop().unwrap();
+
+    // let b = 
+    // eprintln!("v = {:?}", v);
+
+    // v.sort();
+    // v.sort_unstable_by(|a,b| {
+    //     a.partial_cmp(&b)
+    // });
+
+    // for s in v.iter() {
+    //     eprintln!("s = {:?}", s);
+    // }
+
+    // let t = PcTables::gen_knights();
+    // PcTables::print_table(t);
+
     main5() // search + eval position
     // main2();
     // main4(); // perft
@@ -60,20 +93,17 @@ fn main5() {
     // let fen = "rnbqk1nr/p3ppbp/2pp2p1/8/3PP3/4BN2/PPp2PPP/1R1NK2R b Kkq - 1 9";
     // let fen = "rnbqkbnr/pp3ppp/2pp4/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 1 4";
 
-    let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
+    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
+    // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
+    // let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
 
-    let n = 4;
+    let n = 5;
 
     let ts = Tables::new();
     // let ts = Tables::_new(false);
     let mut g = Game::from_fen(fen).unwrap();
     let _ = g.recalc_gameinfo_mut(&ts);
-    // eprintln!("g = {:?}", g);
-
-    // // let m = Move::Quiet { from: "G7".into(), to: "G6".into() };
-    // let m = Move::Quiet { from: "G8".into(), to: "F6".into() };
-    // let g2 = g.make_move_unchecked(&ts, &m).unwrap();
-    // let g = g2;
+    eprintln!("g = {:?}", g);
 
     let stop = Arc::new(AtomicBool::new(false));
     let timesettings = TimeSettings::new_f64(10., 0.1);
@@ -84,6 +114,12 @@ fn main5() {
     //     Move::Quiet { from: "G7".into(), to: "G6".into() },
     // ];
     // ex.rank_moves_list(&ts, true, moves);
+
+    // let moves = g.search_all(&ts, White);
+    // for m in moves.clone() {
+    //     eprintln!("m = {:?}", m);
+    // }
+    // eprintln!("moves.len() = {:?}", moves.get_moves_unsafe().len());
 
     // let maximizing = ex.side == g2.state.side_to_move;
     // eprintln!("maximizing = {:?}", maximizing);

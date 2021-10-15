@@ -16,7 +16,15 @@ lazy_static! {
         for s1 in 0u32..8 {
             for s2 in 0u32..8 {
                 let (c1,c2): (Coord,Coord) = (s1.into(),s1.into());
-                out[s1 as usize][s2 as usize] = c1.square_dist(c2);
+
+                let dist = {
+                    let r = c1.rank_dist(c2);
+                    let f = c1.file_dist(c2);
+                    r.max(f)
+                };
+
+                // out[s1 as usize][s2 as usize] = c1.square_dist(c2);
+                out[s1 as usize][s2 as usize] = dist;
             }
         }
         out
@@ -24,11 +32,23 @@ lazy_static! {
 
 }
 
+pub static CENTERDIST: [u8; 64] = [
+    3, 3, 3, 3, 3, 3, 3, 3,
+    3, 2, 2, 2, 2, 2, 2, 3,
+    3, 2, 1, 1, 1, 1, 2, 3,
+    3, 2, 1, 0, 0, 1, 2, 3,
+    3, 2, 1, 0, 0, 1, 2, 3,
+    3, 2, 1, 1, 1, 1, 2, 3,
+    3, 2, 2, 2, 2, 2, 2, 3,
+    3, 3, 3, 3, 3, 3, 3, 3
+];
+
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Tables {
     // pub knight_moves: HashMap<Coord, BitBoard>,
     // pub rook_moves:   HashMap<Coord, MoveSetRook>,
-    knight_moves:  [[BitBoard; 8]; 8],
+    // knight_moves:  [[BitBoard; 8]; 8],
+    knight_moves:  [BitBoard; 64],
     rook_moves:    [[MoveSetRook; 8]; 8],
     bishop_moves:  [[MoveSetBishop; 8]; 8],
     pawn_moves:    [[MoveSetPawn; 8]; 8],
@@ -39,7 +59,8 @@ pub struct Tables {
     table_rook:    [BitBoard; 0x19000],
     magics_bishop: [Magic; 64],
     table_bishop:  [BitBoard; 0x1480],
-    pub piece_tables:  PcTables,
+    pub piece_tables_opening:  PcTables,
+    pub piece_tables_endgame:  PcTables,
     // endgames: 
 }
 
@@ -60,8 +81,9 @@ impl Tables {
     }
     // pub fn get_knight(&self, Coord(x,y): Coord) -> &BitBoard {
     pub fn get_knight<T: Into<Coord>>(&self, c: T) -> &BitBoard {
-        let Coord(x,y) = c.into();
-        &self.knight_moves[x as usize][y as usize]
+        // let Coord(x,y) = c.into();
+        // &self.knight_moves[x as usize][y as usize]
+        &self.knight_moves[c.into()]
     }
     // pub fn get_pawn(&self, Coord(x,y): Coord) -> &MoveSetPawn {
     pub fn get_pawn<T: Into<Coord>>(&self, c: T) -> &MoveSetPawn {
@@ -100,7 +122,7 @@ impl Tables {
             [BitBoard::empty(); 0x1480])
         };
 
-        let piece_tables = PcTables::new();
+        let (piece_tables_opening,piece_tables_endgame) = PcTables::new();
 
         Self {
             knight_moves: Self::gen_knights(),
@@ -114,7 +136,8 @@ impl Tables {
             table_rook,
             magics_bishop,
             table_bishop,
-            piece_tables,
+            piece_tables_opening,
+            piece_tables_endgame,
         }
     }
 
@@ -431,12 +454,13 @@ impl Tables {
 impl Tables {
 
     // fn gen_knights() -> HashMap<Coord, BitBoard> {
-    fn gen_knights() -> [[BitBoard; 8]; 8] {
-        let mut out = [[BitBoard::empty(); 8]; 8];
+    // fn gen_knights() -> [[BitBoard; 8]; 8] {
+    fn gen_knights() -> [BitBoard; 64] {
+        let mut out = [BitBoard::empty(); 64];
 
         for y in 0..8 {
             for x in 0..8 {
-                out[x as usize][y as usize] = Self::gen_knight_move(Coord(x,y));
+                out[Coord(x,y)] = Self::gen_knight_move(Coord(x,y));
             }
         }
         out
@@ -547,35 +571,24 @@ mod eval {
     impl PcTables {
 
         pub fn print_table(ss: [Score; 64]) {
-            // for y in 0..8 {
-            //     let y = 7 - y;
-            //     for x in 0..8 {
-            //         // println!("(x,y) = ({},{}), coord = {:?}", x, y, Coord(x,y));
-            //         print!("{:>3?},", ps.get(Pawn, Coord(x,y)));
-            //     }
-            //     print!("\n");
-            // }
+            for y in 0..8 {
+                let y = 7 - y;
+                for x in 0..8 {
+                    // println!("(x,y) = ({},{}), coord = {:?}", x, y, Coord(x,y));
+                    // print!("{:>3?},", ps.get(Pawn, Coord(x,y)));
+                    let s = ss[Coord(x,y)];
+                    print!("{:>3?},", s);
+                }
+                print!("\n");
+            }
         }
 
         pub fn get<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
-            let c1: Coord = c0.into();
-            let c1 = if col == White { c1 } else { Coord(c1.0,7-c1.1) };
-            let sq: usize = c1.into();
-            self.tables[pc.index()][sq]
-        }
-
-        pub fn new() -> Self {
-            let pawns = Self::gen_pawns();
-
-            Self {
-                tables: [pawns,
-                         [0; 64],
-                         [0; 64],
-                         [0; 64],
-                         [0; 64],
-                         [0; 64]],
-            }
-            // unimplemented!()
+            // let c1: Coord = c0.into();
+            // let c1 = if col == White { c1 } else { Coord(c1.0,7-c1.1) };
+            // let sq: usize = c1.into();
+            // self.tables[pc.index()][sq]
+            self.tables[pc.index()][c0.into()]
         }
 
         // [
@@ -588,6 +601,28 @@ mod eval {
         //     5, 10, 10,-20,-20, 10, 10,  5,
         //     0,  0,  0,  0,  0,  0,  0,  0,
         // ]
+
+    }
+
+    /// Generate
+    impl PcTables {
+
+        pub fn new() -> (Self,Self) {
+            let pawns = Self::gen_pawns();
+            let knights = Self::gen_knights();
+            let opening = Self {
+                tables: [pawns,
+                         [0; 64], // Rook
+                         knights,
+                         [0; 64], // b
+                         [0; 64], // q
+                         [0; 64]], // k
+            };
+
+            let endgame = opening;
+
+            (opening,endgame)
+        }
 
         fn gen_pawns() -> [Score; 64] {
             // let mut out = [0; 64];
@@ -641,6 +676,40 @@ mod eval {
             out
         }
 
+        pub fn gen_knights() -> [Score; 64] {
+            let mut scores: Vec<(&str,Score)> = vec![];
+
+            let out = [
+                0,  0,  0,  0,  0,  0,  0,  0,
+                0,  0,  0,  0,  0,  0,  0,  0,
+                0,  0,  0,  0,  0,  0,  0,  0,
+                0,  0,  0,  0,  0,  0,  0,  0,
+                0,  0,  0,  0,  0,  0,  0,  0,
+                0,  0,  0,  0,  0,  0,  0,  0,
+                0,  0,  0,  0,  0,  0,  0,  5,
+                0,  0,  0,  0,  0,  0,  0,  0,
+            ];
+
+            // for sq in 0u32..64 {
+            //     let c0: Coord = sq.into();
+            //     let s: Score = c0.center_distance().into();
+            //     let s = (3 - s) * 1;
+            //     out[c0] = s;
+            // }
+
+            // let mut out = [0; 64];
+
+            // for (c,s) in scores.into_iter() {
+            //     let c0: Coord = c.into();
+            //     let sq: usize = c0.into();
+            //     out[sq] = s;
+            //     let c1 = Coord(7-c0.0,c0.1);
+            //     let sq: usize = c1.into();
+            //     out[sq] = s;
+            // }
+
+            out
+        }
 
     }
 

@@ -14,6 +14,7 @@ pub mod search;
 pub mod explore;
 pub mod evaluate;
 pub mod timer;
+pub mod tuning;
 
 pub mod util;
 

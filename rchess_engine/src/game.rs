@@ -3,6 +3,8 @@ use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
 
+use std::hash::{Hash,Hasher};
+
 #[derive(PartialEq,PartialOrd,Clone)]
 pub struct Game {
     pub move_history: Vec<Move>,
@@ -10,7 +12,8 @@ pub struct Game {
 }
 
 // #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
-#[derive(Debug,Default,PartialEq,PartialOrd,Clone,Copy)]
+// #[derive(Debug,Hash,Default,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Debug,Default,PartialOrd,Clone,Copy)]
 pub struct GameState {
     pub side_to_move:       Color,
 
@@ -38,7 +41,7 @@ pub struct GameState {
     pub check_block_mask:   Option<BitBoard>,
 }
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Debug,Hash,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Castling {
     pub white_queen:   bool,
     pub white_king:    bool,
@@ -66,6 +69,7 @@ impl Castling {
 
 }
 
+/// make move 
 impl Game {
 
     pub fn convert_move(&self, from: &str, to: &str, other: &str) -> Option<Move> {
@@ -260,6 +264,11 @@ impl Game {
         }
     }
 
+}
+
+/// update info
+impl Game {
+
     pub fn recalc_gameinfo_mut(&mut self, ts: &Tables) -> GameResult<()> {
 
         let king = self.get(King, self.state.side_to_move);
@@ -344,10 +353,6 @@ impl Game {
         self.state.check_block_mask = Some(b);
     }
 
-    // fn update_checkers_mut(&mut self, ts: &Tables) {
-    //     unimplemented!()
-    // }
-
 }
 
 /// Insertion and Deletion of Pieces
@@ -381,6 +386,7 @@ impl Game {
 
 }
 
+/// get bitboards
 impl Game {
 
     pub fn get_color(&self, c: Color) -> BitBoard {
@@ -459,6 +465,7 @@ impl Game {
 
 }
 
+/// creation
 impl Game {
 
     pub fn empty() -> Game {
@@ -469,73 +476,74 @@ impl Game {
         }
     }
 
-    pub fn new() -> Game {
+    // pub fn new() -> Game {
 
-        // let mut state = GameState::empty();
-        let mut state = GameState::default();
+    //     // let mut state = GameState::empty();
+    //     let mut state = GameState::default();
 
-        let mut pawns   = BitBoard::empty();
-        pawns |= BitBoard::mask_rank(1) | BitBoard::mask_rank(6);
-        state.pawns = pawns;
+    //     let mut pawns   = BitBoard::empty();
+    //     pawns |= BitBoard::mask_rank(1) | BitBoard::mask_rank(6);
+    //     state.pawns = pawns;
 
-        let rooks   = BitBoard::new(&vec![
-            Coord(0,0),Coord(7,0),Coord(0,7),Coord(7,7),
-        ]);
-        state.rooks = rooks;
+    //     let rooks   = BitBoard::new(&vec![
+    //         Coord(0,0),Coord(7,0),Coord(0,7),Coord(7,7),
+    //     ]);
+    //     state.rooks = rooks;
 
-        let knights = BitBoard::new(&vec![
-            Coord(1,0),Coord(6,0),Coord(1,7),Coord(6,7),
-        ]);
-        state.knights = knights;
+    //     let knights = BitBoard::new(&vec![
+    //         Coord(1,0),Coord(6,0),Coord(1,7),Coord(6,7),
+    //     ]);
+    //     state.knights = knights;
 
-        let bishops = BitBoard::new(&vec![
-            Coord(2,0),Coord(5,0),Coord(2,7),Coord(5,7),
-        ]);
-        state.bishops = bishops;
+    //     let bishops = BitBoard::new(&vec![
+    //         Coord(2,0),Coord(5,0),Coord(2,7),Coord(5,7),
+    //     ]);
+    //     state.bishops = bishops;
 
-        let queens   = BitBoard::new(&vec![Coord(3,0),Coord(3,7)]);
-        state.queens = queens;
-        let kings    = BitBoard::new(&vec![Coord(4,0),Coord(4,7)]);
-        state.kings  = kings;
+    //     let queens   = BitBoard::new(&vec![Coord(3,0),Coord(3,7)]);
+    //     state.queens = queens;
+    //     let kings    = BitBoard::new(&vec![Coord(4,0),Coord(4,7)]);
+    //     state.kings  = kings;
 
-        let mut white = BitBoard::empty();
-        let mut black = BitBoard::empty();
+    //     let mut white = BitBoard::empty();
+    //     let mut black = BitBoard::empty();
 
-        let k = (!0u8) as u64 | (((!0u8) as u64) << 8);
-        white.0 |= k;
-        black.0 |= k << (6 * 8);
+    //     let k = (!0u8) as u64 | (((!0u8) as u64) << 8);
+    //     white.0 |= k;
+    //     black.0 |= k << (6 * 8);
 
-        white &= pawns | rooks | knights | bishops | queens | kings;
-        black &= pawns | rooks | knights | bishops | queens | kings;
+    //     white &= pawns | rooks | knights | bishops | queens | kings;
+    //     black &= pawns | rooks | knights | bishops | queens | kings;
 
-        state.side_to_move = White;
-        state.castling = Castling::new_with(true, true);
+    //     state.side_to_move = White;
+    //     state.castling = Castling::new_with(true, true);
 
-        // let state = GameState {
-        //     side_to_move: White,
-        //     pawns,
-        //     rooks,
-        //     knights,
-        //     bishops,
-        //     queens,
-        //     kings,
-        //     white,
-        //     black,
-        //     pinned:     None,
-        //     en_passent: None,
-        //     castling:   Castling::new_with(true),
-        // };
+    //     // let state = GameState {
+    //     //     side_to_move: White,
+    //     //     pawns,
+    //     //     rooks,
+    //     //     knights,
+    //     //     bishops,
+    //     //     queens,
+    //     //     kings,
+    //     //     white,
+    //     //     black,
+    //     //     pinned:     None,
+    //     //     en_passent: None,
+    //     //     castling:   Castling::new_with(true),
+    //     // };
 
-        let mut g = Game {
-            move_history: vec![],
-            state,
-        };
-        // g.recalc_gameinfo_mut();
-        g
-    }
+    //     let mut g = Game {
+    //         move_history: vec![],
+    //         state,
+    //     };
+    //     // g.recalc_gameinfo_mut();
+    //     g
+    // }
 
 }
 
+/// get_at
 impl Game {
 
     pub fn get_at(&self, c0: Coord) -> Option<(Color, Piece)> {
@@ -550,19 +558,6 @@ impl Game {
         if (b0 & self.state.kings).is_not_empty()   { return Some((color,King)); }
         None
     }
-
-    // pub fn get_at(&self, c: Coord) -> Option<(Color, Piece)> {
-    //     let b = BitBoard::empty().flip(c);
-    //     if (b & self.all_occupied()).0 == 0 { return None; }
-    //     let color = if (b & self.get_color(White)).0 != 0 { White } else { Black };
-    //     // eprintln!("color = {:?}", color);
-    //     for p in vec![Pawn,Rook,Knight,Bishop,Queen,King].iter() {
-    //         if (b & self.get_piece(*p)).0 != 0 {
-    //             return Some((color,*p));
-    //         }
-    //     }
-    //     unimplemented!()
-    // }
 
 }
 
@@ -582,6 +577,7 @@ pub fn square_color(Coord(x,y): Coord) -> Color {
     }
 }
 
+/// to_fen
 impl Game {
     // pub fn show_moveset(&self, moves: BitBoard) 
 
@@ -684,6 +680,42 @@ impl Default for Castling {
     fn default() -> Self { Self::new_with(false, false) }
 }
 
+impl PartialEq for GameState {
+    fn eq(&self, other: &Self) -> bool {
+        (self.side_to_move == other.side_to_move)
+            & (self.white == other.white)
+            & (self.black == other.black)
+
+            & (self.pawns == other.pawns)
+            & (self.rooks == other.rooks)
+            & (self.knights == other.knights)
+            & (self.bishops == other.bishops)
+            & (self.queens == other.queens)
+            & (self.kings == other.kings)
+
+            & (self.castling == other.castling)
+    }
+}
+
+impl Eq for GameState {}
+
+impl Hash for GameState {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.side_to_move.hash(state);
+        self.white.hash(state);
+        self.black.hash(state);
+
+        self.pawns.hash(state);
+        self.rooks.hash(state);
+        self.knights.hash(state);
+        self.bishops.hash(state);
+        self.queens.hash(state);
+        self.kings.hash(state);
+
+        self.castling.hash(state);
+    }
+}
+
 impl std::fmt::Debug for Game {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 
@@ -714,7 +746,9 @@ impl std::fmt::Debug for Game {
         }
         f.write_str(&format!("{}\n", line))?;
 
-        if self.state.checkers.unwrap().is_not_empty() {
+        if self.state.checkers.is_none() {
+            f.write_str(&format!("Checkers = None?\n"))?;
+        } else if self.state.checkers.unwrap().is_not_empty() {
             f.write_str(&format!("In Check\n"))?;
         } else {
             f.write_str(&format!("Not In Check\n"))?;
