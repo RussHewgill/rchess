@@ -151,36 +151,62 @@ impl Game {
     }
 
     pub fn perft(&self, ts: &Tables, depth: u64) -> (u64,Vec<(Move,u64)>) {
-        let mut nodes = 0;
-        let mut captures = 0;
+        // let mut nodes = 0;
+        // let mut captures = 0;
 
         if depth == 0 { return (1,vec![]); }
 
         let moves = self.search_all(&ts, self.state.side_to_move);
         if moves.is_end() { return (0,vec![]); }
+        let moves = moves.get_moves_unsafe();
 
         // eprintln!("moves.len() = {:?}", moves.len());
-        let mut k = 0;
-        let mut out = vec![];
+        // let mut k = 0;
+        // let mut out = vec![];
 
-        for m in moves.into_iter() {
+        // let out = moves.into_iter().flat_map(|m| {
+        let out = moves.into_par_iter().flat_map(|m| {
             if let Ok(g2) = self.make_move_unchecked(&ts, &m) {
                 let (ns,cs) = g2._perft(ts, depth - 1, false);
-                match m {
-                    Move::Capture { .. } => captures += 1,
-                    _                    => {},
-                }
+                // match m {
+                //     Move::Capture { .. } => captures += 1,
+                //     _                    => {},
+                // }
                 // if root {
                 //     eprintln!("{:>2}: {:?}: ({}, {})", k, m, ns, cs);
                 // }
-                captures += cs;
-                nodes += ns;
-                out.push((m, ns));
-                k += 1;
+                // captures += cs;
+                // nodes += ns;
+                // out.push((m, ns));
+                // k += 1;
+                Some((m,ns))
             } else {
                 // panic!("move: {:?}\n{:?}", m, self);
+                None
             }
-        }
+        });
+
+        let out: Vec<(Move,u64)> = out.collect();
+        let nodes = out.clone().into_iter().map(|x| x.1).sum();
+
+        // for m in moves.into_iter() {
+        //     if let Ok(g2) = self.make_move_unchecked(&ts, &m) {
+        //         let (ns,cs) = g2._perft(ts, depth - 1, false);
+        //         match m {
+        //             Move::Capture { .. } => captures += 1,
+        //             _                    => {},
+        //         }
+        //         // if root {
+        //         //     eprintln!("{:>2}: {:?}: ({}, {})", k, m, ns, cs);
+        //         // }
+        //         captures += cs;
+        //         nodes += ns;
+        //         out.push((m, ns));
+        //         k += 1;
+        //     } else {
+        //         // panic!("move: {:?}\n{:?}", m, self);
+        //     }
+        // }
 
         (nodes, out)
     }
@@ -229,9 +255,16 @@ impl Game {
         if m.filter_en_passant() {
             if self.state.en_passant.is_none() {
                 return false;
-            } else if let Ok(g2) = self.clone().make_move_unchecked(&ts, &m) {
-                let b = g2.state.checkers.unwrap();
-                return b.is_empty();
+            } else if let Some(g2) = self.clone()._make_move_unchecked(&ts, &m) {
+            // } else if let Ok(g2) = self.clone().make_move_unchecked(&ts, &m) {
+
+                let checks = g2.find_checkers(&ts, self.state.side_to_move);
+                return checks.is_empty();
+
+                // let b = g2.state.checkers.unwrap();
+                // return b.is_empty();
+
+                // unimplemented!()
             } else {
                 return false;
             }
@@ -422,7 +455,7 @@ impl Game {
         let bishops = moves_b & (self.get_piece(Bishop) | self.get_piece(Queen));
 
         // let king = self._search_king_single(p0, &ts, col, false);
-        let king = self._search_king_attacks(&ts, c0);
+        let king = self._search_king_attacks(&ts, c0, col);
         let king = king & self.get_piece(King);
 
         pawns
@@ -547,7 +580,8 @@ impl Game {
         let king: Coord = self.get(King, col).bitscan().into();
 
         if kingside {
-            let rook: Coord = if col == White { "H1".into() } else { "H8".into() };
+            // let rook: Coord = if col == White { "H1".into() } else { "H8".into() };
+            let rook: Coord = if col == White { Coord(7,0) } else { Coord(7,7) };
             if let Some((_,Rook)) = self.get_at(rook) {
                 let between = ts.between_exclusive(king, rook);
 
@@ -560,8 +594,10 @@ impl Game {
                         }
                     }
                     if go {
-                        let to = if col == White { "G1".into() } else { "G8".into() };
-                        let rook_to = if col == White { "F1".into() } else { "F8".into() };
+                        // let to = if col == White { "G1".into() } else { "G8".into() };
+                        // let rook_to = if col == White { "F1".into() } else { "F8".into() };
+                        let to = if col == White { Coord(6,0) } else { Coord(6,7) };
+                        let rook_to = if col == White { Coord(5,0) } else { Coord(5,7) };
                         out.push(Move::Castle { from: king, to, rook_from: rook, rook_to });
                     }
                 }
@@ -569,7 +605,8 @@ impl Game {
 
         }
         if queenside {
-            let rook: Coord = if col == White { "A1".into() } else { "A8".into() };
+            // let rook: Coord = if col == White { "A1".into() } else { "A8".into() };
+            let rook: Coord = if col == White { Coord(0,0) } else { Coord(0,7) };
             if let Some((_,Rook)) = self.get_at(rook) {
                 let between = ts.between_exclusive(king, rook);
 
@@ -586,8 +623,10 @@ impl Game {
                         }
                     }
                     if go {
-                        let to      = if col == White { "C1".into() } else { "C8".into() };
-                        let rook_to = if col == White { "D1".into() } else { "D8".into() };
+                        // let to      = if col == White { "C1".into() } else { "C8".into() };
+                        // let rook_to = if col == White { "D1".into() } else { "D8".into() };
+                        let to      = if col == White { Coord(2,0) } else { Coord(2,7) };
+                        let rook_to = if col == White { Coord(3,0) } else { Coord(3,7) };
                         out.push(Move::Castle { from: king, to, rook_from: rook, rook_to });
                     }
                 }
@@ -597,19 +636,29 @@ impl Game {
         out
     }
 
-    pub fn _search_king_attacks(&self, ts: &Tables, c0: Coord) -> BitBoard {
-        let kings = self.get_piece(King);
+    pub fn _search_king_attacks(&self, ts: &Tables, c0: Coord, col: Color) -> BitBoard {
+        let c0 = self.get(King, col).bitscan();
         let mut out = BitBoard::empty();
 
-        kings.iter_bitscan(|sq| {
-            let moves = *ts.get_king(sq);
-            if let Some((col,_)) = self.get_at(sq.into()) {
-                let captures = moves & self.get_color(!col);
-                out |= captures;
-            }
-        });
+        let moves = *ts.get_king(c0);
+        let moves = moves & !self.get_color(col);
+        moves
 
-        out
+        // let moves = *ts.get_king(c0);
+        // if let Some((col,_)) = self.get_at(c0.into()) {
+        //     let captures = moves & self.get_color(!col);
+        //     out |= captures;
+        // }
+
+        // kings.iter_bitscan(|sq| {
+        //     let moves = *ts.get_king(sq);
+        //     if let Some((col,_)) = self.get_at(sq.into()) {
+        //         let captures = moves & self.get_color(!col);
+        //         out |= captures;
+        //     }
+        // });
+
+        // out
     }
 
     pub fn search_king(&self, ts: &Tables, col: Color) -> Vec<Move> {
@@ -707,10 +756,10 @@ impl Game {
     }
 
     pub fn search_pawns(&self, ts: &Tables, col: Color) -> Vec<Move> {
-        self._search_pawns(None, &ts, col)
+        self._search_pawns(&ts, None, col)
     }
 
-    pub fn _search_pawns(&self, single: Option<Coord>, ts: &Tables, col: Color) -> Vec<Move> {
+    pub fn _search_pawns(&self, ts: &Tables, single: Option<Coord>, col: Color) -> Vec<Move> {
         let mut out = vec![];
         let oc = self.all_occupied();
 

@@ -171,7 +171,7 @@ pub fn test_stockfish(
     fen:    &str,
     n:      u64,
     print:  bool,
-) -> std::io::Result<(f64,((u64,HashMap<String,(Move,i64)>),(u64,HashMap<String,i64>)))> {
+) -> std::io::Result<((f64,f64),((u64,HashMap<String,(Move,i64)>),(u64,HashMap<String,i64>)))> {
 
     let mut child = Command::new("stockfish")
         .stdin(Stdio::piped())
@@ -188,7 +188,10 @@ pub fn test_stockfish(
         .unwrap()
         .write_all(format!("go perft {}\n", n).as_bytes())?;
 
-    let output = child.wait_with_output()?;
+    let now     = std::time::Instant::now();
+    let output  = child.wait_with_output()?;
+    let done_sf = now.elapsed().as_secs_f64();
+    // let done_sf = 0.;
 
     let mut g = Game::from_fen(&fen).unwrap();
     let ts = Tables::new();
@@ -320,7 +323,7 @@ pub fn test_stockfish(
         // println!("Found {} unique words:", words.len());
         // println!("{:#?}", words);
 
-        Ok((done,((ns0, nodes0), (ns1, nodes1))))
+        Ok(((done,done_sf),((ns0, nodes0), (ns1, nodes1))))
     } else {
         let err = String::from_utf8(output.stderr).unwrap();
         // error_chain::bail!("External command failed:\n {}", err)

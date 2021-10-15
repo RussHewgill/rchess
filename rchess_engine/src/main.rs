@@ -3,6 +3,8 @@
 #![allow(dead_code)]
 #![allow(unused_mut)]
 
+#![feature(iter_partition_in_place)]
+
 use std::collections::HashMap;
 use std::str::FromStr;
 
@@ -55,7 +57,7 @@ fn main() {
     //     None,
     // ];
 
-    let mut v = vec![NodeType::NodePV, NodeType::NodeAll];
+    // let mut v = vec![NodeType::NodePV, NodeType::NodeAll];
 
     // v.sort();
     // let v = v.iter().max();
@@ -76,9 +78,9 @@ fn main() {
     // let t = PcTables::gen_knights();
     // PcTables::print_table(t);
 
-    main5() // search + eval position
+    // main5() // search + eval position
     // main2();
-    // main4(); // perft
+    main4(); // perft
     // main3(); // read from file and test
 
 }
@@ -151,29 +153,32 @@ fn main4() {
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ";
     // let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
     let fen = STARTPOS;
-    let fen = "1k1r4/pp1b1R2/3q2pp/4p3/2B5/4Q3/PPP2B2/2K5 b - - 0 1";
-    let fen = "1kbr4/pp3R2/3q2pp/4p3/2B5/4Q3/PPP2B2/2K5 w - - 1 2";
 
-    let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
-    let fen = "r3k2r/p1ppqpb1/bn2pQp1/3PN3/1p2P3/2N4p/PPPBBPPP/R3K2R b KQkq - 0 1";
-    let fen = "r2qk2r/p1pp1pb1/bn2pQp1/3PN3/1p2P3/2N4p/PPPBBPPP/R3K2R w KQkq - 1 2";
+    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
+    // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
+    let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
+    // let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  "; // Position 5
 
-    let n = 4;
+    // let fen = "8/2p5/n2p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
+
+    // let fen = "r3k2r/Pppp1ppp/1b3nbN/nPP5/BB2P3/q4N2/Pp1P2PP/R2Q1RK1 b kq - 0 1";
+    // let fen = "r3k2r/Ppp2ppp/1b3nbN/nPPp4/BB2P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 2";
+
+    let n = 5;
 
     let ts = Tables::new();
     let mut g = Game::from_fen(fen).unwrap();
     let _ = g.recalc_gameinfo_mut(&ts);
     eprintln!("g = {:?}", g);
 
-    let (t,(_,_)) = test_stockfish(fen, n, true).unwrap();
+    let ((t,t_sf),(_,_)) = test_stockfish(fen, n, true).unwrap();
     // let (t,(_,_)) = test_stockfish(fen, n, false).unwrap();
     println!("perft done in {} seconds.", t);
+    println!("stockfish took {} seconds.", t_sf);
 
-    // let (bad_move, bad_fen) = find_move_error(&ts, fen, n, None).unwrap().unwrap();
-    // eprintln!("bad_fen  = {:?}", bad_fen);
-    // eprintln!("bad_move = {:?}", bad_move);
-    // let g = Game::from_fen(&bad_fen).unwrap();
-    // eprintln!("g = {:?}", g);
+    // let t = std::time::Instant::now();
+    // let _ = g.perft(&ts, n);
+    // println!("perft done in {} seconds.", t.elapsed().as_secs_f64());
 
 }
 

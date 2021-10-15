@@ -69,7 +69,7 @@ impl Castling {
 
 }
 
-/// make move 
+/// make move
 impl Game {
 
     pub fn convert_move(&self, from: &str, to: &str, other: &str) -> Option<Move> {
@@ -117,7 +117,7 @@ impl Game {
         }
     }
 
-    fn _make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Game> {
+    pub fn _make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Game> {
         match m {
             &Move::Quiet      { from, to } => {
                 let (c,pc) = self.get_at(from)?;
@@ -187,72 +187,17 @@ impl Game {
     // pub fn make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Self> {
     pub fn make_move_unchecked(&self, ts: &Tables, m: &Move) -> GameResult<Game> {
 
-        // match m {
-        //     &Move::Quiet      { from, to } => {
-        //         let (c,pc) = self.get_at(from)?;
-        //         let mut out = self.clone();
-        //         out.delete_piece_mut_unchecked(from, pc, c);
-        //         out.insert_piece_mut_unchecked(to, pc, c);
-        //         Some(out)
-        //     },
-        //     _ => unimplemented!(),
-        // }
-
-        // let (c,pc) = self.get_at(m.sq_from()).unwrap();
-        // eprintln!("x0 = {:?}", (c,pc));
-        // let mut out = self.clone();
-        // out.delete_piece_mut_unchecked(m.sq_from(), pc, c);
-        // out.insert_piece_mut_unchecked(m.sq_to(), pc, c);
-        // let mut out = Some(out);
-
-        let out = self._make_move_unchecked(&ts, &m);
-        if out.is_none() { return Err(GameEnd::Error); }
-
-        if let Some(mut x) = out {
+        if let Some(mut x) = self._make_move_unchecked(&ts, &m) {
             match m {
                 Move::PawnDouble { .. }                   => {},
                 _                                         => x.state.en_passant = None,
             }
-            match m {
-                Move::Quiet { from, .. } | Move::Capture { from, .. } => {
-                    match (self.state.side_to_move, self.get_at(*from)) {
-                        (White, Some((_,King))) => {
-                            x.state.castling.white_king = false;
-                            x.state.castling.white_queen = false;
-                        }
-                        (Black, Some((_,King))) => {
-                            x.state.castling.black_king = false;
-                            x.state.castling.black_queen = false;
-                        }
-                        (White, Some((_,Rook))) => {
-                            if *from == "H1".into() { x.state.castling.white_king = false; };
-                            if *from == "A1".into() { x.state.castling.white_queen = false; };
-                        },
-                        (Black, Some((_,Rook))) => {
-                            if *from == "H8".into() { x.state.castling.black_king = false; };
-                            if *from == "A8".into() { x.state.castling.black_queen = false; };
-                        },
-                        _              => {},
-                    }
-                },
-                Move::Castle { .. }                       => {
-                    match self.state.side_to_move {
-                        White => {
-                            x.state.castling.white_king  = false;
-                            x.state.castling.white_queen = false;
-                        },
-                        Black => {
-                            x.state.castling.black_king  = false;
-                            x.state.castling.black_queen = false;
-                        },
-                    }
-                },
-                _ => {},
-            }
 
             x.state.side_to_move = !x.state.side_to_move;
-            x.move_history.push(*m);
+            // x.move_history.push(*m);
             x.reset_gameinfo_mut();
+
+            self.update_castles(m, &mut x);
 
             match x.recalc_gameinfo_mut(&ts) {
                 // Err(win) => panic!("wot"),
@@ -260,8 +205,9 @@ impl Game {
                 Ok(_)    => Ok(x),
             }
         } else {
-            panic!("Game::make_move?");
+            return Err(GameEnd::Error);
         }
+
     }
 
 }
@@ -332,8 +278,8 @@ impl Game {
         // eprintln!("moves = {:?}", moves);
         let moves = self.find_checkers(&ts, self.state.side_to_move);
 
-        // XXX: trim this unless needed?
-        let moves = moves | self.find_checkers(&ts, !self.state.side_to_move);
+        // // XXX: trim this unless needed?
+        // let moves = moves | self.find_checkers(&ts, !self.state.side_to_move);
 
         self.state.checkers = Some(moves);
 
@@ -351,6 +297,50 @@ impl Game {
         let b = ts.between_exclusive(king, c0.bitscan());
 
         self.state.check_block_mask = Some(b);
+    }
+
+    fn update_castles(&self, m: &Move, x: &mut Self) {
+        match m {
+            Move::Quiet { from, .. } | Move::Capture { from, .. } => {
+                match (self.state.side_to_move, self.get_at(*from)) {
+                    (White, Some((_,King))) => {
+                        x.state.castling.white_king = false;
+                        x.state.castling.white_queen = false;
+                    }
+                    (Black, Some((_,King))) => {
+                        x.state.castling.black_king = false;
+                        x.state.castling.black_queen = false;
+                    }
+                    (White, Some((_,Rook))) => {
+                        // if *from == "H1".into() { x.state.castling.white_king = false; };
+                        // if *from == "A1".into() { x.state.castling.white_queen = false; };
+                        if *from == Coord(7,0) { x.state.castling.white_king = false; };
+                        if *from == Coord(0,0) { x.state.castling.white_queen = false; };
+                    },
+                    (Black, Some((_,Rook))) => {
+                        // if *from == "H8".into() { x.state.castling.black_king = false; };
+                        // if *from == "A8".into() { x.state.castling.black_queen = false; };
+                        if *from == Coord(7,7) { x.state.castling.black_king = false; };
+                        if *from == Coord(0,7) { x.state.castling.black_queen = false; };
+                    },
+                    _              => {},
+                }
+            },
+            Move::Castle { .. }                       => {
+                match self.state.side_to_move {
+                    White => {
+                        x.state.castling.white_king  = false;
+                        x.state.castling.white_queen = false;
+                    },
+                    Black => {
+                        x.state.castling.black_king  = false;
+                        x.state.castling.black_queen = false;
+                    },
+                }
+            },
+            _ => {},
+        }
+
     }
 
 }

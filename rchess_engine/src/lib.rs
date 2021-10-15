@@ -3,6 +3,8 @@
 #![allow(dead_code)]
 #![allow(unused_mut)]
 
+#![feature(iter_partition_in_place)]
+
 pub mod types;
 pub mod bitboard;
 pub mod coords;

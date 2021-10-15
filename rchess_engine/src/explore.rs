@@ -201,7 +201,8 @@ impl Explorer {
 
 /// Misc
 impl Explorer {
-    pub fn order_moves(&self, ts: &Tables, mut moves: Vec<(Move,Score,Game)>) -> Vec<(Move,Score,Game)> {
+    // pub fn order_moves<'a>(&self, ts: &Tables, mut moves: &'a mut [(Move,Score,Game)]) -> &'a [(Move,Score,Game)] {
+    pub fn order_moves(&self, ts: &Tables, mut moves: &mut [(Move,Score,Game)]) {
         use std::cmp::Ordering;
         moves.sort_unstable_by(|a,b| {
             let a_cap = a.0.filter_all_captures();
@@ -220,7 +221,6 @@ impl Explorer {
                 Ordering::Equal
             }
         });
-        moves
     }
 }
 
@@ -286,7 +286,11 @@ impl Explorer {
             // return (m0,self.quiescence(&ts, g, Some(moves), k, alpha.1, beta.1));
         }
 
+        let mut moves = moves.get_moves_unsafe();
+        // let ms = moves.clone();
+
         let mut gs = moves.into_iter().flat_map(|m| {
+        // let mut gs = moves.iter_mut().flat_map(|m| {
             match g.make_move_unchecked(&ts, &m) {
                 Ok(g2) => {
                     let score = g2.evaluate(&ts);
@@ -308,24 +312,25 @@ impl Explorer {
         })
             // .collect::<Vec<(Move,Option<SearchInfo>, Game)>>();
             // .collect::<Vec<(Move, Score, Option<SearchInfo>, Game)>>();
-            .collect::<Vec<(Move, Score, Game)>>();
-            // ;
+            // .collect::<Vec<(Move, Score, Game)>>();
+            ;
 
-        // let gs0 = gs.clone().filter(|(m,p,g2)| m.filter_all_captures());
-        // let gs1 = gs.filter(|(m,p,g2)| !m.filter_all_captures());
-        // let gs = gs0.chain(gs1);
+        let gs0 = gs.clone().filter(|(m,p,g2)| m.filter_all_captures());
+        let gs1 = gs.filter(|(m,p,g2)| !m.filter_all_captures());
+        let gs = gs0.chain(gs1);
 
-        gs.sort_unstable_by(|a,b| {
-            a.1.partial_cmp(&b.1).unwrap()
-        });
+        // let gs2 = gs1.clone().filter(|(m,p,g2)| !m.filter_castle());
+        // let gs1 = gs1.filter(|(m,p,g2)| m.filter_castle());
+        // let gs = gs0.chain(gs1).chain(gs2);
 
-        // let mut gs = self.order_moves(&ts, gs);
+        // gs.sort_unstable_by(|a,b| {
+        //     a.1.partial_cmp(&b.1).unwrap()
+        //     // a.1.cmp(&b.1)
+        // });
+
+        // self.order_moves(&ts, &mut gs);
 
         // if maximizing {
-        //     gs.reverse();
-        // }
-
-        // if !maximizing {
         //     gs.reverse();
         // }
 
