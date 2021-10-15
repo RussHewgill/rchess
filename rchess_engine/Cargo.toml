@@ -13,6 +13,13 @@ path = "src/lib.rs"
 name = "rchess_engine"
 path = "src/main.rs"
 
+[[bench]]
+name = "bench"
+harness = false
+
+[dev-dependencies]
+criterion = "0.3.5"
+
 [dependencies]
 
 log = "0.4.*"

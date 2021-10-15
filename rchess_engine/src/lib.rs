@@ -13,6 +13,7 @@ pub mod parsing;
 pub mod search;
 pub mod explore;
 pub mod evaluate;
+pub mod timer;
 
 pub mod util;
 

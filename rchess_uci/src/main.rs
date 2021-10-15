@@ -41,9 +41,15 @@ fn main() -> std::io::Result<()> {
     // let timer = Timer::default(should_stop.clone());
     // let searcher = Arc::new(Mutex::new(Searcher::new(EngineSettings::default(), timer)));
 
-    let explorer = Arc::new(Mutex::new(Explorer::new(White,Game::empty())));
+    let depth = 4;
+    let explorer = Arc::new(Mutex::new(Explorer::new(White,Game::empty(), depth)));
     let ts = Tables::new();
-    let depth = 3;
+
+    let g0 = {
+        let mut g0 = Game::from_fen(STARTPOS).unwrap();
+        let _ = g0.recalc_gameinfo_mut(&ts);
+        g0
+    };
 
     let stdin = std::io::stdin();
     for line in stdin.lock().lines() {
@@ -58,21 +64,38 @@ fn main() -> std::io::Result<()> {
                     "ucinewgame" => {
                         // let mut g = Game::new();
                         let mut g = Game::from_fen(STARTPOS).unwrap();
-                        g.recalc_gameinfo_mut(&ts);
+                        let _ = g.recalc_gameinfo_mut(&ts);
                         explorer.lock().unwrap().side = Black;
                         explorer.lock().unwrap().game = g;
                     },
                     "position"   => {
-                        if params.next().unwrap() == "fen" {
-                            // let fen = params.next().unwrap();
-                            let fen = line.replace("position fen ", "");
-
-                            // eprintln!("fen = {:?}", fen);
-                            let mut g = Game::from_fen(&fen).unwrap();
-                            g.recalc_gameinfo_mut(&ts);
-                            explorer.lock().unwrap().game = g;
-                        } else {
-                            panic!("Position not fen? {:?}", params);
+                        match params.next().unwrap() {
+                            "fen" => {
+                                let fen = line.replace("position fen ", "");
+                                // eprintln!("fen = {:?}", fen);
+                                let mut g = Game::from_fen(&fen).unwrap();
+                                let _ = g.recalc_gameinfo_mut(&ts);
+                                explorer.lock().unwrap().side = g.state.side_to_move;
+                                explorer.lock().unwrap().game = g;
+                            },
+                            "startpos" => {
+                                params.next();
+                                let moves: Vec<&str> = params.collect();
+                                // let moves = moves.join(" ");
+                                // println!("moves = {:?}", moves);
+                                let mut g = g0.clone();
+                                for m in moves {
+                                    let from = &m[0..2];
+                                    let to = &m[2..4];
+                                    let other = &m[4..];
+                                    let mm = g.convert_move(from, to, other).unwrap();
+                                    g = g.make_move_unchecked(&ts, &mm).unwrap();
+                                    // eprintln!("from, to = {:?}, {:?}", from, to);
+                                }
+                                explorer.lock().unwrap().side = g.state.side_to_move;
+                                explorer.lock().unwrap().game = g;
+                            },
+                            x => panic!("Position not fen? {:?},  {:?}", x, params),
                         }
                     },
                     "stop"       => should_stop.store(true, Ordering::Relaxed),
@@ -92,6 +115,7 @@ fn main() -> std::io::Result<()> {
                                     _      => panic!("Bad promotion"),
                                 };
                                 let mm = format!("{:?}{:?}{}", m.sq_from(), m.sq_to(), c).to_ascii_lowercase();
+                                // let mm = format!("{:?}{:?}", m.sq_from(), m.sq_to(), c).to_ascii_lowercase();
                                 println!("bestmove {}", mm);
                             },
                             _ => {
@@ -102,7 +126,7 @@ fn main() -> std::io::Result<()> {
 
 
                     },
-                    _            => unimplemented!(),
+                    s            => unimplemented!("bad command: {:?}", s),
                 }
             }
 

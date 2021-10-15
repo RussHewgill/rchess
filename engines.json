@@ -1,0 +1,12 @@
+[
+    {
+        "name": "rchess",
+        "command": "/home/me/code/rust/rchess/target/release/rchess_uci",
+        "protocol": "uci"
+    },
+    {
+        "name": "stockfish",
+        "command": "/usr/bin/stockfish",
+        "protocol": "uci"
+    }
+]

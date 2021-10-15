@@ -19,11 +19,12 @@ impl Eval {
         let white = self.sum_color(White);
         let black = self.sum_color(Black);
 
-        if col == White {
-            white - black
-        } else {
-            black - white
-        }
+        // if col == White {
+        //     white - black
+        // } else {
+        //     black - white
+        // }
+        white - black
         // unimplemented!("Eval::diff()")
     }
 

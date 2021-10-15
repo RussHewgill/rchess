@@ -68,6 +68,51 @@ impl Castling {
 
 impl Game {
 
+    pub fn convert_move(&self, from: &str, to: &str, other: &str) -> Option<Move> {
+        let from: Coord = from.into();
+        let to: Coord = to.into();
+        match (self.get_at(from), self.get_at(to)) {
+            (Some((col,pc)),None) => {
+                let cc = if col == White { 6 } else { 1 };
+                if (pc == King) & (from.file_dist(to) == 2) {
+                    // Queenside
+                    let (rook_from,rook_to) = if to.0 == 2 {
+                        (0,3)
+                    } else if to.0 == 6 {
+                        (7,5)
+                    } else {
+                        panic!("bad castle?");
+                    };
+                    let r = if col == White { 0 } else { 7 };
+                    let (rook_from,rook_to) = (Coord(rook_from,r),Coord(rook_to,r));
+                    Some(Move::Castle { from, to, rook_from, rook_to })
+                } else if Some(to) == self.state.en_passant {
+                    let capture = if col == White { S.shift_coord(to).unwrap() }
+                        else { N.shift_coord(to).unwrap() };
+                    Some(Move::EnPassant { from, to, capture })
+                } else if (pc == Pawn) & (to.1 == cc) {
+                    // XXX: bad
+                    let new_piece = Queen;
+                    Some(Move::Promotion { from, to, new_piece })
+                } else {
+                    Some(Move::Quiet { from, to })
+                }
+            },
+            (Some((col0,pc0)),Some((col1,pc1))) => {
+                if col0 == col1 { panic!("self capture?"); }
+
+                let cc = if col0 == White { 6 } else { 1 };
+                if (pc0 == Pawn) & (to.1 == cc) {
+                    Some(Move::PromotionCapture { from, to, new_piece: Queen })
+                } else {
+                    Some(Move::Capture { from, to })
+                }
+            },
+            (None,None) => None,
+            _ => unimplemented!(),
+        }
+    }
+
     fn _make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Game> {
         match m {
             &Move::Quiet      { from, to } => {

@@ -47,23 +47,6 @@ fn main() {
     // main4(); // perft
     // main3(); // read from file and test
 
-    // let b = BitBoard(b0);
-    // eprintln!("b = {:?}", b);
-
-    // // let (mut magics, table) = Tables::gen_magics_rook();
-    // let t = std::time::Instant::now();
-    // // let ((magics, table),_) = Tables::gen_magics();
-    // // let (magics_b, table_b) = Tables::_gen_magics(true).unwrap();
-    // let (magics_r, table_r) = Tables::_gen_magics(false).unwrap_err();
-    // println!("magics done in {} seconds.", t.elapsed().as_secs_f64());
-
-    // let c0: Coord = "A1".into();
-    // let sq: u32 = c0.into();
-    // let occ = BitBoard::new(&["D4","A5"]);
-    // // let b = Tables::attacks_bishop(c0, occ, magics_b, table_b);
-    // let b = Tables::attacks_rook(c0, occ, magics_r, table_r);
-    // eprintln!("b = {:?}", b);
-
 }
 
 fn main5() {
@@ -71,63 +54,41 @@ fn main5() {
     let fen = STARTPOS;
 
     // let fen = "3b4/1pN5/1P1p4/3pN2R/3kP3/K2B1bP1/1P3P2/6B1 w - - 0 1";
-    let fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    // let fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
 
-    let n = 1;
+    // let fen = "rnbqk1nr/p3ppbp/2pp2p1/8/3PP3/4BN2/PPp2PPP/1R1NK2R b Kkq - 1 9";
+    // let fen = "rnbqkbnr/pp3ppp/2pp4/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 1 4";
+
+    let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
+
+    let n = 4;
 
     let ts = Tables::new();
     // let ts = Tables::_new(false);
     let mut g = Game::from_fen(fen).unwrap();
     let _ = g.recalc_gameinfo_mut(&ts);
-    eprintln!("g = {:?}", g);
+    // eprintln!("g = {:?}", g);
+
+    // // let m = Move::Quiet { from: "G7".into(), to: "G6".into() };
+    // let m = Move::Quiet { from: "G8".into(), to: "F6".into() };
+    // let g2 = g.make_move_unchecked(&ts, &m).unwrap();
+    // let g = g2;
 
     let ex = Explorer::new(g.state.side_to_move, g.clone(), n);
 
-    // let s = g.evaluate(&ts);
-    // eprintln!("sw = {:?}", s.sum_color(White));
-    // eprintln!("sb = {:?}", s.sum_color(Black));
-
-    // let m = Move::Capture { from: "G5".into(), to: "H7".into() };
-    // let g2 = g.make_move_unchecked(&ts, &m).unwrap();
-    // eprintln!("g2 = {:?}", g2);
-    // let moves = g2.search_all(&ts, g2.state.side_to_move);
-    // eprintln!("moves = {:?}", moves);
-    // let ex = Explorer::new(g2.state.side_to_move, g2.clone(), n);
-
-    // // let s = g.score_material();
-    // let s = g.evaluate(&ts);
-    // eprintln!("score = {:?}", s);
-
-    let moves = vec![
-        Move::Quiet { from: "H7".into(), to: "H6".into() },
-        Move::Quiet { from: "E7".into(), to: "E5".into() },
-    ];
-
     // let moves = vec![
-    //     Move::Quiet { from: "H2".into(), to: "H3".into() },
-    //     Move::Quiet { from: "E2".into(), to: "E4".into() },
+    //     Move::Quiet { from: "G8".into(), to: "F6".into() },
+    //     Move::Quiet { from: "G7".into(), to: "G6".into() },
     // ];
-
-    // ex.rank_moves(&ts, true);
     // ex.rank_moves_list(&ts, true, moves);
 
-    // let s = g.evaluate(&ts);
-    // eprintln!("s = {:?}", s.sum());
+    // let maximizing = ex.side == g2.state.side_to_move;
+    // eprintln!("maximizing = {:?}", maximizing);
 
-    // let g2 = g.make_move_unchecked(&ts, &moves[0]).unwrap();
-    // // eprintln!("g2 = {:?}", g2);
-    // let s = g2.evaluate(&ts);
-    // eprintln!("s = {:?}", s.sum_color(Black));
-    // eprintln!("s = {:?}\n", s.sum_color(!Black));
-
-    // let g2 = g.make_move_unchecked(&ts, &moves[1]).unwrap();
-    // // eprintln!("g2 = {:?}", g2);
-    // let s = g2.evaluate(&ts);
-    // eprintln!("s = {:?}", s.sum_color(Black));
-    // eprintln!("s = {:?}", s.sum_color(!Black));
-
-    // let s = g.evaluate(&ts);
-    // eprintln!("s = {:?}", s.sum());
+    // let alpha = (None,i32::MIN);
+    // let beta  = (None,i32::MAX);
+    // let (_,score) = ex._ab_search(&ts, g2, n, 1, None, alpha, beta);
+    // eprintln!("score = {:?}", score);
 
     let t = std::time::Instant::now();
     let m = ex.explore(&ts, ex.depth);
@@ -135,8 +96,11 @@ fn main5() {
     // ex.rank_moves(&ts, true);
     println!("perft done in {} seconds.", t.elapsed().as_secs_f64());
 
-    // let k = g.evaluate(&ts, White);
-    // eprintln!("k = {:?}", k);
+    // let from = "e5";
+    // let to = "d6";
+    // let other = "";
+    // let m = g.convert_move(from, to, other);
+    // eprintln!("m = {:?}", m);
 
 }
 

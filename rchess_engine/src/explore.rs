@@ -2,15 +2,18 @@
 use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
+pub use crate::timer::*;
 
 use rayon::prelude::*;
 
 #[derive(Debug,PartialEq,PartialOrd,Clone)]
 pub struct Explorer {
-    pub side:       Color,
-    pub game:       Game,
+    pub side:          Color,
+    pub game:          Game,
     // pub stats:      ABStats
-    pub depth:      u32,
+    pub depth:         u32,
+    // pub should_stop:   
+    // pub timer:         
 }
 
 impl Explorer {
@@ -85,7 +88,7 @@ impl Explorer {
                 let g2 = self.game.make_move_unchecked(&ts, &m).unwrap();
                 let alpha = (None,i32::MIN);
                 let beta  = (None,i32::MAX);
-                let (m2,score) = self._ab_search(&ts, g2, self.depth, 0, Some(m), alpha, beta);
+                let (_,score) = self._ab_search(&ts, g2, self.depth, 1, Some(m), alpha, beta);
                 (m,score)
             })
             .collect();
@@ -100,33 +103,26 @@ impl Explorer {
     }
 
     pub fn rank_moves(&self, ts: &Tables, print: bool) -> Vec<(Move,i32)> {
-        let mut out = vec![];
+        // let mut out = vec![];
 
         let moves = self.game.search_all(&ts, self.game.state.side_to_move);
-        // let moves = &moves[0..moves.len()];
 
         if moves.is_end() {
-            return out;
-            // panic!("is_end?");
+            return vec![];
         }
-
-        // let moves = vec![
-        //     Move::Quiet { from: "A1".into(), to: "D4".into() }, // mate
-        //     Move::Quiet { from: "A1".into(), to: "C3".into() }, // mate in 1
-        //     Move::Quiet { from: "A1".into(), to: "A4".into() }, // mate in 2
-        // ];
-
         let moves = moves.get_moves_unsafe();
-        let mut out: Vec<(Move,i32)> = moves.into_par_iter()
-        // let mut out: Vec<(Move,i32)> = moves.into_iter()
-            .map(|m| {
-                let g2 = self.game.make_move_unchecked(&ts, &m).unwrap();
-                let alpha = (None,i32::MIN);
-                let beta  = (None,i32::MAX);
-                let (m2,score) = self._ab_search(&ts, g2, self.depth, 1, Some(m), alpha, beta);
-                (m,score)
-            })
-            .collect();
+
+        self.rank_moves_list(&ts, print, moves)
+
+        // let mut out: Vec<(Move,i32)> = moves.into_par_iter()
+        //     .map(|m| {
+        //         let g2 = self.game.make_move_unchecked(&ts, &m).unwrap();
+        //         let alpha = (None,i32::MIN);
+        //         let beta  = (None,i32::MAX);
+        //         let (m2,score) = self._ab_search(&ts, g2, self.depth, 1, Some(m), alpha, beta);
+        //         (m,score)
+        //     })
+        //     .collect();
 
         // for m in moves.into_iter() {
         //     // eprintln!("m = {:?}", m);
@@ -140,17 +136,17 @@ impl Explorer {
         //     out.push((m,score))
         // }
 
-        out.sort_by(|a,b| a.1.cmp(&b.1));
-        out.reverse();
+        // out.sort_by(|a,b| a.1.cmp(&b.1));
+        // out.reverse();
 
-        if print {
-            // for (m,s) in out[0..8].iter() {
-            for (m,s) in out.iter() {
-                eprintln!("{:?}: {:?}", s, m);
-            }
-        }
+        // if print {
+        //     // for (m,s) in out[0..8].iter() {
+        //     for (m,s) in out.iter() {
+        //         eprintln!("{:?}: {:?}", s, m);
+        //     }
+        // }
 
-        out
+        // out
         // unimplemented!()
     }
 
@@ -217,7 +213,7 @@ impl Explorer {
         // unimplemented!()
     }
 
-    fn _ab_search(
+    pub fn _ab_search(
         &self,
         ts:         &Tables,
         g:          Game,
@@ -245,16 +241,14 @@ impl Explorer {
             Outcome::Moves(_)     => {},
         }
 
-
-        // if moves.is_end() {
-        //     // panic!("is_end?");
-        //     // println!("is end? {:?}", k);
-        //     // return (m0,val,Some(k));
-        //     return (m0,1000 - k);
-        // }
-
         if depth == 0 {
             return (m0,g.evaluate(&ts).sum(self.side));
+
+            // if maximizing {
+            //     return (m0,self.quiescence(&ts, g, Some(moves), k, alpha.1, beta.1));
+            // } else {
+            //     return (m0,-self.quiescence(&ts, g, Some(moves), k, alpha.1, beta.1));
+            // }
             // return (m0,self.quiescence(&ts, g, Some(moves), k, alpha.1, beta.1));
         }
 
