@@ -139,7 +139,7 @@ impl Explorer {
         // None
     }
 
-    pub fn rank_moves_list(&self, ts: &Tables, print: bool, moves: Vec<Move>, par: bool) -> Vec<(Move,i32)> {
+    pub fn rank_moves_list(&self, ts: &Tables, print: bool, moves: Vec<Move>) -> Vec<(Move,i32)> {
 
         let tt = RwLock::new(self.trans_table.clone());
 
@@ -194,7 +194,8 @@ impl Explorer {
         }
         let moves = moves.get_moves_unsafe();
 
-        self.rank_moves_list(&ts, print, moves, par)
+        // self.rank_moves_list(&ts, print, moves, par)
+        self.rank_moves_list(&ts, print, moves)
     }
 
 }
@@ -275,9 +276,10 @@ impl Explorer {
         }
 
         if depth == 0 {
-            let s = g.evaluate(&ts).sum(self.side);
+            let score = g.evaluate(&ts).sum(self.side);
+            let score = if !maximizing { -score } else { score };
             // trans_table.write().insert(g.state, SearchInfo::new(m0.unwrap(), k as u32, s));
-            return (m0,s);
+            return (m0,score);
             // if maximizing {
             //     return (m0,self.quiescence(&ts, g, Some(moves), k, alpha.1, beta.1));
             // } else {
@@ -295,6 +297,7 @@ impl Explorer {
                 Ok(g2) => {
                     let score = g2.evaluate(&ts);
                     let score = score.sum(self.side);
+                    let score = if maximizing { -score } else { score };
 
                     // if let Some(prev) = trans_table.read().get(&g2.state) {
                     //     Some((m,score,Some(*prev),g2))

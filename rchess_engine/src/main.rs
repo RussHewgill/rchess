@@ -78,9 +78,9 @@ fn main() {
     // let t = PcTables::gen_knights();
     // PcTables::print_table(t);
 
-    // main5() // search + eval position
+    main5() // search + eval position
     // main2();
-    main4(); // perft
+    // main4(); // perft
     // main3(); // read from file and test
 
 }
@@ -96,10 +96,18 @@ fn main5() {
     // let fen = "rnbqkbnr/pp3ppp/2pp4/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 1 4";
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
-    let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
+    // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
     // let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
 
-    let n = 5;
+    // let fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    // let fen = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"; // e4 e5
+    // let fen = "rnbqkbnr/pppppp1p/6p1/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"; // e4 g6
+    // let fen = "rnbqkbnr/ppppp1pp/5p2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"; // e4 f6
+
+    // let fen = "rnbqk2r/pp1p1ppp/4pn2/2p5/2PP4/P4N2/1P1NPPPP/R2QKB1R b KQkq - 0 6";
+    let fen = "k7/8/8/4p3/3P4/8/8/7K w - - 0 1";
+
+    let n = 1;
 
     let ts = Tables::new();
     // let ts = Tables::_new(false);
@@ -111,11 +119,43 @@ fn main5() {
     let timesettings = TimeSettings::new_f64(10., 0.1);
     let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
 
-    // let moves = vec![
-    //     Move::Quiet { from: "D2".into(), to: "D3".into() },
-    //     Move::Quiet { from: "D2".into(), to: "D4".into() },
-    // ];
+    let moves = vec![
+        Move::Quiet { from: "H7".into(), to: "H5".into() },
+        Move::Quiet { from: "D7".into(), to: "D5".into() },
+    ];
     // ex.rank_moves_list(&ts, true, moves);
+
+    let t = std::time::Instant::now();
+    let m = ex.explore(&ts, ex.depth);
+    // let m = ex.explore_singlethread(&ts, ex.depth);
+    eprintln!("m = {:?}", m);
+    // ex.rank_moves(&ts, true);
+    println!("explore done in {} seconds.", t.elapsed().as_secs_f64());
+
+    // let e = g.evaluate(&ts);
+
+    // let mw: Score = e.material_white.iter().sum();
+    // let mb: Score = e.material_black.iter().sum();
+    // let mw: Score = e.piece_positions_white.iter().sum();
+    // let mb: Score = e.piece_positions_black.iter().sum();
+
+    // eprintln!("mw = {:?}", e.piece_positions_white);
+    // eprintln!("mb = {:?}", e.piece_positions_black);
+    // // eprintln!("mw = {:?}", e.material_white);
+    // // eprintln!("mb = {:?}", e.material_black);
+
+    // let s = g.score_positions(&ts, Pawn, !White);
+    // eprintln!("s = {:?}", s);
+
+    // let ew = g.evaluate(&ts).sum_color(White);
+    // let eb = g.evaluate(&ts).sum_color(Black);
+    // eprintln!("sum w = {:?}", ew);
+    // eprintln!("sum b = {:?}", eb);
+
+    // let e = g.score_material(Pawn, White);
+    // eprintln!("w = {:?}", e);
+    // let e = g.score_material(Pawn, Black);
+    // eprintln!("b = {:?}", e);
 
     // let moves = g.search_all(&ts, White);
     // for m in moves.clone() {
@@ -130,13 +170,6 @@ fn main5() {
     // let beta  = (None,i32::MAX);
     // let (_,score) = ex._ab_search(&ts, g2, n, 1, None, alpha, beta);
     // eprintln!("score = {:?}", score);
-
-    let t = std::time::Instant::now();
-    let m = ex.explore(&ts, ex.depth);
-    // let m = ex.explore_singlethread(&ts, ex.depth);
-    eprintln!("m = {:?}", m);
-    // ex.rank_moves(&ts, true);
-    println!("explore done in {} seconds.", t.elapsed().as_secs_f64());
 
     // let from = "e5";
     // let to = "d6";

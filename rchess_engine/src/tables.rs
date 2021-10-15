@@ -585,11 +585,11 @@ mod eval {
         }
 
         pub fn get<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
-            // let c1: Coord = c0.into();
-            // let c1 = if col == White { c1 } else { Coord(c1.0,7-c1.1) };
+            let c1: Coord = c0.into();
+            let c1 = if col == White { c1 } else { Coord(c1.0,7-c1.1) };
             // let sq: usize = c1.into();
             // self.tables[pc.index()][sq]
-            self.tables[pc.index()][c0.into()]
+            self.tables[pc.index()][c1]
         }
 
         // [
@@ -614,7 +614,8 @@ mod eval {
             let opening = Self {
                 tables: [pawns,
                          [0; 64], // Rook
-                         knights,
+                         [0; 64],
+                         // knights,
                          [0; 64], // b
                          [0; 64], // q
                          [0; 64]], // k

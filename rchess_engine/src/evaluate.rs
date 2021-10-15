@@ -6,10 +6,14 @@ pub type Score = i32;
 
 #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Eval {
-    material_white:         [Score; 6],
-    material_black:         [Score; 6],
-    piece_positions_white:  [Score; 6],
-    piece_positions_black:  [Score; 6],
+    // material_white:         [Score; 6],
+    // material_black:         [Score; 6],
+    // piece_positions_white:  [Score; 6],
+    // piece_positions_black:  [Score; 6],
+    pub material_white:         [Score; 6],
+    pub material_black:         [Score; 6],
+    pub piece_positions_white:  [Score; 6],
+    pub piece_positions_black:  [Score; 6],
 }
 
 impl Eval {
@@ -24,7 +28,9 @@ impl Eval {
         // } else {
         //     black - white
         // }
+
         white - black
+
         // unimplemented!("Eval::diff()")
     }
 
@@ -126,7 +132,7 @@ impl Piece {
 /// Material Scoring
 impl Game {
 
-    fn score_material(&self, pc: Piece, col: Color) -> i32 {
+    pub fn score_material(&self, pc: Piece, col: Color) -> i32 {
         match pc {
             // Rook   => {},
             // Knight => {},
@@ -150,7 +156,7 @@ impl Game {
 /// Positional Scoring
 impl Game {
 
-    fn score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> Score {
+    pub fn score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> Score {
         match pc {
             // Pawn   => self.score_positions_pawns(&ts, col),
             // Rook   => unimplemented!(),

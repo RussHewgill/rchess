@@ -42,10 +42,12 @@ fn main() -> std::io::Result<()> {
 
     let should_stop  = Arc::new(AtomicBool::new(false));
     let timesettings = TimeSettings::new_f64(10., 0.1);
+
     let depth        = 4;
 
-    let explorer = Arc::new(Mutex::new(
-        Explorer::new(White,Game::empty(), depth, should_stop.clone(), timesettings)));
+    // let explorer = Arc::new(Mutex::new(
+    //     Explorer::new(White,Game::empty(), depth, should_stop.clone(), timesettings)));
+    let mut explorer = Explorer::new(White,Game::empty(), depth, should_stop.clone(), timesettings);
     let ts = Tables::new();
 
     let g0 = {
@@ -68,8 +70,10 @@ fn main() -> std::io::Result<()> {
                         // let mut g = Game::new();
                         let mut g = Game::from_fen(STARTPOS).unwrap();
                         let _ = g.recalc_gameinfo_mut(&ts);
-                        explorer.lock().unwrap().side = Black;
-                        explorer.lock().unwrap().game = g;
+                        // explorer.lock().unwrap().side = Black;
+                        // explorer.lock().unwrap().game = g;
+                        explorer.side = Black;
+                        explorer.game = g;
                     },
                     "position"   => {
                         match params.next().unwrap() {
@@ -78,8 +82,10 @@ fn main() -> std::io::Result<()> {
                                 // eprintln!("fen = {:?}", fen);
                                 let mut g = Game::from_fen(&fen).unwrap();
                                 let _ = g.recalc_gameinfo_mut(&ts);
-                                explorer.lock().unwrap().side = g.state.side_to_move;
-                                explorer.lock().unwrap().game = g;
+                                // explorer.lock().unwrap().side = g.state.side_to_move;
+                                // explorer.lock().unwrap().game = g;
+                                explorer.side = g.state.side_to_move;
+                                explorer.game = g;
                             },
                             "startpos" => {
                                 params.next();
@@ -95,8 +101,10 @@ fn main() -> std::io::Result<()> {
                                     g = g.make_move_unchecked(&ts, &mm).unwrap();
                                     // eprintln!("from, to = {:?}, {:?}", from, to);
                                 }
-                                explorer.lock().unwrap().side = g.state.side_to_move;
-                                explorer.lock().unwrap().game = g;
+                                // explorer.lock().unwrap().side = g.state.side_to_move;
+                                // explorer.lock().unwrap().game = g;
+                                explorer.side = g.state.side_to_move;
+                                explorer.game = g;
                             },
                             x => panic!("Position not fen? {:?},  {:?}", x, params),
                         }
@@ -106,7 +114,8 @@ fn main() -> std::io::Result<()> {
                     "quit"       => return Ok(()),
                     "go"         => {
 
-                        let m = explorer.lock().unwrap().explore(&ts, depth).unwrap();
+                        // let m = explorer.lock().unwrap().explore(&ts, depth).unwrap();
+                        let m = explorer.explore(&ts, depth).unwrap();
 
                         match m {
                             Move::Promotion { new_piece, .. } | Move::PromotionCapture { new_piece, .. } => {
