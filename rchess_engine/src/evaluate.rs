@@ -97,6 +97,7 @@ impl Game {
         // out.score_position = self.score_position();
         out
     }
+
 }
 
 impl Piece {

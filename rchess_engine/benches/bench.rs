@@ -28,23 +28,30 @@ pub fn crit_bench_1(c: &mut Criterion) {
     let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
 
     let mut group = c.benchmark_group("group");
+
     // group.sample_size(25);
     // group.measurement_time(std::time::Duration::from_secs_f64(5.));
 
-    // group.bench_function("rank moves", |b| b.iter(|| ex.explore(&ts, ex.depth)));
+    group.bench_function("rank moves", |b| b.iter(|| ex.explore(&ts, ex.depth)));
 
-    group.sample_size(100);
-    // group.measurement_time(std::time::Duration::from_secs_f64(5.));
-    // group.bench_with_input(BenchmarkId::new("table getters", c0), &c0, |b, &c| {
-    group.bench_function("table getters", |b| {
-        b.iter(||
-               for x in 0..8 {
-                   for y in 0..8 {
-                       let _ = ts.get_rook(Coord(x,y));
-                   }
-               }
-        )
-    });
+    // captures first      = 17.4
+    // no collect          = 24.4
+    // no sort             = 34.4 ms
+    // sort by score       = 38.4
+    // order moves         = 95.95
+
+    // group.sample_size(100);
+    // // group.measurement_time(std::time::Duration::from_secs_f64(5.));
+    // // group.bench_with_input(BenchmarkId::new("table getters", c0), &c0, |b, &c| {
+    // group.bench_function("table getters", |b| {
+    //     b.iter(||
+    //            for x in 0..8 {
+    //                for y in 0..8 {
+    //                    let _ = ts.get_rook(Coord(x,y));
+    //                }
+    //            }
+    //     )
+    // });
 
     // group.bench_function("sliding_old", |b| b.iter(
     //     || g._search_all_test(&ts, White, false)

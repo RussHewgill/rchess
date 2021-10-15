@@ -3,6 +3,7 @@ use crate::types::*;
 
 pub use self::movesets::*;
 pub use self::magics::*;
+pub use self::opening_book::*;
 pub use self::endgames::*;
 pub use self::eval::*;
 
@@ -712,6 +713,12 @@ mod eval {
         }
 
     }
+
+}
+
+mod opening_book {
+    use crate::types::*;
+    use crate::tables::*;
 
 }
 

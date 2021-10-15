@@ -94,7 +94,7 @@ fn main5() {
     // let fen = "rnbqkbnr/pp3ppp/2pp4/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 1 4";
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
-    // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
+    let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
     // let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
 
     let n = 5;
@@ -110,8 +110,8 @@ fn main5() {
     let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
 
     // let moves = vec![
-    //     Move::Quiet { from: "G8".into(), to: "F6".into() },
-    //     Move::Quiet { from: "G7".into(), to: "G6".into() },
+    //     Move::Quiet { from: "D2".into(), to: "D3".into() },
+    //     Move::Quiet { from: "D2".into(), to: "D4".into() },
     // ];
     // ex.rank_moves_list(&ts, true, moves);
 
@@ -131,6 +131,7 @@ fn main5() {
 
     let t = std::time::Instant::now();
     let m = ex.explore(&ts, ex.depth);
+    // let m = ex.explore_singlethread(&ts, ex.depth);
     eprintln!("m = {:?}", m);
     // ex.rank_moves(&ts, true);
     println!("explore done in {} seconds.", t.elapsed().as_secs_f64());

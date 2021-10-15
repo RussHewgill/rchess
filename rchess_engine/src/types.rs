@@ -124,6 +124,13 @@ impl Move {
         }
     }
 
+    pub fn filter_castle(&self) -> bool {
+        match self {
+            &Move::Castle { .. } => true,
+            _                    => false,
+        }
+    }
+
     pub fn sq_from(&self) -> Coord {
         match self {
             &Move::Quiet { from, .. } => from,
