@@ -37,12 +37,15 @@ fn main() -> std::io::Result<()> {
         .open(logpath)
         .unwrap();
 
-    let should_stop = Arc::new(AtomicBool::new(false));
     // let timer = Timer::default(should_stop.clone());
     // let searcher = Arc::new(Mutex::new(Searcher::new(EngineSettings::default(), timer)));
 
-    let depth = 4;
-    let explorer = Arc::new(Mutex::new(Explorer::new(White,Game::empty(), depth)));
+    let should_stop  = Arc::new(AtomicBool::new(false));
+    let timesettings = TimeSettings::new_f64(10., 0.1);
+    let depth        = 4;
+
+    let explorer = Arc::new(Mutex::new(
+        Explorer::new(White,Game::empty(), depth, should_stop.clone(), timesettings)));
     let ts = Tables::new();
 
     let g0 = {

@@ -6,23 +6,29 @@ pub use crate::timer::*;
 
 use rayon::prelude::*;
 
-#[derive(Debug,PartialEq,PartialOrd,Clone)]
+#[derive(Debug,Clone)]
 pub struct Explorer {
     pub side:          Color,
     pub game:          Game,
     // pub stats:      ABStats
     pub depth:         u32,
     // pub should_stop:   
-    // pub timer:         
+    pub timer:         Timer,
 }
 
 impl Explorer {
-    pub fn new(side: Color, game: Game, depth: u32) -> Self {
+    pub fn new(side:          Color,
+               game:          Game,
+               depth:         u32,
+               should_stop:   Arc<AtomicBool>,
+               settings:      TimeSettings,
+    ) -> Self {
         Self {
             side,
             game,
             // stats: ABStats::new(),
             depth,
+            timer: Timer::new(should_stop, settings),
         }
     }
 }
@@ -82,8 +88,8 @@ impl Explorer {
     }
 
     pub fn rank_moves_list(&self, ts: &Tables, print: bool, moves: Vec<Move>) -> Vec<(Move,i32)> {
-        let mut out: Vec<(Move,i32)> = moves.into_par_iter()
-        // let mut out: Vec<(Move,i32)> = moves.into_iter()
+        // let mut out: Vec<(Move,i32)> = moves.into_par_iter()
+        let mut out: Vec<(Move,i32)> = moves.into_iter()
             .map(|m| {
                 let g2 = self.game.make_move_unchecked(&ts, &m).unwrap();
                 let alpha = (None,i32::MIN);

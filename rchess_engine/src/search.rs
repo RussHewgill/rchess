@@ -85,6 +85,8 @@ impl Game {
 
         let out = vec![k,b,r,q,n,p,pp,cs].concat();
 
+        // k.extend(iter)
+
         // let out: Vec<Move> = out.into_par_iter().filter(|m| {
         let out: Vec<Move> = out.into_iter().filter(|m| {
             self.move_is_legal(&ts, m)

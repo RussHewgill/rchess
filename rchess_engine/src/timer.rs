@@ -30,6 +30,18 @@ impl Timer {
 }
 
 impl TimeSettings {
+
+    pub fn new_f64(clock_time: f64, increment: f64) -> Self {
+        let clock_time = Duration::from_secs_f64(clock_time);
+        let increment = Duration::from_secs_f64(increment);
+        Self {
+            clock_time:   [clock_time, clock_time],
+            increment:    [increment, increment],
+            ponder:       false,
+            infinite:     false,
+        }
+    }
+
     pub fn new(clock_time: Duration, increment: Duration) -> Self {
         Self {
             clock_time:   [clock_time, clock_time],

@@ -21,7 +21,14 @@ pub enum Piece {
     King,
 }
 
+// #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+// pub struct Move {
+//     from: Coord,
+//     to:   Coord,
+// }
+
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+// pub enum FullMove {
 pub enum Move {
     Quiet              { from: Coord, to: Coord },
     PawnDouble         { from: Coord, to: Coord },

@@ -15,13 +15,19 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
     let n = 3;
 
-    let ts = Tables::new();
+    let ts    = Tables::new();
     let mut g = Game::from_fen(fen).unwrap();
-    let _ = g.recalc_gameinfo_mut(&ts);
+    let _     = g.recalc_gameinfo_mut(&ts);
 
-    let ex = Explorer::new(g.state.side_to_move, g.clone(), n);
+    let stop = Arc::new(AtomicBool::new(false));
+    let timesettings = TimeSettings::new_f64(10., 0.1);
+    let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
 
-    c.bench_function("rank moves perft_pos_4", |b| b.iter(|| ex.explore(&ts, ex.depth)));
+    let mut group = c.benchmark_group("group");
+    group.sample_size(25);
+
+    group.bench_function("rank moves perft_pos_4", |b| b.iter(|| ex.explore(&ts, ex.depth)));
+    group.finish();
 
 }
 

@@ -5,3 +5,4 @@ rchess_game/target/*
 *.epd
 *.pgn
 *.zip
+dhat.*

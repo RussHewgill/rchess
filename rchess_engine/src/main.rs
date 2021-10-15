@@ -14,6 +14,7 @@ use rchess_engine_lib::tables::*;
 use rchess_engine_lib::parsing::*;
 use rchess_engine_lib::util::*;
 use rchess_engine_lib::evaluate::*;
+use rchess_engine_lib::explore::*;
 
 use log::{debug, error, log_enabled, info, Level};
 use gag::Redirect;
@@ -74,7 +75,9 @@ fn main5() {
     // let g2 = g.make_move_unchecked(&ts, &m).unwrap();
     // let g = g2;
 
-    let ex = Explorer::new(g.state.side_to_move, g.clone(), n);
+    let stop = Arc::new(AtomicBool::new(false));
+    let timesettings = TimeSettings::new_f64(10., 0.1);
+    let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
 
     // let moves = vec![
     //     Move::Quiet { from: "G8".into(), to: "F6".into() },
@@ -94,7 +97,7 @@ fn main5() {
     let m = ex.explore(&ts, ex.depth);
     eprintln!("m = {:?}", m);
     // ex.rank_moves(&ts, true);
-    println!("perft done in {} seconds.", t.elapsed().as_secs_f64());
+    println!("explore done in {} seconds.", t.elapsed().as_secs_f64());
 
     // let from = "e5";
     // let to = "d6";
@@ -157,7 +160,9 @@ fn main3() {
         let mut g = Game::from_fen(&fen).unwrap();
         let _ = g.recalc_gameinfo_mut(&ts);
         eprintln!("g = {:?}", g);
-        let ex = Explorer::new(g.state.side_to_move, g.clone(), n);
+        let stop = Arc::new(AtomicBool::new(false));
+        let timesettings = TimeSettings::new_f64(10., 0.1);
+        let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
         let m0 = ex.explore(&ts, ex.depth);
 
         eprintln!("m0 = {:?}", m0.map(|x| x.to_long_algebraic()));

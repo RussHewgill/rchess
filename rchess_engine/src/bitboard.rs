@@ -268,7 +268,20 @@ impl BitBoard {
 
 }
 
+// impl Iterator for BitBoard {
+//     type Item = u32;
+//     fn next(&mut self) -> Option<Self::Item> {
+//         if self.is_empty() {
+//             None
+//         } else {
+//         }
+//     }
+// }
+
 impl BitBoard {
+
+    // pub fn iter_bitscan2(&self) -> impl Iterator<Item = u32> {
+    // }
 
     pub fn iter_bitscan<F>(&self, mut f: F)
     where F: FnMut(u32) {
