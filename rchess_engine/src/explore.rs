@@ -3,6 +3,9 @@ use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
 pub use crate::timer::*;
+pub use crate::trans_table::*;
+
+use std::time::Duration;
 
 // use std::sync::RwLock;
 use parking_lot::RwLock;
@@ -25,28 +28,6 @@ pub struct Explorer {
     pub trans_table:   RwLock<TransTable>,
 }
 
-pub type TransTable = FxHashMap<GameState, SearchInfo>;
-
-#[derive(Debug,PartialEq,PartialOrd,Clone,Copy)]
-pub struct SearchInfo {
-    // pub best_move:          Move,
-    // pub refutation_move:    Move,
-    pub pv:                 Move,
-    pub depth_searched:     u32,
-    pub score:              Score,
-
-    // /// https://www.chessprogramming.org/Integrated_Bounds_and_Values
-    // pub node_type:          i32,
-    // pub node_type:          NodeType,
-}
-
-#[derive(Debug,Eq,PartialEq,Hash,Clone,Copy)]
-pub enum NodeType {
-    NodePV,
-    NodeAll, // Score = upper bound
-    NodeCut, // Score = lower bound
-}
-
 impl Explorer {
     pub fn new(side:          Color,
                game:          Game,
@@ -64,18 +45,6 @@ impl Explorer {
             parallel: true,
             // trans_table: TransTable::default(),
             trans_table: tt,
-        }
-    }
-}
-
-impl SearchInfo {
-    // pub fn new(depth_searched: u32, evaluation: Score, node_type: i32) -> Self {
-    pub fn new(pv: Move, depth_searched: u32, score: Score) -> Self {
-        Self {
-            pv,
-            depth_searched,
-            score,
-            // node_type,
         }
     }
 }
@@ -248,8 +217,33 @@ impl Explorer {
         });
 
         let mut val = if maximizing { i32::MIN } else { i32::MAX };
+        // let mut val: (Option<Move>,i32) = (None,val);
         for (m,g2) in gs {
             let score = self._ab_search(&ts, g2, depth - 1, k + 1, alpha, beta, !maximizing);
+
+            // if maximizing {
+            //     if score > val.1 {
+            //         val = (Some(m),score);
+            //     }
+            //     if val.1 > alpha {
+            //         alpha = val.1;
+            //     }
+            //     if val.1 >= beta {
+            //         break;
+            //     }
+            // } else {
+            //     if score < val.1 {
+            //         val = (Some(m),score);
+            //     }
+            //     if val.1 < beta {
+            //         beta = val.1;
+            //     }
+            //     if val.1 <= alpha {
+            //         break;
+            //     }
+            // }
+
+
             if maximizing {
                 val = i32::max(val, score);
                 alpha = i32::max(val, alpha); // fail soft
@@ -268,7 +262,34 @@ impl Explorer {
                 }
                 // beta = i32::min(val, beta); // fail hard
             }
+
+            /*
+            if maximizing {
+                val = i32::max(val, score);
+                alpha = i32::max(val, alpha); // fail soft
+                if val >= beta {
+                    // maximum score that the minimizing player is assured of
+                    break;
+                }
+                // alpha = i32::max(val, alpha); // fail hard
+            } else {
+                val = i32::min(val, score);
+                beta = i32::min(val, beta); // fail soft
+                if val <= alpha {
+                    // score for this node is less than the least bad move for self
+                    // the minimum score that the maximizing player is assured of
+                    break
+                }
+                // beta = i32::min(val, beta); // fail hard
+            }
+            */
+
         }
+
+        // let mut w = self.trans_table.write();
+        // w.insert(g2.zobrist, SearchInfo::new(k, NodeType::NodePV()))
+
+        // val.1
         val
     }
 

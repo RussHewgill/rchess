@@ -16,6 +16,7 @@ pub mod evaluate;
 pub mod timer;
 pub mod tuning;
 pub mod hashing;
+pub mod trans_table;
 
 pub mod util;
 

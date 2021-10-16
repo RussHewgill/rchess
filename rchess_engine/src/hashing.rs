@@ -5,34 +5,72 @@ use crate::tables::*;
 use rand::{Rng,SeedableRng};
 use rand::prelude::StdRng;
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Hash,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Zobrist(pub u64);
 
 impl Zobrist {
     pub fn new(ts: &Tables, g: Game) -> Self {
         let mut out = 0u64;
-
-        // for sq in 0..64u32 {
-        //     let c0: Coord = sq.into();
-        // }
+        let zb = &ts.zobrist_tables;
 
         for &col in [White,Black].iter() {
             for pc in Piece::iter_pieces() {
                 let b = g.get(pc,col);
                 for sq in b.into_iter() {
-                    out ^= ts.zobrist_tables.get_piece(pc, col)[sq as usize];
+                    out ^= zb.get_piece(pc, col)[sq as usize];
                 }
             }
         }
 
-        if g.state.side_to_move == Black { out ^= ts.zobrist_tables.black_to_move; }
+        if g.state.side_to_move == Black { out ^= zb.black_to_move; }
+
+        let c = g.state.castling.get();
+        let (w,b) = {
+            let (a,b,c,d) = (c & 0b1000,c & 0b0100, c & 0b0010, c & 0b0001);
+            ((a >> 2) | (b >> 2), c | d)
+        };
+        out ^= zb.castling[White][w as usize];
+        out ^= zb.castling[Black][b as usize];
+
+        if let Some(ep) = g.state.en_passant {
+            out ^= zb.en_passant[ep.0 as usize];
+        }
 
         Zobrist(out)
-        // unimplemented!()
     }
 
-    pub fn update(&self, m: Move) -> Self {
-        unimplemented!()
+    #[must_use]
+    pub fn update_side_to_move(&self, ts: &Tables) -> Self {
+        let mut out = self.0;
+        out ^= ts.zobrist_tables.black_to_move;
+        Self(out)
+    }
+
+    #[must_use]
+    pub fn update_castling(&self, ts: &Tables, c: Castling) -> Self {
+        let mut out = self.0;
+        let c = c.get();
+        let (w,b) = {
+            let (a,b,c,d) = (c & 0b1000,c & 0b0100, c & 0b0010, c & 0b0001);
+            ((a >> 2) | (b >> 2), c | d)
+        };
+        out ^= ts.zobrist_tables.castling[White][w as usize];
+        out ^= ts.zobrist_tables.castling[Black][b as usize];
+        Self(out)
+    }
+
+    #[must_use]
+    pub fn update_ep(&self, ts: &Tables, c0: Coord) -> Self {
+        let mut out = self.0;
+        out ^= ts.zobrist_tables.en_passant[c0.0 as usize];
+        Self(out)
+    }
+
+    #[must_use]
+    pub fn update_piece(&self, ts: &Tables, pc: Piece, col: Color, c0: Coord) -> Self {
+        let mut out = self.0;
+        out ^= ts.zobrist_tables.pieces[col][pc.index()][c0];
+        Self(out)
     }
 
 }
@@ -41,7 +79,7 @@ impl Zobrist {
 pub struct ZbTable {
     pieces:        [[[u64; 64]; 6]; 2],
     black_to_move: u64,
-    castling:      [u64; 16],
+    castling:      [[u64; 4]; 2],
     en_passant:    [u64; 8],
 }
 
@@ -65,7 +103,7 @@ impl ZbTable {
                 col[pc.index()][1] = rng.gen();
             }
         }
-        let castling = [rng.gen(); 16];
+        let castling = [[rng.gen(); 4]; 2];
         let en_passant = [rng.gen(); 8];
 
         ZbTable {
@@ -78,11 +116,11 @@ impl ZbTable {
 
 }
 
-
-/// Zobrist Hashing
-impl GameState {
-    // pub fn 
+impl std::fmt::Debug for Zobrist {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("{:#8x}\n", self.0))?;
+        Ok(())
+    }
 }
-
 
 

@@ -41,7 +41,7 @@ fn build_from_fen(
         for (sq,x) in rank.iter().zip(0..8) {
             match sq {
                 Some((p,c)) => {
-                    out.insert_piece_mut_unchecked(Coord(x,y), *p, *c);
+                    out.insert_piece_mut_unchecked_nohash(Coord(x,y), *p, *c);
                 },
                 None => {},
             }
@@ -77,10 +77,10 @@ fn parse_castle(s: &str) -> IResult<&str, Castling> {
         None      => panic!("parse_castle?"),
         _         => {
             let mut out = Castling::new_with(false, false);
-            if cs.contains(&'K') { out.white_king = true; }
-            if cs.contains(&'Q') { out.white_queen = true; }
-            if cs.contains(&'k') { out.black_king = true; }
-            if cs.contains(&'q') { out.black_queen = true; }
+            if cs.contains(&'K') { out.set_king(White,true); }
+            if cs.contains(&'Q') { out.set_queen(White,true); }
+            if cs.contains(&'k') { out.set_king(Black, true); }
+            if cs.contains(&'q') { out.set_queen(Black,true); }
             Ok((s,out))
         },
     }

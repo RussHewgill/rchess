@@ -42,21 +42,32 @@ fn main() {
         .format_timestamp(None)
         .init();
 
-    let fen = STARTPOS;
+    // let fen = STARTPOS;
+    // let ts = Tables::new();
+    // let mut g = Game::from_fen(fen).unwrap();
+    // let _ = g.recalc_gameinfo_mut(&ts);
+    // let m0 = Move::Quiet { from: "B1".into(), to: "C3".into() };
+    // let m1 = Move::Quiet { from: "C3".into(), to: "B1".into() };
+    // let g2 = g.make_move_unchecked(&ts, &m0).unwrap();
+    // let g3 = g2.make_move_unchecked(&ts, &m1).unwrap();
+    // let z0 = Zobrist::new(&ts, g);
+    // let z1 = Zobrist::new(&ts, g2);
+    // let z2 = Zobrist::new(&ts, g3);
+    // eprintln!("z0 = {:#8x}", z0.0);
+    // eprintln!("z1 = {:#8x}", z1.0);
+    // eprintln!("z2 = {:#8x}", z2.0);
 
-    let ts = Tables::new();
-    let mut g = Game::from_fen(fen).unwrap();
-    let _ = g.recalc_gameinfo_mut(&ts);
+    let s = std::mem::size_of::<Game>();
+    eprintln!("s = {:?}", s);
+    // let s = u16::MAX;
+    // eprintln!("s = {:#8x}", s);
 
-    let z = Zobrist::new(&ts, g);
-
-    eprintln!("z = {:#8x}", z.0);
 
     // main6();
     // main7();
     // main5(); // search + eval position
     // main2();
-    // main4(); // perft
+    main4(); // perft
     // main3(); // read from file and test
 
 }
@@ -313,13 +324,8 @@ fn main4() {
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
-    let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
+    // let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
     // let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  "; // Position 5
-
-    // let fen = "8/2p5/n2p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
-
-    // let fen = "r3k2r/Pppp1ppp/1b3nbN/nPP5/BB2P3/q4N2/Pp1P2PP/R2Q1RK1 b kq - 0 1";
-    // let fen = "r3k2r/Ppp2ppp/1b3nbN/nPPp4/BB2P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 2";
 
     let n = 5;
 

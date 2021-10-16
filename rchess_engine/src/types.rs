@@ -246,6 +246,21 @@ impl Color {
     }
 }
 
+impl<T> std::ops::Index<Color> for [T; 2] {
+    type Output = T;
+    fn index(&self, col: Color) -> &Self::Output {
+        let sq = if col == White { 0 } else { 1 };
+        &self[sq]
+    }
+}
+
+impl<T> std::ops::IndexMut<Color> for [T; 2] {
+    fn index_mut(&mut self, col: Color) -> &mut Self::Output {
+        let sq = if col == White { 0 } else { 1 };
+        &mut self[sq]
+    }
+}
+
 // impl Iterator for Piece {
 //     type Item = Piece;
 //     fn next(&mut self) -> Option<Self::Item> {
