@@ -85,7 +85,7 @@ impl Explorer {
         // let mut ms = self.negamax(&ts, depth, self.side);
 
         // let ms = self.ab_search(&ts, depth, None);
-        let mut moves = self.rank_moves(&ts, false, true);
+        let mut moves = self.rank_moves(&ts, false);
 
         // eprintln!("ms = {:?}", ms);
 
@@ -108,8 +108,12 @@ impl Explorer {
 
         // let tt = RwLock::new(self.trans_table.clone());
 
-        let mut out: Vec<(Move,i32)> = moves.into_par_iter()
-        // let mut out: Vec<(Move,i32)> = moves.into_iter()
+        if print {
+            eprintln!("moves.len() = {:?}", moves.len());
+        }
+
+        // let mut out: Vec<(Move,i32)> = moves.into_par_iter()
+        let mut out: Vec<(Move,i32)> = moves.into_iter()
                 .map(|m| {
                     let g2 = self.game.make_move_unchecked(&ts, &m).unwrap();
                     // let alpha = (None,i32::MIN);
@@ -137,7 +141,7 @@ impl Explorer {
         out
     }
 
-    pub fn rank_moves(&self, ts: &Tables, print: bool, par: bool) -> Vec<(Move,i32)> {
+    pub fn rank_moves(&self, ts: &Tables, print: bool) -> Vec<(Move,i32)> {
         let moves = self.game.search_all(&ts, None);
 
         if moves.is_end() {
@@ -217,51 +221,64 @@ impl Explorer {
         });
 
         let mut val = if maximizing { i32::MIN } else { i32::MAX };
-        // let mut val: (Option<Move>,i32) = (None,val);
+        let mut val: (Option<(Zobrist,Move)>,i32) = (None,val);
         for (m,g2) in gs {
+            let zb = g2.zobrist;
+
             let score = self._ab_search(&ts, g2, depth - 1, k + 1, alpha, beta, !maximizing);
 
-            // if maximizing {
-            //     if score > val.1 {
-            //         val = (Some(m),score);
+            // let score: Score = {
+            //     let r = self.trans_table.read();
+            //     if let Some(s) = r.get(&zb) {
+            //         let s: SearchInfo = *s;
+            //         match s.score {
+            //             NodeType::NodePV(ss) => {
+            //                 if s.depth_searched > u32::max(2, self.depth / 2) {
+            //                     return ss;
+            //                 }
+            //             },
+            //             NodeType::NodeUpperBound(ss) => {
+            //                 if s.depth_searched > u32::max(2, self.depth / 2) {
+            //                     return ss;
+            //                 }
+            //             }
+            //             _ => continue,
+            //         }
             //     }
-            //     if val.1 > alpha {
-            //         alpha = val.1;
-            //     }
-            //     if val.1 >= beta {
-            //         break;
-            //     }
-            // } else {
-            //     if score < val.1 {
-            //         val = (Some(m),score);
-            //     }
-            //     if val.1 < beta {
-            //         beta = val.1;
-            //     }
-            //     if val.1 <= alpha {
-            //         break;
-            //     }
-            // }
-
+            //     drop(r);
+            //     self._ab_search(&ts, g2, depth - 1, k + 1, alpha, beta, !maximizing)
+            // };
 
             if maximizing {
-                val = i32::max(val, score);
-                alpha = i32::max(val, alpha); // fail soft
-                if val >= beta {
-                    // maximum score that the minimizing player is assured of
+                if score > val.1 {
+                    val = (Some((zb,m)),score);
+                }
+                if val.1 > alpha {
+                    alpha = val.1;
+                }
+                if val.1 >= beta { // Beta cutoff
+                    {
+                        let mut w = self.trans_table.write();
+                        w.insert(zb, SearchInfo::new(k as u32, NodeType::NodeLowerBound(beta)));
+                    }
                     break;
                 }
-                // alpha = i32::max(val, alpha); // fail hard
             } else {
-                val = i32::min(val, score);
-                beta = i32::min(val, beta); // fail soft
-                if val <= alpha {
-                    // score for this node is less than the least bad move for self
-                    // the minimum score that the maximizing player is assured of
-                    break
+                if score < val.1 {
+                    val = (Some((zb,m)),score);
                 }
-                // beta = i32::min(val, beta); // fail hard
+                if val.1 < beta {
+                    beta = val.1;
+                }
+                if val.1 <= alpha { // Alpha cutoff
+                    {
+                        let mut w = self.trans_table.write();
+                        w.insert(zb, SearchInfo::new(k as u32, NodeType::NodeUpperBound(alpha)));
+                    }
+                    break;
+                }
             }
+
 
             /*
             if maximizing {
@@ -286,11 +303,14 @@ impl Explorer {
 
         }
 
-        // let mut w = self.trans_table.write();
-        // w.insert(g2.zobrist, SearchInfo::new(k, NodeType::NodePV()))
+        // if let Some((zb,m)) = val.0 {
+        //     let mut w = self.trans_table.write();
+        //     w.insert(zb, SearchInfo::new(k as u32, NodeType::NodePV(val.1)));
+        //     drop(w);
+        // }
 
-        // val.1
-        val
+        val.1
+        // val
     }
 
 }

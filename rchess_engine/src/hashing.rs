@@ -5,7 +5,7 @@ use crate::tables::*;
 use rand::{Rng,SeedableRng};
 use rand::prelude::StdRng;
 
-#[derive(Hash,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
 pub struct Zobrist(pub u64);
 
 impl Zobrist {

@@ -57,17 +57,16 @@ fn main() {
     // eprintln!("z1 = {:#8x}", z1.0);
     // eprintln!("z2 = {:#8x}", z2.0);
 
-    let s = std::mem::size_of::<Game>();
-    eprintln!("s = {:?}", s);
+    // let s = std::mem::size_of::<Game>();
+    // eprintln!("s = {:?}", s);
     // let s = u16::MAX;
     // eprintln!("s = {:#8x}", s);
 
-
     // main6();
-    // main7();
+    main7();
     // main5(); // search + eval position
     // main2();
-    main4(); // perft
+    // main4(); // perft
     // main3(); // read from file and test
 
 }
@@ -135,7 +134,7 @@ fn main7() {
 
     // let fen = "5r1k/4Qpq1/4p3/1p1p2P1/2p2P2/1p2P3/3P4/BK6 b - - 0 1";
 
-    let n = 5;
+    let n = 4;
 
     let ts = Tables::new();
     // let ts = Tables::_new(false);
@@ -159,24 +158,18 @@ fn main7() {
 
     let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
 
-    // let moves = vec![
-    //     Move::Quiet { from: "F7".into(), to: "F6".into() },
-    //     Move::Quiet { from: "B3".into(), to: "B2".into() },
-    // ];
-    // ex.rank_moves_list(&ts, true, moves);
-
-    // for m in moves.iter() {
-    //     let g2 = self.game.make_move_unchecked(&ts, &m).unwrap();
-    //     let alpha = i32::MIN;
-    //     let beta  = i32::MAX;
-    //     let score = self._ab_search(&ts, g2, self.depth, 1, alpha, beta, true);
-    // }
-
-    let t = std::time::Instant::now();
-    let m = ex.explore(&ts, ex.depth);
-    eprintln!("m = {:?}", m);
+    let moves = vec![
+        Move::Quiet { from: "E2".into(), to: "E4".into() },
+        Move::Quiet { from: "H2".into(), to: "H3".into() },
+    ];
+    ex.rank_moves_list(&ts, true, moves);
     // ex.rank_moves(&ts, true);
-    println!("explore done in {} seconds.", t.elapsed().as_secs_f64());
+
+    // let t = std::time::Instant::now();
+    // let m = ex.explore(&ts, ex.depth);
+    // eprintln!("m = {:?}", m);
+    // // ex.rank_moves(&ts, true);
+    // println!("explore done in {} seconds.", t.elapsed().as_secs_f64());
 
 }
 

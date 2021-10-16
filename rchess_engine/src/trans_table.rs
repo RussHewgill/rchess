@@ -18,8 +18,8 @@ impl TransTable {
         self.0.insert(zb, search);
     }
 
-    pub fn get(&self, zb: Zobrist) -> Option<&SearchInfo> {
-        self.0.get(&zb)
+    pub fn get(&self, zb: &Zobrist) -> Option<&SearchInfo> {
+        self.0.get(zb)
     }
 
 }
@@ -54,6 +54,11 @@ impl SearchInfo {
             // node_type,
         }
     }
+
+    pub fn score(&self) -> Score {
+        self.score.score()
+    }
+
 }
 
 impl NodeType {
