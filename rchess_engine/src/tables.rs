@@ -62,6 +62,7 @@ pub struct Tables {
     table_bishop:  [BitBoard; 0x1480],
     pub piece_tables_opening:  PcTables,
     pub piece_tables_endgame:  PcTables,
+    pub zobrist_tables: ZbTable,
     // endgames: 
 }
 
@@ -139,6 +140,7 @@ impl Tables {
             table_bishop,
             piece_tables_opening,
             piece_tables_endgame,
+            zobrist_tables: ZbTable::new(),
         }
     }
 

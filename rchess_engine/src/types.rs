@@ -2,6 +2,7 @@
 pub use crate::bitboard::*;
 pub use crate::coords::*;
 pub use crate::game::*;
+pub use crate::hashing::*;
 
 pub use self::{Color::*,Piece::*};
 
@@ -27,7 +28,7 @@ pub enum Piece {
 //     to:   Coord,
 // }
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Eq,PartialEq,PartialOrd,Clone,Copy)]
 // pub enum FullMove {
 pub enum Move {
     Quiet              { from: Coord, to: Coord },
@@ -308,3 +309,32 @@ impl std::ops::Not for Color {
     }
 }
 
+impl std::fmt::Debug for Move {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use Move::*;
+        match self {
+            Quiet              { from, to } => {
+                f.write_str(&format!("Quiet {:?}{:?}", from, to))?;
+            },
+            PawnDouble         { from, to } => {
+                f.write_str(&format!("Doub  {:?}{:?}", from, to))?;
+            },
+            Capture            { from, to } => {
+                f.write_str(&format!("Cap   {:?}{:?}", from, to))?;
+            },
+            EnPassant          { from, to, capture } => {
+                f.write_str(&format!("EP    {:?}{:?}", from, to))?;
+            },
+            Promotion          { from, to, new_piece } => {
+                f.write_str(&format!("Prom  {:?}{:?}", from, to))?;
+            },
+            PromotionCapture   { from, to, new_piece } => {
+                f.write_str(&format!("PCap {:?}{:?}", from, to))?;
+            },
+            Castle             { from, to, rook_from, rook_to } => {
+                f.write_str(&format!("Cast {:?}{:?}", from, to))?;
+            },
+        }
+        Ok(())
+    }
+}

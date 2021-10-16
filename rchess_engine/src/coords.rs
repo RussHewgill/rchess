@@ -209,7 +209,7 @@ impl std::ops::Not for D {
 
 impl std::fmt::Debug for Coord {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let letters: [char; 8] = ['A','B','C','D','E','F','G','H'];
+        let letters: [char; 8] = ['a','b','c','d','e','f','g','h'];
         let r = letters[self.0 as usize];
         // f.write_str(&format!("Coord({}{})", r, self.1+1))?;
         f.write_str(&format!("{}{}", r, self.1+1))?;

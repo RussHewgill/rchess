@@ -3,8 +3,6 @@
 #![allow(dead_code)]
 #![allow(unused_mut)]
 
-#![feature(iter_partition_in_place)]
-
 use std::collections::HashMap;
 use std::str::FromStr;
 
@@ -44,44 +42,130 @@ fn main() {
         .format_timestamp(None)
         .init();
 
-    // let ps = PcTables::new();
+    let fen = STARTPOS;
 
-    // let s = std::mem::size_of::<GameState>();
-    // eprintln!("s = {:?}", s);
+    let ts = Tables::new();
+    let mut g = Game::from_fen(fen).unwrap();
+    let _ = g.recalc_gameinfo_mut(&ts);
 
-    // let mut v = vec![
-    //     Some(SearchInfo::new(1, 0, NodeType::NodePV)),
-    //     Some(SearchInfo::new(1, 1, NodeType::NodePV)),
-    //     Some(SearchInfo::new(1, 2, NodeType::NodePV)),
-    //     // (Some(SearchInfo::new(1, 0, NodeType::NodeAll))),
-    //     None,
-    // ];
+    let z = Zobrist::new(&ts, g);
 
-    // let mut v = vec![NodeType::NodePV, NodeType::NodeAll];
+    eprintln!("z = {:#8x}", z.0);
 
-    // v.sort();
-    // let v = v.iter().max();
-    // let v = v.pop().unwrap();
-
-    // let b = 
-    // eprintln!("v = {:?}", v);
-
-    // v.sort();
-    // v.sort_unstable_by(|a,b| {
-    //     a.partial_cmp(&b)
-    // });
-
-    // for s in v.iter() {
-    //     eprintln!("s = {:?}", s);
-    // }
-
-    // let t = PcTables::gen_knights();
-    // PcTables::print_table(t);
-
-    main5() // search + eval position
+    // main6();
+    // main7();
+    // main5(); // search + eval position
     // main2();
     // main4(); // perft
     // main3(); // read from file and test
+
+}
+
+fn main6() {
+    let fens = vec![
+        ("start w", "k7/8/8/4p3/3P4/8/8/7K w - - 0 1"),
+        ("start b", "k7/8/8/4p3/3P4/8/8/7K b - - 0 1"),
+
+        ("w push", "k7/8/8/3Pp3/8/8/8/7K b - - 0 1"), // push
+        ("w cap", "k7/8/8/4P3/8/8/8/7K b - - 0 1"), // capture
+
+        ("b push", "k7/8/8/8/3Pp3/8/8/7K w - - 0 2"), // push
+        ("b cap", "k7/8/8/8/3p4/8/8/7K w - - 0 2"), // capture
+    ];
+
+    let n = 1;
+
+    let ts = Tables::new();
+
+    // let fen = fens[1].1;
+    // let mut g = Game::from_fen(fen).unwrap();
+
+    // let mut g = Game::empty();
+    // g.insert_pieces_mut_unchecked(&vec![
+    //     ("H1", King, White),
+    //     ("A8", King, Black),
+    //     // ("D4", Pawn, White),
+    //     // ("E4", Pawn, Black),
+    //     ("D4", Pawn, Black),
+    // ]);
+
+    // let _ = g.recalc_gameinfo_mut(&ts);
+    // eprintln!("g = {:?}", g);
+
+    // let m = Move::Capture { from: "E5".into(), to: "D4".into() };
+    // let m = Move::Quiet { from: "E5".into(), to: "E4".into() };
+    // let g2 = g.make_move_unchecked(&ts, &m).unwrap();
+
+    // let ew = g.evaluate(&ts).sum_color(White);
+    // let eb = g.evaluate(&ts).sum_color(Black);
+    // eprintln!("ew = {:?}", ew);
+    // eprintln!("eb = {:?}", eb);
+
+    // let e = g.evaluate(&ts).sum(Black);
+    // eprintln!("sum = {:?}", e);
+
+
+    for (s,fen) in fens.iter() {
+
+        let mut g = Game::from_fen(fen).unwrap();
+        let _ = g.recalc_gameinfo_mut(&ts);
+
+        let e = g.evaluate(&ts).sum();
+        eprintln!("{} = {:?}", s, e);
+
+    }
+
+}
+
+fn main7() {
+    let fen = STARTPOS;
+    // let fen = "rnbqkbnr/ppppp1pp/8/5P2/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2";
+    // let fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+
+    // let fen = "5r1k/4Qpq1/4p3/1p1p2P1/2p2P2/1p2P3/3P4/BK6 b - - 0 1";
+
+    let n = 5;
+
+    let ts = Tables::new();
+    // let ts = Tables::_new(false);
+    let mut g = Game::from_fen(fen).unwrap();
+    let _ = g.recalc_gameinfo_mut(&ts);
+    // eprintln!("g = {:?}", g);
+
+    let stop = Arc::new(AtomicBool::new(false));
+    let timesettings = TimeSettings::new_f64(10., 0.1);
+
+    // let mut g = g.clone();
+    // let ms = vec!["e2e4"];
+    // for m in ms.iter() {
+    //     let from = &m[0..2];
+    //     let to = &m[2..4];
+    //     let other = &m[4..];
+    //     let mm = g.convert_move(from, to, other).unwrap();
+    //     g = g.make_move_unchecked(&ts, &mm).unwrap();
+    // }
+    // eprintln!("g = {:?}", g);
+
+    let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+
+    // let moves = vec![
+    //     Move::Quiet { from: "F7".into(), to: "F6".into() },
+    //     Move::Quiet { from: "B3".into(), to: "B2".into() },
+    // ];
+    // ex.rank_moves_list(&ts, true, moves);
+
+    // for m in moves.iter() {
+    //     let g2 = self.game.make_move_unchecked(&ts, &m).unwrap();
+    //     let alpha = i32::MIN;
+    //     let beta  = i32::MAX;
+    //     let score = self._ab_search(&ts, g2, self.depth, 1, alpha, beta, true);
+    // }
+
+    let t = std::time::Instant::now();
+    let m = ex.explore(&ts, ex.depth);
+    eprintln!("m = {:?}", m);
+    // ex.rank_moves(&ts, true);
+    println!("explore done in {} seconds.", t.elapsed().as_secs_f64());
 
 }
 
@@ -99,40 +183,80 @@ fn main5() {
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
     // let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
 
-    // let fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
-    // let fen = "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"; // e4 e5
-    // let fen = "rnbqkbnr/pppppp1p/6p1/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"; // e4 g6
-    // let fen = "rnbqkbnr/ppppp1pp/5p2/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"; // e4 f6
-
-    // let fen = "rnbqk2r/pp1p1ppp/4pn2/2p5/2PP4/P4N2/1P1NPPPP/R2QKB1R b KQkq - 0 6";
-    let fen = "k7/8/8/4p3/3P4/8/8/7K w - - 0 1";
+    // let fen = "k7/8/8/4p3/3P4/8/8/7K b - - 0 1";
+    let fen1 = "k7/8/8/4p3/3P4/8/8/7K w - - 0 1";
+    let fen2 = "k7/8/8/4p3/3P4/8/8/7K b - - 0 1";
 
     let n = 1;
 
     let ts = Tables::new();
     // let ts = Tables::_new(false);
-    let mut g = Game::from_fen(fen).unwrap();
-    let _ = g.recalc_gameinfo_mut(&ts);
-    eprintln!("g = {:?}", g);
+    // let mut g = Game::from_fen(fen).unwrap();
+    // let _ = g.recalc_gameinfo_mut(&ts);
+    // eprintln!("g = {:?}", g);
+
+
+    let mut g1 = Game::from_fen(fen1).unwrap();
+    let _ = g1.recalc_gameinfo_mut(&ts);
+
+    let mut g2 = Game::from_fen(fen2).unwrap();
+    let _ = g2.recalc_gameinfo_mut(&ts);
 
     let stop = Arc::new(AtomicBool::new(false));
     let timesettings = TimeSettings::new_f64(10., 0.1);
-    let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
+    // let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+    // let ex = Explorer::new(White, g.clone(), n, stop.clone(), timesettings);
 
-    let moves = vec![
-        Move::Quiet { from: "H7".into(), to: "H5".into() },
-        Move::Quiet { from: "D7".into(), to: "D5".into() },
+    // let moves = vec![
+    //     Move::Quiet { from: "D4".into(), to: "E5".into() },
+    //     Move::Quiet { from: "D4".into(), to: "D5".into() },
+    // ];
+    // // ex.rank_moves_list(&ts, true, moves);
+
+    // let t = std::time::Instant::now();
+    // let m = ex.explore(&ts, ex.depth);
+    // eprintln!("m = {:?}", m);
+    // // ex.rank_moves(&ts, true);
+    // println!("explore done in {} seconds.", t.elapsed().as_secs_f64());
+
+    let ex1 = Explorer::new(g1.state.side_to_move, g1.clone(), n, stop.clone(), timesettings);
+    let ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop, timesettings);
+
+    // let m = ex.explore(&ts, ex.depth);
+    // eprintln!("m w = {:?}", m);
+    // ex.rank_moves(&ts, true, true);
+
+    println!("w:");
+    let moves0 = vec![
+        Move::Capture { from: "D4".into(), to: "E5".into() },
+        Move::Quiet { from: "D4".into(), to: "D5".into() },
+        Move::Quiet { from: "H1".into(), to: "H2".into() },
     ];
-    // ex.rank_moves_list(&ts, true, moves);
+    ex1.rank_moves_list(&ts, true, moves0);
+    // ex.rank_moves(&ts, true, true);
 
-    let t = std::time::Instant::now();
-    let m = ex.explore(&ts, ex.depth);
-    // let m = ex.explore_singlethread(&ts, ex.depth);
-    eprintln!("m = {:?}", m);
-    // ex.rank_moves(&ts, true);
-    println!("explore done in {} seconds.", t.elapsed().as_secs_f64());
+    println!("\nb:");
+    let moves1 = vec![
+        Move::Capture { from: "E5".into(), to: "D4".into() },
+        Move::Quiet { from: "E5".into(), to: "E4".into() },
+        Move::Quiet { from: "A8".into(), to: "A7".into() },
+    ];
+    ex2.rank_moves_list(&ts, true, moves1);
+    // ex2.rank_moves(&ts, true, true);
 
-    // let e = g.evaluate(&ts);
+    let m0 = ex1.explore(&ts, n);
+    eprintln!("m0 w = {:?}", m0);
+    let m1 = ex2.explore(&ts, n);
+    eprintln!("m1 b = {:?}", m1);
+
+    // assert_eq!(m0, Some(Move::Capture { from: "D4".into(), to: "E5".into() }));
+    // assert_eq!(m1, Some(Move::Capture { from: "E5".into(), to: "D4".into() }));
+
+
+    // let m = ex2.explore(&ts, ex2.depth);
+    // eprintln!("m b = {:?}", m);
+
+    // let e = g2.evaluate(&ts);
 
     // let mw: Score = e.material_white.iter().sum();
     // let mb: Score = e.material_black.iter().sum();

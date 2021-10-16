@@ -9,7 +9,7 @@ use rayon::prelude::*;
 impl Game {
 
     // XXX: slower than could be
-    pub fn search_all_single(&self, ts: &Tables, c0: Coord, col: Color) -> Outcome {
+    pub fn search_all_single(&self, ts: &Tables, c0: Coord, col: Option<Color>) -> Outcome {
         // let mut out = vec![];
         // match self.get_at(c0) {
         //     Some((col1,Pawn))                  => {
@@ -36,7 +36,8 @@ impl Game {
     }
 
     // pub fn search_all(&self, ts: &Tables, col: Color) -> Option<Vec<Move>> {
-    pub fn search_all(&self, ts: &Tables, col: Color) -> Outcome {
+    pub fn search_all(&self, ts: &Tables, col: Option<Color>) -> Outcome {
+        let col = if let Some(c) = col { c } else { self.state.side_to_move };
         match self.state.checkers {
             Some(cs) if !cs.is_empty() => {
                 // if let Some(win) = self.is_checkmate(&ts) {
@@ -156,7 +157,7 @@ impl Game {
 
         if depth == 0 { return (1,vec![]); }
 
-        let moves = self.search_all(&ts, self.state.side_to_move);
+        let moves = self.search_all(&ts, None);
         if moves.is_end() { return (0,vec![]); }
         let moves = moves.get_moves_unsafe();
 
@@ -217,7 +218,7 @@ impl Game {
 
         if depth == 0 { return (1,0); }
 
-        let moves = self.search_all(&ts, self.state.side_to_move);
+        let moves = self.search_all(&ts, None);
         if moves.is_end() { return (0,0); }
 
         // eprintln!("moves.len() = {:?}", moves.len());

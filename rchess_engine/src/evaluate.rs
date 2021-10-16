@@ -18,7 +18,7 @@ pub struct Eval {
 
 impl Eval {
 
-    pub fn sum(&self, col: Color) -> Score {
+    pub fn sum(&self) -> Score {
 
         let white = self.sum_color(White);
         let black = self.sum_color(Black);

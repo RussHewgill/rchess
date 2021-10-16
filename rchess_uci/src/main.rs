@@ -24,9 +24,18 @@ use std::io::Write;
 use log::{debug, error, log_enabled, info, Level};
 use gag::Redirect;
 
+use rayon::ThreadPoolBuilder;
+
 const STARTPOS: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 fn main() -> std::io::Result<()> {
+
+    let _ = ThreadPoolBuilder::new()
+        .num_threads(4)
+        .build_global()
+        .unwrap();
+
+    let depth        = 4;
 
     let logpath = "log.log";
     let mut logfile = std::fs::OpenOptions::new()
@@ -42,8 +51,6 @@ fn main() -> std::io::Result<()> {
 
     let should_stop  = Arc::new(AtomicBool::new(false));
     let timesettings = TimeSettings::new_f64(10., 0.1);
-
-    let depth        = 4;
 
     // let explorer = Arc::new(Mutex::new(
     //     Explorer::new(White,Game::empty(), depth, should_stop.clone(), timesettings)));

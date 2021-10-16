@@ -9,6 +9,8 @@ edition = "2018"
 
 rchess_engine = { path = "../rchess_engine" }
 
+rayon = "1.5.1"
+
 log = "0.4.*"
 env_logger = "0.9.*"
 gag = "1.0.0"

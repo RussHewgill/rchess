@@ -525,6 +525,7 @@ name = "rchess_engine"
 version = "0.1.0"
 dependencies = [
  "array-init",
+ "bitflags",
  "criterion",
  "env_logger",
  "gag",
@@ -545,6 +546,7 @@ dependencies = [
  "env_logger",
  "gag",
  "log",
+ "rayon",
  "rchess_engine",
 ]
 
