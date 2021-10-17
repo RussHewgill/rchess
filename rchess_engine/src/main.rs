@@ -165,6 +165,45 @@ fn main7() {
 
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
 
+
+    let mut hs = std::collections::HashMap::new();
+    let mut cols = vec![];
+    let depth = 4;
+    let (ns,cs) = g.perft_hash_collisions(&ts, &mut hs, &mut cols, depth);
+
+    eprintln!("ns = {:?}", ns);
+    eprintln!("cs = {:?}", cs);
+
+    eprintln!("cols.len() = {:?}", cols.len());
+
+    // let c0: Coord = "B3".into();
+    // let c1: Coord = "A3".into();
+    // // let c0: Coord = Coord(1,2);
+    // // let c1: Coord = Coord(0,2);
+
+    // let k0 = ts.zobrist_tables.en_passant[c0.0 as usize];
+    // let k1 = ts.zobrist_tables.en_passant[c1.0 as usize];
+
+    // eprintln!("k0 = {:?}", k0);
+    // eprintln!("k1 = {:?}", k1);
+
+    let (mv,z) = (cols[0].0, cols[0].1);
+    let (st0,st1) = cols[0].2;
+    let g0 = Game { state: st0, zobrist: Zobrist(0) };
+    let g1 = Game { state: st1, zobrist: Zobrist(0) };
+    eprintln!("g0 = {:?}", g0);
+    eprintln!("g1 = {:?}", g1);
+
+    eprintln!("m = {:?}", mv);
+    eprintln!("z = {:?}", z);
+    let b = st0.game_equal(st1);
+    eprintln!("b = {:?}", b);
+
+    let z0 = Zobrist::new(&ts, g0);
+    let z1 = Zobrist::new(&ts, g1);
+    eprintln!("z0 = {:?}", z0);
+    eprintln!("z1 = {:?}", z1);
+
     // let ms0 = vec![
     //     "e2e4",
     //     "e7e5",
@@ -196,27 +235,27 @@ fn main7() {
     // // ex.rank_moves(&ts, true);
     // println!("explore done in {} seconds.", t.elapsed().as_secs_f64());
 
-    // let k = 4;
-    let k = 2;
-    let mut t: std::time::Duration = std::time::Duration::from_secs(0);
-    for _ in 0..k {
-        let t0 = std::time::Instant::now();
-        let m = ex.explore(&ts, ex.depth);
-        eprintln!("m #{} = {:?}", k, m);
-        t += t0.elapsed();
-    }
-    println!("explore {} times, done in avg {:.3} seconds.", k, t.as_secs_f64() / k as f64);
+    // // let k = 4;
+    // let k = 2;
+    // let mut t: std::time::Duration = std::time::Duration::from_secs(0);
+    // for _ in 0..k {
+    //     let t0 = std::time::Instant::now();
+    //     let m = ex.explore(&ts, ex.depth);
+    //     eprintln!("m #{} = {:?}", k, m);
+    //     t += t0.elapsed();
+    // }
+    // println!("explore {} times, done in avg {:.3} seconds.", k, t.as_secs_f64() / k as f64);
 
-    {
-        let s = ex.trans_table.with(|m| m.map.len());
-        let h = ex.trans_table.hits();
-        let m = ex.trans_table.misses();
-        let k = ex.trans_table.leaves();
-        eprintln!("len    = {:?}", s);
-        eprintln!("hits   = {:?}", h);
-        eprintln!("misses = {:?}", m);
-        eprintln!("leaves = {:?}", k);
-    }
+    // {
+    //     let s = ex.trans_table.with(|m| m.map.len());
+    //     let h = ex.trans_table.hits();
+    //     let m = ex.trans_table.misses();
+    //     let k = ex.trans_table.leaves();
+    //     eprintln!("len    = {:?}", s);
+    //     eprintln!("hits   = {:?}", h);
+    //     eprintln!("misses = {:?}", m);
+    //     eprintln!("leaves = {:?}", k);
+    // }
 
 
 }

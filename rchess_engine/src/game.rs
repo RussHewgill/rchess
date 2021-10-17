@@ -10,7 +10,7 @@ use std::hash::{Hash,Hasher};
 
 #[derive(PartialEq,PartialOrd,Clone)]
 pub struct Game {
-    pub move_history: Vec<Move>,
+    // pub move_history: Vec<Move>,
     pub state:        GameState,
     pub zobrist:      Zobrist,
 }
@@ -122,6 +122,26 @@ mod castling {
 
 }
 
+// Eq
+impl GameState {
+    pub fn game_equal(&self, other: Self) -> bool {
+        (self.side_to_move == other.side_to_move)
+            & (self.white == other.white)
+            & (self.black == other.black)
+
+            & (self.pawns == other.pawns)
+            & (self.rooks == other.rooks)
+            & (self.knights == other.knights)
+            & (self.bishops == other.bishops)
+            & (self.queens == other.queens)
+            & (self.kings == other.kings)
+
+            & (self.en_passant == other.en_passant)
+            & (self.castling == other.castling)
+    }
+
+}
+
 /// make move
 impl Game {
 
@@ -186,7 +206,12 @@ impl Game {
                 out.insert_piece_mut_unchecked(&ts, to, pc, c);
 
                 let ep = ts.between_exclusive(from, to).bitscan().into();
+                if let Some(ep) = out.state.en_passant {
+                    // remove previous EP
+                    out.zobrist = out.zobrist.update_ep(&ts, ep);
+                }
                 out.state.en_passant = Some(ep);
+                // add new EP
                 out.zobrist = out.zobrist.update_ep(&ts, ep);
 
                 Some(out)
@@ -244,7 +269,8 @@ impl Game {
 
         if let Some(mut x) = self._make_move_unchecked(&ts, &m) {
             match m {
-                Move::PawnDouble { .. }                   => {},
+                Move::PawnDouble { .. }                   => {
+                },
                 _                                         => {
                     if let Some(ep) = x.state.en_passant {
                         x.zobrist = x.zobrist.update_ep(&ts, ep);
@@ -537,7 +563,7 @@ impl Game {
 
     pub fn empty() -> Game {
         Game {
-            move_history: vec![],
+            // move_history: vec![],
             // state: GameState::empty(),
             state:        GameState::default(),
             zobrist:      Zobrist(0),
@@ -837,10 +863,10 @@ impl std::fmt::Debug for Game {
 
         f.write_str(&format!("Moves: \n"))?;
         let mut k = 0;
-        for m in self.move_history.iter() {
-            f.write_str(&format!("{:>2}: {:?}\n", k, m))?;
-            k += 1;
-        }
+        // for m in self.move_history.iter() {
+        //     f.write_str(&format!("{:>2}: {:?}\n", k, m))?;
+        //     k += 1;
+        // }
 
         Ok(())
     }

@@ -1,5 +1,6 @@
 
 use std::str::FromStr;
+use std::collections::HashMap;
 
 use crate::types::*;
 use crate::tables::*;
@@ -242,6 +243,40 @@ impl Game {
         }
 
         (nodes, captures)
+    }
+
+    /// returns (leaves, collisions)
+    pub fn perft_hash_collisions(&self,
+                                 ts: &Tables,
+                                 mut hs: &mut HashMap<Zobrist, GameState>,
+                                 mut cols: &mut Vec<(Move,Zobrist,(GameState,GameState))>,
+                                 depth: u64) -> (u64,u64) {
+        let mut nodes = 0;
+        let mut collisions = 0;
+
+        if depth == 0 { return (1,0); }
+
+        let moves = self.search_all(&ts, None);
+        if moves.is_end() { return (0,0); }
+
+        let moves = moves.into_iter().flat_map(|m| if let Ok(g2) = self.make_move_unchecked(&ts, &m) {
+            Some((m,g2)) } else { None });
+
+        for (m,g2) in moves.into_iter() {
+            if let Some(st0) = hs.insert(g2.zobrist, g2.state) {
+                if !st0.game_equal(g2.state) {
+                    collisions += 1;
+                    cols.push((m,g2.zobrist, (st0,g2.state)));
+                }
+            }
+
+            let (ns,cs) = g2.perft_hash_collisions(&ts, &mut hs, &mut cols, depth - 1);
+
+            collisions += cs;
+            nodes += ns;
+        }
+
+        (nodes,collisions)
     }
 
 }

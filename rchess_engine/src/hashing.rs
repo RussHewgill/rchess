@@ -103,8 +103,10 @@ impl ZbTable {
             })
         });
 
-        let castling = [[rng.gen(); 4]; 2];
-        let en_passant = [rng.gen(); 8];
+        let castling = array_init(|_| {
+            array_init(|_| rng.gen())
+        });
+        let en_passant = array_init(|_| rng.gen());
 
         ZbTable {
             pieces,

@@ -144,14 +144,14 @@ impl Explorer {
         if let Some(si) = self.trans_table.get(&g.zobrist) {
 
             if si.depth_searched == depth {
-                self.trans_table.inc_hits();
+                // self.trans_table.inc_hits();
                 Some(si.score.score())
             } else {
-                self.trans_table.inc_misses();
+                // self.trans_table.inc_misses();
                 None
             }
         } else {
-            self.trans_table.inc_misses();
+            // self.trans_table.inc_misses();
             // let score = self._ab_search(&ts, &g, depth - 1, k + 1, alpha, beta, !maximizing);
             // score
             None
@@ -207,10 +207,8 @@ impl Explorer {
         });
 
         let mut gs: Vec<(Move,Game,Option<Score>)> = gs.collect();
-
         gs.sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
-
-        if maximizing {
+        if !maximizing {
             gs.reverse();
         }
 

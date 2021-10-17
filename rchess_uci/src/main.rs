@@ -58,7 +58,7 @@ fn main() -> std::io::Result<()> {
     let ts = Tables::new();
 
     let g0 = {
-        let mut g0 = Game::from_fen(STARTPOS).unwrap();
+        let mut g0 = Game::from_fen(&ts, STARTPOS).unwrap();
         let _ = g0.recalc_gameinfo_mut(&ts);
         g0
     };
@@ -75,7 +75,7 @@ fn main() -> std::io::Result<()> {
                     "isready"    => println!("readyok"),
                     "ucinewgame" => {
                         // let mut g = Game::new();
-                        let mut g = Game::from_fen(STARTPOS).unwrap();
+                        let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
                         let _ = g.recalc_gameinfo_mut(&ts);
                         // explorer.lock().unwrap().side = Black;
                         // explorer.lock().unwrap().game = g;
@@ -87,7 +87,7 @@ fn main() -> std::io::Result<()> {
                             "fen" => {
                                 let fen = line.replace("position fen ", "");
                                 // eprintln!("fen = {:?}", fen);
-                                let mut g = Game::from_fen(&fen).unwrap();
+                                let mut g = Game::from_fen(&ts, &fen).unwrap();
                                 let _ = g.recalc_gameinfo_mut(&ts);
                                 // explorer.lock().unwrap().side = g.state.side_to_move;
                                 // explorer.lock().unwrap().game = g;
