@@ -130,7 +130,7 @@ impl Game {
         let to: Coord = to.into();
         match (self.get_at(from), self.get_at(to)) {
             (Some((col,pc)),None) => {
-                let cc = if col == White { 6 } else { 1 };
+                let cc = if col == White { 7 } else { 0 };
                 if (pc == King) & (from.file_dist(to) == 2) {
                     // Queenside
                     let (rook_from,rook_to) = if to.0 == 2 {

@@ -1,5 +1,6 @@
 
 use crate::types::*;
+use crate::tables::*;
 
 use std::str::FromStr;
 use nom::{
@@ -10,7 +11,7 @@ use nom::{
 
 impl Game {
 
-    pub fn from_fen(s: &str) -> Option<Game> {
+    pub fn from_fen(ts: &Tables, s: &str) -> Option<Game> {
 
         let (s,ss) = parse_piece_lines(&s).unwrap();
         // eprintln!("ss = {:?}", ss);
@@ -24,6 +25,8 @@ impl Game {
 
         let mut g = build_from_fen(ss, side, castle, ep);
         // g.recalc_gameinfo_mut();
+
+        g.zobrist = Zobrist::new(&ts, g.clone());
 
         Some(g)
     }

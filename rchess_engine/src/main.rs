@@ -2,6 +2,7 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 #![allow(unused_mut)]
+#![allow(unused_doc_comments)]
 
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -44,7 +45,7 @@ fn main() {
 
     // let fen = STARTPOS;
     // let ts = Tables::new();
-    // let mut g = Game::from_fen(fen).unwrap();
+    // let mut g = Game::from_fen(&ts, fen).unwrap();
     // let _ = g.recalc_gameinfo_mut(&ts);
     // let m0 = Move::Quiet { from: "B1".into(), to: "C3".into() };
     // let m1 = Move::Quiet { from: "C3".into(), to: "B1".into() };
@@ -57,10 +58,11 @@ fn main() {
     // eprintln!("z1 = {:#8x}", z1.0);
     // eprintln!("z2 = {:#8x}", z2.0);
 
+    // // let s = std::mem::size_of::<Eval>();
     // let s = std::mem::size_of::<Game>();
     // eprintln!("s = {:?}", s);
-    // let s = u16::MAX;
-    // eprintln!("s = {:#8x}", s);
+    // // let s = u16::MAX;
+    // // eprintln!("s = {:#8x}", s);
 
     // main6();
     main7();
@@ -88,7 +90,8 @@ fn main6() {
     let ts = Tables::new();
 
     // let fen = fens[1].1;
-    // let mut g = Game::from_fen(fen).unwrap();
+    let fen = STARTPOS;
+    let mut g = Game::from_fen(&ts, fen).unwrap();
 
     // let mut g = Game::empty();
     // g.insert_pieces_mut_unchecked(&vec![
@@ -117,7 +120,7 @@ fn main6() {
 
     for (s,fen) in fens.iter() {
 
-        let mut g = Game::from_fen(fen).unwrap();
+        let mut g = Game::from_fen(&ts, fen).unwrap();
         let _ = g.recalc_gameinfo_mut(&ts);
 
         let e = g.evaluate(&ts).sum();
@@ -129,47 +132,92 @@ fn main6() {
 
 fn main7() {
     let fen = STARTPOS;
+    let n = 4;
+
     // let fen = "rnbqkbnr/ppppp1pp/8/5P2/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2";
     // let fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
 
     // let fen = "5r1k/4Qpq1/4p3/1p1p2P1/2p2P2/1p2P3/3P4/BK6 b - - 0 1";
 
-    let n = 4;
+    // // minimax = 869088, 2.08 s
+    // // AB      = 92245,  0.24 s
+    // let fen = "r4q1k/5P1b/2p2n1P/p2p1P2/3P4/8/2PKN1Q1/6R1 w - - 1 34";
+    // let n = 3;
+
+    // // AB = 808182 leaves, 1.87 s
+    // let fen = "7k/2pq2p1/6rp/1P2p3/2Qp1n2/P2P3P/R1P2PPK/3N2R1 b - - 0 28";
+    // let n = 4;
+
+    // let fen = "k7/8/8/8/8/6P1/8/7K w - - 0 1";
+    // let n = 1;
+
+    let fen = "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1"; // WAC.001 = Qg6 = g3g6
+    let n = 3;
 
     let ts = Tables::new();
     // let ts = Tables::_new(false);
-    let mut g = Game::from_fen(fen).unwrap();
+    let mut g = Game::from_fen(&ts, fen).unwrap();
     let _ = g.recalc_gameinfo_mut(&ts);
     // eprintln!("g = {:?}", g);
 
     let stop = Arc::new(AtomicBool::new(false));
     let timesettings = TimeSettings::new_f64(10., 0.1);
 
-    // let mut g = g.clone();
-    // let ms = vec!["e2e4"];
-    // for m in ms.iter() {
+    let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+
+    // let ms0 = vec![
+    //     "e2e4",
+    //     "e7e5",
+    //     "g1f3",
+    // ];
+    // let ms0 = ms0.split(" ");
+    // let mut g2 = g.clone();
+    // for m in ms0.into_iter() {
     //     let from = &m[0..2];
     //     let to = &m[2..4];
     //     let other = &m[4..];
-    //     let mm = g.convert_move(from, to, other).unwrap();
-    //     g = g.make_move_unchecked(&ts, &mm).unwrap();
+    //     let mm = g2.convert_move(from, to, other).unwrap();
+    //     g2 = g2.make_move_unchecked(&ts, &mm).unwrap();
     // }
-    // eprintln!("g = {:?}", g);
+    // eprintln!("g2 = {:?}", g2);
+    // eprintln!("hash0 = {:?}", g2.zobrist);
 
-    let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
-
-    let moves = vec![
-        Move::Quiet { from: "E2".into(), to: "E4".into() },
-        Move::Quiet { from: "H2".into(), to: "H3".into() },
-    ];
-    ex.rank_moves_list(&ts, true, moves);
-    // ex.rank_moves(&ts, true);
+    // let moves = vec![
+    //     Move::Quiet { from: "E2".into(), to: "E4".into() },
+    //     Move::Quiet { from: "D2".into(), to: "D4".into() },
+    //     // Move::Quiet { from: "H2".into(), to: "H3".into() },
+    // ];
+    // ex.rank_moves_list(&ts, true, moves);
+    // // ex.rank_moves(&ts, true);
 
     // let t = std::time::Instant::now();
     // let m = ex.explore(&ts, ex.depth);
     // eprintln!("m = {:?}", m);
     // // ex.rank_moves(&ts, true);
     // println!("explore done in {} seconds.", t.elapsed().as_secs_f64());
+
+    // let k = 4;
+    let k = 2;
+    let mut t: std::time::Duration = std::time::Duration::from_secs(0);
+    for _ in 0..k {
+        let t0 = std::time::Instant::now();
+        let m = ex.explore(&ts, ex.depth);
+        eprintln!("m #{} = {:?}", k, m);
+        t += t0.elapsed();
+    }
+    println!("explore {} times, done in avg {:.3} seconds.", k, t.as_secs_f64() / k as f64);
+
+    {
+        let s = ex.trans_table.with(|m| m.map.len());
+        let h = ex.trans_table.hits();
+        let m = ex.trans_table.misses();
+        let k = ex.trans_table.leaves();
+        eprintln!("len    = {:?}", s);
+        eprintln!("hits   = {:?}", h);
+        eprintln!("misses = {:?}", m);
+        eprintln!("leaves = {:?}", k);
+    }
+
 
 }
 
@@ -195,15 +243,15 @@ fn main5() {
 
     let ts = Tables::new();
     // let ts = Tables::_new(false);
-    // let mut g = Game::from_fen(fen).unwrap();
+    // let mut g = Game::from_fen(&ts, fen).unwrap();
     // let _ = g.recalc_gameinfo_mut(&ts);
     // eprintln!("g = {:?}", g);
 
 
-    let mut g1 = Game::from_fen(fen1).unwrap();
+    let mut g1 = Game::from_fen(&ts, fen1).unwrap();
     let _ = g1.recalc_gameinfo_mut(&ts);
 
-    let mut g2 = Game::from_fen(fen2).unwrap();
+    let mut g2 = Game::from_fen(&ts, fen2).unwrap();
     let _ = g2.recalc_gameinfo_mut(&ts);
 
     let stop = Arc::new(AtomicBool::new(false));
@@ -223,8 +271,8 @@ fn main5() {
     // // ex.rank_moves(&ts, true);
     // println!("explore done in {} seconds.", t.elapsed().as_secs_f64());
 
-    let ex1 = Explorer::new(g1.state.side_to_move, g1.clone(), n, stop.clone(), timesettings);
-    let ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop, timesettings);
+    let mut ex1 = Explorer::new(g1.state.side_to_move, g1.clone(), n, stop.clone(), timesettings);
+    let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop, timesettings);
 
     // let m = ex.explore(&ts, ex.depth);
     // eprintln!("m w = {:?}", m);
@@ -320,14 +368,16 @@ fn main4() {
     // let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
     // let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  "; // Position 5
 
-    let n = 5;
+    let fen = "rnbqkbnr/ppppp3/8/4N3/2BP1BQ1/4P1Pp/PPP4P/RN2K2R w KQkq - 0 1";
+
+    let n = 4;
 
     let ts = Tables::new();
-    let mut g = Game::from_fen(fen).unwrap();
+    let mut g = Game::from_fen(&ts, fen).unwrap();
     let _ = g.recalc_gameinfo_mut(&ts);
-    eprintln!("g = {:?}", g);
+    // eprintln!("g = {:?}", g);
 
-    let ((t,t_sf),(_,_)) = test_stockfish(fen, n, true).unwrap();
+    let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, n, true).unwrap();
     // let (t,(_,_)) = test_stockfish(fen, n, false).unwrap();
     println!("perft done in {} seconds.", t);
     println!("stockfish took {} seconds.", t_sf);
@@ -340,14 +390,15 @@ fn main4() {
 
 fn main3() {
     // let mut games = read_ccr_onehour("ccr_onehour.txt").unwrap();
-    let mut games = read_epd("Midgames250.epd").unwrap();
+    // let mut games = read_epd("Midgames250.epd").unwrap();
+    let mut games = read_epd("WAC.epd").unwrap();
 
     // for (fen,ms) in games.iter() {
     //     // eprintln!("fen, ms = {:?}: {:?}", fen, ms);
     //     eprintln!("ms = {:?}", ms);
     // }
 
-    let g = &games[1];
+    let g = &games[0];
     let games = vec![g.clone()];
 
     let n = 4;
@@ -355,14 +406,13 @@ fn main3() {
     let ts = Tables::new();
 
     for (fen,m) in games.into_iter() {
-        let mut g = Game::from_fen(&fen).unwrap();
+        let mut g = Game::from_fen(&ts, &fen).unwrap();
         let _ = g.recalc_gameinfo_mut(&ts);
         eprintln!("g = {:?}", g);
         let stop = Arc::new(AtomicBool::new(false));
         let timesettings = TimeSettings::new_f64(10., 0.1);
-        let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
+        let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
         let m0 = ex.explore(&ts, ex.depth);
-
         eprintln!("m0 = {:?}", m0.map(|x| x.to_long_algebraic()));
         // eprintln!("m0 = {:?}", m0.map(|x| x.to_algebraic(&g)));
         eprintln!("m0 = {:?}", m0.unwrap().to_algebraic(&g));
@@ -433,20 +483,20 @@ fn main2() {
 
     let fen = "B5KR/1r5B/6R1/2b1p1p1/2P1k1P1/1p2P2p/1P2P2P/3N1N2 w - - 0 1";
 
-    // let mut g = Game::from_fen("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ").unwrap();
-    // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ").unwrap();
-    // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 b - - 0 1").unwrap();
-    // let mut g = Game::from_fen(fen).unwrap();
+    // let mut g = Game::from_fen(&ts, "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ").unwrap();
+    // let mut g = Game::from_fen(&ts, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ").unwrap();
+    // let mut g = Game::from_fen(&ts, "8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 b - - 0 1").unwrap();
+    // let mut g = Game::from_fen(&ts, fen).unwrap();
 
-    // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 b - - 0 1").unwrap();
+    // let mut g = Game::from_fen(&ts, "8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 b - - 0 1").unwrap();
     // g.state.side_to_move = Black;
 
-    // let mut g = Game::from_fen("8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 w - - 0 1").unwrap();
-
-    let mut g = Game::from_fen(fen).unwrap();
+    // let mut g = Game::from_fen(&ts, "8/2p5/3p4/KP5r/1R3p1k/6P1/4P3/8 w - - 0 1").unwrap();
 
     let ts = Tables::new();
     // let mut g = Game::new();
+
+    let mut g = Game::from_fen(&ts, fen).unwrap();
 
     let _ = g.recalc_gameinfo_mut(&ts);
 

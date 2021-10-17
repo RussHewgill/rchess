@@ -15,10 +15,20 @@ pub fn read_epd(path: &str) -> std::io::Result<Vec<(String, String)>> {
 
     // let mut lines = lines.collect::<Vec<&str>>();
     // lines.truncate(1);
+    // println!("wat 0");
 
     for line in lines.into_iter() {
         let mut line = line.split("bm").collect::<Vec<&str>>();
-        out.push((line[0].to_string(), line[1].to_string()));
+
+        let mv = line[1].to_string();
+        let mut mv = mv.split(";");
+        let mv = mv.next().unwrap();
+        let mv = mv.split(" ");
+        let mv = mv.collect::<Vec<&str>>();
+
+        out.push((line[0].to_string(), mv.join(", ")));
+
+        // out.push((line[0].to_string(), line[1].to_string()));
 
         // let mut line = line.split("/").collect::<Vec<&str>>();
         // let last = line.pop().unwrap();
@@ -117,7 +127,7 @@ pub fn find_move_error(
     last_move: Option<Move>,
 ) -> std::io::Result<Option<(Move,String)>> {
 
-    let (_, ((ns0,nodes0),(ns1,nodes1))) = test_stockfish(&fen, depth, false)?;
+    let (_, ((ns0,nodes0),(ns1,nodes1))) = test_stockfish(&ts, &fen, depth, false)?;
 
     // No errors found
     if ns0 == ns1 {
@@ -146,7 +156,7 @@ pub fn find_move_error(
 
             // perft after move finds error
             if v0 != v1 {
-                let mut g = Game::from_fen(&fen).unwrap();
+                let mut g = Game::from_fen(&ts, &fen).unwrap();
                 let _ = g.recalc_gameinfo_mut(&ts);
                 // eprintln!("g0 = {:?}", g);
 
@@ -168,6 +178,7 @@ pub fn find_move_error(
 /// ns0    = total nodes found
 /// nodes0 = HashMap<Move String, (Move, nodes after Move)>
 pub fn test_stockfish(
+    ts:     &Tables,
     fen:    &str,
     n:      u64,
     print:  bool,
@@ -193,7 +204,7 @@ pub fn test_stockfish(
     let done_sf = now.elapsed().as_secs_f64();
     // let done_sf = 0.;
 
-    let mut g = Game::from_fen(&fen).unwrap();
+    let mut g = Game::from_fen(&ts, &fen).unwrap();
     let ts = Tables::new();
     let _ = g.recalc_gameinfo_mut(&ts);
     // eprintln!("g = {:?}", g);

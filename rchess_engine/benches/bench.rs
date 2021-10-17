@@ -29,13 +29,13 @@ pub fn crit_bench_1(c: &mut Criterion) {
     let timesettings = TimeSettings::new_f64(10., 0.1);
     let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
 
-    // let mut group = c.benchmark_group("group");
+    let mut group = c.benchmark_group("group");
 
     // group.sample_size(25);
     // group.measurement_time(std::time::Duration::from_secs_f64(5.));
 
-    // group.bench_function("rank moves", |b| b.iter(|| ex.explore(&ts, ex.depth)));
-    c.bench_function("rank moves", |b| b.iter(|| ex.explore(&ts, ex.depth)));
+    group.bench_function("rank moves", |b| b.iter(|| ex.explore(&ts, ex.depth)));
+    // c.bench_function("rank moves", |b| b.iter(|| ex.explore(&ts, ex.depth)));
 
     // no collect, captures first      = 18.2 ms
     // sort by score                   = 18.8
@@ -63,7 +63,7 @@ pub fn crit_bench_1(c: &mut Criterion) {
     //     || g._search_all_test(&ts, White, true)
     // ));
 
-    // group.finish();
+    group.finish();
 
 }
 

@@ -5,6 +5,7 @@ use crate::evaluate::*;
 pub use crate::timer::*;
 pub use crate::trans_table::*;
 
+use std::hash::Hasher;
 use std::time::Duration;
 
 // use std::sync::RwLock;
@@ -24,8 +25,8 @@ pub struct Explorer {
     // pub should_stop:   
     pub timer:         Timer,
     pub parallel:      bool,
-    // pub trans_table:   TransTable,
-    pub trans_table:   RwLock<TransTable>,
+    pub trans_table:   RwTransTable,
+    // pub trans_table:   RwLock<TransTable>,
 }
 
 impl Explorer {
@@ -35,7 +36,7 @@ impl Explorer {
                should_stop:   Arc<AtomicBool>,
                settings:      TimeSettings,
     ) -> Self {
-        let tt = RwLock::new(TransTable::default());
+        let tt = RwTransTable::default();
         Self {
             side,
             game,
@@ -48,31 +49,6 @@ impl Explorer {
         }
     }
 }
-
-// #[derive(Debug,PartialEq,PartialOrd,Clone,Copy)]
-// pub struct ABStats {
-//     // /// Min score for Self
-//     // pub alpha:      Option<(Eval, i32)>,
-//     // /// Max score for Other
-//     // pub beta:       Option<(Eval, i32)>,
-//     /// Min score for Self
-//     pub alpha:      i32,
-//     /// Max score for Other
-//     pub beta:       i32,
-//     pub leaves:     u64,
-// }
-
-// impl ABStats {
-//     pub fn new() -> Self {
-//         Self {
-//             alpha:      i32::MIN,
-//             beta:       i32::MAX,
-//             // alpha:      None,
-//             // beta:       None,
-//             leaves:     0,
-//         }
-//     }
-// }
 
 /// Entry points
 impl Explorer {
@@ -106,23 +82,21 @@ impl Explorer {
 
     pub fn rank_moves_list(&self, ts: &Tables, print: bool, moves: Vec<Move>) -> Vec<(Move,i32)> {
 
-        // let tt = RwLock::new(self.trans_table.clone());
+        self.trans_table.clear();
 
         if print {
             eprintln!("moves.len() = {:?}", moves.len());
         }
 
-        // let mut out: Vec<(Move,i32)> = moves.into_par_iter()
-        let mut out: Vec<(Move,i32)> = moves.into_iter()
+        // eprintln!("Explorer: not parallel");
+        // let mut out: Vec<(Move,i32)> = moves.into_iter()
+        let mut out: Vec<(Move,i32)> = moves.into_par_iter()
                 .map(|m| {
                     let g2 = self.game.make_move_unchecked(&ts, &m).unwrap();
-                    // let alpha = (None,i32::MIN);
-                    // let beta  = (None,i32::MAX);
                     let alpha = i32::MIN;
                     let beta  = i32::MAX;
-                    // let (_,score) = self._ab_search(&ts, &tt, g2, self.depth, 1, Some(m), alpha, beta);
                     let score = self._ab_search(
-                        &ts, g2, self.depth, 1, alpha, beta, false);
+                        &ts, &g2, self.depth, 1, alpha, beta, false);
                     (m,score)
                 })
                 .collect();
@@ -158,29 +132,37 @@ impl Explorer {
 /// AB search
 impl Explorer {
 
-    // pub fn ab_search(&self, ts: &Tables, m0: Move) -> i32 {
-    //     let g = self.game.clone();
+    fn check_tt(&self,
+                ts:             &Tables,
+                g:              &Game,
+                depth:          u32,
+                // k:              i32,
+                // alpha:          i32,
+                // beta:           i32,
+                maximizing:     bool
+    ) -> Option<Score> {
+        if let Some(si) = self.trans_table.get(&g.zobrist) {
 
-    //     let tt = RwLock::new(self.trans_table.clone());
-
-    //     match g.make_move_unchecked(&ts, &m0) {
-    //         Ok(g2) => {
-    //             let alpha = (None,i32::MIN);
-    //             let beta  = (None,i32::MAX);
-    //             let (m2,score) = self._ab_search(&ts, &tt, g2, self.depth, 1, Some(m0), alpha, beta);
-    //             score
-    //         },
-    //         Err(win) => {
-    //             panic!("bad move? {:?}", &win);
-    //         }
-    //     }
-    // }
+            if si.depth_searched == depth {
+                self.trans_table.inc_hits();
+                Some(si.score.score())
+            } else {
+                self.trans_table.inc_misses();
+                None
+            }
+        } else {
+            self.trans_table.inc_misses();
+            // let score = self._ab_search(&ts, &g, depth - 1, k + 1, alpha, beta, !maximizing);
+            // score
+            None
+        }
+    }
 
     pub fn _ab_search(
         &self,
         ts:                 &Tables,
         // trans_table:        &RwLock<TransTable>,
-        g:                  Game,
+        g:                  &Game,
         depth:              u32,
         k:                  i32,
         mut alpha:          i32,
@@ -194,10 +176,12 @@ impl Explorer {
         let moves: Vec<Move> = match moves {
             Outcome::Checkmate(c) => {
                 let score = 100_000_000 - k;
+                // self.trans_table.inc_leaves();
                 if self.side == Black { return -score; } else { return score; }
             },
             Outcome::Stalemate    => {
                 let score = -100_000_000 + k;
+                // self.trans_table.inc_leaves();
                 if self.side == Black { return -score; } else { return score; }
             },
             Outcome::Moves(ms)    => ms,
@@ -206,6 +190,7 @@ impl Explorer {
         if depth == 0 {
             let score = g.evaluate(&ts).sum();
             // let score = self.quiescence(&ts, g, moves, k, alpha, beta);
+            // self.trans_table.inc_leaves();
 
             if self.side == Black {
                 return -score;
@@ -215,70 +200,84 @@ impl Explorer {
         }
 
         let gs = moves.into_iter().flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, &m) {
-            Some((m,g2))
+            let tt = self.check_tt(&ts, &g2, depth, maximizing);
+            Some((m,g2,tt))
         } else {
             None
         });
 
+        let mut gs: Vec<(Move,Game,Option<Score>)> = gs.collect();
+
+        gs.sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
+
+        if maximizing {
+            gs.reverse();
+        }
+
+        // let gs0 = gs.clone().filter(|x| x.2.is_some());
+        // let gs1 = gs.filter(|x| x.2.is_none());
+        // let gs  = gs0.chain(gs1);
+        // // let gs  = gs1.chain(gs0); // faster
+
+        // let gs = gs.map(move |(mv,g2)| {
+        //     let tt = self.check_tt(&ts, &g2, depth, k, alpha, beta, maximizing);
+        //     (mv,g2,tt)
+        // });
+
         let mut val = if maximizing { i32::MIN } else { i32::MAX };
         let mut val: (Option<(Zobrist,Move)>,i32) = (None,val);
-        for (m,g2) in gs {
+        for (mv,g2,tt) in gs {
             let zb = g2.zobrist;
 
-            let score = self._ab_search(&ts, g2, depth - 1, k + 1, alpha, beta, !maximizing);
+            let score = self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing);
+            // let score = self.check_tt(&ts, &g2, depth, k, alpha, beta, maximizing);
 
-            // let score: Score = {
-            //     let r = self.trans_table.read();
-            //     if let Some(s) = r.get(&zb) {
-            //         let s: SearchInfo = *s;
-            //         match s.score {
-            //             NodeType::NodePV(ss) => {
-            //                 if s.depth_searched > u32::max(2, self.depth / 2) {
-            //                     return ss;
-            //                 }
-            //             },
-            //             NodeType::NodeUpperBound(ss) => {
-            //                 if s.depth_searched > u32::max(2, self.depth / 2) {
-            //                     return ss;
-            //                 }
-            //             }
-            //             _ => continue,
-            //         }
-            //     }
-            //     drop(r);
-            //     self._ab_search(&ts, g2, depth - 1, k + 1, alpha, beta, !maximizing)
+            // let score = match tt {
+            //     None    => self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing),
+            //     Some(s) => s,
             // };
+
+            // if maximizing {
+            //     val.1 = i32::max(val.1, score);
+            // } else {
+            //     val.1 = i32::min(val.1, score);
+            // }
+
+            // let replace = self.trans_table.insert_replace(zb, SearchInfo::new(
+            //     mv, depth, Node::PV(val.1)
+            // ));
+            // eprintln!("replace = {:?}, {:?}", replace, mv);
 
             if maximizing {
                 if score > val.1 {
-                    val = (Some((zb,m)),score);
+                    val = (Some((zb,mv)),score);
                 }
                 if val.1 > alpha {
                     alpha = val.1;
+                    // self.trans_table.insert_replace(
+                    //     zb, SearchInfo::new(mv, depth, val.1));
                 }
                 if val.1 >= beta { // Beta cutoff
-                    {
-                        let mut w = self.trans_table.write();
-                        w.insert(zb, SearchInfo::new(k as u32, NodeType::NodeLowerBound(beta)));
-                    }
+                    // self.trans_table.insert(zb, SearchInfo::new(depth, NodeType::NodeLowerBound(beta)));
+                    self.trans_table.insert_replace(
+                        zb, SearchInfo::new(mv, depth, Node::LowerBound(val.1)));
                     break;
                 }
             } else {
                 if score < val.1 {
-                    val = (Some((zb,m)),score);
+                    val = (Some((zb,mv)),score);
                 }
                 if val.1 < beta {
                     beta = val.1;
+                    // self.trans_table.insert_replace(
+                    //     zb, SearchInfo::new(mv, depth, val.1));
                 }
                 if val.1 <= alpha { // Alpha cutoff
-                    {
-                        let mut w = self.trans_table.write();
-                        w.insert(zb, SearchInfo::new(k as u32, NodeType::NodeUpperBound(alpha)));
-                    }
+                    self.trans_table.insert_replace(
+                        zb, SearchInfo::new(mv, depth, Node::UpperBound(val.1)));
                     break;
                 }
             }
-
 
             /*
             if maximizing {
@@ -303,11 +302,10 @@ impl Explorer {
 
         }
 
-        // if let Some((zb,m)) = val.0 {
-        //     let mut w = self.trans_table.write();
-        //     w.insert(zb, SearchInfo::new(k as u32, NodeType::NodePV(val.1)));
-        //     drop(w);
-        // }
+        if let Some((zb,mv)) = val.0 {
+            self.trans_table.insert_replace(
+                zb, SearchInfo::new(mv, depth, Node::PV(val.1)));
+        }
 
         val.1
         // val

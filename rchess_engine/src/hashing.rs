@@ -77,10 +77,10 @@ impl Zobrist {
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct ZbTable {
-    pieces:        [[[u64; 64]; 6]; 2],
-    black_to_move: u64,
-    castling:      [[u64; 4]; 2],
-    en_passant:    [u64; 8],
+    pub pieces:        [[[u64; 64]; 6]; 2],
+    pub black_to_move: u64,
+    pub castling:      [[u64; 4]; 2],
+    pub en_passant:    [u64; 8],
 }
 
 impl ZbTable {
@@ -96,13 +96,13 @@ impl ZbTable {
         // let mut rng: StdRng = SeedableRng::seed_from_u64(5474752555881496643);
         let mut rng: StdRng = SeedableRng::seed_from_u64(18105974836011991331);
 
-        let mut pieces = [[[0u64; 64]; 6]; 2];
-        for mut col in pieces.iter_mut() {
-            for pc in Piece::iter_pieces() {
-                col[pc.index()][0] = rng.gen();
-                col[pc.index()][1] = rng.gen();
-            }
-        }
+        use array_init::array_init;
+        let pieces = array_init(|_| {
+            array_init(|_| {
+                array_init(|_| rng.gen())
+            })
+        });
+
         let castling = [[rng.gen(); 4]; 2];
         let en_passant = [rng.gen(); 8];
 
