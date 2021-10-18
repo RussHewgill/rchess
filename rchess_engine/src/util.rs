@@ -7,15 +7,14 @@ use std::collections::{HashMap,HashSet};
 use std::io::Write;
 use std::process::{Command,Stdio};
 
-// pub fn read_epd(path: &str) -> std::io::Result<Vec<(String, Vec<String>)>> {
-pub fn read_epd(path: &str) -> std::io::Result<Vec<(String, String)>> {
+pub fn read_epd(path: &str) -> std::io::Result<Vec<(String, Vec<String>)>> {
+// pub fn read_epd(path: &str) -> std::io::Result<Vec<(String, String)>> {
     let file = std::fs::read_to_string(path)?;
     let lines = file.lines();
     let mut out = vec![];
 
     // let mut lines = lines.collect::<Vec<&str>>();
     // lines.truncate(1);
-    // println!("wat 0");
 
     for line in lines.into_iter() {
         let mut line = line.split("bm").collect::<Vec<&str>>();
@@ -23,10 +22,12 @@ pub fn read_epd(path: &str) -> std::io::Result<Vec<(String, String)>> {
         let mv = line[1].to_string();
         let mut mv = mv.split(";");
         let mv = mv.next().unwrap();
-        let mv = mv.split(" ");
-        let mv = mv.collect::<Vec<&str>>();
+        let mut mv = mv.split(" ").map(|s| s.to_string());
+        mv.next();
+        let mv = mv.collect::<Vec<String>>();
 
-        out.push((line[0].to_string(), mv.join(", ")));
+        // out.push((line[0].to_string(), mv.join(", ")));
+        out.push((line[0].to_string(), mv));
 
         // out.push((line[0].to_string(), line[1].to_string()));
 

@@ -6,6 +6,8 @@ pub use crate::hashing::*;
 
 pub use self::{Color::*,Piece::*};
 
+pub type Depth = u8;
+
 #[derive(Debug,Hash,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub enum Color {
     White,
@@ -207,24 +209,36 @@ impl Move {
         if let Some((_,pc)) = g.get_at(self.sq_from()) {
             let from = format!("{:?}", self.sq_from()).to_ascii_lowercase();
             let to = format!("{:?}", self.sq_to()).to_ascii_lowercase();
+
+            let cs = vec!['a','b','c','d','e','f','g','h'];
+
+            let cap = if self.filter_all_captures() { "x" } else { "" };
+
+            // let check = if (g.state.checkers.unwrap() & BitBoard::single(self.sq_from()))
+
             match pc {
                 Pawn   => {
-                    format!("{}", to)
+                    if self.filter_all_captures() {
+                        let cc = cs[self.sq_from().0 as usize];
+                        format!("{}x{}", cc, to)
+                    } else {
+                        format!("{}", to)
+                    }
                 },
                 Rook   => {
-                    unimplemented!()
+                    format!("R{}{:?}", cap, self.sq_to())
                 },
                 Knight => {
-                    unimplemented!()
+                    format!("N{}{:?}", cap, self.sq_to())
                 },
                 Bishop => {
-                    unimplemented!()
+                    format!("B{}{:?}", cap, self.sq_to())
                 },
                 Queen  => {
-                    format!("Q{:?}", self.sq_to())
+                    format!("Q{}{:?}", cap, self.sq_to())
                 },
                 King   => {
-                    unimplemented!()
+                    format!("K{}{:?}", cap, self.sq_to())
                 },
             }
         } else {

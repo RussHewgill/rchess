@@ -3,6 +3,8 @@
 #![allow(dead_code)]
 #![allow(unused_mut)]
 
+#![feature(destructuring_assignment)]
+
 pub mod types;
 pub mod bitboard;
 pub mod coords;
@@ -17,6 +19,7 @@ pub mod timer;
 pub mod tuning;
 pub mod hashing;
 pub mod trans_table;
+pub mod searchstats;
 
 pub mod util;
 

@@ -7,7 +7,8 @@ use parking_lot::RwLock;
 use rustc_hash::FxHashMap;
 
 #[derive(Debug,Default)]
-pub struct RwTransTable(pub RwLock<TransTable>, pub RwLock<TTStats>);
+// pub struct RwTransTable(pub RwLock<TransTable>, pub RwLock<TTStats>);
+pub struct RwTransTable(pub RwLock<TransTable>);
 
 #[derive(Debug,Default)]
 pub struct TransTable {
@@ -26,7 +27,7 @@ pub struct TTStats {
 #[derive(Debug,PartialEq,PartialOrd,Clone,Copy)]
 pub struct SearchInfo {
     pub mv:                 Move,
-    pub depth_searched:     u32,
+    pub depth_searched:     Depth,
     // pub score:              Score,
     pub score:              Node,
     // pub eval:               Eval,
@@ -71,9 +72,9 @@ impl RwTransTable {
     }
 
     pub fn clear(&self) {
-        self.with_stats_mut(|s| {
-            *s = TTStats::default();
-        });
+        // self.with_stats_mut(|s| {
+        //     *s = TTStats::default();
+        // });
         self.with_mut(|m| {
             m.map.clear();
         });
@@ -99,44 +100,42 @@ impl RwTransTable {
         }
     }
 
-    pub fn with_stats<F,T>(&self, mut f: F) -> T
-    where
-        F: FnOnce(&TTStats) -> T,
-        T: Copy,
-    {
-        let r = self.1.read();
-        let s = f(&r);
-        s
-    }
+    // pub fn with_stats<F,T>(&self, mut f: F) -> T
+    // where
+    //     F: FnOnce(&TTStats) -> T,
+    //     T: Copy,
+    // {
+    //     let r = self.1.read();
+    //     let s = f(&r);
+    //     s
+    // }
 
-    pub fn with_stats_mut<F, T>(&self, mut f: F) -> T
-    where
-        F: FnMut(&mut TTStats) -> T {
-        {
-            let mut w = self.1.write();
-            f(&mut w)
-        }
-    }
+    // pub fn with_stats_mut<F, T>(&self, mut f: F) -> T
+    // where
+    //     F: FnMut(&mut TTStats) -> T {
+    //     {
+    //         let mut w = self.1.write();
+    //         f(&mut w)
+    //     }
+    // }
 
 }
 
-impl RwTransTable {
-
-    pub fn inc_hits(&self) { self.with_stats_mut(|s| s.hits += 1) }
-    pub fn inc_misses(&self) { self.with_stats_mut(|s| s.misses += 1) }
-    pub fn inc_leaves(&self) { self.with_stats_mut(|s| s.leaves += 1) }
-
-    pub fn hits(&self) -> u32 { self.with_stats(|s| s.hits) }
-    pub fn misses(&self) -> u32 { self.with_stats(|s| s.misses) }
-    pub fn leaves(&self) -> u32 { self.with_stats(|s| s.leaves) }
-}
+// impl RwTransTable {
+//     pub fn inc_hits(&self) { self.with_stats_mut(|s| s.hits += 1) }
+//     pub fn inc_misses(&self) { self.with_stats_mut(|s| s.misses += 1) }
+//     pub fn inc_leaves(&self) { self.with_stats_mut(|s| s.leaves += 1) }
+//     pub fn hits(&self) -> u32 { self.with_stats(|s| s.hits) }
+//     pub fn misses(&self) -> u32 { self.with_stats(|s| s.misses) }
+//     pub fn leaves(&self) -> u32 { self.with_stats(|s| s.leaves) }
+// }
 
 impl SearchInfo {
     // pub fn new(depth_searched: u32, evaluation: Score, node_type: i32) -> Self {
     // pub fn new(pv: Move, depth_searched: u32, score: NodeType) -> Self {
     // pub fn new(depth_searched: u32, score: NodeType) -> Self {
 
-    pub fn new(mv: Move, depth_searched: u32, score: Node) -> Self {
+    pub fn new(mv: Move, depth_searched: Depth, score: Node) -> Self {
         Self {
             mv,
             depth_searched,

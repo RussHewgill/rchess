@@ -1,11 +1,14 @@
 
+use crate::searchstats;
 use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
 pub use crate::timer::*;
 pub use crate::trans_table::*;
+pub use crate::searchstats::*;
 
 use std::hash::Hasher;
+use std::iter::successors;
 use std::time::Duration;
 
 // use std::sync::RwLock;
@@ -21,8 +24,7 @@ pub struct Explorer {
     pub side:          Color,
     pub game:          Game,
     // pub stats:      ABStats
-    pub depth:         u32,
-    // pub should_stop:   
+    pub max_depth:     Depth,
     pub timer:         Timer,
     pub parallel:      bool,
     pub trans_table:   RwTransTable,
@@ -32,7 +34,7 @@ pub struct Explorer {
 impl Explorer {
     pub fn new(side:          Color,
                game:          Game,
-               depth:         u32,
+               max_depth:     Depth,
                should_stop:   Arc<AtomicBool>,
                settings:      TimeSettings,
     ) -> Self {
@@ -41,8 +43,8 @@ impl Explorer {
             side,
             game,
             // stats: ABStats::new(),
-            depth,
-            timer: Timer::new(should_stop, settings),
+            max_depth,
+            timer: Timer::new(side, should_stop, settings),
             parallel: true,
             // trans_table: TransTable::default(),
             trans_table: tt,
@@ -53,7 +55,7 @@ impl Explorer {
 /// Entry points
 impl Explorer {
 
-    pub fn explore(&self, ts: &Tables, depth: u32) -> Option<Move> {
+    pub fn explore(&self, ts: &Tables, depth: Depth) -> (Option<Move>,SearchStats) {
 
         // let e = self.game.evaluate(&ts, self.side);
         // eprintln!("e = {:?}", e.diff());
@@ -61,11 +63,11 @@ impl Explorer {
         // let mut ms = self.negamax(&ts, depth, self.side);
 
         // let ms = self.ab_search(&ts, depth, None);
-        let mut moves = self.rank_moves(&ts, false);
+        let (moves,stats) = self.rank_moves(&ts, false);
 
         // eprintln!("ms = {:?}", ms);
 
-        moves.get(0).map(|x| x.0)
+        (moves.get(0).map(|x| x.0),stats)
 
         // ms.map(|x| x.0).flatten()
         // ms.0
@@ -80,7 +82,20 @@ impl Explorer {
         // None
     }
 
-    pub fn rank_moves_list(&self, ts: &Tables, print: bool, moves: Vec<Move>) -> Vec<(Move,i32)> {
+    pub fn rank_moves(&self, ts: &Tables, print: bool) -> (Vec<(Move,Score)>,SearchStats) {
+        let moves = self.game.search_all(&ts, None);
+
+        if moves.is_end() {
+            return (vec![], SearchStats::default());
+        }
+        let moves = moves.get_moves_unsafe();
+
+        // self.rank_moves_list(&ts, print, moves, par)
+        self.rank_moves_list(&ts, print, moves)
+    }
+
+    pub fn rank_moves_list(&self, ts: &Tables, print: bool, moves: Vec<Move>
+    ) -> (Vec<(Move,Score)>,SearchStats) {
 
         self.trans_table.clear();
 
@@ -89,17 +104,21 @@ impl Explorer {
         }
 
         // eprintln!("Explorer: not parallel");
-        // let mut out: Vec<(Move,i32)> = moves.into_iter()
-        let mut out: Vec<(Move,i32)> = moves.into_par_iter()
-                .map(|m| {
-                    let g2 = self.game.make_move_unchecked(&ts, &m).unwrap();
+        let (mut out,ss): (Vec<(Move,i32)>,Vec<SearchStats>) = moves.into_iter()
+        // let (mut out,ss): (Vec<(Move,i32)>,Vec<SearchStats>) = moves.into_par_iter()
+                .map(|mv| {
+                    let g2 = self.game.make_move_unchecked(&ts, &mv).unwrap();
                     let alpha = i32::MIN;
                     let beta  = i32::MAX;
+                    let mut stats = SearchStats::default();
                     let score = self._ab_search(
-                        &ts, &g2, self.depth, 1, alpha, beta, false);
-                    (m,score)
+                        &ts, &g2, self.max_depth, 1, alpha, beta, false, &mut stats);
+                    ((mv,score),stats)
                 })
-                .collect();
+                // .collect();
+                .unzip();
+
+        let stats = ss.iter().sum();
 
         out.sort_by(|a,b| a.1.cmp(&b.1));
 
@@ -112,20 +131,77 @@ impl Explorer {
                 eprintln!("{:?}: {:?}", s, m);
             }
         }
-        out
+        (out,stats)
     }
 
-    pub fn rank_moves(&self, ts: &Tables, print: bool) -> Vec<(Move,i32)> {
-        let moves = self.game.search_all(&ts, None);
+    pub fn iterative_deepening(&self, ts: &Tables, print: bool) -> (Option<Move>,SearchStats) {
 
-        if moves.is_end() {
-            return vec![];
+        let ms = self.game.search_all(&ts, None);
+        let ms = ms.get_moves_unsafe();
+        let (ms,stats) = self._iterative_deepening(&ts, print, ms);
+
+        (ms.get(0).map(|x| x.0),stats)
+    }
+
+    fn _iterative_deepening(&self, ts: &Tables, print: bool, moves: Vec<Move>
+    ) -> (Vec<(Move,Score)>,SearchStats) {
+
+        self.trans_table.clear();
+
+        let mut timer = self.timer.clone();
+        timer.reset();
+
+        let mut out: Vec<(Move,i32)> = vec![];
+        let mut ss:  Vec<SearchStats>;
+        let mut stats = SearchStats::default();
+        let mut depth = 0;
+
+        let gs: Vec<(Move,Game)> = moves.par_iter().flat_map(|mv| {
+            if let Ok(g2) = self.game.make_move_unchecked(&ts, &mv) {
+                Some((*mv,g2))
+            } else { None }
+        }).collect();
+
+        // std::thread::spawn(|| {
+        //     loop {
+        //         std::thread::sleep_ms(100);
+        //     }
+        // });
+
+        // while !self.timer.should_stop() && (depth <= self.max_depth) {
+        while timer.should_search(self.side, depth) && (depth <= self.max_depth) {
+            // eprintln!("Explorer: not parallel");
+            // (out,ss) = gs.iter().map(|(mv,g2)| {
+            (out,ss) = gs.par_iter().map(|(mv,g2)| {
+                let alpha = i32::MIN;
+                let beta  = i32::MAX;
+                let mut stats = SearchStats::default();
+                let score = self._ab_search(
+                    &ts, &g2, depth, 1, alpha, beta, false, &mut stats);
+                ((*mv,score),stats)
+                // (*mv,score)
+                })
+                .unzip();
+                // .collect();
+
+            stats = ss.iter().sum();
+
+            out.sort_by(|a,b| a.1.cmp(&b.1));
+            if self.side == self.game.state.side_to_move {
+                out.reverse();
+            }
+            depth += 1;
+            timer.update_times(self.side, stats.nodes);
+            if print {
+                eprintln!("depth, time = {:?}, {:.2}", depth, timer.time_left[self.side]);
+            }
         }
-        let moves = moves.get_moves_unsafe();
-
-        // self.rank_moves_list(&ts, print, moves, par)
-        self.rank_moves_list(&ts, print, moves)
+        (out,stats)
     }
+
+}
+
+impl Explorer {
 
 }
 
@@ -135,23 +211,24 @@ impl Explorer {
     fn check_tt(&self,
                 ts:             &Tables,
                 g:              &Game,
-                depth:          u32,
+                depth:          Depth,
                 // k:              i32,
                 // alpha:          i32,
                 // beta:           i32,
-                maximizing:     bool
+                maximizing:     bool,
+                mut stats:      &mut SearchStats,
     ) -> Option<Score> {
         if let Some(si) = self.trans_table.get(&g.zobrist) {
 
             if si.depth_searched == depth {
-                // self.trans_table.inc_hits();
+                stats.tt_hits += 1;
                 Some(si.score.score())
             } else {
-                // self.trans_table.inc_misses();
+                stats.tt_misses += 1;
                 None
             }
         } else {
-            // self.trans_table.inc_misses();
+            stats.tt_misses += 1;
             // let score = self._ab_search(&ts, &g, depth - 1, k + 1, alpha, beta, !maximizing);
             // score
             None
@@ -163,25 +240,28 @@ impl Explorer {
         ts:                 &Tables,
         // trans_table:        &RwLock<TransTable>,
         g:                  &Game,
-        depth:              u32,
-        k:                  i32,
+        depth:              Depth,
+        k:                  i16,
         mut alpha:          i32,
         mut beta:           i32,
         maximizing:         bool,
+        mut stats:          &mut SearchStats,
         // moves:              Option<Vec>,
-    ) -> i32 {
+    ) -> Score {
 
         let moves = g.search_all(&ts, None);
 
         let moves: Vec<Move> = match moves {
             Outcome::Checkmate(c) => {
-                let score = 100_000_000 - k;
+                let score = 100_000_000 - k as Score;
                 // self.trans_table.inc_leaves();
+                stats.leaves += 1;
                 if self.side == Black { return -score; } else { return score; }
             },
             Outcome::Stalemate    => {
-                let score = -100_000_000 + k;
+                let score = -100_000_000 + k as Score;
                 // self.trans_table.inc_leaves();
+                stats.leaves += 1;
                 if self.side == Black { return -score; } else { return score; }
             },
             Outcome::Moves(ms)    => ms,
@@ -192,6 +272,7 @@ impl Explorer {
             // let score = self.quiescence(&ts, g, moves, k, alpha, beta);
             // self.trans_table.inc_leaves();
 
+            stats.leaves += 1;
             if self.side == Black {
                 return -score;
             } else {
@@ -200,7 +281,7 @@ impl Explorer {
         }
 
         let gs = moves.into_iter().flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, &m) {
-            let tt = self.check_tt(&ts, &g2, depth, maximizing);
+            let tt = self.check_tt(&ts, &g2, depth, maximizing, &mut stats);
             Some((m,g2,tt))
         } else {
             None
@@ -214,7 +295,7 @@ impl Explorer {
 
         // let gs0 = gs.clone().filter(|x| x.2.is_some());
         // let gs1 = gs.filter(|x| x.2.is_none());
-        // let gs  = gs0.chain(gs1);
+        // let gs  = gs0.chain(gs1); // also faster wtf
         // // let gs  = gs1.chain(gs0); // faster
 
         // let gs = gs.map(move |(mv,g2)| {
@@ -227,7 +308,9 @@ impl Explorer {
         for (mv,g2,tt) in gs {
             let zb = g2.zobrist;
 
-            let score = self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing);
+            stats.nodes += 1;
+
+            let score = self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut stats);
             // let score = self.check_tt(&ts, &g2, depth, k, alpha, beta, maximizing);
 
             // let score = match tt {
@@ -240,11 +323,6 @@ impl Explorer {
             // } else {
             //     val.1 = i32::min(val.1, score);
             // }
-
-            // let replace = self.trans_table.insert_replace(zb, SearchInfo::new(
-            //     mv, depth, Node::PV(val.1)
-            // ));
-            // eprintln!("replace = {:?}, {:?}", replace, mv);
 
             if maximizing {
                 if score > val.1 {
@@ -656,6 +734,4 @@ impl Explorer {
     }
 
 }
-
-
 

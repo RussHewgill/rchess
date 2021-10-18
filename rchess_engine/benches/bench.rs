@@ -22,7 +22,7 @@ pub fn crit_bench_1(c: &mut Criterion) {
     let n = 4;
 
     let ts    = Tables::new();
-    let mut g = Game::from_fen(fen).unwrap();
+    let mut g = Game::from_fen(&ts, fen).unwrap();
     let _     = g.recalc_gameinfo_mut(&ts);
 
     let stop = Arc::new(AtomicBool::new(false));
