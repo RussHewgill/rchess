@@ -6,7 +6,7 @@ use crate::evaluate::*;
 use parking_lot::RwLock;
 use rustc_hash::FxHashMap;
 
-use evmap::{ReadHandle,WriteHandle};
+// use evmap::{ReadHandle,WriteHandle};
 // use evmap_derive::ShallowCopy;
 // use rustc_hash::Fx;
 
@@ -19,8 +19,6 @@ pub struct TransTable {
     pub map:    FxHashMap<Zobrist, SearchInfo>,
     // pub map_r:    ReadHandle<Zobrist, SearchInfo>,
     // pub map_w:    WriteHandle<Zobrist, SearchInfo>,
-    // pub hits:   u32,
-    // pub misses: u32,
 }
 
 // impl Default for TransTable {
@@ -95,13 +93,9 @@ impl RwTransTable {
     }
 
     pub fn clear(&self) {
-        // self.with_stats_mut(|s| {
-        //     *s = TTStats::default();
-        // });
         self.with_mut(|m| {
             m.map.clear();
         });
-        // unimplemented!()
     }
 
     pub fn with<F,T>(&self, mut f: F) -> T
@@ -112,7 +106,6 @@ impl RwTransTable {
         let r = self.0.read();
         let s = f(&r);
         s
-        // unimplemented!()
     }
 
     pub fn with_mut<F, T>(&self, mut f: F) -> T

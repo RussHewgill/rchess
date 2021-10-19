@@ -33,13 +33,13 @@ impl Eval {
         // unimplemented!("Eval::diff()")
     }
 
-    pub fn sum_material(&self) -> [Score; 2] {
+    fn sum_material(&self) -> [Score; 2] {
         let w = self.material[White].iter().sum();
         let b = self.material[Black].iter().sum();
         [w,b]
     }
 
-    pub fn sum_color(&self, col: Color) -> Score {
+    fn sum_color(&self, col: Color) -> Score {
         let mut score = 0;
         match col {
             White => {

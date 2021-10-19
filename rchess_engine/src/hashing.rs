@@ -5,9 +5,10 @@ use crate::tables::*;
 use rand::{Rng,SeedableRng};
 use rand::prelude::StdRng;
 
-use evmap_derive::ShallowCopy;
+// use evmap_derive::ShallowCopy;
 
-#[derive(Hash,Eq,PartialEq,Ord,PartialOrd,ShallowCopy,Clone,Copy)]
+// #[derive(Hash,Eq,PartialEq,Ord,PartialOrd,ShallowCopy,Clone,Copy)]
+#[derive(Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
 pub struct Zobrist(pub u64);
 
 impl Zobrist {
