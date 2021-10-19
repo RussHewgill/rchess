@@ -4,17 +4,19 @@ pub use crate::coords::*;
 pub use crate::game::*;
 pub use crate::hashing::*;
 
+use evmap_derive::ShallowCopy;
+
 pub use self::{Color::*,Piece::*};
 
 pub type Depth = u8;
 
-#[derive(Debug,Hash,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Debug,Hash,Eq,PartialEq,PartialOrd,ShallowCopy,Clone,Copy)]
 pub enum Color {
     White,
     Black,
 }
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
+#[derive(Debug,Hash,Eq,PartialEq,PartialOrd,ShallowCopy,Clone,Copy)]
 pub enum Piece {
     Pawn,
     Rook,
@@ -30,7 +32,7 @@ pub enum Piece {
 //     to:   Coord,
 // }
 
-#[derive(Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 // pub enum FullMove {
 pub enum Move {
     Quiet              { from: Coord, to: Coord },

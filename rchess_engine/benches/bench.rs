@@ -31,11 +31,14 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("group");
 
-    // group.sample_size(25);
-    // group.measurement_time(std::time::Duration::from_secs_f64(5.));
+    group.sample_size(10);
+    group.measurement_time(std::time::Duration::from_secs_f64(5.));
 
-    group.bench_function("rank moves", |b| b.iter(|| ex.explore(&ts, ex.depth)));
+    // group.bench_function("rank moves", |b| b.iter(|| ex.explore(&ts, ex.depth)));
     // c.bench_function("rank moves", |b| b.iter(|| ex.explore(&ts, ex.depth)));
+
+    // group.bench_function("rank moves depth", |b| b.iter(|| ex.explore(&ts, ex.max_depth, false)));
+    group.bench_function("rank moves iter", |b| b.iter(|| ex.explore(&ts, ex.max_depth, true)));
 
     // no collect, captures first      = 18.2 ms
     // sort by score                   = 18.8

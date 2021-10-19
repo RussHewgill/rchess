@@ -175,6 +175,81 @@ pub fn find_move_error(
     }
 }
 
+#[derive(Debug,Default,PartialEq,PartialOrd,Clone)]
+pub struct StockfishEval {
+    pub total_classic:    f64,
+    pub total_nn:         f64,
+    pub material_mg:      [[f64; 6]; 2],
+    pub material_eg:      [[f64; 6]; 2],
+}
+
+pub fn stockfish_eval(
+    fen:    &str,
+    print:  bool,
+) -> std::io::Result<(String, StockfishEval)> {
+    use regex::Regex;
+    let mut eval = StockfishEval::default();
+
+    let mut child = Command::new("stockfish")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()?;
+
+    child.stdin
+        .as_mut()
+        .unwrap()
+        .write_all(format!("ucinewgame\nposition fen {}\n", fen).as_bytes())?;
+
+    child.stdin
+        .as_mut()
+        .unwrap()
+        .write_all(format!("eval\n").as_bytes())?;
+
+    let output = child.wait_with_output()?;
+    let output = String::from_utf8(output.stdout).unwrap();
+
+    let output = output.lines().collect::<Vec<_>>();
+
+    let output_mat = &output[4..23];
+
+    let output_total = &output[output.len()-4 .. output.len()-1];
+    // eprintln!("{}", output_total.join("\n"));
+
+    let p = Regex::new(r"(-?\d+\.\d+)").unwrap();
+
+    let tc = p.find(output_total[0]).unwrap();
+    let tn = p.find(output_total[1]).unwrap();
+
+    // eprintln!("tc = {:?}", tc.as_str());
+    eval.total_classic = f64::from_str(tc.as_str()).unwrap();
+    eval.total_nn = f64::from_str(tn.as_str()).unwrap();
+
+    let output_str = output_mat.join("\n");
+    if print { println!("{}", output_str) }
+
+    let pawns   = output_mat[6];
+    // let rooks   = output_mat[9];
+    // let knights = output_mat[7];
+    // let bishops = output_mat[8];
+    // let queens  = output_mat[10];
+    // eprintln!("{}", pawns);
+
+    // let p = Regex::new(r"\| +Pawns \| +(-?\d+\.\d+) +(-?\d+\.\d+) +\|\| +(-?\d+\.\d+) +(-?\d+\.\d+) +").unwrap();
+    // let p = Regex::new(r"\| +Pawns \| +(-?\d+\.\d+) +(-?\d+\.\d+).*").unwrap();
+    let p = Regex::new(r"(-?\d+\.\d+)").unwrap();
+
+    let mut cs = p.find_iter(pawns).collect::<Vec<_>>();
+
+    eval.material_mg[White][Pawn.index()] = f64::from_str(cs[0].as_str()).unwrap();
+    eval.material_eg[White][Pawn.index()] = f64::from_str(cs[1].as_str()).unwrap();
+    eval.material_mg[Black][Pawn.index()] = f64::from_str(cs[2].as_str()).unwrap();
+    eval.material_eg[Black][Pawn.index()] = f64::from_str(cs[3].as_str()).unwrap();
+
+    Ok((output_str, eval))
+    // unimplemented!()
+}
+
+
 /// (_, ((ns0,nodes0),(ns1,nodes1)))
 /// ns0    = total nodes found
 /// nodes0 = HashMap<Move String, (Move, nodes after Move)>

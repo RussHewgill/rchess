@@ -8,6 +8,8 @@ use crate::tables::*;
 pub struct SearchStats {
     pub nodes:          u32,
     pub leaves:         u32,
+    pub checkmates:     u32,
+    pub stalemates:     u32,
     pub tt_hits:        u32,
     pub tt_misses:      u32,
 }
@@ -15,11 +17,15 @@ pub struct SearchStats {
 impl SearchStats {
 
     pub fn print(&self, dt: Duration) {
-        println!("nodes  = {:?}", self.nodes);
-        println!("1k n/s = {:.2}", (self.nodes as f64 / 1000.) / dt.as_secs_f64());
-        println!("leaves = {:?}", self.leaves);
-        println!("hits   = {:?}", self.tt_hits);
-        println!("misses = {:?}", self.tt_misses);
+        print!("\n");
+        println!("time       = {:.3}s", dt.as_secs_f64());
+        println!("nodes      = {:?}", self.nodes);
+        println!("rate       = {:.2} nodes/s", (self.nodes as f64 / 1000.) / dt.as_secs_f64());
+        println!("leaves     = {:?}", self.leaves);
+        println!("checkmates = {:?}", self.checkmates);
+        println!("stalemates = {:?}", self.stalemates);
+        println!("hits       = {:?}", self.tt_hits);
+        println!("misses     = {:?}", self.tt_misses);
     }
 
 }
@@ -31,6 +37,8 @@ impl std::ops::Add for SearchStats {
         Self {
             nodes:          self.nodes + other.nodes,
             leaves:         self.leaves + other.leaves,
+            checkmates:     self.checkmates + other.checkmates,
+            stalemates:     self.stalemates + other.stalemates,
             tt_hits:        self.tt_hits + other.tt_hits,
             tt_misses:      self.tt_misses + other.tt_misses,
         }

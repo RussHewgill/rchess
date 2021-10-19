@@ -122,16 +122,19 @@ impl BitBoard {
 
 impl BitBoard {
 
-    pub fn mask_rank(r: u32) -> BitBoard {
-        assert!(r < 8);
-        let k = (!0u8) as u64;
-        BitBoard(k.overflowing_shl(r * 8).0)
+    // #[inline]
+    pub fn mask_rank(r: u8) -> BitBoard {
+        // assert!(r < 8);
+        // let k = (!0u8) as u64;
+        // BitBoard(k.overflowing_shl(r * 8).0)
+        MASK_RANKS[r as usize]
     }
 
-    pub fn mask_file(f: u32) -> BitBoard {
-        assert!(f < 8);
-        let k = 0x0101010101010101u64;
-        BitBoard(k.overflowing_shl(f).0)
+    pub fn mask_file(f: u8) -> BitBoard {
+        // assert!(f < 8);
+        // let k = 0x0101010101010101u64;
+        // BitBoard(k.overflowing_shl(f).0)
+        MASK_FILES[f as usize]
     }
 
     pub fn mask_between(ts: &Tables, c0: Coord, c1: Coord) -> BitBoard {

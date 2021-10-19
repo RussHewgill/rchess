@@ -2,6 +2,8 @@
 use crate::types::*;
 use crate::tables::*;
 
+use evmap_derive::ShallowCopy;
+
 pub use self::D::*;
 
 use std::str::FromStr;
@@ -18,7 +20,7 @@ pub enum D {
     NW,
 }
 
-#[derive(Eq,Hash,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Eq,Hash,PartialEq,PartialOrd,ShallowCopy,Clone,Copy)]
 pub struct Coord(pub u8, pub u8);
 
 impl<T> std::ops::Index<Coord> for [T; 64] {

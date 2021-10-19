@@ -122,7 +122,8 @@ fn main() -> std::io::Result<()> {
                     "go"         => {
 
                         // let m = explorer.lock().unwrap().explore(&ts, depth).unwrap();
-                        let m = explorer.explore(&ts, depth).unwrap();
+                        let (m,_) = explorer.explore(&ts, depth, true);
+                        let m = m.unwrap();
 
                         match m {
                             Move::Promotion { new_piece, .. } | Move::PromotionCapture { new_piece, .. } => {

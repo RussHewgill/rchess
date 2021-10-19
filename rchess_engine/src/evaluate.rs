@@ -10,10 +10,8 @@ pub struct Eval {
     // material_black:         [Score; 6],
     // piece_positions_white:  [Score; 6],
     // piece_positions_black:  [Score; 6],
-    pub material_white:         [Score; 6],
-    pub material_black:         [Score; 6],
-    pub piece_positions_white:  [Score; 6],
-    pub piece_positions_black:  [Score; 6],
+    pub material:         [[Score; 6]; 2],
+    pub piece_positions:  [[Score; 6]; 2],
 }
 
 impl Eval {
@@ -29,28 +27,35 @@ impl Eval {
         //     black - white
         // }
 
-        white - black
+        // white - black
+        white + black
 
         // unimplemented!("Eval::diff()")
+    }
+
+    pub fn sum_material(&self) -> [Score; 2] {
+        let w = self.material[White].iter().sum();
+        let b = self.material[Black].iter().sum();
+        [w,b]
     }
 
     pub fn sum_color(&self, col: Color) -> Score {
         let mut score = 0;
         match col {
             White => {
-                for m in self.material_white.iter() {
+                for m in self.material[White].iter() {
                     score += m;
                 }
-                for m in self.piece_positions_white.iter() {
+                for m in self.piece_positions[White].iter() {
                     score += m;
                 }
             },
             Black => {
-                for m in self.material_black.iter() {
-                    score += m;
+                for m in self.material[Black].iter() {
+                    score -= m;
                 }
-                for m in self.piece_positions_black.iter() {
-                    score += m;
+                for m in self.piece_positions[Black].iter() {
+                    score -= m;
                 }
             },
         }
@@ -58,28 +63,16 @@ impl Eval {
     }
 
     pub fn get_piece_pos(&self, pc: Piece, col: Color) -> Score {
-        match col {
-            White => self.piece_positions_white[pc.index()],
-            Black => self.piece_positions_black[pc.index()],
-        }
+        self.piece_positions[col][pc.index()]
     }
     pub fn set_piece_pos_mut(&mut self, pc: Piece, col: Color, s: Score) {
-        match col {
-            White => self.piece_positions_white[pc.index()] = s,
-            Black => self.piece_positions_black[pc.index()] = s,
-        }
+        self.piece_positions[col][pc.index()] = s
     }
     pub fn get_piece_mat(&self, pc: Piece, col: Color) -> Score {
-        match col {
-            White => self.material_white[pc.index()],
-            Black => self.material_black[pc.index()],
-        }
+        self.material[col][pc.index()]
     }
     pub fn set_piece_mat_mut(&mut self, pc: Piece, col: Color, s: Score) {
-        match col {
-            White => self.material_white[pc.index()] = s,
-            Black => self.material_black[pc.index()] = s,
-        }
+        self.material[col][pc.index()] = s
     }
 
 }
@@ -158,7 +151,12 @@ impl Game {
 
     pub fn score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> Score {
         match pc {
-            // Pawn   => self.score_positions_pawns(&ts, col),
+            Pawn   => {
+                let pos = self._score_positions(&ts, Pawn, col);
+                let ds = self.count_pawns_doubled(&ts, col);
+                pos + (ds as Score * ts.piece_tables_opening.ev_pawn.doubled)
+                // pos
+            },
             // Rook   => unimplemented!(),
             // Knight => unimplemented!(),
             // Bishop => unimplemented!(),
@@ -178,14 +176,59 @@ impl Game {
         score
     }
 
-    // fn score_positions_pawns(&self, ts: &Tables, col: Color) -> Score {
-    //     let pawns = self.get(Pawn, col);
-    //     let mut score = 0;
-    //     pawns.iter_bitscan(|sq| {
-    //         score += ts.piece_tables.get(Pawn, col, sq);
-    //     });
-    //     score
-    // }
+}
+
+/// Pawn Structure
+impl Game {
+
+    pub fn count_pawns_doubled(&self, ts: &Tables, col: Color) -> u8 {
+        let pawns = self.get(Pawn, col);
+
+        let out = (0..8).map(|f| {
+            let b = pawns & BitBoard::mask_file(f);
+
+            // eprintln!("b = {:?}", b);
+
+            match b.popcount() {
+                0 | 1 => 0,
+                2     => 1,
+                3     => 2,
+                4     => 3,
+                5     => 4,
+                6     => 5,
+                _     => panic!("too many pawns in file")
+            }
+        // }).collect::<Vec<_>>();
+        });
+
+        // eprintln!("out = {:?}", out);
+
+        // let coords = pawns.into_iter()
+        //     .map(|sq| Coord::from(sq))
+        //     .map(|c| c.0)
+        //     .collect::<Vec<_>>();
+        // let mut cs = coords.clone();
+        // cs.sort();
+        // cs.dedup();
+
+        let out: u32 = out.sum();
+        out as u8
+        // out.len() as u8
+        // unimplemented!()
+    }
+
+    pub fn count_pawns_backward(&self, ts: &Tables, col: Color) -> u8 {
+        unimplemented!()
+    }
+
+    pub fn count_pawns_isolated(&self, ts: &Tables, col: Color) -> u8 {
+        unimplemented!()
+    }
+
+    pub fn count_pawns_passed(&self, ts: &Tables, col: Color) -> u8 {
+        unimplemented!()
+    }
+
 
 }
 

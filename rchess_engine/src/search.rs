@@ -54,62 +54,28 @@ impl Game {
         }
     }
 
-    // pub fn _search_all_test(&self, ts: &Tables, col: Color, test: bool) -> Outcome {
-
-    //     // let out = if test {
-    //     //     let mut k = self.search_king(&ts, col);
-    //     //     k.extend(self.search_sliding_iter(&ts, Bishop, col));
-    //     //     k.extend(self.search_sliding_iter(&ts, Rook, col));
-    //     //     k.extend(self.search_sliding_iter(&ts, Queen, col));
-    //     //     k
-    //     // } else {
-    //     //     let k = self.search_king(&ts, col);
-    //     //     let b = self.search_sliding(&ts, Bishop, col);
-    //     //     let r = self.search_sliding(&ts, Rook, col);
-    //     //     let q = self.search_sliding(&ts, Queen, col);
-    //     //     vec![k,b,r,q].concat()
-    //     // };
-
-    //     // // Worse
-    //     // let mut k = self.search_king(&ts, col);
-    //     // let b = self.search_sliding(&ts, Bishop, col);
-    //     // k.extend(b.into_iter().filter(|m| self.move_is_legal(&ts, m)));
-    //     // let r = self.search_sliding(&ts, Rook, col);
-    //     // k.extend(r.into_iter().filter(|m| self.move_is_legal(&ts, m)));
-    //     // let q = self.search_sliding(&ts, Queen, col);
-    //     // k.extend(q.into_iter().filter(|m| self.move_is_legal(&ts, m)));
-    //     // let n = self.search_knights(&ts, col);
-    //     // k.extend(n.into_iter().filter(|m| self.move_is_legal(&ts, m)));
-    //     // let p = self.search_pawns(&ts, col);
-    //     // k.extend(p.into_iter().filter(|m| self.move_is_legal(&ts, m)));
-    //     // let pp = self._search_promotions(&ts, None, col);
-    //     // k.extend(pp.into_iter().filter(|m| self.move_is_legal(&ts, m)));
-    //     // let cs = self._search_castles(&ts);
-    //     // k.extend(cs.into_iter().filter(|m| self.move_is_legal(&ts, m)));
-
-    //     let out: Vec<Move> = out.into_iter().filter(|m| {
-    //         // let out: Vec<Move> = k.into_iter().filter(|m| {
-    //         self.move_is_legal(&ts, m)
-    //     }).collect();
-
-    //     if out.is_empty() {
-    //         Outcome::Stalemate
-    //     } else {
-    //         Outcome::Moves(out)
-    //     }
-    // }
-
     pub fn _search_all(&self, ts: &Tables, col: Color) -> Outcome {
 
         let k = self.search_king(&ts, col);
         let b = self.search_sliding(&ts, Bishop, col);
         let r = self.search_sliding(&ts, Rook, col);
         let q = self.search_sliding(&ts, Queen, col);
+        // let b = self.search_sliding_iter(&ts, Bishop, col).collect();
+        // let r = self.search_sliding_iter(&ts, Rook, col).collect();
+        // let q = self.search_sliding_iter(&ts, Queen, col).collect();
+
+        // let mut k = self.search_king(&ts, col);
+        // k.extend(self.search_sliding_iter(&ts, Bishop, col));
+        // k.extend(self.search_sliding_iter(&ts, Rook, col));
+        // k.extend(self.search_sliding_iter(&ts, Queen, col));
+
         let n = self.search_knights(&ts, col);
         let p = self.search_pawns(&ts, col);
         let pp = self._search_promotions(&ts, None, col);
         let cs = self._search_castles(&ts);
+
         let out = vec![k,b,r,q,n,p,pp,cs].concat();
+        // let out = vec![k,n,p,pp,cs].concat();
 
         // k.extend(iter)
 
@@ -517,50 +483,20 @@ impl Game {
         let moves = pieces.into_iter().flat_map(move |sq| {
             let ms = self._search_sliding_single(&ts, pc, sq.into(), col, None);
             let sq2: Coord = sq.into();
-            // (sq,ms)
+
+            // let attacks = moves & self.get_color(!col);
+            // let quiets  = moves & self.all_empty();
+            let attacks = self.get_color(!col);
+
             ms.into_iter().map(move |to| {
-                Move::Quiet { from: sq2, to: to.into() }
+                if attacks.is_one_at(to) {
+                    Move::Capture { from: sq2, to: to.into() }
+                } else {
+                    Move::Quiet { from: sq2, to: to.into() }
+                }
             })
+
         });
-
-        // let moves = moves.flat_map(|(sq,ms)| {
-        //     // let out = ms.into_iter().map(|to| {
-        //     //     Move::Quiet { from: sq.into(), to: to.into() }
-        //     // });
-        //     // out
-        //     let sq2: Coord = sq.into();
-        //     ms.into_iter().map(move |to| {
-        //         Move::Quiet { from: sq2, to: to.into() }
-        //     })
-        // });
-
-        // let moves = pieces.into_iter().map(|sq| {
-        //     let moves   = self._search_sliding_single(&ts, pc, sq.into(), col, None);
-        //     // let attacks = moves & self.get_color(!col);
-        //     // let quiets  = moves & self.all_empty();
-        //     // attacks.iter_bitscan(|sq2| {
-        //     //     out.push(Move::Capture { from: sq.into(), to: sq2.into() });
-        //     // });
-        //     // quiets.iter_bitscan(|sq2| {
-        //     //     out.push(Move::Quiet { from: sq.into(), to: sq2.into() });
-        //     // });
-        //     // let out = moves.into_iter().map(|to| {
-        //     //     Move::Quiet { from: sq.into(), to: to.into() }
-        //     // });
-        //     // out
-        //     moves
-        // });
-
-        // let moves = moves.map(|bb| {
-        //     let sq = bb.bitscan();
-        //     Move::Quiet { from: sq.into(), to: sq.into() }
-        // });
-        // let moves = pieces.into_iter().map(|sq| {
-        //     Move::Quiet { from: sq.into(), to: sq.into() }
-        // });
-
-            // .flatten()
-        // unimplemented!()
         moves
     }
 

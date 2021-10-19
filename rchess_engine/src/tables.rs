@@ -44,6 +44,28 @@ pub static CENTERDIST: [u8; 64] = [
     3, 3, 3, 3, 3, 3, 3, 3
 ];
 
+pub static MASK_FILES: [BitBoard; 8] = [
+    BitBoard(0x0101010101010101),
+    BitBoard(0x0202020202020202),
+    BitBoard(0x0404040404040404),
+    BitBoard(0x0808080808080808),
+    BitBoard(0x1010101010101010),
+    BitBoard(0x2020202020202020),
+    BitBoard(0x4040404040404040),
+    BitBoard(0x8080808080808080),
+];
+
+pub static MASK_RANKS: [BitBoard; 8] = [
+    BitBoard(0x00000000000000ff),
+    BitBoard(0x000000000000ff00),
+    BitBoard(0x0000000000ff0000),
+    BitBoard(0x00000000ff000000),
+    BitBoard(0x000000ff00000000),
+    BitBoard(0x0000ff0000000000),
+    BitBoard(0x00ff000000000000),
+    BitBoard(0xff00000000000000),
+];
+
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Tables {
     // pub knight_moves: HashMap<Coord, BitBoard>,
@@ -568,7 +590,25 @@ mod eval {
 
     #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
     pub struct PcTables {
-        tables:    [[Score; 64]; 6],
+        tables:         [[Score; 64]; 6],
+        pub ev_pawn:    EvPawn,
+    }
+
+    #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+    pub struct EvPawn {
+        pub backward: Score,
+        pub doubled:  Score,
+        pub passed:   Score,
+    }
+
+    impl EvPawn {
+        pub fn new() -> Self {
+            Self {
+                backward: -10,
+                doubled:  -15,
+                passed:   15,
+            }
+        }
     }
 
     impl PcTables {
@@ -613,17 +653,19 @@ mod eval {
         pub fn new() -> (Self,Self) {
             let pawns = Self::gen_pawns();
             let knights = Self::gen_knights();
+            let kings = Self::gen_kings_opening();
             let opening = Self {
                 tables: [pawns,
                          [0; 64], // Rook
-                         [0; 64],
-                         // knights,
+                         knights,
                          [0; 64], // b
                          [0; 64], // q
-                         [0; 64]], // k
+                         kings // k
+                ],
+                ev_pawn: EvPawn::new(),
             };
 
-            let endgame = opening;
+            let mut endgame = opening;
 
             (opening,endgame)
         }
@@ -713,6 +755,19 @@ mod eval {
             // }
 
             out
+        }
+
+        pub fn gen_kings_opening() -> [Score; 64] {
+            [
+                -30,-40,-40,-50,-50,-40,-40,-30,
+                -30,-40,-40,-50,-50,-40,-40,-30,
+                -30,-40,-40,-50,-50,-40,-40,-30,
+                -30,-40,-40,-50,-50,-40,-40,-30,
+                -20,-30,-30,-40,-40,-30,-30,-20,
+                -10,-20,-20,-20,-20,-20,-20,-10,
+                20, 20,  0,  0,  0,  0, 20, 20,
+                20, 30, 10,  0,  0, 10, 30, 20
+            ]
         }
 
     }
@@ -875,8 +930,8 @@ mod magics {
                 // eprintln!("c0 = {:?}", c0);
 
                 let edges: BitBoard =
-                    ((BitBoard::mask_rank(0) | BitBoard::mask_rank(7)) & !BitBoard::mask_rank(c0.1 as u32))
-                    | ((BitBoard::mask_file(0) | BitBoard::mask_file(7)) & !BitBoard::mask_file(c0.0 as u32));
+                    ((BitBoard::mask_rank(0) | BitBoard::mask_rank(7)) & !BitBoard::mask_rank(c0.1 as u8))
+                    | ((BitBoard::mask_file(0) | BitBoard::mask_file(7)) & !BitBoard::mask_file(c0.0 as u8));
 
                 let mask = if bishop {
                     Self::gen_blockermask_bishop(c0) & !edges
@@ -1038,8 +1093,8 @@ mod magics {
 
         pub fn gen_blockermask_rook(c0: Coord) -> BitBoard {
             // let b0 = BitBoard(0xff818181818181ff);
-            let b1 = BitBoard::mask_file(c0.0 as u32)
-                | BitBoard::mask_rank(c0.1 as u32);
+            let b1 = BitBoard::mask_file(c0.0 as u8)
+                | BitBoard::mask_rank(c0.1 as u8);
             // (!b0 & b1).set_zero(c0)
             b1.set_zero(c0)
         }

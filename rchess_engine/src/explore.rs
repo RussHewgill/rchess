@@ -55,31 +55,15 @@ impl Explorer {
 /// Entry points
 impl Explorer {
 
-    pub fn explore(&self, ts: &Tables, depth: Depth) -> (Option<Move>,SearchStats) {
+    pub fn explore(&self, ts: &Tables, depth: Depth, iterative: bool) -> (Option<Move>,SearchStats) {
 
-        // let e = self.game.evaluate(&ts, self.side);
-        // eprintln!("e = {:?}", e.diff());
-
-        // let mut ms = self.negamax(&ts, depth, self.side);
-
-        // let ms = self.ab_search(&ts, depth, None);
-        let (moves,stats) = self.rank_moves(&ts, false);
-
-        // eprintln!("ms = {:?}", ms);
-
-        (moves.get(0).map(|x| x.0),stats)
-
-        // ms.map(|x| x.0).flatten()
-        // ms.0
-        // unimplemented!()
-
-        // let ms = Eval::sort_rev(self.side, self.game.state.side_to_move, ms, |x| x.1);
-        // for (m,e) in ms.into_iter() {
-        //     eprintln!("0: {} = {:?}", e.score_material.diff(), m);
-        // }
-
-        // unimplemented!()
-        // None
+        if iterative {
+            let (moves,stats) = self.iterative_deepening(&ts, false);
+            (moves.get(0).map(|x| x.0),stats)
+        } else {
+            let (moves,stats) = self.rank_moves(&ts, false);
+            (moves.get(0).map(|x| x.0),stats)
+        }
     }
 
     pub fn rank_moves(&self, ts: &Tables, print: bool) -> (Vec<(Move,Score)>,SearchStats) {
@@ -128,22 +112,24 @@ impl Explorer {
 
         if print {
             for (m,s) in out.iter() {
-                eprintln!("{:?}: {:?}", s, m);
+                eprintln!("{:>8} = {:?}", s, m);
             }
         }
         (out,stats)
     }
 
-    pub fn iterative_deepening(&self, ts: &Tables, print: bool) -> (Option<Move>,SearchStats) {
+    pub fn iterative_deepening(&self, ts: &Tables, print: bool) -> (Vec<(Move,Score)>,SearchStats) {
 
         let ms = self.game.search_all(&ts, None);
         let ms = ms.get_moves_unsafe();
         let (ms,stats) = self._iterative_deepening(&ts, print, ms);
 
-        (ms.get(0).map(|x| x.0),stats)
+        // (ms.get(0).map(|x| x.0),stats)
+        // (ms.get(0).copied(),stats)
+        (ms,stats)
     }
 
-    fn _iterative_deepening(&self, ts: &Tables, print: bool, moves: Vec<Move>
+    pub fn _iterative_deepening(&self, ts: &Tables, print: bool, moves: Vec<Move>
     ) -> (Vec<(Move,Score)>,SearchStats) {
 
         self.trans_table.clear();
@@ -157,6 +143,7 @@ impl Explorer {
         let mut depth = 0;
 
         let gs: Vec<(Move,Game)> = moves.par_iter().flat_map(|mv| {
+        // let gs: Vec<(Move,Game)> = moves.iter().flat_map(|mv| {
             if let Ok(g2) = self.game.make_move_unchecked(&ts, &mv) {
                 Some((*mv,g2))
             } else { None }
@@ -168,8 +155,8 @@ impl Explorer {
         //     }
         // });
 
-        // while !self.timer.should_stop() && (depth <= self.max_depth) {
         while timer.should_search(self.side, depth) && (depth <= self.max_depth) {
+
             // eprintln!("Explorer: not parallel");
             // (out,ss) = gs.iter().map(|(mv,g2)| {
             (out,ss) = gs.par_iter().map(|(mv,g2)| {
@@ -187,9 +174,15 @@ impl Explorer {
             stats = ss.iter().sum();
 
             out.sort_by(|a,b| a.1.cmp(&b.1));
+
+            // if self.side == White {
+            //     out.reverse();
+            // }
+
             if self.side == self.game.state.side_to_move {
                 out.reverse();
             }
+
             depth += 1;
             timer.update_times(self.side, stats.nodes);
             if print {
@@ -254,15 +247,15 @@ impl Explorer {
         let moves: Vec<Move> = match moves {
             Outcome::Checkmate(c) => {
                 let score = 100_000_000 - k as Score;
-                // self.trans_table.inc_leaves();
                 stats.leaves += 1;
-                if self.side == Black { return -score; } else { return score; }
+                stats.checkmates += 1;
+                return score;
             },
             Outcome::Stalemate    => {
                 let score = -100_000_000 + k as Score;
-                // self.trans_table.inc_leaves();
                 stats.leaves += 1;
-                if self.side == Black { return -score; } else { return score; }
+                stats.stalemates += 1;
+                return score;
             },
             Outcome::Moves(ms)    => ms,
         };
@@ -270,7 +263,6 @@ impl Explorer {
         if depth == 0 {
             let score = g.evaluate(&ts).sum();
             // let score = self.quiescence(&ts, g, moves, k, alpha, beta);
-            // self.trans_table.inc_leaves();
 
             stats.leaves += 1;
             if self.side == Black {
@@ -281,6 +273,7 @@ impl Explorer {
         }
 
         let gs = moves.into_iter().flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, &m) {
+        // let gs = moves.into_par_iter().flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, &m) {
             let tt = self.check_tt(&ts, &g2, depth, maximizing, &mut stats);
             Some((m,g2,tt))
         } else {
@@ -318,42 +311,42 @@ impl Explorer {
             //     Some(s) => s,
             // };
 
-            // if maximizing {
-            //     val.1 = i32::max(val.1, score);
-            // } else {
-            //     val.1 = i32::min(val.1, score);
-            // }
-
             if maximizing {
-                if score > val.1 {
-                    val = (Some((zb,mv)),score);
-                }
-                if val.1 > alpha {
-                    alpha = val.1;
-                    // self.trans_table.insert_replace(
-                    //     zb, SearchInfo::new(mv, depth, val.1));
-                }
-                if val.1 >= beta { // Beta cutoff
-                    // self.trans_table.insert(zb, SearchInfo::new(depth, NodeType::NodeLowerBound(beta)));
-                    self.trans_table.insert_replace(
-                        zb, SearchInfo::new(mv, depth, Node::LowerBound(val.1)));
-                    break;
-                }
+                val.1 = i32::max(val.1, score);
             } else {
-                if score < val.1 {
-                    val = (Some((zb,mv)),score);
-                }
-                if val.1 < beta {
-                    beta = val.1;
-                    // self.trans_table.insert_replace(
-                    //     zb, SearchInfo::new(mv, depth, val.1));
-                }
-                if val.1 <= alpha { // Alpha cutoff
-                    self.trans_table.insert_replace(
-                        zb, SearchInfo::new(mv, depth, Node::UpperBound(val.1)));
-                    break;
-                }
+                val.1 = i32::min(val.1, score);
             }
+
+            // if maximizing {
+            //     if score > val.1 {
+            //         val = (Some((zb,mv)),score);
+            //     }
+            //     if val.1 > alpha {
+            //         alpha = val.1;
+            //         // self.trans_table.insert_replace(
+            //         //     zb, SearchInfo::new(mv, depth, val.1));
+            //     }
+            //     if val.1 >= beta { // Beta cutoff
+            //         // self.trans_table.insert(zb, SearchInfo::new(depth, NodeType::NodeLowerBound(beta)));
+            //         self.trans_table.insert_replace(
+            //             zb, SearchInfo::new(mv, depth, Node::LowerBound(val.1)));
+            //         break;
+            //     }
+            // } else {
+            //     if score < val.1 {
+            //         val = (Some((zb,mv)),score);
+            //     }
+            //     if val.1 < beta {
+            //         beta = val.1;
+            //         // self.trans_table.insert_replace(
+            //         //     zb, SearchInfo::new(mv, depth, val.1));
+            //     }
+            //     if val.1 <= alpha { // Alpha cutoff
+            //         self.trans_table.insert_replace(
+            //             zb, SearchInfo::new(mv, depth, Node::UpperBound(val.1)));
+            //         break;
+            //     }
+            // }
 
             /*
             if maximizing {

@@ -6,6 +6,10 @@ use crate::evaluate::*;
 use parking_lot::RwLock;
 use rustc_hash::FxHashMap;
 
+use evmap::{ReadHandle,WriteHandle};
+// use evmap_derive::ShallowCopy;
+// use rustc_hash::Fx;
+
 #[derive(Debug,Default)]
 // pub struct RwTransTable(pub RwLock<TransTable>, pub RwLock<TTStats>);
 pub struct RwTransTable(pub RwLock<TransTable>);
@@ -13,9 +17,24 @@ pub struct RwTransTable(pub RwLock<TransTable>);
 #[derive(Debug,Default)]
 pub struct TransTable {
     pub map:    FxHashMap<Zobrist, SearchInfo>,
+    // pub map_r:    ReadHandle<Zobrist, SearchInfo>,
+    // pub map_w:    WriteHandle<Zobrist, SearchInfo>,
     // pub hits:   u32,
     // pub misses: u32,
 }
+
+// impl Default for TransTable {
+//     fn default() -> Self {
+//         let (r,w) = evmap::Options::default()
+//             // .with_hasher()
+//             .construct();
+//         Self {
+//             map_r: r,
+//             map_w: w,
+//         }
+//         // unimplemented!()
+//     }
+// }
 
 #[derive(Debug,Default)]
 pub struct TTStats {
@@ -24,7 +43,8 @@ pub struct TTStats {
     pub leaves:  u32,
 }
 
-#[derive(Debug,PartialEq,PartialOrd,Clone,Copy)]
+// #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
+#[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
 pub struct SearchInfo {
     pub mv:                 Move,
     pub depth_searched:     Depth,
@@ -39,6 +59,7 @@ pub struct SearchInfo {
     // pub age:                Duration, // or # of moves?
 }
 
+// #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
 pub enum Node {
     PV(Score),
@@ -51,7 +72,9 @@ pub enum Node {
 impl RwTransTable {
 
     // pub fn new() -> Self {
-    //     RwTransTable(RwLock::new(TransTable::default()), RwLock::new(Default::default()))
+    //     // RwTransTable(RwLock::new(TransTable::default()), RwLock::new(Default::default()))
+    //     // let m = evmap::new();
+    //     unimplemented!()
     // }
 
     /// Always replace
@@ -78,6 +101,7 @@ impl RwTransTable {
         self.with_mut(|m| {
             m.map.clear();
         });
+        // unimplemented!()
     }
 
     pub fn with<F,T>(&self, mut f: F) -> T

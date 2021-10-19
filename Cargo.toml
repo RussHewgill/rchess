@@ -9,7 +9,6 @@ members = [
 #     "rchess_game",
 # ]
 
-
 [profile.dev.package."*"]
 opt-level = 3
 
