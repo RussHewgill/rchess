@@ -71,16 +71,9 @@ fn main() {
     // main2();
     // main4(); // perft
 
-    // for f in 0..8 {
-    //     let b = BitBoard::mask_rank(f);
-    //     // eprintln!("BitBoard({:0<16#8x})", b.0);
-    //     // eprintln!("BitBoard({:#16x})", b.0);
-    //     eprintln!("{} = BitBoard({:0>#016x})", f, b.0);
-    // }
-
     // main8(); // eval testing
-    // main7();
-    main3(); // read from file and test
+    main7();
+    // main3(); // read from file and test
 
 }
 
@@ -144,17 +137,14 @@ fn main7() {
 
     // let fen = "5r1k/4Qpq1/4p3/1p1p2P1/2p2P2/1p2P3/3P4/BK6 b - - 0 1";
 
-    // // minimax = 869088, 2.08 s
-    // // AB      = 92245,  0.24 s
-    let fen = "r4q1k/5P1b/2p2n1P/p2p1P2/3P4/8/2PKN1Q1/6R1 w - - 1 34";
-    // let n = 3;
+    // // // minimax = 869088, 2.08 s
+    // // // AB      = 92245,  0.24 s
+    // let fen = "r4q1k/5P1b/2p2n1P/p2p1P2/3P4/8/2PKN1Q1/6R1 w - - 1 34";
+    // // let n = 3;
 
     // // AB = 808182 leaves, 1.87 s
     // let fen = "7k/2pq2p1/6rp/1P2p3/2Qp1n2/P2P3P/R1P2PPK/3N2R1 b - - 0 28";
     // let n = 4;
-
-    // let fen = "k7/8/8/8/8/6P1/8/7K w - - 0 1";
-    // let n = 1;
 
     // let fen = "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1"; // WAC.001 = Qg6 = g3g6
     // let n = 3;
@@ -167,13 +157,15 @@ fn main7() {
     // let fen = "5k2/6pp/p1qN4/1p1p4/3P4/2PKP2Q/PP3r2/3R4 b - - 0 1"; // WAC.005, Qc4 = c6c4
     // let fen = "4r3/2R3pp/q2pkp2/4p3/4P1P1/4nQ1P/PP6/2K5 w - - 0 1"; // WAC.005, color reversed
 
+    let fen = "rn2kbnr/pppppppp/8/8/6b1/1QP4P/PP1PqPPN/RNB1KB1R w KQkq - 0 2"; // 1 move, then lots
+
     let n = 4;
 
     let ts = Tables::new();
 
     let mut g = Game::from_fen(&ts, fen).unwrap();
     let _ = g.recalc_gameinfo_mut(&ts);
-    eprintln!("g = {:?}", g);
+    // eprintln!("g = {:?}", g);
 
     let stop = Arc::new(AtomicBool::new(false));
     let timesettings = TimeSettings::new_f64(
@@ -182,9 +174,8 @@ fn main7() {
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
 
     // let moves = vec![
-    //     Move::Quiet   { from: "C6".into(), to: "C4".into() },
-    //     Move::Capture { from: "C6".into(), to: "D6".into() },
-    //     Move::Quiet   { from: "C6".into(), to: "D7".into() },
+    //     Move::Quiet   { from: "E2".into(), to: "E3".into() },
+    //     Move::Capture { from: "B4".into(), to: "F4".into() },
     // ];
 
     // let t0 = std::time::Instant::now();
@@ -199,8 +190,8 @@ fn main7() {
     // println!("explore iter  done in {:.4} seconds.", t0.elapsed().as_secs_f64());
     // stats.print(t0.elapsed());
 
-    // let k = 4;
-    let k = 2;
+    let k = 4;
+    // let k = 2;
     let mut t: std::time::Duration = std::time::Duration::from_secs(0);
     for q in 0..k {
         let t0 = std::time::Instant::now();
@@ -210,8 +201,8 @@ fn main7() {
         // let (mv,stats) = ex.iterative_deepening(&ts, false);
         println!("\nm #{} = {:?}", q, mv);
 
-        // let (mvs,stats) = ex._iterative_deepening(&ts, false, moves.clone());
-        // let (mvs,stats) = ex.iterative_deepening(&ts, true);
+        // // let (mvs,stats) = ex._iterative_deepening(&ts, false, moves.clone());
+        // // let (mvs,stats) = ex.iterative_deepening(&ts, true);
         // let (mvs,stats) = ex.rank_moves_list(&ts, true, moves.clone());
 
         // for (m,s) in mvs.iter() {

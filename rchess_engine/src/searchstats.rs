@@ -32,7 +32,6 @@ impl SearchStats {
 
 impl std::ops::Add for SearchStats {
     type Output = Self;
-
     fn add(self, other: Self) -> Self {
         Self {
             nodes:          self.nodes + other.nodes,
@@ -45,11 +44,23 @@ impl std::ops::Add for SearchStats {
     }
 }
 
+impl std::ops::AddAssign for SearchStats {
+    fn add_assign(&mut self, other: Self) {
+        *self = *self + other;
+    }
+}
+
+impl std::iter::Sum<Self> for SearchStats {
+    fn sum<I>(iter: I) -> Self where
+        I: Iterator<Item = Self> {
+        iter.fold(Self::default(), |a,b| a + b)
+    }
+}
+
 impl<'a> std::iter::Sum<&'a Self> for SearchStats {
     fn sum<I>(iter: I) -> Self where
         I: Iterator<Item = &'a Self> {
         iter.fold(Self::default(), |a,b| a + *b)
     }
-
 }
 

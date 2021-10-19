@@ -28,6 +28,7 @@ pub struct Explorer {
     pub timer:         Timer,
     pub parallel:      bool,
     pub trans_table:   RwTransTable,
+    // pub trans_table:   TransTable,
     // pub trans_table:   RwLock<TransTable>,
 }
 
@@ -39,6 +40,7 @@ impl Explorer {
                settings:      TimeSettings,
     ) -> Self {
         let tt = RwTransTable::default();
+        // let tt = TransTable::new();
         Self {
             side,
             game,
@@ -286,6 +288,22 @@ impl Explorer {
             gs.reverse();
         }
 
+        let mut gs2 = Vec::with_capacity(gs.len());
+        let mut ss  = Vec::with_capacity(gs.len());
+        gs.into_par_iter()
+            .map(|(m,g2,tt)| {
+                let mut ss = SearchStats::default();
+                // let score = self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut stats);
+                let score = self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut ss);
+                // let score = self.check_tt(&ts, &g2, depth, k, alpha, beta, maximizing);
+                // let score = match tt {
+                //     None    => self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing),
+                //     Some(s) => s,
+                // };
+                ((m,g2,tt,score),ss)
+        }).unzip_into_vecs(&mut gs2, &mut ss);
+        *stats += ss.into_iter().sum();
+
         // let gs0 = gs.clone().filter(|x| x.2.is_some());
         // let gs1 = gs.filter(|x| x.2.is_none());
         // let gs  = gs0.chain(gs1); // also faster wtf
@@ -298,55 +316,50 @@ impl Explorer {
 
         let mut val = if maximizing { i32::MIN } else { i32::MAX };
         let mut val: (Option<(Zobrist,Move)>,i32) = (None,val);
-        for (mv,g2,tt) in gs {
+        // for (mv,g2,tt) in gs {
+        for (mv,g2,tt,score) in gs2.into_iter() {
             let zb = g2.zobrist;
 
             stats.nodes += 1;
 
-            let score = self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut stats);
-            // let score = self.check_tt(&ts, &g2, depth, k, alpha, beta, maximizing);
-
-            // let score = match tt {
-            //     None    => self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing),
-            //     Some(s) => s,
-            // };
-
-            if maximizing {
-                val.1 = i32::max(val.1, score);
-            } else {
-                val.1 = i32::min(val.1, score);
-            }
+            // let score = self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut stats);
 
             // if maximizing {
-            //     if score > val.1 {
-            //         val = (Some((zb,mv)),score);
-            //     }
-            //     if val.1 > alpha {
-            //         alpha = val.1;
-            //         // self.trans_table.insert_replace(
-            //         //     zb, SearchInfo::new(mv, depth, val.1));
-            //     }
-            //     if val.1 >= beta { // Beta cutoff
-            //         // self.trans_table.insert(zb, SearchInfo::new(depth, NodeType::NodeLowerBound(beta)));
-            //         self.trans_table.insert_replace(
-            //             zb, SearchInfo::new(mv, depth, Node::LowerBound(val.1)));
-            //         break;
-            //     }
+            //     val.1 = i32::max(val.1, score);
             // } else {
-            //     if score < val.1 {
-            //         val = (Some((zb,mv)),score);
-            //     }
-            //     if val.1 < beta {
-            //         beta = val.1;
-            //         // self.trans_table.insert_replace(
-            //         //     zb, SearchInfo::new(mv, depth, val.1));
-            //     }
-            //     if val.1 <= alpha { // Alpha cutoff
-            //         self.trans_table.insert_replace(
-            //             zb, SearchInfo::new(mv, depth, Node::UpperBound(val.1)));
-            //         break;
-            //     }
+            //     val.1 = i32::min(val.1, score);
             // }
+
+            if maximizing {
+                if score > val.1 {
+                    val = (Some((zb,mv)),score);
+                }
+                if val.1 > alpha {
+                    alpha = val.1;
+                    // self.trans_table.insert_replace(
+                    //     zb, SearchInfo::new(mv, depth, val.1));
+                }
+                if val.1 >= beta { // Beta cutoff
+                    // self.trans_table.insert(zb, SearchInfo::new(depth, NodeType::NodeLowerBound(beta)));
+                    self.trans_table.insert_replace(
+                        zb, SearchInfo::new(mv, depth, Node::LowerBound(val.1)));
+                    break;
+                }
+            } else {
+                if score < val.1 {
+                    val = (Some((zb,mv)),score);
+                }
+                if val.1 < beta {
+                    beta = val.1;
+                    // self.trans_table.insert_replace(
+                    //     zb, SearchInfo::new(mv, depth, val.1));
+                }
+                if val.1 <= alpha { // Alpha cutoff
+                    self.trans_table.insert_replace(
+                        zb, SearchInfo::new(mv, depth, Node::UpperBound(val.1)));
+                    break;
+                }
+            }
 
             /*
             if maximizing {
