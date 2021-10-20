@@ -30,12 +30,12 @@ const STARTPOS: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
 
 fn main() -> std::io::Result<()> {
 
-    let _ = ThreadPoolBuilder::new()
-        .num_threads(6)
-        .build_global()
-        .unwrap();
+    // let _ = ThreadPoolBuilder::new()
+    //     .num_threads(6)
+    //     .build_global()
+    //     .unwrap();
 
-    let depth = 4;
+    let depth = 5;
 
     let logpath = "log.log";
     let mut logfile = std::fs::OpenOptions::new()
@@ -122,7 +122,7 @@ fn main() -> std::io::Result<()> {
                     "go"         => {
 
                         // let m = explorer.lock().unwrap().explore(&ts, depth).unwrap();
-                        let (m,_) = explorer.explore(&ts, depth, true);
+                        let (m,_) = explorer.explore(&ts, None);
                         let m = m.unwrap();
 
                         match m {

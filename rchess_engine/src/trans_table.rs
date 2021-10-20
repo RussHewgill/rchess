@@ -47,7 +47,8 @@ pub struct SearchInfo {
     pub mv:                 Move,
     pub depth_searched:     Depth,
     // pub score:              Score,
-    pub score:              Node,
+    pub node_type:          Node,
+    pub score:              Score,
     // pub eval:               Eval,
 
     // pub best_move:          Move,
@@ -57,12 +58,15 @@ pub struct SearchInfo {
     // pub age:                Duration, // or # of moves?
 }
 
+/// PV,
+/// UpperBound, // NodeAll
+/// LowerBound, // NodeCut
 // #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
 pub enum Node {
-    PV(Score),
-    UpperBound(Score), // NodeAll
-    LowerBound(Score), // NodeCut
+    PV,
+    UpperBound, // NodeAll
+    LowerBound, // NodeCut
     // NodeAll(Score), // Score = upper bound
     // NodeCut(Score), // Score = lower bound
 }
@@ -152,29 +156,29 @@ impl SearchInfo {
     // pub fn new(pv: Move, depth_searched: u32, score: NodeType) -> Self {
     // pub fn new(depth_searched: u32, score: NodeType) -> Self {
 
-    pub fn new(mv: Move, depth_searched: Depth, score: Node) -> Self {
+    pub fn new(mv: Move, depth_searched: Depth, node_type: Node, score: Score) -> Self {
         Self {
             mv,
             depth_searched,
+            node_type,
             score,
-            // node_type,
             // ..Default::default()
         }
     }
 
-    pub fn score(&self) -> Score {
-        self.score.score()
-    }
+    // pub fn score(&self) -> Score {
+    //     self.score.score()
+    // }
 
 }
 
-impl Node {
-    pub fn score(&self) -> Score {
-        match *self {
-            Node::PV(s)         => s,
-            Node::UpperBound(s) => s,
-            Node::LowerBound(s) => s,
-        }
-    }
-}
+// impl Node {
+//     pub fn score(&self) -> Score {
+//         match *self {
+//             Node::PV(s)         => s,
+//             Node::UpperBound(s) => s,
+//             Node::LowerBound(s) => s,
+//         }
+//     }
+// }
 

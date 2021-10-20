@@ -60,15 +60,19 @@ impl Explorer {
 /// Entry points
 impl Explorer {
 
-    pub fn explore(&self, ts: &Tables, depth: Depth, iterative: bool) -> (Option<Move>,SearchStats) {
+    pub fn explore(&self, ts: &Tables, depth: Option<Depth>) -> (Option<Move>,SearchStats) {
 
-        if iterative {
-            let (moves,stats) = self.iterative_deepening(&ts, false);
-            (moves.get(0).map(|x| x.0),stats)
-        } else {
-            let (moves,stats) = self.rank_moves(&ts, false);
-            (moves.get(0).map(|x| x.0),stats)
-        }
+        let (moves,stats) = self.iterative_deepening(&ts, false);
+        (moves.get(0).map(|x| x.0),stats)
+
+        // if iterative {
+        //     let (moves,stats) = self.iterative_deepening(&ts, false);
+        //     (moves.get(0).map(|x| x.0),stats)
+        // } else {
+        //     let (moves,stats) = self.rank_moves(&ts, false);
+        //     (moves.get(0).map(|x| x.0),stats)
+        // }
+
     }
 
     pub fn rank_moves(&self, ts: &Tables, print: bool) -> (Vec<(Move,Score)>,SearchStats) {
@@ -163,8 +167,10 @@ impl Explorer {
         //     }
         // });
 
-        while timer.should_search(self.side, depth) && (depth <= self.max_depth) {
+        // let alpha = Arc::new(AtomicI32::new(i32::MIN));
+        // let beta  = Arc::new(AtomicI32::new(i32::MAX));
 
+        while timer.should_search(self.side, depth) && (depth <= self.max_depth) {
 
             // eprintln!("Explorer: not parallel");
             // (out,ss) = gs.iter().map(|(mv,g2)| {
@@ -178,18 +184,12 @@ impl Explorer {
                     // &ts, &g2, depth, 1, alpha.clone(), beta.clone(), false, &mut stats);
                     &ts, &g2, depth, 1, alpha, beta, false, &mut stats);
                 ((*mv,score),stats)
-                // (*mv,score)
                 })
                 .unzip();
-                // .collect();
 
             stats = ss.iter().sum();
 
             out.sort_by(|a,b| a.1.cmp(&b.1));
-
-            // if self.side == White {
-            //     out.reverse();
-            // }
 
             if self.side == self.game.state.side_to_move {
                 out.reverse();
@@ -201,12 +201,12 @@ impl Explorer {
                 eprintln!("depth, time = {:?}, {:.2}", depth-1, timer.time_left[self.side]);
             }
         }
-        // if print {
-        //     print!("\n");
-        //     for (m,s) in out.iter() {
-        //         eprintln!("{:>8} = {:?}", s, m);
-        //     }
-        // }
+        if print {
+            print!("\n");
+            for (m,s) in out.iter() {
+                eprintln!("{:>8} = {:?}", s, m);
+            }
+        }
         (out,stats)
     }
 
@@ -233,7 +233,7 @@ impl Explorer {
 
             if si.depth_searched == depth {
                 stats.tt_hits += 1;
-                Some(si.score.score())
+                Some(si.score)
             } else {
                 stats.tt_misses += 1;
                 None
@@ -249,7 +249,6 @@ impl Explorer {
     pub fn _ab_search(
         &self,
         ts:                 &Tables,
-        // trans_table:        &RwLock<TransTable>,
         g:                  &Game,
         depth:              Depth,
         k:                  i16,
@@ -259,7 +258,6 @@ impl Explorer {
         beta:               Arc<AtomicI32>,
         maximizing:         bool,
         mut stats:          &mut SearchStats,
-        // moves:              Option<Vec>,
     ) -> Score {
 
         let moves = g.search_all(&ts, None);
@@ -270,26 +268,12 @@ impl Explorer {
                 stats.leaves += 1;
                 stats.checkmates += 1;
                 return score;
-                // if self.side == Black {
-                // if maximizing {
-                //     return -score;
-                // } else {
-                //     return score;
-                // }
-                // panic!("wat checkmate");
             },
             Outcome::Stalemate    => {
                 let score = -100_000_000 + k as Score;
                 stats.leaves += 1;
                 stats.stalemates += 1;
                 return score;
-                // if self.side == Black {
-                // if !maximizing {
-                //     return -score;
-                // } else {
-                //     return score;
-                // }
-                // panic!("wat stalemate");
             },
             Outcome::Moves(ms)    => ms,
         };
@@ -314,47 +298,11 @@ impl Explorer {
             None
         });
 
-        // let gs = gs.collect::<Vec<_>>();
-
         let mut gs: Vec<(Move,Game,Option<Score>)> = gs.collect();
         gs.sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
         if !maximizing {
             gs.reverse();
         }
-
-        // let mut gs2 = Vec::with_capacity(gs.len());
-        // let mut ss  = Vec::with_capacity(gs.len());
-        // gs.into_par_iter()
-        //     .map(|(m,g2,tt)| {
-        //         let mut ss = SearchStats::default();
-        //         // let score = self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut stats);
-        //         let score = self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut ss);
-        //         // let score = self.check_tt(&ts, &g2, depth, k, alpha, beta, maximizing);
-        //         // let score = match tt {
-        //         //     None    => self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing),
-        //         //     Some(s) => s,
-        //         // };
-        //         ((m,g2,tt,score),ss)
-        // }).unzip_into_vecs(&mut gs2, &mut ss);
-        // *stats += ss.into_iter().sum();
-
-        // // let (gs2,ss): (Vec<(Move,Game,Option<Score>,Score)>,Vec<SearchStats>) = gs.into_par_iter()
-        // let (gs2,ss): (Vec<(Move,Game,Option<Score>,Score)>,Vec<SearchStats>) = gs.into_iter()
-        //     .map(|(m,g2,tt)| {
-        //         let mut ss = SearchStats::default();
-        //         // let score = self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut stats);
-        //         // let score = self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut ss);
-        //         let alpha2 = Arc::new(AtomicI32::new(alpha.load(Ordering::Relaxed)));
-        //         let beta2  = Arc::new(AtomicI32::new(beta.load(Ordering::Relaxed)));
-        //         let score = self._ab_search(&ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut ss);
-        //         // let score = self.check_tt(&ts, &g2, depth, k, alpha, beta, maximizing);
-        //         // let score = match tt {
-        //         //     None    => self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing),
-        //         //     Some(s) => s,
-        //         // };
-        //         ((m,g2,tt,score),ss)
-        //     }).unzip();
-        // *stats += ss.into_iter().sum();
 
         use crossbeam_channel::unbounded;
         let (chan_tx,chan_rx) = unbounded();
@@ -394,6 +342,8 @@ impl Explorer {
         let mut val = if maximizing { i32::MIN } else { i32::MAX };
         let mut val: (Option<(Zobrist,Move)>,i32) = (None,val);
 
+        let mut node_type = Node::PV;
+
         // for (mv,g2,tt) in gs.into_iter() {
         // for (mv,g2,tt,score) in gs2.into_iter() {
         // for (mv,g2,tt,score,ss) in gs2 {
@@ -430,8 +380,9 @@ impl Explorer {
                 }
                 alpha.fetch_max(val.1, Ordering::SeqCst);
                 if val.1 >= beta.load(Ordering::SeqCst) { // Beta cutoff
-                    self.trans_table.insert_replace(
-                        zb, SearchInfo::new(mv, depth, Node::LowerBound(val.1)));
+                    // stats.
+                    // self.trans_table.insert_replace(
+                    //     zb, SearchInfo::new(mv, depth, Node::LowerBound, val.1));
                     break;
                 }
             } else {
@@ -440,8 +391,8 @@ impl Explorer {
                 }
                 beta.fetch_min(val.1, Ordering::SeqCst);
                 if val.1 <= alpha.load(Ordering::SeqCst) { // Alpha cutoff
-                    self.trans_table.insert_replace(
-                        zb, SearchInfo::new(mv, depth, Node::UpperBound(val.1)));
+                    // self.trans_table.insert_replace(
+                    //     zb, SearchInfo::new(mv, depth, Node::UpperBound, val.1));
                     break;
                 }
             }
@@ -500,9 +451,15 @@ impl Explorer {
 
         }
 
-        if let Some((zb,mv)) = val.0 {
-            self.trans_table.insert_replace(
-                zb, SearchInfo::new(mv, depth, Node::PV(val.1)));
+        match node_type {
+            Node::PV         => {
+                if let Some((zb,mv)) = val.0 {
+                    self.trans_table.insert_replace(
+                        zb, SearchInfo::new(mv, depth, Node::PV, val.1));
+                }
+            },
+            Node::UpperBound => {},
+            Node::LowerBound => {},
         }
 
         // stats.alpha = stats.alpha.max(alpha);

@@ -45,7 +45,7 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
     // group.bench_function("rank moves depth", |b| b.iter(|| ex.explore(&ts, ex.max_depth, false)));
     group.bench_function("rank moves iter", |b| b.iter(|| {
-        let (m,stats) = ex.explore(&ts, ex.max_depth, true);
+        let (m,stats) = ex.explore(&ts, None);
         assert_eq!(m, Some(m0));
     }));
 

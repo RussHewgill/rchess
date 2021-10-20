@@ -14,6 +14,9 @@ pub struct SearchStats {
     pub tt_misses:      u32,
     pub alpha:          i32,
     pub beta:           i32,
+    pub ns_pv:          u32,
+    pub ns_all:         u32,
+    pub ns_cut:         u32,
 }
 
 impl SearchStats {
@@ -30,6 +33,9 @@ impl SearchStats {
         println!("misses     = {:?}", self.tt_misses);
         println!("alpha      = {:?}", self.alpha);
         println!("beta       = {:?}", self.beta);
+        println!("PV Nodes   = {:?}", self.ns_pv);
+        println!("All Nodes   = {:?}", self.ns_all);
+        println!("Cut Nodes   = {:?}", self.ns_cut);
     }
 
 }
@@ -46,6 +52,9 @@ impl std::ops::Add for SearchStats {
             tt_misses:      self.tt_misses + other.tt_misses,
             alpha:          i32::max(self.alpha, other.alpha),
             beta:           i32::min(self.beta, other.beta),
+            ns_pv:          self.ns_pv + other.ns_pv,
+            ns_all:         self.ns_all + other.ns_all,
+            ns_cut:         self.ns_cut + other.ns_cut,
         }
     }
 }
