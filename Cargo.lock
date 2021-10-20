@@ -527,6 +527,7 @@ dependencies = [
  "array-init",
  "bitflags",
  "criterion",
+ "crossbeam-channel",
  "env_logger",
  "gag",
  "itertools",

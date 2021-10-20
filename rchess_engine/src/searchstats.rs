@@ -12,6 +12,8 @@ pub struct SearchStats {
     pub stalemates:     u32,
     pub tt_hits:        u32,
     pub tt_misses:      u32,
+    pub alpha:          i32,
+    pub beta:           i32,
 }
 
 impl SearchStats {
@@ -26,6 +28,8 @@ impl SearchStats {
         println!("stalemates = {:?}", self.stalemates);
         println!("hits       = {:?}", self.tt_hits);
         println!("misses     = {:?}", self.tt_misses);
+        println!("alpha      = {:?}", self.alpha);
+        println!("beta       = {:?}", self.beta);
     }
 
 }
@@ -40,6 +44,8 @@ impl std::ops::Add for SearchStats {
             stalemates:     self.stalemates + other.stalemates,
             tt_hits:        self.tt_hits + other.tt_hits,
             tt_misses:      self.tt_misses + other.tt_misses,
+            alpha:          i32::max(self.alpha, other.alpha),
+            beta:           i32::min(self.beta, other.beta),
         }
     }
 }

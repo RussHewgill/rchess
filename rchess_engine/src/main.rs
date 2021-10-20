@@ -72,8 +72,8 @@ fn main() {
     // main4(); // perft
 
     // main8(); // eval testing
-    // main7();
-    main3(); // read from file and test
+    main7();
+    // main3(); // read from file and test
 
 }
 
@@ -180,16 +180,16 @@ fn main7() {
         0.1);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
 
-    let moves = vec![
-        Move::Quiet { from: "G3".into(), to: "G6".into() },
-        Move::Capture { from: "E5".into(), to: "C6".into() },
-        Move::Quiet { from: "F6".into(), to: "H7".into() },
-    ];
-
     // let moves = vec![
+    //     Move::Quiet { from: "G3".into(), to: "G6".into() },
     //     Move::Capture { from: "E5".into(), to: "C6".into() },
-    //     Move::Capture { from: "E5".into(), to: "G6".into() },
+    //     Move::Quiet { from: "F6".into(), to: "H7".into() },
     // ];
+
+    let moves = vec![
+        Move::Capture { from: "B4".into(), to: "F4".into() },
+        // Move::Quiet { from: "E5".into(), to: "G6".into() },
+    ];
 
     // let g1 = g.make_move_unchecked(&ts, &moves[0]).unwrap();
     // let mut g2 = g.make_move_unchecked(&ts, &moves[1]).unwrap();
@@ -229,7 +229,7 @@ fn main7() {
     // eprintln!("s2 = {:?}", s2);
 
     // let k = 4;
-    let k = 2;
+    let k = 1;
     let mut t: std::time::Duration = std::time::Duration::from_secs(0);
     for q in 0..k {
         let t0 = std::time::Instant::now();
@@ -245,9 +245,8 @@ fn main7() {
         // println!("d4c6 == bad");
         println!("m #{} = {:?}", q, mv);
 
-        // // let (mvs,stats) = ex._iterative_deepening(&ts, false, moves.clone());
-        // let (mvs,stats) = ex._iterative_deepening(&ts, true, moves.clone());
-        // // let (mvs,stats) = ex.iterative_deepening(&ts, true);
+        // let (mvs,stats) = ex._iterative_deepening(&ts, false, moves.clone());
+        // // let (mvs,stats) = ex.iterative_deepening(&ts, false);
         // // let (mvs,stats) = ex.rank_moves_list(&ts, false, moves.clone());
         // for (m,s) in mvs.iter() {
         //     eprintln!("{:>8} = {:?}", s, m);
@@ -255,7 +254,7 @@ fn main7() {
 
         // eprintln!("\nbest move = {:?}", mvs.get(0).unwrap());
 
-        // stats.print(t0.elapsed());
+        stats.print(t0.elapsed());
 
         // println!("explore #{} done in {} seconds.", q, t0.elapsed().as_secs_f64());
 
