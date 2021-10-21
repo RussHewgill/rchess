@@ -153,7 +153,7 @@ fn main8() {
 
 fn main7() {
     let fen = STARTPOS;
-    let n = 4;
+    let n = 5;
 
     // let fen = "rnbqkbnr/ppppp1pp/8/5P2/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2";
     // let fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
@@ -179,13 +179,12 @@ fn main7() {
 
     // let fen = "Q3b3/4bkp1/1q2np1p/NPp1p3/2P1P3/4BP1P/4B1P1/7K b - - 1 1"; // Correct = e6c7
     // let fen = "rnbqkb1r/pppp1ppp/8/4P3/6n1/7P/PPPNPPP1/R1BQKBNR b KQkq - 0 1"; // WAC.007, Ne3 = g4e3
+    let fen = "3q1rk1/p4pp1/2pb3p/3p4/6Pr/1PNQ4/P1PB1PP1/4RRK1 b - - 0 1"; // WAC.009, Bh2+ = d6h2
 
     // let fen = "5k2/6pp/p1qN4/1p1p4/3P4/2PKP2Q/PP3r2/3R4 b - - 0 1"; // WAC.005, Qc4 = c6c4
     // let fen = "4r3/2R3pp/q2pkp2/4p3/4P1P1/4nQ1P/PP6/2K5 w - - 0 1"; // WAC.005, color reversed
 
     // let fen = "rn2kbnr/pppppppp/8/8/6b1/1QP4P/PP1PqPPN/RNB1KB1R w KQkq - 0 2"; // 1 move, then lots
-
-    let n = 4;
 
     // let fen = "k7/1p6/2p5/8/3N4/8/8/7K w - - 0 1"; // Quiescence test
     // let fen = "rnbqkbnr/pppppppp/8/8/8/8/1PP1PPP1/RNBQKBNR w KQkq - 0 1";
@@ -202,23 +201,7 @@ fn main7() {
     // let fen = "r4q1k/p2bRNrp/2p2Q2/5p2/5p2/2P5/PP3PPP/R5K1 b - - 1 1";
     // let fen = "r4qk1/p2bRNrp/2p2Q2/5p2/5p2/2P5/PP3PPP/R5K1 w - - 2 2";
 
-    // let fen = "5bk1/2q2p1p/4pBp1/p1p1P1P1/3nR3/4N2Q/r4r1P/4R1K1 w - - 0 2";
-    // // Q h3h7 x
-    // // k g8h7 x
-    // // R e4h4
-    // // b f8h6
-    // // R h4h6 x
-    // // k h7g8
-    // // R h6h8 #
-
     // let fen = "rn1q1k1r/1p2b1p1/p2p1nQ1/2pP2p1/2P3P1/5N1P/PP3P2/RN3RK1 w - - 0 2";
-
-    let fen = "rnb2knr/pppp1Pp1/2q4p/8/1bB5/2N2N2/PPPBQPPP/R4RK1 b - - 0 11"; // ragequit?
-    let fen = "rnb2k1r/ppppnPp1/2q4p/8/1bB5/2N2N2/PPPBQPPP/R4RK1 w - - 1 12"; // ragequit?
-    let fen = "rnb2k1r/ppppnPp1/2q4p/8/1bB5/2N2N2/PPPBQPPP/4RRK1 b - - 2 12"; // ragequit?
-    // let fen = "rnb2k1r/ppp1nPp1/2qp3p/8/1bB5/2N2N2/PPPBQPPP/4RRK1 w - - 0 13"; // ragequit?
-
-    // let fen = "2k5/8/8/8/8/8/8/7K w - - 0 1";
 
     let ts = Tables::new();
 
@@ -231,16 +214,20 @@ fn main7() {
         0.1);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
 
-    let moves = vec![
-        Move::Quiet { from: "D7".into(), to: "D6".into() },
-        Move::Quiet { from: "C6".into(), to: "E6".into() },
-    ];
+    // let moves = vec![
+    //     Move::Quiet { from: "G4".into(), to: "E3".into() },
+    //     Move::Capture { from: "G4".into(), to: "E5".into() },
+    // ];
 
-    // let e = g.evaluate(&ts);
-    // eprintln!("e = {:?}", e);
+    let t0 = std::time::Instant::now();
+    let (mv,stats) = ex.explore(&ts, None);
+    println!("m = {:?}", mv);
+    println!("explore done in {} seconds.", t0.elapsed().as_secs_f64());
+
+    return;
 
     if true {
-        eprintln!("g = {:?}", g);
+        // eprintln!("g = {:?}", g);
 
         // let k = 4;
         let k = 1;
@@ -249,8 +236,8 @@ fn main7() {
             let t0 = std::time::Instant::now();
 
             // ex.max_depth = 20;
-            // ex.max_depth = 10;
-            ex.max_depth = 5;
+            ex.max_depth = 10;
+            // ex.max_depth = 5;
 
             // let m = moves[0];
             // // let m = Move::Quiet { from: "C6".into(), to: "E6".into() };
@@ -264,28 +251,34 @@ fn main7() {
             // let see = ex.static_exchange(&ts, &g, "D5".into());
             // eprintln!("see = {:?}", see);
 
+            // let moves = g.search_all(&ts, None).get_moves_unsafe();
+
             // let (moves,stats) = ex.iterative_deepening(&ts, false, true);
             let (moves,stats) = ex.iterative_deepening(&ts, false, false);
+            // let (moves,stats) = ex._iterative_deepening(&ts, false, moves.clone(), false);
             // let mv = moves.get(0).map(|x| x.0);
             let (mv,mvs,_) = moves.get(0).unwrap();
-            // let (mv,stats) = ex.explore(&ts, None);
-            // let (mv,stats) = ex.explore(&ts, ex.max_depth, false);
-            // let (mv,stats) = ex.iterative_deepening(&ts, false);
-            // println!("d4c6 == bad");
             println!("m #{} = {:?}", q, mv);
+
+            // print!("\n");
+            // for (m,mvs,score) in moves.iter() {
+            //     eprintln!("{:?} = {:?}", m, score);
+            // }
 
             // print!("\n");
             // for m in mvs.iter() {
             //     eprintln!("m = {:?}", m);
             // }
 
-            let g = g.flip_sides(&ts);
-            eprintln!("g = {:?}", g);
-            let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
-
-            let (moves,stats) = ex.iterative_deepening(&ts, false, false);
-            let (mv,mvs,_) = moves.get(0).unwrap();
-            println!("m #{} = {:?}", q, mv);
+            // let g = g.flip_sides(&ts);
+            // // eprintln!("g 1 = {:?}", g);
+            // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+            // let (moves,stats) = ex.iterative_deepening(&ts, false, false);
+            // let (mv,mvs,_) = moves.get(0).unwrap();
+            // print!("\n");
+            // println!("bad  = e2e3");
+            // println!("good = f3d3");
+            // println!("m #{} = {:?}\n", q, mv);
 
             // let (mvs,stats) = ex._iterative_deepening(&ts, false, moves.clone(), false);
             // // let (mvs,stats) = ex.iterative_deepening(&ts, false);
@@ -379,9 +372,9 @@ fn main3() {
     //     eprintln!("ms = {:?}", ms);
     // }
 
-    // let g = &games[0];
+    // let g = &games[8];
     // let games = vec![g.clone()];
-    // games.truncate(10);
+    // games.truncate(12);
 
     let n = 25;
 
@@ -393,8 +386,7 @@ fn main3() {
 
     for (i,(fen,m)) in games.into_iter().enumerate() {
         let i = i + 1;
-        let mut g = Game::from_fen(&ts, &fen).unwrap();
-        let _ = g.recalc_gameinfo_mut(&ts);
+        let g = Game::from_fen(&ts, &fen).unwrap();
         // eprintln!("g = {:?}", g);
 
         let stop = Arc::new(AtomicBool::new(false));
@@ -408,6 +400,11 @@ fn main3() {
         // let (_,e_sf) = stockfish_eval(&fen, false).unwrap();
 
         let (m0,stats) = ex.explore(&ts, None);
+
+        // let g = g.flip_sides(&ts);
+        // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
+        // let (m1,_) = ex.explore(&ts, None);
+
         let mv = m0.unwrap().to_algebraic(&g);
         let mv0 = m[0].replace("+", "");
         if mv0 == mv {
@@ -415,10 +412,10 @@ fn main3() {
             total.0 += 1;
             total.1 += 1;
         } else {
+            total.1 += 1;
             println!("#{:>2}: Wrong, Correct: {}, engine: {}, {}/{}", i, m[0], mv, total.0, total.1);
             // println!("Correct        Engine");
             // println!("{:<8}       {}", m[0], mv);
-            total.1 += 1;
         }
 
     }

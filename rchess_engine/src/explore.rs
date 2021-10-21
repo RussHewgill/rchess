@@ -157,8 +157,8 @@ impl Explorer {
         let mut stats = SearchStats::default();
         let mut depth = 0;
 
-        let gs: Vec<(Move,Game)> = moves.par_iter().flat_map(|mv| {
-        // let gs: Vec<(Move,Game)> = moves.iter().flat_map(|mv| {
+        // let gs: Vec<(Move,Game)> = moves.par_iter().flat_map(|mv| {
+        let gs: Vec<(Move,Game)> = moves.iter().flat_map(|mv| {
             if let Ok(g2) = self.game.make_move_unchecked(&ts, &mv) {
                 Some((*mv,g2))
             } else { None }
@@ -175,9 +175,9 @@ impl Explorer {
 
         while timer.should_search(self.side, depth) && (depth <= self.max_depth) {
 
-            // eprintln!("Explorer: not parallel");
-            // (out,ss) = gs.iter().map(|(mv,g2)| {
-            (out,ss) = gs.par_iter().map(|(mv,g2)| {
+            eprintln!("Explorer: not parallel");
+            (out,ss) = gs.iter().map(|(mv,g2)| {
+            // (out,ss) = gs.par_iter().map(|(mv,g2)| {
                 let alpha = Arc::new(AtomicI32::new(i32::MIN));
                 let beta  = Arc::new(AtomicI32::new(i32::MAX));
                 // let alpha = i32::MIN;
@@ -475,8 +475,16 @@ impl Explorer {
                 stats.leaves += 1;
                 stats.checkmates += 1;
                 // return score;
-                // return (vec![mv0],score);
-                return (vec![],score);
+                // return (vec![],score);
+
+                if maximizing {
+                    // return -score;
+                    return (vec![mv0], -score);
+                } else {
+                    // return score;
+                    return (vec![mv0], score);
+                }
+
             },
             Outcome::Stalemate    => {
                 let score = -100_000_000 + k as Score;
@@ -495,8 +503,7 @@ impl Explorer {
             stats.leaves += 1;
             if self.side == Black {
                 // return -score;
-                // return (vec![mv0], -score);
-                return (vec![mv0], score);
+                return (vec![mv0], -score);
             } else {
                 // return score;
                 return (vec![mv0], score);
@@ -591,22 +598,22 @@ impl Explorer {
                 &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut stats, mv);
                 // &ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut stats);
 
-            if maximizing {
-                val.1 = i32::max(val.1, score);
-            } else {
-                val.1 = i32::min(val.1, score);
-            }
+            // if maximizing {
+            //     val.1 = i32::max(val.1, score);
+            // } else {
+            //     val.1 = i32::min(val.1, score);
+            // }
 
-            // let b = self._ab_score(
-            //     (mv,&g2,tt),
-            //     (mv_seq,score),
-            //     &mut val,
-            //     depth,
-            //     alpha.clone(),
-            //     beta.clone(),
-            //     maximizing,
-            //     mv0);
-            // if b { break; }
+            let b = self._ab_score(
+                (mv,&g2,tt),
+                (mv_seq,score),
+                &mut val,
+                depth,
+                alpha.clone(),
+                beta.clone(),
+                maximizing,
+                mv0);
+            if b { break; }
 
             // if maximizing {
             //     if score > val.1 {

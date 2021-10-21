@@ -657,20 +657,19 @@ impl Game {
         let mut st = self.state.clone();
         st.side_to_move = !st.side_to_move;
 
-        // let mw = st.white;
-        // let mb = st.black;
-        // st.black = mw;
-        // st.white = mb;
+        let mw = st.white;
+        let mb = st.black;
+        st.black = mw;
+        st.white = mb;
 
-        st.white = st.white.rotate_180();
-        st.black = st.black.rotate_180();
-
-        st.pawns = st.pawns.rotate_180();
-        st.rooks = st.rooks.rotate_180();
+        st.white   = st.white.rotate_180();
+        st.black   = st.black.rotate_180();
+        st.pawns   = st.pawns.rotate_180();
+        st.rooks   = st.rooks.rotate_180();
         st.knights = st.knights.rotate_180();
         st.bishops = st.bishops.rotate_180();
-        st.queens = st.queens.rotate_180();
-        st.kings = st.kings.rotate_180();
+        st.queens  = st.queens.rotate_180();
+        st.kings   = st.kings.rotate_180();
 
         st.castling = st.castling.mirror_sides();
 

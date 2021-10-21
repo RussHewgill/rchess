@@ -41,12 +41,13 @@ pub fn crit_bench_1(c: &mut Criterion) {
     group.measurement_time(std::time::Duration::from_secs_f64(5.));
 
     // group.bench_function("rank moves", |b| b.iter(|| ex.explore(&ts, ex.depth)));
-    // c.bench_function("rank moves", |b| b.iter(|| ex.explore(&ts, ex.depth)));
 
-    // group.bench_function("rank moves depth", |b| b.iter(|| ex.explore(&ts, ex.max_depth, false)));
-    group.bench_function("rank moves iter", |b| b.iter(|| {
-        let (m,stats) = ex.explore(&ts, None);
-        // assert_eq!(m, m0);
+    // group.bench_function("rank moves iter", |b| b.iter(|| {
+    //     let (m,stats) = ex.explore(&ts, None);
+    // }));
+
+    group.bench_function("search_all", |b| b.iter(|| {
+        let mvs = g.search_all(&ts, black_box(None));
     }));
 
     // no collect, captures first      = 18.2 ms
