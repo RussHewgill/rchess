@@ -495,7 +495,8 @@ impl Explorer {
             stats.leaves += 1;
             if self.side == Black {
                 // return -score;
-                return (vec![mv0], -score);
+                // return (vec![mv0], -score);
+                return (vec![mv0], score);
             } else {
                 // return score;
                 return (vec![mv0], score);
@@ -529,6 +530,25 @@ impl Explorer {
 
         let mut node_type = Node::PV;
 
+        // {
+        //     let (mv,g2,tt) = gs.pop().unwrap();
+        //     let zb = g2.zobrist;
+        //     stats.nodes += 1;
+        //     let alpha2 = Arc::new(AtomicI32::new(alpha.load(Ordering::Relaxed)));
+        //     let beta2  = Arc::new(AtomicI32::new(beta.load(Ordering::Relaxed)));
+        //     let (mut mv_seq,score) = self._ab_search(
+        //         &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut stats, mv);
+        //     let b = self._ab_score(
+        //         (mv,&g2,tt),
+        //         (mv_seq,score),
+        //         &mut val,
+        //         depth,
+        //         alpha.clone(),
+        //         beta.clone(),
+        //         maximizing,
+        //         mv0);
+        // }
+
         // use crossbeam_channel::unbounded;
         // let (chan_tx,chan_rx) = unbounded();
         // // let (chan_tx,chan_rx) = std::sync::mpsc::sync_channel(4);
@@ -537,18 +557,19 @@ impl Explorer {
         // // let gs2 = gs.into_par_iter()
         // let gs2 = gs.into_iter()
         //     .enumerate()
-        //     .for_each(|(i,(m,g2,tt))| {
+        //     .for_each(|(i,(mv,g2,tt))| {
         //     // .map(|(i,(m,g2,tt))| {
         //         let mut ss = SearchStats::default();
         //         let alpha2 = Arc::new(AtomicI32::new(alpha.load(Ordering::SeqCst)));
         //         let beta2  = Arc::new(AtomicI32::new(beta.load(Ordering::SeqCst)));
         //         let score = self._ab_search(
-        //             &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut ss);
-        //         chan_tx.send((m,g2,tt,score,ss)).unwrap();
+        //             &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut ss, mv);
+        //         chan_tx.send((mv,g2,tt,score,ss)).unwrap();
         //         // (m,g2,tt,score,ss)
         //     });
 
-        for (mv,g2,tt) in gs.into_iter() {
+        for (mv,g2,tt) in gs {
+        // for (mv,g2,tt) in gs.into_iter() {
         // for (mv,g2,tt,score,ss) in gs2 {
         //     *stats += ss;
 
@@ -570,44 +591,22 @@ impl Explorer {
                 &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut stats, mv);
                 // &ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut stats);
 
-            // if maximizing {
-            //     val.1 = i32::max(val.1, score);
-            // } else {
-            //     val.1 = i32::min(val.1, score);
-            // }
-
             if maximizing {
-                if score > val.1 {
-                    mv_seq.push(mv);
-                    val = (Some((zb,mv,mv_seq)),score);
-                }
-                alpha.fetch_max(val.1, Ordering::SeqCst);
-                if val.1 >= beta.load(Ordering::SeqCst) { // Beta cutoff
-                    // node_type = Node::Cut;
-                    self.trans_table.insert_replace(
-                        zb, SearchInfo::new(mv, depth - 1, Node::Cut, val.1));
-                        // zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
-                    break;
-                }
-                // self.trans_table.insert_replace(
-                //     zb, SearchInfo::new(mv, depth, Node::All, val.1));
+                val.1 = i32::max(val.1, score);
             } else {
-                if score < val.1 {
-                    mv_seq.push(mv);
-                    val = (Some((zb,mv,mv_seq)),score);
-                }
-                beta.fetch_min(val.1, Ordering::SeqCst);
-                if val.1 <= alpha.load(Ordering::SeqCst) { // Alpha cutoff
-                    // node_type = Node::Cut;
-                    self.trans_table.insert_replace(
-                        zb, SearchInfo::new(mv, depth - 1, Node::Cut, val.1));
-                        // zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
-                    break;
-                }
-                // node_type = Node::All;
-                // self.trans_table.insert_replace(
-                //     zb, SearchInfo::new(mv, depth, Node::All, val.1));
+                val.1 = i32::min(val.1, score);
             }
+
+            // let b = self._ab_score(
+            //     (mv,&g2,tt),
+            //     (mv_seq,score),
+            //     &mut val,
+            //     depth,
+            //     alpha.clone(),
+            //     beta.clone(),
+            //     maximizing,
+            //     mv0);
+            // if b { break; }
 
             // if maximizing {
             //     if score > val.1 {
@@ -692,6 +691,54 @@ impl Explorer {
             (vec![mv0], val.1)
         }
 
+    }
+
+
+    pub fn _ab_score(
+        &self,
+        (mv,g2,tt):         (Move,&Game,Option<Score>),
+        (mut mv_seq,score): (Vec<Move>,Score),
+        mut val:            &mut (Option<(Zobrist,Move,Vec<Move>)>,i32),
+        depth:              Depth,
+        alpha:              Arc<AtomicI32>,
+        beta:               Arc<AtomicI32>,
+        maximizing:         bool,
+        mv0:                Move,
+    ) -> bool {
+        let zb = g2.zobrist;
+        if maximizing {
+            if score > val.1 {
+                mv_seq.push(mv);
+                *val = (Some((zb,mv,mv_seq)),score);
+            }
+            alpha.fetch_max(val.1, Ordering::SeqCst);
+            if val.1 >= beta.load(Ordering::SeqCst) { // Beta cutoff
+                // node_type = Node::Cut;
+                self.trans_table.insert_replace(
+                    zb, SearchInfo::new(mv, depth - 1, Node::Cut, val.1));
+                    // zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
+                return true;
+            }
+            // self.trans_table.insert_replace(
+            //     zb, SearchInfo::new(mv, depth, Node::All, val.1));
+        } else {
+            if score < val.1 {
+                mv_seq.push(mv);
+                *val = (Some((zb,mv,mv_seq)),score);
+            }
+            beta.fetch_min(val.1, Ordering::SeqCst);
+            if val.1 <= alpha.load(Ordering::SeqCst) { // Alpha cutoff
+                // node_type = Node::Cut;
+                self.trans_table.insert_replace(
+                    zb, SearchInfo::new(mv, depth - 1, Node::Cut, val.1));
+                    // zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
+                return true;
+            }
+            // node_type = Node::All;
+            // self.trans_table.insert_replace(
+            //     zb, SearchInfo::new(mv, depth, Node::All, val.1));
+        }
+        false
     }
 
 }

@@ -26,6 +26,8 @@ impl Game {
         let mut g = build_from_fen(ss, side, castle, ep);
         // g.recalc_gameinfo_mut();
 
+        let _ = g.recalc_gameinfo_mut(&ts);
+
         g.zobrist = Zobrist::new(&ts, g.clone());
 
         Some(g)

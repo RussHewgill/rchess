@@ -84,8 +84,9 @@ pub struct Tables {
     table_rook:    [BitBoard; 0x19000],
     magics_bishop: [Magic; 64],
     table_bishop:  [BitBoard; 0x1480],
-    pub piece_tables_midgame:  PcTables,
-    pub piece_tables_endgame:  PcTables,
+    // pub piece_tables_midgame:  PcTables,
+    // pub piece_tables_endgame:  PcTables,
+    pub piece_tables:  PcTables,
     pub zobrist_tables: ZbTable,
     // endgames: 
 }
@@ -148,7 +149,8 @@ impl Tables {
             [BitBoard::empty(); 0x1480])
         };
 
-        let (piece_tables_midgame,piece_tables_endgame) = PcTables::new();
+        // let (piece_tables_midgame,piece_tables_endgame) = PcTables::new();
+        let piece_tables = PcTables::new();
 
         Self {
             knight_moves: Self::gen_knights(),
@@ -162,8 +164,10 @@ impl Tables {
             table_rook,
             magics_bishop,
             table_bishop,
-            piece_tables_midgame,
-            piece_tables_endgame,
+            piece_tables,
+            // piece_tables_midgame,
+            // piece_tables_endgame,
+
             zobrist_tables: ZbTable::new(),
         }
     }
@@ -593,13 +597,14 @@ mod eval {
 
     #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
     pub struct PcTables {
-        tables:         [[Score; 64]; 6],
-        pub ev_pawn:    EvPawn,
-        pub ev_rook:    EvRook,
-        pub ev_knight:  EvKnight,
-        pub ev_bishop:  EvBishop,
-        pub ev_queen:   EvQueen,
-        pub ev_king:    EvKing,
+        tables_mid:         [[Score; 64]; 6],
+        tables_end:         [[Score; 64]; 6],
+        pub ev_pawn:        EvPawn,
+        pub ev_rook:        EvRook,
+        pub ev_knight:      EvKnight,
+        pub ev_bishop:      EvBishop,
+        pub ev_queen:       EvQueen,
+        pub ev_king:        EvKing,
     }
 
     impl PcTables {
@@ -617,12 +622,16 @@ mod eval {
             }
         }
 
-        pub fn get<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
+        pub fn get_mid<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
             let c1: Coord = c0.into();
             let c1 = if col == White { c1 } else { Coord(c1.0,7-c1.1) };
-            // let sq: usize = c1.into();
-            // self.tables[pc.index()][sq]
-            self.tables[pc.index()][c1]
+            self.tables_mid[pc.index()][c1]
+        }
+
+        pub fn get_end<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
+            let c1: Coord = c0.into();
+            let c1 = if col == White { c1 } else { Coord(c1.0,7-c1.1) };
+            self.tables_end[pc.index()][c1]
         }
 
         // [
@@ -641,17 +650,25 @@ mod eval {
     /// Generate
     impl PcTables {
 
-        pub fn new() -> (Self,Self) {
+        pub fn new() -> Self {
             let pawns = Self::gen_pawns();
             let knights = Self::gen_knights();
             let kings = Self::gen_kings_opening();
-            let opening = Self {
-                tables: [pawns,
-                         [0; 64], // Rook
-                         knights,
-                         [0; 64], // b
-                         [0; 64], // q
-                         kings // k
+
+            let out = Self {
+                tables_mid: [pawns,
+                             [0; 64], // Rook
+                             knights,
+                             [0; 64], // b
+                             [0; 64], // q
+                             kings,
+                ],
+                tables_end: [pawns,
+                            [0; 64], // Rook
+                            knights,
+                            [0; 64], // b
+                            [0; 64], // q
+                            kings,
                 ],
                 ev_pawn:   EvPawn::new(),
                 ev_rook:   EvRook::new(),
@@ -661,9 +678,8 @@ mod eval {
                 ev_king:   EvKing::new(),
             };
 
-            let mut endgame = opening;
-
-            (opening,endgame)
+            out
+            // (opening,endgame)
         }
 
         fn gen_pawns() -> [Score; 64] {

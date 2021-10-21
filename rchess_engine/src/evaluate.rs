@@ -177,13 +177,6 @@ impl Game {
             Rook   => {
                 let rs = self.get(Rook, col);
 
-                let r_7r = if col == White {
-                    let b = rs & BitBoard::mask_rank(6);
-                    // b.popcount() * 
-                } else {
-                    let b = rs & BitBoard::mask_rank(1);
-                };
-
                 let n = rs.popcount() as i32;
                 let s = Rook.score() * n;
                 TaperedScore::new(s,s)
@@ -204,7 +197,6 @@ impl Game {
                 TaperedScore::new(s,s)
             },
         }
-
     }
 
 }
@@ -213,20 +205,33 @@ impl Game {
 impl Game {
 
     pub fn score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> TaperedScore {
+        let mut pos = self._score_positions(&ts, pc, col);
         match pc {
             Pawn   => {
-                let mut pos = self._score_positions(&ts, Pawn, col);
                 let ds = self.count_pawns_doubled(&ts, col);
-                pos.mid += ds as Score * ts.piece_tables_midgame.ev_pawn.doubled;
-                pos.end += ds as Score * ts.piece_tables_endgame.ev_pawn.doubled;
+                let ds = ts.piece_tables.ev_pawn.doubled * ds as Score;
+                pos = pos + ds;
                 pos
             },
-            // Rook   => unimplemented!(),
+            Rook   => {
+                let rs = self.get(Rook, col);
+
+                let r_7r = if col == White {
+                    rs & BitBoard::mask_rank(6)
+                } else {
+                    rs & BitBoard::mask_rank(1)
+                };
+                let r_7r = r_7r.popcount();
+
+                // let r_7r = ts.pie
+
+                pos
+            }
             // Knight => unimplemented!(),
             // Bishop => unimplemented!(),
             // Queen  => unimplemented!(),
             // King   => unimplemented!(),
-            _      => self._score_positions(&ts, pc, col),
+            _      => pos,
         }
     }
 
@@ -234,9 +239,9 @@ impl Game {
         let pieces = self.get(pc, col);
         let mut score_mg = 0;
         let mut score_eg = 0;
-        pieces.iter_bitscan(|sq| {
-            score_mg += ts.piece_tables_midgame.get(pc, col, sq);
-            score_eg += ts.piece_tables_endgame.get(pc, col, sq);
+        pieces.into_iter().for_each(|sq| {
+            score_mg += ts.piece_tables.get_mid(pc, col, sq);
+            score_eg += ts.piece_tables.get_end(pc, col, sq);
         });
         TaperedScore::new(score_mg,score_eg)
     }
@@ -337,15 +342,15 @@ mod tapered {
         }
     }
 
-    // impl std::ops::Mul<Score> for TaperedScore {
-    //     type Output = Self;
-    //     fn mul(self, x: Score) -> Self {
-    //         Self {
-    //             mid: self.mid * x,
-    //             end: self.end * x,
-    //         }
-    //     }
-    // }
+    impl std::ops::Mul<Score> for TaperedScore {
+        type Output = Self;
+        fn mul(self, x: Score) -> Self {
+            Self {
+                mid: self.mid * x,
+                end: self.end * x,
+            }
+        }
+    }
 
 }
 

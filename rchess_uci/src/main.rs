@@ -35,7 +35,7 @@ fn main() -> std::io::Result<()> {
     //     .build_global()
     //     .unwrap();
 
-    let depth = 5;
+    let depth = 10;
 
     let logpath = "log.log";
     let mut logfile = std::fs::OpenOptions::new()

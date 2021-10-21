@@ -63,6 +63,20 @@ mod castling {
             self.0
         }
 
+        pub fn mirror_sides(&self) -> Self {
+
+            let (wk,wq) = self.get_color(White);
+            let (bk,bq) = self.get_color(Black);
+            let mut out = *self;
+
+            out.set_king(White, bk);
+            out.set_king(Black, wk);
+            out.set_queen(White, bq);
+            out.set_queen(Black, wq);
+
+            out
+        }
+
         pub fn set_king(&mut self, col: Color, b: bool) {
             match (col,b) {
                 (White,true)  => { self.0 |= Self::WK; },
@@ -178,7 +192,7 @@ impl Game {
             (Some((col0,pc0)),Some((col1,pc1))) => {
                 if col0 == col1 { panic!("self capture?"); }
 
-                let cc = if col0 == White { 6 } else { 1 };
+                let cc = if col0 == White { 7 } else { 0 };
                 if (pc0 == Pawn) & (to.1 == cc) {
                     Some(Move::PromotionCapture { from, to, new_piece: Queen })
                 } else {
@@ -635,6 +649,38 @@ impl Game {
     //     g
     // }
 
+}
+
+/// Debugging
+impl Game {
+    pub fn flip_sides(&self, ts: &Tables) -> Self {
+        let mut st = self.state.clone();
+        st.side_to_move = !st.side_to_move;
+
+        // let mw = st.white;
+        // let mb = st.black;
+        // st.black = mw;
+        // st.white = mb;
+
+        st.white = st.white.rotate_180();
+        st.black = st.black.rotate_180();
+
+        st.pawns = st.pawns.rotate_180();
+        st.rooks = st.rooks.rotate_180();
+        st.knights = st.knights.rotate_180();
+        st.bishops = st.bishops.rotate_180();
+        st.queens = st.queens.rotate_180();
+        st.kings = st.kings.rotate_180();
+
+        st.castling = st.castling.mirror_sides();
+
+        let mut out = Game {
+            state: st,
+            zobrist: Zobrist(0),
+        };
+        out.zobrist = Zobrist::new(&ts, out.clone());
+        out
+    }
 }
 
 /// get_at
