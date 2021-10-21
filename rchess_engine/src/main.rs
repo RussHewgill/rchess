@@ -72,23 +72,8 @@ fn main() {
     // main4(); // perft
 
     // main8(); // eval testing
-    // main7();
+    main7();
     // main3(); // read from file and test
-
-    let fen0 = "2k5/8/8/8/8/8/4NP2/7K w - - 0 1";
-    let fen1 = "k7/2pn4/8/8/8/8/8/5K2 w - - 0 1";
-
-    let ts = Tables::new();
-
-    let g0 = Game::from_fen(&ts, fen0).unwrap();
-    let g1 = Game::from_fen(&ts, fen1).unwrap();
-
-
-    let g = g1.flip_sides(&ts);
-
-    // eprintln!("g0 = {:?}", g0);
-    eprintln!("g0 = {:?}", g0);
-    eprintln!("g1 flip = {:?}", g);
 
 }
 
