@@ -274,6 +274,7 @@ impl BitBoard {
 
 }
 
+/// iter_bitscan
 impl BitBoard {
 
     pub fn iter_bitscan<F>(&self, mut f: F)
@@ -313,6 +314,7 @@ impl BitBoard {
 
 }
 
+/// Indexing
 impl BitBoard {
 
     pub fn index_square(c: Coord) -> u32 {
@@ -324,6 +326,7 @@ impl BitBoard {
 
     pub fn index_bit<T: Into<u64> + Copy>(s: T) -> Coord {
         Coord(Self::index_file(s.into()) as u8,Self::index_rank(s.into()) as u8)
+        // Coord
     }
 
     pub fn index_rank(s: u64) -> u64 {

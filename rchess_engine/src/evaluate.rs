@@ -4,14 +4,17 @@ use crate::tables::*;
 
 pub type Score = i32;
 
-#[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Eval {
-    // material_white:         [Score; 6],
-    // material_black:         [Score; 6],
-    // piece_positions_white:  [Score; 6],
-    // piece_positions_black:  [Score; 6],
+    pub phase:            u16,
     pub material:         [[Score; 6]; 2],
     pub piece_positions:  [[Score; 6]; 2],
+}
+
+#[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+pub struct TaperedScore {
+    mid: Score,
+    end: Score,
 }
 
 impl Eval {
@@ -36,6 +39,12 @@ impl Eval {
     fn sum_material(&self) -> [Score; 2] {
         let w = self.material[White].iter().sum();
         let b = self.material[Black].iter().sum();
+        [w,b]
+    }
+
+    fn sum_positions(&self) -> [Score; 2] {
+        let w = self.piece_positions[White].iter().sum();
+        let b = self.piece_positions[Black].iter().sum();
         [w,b]
     }
 
@@ -79,22 +88,59 @@ impl Eval {
 
 /// Main Evaluation
 impl Game {
+
     pub fn evaluate(&self, ts: &Tables) -> Eval {
         let mut out = Eval::default();
 
+        let phase = self.game_phase();
+
         for &col in [White,Black].iter() {
             for pc in Piece::iter_pieces() {
-                let m = self.score_material(pc, col);
-                out.set_piece_mat_mut(pc, col, m);
-                let pos = self.score_positions(&ts, pc, col);
+
+                let mat = self.score_material(pc, col)
+                    .taper(phase);
+                out.set_piece_mat_mut(pc, col, mat);
+
+                let pos = self.score_positions(&ts, pc, col)
+                    .taper(phase);
                 out.set_piece_pos_mut(pc, col, pos);
 
                 // eprintln!("scoring = {:?} {:?}: {:?}/{:?}", col, pc, m, pos);
             }
         }
-        // out.score_material = self.score_material();
-        // out.score_position = self.score_position();
+
+        out.phase = phase;
+
         out
+    }
+
+    pub fn game_phase(&self) -> u16 {
+        let pawn_ph   = 0;
+        let knight_ph = 1;
+        let bishop_ph = 1;
+        let rook_ph   = 2;
+        let queen_ph  = 4;
+
+        let pcs = [Pawn,Rook,Knight,Bishop,Queen];
+        let phases: [u16; 5] = [pawn_ph,rook_ph,knight_ph,bishop_ph,queen_ph];
+
+        let ph_total = pawn_ph * 16 + knight_ph * 4 + bishop_ph * 4 + rook_ph * 4 + queen_ph * 2;
+        let mut ph = ph_total;
+
+        for &col in [White,Black].iter() {
+            for pc in pcs {
+                let ps = self.get(pc, col);
+                let pn = ps.popcount() as u16;
+                ph -= pn * phases[pc.index()];
+            }
+        }
+
+        // eprintln!("ph_total = {:?}", ph_total);
+        // eprintln!("ph = {:?}", ph);
+
+        let phase = (ph * 256 + (ph_total / 2)) / ph_total;
+
+        phase
     }
 
 }
@@ -125,23 +171,40 @@ impl Piece {
 /// Material Scoring
 impl Game {
 
-    pub fn score_material(&self, pc: Piece, col: Color) -> i32 {
+    pub fn score_material(&self, pc: Piece, col: Color) -> TaperedScore {
+
         match pc {
-            // Rook   => {},
+            Rook   => {
+                let rs = self.get(Rook, col);
+
+                let r_7r = if col == White {
+                    let b = rs & BitBoard::mask_rank(6);
+                    // b.popcount() * 
+                } else {
+                    let b = rs & BitBoard::mask_rank(1);
+                };
+
+                let n = rs.popcount() as i32;
+                let s = Rook.score() * n;
+                TaperedScore::new(s,s)
+            },
             // Knight => {},
             Bishop => {
-                let n = self.get(pc, col).popcount() as i32;
-                if n > 1 {
+                let n = self.get(Bishop, col).popcount() as i32;
+                let s = if n > 1 {
                     // 2 bishops = 0.5 pawn
-                    pc.score() * n + 50
+                    Bishop.score() * n + 50
                 } else {
-                    pc.score() * n
-                }
+                    Bishop.score() * n
+                };
+                TaperedScore::new(s,s)
             },
             _      => {
-                pc.score() * self.get(pc, col).popcount() as i32
+                let s = pc.score() * self.get(pc, col).popcount() as i32;
+                TaperedScore::new(s,s)
             },
         }
+
     }
 
 }
@@ -149,38 +212,14 @@ impl Game {
 /// Positional Scoring
 impl Game {
 
-    pub fn game_phase(&self, ts: &Tables) -> i16 {
-        let pawn_ph = 0;
-        let knight_ph = 1;
-        let bishop_ph = 1;
-        let rook_ph = 2;
-        let queen_ph = 4;
-        let pcs = [Pawn,Rook,Knight,Bishop,Queen];
-        let phases: [i16; 5] = [pawn_ph,rook_ph,knight_ph,bishop_ph,queen_ph];
-
-        let ph_total = pawn_ph * 16 + knight_ph * 4 + bishop_ph * 4 + rook_ph * 4 + queen_ph * 2;
-        let mut ph = ph_total;
-
-        for &col in [White,Black].iter() {
-            for pc in pcs {
-                let ps = self.get(pc, col);
-                let pn = ps.popcount() as i16;
-                ph -= pn * phases[pc.index()];
-            }
-        }
-
-        let phase = (ph * 256 + (ph_total / 2)) / ph_total;
-
-        phase
-    }
-
-    pub fn score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> Score {
+    pub fn score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> TaperedScore {
         match pc {
             Pawn   => {
-                let pos = self._score_positions(&ts, Pawn, col);
+                let mut pos = self._score_positions(&ts, Pawn, col);
                 let ds = self.count_pawns_doubled(&ts, col);
-                pos + (ds as Score * ts.piece_tables_opening.ev_pawn.doubled)
-                // pos
+                pos.mid += ds as Score * ts.piece_tables_midgame.ev_pawn.doubled;
+                pos.end += ds as Score * ts.piece_tables_endgame.ev_pawn.doubled;
+                pos
             },
             // Rook   => unimplemented!(),
             // Knight => unimplemented!(),
@@ -191,14 +230,15 @@ impl Game {
         }
     }
 
-    fn _score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> Score {
+    fn _score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> TaperedScore {
         let pieces = self.get(pc, col);
-        let mut score = 0;
+        let mut score_mg = 0;
+        let mut score_eg = 0;
         pieces.iter_bitscan(|sq| {
-            // TODO: interpolate
-            score += ts.piece_tables_opening.get(pc, col, sq);
+            score_mg += ts.piece_tables_midgame.get(pc, col, sq);
+            score_eg += ts.piece_tables_endgame.get(pc, col, sq);
         });
-        score
+        TaperedScore::new(score_mg,score_eg)
     }
 
 }
@@ -254,134 +294,58 @@ impl Game {
         unimplemented!()
     }
 
-
 }
 
-// impl Ord for Eval {
-//     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-//         unimplemented!()
-//     }
-// }
+impl std::fmt::Debug for Eval {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let [m_w,m_b] = self.sum_material();
+        let [p_w,p_b] = self.sum_positions();
+        let m_w = m_w - King.score();
+        let m_b = m_b - King.score();
+        f.write_str(&format!("ph: {}, mat: ({},{}), pos: ({},{})",
+                             self.phase, m_w, m_b, p_w, p_b,))?;
+        Ok(())
+    }
+}
 
-mod old_eval {
+mod tapered {
     use crate::types::*;
+    use crate::tables::*;
+    use crate::evaluate::*;
 
-    #[derive(Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
-    pub struct Eval {
-        // pub material: []
-        pub score_material:    Score,
-        pub score_position:    Score,
-        // contempt: i32,
+    impl TaperedScore {
+        pub const fn new(mid: Score, end: Score) -> Self {
+            Self {
+                mid,
+                end,
+            }
+        }
+
+        pub fn taper(&self, phase: u16) -> Score {
+            ((self.mid * (256 - phase as Score)) + (self.end * phase as Score)) / 256
+        }
+
     }
 
-    #[derive(Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
-    pub struct Score {
-        pub white:  i32,
-        pub black:  i32,
-    }
-
-    impl Score {
-        pub fn new(white: i32, black: i32) -> Self {
-            Self { white, black }
-        }
-        /// Positive = white winning
-        pub fn diff(&self) -> i32 {
-            self.white - self.black
-        }
-        pub fn get(&self, col: Color) -> i32 {
-            match col {
-                White => self.white,
-                Black => self.black,
+    impl std::ops::Add for TaperedScore {
+        type Output = Self;
+        fn add(self, other: Self) -> Self {
+            Self {
+                mid: self.mid + other.mid,
+                end: self.end + other.end,
             }
         }
     }
 
-    impl Eval {
-        /// Positive = white winning
-        pub fn diff(&self) -> i32 {
-            self.score_material.diff()
-        }
-
-        // pub fn sort(side: Color, evals: Vec<Eval>) -> Vec<Eval> {
-        //     let mut out = evals.clone();
-        //     out.sort_by(|a,b| Self::compare(side, *a, *b));
-        //     out
-        // }
-
-        // pub fn sort_rev(side: Color, turn: Color, evals: Vec<Eval>) -> Vec<Eval> {
-        //     let mut out = evals.clone();
-        //     out.sort_by(|a,b| Self::compare(side, turn, *a, *b));
-        //     out.reverse();
-        //     out
-        // }
-
-        pub fn sort<F,T>(side: Color, turn: Color, xs: Vec<T>, mut f: F) -> Vec<T> where
-            F: FnMut(&T) -> Eval,
-            T: Clone,
-        {
-            let mut out = xs.clone();
-            out.sort_by(|a,b| Self::compare(side, turn, f(a), f(b)));
-            out
-        }
-
-        pub fn sort_rev<F,T>(side: Color, turn: Color, xs: Vec<T>, mut f: F) -> Vec<T> where
-            F: FnMut(&T) -> Eval,
-            T: Clone,
-        {
-            let mut out = xs.clone();
-            out.sort_by(|a,b| Self::compare(side, turn, f(a), f(b)));
-            out.reverse();
-            out
-        }
-
-        pub fn compare(side: Color, turn: Color, a: Eval, b: Eval) -> std::cmp::Ordering {
-            let s0 = a.score_material.get(side) - a.score_material.get(!side);
-            if turn == side {
-                s0.cmp(&0)
-            } else {
-                (-s0).cmp(&0)
-            }
-        }
-
-        pub fn best<F,T>(side: Color, turn: Color, xs: impl Iterator<Item = T>, mut f: F) -> Option<T>
-            where F: FnMut(&T) -> Eval
-        {
-            xs.min_by(|a,b| Eval::compare(side, turn, f(a), f(b)))
-            // if side == turn {
-            //     // Eval::max(g.state.side_to_move, out)
-            //     xs.max_by(|a,b| Eval::compare(side, turn, f(a), f(b)))
-            // } else {
-            //     // Eval::min(g.state.side_to_move, out)
-            //     xs.min_by(|a,b| Eval::compare(side, turn, f(a), f(b)))
-            //     // unimplemented!()
-            // }
-        }
-
-        pub fn max(side: Color, turn: Color, xs: impl Iterator<Item = Eval>) -> Option<Eval> {
-            xs.max_by(|a,b| Eval::compare(side, turn, *a, *b))
-        }
-
-        pub fn min(side: Color, turn: Color, xs: impl Iterator<Item = Eval>) -> Option<Eval> {
-            xs.min_by(|a,b| Eval::compare(side, turn, *a, *b))
-        }
-
-    }
-
-    impl std::fmt::Debug for Eval {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            // f.write_str(&format!("Coord({}{})", r, self.1+1))?;
-            f.write_str(&format!("Mat: {:?}", self.score_material))?;
-            Ok(())
-        }
-    }
-
-    impl std::fmt::Debug for Score {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            // f.write_str(&format!("Coord({}{})", r, self.1+1))?;
-            f.write_str(&format!("Score({})({}/{})", self.white - self.black, self.white, self.black))?;
-            Ok(())
-        }
-    }
+    // impl std::ops::Mul<Score> for TaperedScore {
+    //     type Output = Self;
+    //     fn mul(self, x: Score) -> Self {
+    //         Self {
+    //             mid: self.mid * x,
+    //             end: self.end * x,
+    //         }
+    //     }
+    // }
 
 }
 

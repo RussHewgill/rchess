@@ -1,6 +1,8 @@
 
 use crate::types::*;
 
+pub use crate::tuning::*;
+
 pub use self::movesets::*;
 pub use self::magics::*;
 pub use self::opening_book::*;
@@ -82,7 +84,7 @@ pub struct Tables {
     table_rook:    [BitBoard; 0x19000],
     magics_bishop: [Magic; 64],
     table_bishop:  [BitBoard; 0x1480],
-    pub piece_tables_opening:  PcTables,
+    pub piece_tables_midgame:  PcTables,
     pub piece_tables_endgame:  PcTables,
     pub zobrist_tables: ZbTable,
     // endgames: 
@@ -146,7 +148,7 @@ impl Tables {
             [BitBoard::empty(); 0x1480])
         };
 
-        let (piece_tables_opening,piece_tables_endgame) = PcTables::new();
+        let (piece_tables_midgame,piece_tables_endgame) = PcTables::new();
 
         Self {
             knight_moves: Self::gen_knights(),
@@ -160,7 +162,7 @@ impl Tables {
             table_rook,
             magics_bishop,
             table_bishop,
-            piece_tables_opening,
+            piece_tables_midgame,
             piece_tables_endgame,
             zobrist_tables: ZbTable::new(),
         }
@@ -587,31 +589,17 @@ mod eval {
     use crate::types::*;
     use crate::tables::*;
     use crate::evaluate::*;
+    use crate::tuning::*;
 
     #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
     pub struct PcTables {
         tables:         [[Score; 64]; 6],
         pub ev_pawn:    EvPawn,
-    }
-
-    /// Passed bonus = passed * ranks past 2nd
-    #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
-    pub struct EvPawn {
-        pub backward: Score,
-        pub doubled:  Score,
-        pub isolated: Score,
-        pub passed:   Score,
-    }
-
-    impl EvPawn {
-        pub fn new() -> Self {
-            Self {
-                backward: -10,
-                doubled:  -15,
-                isolated: -20,
-                passed:   5,
-            }
-        }
+        pub ev_rook:    EvRook,
+        pub ev_knight:  EvKnight,
+        pub ev_bishop:  EvBishop,
+        pub ev_queen:   EvQueen,
+        pub ev_king:    EvKing,
     }
 
     impl PcTables {
@@ -665,7 +653,12 @@ mod eval {
                          [0; 64], // q
                          kings // k
                 ],
-                ev_pawn: EvPawn::new(),
+                ev_pawn:   EvPawn::new(),
+                ev_rook:   EvRook::new(),
+                ev_knight: EvKnight::new(),
+                ev_bishop: EvBishop::new(),
+                ev_queen:  EvQueen::new(),
+                ev_king:   EvKing::new(),
             };
 
             let mut endgame = opening;

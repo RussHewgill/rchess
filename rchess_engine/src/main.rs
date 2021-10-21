@@ -60,14 +60,11 @@ fn main() {
     // eprintln!("z1 = {:#8x}", z1.0);
     // eprintln!("z2 = {:#8x}", z2.0);
 
-    // let s = std::mem::size_of::<Eval>();
-    let s = std::mem::size_of::<Coord>();
-    eprintln!("s = {:?}", s);
-    let s = std::mem::size_of::<PCoord>();
-    eprintln!("s = {:?}", s);
-
-    // let s = u16::MAX;
-    // eprintln!("s = {:#8x}", s);
+    // // let s = std::mem::size_of::<Eval>();
+    // let s = std::mem::size_of::<Game>();
+    // eprintln!("s = {:?}", s);
+    // // let s = u16::MAX;
+    // // eprintln!("s = {:#8x}", s);
 
     // main6();
     // main5(); // search + eval position
@@ -75,7 +72,7 @@ fn main() {
     // main4(); // perft
 
     // main8(); // eval testing
-    // main7();
+    main7();
     // main3(); // read from file and test
 
 }
@@ -216,6 +213,8 @@ fn main7() {
 
     // let fen = "rn1q1k1r/1p2b1p1/p2p1nQ1/2pP2p1/2P3P1/5N1P/PP3P2/RN3RK1 w - - 0 2";
 
+    // let fen = "2k5/8/8/8/8/8/8/7K w - - 0 1";
+
     let ts = Tables::new();
 
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -234,9 +233,8 @@ fn main7() {
     //     Move::Capture { from: "H3".into(), to: "H7".into() },
     // ];
 
-    let ph = g.game_phase(&ts);
-
-    eprintln!("ph = {:?}", ph);
+    let e = g.evaluate(&ts);
+    eprintln!("e = {:?}", e);
 
     if !true {
 
