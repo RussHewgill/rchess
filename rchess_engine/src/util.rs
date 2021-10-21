@@ -215,12 +215,12 @@ pub fn stockfish_eval(
     let output_total = &output[output.len()-4 .. output.len()-1];
     // eprintln!("{}", output_total.join("\n"));
 
-    let p = Regex::new(r"(-?\d+\.\d+)").unwrap();
+    // let p = Regex::new(r"(-?\d+\.\d+)").unwrap();
+    let reg = Regex::new(r"(-?\d+\.\d+)").unwrap();
 
-    let tc = p.find(output_total[0]).unwrap();
-    let tn = p.find(output_total[1]).unwrap();
+    let tc = reg.find(output_total[0]).unwrap();
+    let tn = reg.find(output_total[1]).unwrap();
 
-    // eprintln!("tc = {:?}", tc.as_str());
     eval.total_classic = f64::from_str(tc.as_str()).unwrap();
     eval.total_nn = f64::from_str(tn.as_str()).unwrap();
 
@@ -228,22 +228,41 @@ pub fn stockfish_eval(
     if print { println!("{}", output_str) }
 
     let pawns   = output_mat[6];
-    // let rooks   = output_mat[9];
-    // let knights = output_mat[7];
-    // let bishops = output_mat[8];
-    // let queens  = output_mat[10];
-    // eprintln!("{}", pawns);
+    let rooks   = output_mat[9];
+    let knights = output_mat[7];
+    let bishops = output_mat[8];
+    let queens  = output_mat[10];
+    // eprintln!("{}", queens);
 
-    // let p = Regex::new(r"\| +Pawns \| +(-?\d+\.\d+) +(-?\d+\.\d+) +\|\| +(-?\d+\.\d+) +(-?\d+\.\d+) +").unwrap();
-    // let p = Regex::new(r"\| +Pawns \| +(-?\d+\.\d+) +(-?\d+\.\d+).*").unwrap();
-    let p = Regex::new(r"(-?\d+\.\d+)").unwrap();
+    let mut ps = reg.find_iter(pawns).collect::<Vec<_>>();
+    eval.material_mg[White][Pawn.index()] = f64::from_str(ps[0].as_str()).unwrap();
+    eval.material_eg[White][Pawn.index()] = f64::from_str(ps[1].as_str()).unwrap();
+    eval.material_mg[Black][Pawn.index()] = f64::from_str(ps[2].as_str()).unwrap();
+    eval.material_eg[Black][Pawn.index()] = f64::from_str(ps[3].as_str()).unwrap();
 
-    let mut cs = p.find_iter(pawns).collect::<Vec<_>>();
+    let mut ns = reg.find_iter(knights).collect::<Vec<_>>();
+    eval.material_mg[White][Knight.index()] = f64::from_str(ns[0].as_str()).unwrap();
+    eval.material_eg[White][Knight.index()] = f64::from_str(ns[1].as_str()).unwrap();
+    eval.material_mg[Black][Knight.index()] = f64::from_str(ns[2].as_str()).unwrap();
+    eval.material_eg[Black][Knight.index()] = f64::from_str(ns[3].as_str()).unwrap();
 
-    eval.material_mg[White][Pawn.index()] = f64::from_str(cs[0].as_str()).unwrap();
-    eval.material_eg[White][Pawn.index()] = f64::from_str(cs[1].as_str()).unwrap();
-    eval.material_mg[Black][Pawn.index()] = f64::from_str(cs[2].as_str()).unwrap();
-    eval.material_eg[Black][Pawn.index()] = f64::from_str(cs[3].as_str()).unwrap();
+    let mut rs = reg.find_iter(rooks).collect::<Vec<_>>();
+    eval.material_mg[White][Rook.index()] = f64::from_str(rs[0].as_str()).unwrap();
+    eval.material_eg[White][Rook.index()] = f64::from_str(rs[1].as_str()).unwrap();
+    eval.material_mg[Black][Rook.index()] = f64::from_str(rs[2].as_str()).unwrap();
+    eval.material_eg[Black][Rook.index()] = f64::from_str(rs[3].as_str()).unwrap();
+
+    let mut bs = reg.find_iter(bishops).collect::<Vec<_>>();
+    eval.material_mg[White][Bishop.index()] = f64::from_str(bs[0].as_str()).unwrap();
+    eval.material_eg[White][Bishop.index()] = f64::from_str(bs[1].as_str()).unwrap();
+    eval.material_mg[Black][Bishop.index()] = f64::from_str(bs[2].as_str()).unwrap();
+    eval.material_eg[Black][Bishop.index()] = f64::from_str(bs[3].as_str()).unwrap();
+
+    let mut qs = reg.find_iter(queens).collect::<Vec<_>>();
+    eval.material_mg[White][Queen.index()] = f64::from_str(qs[0].as_str()).unwrap();
+    eval.material_eg[White][Queen.index()] = f64::from_str(qs[1].as_str()).unwrap();
+    eval.material_mg[Black][Queen.index()] = f64::from_str(qs[2].as_str()).unwrap();
+    eval.material_eg[Black][Queen.index()] = f64::from_str(qs[3].as_str()).unwrap();
 
     Ok((output_str, eval))
     // unimplemented!()

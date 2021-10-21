@@ -594,10 +594,12 @@ mod eval {
         pub ev_pawn:    EvPawn,
     }
 
+    /// Passed bonus = passed * ranks past 2nd
     #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
     pub struct EvPawn {
         pub backward: Score,
         pub doubled:  Score,
+        pub isolated: Score,
         pub passed:   Score,
     }
 
@@ -606,7 +608,8 @@ mod eval {
             Self {
                 backward: -10,
                 doubled:  -15,
-                passed:   15,
+                isolated: -20,
+                passed:   5,
             }
         }
     }

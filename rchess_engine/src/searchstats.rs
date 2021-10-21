@@ -8,6 +8,7 @@ use crate::tables::*;
 pub struct SearchStats {
     pub nodes:          u32,
     pub leaves:         u32,
+    pub max_depth:      u8,
     pub checkmates:     u32,
     pub stalemates:     u32,
     pub tt_hits:        u32,
@@ -21,21 +22,37 @@ pub struct SearchStats {
 
 impl SearchStats {
 
+    fn _print(x: i32) -> String {
+        if x.abs() > 1_000_000 {
+            format!("{:.1}M", x as f64 / 1_000_000.)
+        } else if x > 1000 {
+            format!("{:.1}k", x as f64 / 1000.)
+        } else {
+            format!("{}", x)
+        }
+    }
+
     pub fn print(&self, dt: Duration) {
         print!("\n");
         println!("time       = {:.3}s", dt.as_secs_f64());
-        println!("nodes      = {:?}", self.nodes);
-        println!("rate       = {:.2} nodes/s", (self.nodes as f64 / 1000.) / dt.as_secs_f64());
-        println!("leaves     = {:?}", self.leaves);
-        println!("checkmates = {:?}", self.checkmates);
-        println!("stalemates = {:?}", self.stalemates);
-        println!("hits       = {:?}", self.tt_hits);
-        println!("misses     = {:?}", self.tt_misses);
+        println!("nodes      = {}", Self::_print(self.nodes as i32));
+        println!("rate       = {:.1} nodes/s", (self.nodes as f64 / 1000.) / dt.as_secs_f64());
+        println!("max depth  = {}", self.max_depth);
+        println!("leaves     = {}", Self::_print(self.leaves as i32));
+        println!("checkmates = {}", Self::_print(self.checkmates as i32));
+        println!("stalemates = {}", Self::_print(self.stalemates as i32));
+        println!("hits       = {}", Self::_print(self.tt_hits as i32));
+        println!("misses     = {}", Self::_print(self.tt_misses as i32));
+
+        // println!("checkmates = {:?}", self.checkmates);
+        // println!("stalemates = {:?}", self.stalemates);
+        // println!("hits       = {:?}", self.tt_hits);
+        // println!("misses     = {:?}", self.tt_misses);
         println!("alpha      = {:?}", self.alpha);
         println!("beta       = {:?}", self.beta);
-        println!("PV Nodes   = {:?}", self.ns_pv);
-        println!("All Nodes   = {:?}", self.ns_all);
-        println!("Cut Nodes   = {:?}", self.ns_cut);
+        // println!("PV Nodes   = {:?}", self.ns_pv);
+        // println!("All Nodes  = {:?}", self.ns_all);
+        // println!("Cut Nodes  = {:?}", self.ns_cut);
     }
 
 }
@@ -46,6 +63,7 @@ impl std::ops::Add for SearchStats {
         Self {
             nodes:          self.nodes + other.nodes,
             leaves:         self.leaves + other.leaves,
+            max_depth:      u8::max(self.max_depth, other.max_depth),
             checkmates:     self.checkmates + other.checkmates,
             stalemates:     self.stalemates + other.stalemates,
             tt_hits:        self.tt_hits + other.tt_hits,

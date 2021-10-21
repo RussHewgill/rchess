@@ -4,6 +4,8 @@ use crate::tables::*;
 
 // use evmap_derive::ShallowCopy;
 
+use packed_struct::prelude::*;
+
 pub use self::D::*;
 
 use std::str::FromStr;
@@ -23,6 +25,15 @@ pub enum D {
 // #[derive(Eq,Hash,PartialEq,PartialOrd,ShallowCopy,Clone,Copy)]
 #[derive(Eq,Hash,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Coord(pub u8, pub u8);
+
+// #[derive(PackedStruct)]
+// #[packed_struct(bit_numbering="msb0")]
+// pub struct PCoord {
+//     #[packed_field(bits="0", size_bits="6")]
+//     rank: Integer<u8, packed_bits::Bits::<6>>,
+//     // #[packed_field(bits="3", size_bits="3")]
+//     // file: Integer<u8, packed_bits::Bits::<3>>,
+// }
 
 impl<T> std::ops::Index<Coord> for [T; 64] {
     type Output = T;

@@ -16,14 +16,14 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 pub fn crit_bench_1(c: &mut Criterion) {
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
-    // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
+    let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
     // let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
 
     // let fen = "Q3b3/4bkp1/1q2np1p/NPp1p3/2P1P3/4BP1P/4B1P1/7K b - - 1 1"; // Correct = e6c7
     // let fen = "rn2kbnr/pppppppp/8/8/6b1/1QP4P/PP1PqPPN/RNB1KB1R w KQkq - 0 2"; // 1 move, then lots
 
-    let fen = "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1"; // WAC.001 = Qg6 = g3g6
-    let m0 = Move::Quiet { from: Coord(6,2), to: Coord(6,5) };
+    // let fen = "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1"; // WAC.001 = Qg6 = g3g6
+    // let m0 = Some(Move::Quiet { from: Coord(6,2), to: Coord(6,5) });
 
     let n = 4;
 
@@ -46,7 +46,7 @@ pub fn crit_bench_1(c: &mut Criterion) {
     // group.bench_function("rank moves depth", |b| b.iter(|| ex.explore(&ts, ex.max_depth, false)));
     group.bench_function("rank moves iter", |b| b.iter(|| {
         let (m,stats) = ex.explore(&ts, None);
-        assert_eq!(m, Some(m0));
+        // assert_eq!(m, m0);
     }));
 
     // no collect, captures first      = 18.2 ms

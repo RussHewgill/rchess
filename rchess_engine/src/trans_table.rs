@@ -59,14 +59,14 @@ pub struct SearchInfo {
 }
 
 /// PV,
-/// UpperBound, // NodeAll
-/// LowerBound, // NodeCut
+/// All, // UpperBound
+/// Cut, // LowerBound
 // #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
 pub enum Node {
     PV,
-    UpperBound, // NodeAll
-    LowerBound, // NodeCut
+    All, // UpperBound
+    Cut, // LowerBound
     // NodeAll(Score), // Score = upper bound
     // NodeCut(Score), // Score = lower bound
 }

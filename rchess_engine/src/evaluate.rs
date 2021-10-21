@@ -149,6 +149,31 @@ impl Game {
 /// Positional Scoring
 impl Game {
 
+    pub fn game_phase(&self, ts: &Tables) -> i16 {
+        let pawn_ph = 0;
+        let knight_ph = 1;
+        let bishop_ph = 1;
+        let rook_ph = 2;
+        let queen_ph = 4;
+        let pcs = [Pawn,Rook,Knight,Bishop,Queen];
+        let phases: [i16; 5] = [pawn_ph,rook_ph,knight_ph,bishop_ph,queen_ph];
+
+        let ph_total = pawn_ph * 16 + knight_ph * 4 + bishop_ph * 4 + rook_ph * 4 + queen_ph * 2;
+        let mut ph = ph_total;
+
+        for &col in [White,Black].iter() {
+            for pc in pcs {
+                let ps = self.get(pc, col);
+                let pn = ps.popcount() as i16;
+                ph -= pn * phases[pc.index()];
+            }
+        }
+
+        let phase = (ph * 256 + (ph_total / 2)) / ph_total;
+
+        phase
+    }
+
     pub fn score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> Score {
         match pc {
             Pawn   => {

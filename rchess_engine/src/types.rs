@@ -278,6 +278,19 @@ impl<T> std::ops::IndexMut<Color> for [T; 2] {
     }
 }
 
+impl<T> std::ops::Index<Piece> for [T; 6] {
+    type Output = T;
+    fn index(&self, pc: Piece) -> &Self::Output {
+        &self[pc.index()]
+    }
+}
+
+impl<T> std::ops::IndexMut<Piece> for [T; 6] {
+    fn index_mut(&mut self, pc: Piece) -> &mut Self::Output {
+        &mut self[pc.index()]
+    }
+}
+
 // impl Iterator for Piece {
 //     type Item = Piece;
 //     fn next(&mut self) -> Option<Self::Item> {

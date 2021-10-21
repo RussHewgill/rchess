@@ -62,9 +62,10 @@ impl Explorer {
 
     pub fn explore(&self, ts: &Tables, depth: Option<Depth>) -> (Option<Move>,SearchStats) {
 
-        let (moves,stats) = self.iterative_deepening(&ts, false);
+        let (moves,stats) = self.iterative_deepening(&ts, false, false);
         (moves.get(0).map(|x| x.0),stats)
 
+        // unimplemented!()
         // if iterative {
         //     let (moves,stats) = self.iterative_deepening(&ts, false);
         //     (moves.get(0).map(|x| x.0),stats)
@@ -130,26 +131,28 @@ impl Explorer {
     //     (out,stats)
     // }
 
-    pub fn iterative_deepening(&self, ts: &Tables, print: bool) -> (Vec<(Move,Score)>,SearchStats) {
+    pub fn iterative_deepening(&self, ts: &Tables, print: bool, par: bool)
+                               -> (Vec<(Move,Vec<Move>,Score)>,SearchStats) {
 
         let ms = self.game.search_all(&ts, None);
         let ms = ms.get_moves_unsafe();
-        let (ms,stats) = self._iterative_deepening(&ts, print, ms);
+        let (ms,stats) = self._iterative_deepening(&ts, print, ms, par);
 
         // (ms.get(0).map(|x| x.0),stats)
         // (ms.get(0).copied(),stats)
         (ms,stats)
     }
 
-    pub fn _iterative_deepening(&self, ts: &Tables, print: bool, moves: Vec<Move>
-    ) -> (Vec<(Move,Score)>,SearchStats) {
+    pub fn _iterative_deepening(&self, ts: &Tables, print: bool, moves: Vec<Move>, par: bool,
+    ) -> (Vec<(Move,Vec<Move>,Score)>,SearchStats) {
 
         self.trans_table.clear();
 
         let mut timer = self.timer.clone();
         timer.reset();
 
-        let mut out: Vec<(Move,i32)> = vec![];
+        // let mut out: Vec<(Move,i32)> = vec![];
+        let mut out = vec![];
         let mut ss:  Vec<SearchStats>;
         let mut stats = SearchStats::default();
         let mut depth = 0;
@@ -180,33 +183,38 @@ impl Explorer {
                 // let alpha = i32::MIN;
                 // let beta  = i32::MAX;
                 let mut stats = SearchStats::default();
-                let score = self._ab_search(
+
+                let (mut mv_seq,score) = self._ab_search(
                     // &ts, &g2, depth, 1, alpha.clone(), beta.clone(), false, &mut stats);
-                    &ts, &g2, depth, 1, alpha, beta, false, &mut stats);
-                ((*mv,score),stats)
+                    &ts, &g2, depth, 1, alpha, beta, false, &mut stats, *mv);
+
+                mv_seq.push(*mv);
+                mv_seq.reverse();
+                ((*mv,mv_seq,score),stats)
                 })
                 .unzip();
 
             stats = ss.iter().sum();
 
-            out.sort_by(|a,b| a.1.cmp(&b.1));
+            out.sort_by(|a,b| a.2.cmp(&b.2));
 
             if self.side == self.game.state.side_to_move {
                 out.reverse();
             }
 
+            stats.max_depth = depth;
             depth += 1;
             timer.update_times(self.side, stats.nodes);
             if print {
                 eprintln!("depth, time = {:?}, {:.2}", depth-1, timer.time_left[self.side]);
             }
         }
-        if print {
-            print!("\n");
-            for (m,s) in out.iter() {
-                eprintln!("{:>8} = {:?}", s, m);
-            }
-        }
+        // if print {
+        //     print!("\n");
+        //     for (m,s) in out.iter() {
+        //         eprintln!("{:>8} = {:?}", s, m);
+        //     }
+        // }
         (out,stats)
     }
 
@@ -246,6 +254,204 @@ impl Explorer {
         }
     }
 
+    // pub fn _ab_search_par(
+    //     &self,
+    //     ts:                 &Tables,
+    //     g:                  &Game,
+    //     depth:              Depth,
+    //     k:                  i16,
+    //     // mut alpha:          i32,
+    //     // mut beta:           i32,
+    //     alpha:              Arc<AtomicI32>,
+    //     beta:               Arc<AtomicI32>,
+    //     maximizing:         bool,
+    //     mut stats:          &mut SearchStats,
+    //     par:                bool,
+    // ) -> Score {
+
+    //     let moves = g.search_all(&ts, None);
+
+    //     let moves: Vec<Move> = match moves {
+    //         Outcome::Checkmate(c) => {
+    //             let score = 100_000_000 - k as Score;
+    //             stats.leaves += 1;
+    //             stats.checkmates += 1;
+    //             return score;
+    //         },
+    //         Outcome::Stalemate    => {
+    //             let score = -100_000_000 + k as Score;
+    //             stats.leaves += 1;
+    //             stats.stalemates += 1;
+    //             return score;
+    //         },
+    //         Outcome::Moves(ms)    => ms,
+    //     };
+
+    //     if depth == 0 {
+    //         let score = g.evaluate(&ts).sum();
+    //         // let score = self.quiescence(&ts, &g, moves, k, alpha, beta);
+
+    //         stats.leaves += 1;
+    //         if self.side == Black {
+    //             return -score;
+    //         } else {
+    //             return score;
+    //         }
+    //     }
+
+    //     let gs = moves.into_iter().flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, &m) {
+    //     // let gs = moves.into_par_iter().flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, &m) {
+    //         let tt = self.check_tt(&ts, &g2, depth, maximizing, &mut stats);
+    //         Some((m,g2,tt))
+    //     } else {
+    //         None
+    //     });
+
+    //     let mut gs: Vec<(Move,Game,Option<Score>)> = gs.collect();
+    //     gs.sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
+    //     if !maximizing {
+    //         gs.reverse();
+    //     }
+
+    //     let mut val = if maximizing { i32::MIN } else { i32::MAX };
+    //     let mut val: (Option<(Zobrist,Move)>,i32) = (None,val);
+
+    //     let mut node_type = Node::PV;
+
+    //     if par {
+    //         use crossbeam_channel::unbounded;
+    //         let (chan_tx,chan_rx) = unbounded();
+    //         // let (chan_tx,chan_rx) = std::sync::mpsc::sync_channel(4);
+
+    //         let mut i_max = gs.len() as i16;
+    //         let gs2 = gs.into_par_iter()
+    //         // let gs2 = gs.into_iter()
+    //             .enumerate()
+    //             .for_each(|(i,(m,g2,tt))| {
+    //                 let mut ss = SearchStats::default();
+    //                 let alpha2 = Arc::new(AtomicI32::new(alpha.load(Ordering::SeqCst)));
+    //                 let beta2  = Arc::new(AtomicI32::new(beta.load(Ordering::SeqCst)));
+    //                 let score = self._ab_search_par(
+    //                     &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut ss,par);
+    //                 chan_tx.send((m,g2,tt,score,ss)).unwrap();
+    //             });
+
+    //         loop {
+    //             if i_max == 0 { break; } else { i_max -= 1; }
+    //             let (mv,g2,tt,score,ss) = match chan_rx.recv() {
+    //                 Ok(x)  => x,
+    //                 Err(_) => break,
+    //             };
+    //             *stats += ss;
+
+    //             let zb = g2.zobrist;
+
+    //             stats.nodes += 1;
+
+    //             if maximizing {
+    //                 if score > val.1 {
+    //                     val = (Some((zb,mv)),score);
+    //                 }
+    //                 alpha.fetch_max(val.1, Ordering::SeqCst);
+    //                 if val.1 >= beta.load(Ordering::SeqCst) { // Beta cutoff
+    //                     // node_type = Node::Cut;
+    //                     // self.trans_table.insert_replace(
+    //                     //     zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
+    //                     break;
+    //                 }
+    //                 // self.trans_table.insert_replace(
+    //                 //     zb, SearchInfo::new(mv, depth, Node::All, val.1));
+    //             } else {
+    //                 if score < val.1 {
+    //                     val = (Some((zb,mv)),score);
+    //                 }
+    //                 beta.fetch_min(val.1, Ordering::SeqCst);
+    //                 if val.1 <= alpha.load(Ordering::SeqCst) { // Alpha cutoff
+    //                     // node_type = Node::Cut;
+    //                     // self.trans_table.insert_replace(
+    //                     //     zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
+    //                     break;
+    //                 }
+    //                 // node_type = Node::All;
+    //                 // self.trans_table.insert_replace(
+    //                 //     zb, SearchInfo::new(mv, depth, Node::All, val.1));
+    //             }
+
+    //         }
+
+    //     } else {
+    //         for (mv,g2,tt) in gs.into_iter() {
+    //             let zb = g2.zobrist;
+
+    //             stats.nodes += 1;
+
+    //             let alpha2 = Arc::new(AtomicI32::new(alpha.load(Ordering::Relaxed)));
+    //             let beta2  = Arc::new(AtomicI32::new(beta.load(Ordering::Relaxed)));
+    //             let score = self._ab_search(
+    //                 // &ts, &g2, depth - 1, k + 1, alpha.clone(), beta.clone(), !maximizing, &mut stats);
+    //                 &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut stats);
+
+    //             if maximizing {
+    //                 if score > val.1 {
+    //                     val = (Some((zb,mv)),score);
+    //                 }
+    //                 alpha.fetch_max(val.1, Ordering::SeqCst);
+    //                 if val.1 >= beta.load(Ordering::SeqCst) { // Beta cutoff
+    //                     // node_type = Node::Cut;
+    //                     // self.trans_table.insert_replace(
+    //                     //     zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
+    //                     break;
+    //                 }
+    //                 // self.trans_table.insert_replace(
+    //                 //     zb, SearchInfo::new(mv, depth, Node::All, val.1));
+    //             } else {
+    //                 if score < val.1 {
+    //                     val = (Some((zb,mv)),score);
+    //                 }
+    //                 beta.fetch_min(val.1, Ordering::SeqCst);
+    //                 if val.1 <= alpha.load(Ordering::SeqCst) { // Alpha cutoff
+    //                     // node_type = Node::Cut;
+    //                     // self.trans_table.insert_replace(
+    //                     //     zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
+    //                     break;
+    //                 }
+    //                 // node_type = Node::All;
+    //                 // self.trans_table.insert_replace(
+    //                 //     zb, SearchInfo::new(mv, depth, Node::All, val.1));
+    //             }
+
+    //         }
+    //     }
+
+    //     if let Some((zb,mv)) = val.0 {
+    //         self.trans_table.insert_replace(
+    //             zb, SearchInfo::new(mv, depth, Node::PV, val.1));
+    //     }
+
+    //     // match node_type {
+    //     //     Node::PV         => {
+    //     //         if let Some((zb,mv)) = val.0 {
+    //     //             self.trans_table.insert_replace(
+    //     //                 zb, SearchInfo::new(mv, depth, Node::PV, val.1));
+    //     //         }
+    //     //     },
+    //     //     Node::All => {
+    //     //     },
+    //     //     Node::Cut => {
+    //     //     },
+    //     // }
+
+    //     // stats.alpha = stats.alpha.max(alpha);
+    //     // stats.beta = stats.beta.max(beta);
+    //     stats.alpha = stats.alpha.max(alpha.load(Ordering::SeqCst));
+    //     stats.beta = stats.beta.max(beta.load(Ordering::SeqCst));
+
+    //     val.1
+    // }
+
+    /// alpha: the MIN score that the maximizing player is assured of
+    /// beta:  the MAX score that the minimizing player is assured of
+
     pub fn _ab_search(
         &self,
         ts:                 &Tables,
@@ -258,7 +464,8 @@ impl Explorer {
         beta:               Arc<AtomicI32>,
         maximizing:         bool,
         mut stats:          &mut SearchStats,
-    ) -> Score {
+        mv0:                Move,
+    ) -> (Vec<Move>, Score) {
 
         let moves = g.search_all(&ts, None);
 
@@ -267,13 +474,16 @@ impl Explorer {
                 let score = 100_000_000 - k as Score;
                 stats.leaves += 1;
                 stats.checkmates += 1;
-                return score;
+                // return score;
+                // return (vec![mv0],score);
+                return (vec![],score);
             },
             Outcome::Stalemate    => {
                 let score = -100_000_000 + k as Score;
                 stats.leaves += 1;
                 stats.stalemates += 1;
-                return score;
+                // return score;
+                return (vec![],score);
             },
             Outcome::Moves(ms)    => ms,
         };
@@ -284,9 +494,11 @@ impl Explorer {
 
             stats.leaves += 1;
             if self.side == Black {
-                return -score;
+                // return -score;
+                return (vec![mv0], -score);
             } else {
-                return score;
+                // return score;
+                return (vec![mv0], score);
             }
         }
 
@@ -304,68 +516,58 @@ impl Explorer {
             gs.reverse();
         }
 
-        use crossbeam_channel::unbounded;
-        let (chan_tx,chan_rx) = unbounded();
-        // let (chan_tx,chan_rx) = std::sync::mpsc::sync_channel(4);
-
-        let mut i_max = gs.len() as i16;
-        // eprintln!("i_max = {:?}", i_max);
-        // let (gs2,ss): (Vec<(Move,Game,Option<Score>,Score)>,Vec<SearchStats>) = gs.into_par_iter()
-        // let (gs2,ss): (Vec<(Move,Game,Option<Score>,Score)>,Vec<SearchStats>) = gs.into_iter()
-        let gs2 = gs.into_par_iter()
-        // let gs2 = gs.into_iter()
-            .enumerate()
-            .for_each(|(i,(m,g2,tt))| {
-                // println!("wat 0: {}", i);
-                let mut ss = SearchStats::default();
-                // let score = self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut stats);
-                // let score = self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut ss);
-                let alpha2 = Arc::new(AtomicI32::new(alpha.load(Ordering::Relaxed)));
-                let beta2  = Arc::new(AtomicI32::new(beta.load(Ordering::Relaxed)));
-                let score = self._ab_search(&ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut ss);
-                // let score = self.check_tt(&ts, &g2, depth, k, alpha, beta, maximizing);
-                // let score = match tt {
-                //     None    => self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing),
-                //     Some(s) => s,
-                // };
-                chan_tx.send((m,g2,tt,score,ss)).unwrap();
-            });
-        // *stats += ss.into_iter().sum();
-
         // let gs2 = gs.into_iter()
         //     .map(|(m,g2,tt)| {
         //         let mut ss = SearchStats::default();
         //         let score = self._ab_search(&ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut ss);
-        //         (m,g2,tt,score)
+        //         (m,g2,tt,score,ss)
         //     });
 
         let mut val = if maximizing { i32::MIN } else { i32::MAX };
-        let mut val: (Option<(Zobrist,Move)>,i32) = (None,val);
+        // let mut val: (Option<(Zobrist,Move)>,i32) = (None,val);
+        let mut val: (Option<(Zobrist,Move,Vec<Move>)>,i32) = (None,val);
 
         let mut node_type = Node::PV;
 
-        // for (mv,g2,tt) in gs.into_iter() {
-        // for (mv,g2,tt,score) in gs2.into_iter() {
-        // for (mv,g2,tt,score,ss) in gs2 {
-        // for (mv,g2,tt,score) in gs2 {
-        loop {
+        // use crossbeam_channel::unbounded;
+        // let (chan_tx,chan_rx) = unbounded();
+        // // let (chan_tx,chan_rx) = std::sync::mpsc::sync_channel(4);
 
-            if i_max == 0 { break; } else { i_max -= 1; }
-            let (mv,g2,tt,score,ss) = match chan_rx.recv() {
-                Ok(x)  => x,
-                Err(_) => break,
-            };
+        // let mut i_max = gs.len() as i16;
+        // // let gs2 = gs.into_par_iter()
+        // let gs2 = gs.into_iter()
+        //     .enumerate()
+        //     .for_each(|(i,(m,g2,tt))| {
+        //     // .map(|(i,(m,g2,tt))| {
+        //         let mut ss = SearchStats::default();
+        //         let alpha2 = Arc::new(AtomicI32::new(alpha.load(Ordering::SeqCst)));
+        //         let beta2  = Arc::new(AtomicI32::new(beta.load(Ordering::SeqCst)));
+        //         let score = self._ab_search(
+        //             &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut ss);
+        //         chan_tx.send((m,g2,tt,score,ss)).unwrap();
+        //         // (m,g2,tt,score,ss)
+        //     });
+
+        for (mv,g2,tt) in gs.into_iter() {
+        // for (mv,g2,tt,score,ss) in gs2 {
+        //     *stats += ss;
+
+        // loop {
+        //     if i_max == 0 { break; } else { i_max -= 1; }
+        //     let (mv,g2,tt,score,ss) = match chan_rx.recv() {
+        //         Ok(x)  => x,
+        //         Err(_) => break,
+        //     };
+        //     *stats += ss;
 
             let zb = g2.zobrist;
-
-            // *stats += ss;
             stats.nodes += 1;
 
             let alpha2 = Arc::new(AtomicI32::new(alpha.load(Ordering::Relaxed)));
             let beta2  = Arc::new(AtomicI32::new(beta.load(Ordering::Relaxed)));
-            let score = self._ab_search(
+            let (mut mv_seq,score) = self._ab_search(
                 // &ts, &g2, depth - 1, k + 1, alpha.clone(), beta.clone(), !maximizing, &mut stats);
-                &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut stats);
+                &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut stats, mv);
                 // &ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut stats);
 
             // if maximizing {
@@ -376,25 +578,35 @@ impl Explorer {
 
             if maximizing {
                 if score > val.1 {
-                    val = (Some((zb,mv)),score);
+                    mv_seq.push(mv);
+                    val = (Some((zb,mv,mv_seq)),score);
                 }
                 alpha.fetch_max(val.1, Ordering::SeqCst);
                 if val.1 >= beta.load(Ordering::SeqCst) { // Beta cutoff
-                    // stats.
-                    // self.trans_table.insert_replace(
-                    //     zb, SearchInfo::new(mv, depth, Node::LowerBound, val.1));
+                    // node_type = Node::Cut;
+                    self.trans_table.insert_replace(
+                        zb, SearchInfo::new(mv, depth - 1, Node::Cut, val.1));
+                        // zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
                     break;
                 }
+                // self.trans_table.insert_replace(
+                //     zb, SearchInfo::new(mv, depth, Node::All, val.1));
             } else {
                 if score < val.1 {
-                    val = (Some((zb,mv)),score);
+                    mv_seq.push(mv);
+                    val = (Some((zb,mv,mv_seq)),score);
                 }
                 beta.fetch_min(val.1, Ordering::SeqCst);
                 if val.1 <= alpha.load(Ordering::SeqCst) { // Alpha cutoff
-                    // self.trans_table.insert_replace(
-                    //     zb, SearchInfo::new(mv, depth, Node::UpperBound, val.1));
+                    // node_type = Node::Cut;
+                    self.trans_table.insert_replace(
+                        zb, SearchInfo::new(mv, depth - 1, Node::Cut, val.1));
+                        // zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
                     break;
                 }
+                // node_type = Node::All;
+                // self.trans_table.insert_replace(
+                //     zb, SearchInfo::new(mv, depth, Node::All, val.1));
             }
 
             // if maximizing {
@@ -451,24 +663,35 @@ impl Explorer {
 
         }
 
-        match node_type {
-            Node::PV         => {
-                if let Some((zb,mv)) = val.0 {
-                    self.trans_table.insert_replace(
-                        zb, SearchInfo::new(mv, depth, Node::PV, val.1));
-                }
-            },
-            Node::UpperBound => {},
-            Node::LowerBound => {},
+        if let Some((zb,mv,_)) = val.0 {
+            self.trans_table.insert_replace(
+                zb, SearchInfo::new(mv, depth, Node::PV, val.1));
         }
+
+        // match node_type {
+        //     Node::PV         => {
+        //         if let Some((zb,mv)) = val.0 {
+        //             self.trans_table.insert_replace(
+        //                 zb, SearchInfo::new(mv, depth, Node::PV, val.1));
+        //         }
+        //     },
+        //     Node::All => {
+        //     },
+        //     Node::Cut => {
+        //     },
+        // }
 
         // stats.alpha = stats.alpha.max(alpha);
         // stats.beta = stats.beta.max(beta);
         stats.alpha = stats.alpha.max(alpha.load(Ordering::SeqCst));
         stats.beta = stats.beta.max(beta.load(Ordering::SeqCst));
 
-        val.1
-        // val
+        if let Some((zb,mv,mv_seq)) = val.0 {
+            (mv_seq,val.1)
+        } else {
+            (vec![mv0], val.1)
+        }
+
     }
 
 }
