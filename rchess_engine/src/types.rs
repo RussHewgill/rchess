@@ -4,6 +4,8 @@ pub use crate::coords::*;
 pub use crate::game::*;
 pub use crate::hashing::*;
 
+pub use log::{debug, error};
+// pub use log::{debug, error, warn, info, trace};
 // use evmap_derive::ShallowCopy;
 
 pub use self::{Color::*,Piece::*};
@@ -18,7 +20,7 @@ pub enum Color {
 }
 
 // #[derive(Debug,Hash,Eq,PartialEq,PartialOrd,ShallowCopy,Clone,Copy)]
-#[derive(Debug,Hash,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Debug,Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
 pub enum Piece {
     Pawn,
     Rook,
@@ -35,15 +37,17 @@ pub enum Piece {
 // }
 
 // #[derive(Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
-#[derive(Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
+#[derive(Eq,PartialEq,Ord,PartialOrd,Hash,Clone,Copy)]
 pub enum Move {
     Quiet              { from: Coord, to: Coord },
     PawnDouble         { from: Coord, to: Coord },
-    Capture            { from: Coord, to: Coord },
-    EnPassant          { from: Coord, to: Coord, capture: Coord },
-    Promotion          { from: Coord, to: Coord, new_piece: Piece },
-    PromotionCapture   { from: Coord, to: Coord, new_piece: Piece },
+    // Capture            { from: Coord, to: Coord },
+    Capture            { from: Coord, to: Coord, pc: Piece, victim: Piece },
+    // EnPassant          { from: Coord, to: Coord, capture: Coord },
+    EnPassant          { from: Coord, to: Coord, capture: Coord, victim: Piece },
     Castle             { from: Coord, to: Coord, rook_from: Coord, rook_to: Coord },
+    Promotion          { from: Coord, to: Coord, new_piece: Piece },
+    PromotionCapture   { from: Coord, to: Coord, new_piece: Piece, victim: Piece },
 }
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
@@ -123,6 +127,14 @@ impl Move {
         }
     }
 
+    pub fn filter_promotion(&self) -> bool {
+        match self {
+            &Move::Promotion { .. }        => true,
+            &Move::PromotionCapture { .. } => true,
+            _                              => false,
+        }
+    }
+
     pub fn filter_en_passant(&self) -> bool {
         match self {
             &Move::EnPassant { .. }        => true,
@@ -139,27 +151,41 @@ impl Move {
 
     pub fn sq_from(&self) -> Coord {
         match self {
-            &Move::Quiet { from, .. } => from,
-            &Move::PawnDouble { from, .. } => from,
-            &Move::Capture { from, .. } => from,
-            &Move::EnPassant { from, .. } => from,
-            &Move::Promotion { from, .. } => from,
+            &Move::Quiet { from, .. }            => from,
+            &Move::PawnDouble { from, .. }       => from,
+            &Move::Capture { from, .. }          => from,
+            &Move::EnPassant { from, .. }        => from,
+            &Move::Promotion { from, .. }        => from,
             &Move::PromotionCapture { from, .. } => from,
-            &Move::Castle { from, .. } => from,
-            // _ => unimplemented!(),
+            &Move::Castle { from, .. }           => from,
         }
     }
 
     pub fn sq_to(&self) -> Coord {
         match self {
-            &Move::Quiet { to, .. } => to,
-            &Move::PawnDouble { to, .. } => to,
-            &Move::Capture { to, .. } => to,
-            &Move::EnPassant { to, .. } => to,
-            &Move::Promotion { to, .. } => to,
+            &Move::Quiet { to, .. }            => to,
+            &Move::PawnDouble { to, .. }       => to,
+            &Move::Capture { to, .. }          => to,
+            &Move::EnPassant { to, .. }        => to,
+            &Move::Promotion { to, .. }        => to,
             &Move::PromotionCapture { to, .. } => to,
-            &Move::Castle { to, .. } => to,
-            // _ => unimplemented!(),
+            &Move::Castle { to, .. }           => to,
+        }
+    }
+
+    pub fn piece(&self) -> Option<Piece> {
+        match self {
+            &Move::Capture { pc, .. } => Some(pc),
+            _                         => None,
+        }
+    }
+
+    pub fn victim(&self) -> Option<Piece> {
+        match self {
+            &Move::Capture { victim, .. }          => Some(victim),
+            &Move::EnPassant { victim, .. }        => Some(victim),
+            &Move::PromotionCapture { victim, .. } => Some(victim),
+            _                                      => None,
         }
     }
 
@@ -171,17 +197,19 @@ impl Move {
             Move::PawnDouble { from, to } => {
                 Move::PawnDouble { from: to, to: from }
             },
-            Move::Capture    { from, to } => {
-                Move::Capture    { from: to, to: from }
+            Move::Capture    { from, to, pc, victim } => {
+                Move::Capture    { from: to, to: from, pc: victim, victim: pc }
             },
-            Move::EnPassant  { from, to, capture } => {
-                Move::EnPassant  { from: to, to: from, capture }
+            Move::EnPassant  { from, to, capture, victim } => {
+                // Move::EnPassant  { from: to, to: from, capture }
+                panic!("reverse en passant?")
             },
             Move::Promotion  { from, to, new_piece } => {
                 Move::Promotion  { from: to, to: from, new_piece }
             },
-            Move::PromotionCapture  { from, to, new_piece } => {
-                Move::PromotionCapture  { from: to, to: from, new_piece }
+            Move::PromotionCapture  { from, to, new_piece, victim } => {
+                // Move::PromotionCapture  { from: to, to: from, new_piece }
+                panic!("reverse promotion capture?")
             },
             Move::Castle     { from, to, rook_from, rook_to } => {
                 Move::Castle     { from: to, to: from, rook_from, rook_to }
@@ -364,16 +392,16 @@ impl std::fmt::Debug for Move {
             PawnDouble         { from, to } => {
                 f.write_str(&format!("Doub  {:?}{:?}", from, to))?;
             },
-            Capture            { from, to } => {
+            Capture            { from, to, pc, victim } => {
                 f.write_str(&format!("Cap   {:?}{:?}", from, to))?;
             },
-            EnPassant          { from, to, capture } => {
+            EnPassant          { from, to, capture, victim } => {
                 f.write_str(&format!("EP    {:?}{:?}", from, to))?;
             },
             Promotion          { from, to, new_piece } => {
                 f.write_str(&format!("Prom  {:?}{:?}", from, to))?;
             },
-            PromotionCapture   { from, to, new_piece } => {
+            PromotionCapture   { from, to, new_piece, victim } => {
                 f.write_str(&format!("PCap {:?}{:?}", from, to))?;
             },
             Castle             { from, to, rook_from, rook_to } => {

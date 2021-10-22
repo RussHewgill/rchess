@@ -7,3 +7,5 @@ rchess_game/target/*
 *.zip
 dhat.*
 WAC Score.txt
+*.rar
+testpositions/*

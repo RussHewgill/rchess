@@ -143,8 +143,8 @@ impl Explorer {
         (ms,stats)
     }
 
-    pub fn _iterative_deepening(&self, ts: &Tables, print: bool, moves: Vec<Move>, par: bool,
-    ) -> (Vec<(Move,Vec<Move>,Score)>,SearchStats) {
+    pub fn _iterative_deepening(&self, ts: &Tables, print: bool, moves: Vec<Move>, par: bool)
+                                -> (Vec<(Move,Vec<Move>,Score)>,SearchStats) {
 
         self.trans_table.clear();
 
@@ -175,28 +175,60 @@ impl Explorer {
 
         while timer.should_search(self.side, depth) && (depth <= self.max_depth) {
 
-            eprintln!("Explorer: not parallel");
-            (out,ss) = gs.iter().map(|(mv,g2)| {
-            // (out,ss) = gs.par_iter().map(|(mv,g2)| {
+            // eprintln!("Explorer: not parallel");
+            // (out,ss) = gs.iter().map(|(mv,g2)| {
+            (out,ss) = gs.par_iter().map(|(mv,g2)| {
                 let alpha = Arc::new(AtomicI32::new(i32::MIN));
                 let beta  = Arc::new(AtomicI32::new(i32::MAX));
                 // let alpha = i32::MIN;
                 // let beta  = i32::MAX;
                 let mut stats = SearchStats::default();
-
                 let (mut mv_seq,score) = self._ab_search(
-                    // &ts, &g2, depth, 1, alpha.clone(), beta.clone(), false, &mut stats);
                     &ts, &g2, depth, 1, alpha, beta, false, &mut stats, *mv);
-
                 mv_seq.push(*mv);
                 mv_seq.reverse();
                 ((*mv,mv_seq,score),stats)
-                })
-                .unzip();
+            }).unzip();
+
+            // #[cfg(feature = "par")]
+            // {
+            //     // eprintln!("Explorer: not parallel");
+            //     // (out,ss) = gs.iter().map(|(mv,g2)| {
+            //     (out,ss) = gs.par_iter().map(|(mv,g2)| {
+            //         let alpha = Arc::new(AtomicI32::new(i32::MIN));
+            //         let beta  = Arc::new(AtomicI32::new(i32::MAX));
+            //         // let alpha = i32::MIN;
+            //         // let beta  = i32::MAX;
+            //         let mut stats = SearchStats::default();
+            //         let (mut mv_seq,score) = self._ab_search(
+            //             &ts, &g2, depth, 1, alpha, beta, false, &mut stats, *mv);
+            //         mv_seq.push(*mv);
+            //         mv_seq.reverse();
+            //         ((*mv,mv_seq,score),stats)
+            //     }).unzip();
+            // }
+            // #[cfg(not(feature = "par"))]
+            // {
+            //     eprintln!("Explorer: not parallel");
+            //     (out,ss) = gs.iter().map(|(mv,g2)| {
+            //     // (out,ss) = gs.par_iter().map(|(mv,g2)| {
+            //         let alpha = Arc::new(AtomicI32::new(i32::MIN));
+            //         let beta  = Arc::new(AtomicI32::new(i32::MAX));
+            //         // let alpha = i32::MIN;
+            //         // let beta  = i32::MAX;
+            //         let mut stats = SearchStats::default();
+            //         let (mut mv_seq,score) = self._ab_search(
+            //             &ts, &g2, depth, 1, alpha, beta, false, &mut stats, *mv);
+            //         mv_seq.push(*mv);
+            //         mv_seq.reverse();
+            //         ((*mv,mv_seq,score),stats)
+            //     }).unzip();
+            // }
 
             stats = ss.iter().sum();
 
-            out.sort_by(|a,b| a.2.cmp(&b.2));
+            // out.sort_by(|a,b| a.2.cmp(&b.2));
+            out.par_sort_unstable_by(|a,b| a.2.cmp(&b.2));
 
             if self.side == self.game.state.side_to_move {
                 out.reverse();
@@ -237,7 +269,7 @@ impl Explorer {
                 maximizing:     bool,
                 mut stats:      &mut SearchStats,
     ) -> Option<Score> {
-        if let Some(si) = self.trans_table.get(&g.zobrist) {
+        if let Some(si) = self.trans_table.tt_get(&g.zobrist) {
 
             if si.depth_searched == depth {
                 stats.tt_hits += 1;
@@ -497,8 +529,42 @@ impl Explorer {
         };
 
         if depth == 0 {
-            let score = g.evaluate(&ts).sum();
-            // let score = self.quiescence(&ts, &g, moves, k, alpha, beta);
+            // let score = g.evaluate(&ts).sum();
+
+            // let score = match self.trans_table.qt_get(&g.zobrist) {
+            //     Some(si) => {
+            //         stats.qt_hits += 1;
+            //         si.score
+            //     },
+            //     None => {
+            //         self.trans_table.qt_insert_replace(
+            //            g.zobrist, SearchInfo::new(mv0, depth, Node::Quiet, score));
+            //         stats.qt_misses += 1;
+            //         score
+            //     },
+            // };
+
+            let score = if maximizing {
+                self.quiescence(
+                    &ts, &g, moves, k,
+                    alpha.load(Ordering::Relaxed),
+                    beta.load(Ordering::Relaxed),
+                    // XXX: max or !max ?
+                    maximizing, &mut stats, mv0)
+            } else {
+                -self.quiescence(
+                    &ts, &g, moves, k,
+                    -alpha.load(Ordering::Relaxed),
+                    -beta.load(Ordering::Relaxed),
+                    // XXX: max or !max ?
+                    maximizing, &mut stats, mv0)
+            };
+
+            // let score = self.quiescence(
+            //     &ts, &g, moves, k,
+            //     alpha.load(Ordering::Relaxed), beta.load(Ordering::Relaxed),
+            //         // XXX: max or !max ?
+            //         !maximizing, &mut stats, mv0);
 
             stats.leaves += 1;
             if self.side == Black {
@@ -519,7 +585,8 @@ impl Explorer {
         });
 
         let mut gs: Vec<(Move,Game,Option<Score>)> = gs.collect();
-        gs.sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
+        // gs.sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
+        gs.par_sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
         if !maximizing {
             gs.reverse();
         }
@@ -670,7 +737,7 @@ impl Explorer {
         }
 
         if let Some((zb,mv,_)) = val.0 {
-            self.trans_table.insert_replace(
+            self.trans_table.tt_insert_replace(
                 zb, SearchInfo::new(mv, depth, Node::PV, val.1));
         }
 
@@ -721,7 +788,7 @@ impl Explorer {
             alpha.fetch_max(val.1, Ordering::SeqCst);
             if val.1 >= beta.load(Ordering::SeqCst) { // Beta cutoff
                 // node_type = Node::Cut;
-                self.trans_table.insert_replace(
+                self.trans_table.tt_insert_replace(
                     zb, SearchInfo::new(mv, depth - 1, Node::Cut, val.1));
                     // zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
                 return true;
@@ -736,7 +803,7 @@ impl Explorer {
             beta.fetch_min(val.1, Ordering::SeqCst);
             if val.1 <= alpha.load(Ordering::SeqCst) { // Alpha cutoff
                 // node_type = Node::Cut;
-                self.trans_table.insert_replace(
+                self.trans_table.tt_insert_replace(
                     zb, SearchInfo::new(mv, depth - 1, Node::Cut, val.1));
                     // zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
                 return true;
@@ -785,129 +852,107 @@ impl Explorer {
 /// Quiescence
 impl Explorer {
 
-    pub fn quiescence(&self, ts: &Tables, g: &Game, ms: Vec<Move>, k: i16, mut alpha: i32, mut beta: i32) -> i32 {
-        println!("quiescence {}", k);
+    #[allow(unreachable_code)]
+    pub fn quiescence(
+        &self,
+        ts:             &Tables,
+        g:              &Game,
+        ms:             Vec<Move>,
+        k:              i16,
+        mut alpha:      i32,
+        mut beta:       i32,
+        maximizing:     bool,
+        mut stats:      &mut SearchStats,
+        m0:             Move,
+    ) -> Score {
+        // debug!("quiescence {}", k);
 
+        stats.qt_nodes += 1;
         let stand_pat = g.evaluate(&ts).sum();
-        // return stand_pat;
+        // stats.leaves += 1;
+        // return stand_pat; // correct
 
         if stand_pat >= beta {
+            // debug!("quiescence beta cutoff: {}", k);
             // return score; // fail soft
             return beta; // fail hard
         }
+        // return stand_pat; // correct
+
+        // Delta prune
+        let mut big_delta = Queen.score();
+        if m0.filter_promotion() {
+            big_delta += Queen.score() - Pawn.score();
+        }
+
+        if stand_pat >= (beta + big_delta) {
+            return beta;
+        }
+
+        // if !maximizing {
+        //     if stand_pat >= (beta + big_delta) {
+        //         return beta;
+        //     }
+        // }
+
+        // if stand_pat < (alpha - big_delta) {
+        //     return alpha;
+        // }
+
+        // if maximizing {
+        // } else {
+        //     // if stand_pat < (alpha - big_delta) {
+        //     //     return alpha;
+        //     // }
+        // }
+
+        return stand_pat;
+
         if alpha < stand_pat {
             alpha = stand_pat;
         }
+        // return stand_pat;
 
-        let captures = ms.into_iter().filter(|m| m.filter_all_captures()).collect::<Vec<_>>();
+        let mut captures = ms.into_iter().filter(|m| m.filter_all_captures()).collect::<Vec<_>>();
 
-        for m in captures.into_iter() {
-            if let Ok(g2) = g.make_move_unchecked(&ts, &m) {
-                if let Outcome::Moves(ms2) = g2.search_all(&ts, None) {
-                    let score = -self.quiescence(&ts, &g2, ms2, k + 1, alpha, beta);
+        // TODO: sort reverse for max / min ?
+        // captures.par_sort_unstable();
+        captures.par_sort();
 
-                    if score >= beta {
-                        return beta;
-                    }
-                    if score > alpha {
-                        alpha = score;
-                    }
+        if maximizing {
+            captures.reverse();
+        }
+
+        for mv in captures.into_iter() {
+            if let Ok(g2) = g.make_move_unchecked(&ts, &mv) {
+                match g2.search_all(&ts, None) {
+                    Outcome::Moves(ms2) => {
+                        stats.nodes += 1;
+                        let score = -self.quiescence(
+                            &ts, &g2, ms2, k + 1, -alpha, -beta,
+                            !maximizing, &mut stats, mv);
+
+                        if score >= beta {
+                            // stats.leaves += 1;
+                            return beta;
+                        }
+                        if score > alpha {
+                            alpha = score;
+                        }
+                    },
+                    Outcome::Checkmate(_) => {
+                        // panic!("checkmate in quiescent");
+                    },
+                    Outcome::Stalemate => {
+                        // panic!("stalemate in quiescent");
+                    },
                 }
             }
         }
 
+        // debug!("quiescence return alpha: {}", k);
         alpha
     }
-
-    pub fn quiescence2(&self, ts: &Tables, g: &Game, ms: Vec<Move>, k: i16, mut alpha: i32, mut beta: i32
-    ) -> i32 {
-        // println!("quiescence");
-
-        let score = g.evaluate(&ts).sum();
-        if score >= beta {
-            // return score; // fail soft
-            return beta; // fail hard
-        }
-        if alpha < score {
-            alpha = score;
-        }
-
-        let ms = ms.into_iter().filter(|m| m.filter_all_captures()).collect::<Vec<_>>();
-
-        if ms.len() == 0 {
-            println!("wat 0");
-            return alpha;
-        }
-
-        let ms = ms.into_par_iter()
-            .flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, &m) {
-                if let Outcome::Moves(ms2) = g2.search_all(&ts, None) {
-                    let score = -self.quiescence2(&ts, &g2, ms2, k + 1, -alpha, -beta);
-                    Some((m,g2,score))
-                } else {
-                    None
-                }
-            } else { None }).collect::<Vec<_>>();
-
-        for (m,g2,score) in ms.into_iter() {
-            if score >= beta {
-                return beta;
-            }
-            if score > alpha {
-                alpha = score;
-            }
-        }
-
-        println!("wat 1");
-        alpha
-    }
-
-    // fn quiescence2(&self,
-    //               ts: &Tables,
-    //               g: Game,
-    //               moves: Option<Outcome>,
-    //               k: i32,
-    //               mut alpha: i32,
-    //               mut beta: i32
-    // ) -> i32 {
-    //     // println!("quiescence 0");
-    //     let stand_pat = g.evaluate(&ts).sum();
-
-    //     if stand_pat >= beta {
-    //         return beta;
-    //     }
-    //     if alpha < stand_pat {
-    //         alpha = stand_pat;
-    //     }
-
-    //     let moves = match moves {
-    //         Some(ms) => ms,
-    //         None     => g.search_all(&ts, None),
-    //     };
-    //     match moves {
-    //         Outcome::Checkmate(c) => return 100_000_000 - k,
-    //         Outcome::Stalemate    => return -100_000_000 + k,
-    //         Outcome::Moves(_)     => {},
-    //     }
-
-    //     let moves = moves.into_iter().filter(|m| m.filter_all_captures());
-
-    //     for m in moves {
-    //         if let Ok(g2) = g.make_move_unchecked(&ts, &m) {
-    //             let score = -self.quiescence2(&ts, g2, None, k+1, -alpha, -beta);
-
-    //             if score >= beta {
-    //                 return beta;
-    //             }
-    //             if score > alpha {
-    //                 alpha = score;
-    //             }
-    //         }
-    //     }
-
-    //     alpha
-    //     // unimplemented!()
-    // }
 
 }
 
@@ -924,26 +969,47 @@ impl Explorer {
 /// Misc
 impl Explorer {
 
-    pub fn order_moves(&self, ts: &Tables, mut moves: &mut [(Move,Score,Game)]) {
-        use std::cmp::Ordering;
-        moves.sort_unstable_by(|a,b| {
-            let a_cap = a.0.filter_all_captures();
-            let b_cap = b.0.filter_all_captures();
-            let a_castle = a.0.filter_castle();
-            let b_castle = b.0.filter_castle();
-            if a_cap & !b_cap {
-                Ordering::Greater
-            } else if !a_cap & b_cap {
-                Ordering::Less
-            } else if a_castle & !b_castle {
-                Ordering::Greater
-            } else if !a_castle & b_castle {
-                Ordering::Less
-            } else {
-                Ordering::Equal
-            }
-        });
+    pub fn order_moves(ts: &Tables, g: &Game, maximizing: bool, mut moves: &mut [Move]) {
+
+        if maximizing {
+            moves.sort();
+            moves.reverse();
+        } else {
+            moves.sort_by(|a,b| {
+                unimplemented!()
+                // match (a,b) {
+                //     (Move::Capture { pc: pc1, victim: victim1, .. },
+                //      Move::Capture { pc: pc2, victim: victim2, .. }) => {
+                //         unimplemented!()
+                //     },
+                //     _ => unimplemented!(),
+                // }
+                // a.cmp(&b)
+            });
+            moves.reverse();
+        }
     }
+
+    // pub fn order_moves(&self, ts: &Tables, mut moves: &mut [(Move,Score,Game)]) {
+    //     use std::cmp::Ordering;
+    //     moves.sort_unstable_by(|a,b| {
+    //         let a_cap = a.0.filter_all_captures();
+    //         let b_cap = b.0.filter_all_captures();
+    //         let a_castle = a.0.filter_castle();
+    //         let b_castle = b.0.filter_castle();
+    //         if a_cap & !b_cap {
+    //             Ordering::Greater
+    //         } else if !a_cap & b_cap {
+    //             Ordering::Less
+    //         } else if a_castle & !b_castle {
+    //             Ordering::Greater
+    //         } else if !a_castle & b_castle {
+    //             Ordering::Less
+    //         } else {
+    //             Ordering::Equal
+    //         }
+    //     });
+    // }
 
 }
 

@@ -8,7 +8,7 @@ pub use self::castling::*;
 
 use std::hash::{Hash,Hasher};
 
-#[derive(PartialEq,PartialOrd,Clone)]
+#[derive(PartialEq,PartialOrd,Clone,Copy)]
 pub struct Game {
     // pub move_history: Vec<Move>,
     pub state:        GameState,
@@ -180,7 +180,8 @@ impl Game {
                 } else if Some(to) == self.state.en_passant {
                     let capture = if col == White { S.shift_coord(to).unwrap() }
                         else { N.shift_coord(to).unwrap() };
-                    Some(Move::EnPassant { from, to, capture })
+                    let (_,victim) = self.get_at(capture).unwrap();
+                    Some(Move::EnPassant { from, to, capture, victim })
                 } else if (pc == Pawn) & (to.1 == cc) {
                     // XXX: bad
                     let new_piece = Queen;
@@ -194,9 +195,11 @@ impl Game {
 
                 let cc = if col0 == White { 7 } else { 0 };
                 if (pc0 == Pawn) & (to.1 == cc) {
-                    Some(Move::PromotionCapture { from, to, new_piece: Queen })
+                    let (_,victim) = self.get_at(to).unwrap();
+                    Some(Move::PromotionCapture { from, to, new_piece: Queen, victim })
                 } else {
-                    Some(Move::Capture { from, to })
+                    let (_,victim) = self.get_at(to).unwrap();
+                    Some(Move::Capture { from, to, pc: pc0, victim })
                 }
             },
             (None,None) => None,
@@ -230,40 +233,44 @@ impl Game {
 
                 Some(out)
             },
-            &Move::Capture    { from, to } => {
-                let (c0,pc0) = self.get_at(from)?;
-                let (c1,pc1) = self.get_at(to)?;
-                let mut out = self.clone();
-                out.delete_piece_mut_unchecked(&ts, from, pc0, c0);
-                out.delete_piece_mut_unchecked(&ts, to, pc1, c1);
-                out.insert_piece_mut_unchecked(&ts, to, pc0, c0);
-                Some(out)
-            },
-            &Move::EnPassant  { from, to, capture } => {
+            // &Move::Capture    { from, to } => {
+            &Move::Capture    { from, to, pc, victim } => {
                 let col = self.state.side_to_move;
-                let (c0,pc0) = self.get_at(from)?;
+                // let (c0,_) = self.get_at(from)?;
+                // let (c1,_) = self.get_at(to)?;
+                let mut out = self.clone();
+                out.delete_piece_mut_unchecked(&ts, from, pc, col);
+                out.delete_piece_mut_unchecked(&ts, to, victim, !col);
+                out.insert_piece_mut_unchecked(&ts, to, pc, col);
+                Some(out)
+            },
+            &Move::EnPassant  { from, to, capture, victim } => {
+                let col = self.state.side_to_move;
+                // let (c0,pc0) = self.get_at(from)?;
                 // let to1 = if col == White { S.shift_coord(to)? } else { N.shift_coord(to)? };
-                let (c1,pc1) = self.get_at(capture)?;
+                // let (c1,_) = self.get_at(capture)?;
                 let mut out = self.clone();
-                out.delete_piece_mut_unchecked(&ts, from, pc0, c0);
-                out.delete_piece_mut_unchecked(&ts, capture, pc1, c1);
-                out.insert_piece_mut_unchecked(&ts, to, pc0, c0);
+                out.delete_piece_mut_unchecked(&ts, from, Pawn, col);
+                out.delete_piece_mut_unchecked(&ts, capture, victim, !col);
+                out.insert_piece_mut_unchecked(&ts, to, Pawn, col);
                 Some(out)
             },
-            &Move::Promotion  { from, to, new_piece} => {
-                let (c0,pc0) = self.get_at(from)?;
+            &Move::Promotion  { from, to, new_piece } => {
+                let col = self.state.side_to_move;
+                // let (c0,pc0) = self.get_at(from)?;
                 let mut out = self.clone();
-                out.delete_piece_mut_unchecked(&ts, from, pc0, c0);
-                out.insert_piece_mut_unchecked(&ts, to, new_piece, c0);
+                out.delete_piece_mut_unchecked(&ts, from, Pawn, col);
+                out.insert_piece_mut_unchecked(&ts, to, new_piece, col);
                 Some(out)
             },
-            &Move::PromotionCapture  { from, to, new_piece} => {
-                let (c0,pc0) = self.get_at(from)?;
-                let (c1,pc1) = self.get_at(to)?;
+            &Move::PromotionCapture  { from, to, new_piece, victim } => {
+                let col = self.state.side_to_move;
+                // let (c0,pc0) = self.get_at(from)?;
+                // let (c1,pc1) = self.get_at(to)?;
                 let mut out = self.clone();
-                out.delete_piece_mut_unchecked(&ts, from, pc0, c0);
-                out.delete_piece_mut_unchecked(&ts, to, pc1, c1);
-                out.insert_piece_mut_unchecked(&ts, to, new_piece, c0);
+                out.delete_piece_mut_unchecked(&ts, from, Pawn, col);
+                out.delete_piece_mut_unchecked(&ts, to, victim, !col);
+                out.insert_piece_mut_unchecked(&ts, to, new_piece, col);
                 Some(out)
             },
             &Move::Castle     { from, to, rook_from, rook_to } => {

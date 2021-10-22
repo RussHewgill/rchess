@@ -15,8 +15,8 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 pub fn crit_bench_1(c: &mut Criterion) {
 
-    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
-    let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
+    let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
+    // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
     // let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
 
     // let fen = "Q3b3/4bkp1/1q2np1p/NPp1p3/2P1P3/4BP1P/4B1P1/7K b - - 1 1"; // Correct = e6c7
@@ -32,7 +32,7 @@ pub fn crit_bench_1(c: &mut Criterion) {
     let _     = g.recalc_gameinfo_mut(&ts);
 
     let stop = Arc::new(AtomicBool::new(false));
-    let timesettings = TimeSettings::new_f64(10., 0.1);
+    let timesettings = TimeSettings::new_f64(5., 0.1);
     let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
 
     let mut group = c.benchmark_group("group");
@@ -42,13 +42,20 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
     // group.bench_function("rank moves", |b| b.iter(|| ex.explore(&ts, ex.depth)));
 
-    // group.bench_function("rank moves iter", |b| b.iter(|| {
-    //     let (m,stats) = ex.explore(&ts, None);
+    group.bench_function("rank moves iter", |b| b.iter(|| {
+        let (m,stats) = ex.explore(&ts, None);
+    }));
+
+    // group.bench_function("search_all", |b| b.iter(|| {
+    //     let mvs = g.search_all(&ts, black_box(None));
     // }));
 
-    group.bench_function("search_all", |b| b.iter(|| {
-        let mvs = g.search_all(&ts, black_box(None));
-    }));
+    // let moves = g.search_all(&ts, None).get_moves_unsafe();
+    // group.bench_function("move_is_legal", |b| b.iter(|| {
+    //     for m in moves.iter() {
+    //         let k = g.move_is_legal(&ts, *m);
+    //     }
+    // }));
 
     // no collect, captures first      = 18.2 ms
     // sort by score                   = 18.8

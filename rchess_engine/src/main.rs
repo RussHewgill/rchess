@@ -27,6 +27,7 @@ const STARTPOS: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
 
 fn main() {
 
+    // let logpath = "./log.log";
     // use std::fs::OpenOptions;
     // let logfile = OpenOptions::new()
     //     .truncate(true)
@@ -45,20 +46,10 @@ fn main() {
     //     .format_timestamp(None)
     //     .init();
 
-    // let fen = STARTPOS;
-    // let ts = Tables::new();
-    // let mut g = Game::from_fen(&ts, fen).unwrap();
-    // let _ = g.recalc_gameinfo_mut(&ts);
-    // let m0 = Move::Quiet { from: "B1".into(), to: "C3".into() };
-    // let m1 = Move::Quiet { from: "C3".into(), to: "B1".into() };
-    // let g2 = g.make_move_unchecked(&ts, &m0).unwrap();
-    // let g3 = g2.make_move_unchecked(&ts, &m1).unwrap();
-    // let z0 = Zobrist::new(&ts, g);
-    // let z1 = Zobrist::new(&ts, g2);
-    // let z2 = Zobrist::new(&ts, g3);
-    // eprintln!("z0 = {:#8x}", z0.0);
-    // eprintln!("z1 = {:#8x}", z1.0);
-    // eprintln!("z2 = {:#8x}", z2.0);
+    // rayon::ThreadPoolBuilder::new()
+    //     .num_threads(1)
+    //     .build_global()
+    //     .unwrap();
 
     // // let s = std::mem::size_of::<Eval>();
     // let s = std::mem::size_of::<Game>();
@@ -179,7 +170,7 @@ fn main7() {
 
     // let fen = "Q3b3/4bkp1/1q2np1p/NPp1p3/2P1P3/4BP1P/4B1P1/7K b - - 1 1"; // Correct = e6c7
     // let fen = "rnbqkb1r/pppp1ppp/8/4P3/6n1/7P/PPPNPPP1/R1BQKBNR b KQkq - 0 1"; // WAC.007, Ne3 = g4e3
-    let fen = "3q1rk1/p4pp1/2pb3p/3p4/6Pr/1PNQ4/P1PB1PP1/4RRK1 b - - 0 1"; // WAC.009, Bh2+ = d6h2
+    // let fen = "3q1rk1/p4pp1/2pb3p/3p4/6Pr/1PNQ4/P1PB1PP1/4RRK1 b - - 0 1"; // WAC.009, Bh2+ = d6h2
 
     // let fen = "5k2/6pp/p1qN4/1p1p4/3P4/2PKP2Q/PP3r2/3R4 b - - 0 1"; // WAC.005, Qc4 = c6c4
     // let fen = "4r3/2R3pp/q2pkp2/4p3/4P1P1/4nQ1P/PP6/2K5 w - - 0 1"; // WAC.005, color reversed
@@ -203,14 +194,29 @@ fn main7() {
 
     // let fen = "rn1q1k1r/1p2b1p1/p2p1nQ1/2pP2p1/2P3P1/5N1P/PP3P2/RN3RK1 w - - 0 2";
 
+    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
+    // let fen = "3q1rk1/p4pp1/2pb3p/3p4/6Pr/1PNQ4/P1PB1PP1/4RRK1 b - - 0 1"; // WAC.009, Bh2+ = d6h2
+
+    // let fen = "k7/8/8/3p1q2/4P3/3P4/8/7K w - - 0 1";
+
+    /// https://www.chessprogramming.org/Caesar#HorizonEffect
+    let fen = "2kr4/3nR3/p2B1p2/1p1p1Bp1/1P1P3p/2P4P/P5PK/8 b - - 1 32"; // Horizon
+
+    // let fen = "8/8/p1p5/1p5p/1P5p/8/PPP2K1p/4R1rk w - - 0 1"    // Rf1; id "zugzwang.001";
+    // let fen = "1q1k4/2Rr4/8/2Q3K1/8/8/8/8 w - - 0 1"            // Kh6;  id "zugzwang.002";
+    // let fen = "7k/5K2/5P1p/3p4/6P1/3p4/8/8 w - - 0 1"           // g5; id "zugzwang.003";
+    // let fen = "8/6B1/p5p1/Pp4kp/1P5r/5P1Q/4q1PK/8 w - - 0 32"   // Qxh4; id "zugzwang.004";
+    // let fen = "8/8/1p1r1k2/p1pPN1p1/P3KnP1/1P6/8/3R4 b - - 0 1" // Nxd5; id "zugzwang.005";
+
     let ts = Tables::new();
 
     let mut g = Game::from_fen(&ts, fen).unwrap();
 
     let stop = Arc::new(AtomicBool::new(false));
     let timesettings = TimeSettings::new_f64(
-        5.0,
-        // 10.0,
+        // 5.0,
+        10.0,
+        // 20.0,
         0.1);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
 
@@ -219,15 +225,39 @@ fn main7() {
     //     Move::Capture { from: "G4".into(), to: "E5".into() },
     // ];
 
-    let t0 = std::time::Instant::now();
-    let (mv,stats) = ex.explore(&ts, None);
-    println!("m = {:?}", mv);
-    println!("explore done in {} seconds.", t0.elapsed().as_secs_f64());
+    // let t0 = std::time::Instant::now();
+    // let (mv,stats) = ex.explore(&ts, None);
+    // println!("m = {:?}", mv);
+    // println!("explore done in {} seconds.", t0.elapsed().as_secs_f64());
 
-    return;
+    // eprintln!("g = {:?}", g);
 
+    let mut ps = vec![
+        Move::Capture { from: "E4".into(), to: "F5".into(), pc: Pawn, victim: Queen },
+        Move::Capture { from: "E4".into(), to: "D5".into(), pc: Pawn, victim: Pawn },
+        Move::Quiet { from: "E4".into(), to: "E5".into() },
+    ];
+
+    // let maximizing = true;
+    // Explorer::order_moves(&ts, &g, maximizing, &mut ps);
+    // // cap f5 = queen
+    // // cap d5 = pawn
+    // // quiet
+    // println!("maximizing");
+    // for p in ps.iter() {
+    //     eprintln!("p = {:?}", p);
+    // }
+    // let maximizing = false;
+    // Explorer::order_moves(&ts, &g, maximizing, &mut ps);
+    // println!("minimizing");
+    // for p in ps.iter() {
+    //     eprintln!("p = {:?}", p);
+    // }
+
+    // return;
+
+    #[allow(unreachable_code)]
     if true {
-        // eprintln!("g = {:?}", g);
 
         // let k = 4;
         let k = 1;
@@ -235,9 +265,13 @@ fn main7() {
         for q in 0..k {
             let t0 = std::time::Instant::now();
 
-            // ex.max_depth = 20;
-            ex.max_depth = 10;
-            // ex.max_depth = 5;
+            // println!("g = {:?}", g);
+
+            // n = 20;
+            // n = 10;
+            let n = 6;
+
+            ex.max_depth = n;
 
             // let m = moves[0];
             // // let m = Move::Quiet { from: "C6".into(), to: "E6".into() };
@@ -259,6 +293,7 @@ fn main7() {
             // let mv = moves.get(0).map(|x| x.0);
             let (mv,mvs,_) = moves.get(0).unwrap();
             println!("m #{} = {:?}", q, mv);
+            println!("good = c8b7");
 
             // print!("\n");
             // for (m,mvs,score) in moves.iter() {
@@ -270,15 +305,14 @@ fn main7() {
             //     eprintln!("m = {:?}", m);
             // }
 
-            // let g = g.flip_sides(&ts);
-            // // eprintln!("g 1 = {:?}", g);
-            // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
-            // let (moves,stats) = ex.iterative_deepening(&ts, false, false);
-            // let (mv,mvs,_) = moves.get(0).unwrap();
-            // print!("\n");
-            // println!("bad  = e2e3");
-            // println!("good = f3d3");
-            // println!("m #{} = {:?}\n", q, mv);
+            let g = g.flip_sides(&ts);
+            // eprintln!("g 1 = {:?}", g);
+            let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+            let (moves,stats) = ex.iterative_deepening(&ts, false, false);
+            let (mv,mvs,_) = moves.get(0).unwrap();
+            print!("\n");
+            println!("m #{} = {:?}", q, mv);
+            println!("good = f1g2");
 
             // let (mvs,stats) = ex._iterative_deepening(&ts, false, moves.clone(), false);
             // // let (mvs,stats) = ex.iterative_deepening(&ts, false);
@@ -291,8 +325,8 @@ fn main7() {
 
             // stats.print(t0.elapsed());
 
-            print!("\n");
-            let tt = ex.trans_table.0.read().map.clone();
+            // print!("\n");
+            // let tt = ex.trans_table.0.read().map.clone();
 
             // let pv = tt.iter()
             //     .filter(|(k,v)| v.node_type == Node::PV)
@@ -686,10 +720,10 @@ fn main4() {
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
-    // let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
+    let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
     // let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  "; // Position 5
 
-    let fen = "rnbqkbnr/ppppp3/8/4N3/2BP1BQ1/4P1Pp/PPP4P/RN2K2R w KQkq - 0 1";
+    // let fen = "rnbqkbnr/ppppp3/8/4N3/2BP1BQ1/4P1Pp/PPP4P/RN2K2R w KQkq - 0 1";
 
     let n = 4;
 
@@ -704,7 +738,8 @@ fn main4() {
     println!("stockfish took {} seconds.", t_sf);
 
     // let t = std::time::Instant::now();
-    // let _ = g.perft(&ts, n);
+    // let (n,_) = g.perft(&ts, n);
+    // eprintln!("n = {:?}", n);
     // println!("perft done in {} seconds.", t.elapsed().as_secs_f64());
 
 }

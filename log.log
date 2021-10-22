@@ -1,2 +1,2 @@
-position fen 7k/2pq2p1/6rp/1P2p3/2Qp1n2/P2P3P/R1P2PPK/3N2R1 b - - 0 28
-go
+thread '<unnamed>' panicked at 'checkmate in quiescent', rchess_engine/src/explore.rs:857:25
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

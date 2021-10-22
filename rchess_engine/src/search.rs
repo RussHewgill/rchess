@@ -48,10 +48,50 @@ impl Game {
                 self._search_in_check(&ts, col)
             },
             _                          => {
-                // println!("wat all");
+
                 self._search_all(&ts, col)
+
+                // let moves = self._search_all_iters(&ts, col);
+                // let moves = moves.collect::<Vec<_>>();
+                // if moves.len() == 0 {
+                //     Outcome::Stalemate
+                // } else {
+                //     Outcome::Moves(moves)
+                // }
+
             },
         }
+    }
+
+    pub fn _search_all_iters<'a>(&'a self, ts: &'a Tables, col: Color)
+                                 -> impl Iterator<Item = Move> + 'a {
+        // unimplemented!()
+
+        let k = self.search_king_iter(&ts, col);
+        let b = self.search_sliding_iter(&ts, Bishop, col);
+        let r = self.search_sliding_iter(&ts, Rook, col);
+        let q = self.search_sliding_iter(&ts, Queen, col);
+
+        let n = self.search_knights(&ts, col);
+        let p = self.search_pawns(&ts, col);
+        let pp = self._search_promotions(&ts, None, col);
+        let cs = self._search_castles(&ts);
+
+        let mut out = k
+            .chain(b)
+            .chain(r)
+            .chain(q)
+
+            // .chain(n.into_iter())
+            // .chain(p.into_iter())
+            // .chain(pp.into_iter())
+            // .chain(cs.into_iter())
+
+            .filter(move |m| self.move_is_legal(&ts, *m))
+            ;
+
+        out
+        // vec![].into_iter()
     }
 
     pub fn _search_all(&self, ts: &Tables, col: Color) -> Outcome {
@@ -77,11 +117,9 @@ impl Game {
         let out = vec![k,b,r,q,n,p,pp,cs].concat();
         // let out = vec![k,n,p,pp,cs].concat();
 
-        // k.extend(iter)
-
         // let out: Vec<Move> = out.into_par_iter().filter(|m| {
         let out: Vec<Move> = out.into_iter().filter(|m| {
-            self.move_is_legal(&ts, m)
+            self.move_is_legal(&ts, *m)
         }).collect();
 
         if out.is_empty() {
@@ -108,7 +146,7 @@ impl Game {
         }
 
         let out: Vec<Move> = out.into_iter().filter(|m| {
-            self.move_is_legal(&ts, m)
+            self.move_is_legal(&ts, *m)
         }).collect();
 
         if out.is_empty() {
@@ -249,7 +287,7 @@ impl Game {
 
 impl Game {
 
-    pub fn move_is_legal(&self, ts: &Tables, m: &Move) -> bool {
+    pub fn move_is_legal(&self, ts: &Tables, m: Move) -> bool {
 
         // TODO: En Passant Captures
         // TODO: Castling
@@ -289,7 +327,8 @@ impl Game {
                     | (ts.aligned(m.sq_from(), m.sq_to(), self.get(King, col).bitscan().into()).0 != 0);
 
                 // not in check
-                let x0 = x & self.find_checkers(&ts, col).is_empty();
+                // let x0 = x & self.find_checkers(&ts, col).is_empty();
+                let x0 = x & self.state.checkers.unwrap().is_empty();
 
                 // OR capturing checking piece
                 let x1 = m.sq_to() == self.state.checkers.unwrap().bitscan().into();
@@ -490,7 +529,9 @@ impl Game {
 
             ms.into_iter().map(move |to| {
                 if attacks.is_one_at(to) {
-                    Move::Capture { from: sq2, to: to.into() }
+                    let to = to.into();
+                    let (_,victim) = self.get_at(to).unwrap();
+                    Move::Capture { from: sq2, to: to, pc, victim }
                 } else {
                     Move::Quiet { from: sq2, to: to.into() }
                 }
@@ -508,7 +549,10 @@ impl Game {
             let attacks = moves & self.get_color(!col);
             let quiets  = moves & self.all_empty();
             attacks.iter_bitscan(|sq2| {
-                out.push(Move::Capture { from: sq.into(), to: sq2.into() });
+                let to = sq2.into();
+                let (_,victim) = self.get_at(to).unwrap();
+                out.push(Move::Capture { from: sq.into(), to, pc, victim });
+                // out.push(Move::Capture { from: sq.into(), to});
             });
             quiets.iter_bitscan(|sq2| {
                 out.push(Move::Quiet { from: sq.into(), to: sq2.into() });
@@ -637,7 +681,45 @@ impl Game {
         self._search_king(&ts, col, true)
     }
 
-    pub fn _search_king_single(&self, c0: Coord, ts: &Tables, col: Color, forbid_check: bool) -> Vec<Move> {
+    pub fn search_king_iter<'a>(&'a self, ts: &'a Tables, col: Color)
+                                -> impl Iterator<Item = Move> + 'a {
+        self._search_king_iter(&ts, col, true)
+    }
+
+    pub fn _search_king_iter<'a>(&'a self, ts: &'a Tables, col: Color, forbid_check: bool)
+                            -> impl Iterator<Item = Move> + 'a {
+        let p0 = self.get(King, col).bitscan();
+        // if p0 == 64 { return vec![].into_iter() }
+        let moves = *ts.get_king(p0);
+
+        let moves = moves & !self.get_color(col);
+
+        let attacks = self.get_color(!col);
+
+        let p1: Coord = p0.into();
+        moves.into_iter().flat_map(move |to| {
+            let to: Coord = to.into();
+            if attacks.is_one_at(to) {
+                if forbid_check && !self.find_attacks_by_side(&ts, to, !col, false) {
+                    let (_,victim) = self.get_at(to).unwrap();
+                    Some(Move::Capture { from: p1, to: to, pc: King, victim })
+                    // Some(Move::Capture { from: p1, to: to})
+                } else {
+                    None
+                }
+            } else {
+                if forbid_check && !self.find_attacks_by_side(&ts, to, !col, false) {
+                    Some(Move::Quiet { from: p1, to: to })
+                } else {
+                    None
+                }
+            }
+        })
+
+    }
+
+    pub fn _search_king_single(&self, c0: Coord, ts: &Tables, col: Color, forbid_check: bool)
+                               -> Vec<Move> {
         // let mut out = vec![];
         let occ = self.all_occupied();
 
@@ -677,15 +759,18 @@ impl Game {
         });
 
         captures.iter_bitscan(|sq| {
+            let to = sq.into();
             let go = if forbid_check {
                 // let mut threats = self.find_attacks_to(&ts, sq.into(), !col);
                 // threats.next().is_none()
-                !self.find_attacks_by_side(&ts, sq.into(), !col, false)
+                !self.find_attacks_by_side(&ts, to, !col, false)
             } else {
                 true
             };
             if go {
-                out.push(Move::Capture { from: p0.into(), to: sq.into()});
+                let (_,victim) = self.get_at(to).unwrap();
+                out.push(Move::Capture { from: p0.into(), to, pc: King, victim });
+                // out.push(Move::Capture { from: p0.into(), to});
             }
         });
 
@@ -719,7 +804,9 @@ impl Game {
             });
 
             captures.iter_bitscan(|t| {
-                out.push(Move::Capture { from: sq.into(), to: t.into()});
+                let (_,victim) = self.get_at(t.into()).unwrap();
+                out.push(Move::Capture { from: sq.into(), to: t.into(), pc: Knight, victim});
+                // out.push(Move::Capture { from: sq.into(), to: t.into()});
             });
 
         });
@@ -780,7 +867,9 @@ impl Game {
                 | (bb.shift(de) & self.get_color(!col));
             while cs.0 != 0 {
                 let t = cs.bitscan_reset_mut();
-                out.push(Move::Capture { from: f, to: t.into() });
+                let (_,victim) = self.get_at(t.into()).unwrap();
+                out.push(Move::Capture { from: f, to: t.into(), pc: Pawn, victim });
+                // out.push(Move::Capture { from: f, to: t.into()});
             }
         });
 
@@ -792,7 +881,8 @@ impl Game {
                 let capture = if col == White { S.shift_coord(ep) } else { N.shift_coord(ep) };
                 let capture = capture
                     .expect(&format!("en passant bug? ep: {:?}, capture: {:?}", ep, capture));
-                out.push(Move::EnPassant { from: sq.into(), to: ep, capture });
+                let (_,victim) = self.get_at(capture).unwrap();
+                out.push(Move::EnPassant { from: sq.into(), to: ep, capture, victim });
             });
 
         }
@@ -839,10 +929,11 @@ impl Game {
                 | (bb.shift(de) & self.get_color(!col));
             while cs.0 != 0 {
                 let t = cs.bitscan_reset_mut().into();
-                out.push(Move::PromotionCapture { from: f, to: t, new_piece: Queen });
-                out.push(Move::PromotionCapture { from: f, to: t, new_piece: Knight });
-                out.push(Move::PromotionCapture { from: f, to: t, new_piece: Rook });
-                out.push(Move::PromotionCapture { from: f, to: t, new_piece: Bishop });
+                let (_,victim) = self.get_at(t).unwrap();
+                out.push(Move::PromotionCapture { from: f, to: t, new_piece: Queen, victim });
+                out.push(Move::PromotionCapture { from: f, to: t, new_piece: Knight, victim });
+                out.push(Move::PromotionCapture { from: f, to: t, new_piece: Rook, victim });
+                out.push(Move::PromotionCapture { from: f, to: t, new_piece: Bishop, victim });
             }
         });
 

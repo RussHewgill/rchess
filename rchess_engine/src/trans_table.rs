@@ -12,14 +12,19 @@ use rustc_hash::FxHashMap;
 
 #[derive(Debug,Default)]
 // pub struct RwTransTable(pub RwLock<TransTable>, pub RwLock<TTStats>);
-pub struct RwTransTable(pub RwLock<TransTable>);
-
-#[derive(Debug,Default)]
-pub struct TransTable {
-    pub map:    FxHashMap<Zobrist, SearchInfo>,
-    // pub map_r:    ReadHandle<Zobrist, SearchInfo>,
-    // pub map_w:    WriteHandle<Zobrist, SearchInfo>,
+pub struct RwTransTable{
+    pub trans_table: RwLock<TransTable>,
+    pub quiescent:   RwLock<TransTable>,
 }
+
+pub type TransTable = FxHashMap<Zobrist, SearchInfo>;
+
+// #[derive(Debug,Default)]
+// pub struct TransTable {
+//     pub map:    FxHashMap<Zobrist, SearchInfo>,
+//     // pub map_r:    ReadHandle<Zobrist, SearchInfo>,
+//     // pub map_w:    WriteHandle<Zobrist, SearchInfo>,
+// }
 
 // impl Default for TransTable {
 //     fn default() -> Self {
@@ -61,12 +66,14 @@ pub struct SearchInfo {
 /// PV,
 /// All, // UpperBound
 /// Cut, // LowerBound
+/// Quiet,
 // #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
 pub enum Node {
     PV,
     All, // UpperBound
     Cut, // LowerBound
+    Quiet, // XXX: ?
     // NodeAll(Score), // Score = upper bound
     // NodeCut(Score), // Score = lower bound
 }
@@ -79,44 +86,80 @@ impl RwTransTable {
     //     unimplemented!()
     // }
 
+    pub fn clear(&self) {
+        self.tt_with_mut(|m| {
+            m.clear();
+        });
+    }
+
     /// Always replace
     /// Returns false if new insert, true if replace
-    pub fn insert_replace(&self, zb: Zobrist, search: SearchInfo) -> bool {
-        self.with_mut(|m| {
-            let b = m.map.contains_key(&zb);
-            m.map.insert(zb, search);
+    pub fn tt_insert_replace(&self, zb: Zobrist, search: SearchInfo) -> bool {
+        self.tt_with_mut(|m| {
+            let b = m.contains_key(&zb);
+            m.insert(zb, search);
             b
         })
     }
 
-    pub fn get(&self, zb: &Zobrist) -> Option<SearchInfo> {
-        self.with(|m| {
-            let s: Option<&SearchInfo> = m.map.get(&zb);
+    pub fn tt_get(&self, zb: &Zobrist) -> Option<SearchInfo> {
+        self.tt_with(|m| {
+            let s: Option<&SearchInfo> = m.get(&zb);
             s.copied()
         })
     }
 
-    pub fn clear(&self) {
-        self.with_mut(|m| {
-            m.map.clear();
-        });
+    /// Always replace
+    /// Returns false if new insert, true if replace
+    pub fn qt_insert_replace(&self, zb: Zobrist, search: SearchInfo) -> bool {
+        self.qt_with_mut(|m| {
+            let b = m.contains_key(&zb);
+            m.insert(zb, search);
+            b
+        })
     }
 
-    pub fn with<F,T>(&self, mut f: F) -> T
+    pub fn qt_get(&self, zb: &Zobrist) -> Option<SearchInfo> {
+        self.qt_with(|m| {
+            let s: Option<&SearchInfo> = m.get(&zb);
+            s.copied()
+        })
+    }
+
+    pub fn tt_with<F,T>(&self, mut f: F) -> T
     where
         F: FnOnce(&TransTable) -> T,
         T: Copy,
     {
-        let r = self.0.read();
+        let r = self.trans_table.read();
         let s = f(&r);
         s
     }
 
-    pub fn with_mut<F, T>(&self, mut f: F) -> T
+    pub fn tt_with_mut<F, T>(&self, mut f: F) -> T
     where
         F: FnMut(&mut TransTable) -> T {
         {
-            let mut w = self.0.write();
+            let mut w = self.trans_table.write();
+            f(&mut w)
+        }
+    }
+
+    pub fn qt_with<F,T>(&self, mut f: F) -> T
+    where
+        F: FnOnce(&TransTable) -> T,
+        T: Copy,
+    {
+        let r = self.quiescent.read();
+        let s = f(&r);
+        s
+    }
+
+    pub fn qt_with_mut<F, T>(&self, mut f: F) -> T
+    where
+        F: FnMut(&mut TransTable) -> T {
+        {
+            let mut w = self.quiescent.write();
             f(&mut w)
         }
     }
