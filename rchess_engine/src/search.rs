@@ -117,7 +117,9 @@ impl Game {
         let out = vec![k,b,r,q,n,p,pp,cs].concat();
         // let out = vec![k,n,p,pp,cs].concat();
 
+        // // XXX: par == way slower ?
         // let out: Vec<Move> = out.into_par_iter().filter(|m| {
+
         let out: Vec<Move> = out.into_iter().filter(|m| {
             self.move_is_legal(&ts, *m)
         }).collect();
@@ -544,6 +546,7 @@ impl Game {
     pub fn search_sliding(&self, ts: &Tables, pc: Piece, col: Color) -> Vec<Move> {
         let mut out = vec![];
         let pieces = self.get(pc, col);
+
         pieces.iter_bitscan(|sq| {
             let moves   = self._search_sliding_single(&ts, pc, sq.into(), col, None);
             let attacks = moves & self.get_color(!col);
@@ -551,13 +554,21 @@ impl Game {
             attacks.iter_bitscan(|sq2| {
                 let to = sq2.into();
                 let (_,victim) = self.get_at(to).unwrap();
-                out.push(Move::Capture { from: sq.into(), to, pc, victim });
-                // out.push(Move::Capture { from: sq.into(), to});
+                // out.push(Move::Capture { from: sq.into(), to, pc, victim });
+
+                let m = Move::Capture { from: sq.into(), to, pc, victim };
+                // if self.move_is_legal(&ts, m) { out.push(m); }
+                out.push(m);
             });
             quiets.iter_bitscan(|sq2| {
-                out.push(Move::Quiet { from: sq.into(), to: sq2.into() });
+                // out.push(Move::Quiet { from: sq.into(), to: sq2.into() });
+                let m = Move::Quiet { from: sq.into(), to: sq2.into() };
+
+                // if self.move_is_legal(&ts, m) { out.push(m); }
+                out.push(m);
             });
         });
+
         out
     }
 

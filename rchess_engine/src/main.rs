@@ -60,10 +60,10 @@ fn main() {
     // main6();
     // main5(); // search + eval position
     // main2();
-    // main4(); // perft
+    main4(); // perft
 
     // main8(); // eval testing
-    main7();
+    // main7();
     // main3(); // read from file and test
 
 }
@@ -399,7 +399,7 @@ fn main7() {
 fn main3() {
     // let mut games = read_ccr_onehour("ccr_onehour.txt").unwrap();
     // let mut games = read_epd("Midgames250.epd").unwrap();
-    let mut games = read_epd("WAC.epd").unwrap();
+    let mut games = read_epd("testpositions/WAC.epd").unwrap();
 
     // for (fen,ms) in games.iter() {
     //     // eprintln!("fen, ms = {:?}: {:?}", fen, ms);
@@ -408,7 +408,7 @@ fn main3() {
 
     // let g = &games[8];
     // let games = vec![g.clone()];
-    // games.truncate(12);
+    games.truncate(10);
 
     let n = 25;
 

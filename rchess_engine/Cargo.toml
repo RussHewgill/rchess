@@ -19,6 +19,7 @@ harness = false
 
 [features]
 default = ["par"]
+# default = []
 par = []
 
 [dev-dependencies]

@@ -175,55 +175,55 @@ impl Explorer {
 
         while timer.should_search(self.side, depth) && (depth <= self.max_depth) {
 
-            // eprintln!("Explorer: not parallel");
-            // (out,ss) = gs.iter().map(|(mv,g2)| {
-            (out,ss) = gs.par_iter().map(|(mv,g2)| {
-                let alpha = Arc::new(AtomicI32::new(i32::MIN));
-                let beta  = Arc::new(AtomicI32::new(i32::MAX));
-                // let alpha = i32::MIN;
-                // let beta  = i32::MAX;
-                let mut stats = SearchStats::default();
-                let (mut mv_seq,score) = self._ab_search(
-                    &ts, &g2, depth, 1, alpha, beta, false, &mut stats, *mv);
-                mv_seq.push(*mv);
-                mv_seq.reverse();
-                ((*mv,mv_seq,score),stats)
-            }).unzip();
+            // // eprintln!("Explorer: not parallel");
+            // // (out,ss) = gs.iter().map(|(mv,g2)| {
+            // (out,ss) = gs.par_iter().map(|(mv,g2)| {
+            //     let alpha = Arc::new(AtomicI32::new(i32::MIN));
+            //     let beta  = Arc::new(AtomicI32::new(i32::MAX));
+            //     // let alpha = i32::MIN;
+            //     // let beta  = i32::MAX;
+            //     let mut stats = SearchStats::default();
+            //     let (mut mv_seq,score) = self._ab_search(
+            //         &ts, &g2, depth, 1, alpha, beta, false, &mut stats, *mv);
+            //     mv_seq.push(*mv);
+            //     mv_seq.reverse();
+            //     ((*mv,mv_seq,score),stats)
+            // }).unzip();
 
-            // #[cfg(feature = "par")]
-            // {
-            //     // eprintln!("Explorer: not parallel");
-            //     // (out,ss) = gs.iter().map(|(mv,g2)| {
-            //     (out,ss) = gs.par_iter().map(|(mv,g2)| {
-            //         let alpha = Arc::new(AtomicI32::new(i32::MIN));
-            //         let beta  = Arc::new(AtomicI32::new(i32::MAX));
-            //         // let alpha = i32::MIN;
-            //         // let beta  = i32::MAX;
-            //         let mut stats = SearchStats::default();
-            //         let (mut mv_seq,score) = self._ab_search(
-            //             &ts, &g2, depth, 1, alpha, beta, false, &mut stats, *mv);
-            //         mv_seq.push(*mv);
-            //         mv_seq.reverse();
-            //         ((*mv,mv_seq,score),stats)
-            //     }).unzip();
-            // }
-            // #[cfg(not(feature = "par"))]
-            // {
-            //     eprintln!("Explorer: not parallel");
-            //     (out,ss) = gs.iter().map(|(mv,g2)| {
-            //     // (out,ss) = gs.par_iter().map(|(mv,g2)| {
-            //         let alpha = Arc::new(AtomicI32::new(i32::MIN));
-            //         let beta  = Arc::new(AtomicI32::new(i32::MAX));
-            //         // let alpha = i32::MIN;
-            //         // let beta  = i32::MAX;
-            //         let mut stats = SearchStats::default();
-            //         let (mut mv_seq,score) = self._ab_search(
-            //             &ts, &g2, depth, 1, alpha, beta, false, &mut stats, *mv);
-            //         mv_seq.push(*mv);
-            //         mv_seq.reverse();
-            //         ((*mv,mv_seq,score),stats)
-            //     }).unzip();
-            // }
+            #[cfg(feature = "par")]
+            {
+                // eprintln!("Explorer: not parallel");
+                // (out,ss) = gs.iter().map(|(mv,g2)| {
+                (out,ss) = gs.par_iter().map(|(mv,g2)| {
+                    let alpha = Arc::new(AtomicI32::new(i32::MIN));
+                    let beta  = Arc::new(AtomicI32::new(i32::MAX));
+                    // let alpha = i32::MIN;
+                    // let beta  = i32::MAX;
+                    let mut stats = SearchStats::default();
+                    let (mut mv_seq,score) = self._ab_search(
+                        &ts, &g2, depth, 1, alpha, beta, false, &mut stats, *mv);
+                    mv_seq.push(*mv);
+                    mv_seq.reverse();
+                    ((*mv,mv_seq,score),stats)
+                }).unzip();
+            }
+            #[cfg(not(feature = "par"))]
+            {
+                eprintln!("Explorer: not parallel");
+                (out,ss) = gs.iter().map(|(mv,g2)| {
+                // (out,ss) = gs.par_iter().map(|(mv,g2)| {
+                    let alpha = Arc::new(AtomicI32::new(i32::MIN));
+                    let beta  = Arc::new(AtomicI32::new(i32::MAX));
+                    // let alpha = i32::MIN;
+                    // let beta  = i32::MAX;
+                    let mut stats = SearchStats::default();
+                    let (mut mv_seq,score) = self._ab_search(
+                        &ts, &g2, depth, 1, alpha, beta, false, &mut stats, *mv);
+                    mv_seq.push(*mv);
+                    mv_seq.reverse();
+                    ((*mv,mv_seq,score),stats)
+                }).unzip();
+            }
 
             stats = ss.iter().sum();
 
@@ -529,7 +529,7 @@ impl Explorer {
         };
 
         if depth == 0 {
-            // let score = g.evaluate(&ts).sum();
+            let score = g.evaluate(&ts).sum();
 
             // let score = match self.trans_table.qt_get(&g.zobrist) {
             //     Some(si) => {
@@ -544,21 +544,21 @@ impl Explorer {
             //     },
             // };
 
-            let score = if maximizing {
-                self.quiescence(
-                    &ts, &g, moves, k,
-                    alpha.load(Ordering::Relaxed),
-                    beta.load(Ordering::Relaxed),
-                    // XXX: max or !max ?
-                    maximizing, &mut stats, mv0)
-            } else {
-                -self.quiescence(
-                    &ts, &g, moves, k,
-                    -alpha.load(Ordering::Relaxed),
-                    -beta.load(Ordering::Relaxed),
-                    // XXX: max or !max ?
-                    maximizing, &mut stats, mv0)
-            };
+            // let score = if maximizing {
+            //     self.quiescence(
+            //         &ts, &g, moves, k,
+            //         alpha.load(Ordering::Relaxed),
+            //         beta.load(Ordering::Relaxed),
+            //         // XXX: max or !max ?
+            //         maximizing, &mut stats, mv0)
+            // } else {
+            //     -self.quiescence(
+            //         &ts, &g, moves, k,
+            //         -alpha.load(Ordering::Relaxed),
+            //         -beta.load(Ordering::Relaxed),
+            //         // XXX: max or !max ?
+            //         maximizing, &mut stats, mv0)
+            // };
 
             // let score = self.quiescence(
             //     &ts, &g, moves, k,
@@ -585,8 +585,12 @@ impl Explorer {
         });
 
         let mut gs: Vec<(Move,Game,Option<Score>)> = gs.collect();
-        // gs.sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
+
+        #[cfg(feature = "par")]
         gs.par_sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
+        #[cfg(not(feature = "par"))]
+        gs.sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
+
         if !maximizing {
             gs.reverse();
         }
@@ -870,7 +874,7 @@ impl Explorer {
         stats.qt_nodes += 1;
         let stand_pat = g.evaluate(&ts).sum();
         // stats.leaves += 1;
-        // return stand_pat; // correct
+        return stand_pat; // correct
 
         if stand_pat >= beta {
             // debug!("quiescence beta cutoff: {}", k);
@@ -884,29 +888,12 @@ impl Explorer {
         if m0.filter_promotion() {
             big_delta += Queen.score() - Pawn.score();
         }
-
-        if stand_pat >= (beta + big_delta) {
-            return beta;
+        if !maximizing {
+            if stand_pat >= (beta + big_delta) {
+                return beta;
+            }
         }
-
-        // if !maximizing {
-        //     if stand_pat >= (beta + big_delta) {
-        //         return beta;
-        //     }
-        // }
-
-        // if stand_pat < (alpha - big_delta) {
-        //     return alpha;
-        // }
-
-        // if maximizing {
-        // } else {
-        //     // if stand_pat < (alpha - big_delta) {
-        //     //     return alpha;
-        //     // }
-        // }
-
-        return stand_pat;
+        // return stand_pat; // correct
 
         if alpha < stand_pat {
             alpha = stand_pat;
@@ -916,12 +903,17 @@ impl Explorer {
         let mut captures = ms.into_iter().filter(|m| m.filter_all_captures()).collect::<Vec<_>>();
 
         // TODO: sort reverse for max / min ?
+        #[cfg(feature = "par")]
         // captures.par_sort_unstable();
         captures.par_sort();
+        #[cfg(not(feature = "par"))]
+        captures.sort();
 
-        if maximizing {
-            captures.reverse();
-        }
+        captures.reverse();
+
+        // if !maximizing {
+        //     captures.reverse();
+        // }
 
         for mv in captures.into_iter() {
             if let Ok(g2) = g.make_move_unchecked(&ts, &mv) {
@@ -932,13 +924,30 @@ impl Explorer {
                             &ts, &g2, ms2, k + 1, -alpha, -beta,
                             !maximizing, &mut stats, mv);
 
-                        if score >= beta {
-                            // stats.leaves += 1;
-                            return beta;
+                        if maximizing {
+                            if score >= beta {
+                                break;
+                            }
+                            if score > alpha {
+                                alpha = score;
+                            }
+                        } else {
+                            if score <= alpha {
+                                break;
+                            }
+                            if score < beta {
+                                beta = score;
+                            }
                         }
-                        if score > alpha {
-                            alpha = score;
-                        }
+
+                        // if score >= beta {
+                        //     // stats.leaves += 1;
+                        //     return beta;
+                        // }
+                        // if score > alpha {
+                        //     alpha = score;
+                        // }
+
                     },
                     Outcome::Checkmate(_) => {
                         // panic!("checkmate in quiescent");
