@@ -3,6 +3,7 @@ use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
 
+// use arrayvec::ArrayVec;
 use parking_lot::RwLock;
 use rustc_hash::FxHashMap;
 use std::sync::Arc;
@@ -51,8 +52,15 @@ pub struct TTStats {
     pub leaves:  u32,
 }
 
+#[derive(Debug,Eq,PartialEq,Clone,Copy)]
+pub enum SICanUse {
+    UseScore,
+    UseOrdering
+}
+
 // #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
-#[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
+// #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
+#[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone)]
 pub struct SearchInfo {
     pub mv:                 Move,
     pub depth_searched:     Depth,
@@ -60,6 +68,9 @@ pub struct SearchInfo {
     pub node_type:          Node,
     pub score:              Score,
     // pub eval:               Eval,
+
+    pub moves:              Vec<Move>,
+    // pub moves:              ArrayVec<Move, 100>,
 
     // pub best_move:          Move,
     // pub refutation_move:    Move,
@@ -204,12 +215,17 @@ impl SearchInfo {
     // pub fn new(pv: Move, depth_searched: u32, score: NodeType) -> Self {
     // pub fn new(depth_searched: u32, score: NodeType) -> Self {
 
-    pub fn new(mv: Move, depth_searched: Depth, node_type: Node, score: Score) -> Self {
+    // pub fn new(mv: Move, depth_searched: Depth, node_type: Node, score: Score) -> Self {
+    pub fn new(mv: Move, moves: Vec<Move>, depth_searched: Depth, node_type: Node, score: Score) -> Self {
+        // let mut mvs = ArrayVec::new();
+        // mvs.try_extend_from_slice(&moves).unwrap();
         Self {
             mv,
             depth_searched,
             node_type,
             score,
+            moves,
+
             // ..Default::default()
         }
     }
@@ -229,4 +245,16 @@ impl SearchInfo {
 //         }
 //     }
 // }
+
+// impl std::cmp::PartialEq for SICanUse {
+//     fn eq(&self, other: Self) -> bool {
+//     }
+// }
+
+impl std::cmp::PartialOrd for SICanUse {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(std::cmp::Ordering::Equal)
+    }
+}
+
 

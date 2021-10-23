@@ -57,7 +57,6 @@ fn main() {
     // // let s = u16::MAX;
     // // eprintln!("s = {:#8x}", s);
 
-
     // main6();
     // main5(); // search + eval position
     // main2();
@@ -155,11 +154,11 @@ fn main7() {
     // // // minimax = 869088, 2.08 s
     // // // AB      = 92245,  0.24 s
     // let fen = "r4q1k/5P1b/2p2n1P/p2p1P2/3P4/8/2PKN1Q1/6R1 w - - 1 34";
-    // // let n = 3;
 
     // // AB = 808182 leaves, 1.87 s
     // let fen = "7k/2pq2p1/6rp/1P2p3/2Qp1n2/P2P3P/R1P2PPK/3N2R1 b - - 0 28";
-    // let n = 4;
+
+    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"; // Perft Position 2
 
     // let fen = "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1"; // WAC.001 = Qg6 = g3g6
     // let fen = "2rr3k/pp3pp1/1nnqbNQ1/3pN2p/2pP4/2P5/PPB4P/R4RK1 w - - 0 2"; // WAC.001 = Qg6 = g3g6
@@ -170,7 +169,7 @@ fn main7() {
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
 
     // let fen = "Q3b3/4bkp1/1q2np1p/NPp1p3/2P1P3/4BP1P/4B1P1/7K b - - 1 1"; // Correct = e6c7
-    // let fen = "rnbqkb1r/pppp1ppp/8/4P3/6n1/7P/PPPNPPP1/R1BQKBNR b KQkq - 0 1"; // WAC.007, Ne3 = g4e3
+    let fen = "rnbqkb1r/pppp1ppp/8/4P3/6n1/7P/PPPNPPP1/R1BQKBNR b KQkq - 0 1"; // WAC.007, Ne3 = g4e3
     // let fen = "3q1rk1/p4pp1/2pb3p/3p4/6Pr/1PNQ4/P1PB1PP1/4RRK1 b - - 0 1"; // WAC.009, Bh2+ = d6h2
 
     // let fen = "5k2/6pp/p1qN4/1p1p4/3P4/2PKP2Q/PP3r2/3R4 b - - 0 1"; // WAC.005, Qc4 = c6c4
@@ -200,8 +199,8 @@ fn main7() {
 
     // let fen = "k7/8/8/3p1q2/4P3/3P4/8/7K w - - 0 1";
 
-    /// https://www.chessprogramming.org/Caesar#HorizonEffect
-    let fen = "2kr4/3nR3/p2B1p2/1p1p1Bp1/1P1P3p/2P4P/P5PK/8 b - - 1 32"; // Horizon
+    // /// https://www.chessprogramming.org/Caesar#HorizonEffect
+    // let fen = "2kr4/3nR3/p2B1p2/1p1p1Bp1/1P1P3p/2P4P/P5PK/8 b - - 1 32"; // Horizon
 
     // let fen = "8/8/p1p5/1p5p/1P5p/8/PPP2K1p/4R1rk w - - 0 1"    // Rf1; id "zugzwang.001";
     // let fen = "1q1k4/2Rr4/8/2Q3K1/8/8/8/8 w - - 0 1"            // Kh6;  id "zugzwang.002";
@@ -209,7 +208,8 @@ fn main7() {
     // let fen = "8/6B1/p5p1/Pp4kp/1P5r/5P1Q/4q1PK/8 w - - 0 32"   // Qxh4; id "zugzwang.004";
     // let fen = "8/8/1p1r1k2/p1pPN1p1/P3KnP1/1P6/8/3R4 b - - 0 1" // Nxd5; id "zugzwang.005";
 
-    let ts = Tables::new();
+    // let ts = Tables::new();
+    let ts = Tables::read_from_file("tables.bin").unwrap();
 
     let mut g = Game::from_fen(&ts, fen).unwrap();
 
@@ -255,6 +255,42 @@ fn main7() {
     //     eprintln!("p = {:?}", p);
     // }
 
+    // let depth = 2;
+    // let mut vs0: Vec<(u8,u8,Option<(SICanUse,SearchInfo)>)> = vec![
+    //     (0,0,Some((SICanUse::UseScore,SearchInfo::new(ps[0], 1, Node::PV, 10)))),
+    //     (0,0,Some((SICanUse::UseScore,SearchInfo::new(ps[0], 1, Node::PV, 20)))),
+    //     (0,0,None),
+    // ];
+    // let vs: &mut [(u8,u8,Option<(bool,SearchInfo)>)] = &mut vs0;
+    // let mut vs = &mut vs0[..];
+    // Explorer::order_searchinfo(true, vs);
+    // println!("true:");
+    // for v in vs.iter() {
+    //     eprintln!("v = {:?}", v);
+    // }
+    // println!("\nfalse:");
+    // Explorer::order_searchinfo(false, vs);
+    // for v in vs.iter() {
+    //     eprintln!("v = {:?}", v);
+    // }
+
+
+    // println!("wat 0");
+    // let x = crossbeam::scope(|s| {
+    //     std::thread::sleep_ms(1000);
+    //     println!("wat 0 a");
+    //     5
+    // }).unwrap();
+    // println!("wat 1");
+    // let y = crossbeam::scope(|s| {
+    //     std::thread::sleep_ms(1000);
+    //     println!("wat 1 a");
+    //     10
+    // }).unwrap();
+    // println!("wat 2");
+
+    // println!("(x,y) = {:?}", (x,y));
+
     // return;
 
     #[allow(unreachable_code)]
@@ -287,7 +323,8 @@ fn main7() {
             // eprintln!("see = {:?}", see);
 
             let (mvs,stats) = ex.lazy_smp(&ts);
-
+            println!("good = g4e3");
+            stats.print(t0.elapsed());
 
             // // let (moves,stats) = ex.iterative_deepening(&ts, false, true);
             // let (moves,stats) = ex.iterative_deepening(&ts, false, false);
@@ -295,7 +332,8 @@ fn main7() {
             // // let mv = moves.get(0).map(|x| x.0);
             // let (mv,mvs,_) = moves.get(0).unwrap();
             // println!("m #{} = {:?}", q, mv);
-            // println!("good = c8b7");
+            // println!("good = g4e3");
+            // stats.print(t0.elapsed());
 
             // print!("\n");
             // for (m,mvs,score) in moves.iter() {
@@ -319,8 +357,6 @@ fn main7() {
             // }
 
             // eprintln!("\nbest move = {:?}", mvs.get(0).unwrap());
-
-            // stats.print(t0.elapsed());
 
             // print!("\n");
             // let tt = ex.trans_table.0.read().map.clone();
@@ -347,7 +383,7 @@ fn main7() {
 
             t += t0.elapsed();
         }
-        println!("explore {} times, done in avg {:.3} seconds.", k, t.as_secs_f64() / k as f64);
+        println!("\n===\nexplore {} times, done in avg {:.3} seconds.", k, t.as_secs_f64() / k as f64);
 
     } else {
 

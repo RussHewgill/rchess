@@ -9,18 +9,23 @@ pub use crate::searchstats::*;
 
 use std::hash::Hasher;
 use std::iter::successors;
-use std::sync::atomic::AtomicI32;
+use std::sync::atomic::{AtomicU8,AtomicI32};
 use std::thread;
 use std::time::Duration;
 
+use either::Either;
+
+use itertools::Itertools;
 use parking_lot::Mutex;
 // use std::sync::RwLock;
 use parking_lot::RwLock;
 
+use rand::prelude::{SliceRandom,thread_rng};
 use rayon::Scope;
 use rayon::prelude::*;
 
 use rustc_hash::FxHashMap;
+use serde::de::Expected;
 
 #[derive(Debug)]
 pub struct Explorer {
@@ -116,7 +121,13 @@ impl Explorer {
         let mut stats = SearchStats::default();
         let mut depth = 0;
 
-        // let gs: Vec<(Move,Game)> = moves.par_iter().flat_map(|mv| {
+        #[cfg(feature = "par")]
+        let gs: Vec<(Move,Game)> = moves.par_iter().flat_map(|mv| {
+            if let Ok(g2) = self.game.make_move_unchecked(&ts, &mv) {
+                Some((*mv,g2))
+            } else { None }
+        }).collect();
+        #[cfg(not(feature = "par"))]
         let gs: Vec<(Move,Game)> = moves.iter().flat_map(|mv| {
             if let Ok(g2) = self.game.make_move_unchecked(&ts, &mv) {
                 Some((*mv,g2))
@@ -151,8 +162,6 @@ impl Explorer {
 
             #[cfg(feature = "par")]
             {
-                // eprintln!("Explorer: not parallel");
-                // (out,ss) = gs.iter().map(|(mv,g2)| {
                 (out,ss) = gs.par_iter().map(|(mv,g2)| {
                     let alpha = Arc::new(AtomicI32::new(i32::MIN));
                     let beta  = Arc::new(AtomicI32::new(i32::MAX));
@@ -213,37 +222,204 @@ impl Explorer {
 /// Lazy SMP
 impl Explorer {
 
-    pub fn lazy_smp(&self, ts: &Tables,) -> (Vec<Move>,Score) {
+    fn _lazy_smp_single(
+        &self,
+        ts:               &Tables,
+        // gs:               &[(Move,Game)],
+        gs:               Vec<(Move,Game)>,
+        depth:            Depth,
+        // depth_counter:    Arc<RwLock<Depth>>,
+        // out:              Arc<Mutex<Vec<(Move,Vec<Move>,Score)>>>,
+        // results:          Arc<(RwLock<Depth>,Mutex<Vec<(Move,Vec<Move>,Score)>>)>
+        results:          Arc<RwLock<(Depth,Vec<(Move,Vec<Move>,Score)>)>>,
+        stats:            Arc<RwLock<SearchStats>>,
+    // ) -> Option<(Vec<(Move,Vec<Move>,Score)>,SearchStats)> {
+    // ) -> Either<SearchStats,SearchStats> {
+    ) {
+
+        let (out,ss): (Vec<(Move,Vec<Move>,Score)>,SearchStats) = {
+            let mut stats = SearchStats::default();
+            let out = gs.into_iter().map(|(mv,g2)| {
+                let alpha = Arc::new(AtomicI32::new(i32::MIN));
+                let beta  = Arc::new(AtomicI32::new(i32::MAX));
+                let mut ss = SearchStats::default();
+                let (mut mv_seq,score) = self._ab_search(
+                    &ts, &g2, depth, 1, alpha, beta, false, &mut stats, mv);
+                mv_seq.push(mv);
+                mv_seq.reverse();
+                stats = stats + ss;
+                (mv,mv_seq,score)
+            }).collect();
+
+            (out,stats)
+        };
+
+        let d = results.read().0.clone();
+        drop(d);
+        if depth > d {
+            let mut r = results.write();
+            r.0 = depth;
+            r.1 = out;
+            // Either::Left((out, stats))
+            // Either::Left(stats)
+        } else {
+            // Either::Right(stats)
+        }
+
+        {
+            let mut s = stats.write();
+            *s = *s + ss;
+        }
 
 
-        unimplemented!()
+        // unimplemented!()
     }
 
+    #[allow(unused_doc_comments)]
+    pub fn lazy_smp(&self, ts: &Tables,) -> (Vec<(Move,Vec<Move>,Score)>,SearchStats) {
+        // 12, 6
+        let (n_cpus,np_cpus)  = (num_cpus::get(),num_cpus::get_physical());
+
+        self.trans_table.clear();
+        let mut timer = self.timer.clone();
+        timer.reset();
+
+        // let mut stats = SearchStats::default();
+        let mut depth = 0;
+        // let mut out   = vec![];
+
+        let results: Arc<RwLock<(Depth,Vec<(Move,Vec<Move>,Score)>)>> =
+            Arc::new(RwLock::new((depth,vec![])));
+
+        let stats: Arc<RwLock<SearchStats>> =
+            Arc::new(RwLock::new(SearchStats::default()));
+
+        let moves = self.game.search_all(&ts, None).get_moves_unsafe();
+
+        let mut gs: Vec<(Move,Game)> = { if cfg!(par) {
+                moves.par_iter().flat_map(|mv| {
+                    if let Ok(g2) = self.game.make_move_unchecked(&ts, &mv) {
+                        Some((*mv,g2))
+                    } else { None }
+                }).collect()
+            } else {
+                moves.iter().flat_map(|mv| {
+                    if let Ok(g2) = self.game.make_move_unchecked(&ts, &mv) {
+                        Some((*mv,g2))
+                    } else { None }
+                }).collect()
+            }};
+
+        // let mut rng = thread_rng();
+
+        let threadcount = vec![
+            // 4,
+            // 2,
+            // 8,
+            // 4,
+            n_cpus / 2,
+            n_cpus / 4,
+            n_cpus / 8,
+        ];
+
+        eprintln!("threadcount = {:?}", threadcount);
+
+        while timer.should_search(self.side, depth) && (depth <= self.max_depth) {
+
+            let r2  = results.clone();
+            let gs2 = gs.clone();
+            let threadcount = threadcount.clone();
+            let stats2 = stats.clone();
+
+            crossbeam::scope(move |s| {
+
+                /// depth +1:  1/2
+                // let mut ss1 = (0..(np_cpus / 2)).map(|_| {
+                let mut ss1 = (0..threadcount[0]).for_each(|_| {
+                    let r3  = r2.clone();
+                    let gs3 = gs2.clone();
+                    let stats3 = stats2.clone();
+                    let s1 = s.spawn(move |_| {
+                        // gs.shuffle(&mut rng);
+                        self._lazy_smp_single(
+                            &ts, gs3.clone(), depth + 1, r3.clone(), stats3.clone(),
+                        );
+                    });
+                    // s1
+                });
+
+                /// depth +2:  1/4
+                // let mut ss2 = (0..(np_cpus / 4)).map(|_| {
+                let mut ss2 = (0..threadcount[1]).for_each(|_| {
+                    let r3  = r2.clone();
+                    let gs3 = gs2.clone();
+                    let stats3 = stats2.clone();
+                    let s1 = s.spawn(move |_| {
+                        // gs.shuffle(&mut rng);
+                        self._lazy_smp_single(
+                            // &ts, gs3.clone(), depth + 2, r3.clone(),
+                            &ts, gs3.clone(), depth + 1, r3.clone(), stats3.clone(),
+                        );
+                    });
+                    // s1
+                });
+
+                // let stats1 = ss1.fold(SearchStats::default(), |a,b| {a + b.join().unwrap()});
+                // let stats2 = ss2.fold(SearchStats::default(), |a,b| {a + b.join().unwrap()});
+                // let stats3 = ss3.fold(SearchStats::default(), |a,b| {a + b.join().unwrap()});
+                // stats1 + stats2 + stats3
+                // stats1 + stats2
+
+                // SearchStats::default()
+            }).unwrap();
+
+            // stats = stats + ss;
+            // stats.max_depth = depth;
+
+            {
+                let mut s = stats.write();
+                s.max_depth = depth;
+            }
+
+            depth += 1;
+            let r = stats.read();
+            timer.update_times(self.side, r.nodes);
+        }
+
+
+        let d = results.read();
+        let out = d.1.clone();
+        let stats = stats.read().clone();
+        (out,stats)
+    }
 
 }
 
 /// AB search
 impl Explorer {
 
+    /// returns (can_use, SearchInfo)
+    /// true: when score can be used instead of searching
+    /// false: score can be used ONLY for move ordering
     fn check_tt(&self,
                 ts:             &Tables,
                 g:              &Game,
                 depth:          Depth,
-                // k:              i32,
-                // alpha:          i32,
-                // beta:           i32,
                 maximizing:     bool,
                 mut stats:      &mut SearchStats,
-    ) -> Option<Score> {
+    ) -> Option<(SICanUse,SearchInfo)> {
         // if let Some(si) = self.trans_table.tt_get(&g.zobrist) {
         if let Some(si) = self.trans_table.get(&g.zobrist) {
 
             if si.depth_searched == depth {
                 stats.tt_hits += 1;
-                Some(si.score)
+                // Some((SICanUse::UseScore,*si))
+                Some((SICanUse::UseScore,si.clone()))
             } else {
                 stats.tt_misses += 1;
-                None
+                // Some((SICanUse::UseOrdering,*si))
+                Some((SICanUse::UseOrdering,si.clone()))
+                // None
             }
         } else {
             stats.tt_misses += 1;
@@ -253,204 +429,8 @@ impl Explorer {
         }
     }
 
-    // pub fn _ab_search_par(
-    //     &self,
-    //     ts:                 &Tables,
-    //     g:                  &Game,
-    //     depth:              Depth,
-    //     k:                  i16,
-    //     // mut alpha:          i32,
-    //     // mut beta:           i32,
-    //     alpha:              Arc<AtomicI32>,
-    //     beta:               Arc<AtomicI32>,
-    //     maximizing:         bool,
-    //     mut stats:          &mut SearchStats,
-    //     par:                bool,
-    // ) -> Score {
-
-    //     let moves = g.search_all(&ts, None);
-
-    //     let moves: Vec<Move> = match moves {
-    //         Outcome::Checkmate(c) => {
-    //             let score = 100_000_000 - k as Score;
-    //             stats.leaves += 1;
-    //             stats.checkmates += 1;
-    //             return score;
-    //         },
-    //         Outcome::Stalemate    => {
-    //             let score = -100_000_000 + k as Score;
-    //             stats.leaves += 1;
-    //             stats.stalemates += 1;
-    //             return score;
-    //         },
-    //         Outcome::Moves(ms)    => ms,
-    //     };
-
-    //     if depth == 0 {
-    //         let score = g.evaluate(&ts).sum();
-    //         // let score = self.quiescence(&ts, &g, moves, k, alpha, beta);
-
-    //         stats.leaves += 1;
-    //         if self.side == Black {
-    //             return -score;
-    //         } else {
-    //             return score;
-    //         }
-    //     }
-
-    //     let gs = moves.into_iter().flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, &m) {
-    //     // let gs = moves.into_par_iter().flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, &m) {
-    //         let tt = self.check_tt(&ts, &g2, depth, maximizing, &mut stats);
-    //         Some((m,g2,tt))
-    //     } else {
-    //         None
-    //     });
-
-    //     let mut gs: Vec<(Move,Game,Option<Score>)> = gs.collect();
-    //     gs.sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
-    //     if !maximizing {
-    //         gs.reverse();
-    //     }
-
-    //     let mut val = if maximizing { i32::MIN } else { i32::MAX };
-    //     let mut val: (Option<(Zobrist,Move)>,i32) = (None,val);
-
-    //     let mut node_type = Node::PV;
-
-    //     if par {
-    //         use crossbeam_channel::unbounded;
-    //         let (chan_tx,chan_rx) = unbounded();
-    //         // let (chan_tx,chan_rx) = std::sync::mpsc::sync_channel(4);
-
-    //         let mut i_max = gs.len() as i16;
-    //         let gs2 = gs.into_par_iter()
-    //         // let gs2 = gs.into_iter()
-    //             .enumerate()
-    //             .for_each(|(i,(m,g2,tt))| {
-    //                 let mut ss = SearchStats::default();
-    //                 let alpha2 = Arc::new(AtomicI32::new(alpha.load(Ordering::SeqCst)));
-    //                 let beta2  = Arc::new(AtomicI32::new(beta.load(Ordering::SeqCst)));
-    //                 let score = self._ab_search_par(
-    //                     &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut ss,par);
-    //                 chan_tx.send((m,g2,tt,score,ss)).unwrap();
-    //             });
-
-    //         loop {
-    //             if i_max == 0 { break; } else { i_max -= 1; }
-    //             let (mv,g2,tt,score,ss) = match chan_rx.recv() {
-    //                 Ok(x)  => x,
-    //                 Err(_) => break,
-    //             };
-    //             *stats += ss;
-
-    //             let zb = g2.zobrist;
-
-    //             stats.nodes += 1;
-
-    //             if maximizing {
-    //                 if score > val.1 {
-    //                     val = (Some((zb,mv)),score);
-    //                 }
-    //                 alpha.fetch_max(val.1, Ordering::SeqCst);
-    //                 if val.1 >= beta.load(Ordering::SeqCst) { // Beta cutoff
-    //                     // node_type = Node::Cut;
-    //                     // self.trans_table.insert_replace(
-    //                     //     zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
-    //                     break;
-    //                 }
-    //                 // self.trans_table.insert_replace(
-    //                 //     zb, SearchInfo::new(mv, depth, Node::All, val.1));
-    //             } else {
-    //                 if score < val.1 {
-    //                     val = (Some((zb,mv)),score);
-    //                 }
-    //                 beta.fetch_min(val.1, Ordering::SeqCst);
-    //                 if val.1 <= alpha.load(Ordering::SeqCst) { // Alpha cutoff
-    //                     // node_type = Node::Cut;
-    //                     // self.trans_table.insert_replace(
-    //                     //     zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
-    //                     break;
-    //                 }
-    //                 // node_type = Node::All;
-    //                 // self.trans_table.insert_replace(
-    //                 //     zb, SearchInfo::new(mv, depth, Node::All, val.1));
-    //             }
-
-    //         }
-
-    //     } else {
-    //         for (mv,g2,tt) in gs.into_iter() {
-    //             let zb = g2.zobrist;
-
-    //             stats.nodes += 1;
-
-    //             let alpha2 = Arc::new(AtomicI32::new(alpha.load(Ordering::Relaxed)));
-    //             let beta2  = Arc::new(AtomicI32::new(beta.load(Ordering::Relaxed)));
-    //             let score = self._ab_search(
-    //                 // &ts, &g2, depth - 1, k + 1, alpha.clone(), beta.clone(), !maximizing, &mut stats);
-    //                 &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut stats);
-
-    //             if maximizing {
-    //                 if score > val.1 {
-    //                     val = (Some((zb,mv)),score);
-    //                 }
-    //                 alpha.fetch_max(val.1, Ordering::SeqCst);
-    //                 if val.1 >= beta.load(Ordering::SeqCst) { // Beta cutoff
-    //                     // node_type = Node::Cut;
-    //                     // self.trans_table.insert_replace(
-    //                     //     zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
-    //                     break;
-    //                 }
-    //                 // self.trans_table.insert_replace(
-    //                 //     zb, SearchInfo::new(mv, depth, Node::All, val.1));
-    //             } else {
-    //                 if score < val.1 {
-    //                     val = (Some((zb,mv)),score);
-    //                 }
-    //                 beta.fetch_min(val.1, Ordering::SeqCst);
-    //                 if val.1 <= alpha.load(Ordering::SeqCst) { // Alpha cutoff
-    //                     // node_type = Node::Cut;
-    //                     // self.trans_table.insert_replace(
-    //                     //     zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
-    //                     break;
-    //                 }
-    //                 // node_type = Node::All;
-    //                 // self.trans_table.insert_replace(
-    //                 //     zb, SearchInfo::new(mv, depth, Node::All, val.1));
-    //             }
-
-    //         }
-    //     }
-
-    //     if let Some((zb,mv)) = val.0 {
-    //         self.trans_table.insert_replace(
-    //             zb, SearchInfo::new(mv, depth, Node::PV, val.1));
-    //     }
-
-    //     // match node_type {
-    //     //     Node::PV         => {
-    //     //         if let Some((zb,mv)) = val.0 {
-    //     //             self.trans_table.insert_replace(
-    //     //                 zb, SearchInfo::new(mv, depth, Node::PV, val.1));
-    //     //         }
-    //     //     },
-    //     //     Node::All => {
-    //     //     },
-    //     //     Node::Cut => {
-    //     //     },
-    //     // }
-
-    //     // stats.alpha = stats.alpha.max(alpha);
-    //     // stats.beta = stats.beta.max(beta);
-    //     stats.alpha = stats.alpha.max(alpha.load(Ordering::SeqCst));
-    //     stats.beta = stats.beta.max(beta.load(Ordering::SeqCst));
-
-    //     val.1
-    // }
-
     /// alpha: the MIN score that the maximizing player is assured of
     /// beta:  the MAX score that the minimizing player is assured of
-
     pub fn _ab_search(
         &self,
         ts:                 &Tables,
@@ -551,16 +531,19 @@ impl Explorer {
             None
         });
 
-        let mut gs: Vec<(Move,Game,Option<Score>)> = gs.collect();
+        // let mut gs: Vec<(Move,Game,Option<()>)> = gs.collect();
+        // let mut gs: Vec<_> = gs.collect();
+        let mut gs: Vec<(Move,Game,Option<(SICanUse,SearchInfo)>)> = gs.collect();
 
         #[cfg(feature = "par")]
         gs.par_sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
         #[cfg(not(feature = "par"))]
         gs.sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
-
         if !maximizing {
             gs.reverse();
         }
+
+        // Explorer::order_searchinfo(maximizing, &mut gs);
 
         // let gs2 = gs.into_iter()
         //     .map(|(m,g2,tt)| {
@@ -629,18 +612,31 @@ impl Explorer {
             let zb = g2.zobrist;
             stats.nodes += 1;
 
-            let alpha2 = Arc::new(AtomicI32::new(alpha.load(Ordering::Relaxed)));
-            let beta2  = Arc::new(AtomicI32::new(beta.load(Ordering::Relaxed)));
-            let (mut mv_seq,score) = self._ab_search(
-                // &ts, &g2, depth - 1, k + 1, alpha.clone(), beta.clone(), !maximizing, &mut stats);
-                &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut stats, mv);
-                // &ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut stats, mv);
+            let (mut mv_seq,score) = match tt {
+                Some((SICanUse::UseScore,si)) => (si.moves.clone(),si.score),
+                _ => {
+                    let alpha2 = Arc::new(AtomicI32::new(alpha.load(Ordering::Relaxed)));
+                    let beta2  = Arc::new(AtomicI32::new(beta.load(Ordering::Relaxed)));
+                    self._ab_search(
+                        &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut stats, mv)
+                },
+            };
+
+            // let alpha2 = Arc::new(AtomicI32::new(alpha.load(Ordering::Relaxed)));
+            // let beta2  = Arc::new(AtomicI32::new(beta.load(Ordering::Relaxed)));
+            // let (mut mv_seq,score) = self._ab_search(
+            //     // &ts, &g2, depth - 1, k + 1, alpha.clone(), beta.clone(), !maximizing, &mut stats);
+            //     &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut stats, mv);
+            //     // &ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut stats, mv);
 
             // if maximizing {
             //     val.1 = i32::max(val.1, score);
             // } else {
             //     val.1 = i32::min(val.1, score);
             // }
+
+            // XXX: 
+            let tt = Some(0);
 
             let b = self._ab_score(
                 (mv,&g2,tt),
@@ -709,10 +705,12 @@ impl Explorer {
 
         }
 
-        if let Some((zb,mv,_)) = val.0 {
+        if let Some((zb,mv,mv_seq)) = &val.0 {
             // self.trans_table.tt_insert_replace(
             self.trans_table.insert(
-                zb, SearchInfo::new(mv, depth, Node::PV, val.1));
+                // zb, SearchInfo::new(mv, depth, Node::PV, val.1));
+                // *zb, SearchInfo::new(*mv, depth, Node::PV, val.1));
+                *zb, SearchInfo::new(*mv,mv_seq.clone(), depth, Node::PV, val.1));
         }
 
         // match node_type {
@@ -733,10 +731,9 @@ impl Explorer {
         // stats.alpha = stats.alpha.max(alpha);
         // stats.beta = stats.beta.max(beta);
 
-        if let Some((zb,mv,mv_seq)) = val.0 {
-            (mv_seq,val.1)
-        } else {
-            (vec![mv0], val.1)
+        match &val.0 {
+            Some((zb,mv,mv_seq)) => (mv_seq.clone(),val.1),
+            _                    => (vec![mv0], val.1),
         }
 
     }
@@ -759,7 +756,7 @@ impl Explorer {
         if maximizing {
             if score > val.1 {
                 mv_seq.push(mv);
-                *val = (Some((zb,mv,mv_seq)),score);
+                *val = (Some((zb,mv,mv_seq.clone())),score);
             }
             alpha.fetch_max(val.1, Ordering::SeqCst);
             // *alpha = i32::max(*alpha, val.1);
@@ -768,7 +765,8 @@ impl Explorer {
                 // node_type = Node::Cut;
                 // self.trans_table.tt_insert_replace(
                 self.trans_table.insert(
-                    zb, SearchInfo::new(mv, depth - 1, Node::Cut, val.1));
+                    // zb, SearchInfo::new(mv, depth - 1, Node::Cut, val.1));
+                    zb, SearchInfo::new(mv, mv_seq.clone(), depth - 1, Node::Cut, val.1));
                     // zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
                 return true;
             }
@@ -777,7 +775,7 @@ impl Explorer {
         } else {
             if score < val.1 {
                 mv_seq.push(mv);
-                *val = (Some((zb,mv,mv_seq)),score);
+                *val = (Some((zb,mv,mv_seq.clone())),score);
             }
             beta.fetch_min(val.1, Ordering::SeqCst);
             // *beta = i32::min(*beta, val.1);
@@ -786,7 +784,8 @@ impl Explorer {
                 // node_type = Node::Cut;
                 // self.trans_table.tt_insert_replace(
                 self.trans_table.insert(
-                    zb, SearchInfo::new(mv, depth - 1, Node::Cut, val.1));
+                    // zb, SearchInfo::new(mv, depth - 1, Node::Cut, val.1));
+                    zb, SearchInfo::new(mv, mv_seq.clone(), depth - 1, Node::Cut, val.1));
                     // zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
                 return true;
             }
@@ -956,25 +955,116 @@ impl Explorer {
 /// Misc
 impl Explorer {
 
+    // pub fn order_searchinfo_by<F,T>(maximizing: bool, mut xs: &mut [T], f: F)
+    // where F: FnMut(T) -> Option<(SICanUse,SearchInfo)> {
+    //     if maximizing {
+    //         xs.sort_by(|a,b| {
+    //             match (f(a),f(b)) {
+    //                 (Some((_,a)),Some((_,b))) => a.partial_cmp(&b).unwrap(),
+    //                 _                         => a.partial_cmp(&b).unwrap(),
+    //             }
+    //         });
+    //     } else {
+    //         xs.sort_by(|a,b| {
+    //             match (f(a),f(b)) {
+    //                 (Some((_,x)),Some((_,y))) => x.partial_cmp(&y).unwrap().reverse(),
+    //                 _                         => x.partial_cmp(&y).unwrap(),
+    //             }
+    //         });
+    //     }
+    // }
+
+    pub fn order_searchinfo<A,B>(
+        maximizing: bool, mut xs: &mut [(A,B,Option<(SICanUse,SearchInfo)>)])
+    where
+        A: Send + Sync,
+        B: Send + Sync,
+    {
+
+        #[cfg(feature = "par")]
+        xs.par_sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
+        #[cfg(not(feature = "par"))]
+        xs.sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
+        if !maximizing {
+            xs.reverse();
+        }
+
+
+        // #[cfg(feature = "par")]
+        // {
+        //     // xs.par_sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
+        //     // if !maximizing {
+        //     //     xs.reverse();
+        //     // }
+        //     // if maximizing {
+        //     //     xs.par_sort_unstable_by(|a,b| {
+        //     //         a.2.partial_cmp(&b.2).unwrap().reverse()
+        //     //     });
+        //     // } else {
+        //     //     xs.par_sort_unstable_by(|a,b| {
+        //     //         a.2.partial_cmp(&b.2).unwrap()
+        //     //     });
+        //     // }
+        // }
+
+        // #[cfg(feature = "par")]
+        // {
+        //     if maximizing {
+        //         xs.par_sort_by(|a,b| {
+        //             match (a.2,b.2) {
+        //                 (Some((_,a)),Some((_,b))) => a.partial_cmp(&b).unwrap(),
+        //                 (a,b)                     => a.partial_cmp(&b).unwrap(),
+        //             }
+        //         });
+        //         xs.reverse();
+        //     } else {
+        //         xs.par_sort_by(|a,b| {
+        //             match (a.2,b.2) {
+        //                 (Some((_,a)),Some((_,b))) => a.partial_cmp(&b).unwrap().reverse(),
+        //                 (a,b)                     => a.partial_cmp(&b).unwrap(),
+        //             }
+        //         });
+        //         xs.reverse();
+        //     }
+        // }
+
+        // #[cfg(not(feature = "par"))]
+        // {
+        //     if maximizing {
+        //         xs.sort_by(|a,b| {
+        //             match (a.2,b.2) {
+        //                 (Some((_,a)),Some((_,b))) => a.partial_cmp(&b).unwrap(),
+        //                 _                         => a.partial_cmp(&b).unwrap(),
+        //             }
+        //         });
+        //         xs.reverse();
+        //     } else {
+        //         xs.sort_by(|a,b| {
+        //             match (a.2,b.2) {
+        //                 (Some((_,a)),Some((_,b))) => a.partial_cmp(&b).unwrap().reverse(),
+        //                 _                         => a.partial_cmp(&b).unwrap(),
+        //             }
+        //         });
+        //         xs.reverse();
+        //     }
+        // }
+
+    }
+
     pub fn order_moves(ts: &Tables, g: &Game, maximizing: bool, mut moves: &mut [Move]) {
 
-        if maximizing {
-            moves.sort();
-            moves.reverse();
-        } else {
-            moves.sort_by(|a,b| {
-                unimplemented!()
-                // match (a,b) {
-                //     (Move::Capture { pc: pc1, victim: victim1, .. },
-                //      Move::Capture { pc: pc2, victim: victim2, .. }) => {
-                //         unimplemented!()
-                //     },
-                //     _ => unimplemented!(),
-                // }
-                // a.cmp(&b)
-            });
-            moves.reverse();
-        }
+        // if maximizing {
+        //     moves.reverse();
+        // } else {
+        //     vs.sort_by(|a,b| {
+        //         match (a,b) {
+        //             (Some(a),Some(b)) => a.partial_cmp(&b).unwrap().reverse(),
+        //             _                 => a.partial_cmp(&b).unwrap(),
+        //         }
+        //     });
+        //     moves.reverse();
+        // }
+
     }
 
     // pub fn order_moves(&self, ts: &Tables, mut moves: &mut [(Move,Score,Game)]) {
