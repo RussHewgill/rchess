@@ -32,7 +32,6 @@ pub struct Explorer {
     pub parallel:      bool,
     // pub trans_table:   RwTransTable,
     pub trans_table:   TransTable,
-    // pub trans_table:   TransTable,
     // pub trans_table:   RwLock<TransTable>,
 }
 
@@ -43,7 +42,8 @@ impl Explorer {
                should_stop:   Arc<AtomicBool>,
                settings:      TimeSettings,
     ) -> Self {
-        let tt = RwTransTable::default();
+        // let tt = RwTransTable::default();
+        let tt = TransTable::default();
         // let tt = TransTable::new();
         Self {
             side,
@@ -235,7 +235,8 @@ impl Explorer {
                 maximizing:     bool,
                 mut stats:      &mut SearchStats,
     ) -> Option<Score> {
-        if let Some(si) = self.trans_table.tt_get(&g.zobrist) {
+        // if let Some(si) = self.trans_table.tt_get(&g.zobrist) {
+        if let Some(si) = self.trans_table.get(&g.zobrist) {
 
             if si.depth_searched == depth {
                 stats.tt_hits += 1;
@@ -709,7 +710,8 @@ impl Explorer {
         }
 
         if let Some((zb,mv,_)) = val.0 {
-            self.trans_table.tt_insert_replace(
+            // self.trans_table.tt_insert_replace(
+            self.trans_table.insert(
                 zb, SearchInfo::new(mv, depth, Node::PV, val.1));
         }
 
@@ -764,7 +766,8 @@ impl Explorer {
             if val.1 >= beta.load(Ordering::SeqCst) { // Beta cutoff
             // if val.1 >= *beta { // Beta cutoff
                 // node_type = Node::Cut;
-                self.trans_table.tt_insert_replace(
+                // self.trans_table.tt_insert_replace(
+                self.trans_table.insert(
                     zb, SearchInfo::new(mv, depth - 1, Node::Cut, val.1));
                     // zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
                 return true;
@@ -781,7 +784,8 @@ impl Explorer {
             if val.1 <= alpha.load(Ordering::SeqCst) { // Alpha cutoff
             // if val.1 <= *alpha { // Alpha cutoff
                 // node_type = Node::Cut;
-                self.trans_table.tt_insert_replace(
+                // self.trans_table.tt_insert_replace(
+                self.trans_table.insert(
                     zb, SearchInfo::new(mv, depth - 1, Node::Cut, val.1));
                     // zb, SearchInfo::new(mv, depth, Node::Cut, val.1));
                 return true;
