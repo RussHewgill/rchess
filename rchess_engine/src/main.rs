@@ -57,14 +57,15 @@ fn main() {
     // // let s = u16::MAX;
     // // eprintln!("s = {:#8x}", s);
 
+
     // main6();
     // main5(); // search + eval position
     // main2();
-    main4(); // perft
+    // main4(); // perft
 
     // main8(); // eval testing
     // main7();
-    // main3(); // read from file and test
+    main3(); // read from file and test
 
 }
 
@@ -408,11 +409,18 @@ fn main3() {
 
     // let g = &games[8];
     // let games = vec![g.clone()];
+    // games.truncate(2);
     games.truncate(10);
 
     let n = 25;
 
-    let ts = Tables::new();
+    // let ts = Tables::new();
+    let ts = Tables::read_from_file("tables.bin").unwrap();
+
+    let timesettings = TimeSettings::new_f64(
+        5.0,
+        0.1,
+    );
 
     let mut total = (0,0);
     let t0 = std::time::Instant::now();
@@ -424,10 +432,6 @@ fn main3() {
         // eprintln!("g = {:?}", g);
 
         let stop = Arc::new(AtomicBool::new(false));
-        let timesettings = TimeSettings::new_f64(
-            5.0,
-            0.1,
-        );
         let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
 
         // let e = g.evaluate(&ts);

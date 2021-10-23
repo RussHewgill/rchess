@@ -4,9 +4,11 @@ use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
 
+use serde::{Serialize,Deserialize};
 
 /// Passed bonus = passed * ranks past 2nd
-#[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+// #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Serialize,Deserialize,Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct EvPawn {
     pub backward: TaperedScore,
     pub doubled:  TaperedScore,
@@ -14,24 +16,29 @@ pub struct EvPawn {
     pub passed:   TaperedScore,
 }
 
-#[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+// #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Serialize,Deserialize,Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct EvRook {
     pub rank7: TaperedScore,
 }
 
-#[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+// #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Serialize,Deserialize,Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct EvKnight {
 }
 
-#[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+// #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Serialize,Deserialize,Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct EvBishop {
 }
 
-#[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+// #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Serialize,Deserialize,Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct EvQueen {
 }
 
-#[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+// #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Serialize,Deserialize,Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct EvKing {
 }
 

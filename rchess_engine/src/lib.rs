@@ -5,6 +5,9 @@
 
 #![feature(destructuring_assignment)]
 
+#[global_allocator]
+static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+
 pub mod types;
 pub mod bitboard;
 pub mod coords;

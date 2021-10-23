@@ -211,7 +211,6 @@ impl Explorer {
             {
                 eprintln!("Explorer: not parallel");
                 (out,ss) = gs.iter().map(|(mv,g2)| {
-                // (out,ss) = gs.par_iter().map(|(mv,g2)| {
                     let alpha = Arc::new(AtomicI32::new(i32::MIN));
                     let beta  = Arc::new(AtomicI32::new(i32::MAX));
                     // let alpha = i32::MIN;
@@ -490,10 +489,10 @@ impl Explorer {
         g:                  &Game,
         depth:              Depth,
         k:                  i16,
-        // mut alpha:          i32,
-        // mut beta:           i32,
         alpha:              Arc<AtomicI32>,
         beta:               Arc<AtomicI32>,
+        // mut alpha:          i32,
+        // mut beta:           i32,
         maximizing:         bool,
         mut stats:          &mut SearchStats,
         mv0:                Move,
@@ -667,7 +666,7 @@ impl Explorer {
             let (mut mv_seq,score) = self._ab_search(
                 // &ts, &g2, depth - 1, k + 1, alpha.clone(), beta.clone(), !maximizing, &mut stats);
                 &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut stats, mv);
-                // &ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut stats);
+                // &ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut stats, mv);
 
             // if maximizing {
             //     val.1 = i32::max(val.1, score);
@@ -682,6 +681,8 @@ impl Explorer {
                 depth,
                 alpha.clone(),
                 beta.clone(),
+                // &mut alpha,
+                // &mut beta,
                 maximizing,
                 mv0);
             if b { break; }
@@ -758,10 +759,10 @@ impl Explorer {
         //     },
         // }
 
-        // stats.alpha = stats.alpha.max(alpha);
-        // stats.beta = stats.beta.max(beta);
         stats.alpha = stats.alpha.max(alpha.load(Ordering::SeqCst));
         stats.beta = stats.beta.max(beta.load(Ordering::SeqCst));
+        // stats.alpha = stats.alpha.max(alpha);
+        // stats.beta = stats.beta.max(beta);
 
         if let Some((zb,mv,mv_seq)) = val.0 {
             (mv_seq,val.1)
@@ -780,6 +781,8 @@ impl Explorer {
         depth:              Depth,
         alpha:              Arc<AtomicI32>,
         beta:               Arc<AtomicI32>,
+        // mut alpha:          &mut i32,
+        // mut beta:           &mut i32,
         maximizing:         bool,
         mv0:                Move,
     ) -> bool {
@@ -790,7 +793,9 @@ impl Explorer {
                 *val = (Some((zb,mv,mv_seq)),score);
             }
             alpha.fetch_max(val.1, Ordering::SeqCst);
+            // *alpha = i32::max(*alpha, val.1);
             if val.1 >= beta.load(Ordering::SeqCst) { // Beta cutoff
+            // if val.1 >= *beta { // Beta cutoff
                 // node_type = Node::Cut;
                 self.trans_table.tt_insert_replace(
                     zb, SearchInfo::new(mv, depth - 1, Node::Cut, val.1));
@@ -805,7 +810,9 @@ impl Explorer {
                 *val = (Some((zb,mv,mv_seq)),score);
             }
             beta.fetch_min(val.1, Ordering::SeqCst);
+            // *beta = i32::min(*beta, val.1);
             if val.1 <= alpha.load(Ordering::SeqCst) { // Alpha cutoff
+            // if val.1 <= *alpha { // Alpha cutoff
                 // node_type = Node::Cut;
                 self.trans_table.tt_insert_replace(
                     zb, SearchInfo::new(mv, depth - 1, Node::Cut, val.1));

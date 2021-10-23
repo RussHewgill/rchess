@@ -1,4 +1,6 @@
 
+use std::io::Write;
+
 use crate::types::*;
 
 pub use crate::tuning::*;
@@ -12,6 +14,9 @@ pub use self::eval::*;
 use rand::Rng;
 use lazy_static::lazy_static;
 use itertools::Itertools;
+// use serde::ser::{Serialize, SerializeStruct, Serializer};
+use serde::{Serialize,Deserialize};
+use serde_big_array::BigArray;
 
 lazy_static! {
     pub static ref SQUAREDIST: [[u8; 64]; 64] = {
@@ -68,28 +73,72 @@ pub static MASK_RANKS: [BitBoard; 8] = [
     BitBoard(0xff00000000000000),
 ];
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+fn def_line_bb()    -> [[BitBoard; 64]; 64] {
+    let bishops = Tables::gen_bishops();
+    Tables::gen_linebb(bishops)
+}
+fn def_between_bb()    -> [[BitBoard; 64]; 64] {
+    let bishops = Tables::gen_bishops();
+    Tables::gen_betweenbb(bishops)
+}
+
+// #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Serialize,Deserialize,Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Tables {
-    // pub knight_moves: HashMap<Coord, BitBoard>,
-    // pub rook_moves:   HashMap<Coord, MoveSetRook>,
-    // knight_moves:  [[BitBoard; 8]; 8],
-    knight_moves:  [BitBoard; 64],
-    rook_moves:    [[MoveSetRook; 8]; 8],
-    bishop_moves:  [[MoveSetBishop; 8]; 8],
-    pawn_moves:    [[MoveSetPawn; 8]; 8],
-    king_moves:    [[BitBoard; 8]; 8],
-    line_bb:       [[BitBoard; 64]; 64],
-    between_bb:    [[BitBoard; 64]; 64],
+    #[serde(skip,default = "Tables::gen_pawns")]
+    // #[serde(serialize_with = "<[_]>::serialize")]
+    pub pawn_moves:    [[MoveSetPawn; 8]; 8],
+    #[serde(skip,default = "Tables::gen_rooks")]
+    pub rook_moves:    [[MoveSetRook; 8]; 8],
+    // #[serde(skip)]
+    #[serde(with = "BigArray")]
+    pub knight_moves:  [BitBoard; 64],
+    #[serde(skip,default = "Tables::gen_bishops")]
+    pub bishop_moves:  [[MoveSetBishop; 8]; 8],
+    #[serde(skip,default = "Tables::gen_kings")]
+    pub king_moves:    [[BitBoard; 8]; 8],
+    #[serde(skip,default = "def_line_bb")]
+    pub line_bb:       [[BitBoard; 64]; 64],
+    #[serde(skip,default = "def_between_bb")]
+    pub between_bb:    [[BitBoard; 64]; 64],
+    #[serde(with = "BigArray")]
     magics_rook:   [Magic; 64],
+    #[serde(with = "BigArray")]
     table_rook:    [BitBoard; 0x19000],
+    #[serde(with = "BigArray")]
     magics_bishop: [Magic; 64],
+    #[serde(with = "BigArray")]
     table_bishop:  [BitBoard; 0x1480],
-    // pub piece_tables_midgame:  PcTables,
-    // pub piece_tables_endgame:  PcTables,
+    #[serde(skip)]
     pub piece_tables:  PcTables,
+    #[serde(skip)]
     pub zobrist_tables: ZbTable,
     // endgames: 
 }
+
+// impl serde::Serialize for Tables {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: serde::Serializer,
+//     {
+//         let mut s = serializer.serialize_struct("Table", 13)?;
+//         s.serialize_field("pawn_moves",   &self.pawn_moves[..])?;
+//         s.serialize_field("rook_moves",   &self.rook_moves[..])?;
+//         s.serialize_field("knight_moves", &self.knight_moves[..])?;
+//         s.serialize_field("bishop_moves", &self.bishop_moves[..])?;
+//         s.serialize_field("king_moves",   &self.king_moves[..])?;
+//         // s.serialize_field("line_bb",   &self.line_bb[..])?;
+//         // line_bb:       [[BitBoard; 64]; 64],
+//         // between_bb:    [[BitBoard; 64]; 64],
+//         // magics_rook:   [Magic; 64],
+//         // table_rook:    [BitBoard; 0x19000],
+//         // magics_bishop: [Magic; 64],
+//         // table_bishop:  [BitBoard; 0x1480],
+//         // pub piece_tables:  PcTables,
+//         // pub zobrist_tables: ZbTable,
+//         s.end()
+//     }
+// }
 
 /// Piece getters
 impl Tables {
@@ -129,6 +178,31 @@ impl Tables {
 
     pub fn new() -> Self {
         Self::_new(true)
+    }
+
+    pub fn write_to_file(&self, path: &str) -> std::io::Result<()> {
+
+        let b: Vec<u8> = bincode::serialize(&self).unwrap();
+
+        use std::fs::OpenOptions;
+        let mut file = OpenOptions::new()
+            .truncate(true)
+            .read(true)
+            .create(true)
+            .write(true)
+            .open(path)
+            .unwrap();
+
+        file.write_all(&b)
+    }
+
+    pub fn read_from_file(path: &str) -> std::io::Result<Self> {
+
+        let b: Vec<u8> = std::fs::read(&path)?;
+
+        let ts: Tables = bincode::deserialize(&b).unwrap();
+
+        Ok(ts)
     }
 
     pub(crate) fn _new(magics: bool) -> Self {
@@ -595,9 +669,34 @@ mod eval {
     use crate::evaluate::*;
     use crate::tuning::*;
 
+    use serde_big_array::BigArray;
+
+    #[derive(Serialize,Deserialize,Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+    pub struct Wat {
+        // #[serde(with = "BigArray")]
+        // wat: [Score; 64],
+        // #[serde(serialize_with = "<[BigArray]>::serialize")]
+        // wat: [[Score; 64]; 2],
+        // #[serde(serialize_with = "<[_]>::serialize")]
+        // wat: [Score; 64],
+        // #[serde(flatten)]
+
+
+        // #[serde(with = "BigArray",flatten)]
+        // wat: [[Score; 2]; 64],
+
+        // #[serde(with = "<[_]>::serialize")]
+        // #[serde(with = "BigArray",flatten)]
+        // wat: [[Score; 64]; 6],
+
+    }
+
     #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+    // #[derive(Serialize,Deserialize,Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
     pub struct PcTables {
+        // #[serde(with = "BigArray",flatten)]
         tables_mid:         [[Score; 64]; 6],
+        // #[serde(with = "BigArray",flatten)]
         tables_end:         [[Score; 64]; 6],
         pub ev_pawn:        EvPawn,
         pub ev_rook:        EvRook,
@@ -605,6 +704,12 @@ mod eval {
         pub ev_bishop:      EvBishop,
         pub ev_queen:       EvQueen,
         pub ev_king:        EvKing,
+    }
+
+    impl Default for PcTables {
+        fn default() -> Self {
+            Self::new()
+        }
     }
 
     impl PcTables {
@@ -806,16 +911,17 @@ mod magics {
     use crate::types::*;
     use crate::tables::*;
 
-    #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+    // #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+    #[derive(Serialize,Deserialize,Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
     pub struct Magic {
         pub attacks:   usize,
         pub mask:      BitBoard,
         pub magic:     BitBoard,
-        pub shift:     u32,
+        pub shift:     u8,
     }
 
     impl Magic {
-        pub fn new(attacks: usize, mask: BitBoard, magic: BitBoard, shift: u32) -> Self {
+        pub fn new(attacks: usize, mask: BitBoard, magic: BitBoard, shift: u8) -> Self {
             Self {
                 attacks,
                 // mask: BitBoard(0xff818181818181ff),
@@ -852,7 +958,7 @@ mod magics {
             let mut occ = occ;
             let occ = (occ & m.mask).0;
             let occ = occ.overflowing_mul(m.magic.0).0;
-            let occ = occ.overflowing_shr(m.shift).0;
+            let occ = occ.overflowing_shr(m.shift as u32).0;
             self.table_rook[m.attacks + occ as usize]
         }
 
@@ -865,7 +971,7 @@ mod magics {
             let mut occ = occ;
             let occ = (occ & m.mask).0;
             let occ = occ.overflowing_mul(m.magic.0).0;
-            let occ = occ.overflowing_shr(m.shift).0;
+            let occ = occ.overflowing_shr(m.shift as u32).0;
             self.table_bishop[m.attacks + occ as usize]
         }
 
@@ -933,7 +1039,7 @@ mod magics {
             let mut cnt   = 0;
             let mut size: usize = 0;
 
-            for sq in 0u32..64 {
+            for sq in 0u8..64 {
             // for sq in 0..1 {
                 // let c0: Coord = "A1".into();
                 // let sq: u32 = c0.into();
@@ -996,7 +1102,7 @@ mod magics {
                         let result = reference[s];
 
                         let idx = b.0.overflowing_mul(mm).0;
-                        let idx = idx.overflowing_shr(64 - n).0 as usize;
+                        let idx = idx.overflowing_shr((64 - n) as u32).0 as usize;
 
                         let tb = if bishop {
                             table_b[attacks + idx]
@@ -1168,6 +1274,8 @@ mod magics {
 mod movesets {
     use crate::types::*;
 
+    use serde::ser::{Serialize, SerializeStruct, Serializer};
+
     // #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
     // pub struct MoveIter {
     //     n:     Option<usize>,
@@ -1212,6 +1320,20 @@ mod movesets {
         pub e: BitBoard,
         pub w: BitBoard,
         pub s: BitBoard,
+    }
+
+    impl serde::Serialize for MoveSetRook {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            let mut state = serializer.serialize_struct("MoveSetRook", 4)?;
+            state.serialize_field("n", &self.n)?;
+            state.serialize_field("e", &self.e)?;
+            state.serialize_field("w", &self.w)?;
+            state.serialize_field("s", &self.s)?;
+            state.end()
+        }
     }
 
     impl MoveSetRook {
@@ -1272,6 +1394,20 @@ mod movesets {
         pub sw: BitBoard,
     }
 
+    impl serde::Serialize for MoveSetBishop {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            let mut state = serializer.serialize_struct("MoveSetBishop", 4)?;
+            state.serialize_field("ne", &self.ne)?;
+            state.serialize_field("nw", &self.nw)?;
+            state.serialize_field("se", &self.se)?;
+            state.serialize_field("sw", &self.sw)?;
+            state.end()
+        }
+    }
+
     impl MoveSetBishop {
 
         // pub fn to_iter(&self) -> MoveIter {
@@ -1321,6 +1457,20 @@ mod movesets {
         pub black_quiet:   BitBoard,
         pub white_capture: BitBoard,
         pub black_capture: BitBoard,
+    }
+
+    impl serde::Serialize for MoveSetPawn {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+        {
+            let mut state = serializer.serialize_struct("MoveSetPawn", 4)?;
+            state.serialize_field("wq", &self.white_quiet)?;
+            state.serialize_field("bq", &self.black_quiet)?;
+            state.serialize_field("wc", &self.white_capture)?;
+            state.serialize_field("bc", &self.black_capture)?;
+            state.end()
+        }
     }
 
     impl MoveSetPawn {

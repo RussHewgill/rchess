@@ -120,9 +120,9 @@ impl Game {
         // // XXX: par == way slower ?
         // let out: Vec<Move> = out.into_par_iter().filter(|m| {
 
-        let out: Vec<Move> = out.into_iter().filter(|m| {
-            self.move_is_legal(&ts, *m)
-        }).collect();
+        // let out: Vec<Move> = out.into_iter().filter(|m| {
+        //     self.move_is_legal(&ts, *m)
+        // }).collect();
 
         if out.is_empty() {
             Outcome::Stalemate
@@ -322,33 +322,42 @@ impl Game {
                 // let k = BitBoard::single(m.sq_from()) & pins;
                 // eprintln!("k = {:?}", k);
 
-                let x =
-                    // Not pinned
-                    ((BitBoard::single(m.sq_from()) & pins).0 == 0)
-                    // OR moving along pin ray
-                    | (ts.aligned(m.sq_from(), m.sq_to(), self.get(King, col).bitscan().into()).0 != 0);
+                // {
+                //     let x =
+                //         // Not pinned
+                //         ((BitBoard::single(m.sq_from()) & pins).0 == 0)
+                //         // OR moving along pin ray
+                //         | (ts.aligned(m.sq_from(), m.sq_to(), self.get(King, col).bitscan().into()).0 != 0);
+
+                //     // not in check
+                //     // let x0 = x & self.find_checkers(&ts, col).is_empty();
+                //     let x0 = x & self.state.checkers.unwrap().is_empty();
+
+                //     // OR capturing checking piece
+                //     let x1 = m.sq_to() == self.state.checkers.unwrap().bitscan().into();
+
+                //     // OR (Not pinned & Blocking check)
+                //     let x2 = {
+                //         (BitBoard::single(m.sq_to()) & self.state.check_block_mask.unwrap()).is_not_empty()
+                //     };
+
+                //     x0 || (x && x1) || (x && x2)
+                // }
+
+                // Not pinned
+                // OR moving along pin ray
+                let x = (BitBoard::single(m.sq_from()) & pins).is_empty()
+                    || (ts.aligned(m.sq_from(), m.sq_to(), self.get(King, col).bitscan().into()).0 != 0);
 
                 // not in check
-                // let x0 = x & self.find_checkers(&ts, col).is_empty();
                 let x0 = x & self.state.checkers.unwrap().is_empty();
 
-                // OR capturing checking piece
-                let x1 = m.sq_to() == self.state.checkers.unwrap().bitscan().into();
+                x0 & self.state.checkers.unwrap().is_empty()
+                    || (x && m.sq_to() == self.state.checkers.unwrap().bitscan().into())
+                    || (x && (BitBoard::single(m.sq_to())
+                              & self.state.check_block_mask.unwrap()).is_not_empty())
 
-                // OR (Not pinned & Blocking check)
-                let x2 = {
-                    (BitBoard::single(m.sq_to()) & self.state.check_block_mask.unwrap()).is_not_empty()
-                };
 
-                // eprintln!("x = {:?}", x);
-                // eprintln!("x0 = {:?}", x0);
-                // eprintln!("x1 = {:?}", x1);
-
-                x0 | (x & x1) | (x & x2)
-                // unimplemented!()
-                // (x & self.find_checkers(&ts, col).is_empty())
-                //     | (m.filter_all_captures() & (m.to() == ))
-                // unimplemented!()
             },
             None => panic!(),
         }
@@ -551,21 +560,21 @@ impl Game {
             let moves   = self._search_sliding_single(&ts, pc, sq.into(), col, None);
             let attacks = moves & self.get_color(!col);
             let quiets  = moves & self.all_empty();
-            attacks.iter_bitscan(|sq2| {
+            attacks.into_iter().for_each(|sq2| {
                 let to = sq2.into();
                 let (_,victim) = self.get_at(to).unwrap();
                 // out.push(Move::Capture { from: sq.into(), to, pc, victim });
 
                 let m = Move::Capture { from: sq.into(), to, pc, victim };
-                // if self.move_is_legal(&ts, m) { out.push(m); }
-                out.push(m);
+                if self.move_is_legal(&ts, m) { out.push(m); }
+                // out.push(m);
             });
-            quiets.iter_bitscan(|sq2| {
+            quiets.into_iter().for_each(|sq2| {
                 // out.push(Move::Quiet { from: sq.into(), to: sq2.into() });
                 let m = Move::Quiet { from: sq.into(), to: sq2.into() };
 
-                // if self.move_is_legal(&ts, m) { out.push(m); }
-                out.push(m);
+                if self.move_is_legal(&ts, m) { out.push(m); }
+                // out.push(m);
             });
         });
 
@@ -594,7 +603,7 @@ impl Game {
 
 }
 
-/// Other pieces
+/// King + Castles
 impl Game {
 
     pub fn _search_castles(&self, ts: &Tables) -> Vec<Move> {
@@ -791,6 +800,11 @@ impl Game {
 
     // pub fn search_knight(&self, )
 
+}
+
+/// Knights
+impl Game {
+
     pub fn search_knights(&self, ts: &Tables, col: Color) -> Vec<Move> {
         self._search_knights(None, ts, col)
     }
@@ -811,19 +825,28 @@ impl Game {
             let captures = *ms & self.get_color(!col);
 
             quiets.iter_bitscan(|t| {
-                out.push(Move::Quiet { from: sq.into(), to: t.into()});
+                // out.push(Move::Quiet { from: sq.into(), to: t.into()});
+                let m = Move::Quiet { from: sq.into(), to: t.into() };
+                if self.move_is_legal(&ts, m) { out.push(m); }
             });
 
             captures.iter_bitscan(|t| {
                 let (_,victim) = self.get_at(t.into()).unwrap();
-                out.push(Move::Capture { from: sq.into(), to: t.into(), pc: Knight, victim});
+                // out.push(Move::Capture { from: sq.into(), to: t.into(), pc: Knight, victim});
                 // out.push(Move::Capture { from: sq.into(), to: t.into()});
+                let m = Move::Capture { from: sq.into(), to: t.into(), pc: Knight, victim};
+                if self.move_is_legal(&ts, m) { out.push(m); }
             });
 
         });
 
         out
     }
+
+}
+
+/// Pawns + Promotions
+impl Game {
 
     pub fn search_pawns(&self, ts: &Tables, col: Color) -> Vec<Move> {
         self._search_pawns(&ts, None, col)
@@ -856,13 +879,17 @@ impl Game {
 
         doubles.iter_bitscan(|t| {
             let f = BitBoard::single(t.into()).shift_mult(!dir, 2);
-            out.push(Move::PawnDouble { from: f.bitscan().into(), to: t.into() })
+            // out.push(Move::PawnDouble { from: f.bitscan().into(), to: t.into() })
+            let m = Move::PawnDouble { from: f.bitscan().into(), to: t.into() };
+            if self.move_is_legal(&ts, m) { out.push(m); }
         });
 
         pushes.iter_bitscan(|t| {
             let t = t.into();
             if let Some(f) = (!dir).shift_coord(t) {
-                out.push(Move::Quiet { from: f, to: t });
+                // out.push(Move::Quiet { from: f, to: t });
+                let m = Move::Quiet { from: f, to: t };
+                if self.move_is_legal(&ts, m) { out.push(m); }
             }
         });
 
@@ -879,8 +906,10 @@ impl Game {
             while cs.0 != 0 {
                 let t = cs.bitscan_reset_mut();
                 let (_,victim) = self.get_at(t.into()).unwrap();
-                out.push(Move::Capture { from: f, to: t.into(), pc: Pawn, victim });
+                // out.push(Move::Capture { from: f, to: t.into(), pc: Pawn, victim });
                 // out.push(Move::Capture { from: f, to: t.into()});
+                let m = Move::Capture { from: f, to: t.into(), pc: Pawn, victim };
+                if self.move_is_legal(&ts, m) { out.push(m); }
             }
         });
 
@@ -893,7 +922,9 @@ impl Game {
                 let capture = capture
                     .expect(&format!("en passant bug? ep: {:?}, capture: {:?}", ep, capture));
                 let (_,victim) = self.get_at(capture).unwrap();
-                out.push(Move::EnPassant { from: sq.into(), to: ep, capture, victim });
+                // out.push(Move::EnPassant { from: sq.into(), to: ep, capture, victim });
+                let m = Move::EnPassant { from: sq.into(), to: ep, capture, victim };
+                if self.move_is_legal(&ts, m) { out.push(m); }
             });
 
         }
@@ -926,10 +957,31 @@ impl Game {
             let t = t.into();
             if let Some(f) = (!dir).shift_coord(t) {
                 // out.push(Move::Quiet { from: f, to: t });
-                out.push(Move::Promotion { from: f, to: t, new_piece: Queen });
-                out.push(Move::Promotion { from: f, to: t, new_piece: Knight });
-                out.push(Move::Promotion { from: f, to: t, new_piece: Rook });
-                out.push(Move::Promotion { from: f, to: t, new_piece: Bishop });
+                // out.push(Move::Promotion { from: f, to: t, new_piece: Queen });
+                // out.push(Move::Promotion { from: f, to: t, new_piece: Knight });
+                // out.push(Move::Promotion { from: f, to: t, new_piece: Rook });
+                // out.push(Move::Promotion { from: f, to: t, new_piece: Bishop });
+
+                // let m = Move::Promotion { from: f, to: t, new_piece: Queen };
+                // if self.move_is_legal(&ts, m) { out.push(m); }
+                // let m = Move::Promotion { from: f, to: t, new_piece: Knight };
+                // if self.move_is_legal(&ts, m) { out.push(m); }
+                // let m = Move::Promotion { from: f, to: t, new_piece: Rook };
+                // if self.move_is_legal(&ts, m) { out.push(m); }
+                // let m = Move::Promotion { from: f, to: t, new_piece: Bishop };
+                // if self.move_is_legal(&ts, m) { out.push(m); }
+
+                // XXX: would this ever be different?
+                let m = Move::Promotion { from: f, to: t, new_piece: Queen };
+                let legal = self.move_is_legal(&ts, m);
+                if legal { out.push(m); }
+                let m = Move::Promotion { from: f, to: t, new_piece: Knight };
+                if legal { out.push(m); }
+                let m = Move::Promotion { from: f, to: t, new_piece: Rook };
+                if legal { out.push(m); }
+                let m = Move::Promotion { from: f, to: t, new_piece: Bishop };
+                if legal { out.push(m); }
+
             }
         });
 
@@ -941,10 +993,31 @@ impl Game {
             while cs.0 != 0 {
                 let t = cs.bitscan_reset_mut().into();
                 let (_,victim) = self.get_at(t).unwrap();
-                out.push(Move::PromotionCapture { from: f, to: t, new_piece: Queen, victim });
-                out.push(Move::PromotionCapture { from: f, to: t, new_piece: Knight, victim });
-                out.push(Move::PromotionCapture { from: f, to: t, new_piece: Rook, victim });
-                out.push(Move::PromotionCapture { from: f, to: t, new_piece: Bishop, victim });
+                // out.push(Move::PromotionCapture { from: f, to: t, new_piece: Queen, victim });
+                // out.push(Move::PromotionCapture { from: f, to: t, new_piece: Knight, victim });
+                // out.push(Move::PromotionCapture { from: f, to: t, new_piece: Rook, victim });
+                // out.push(Move::PromotionCapture { from: f, to: t, new_piece: Bishop, victim });
+
+                // let m = Move::PromotionCapture { from: f, to: t, new_piece: Queen, victim };
+                // if self.move_is_legal(&ts, m) { out.push(m); }
+                // let m = Move::PromotionCapture { from: f, to: t, new_piece: Knight, victim };
+                // if self.move_is_legal(&ts, m) { out.push(m); }
+                // let m = Move::PromotionCapture { from: f, to: t, new_piece: Rook, victim };
+                // if self.move_is_legal(&ts, m) { out.push(m); }
+                // let m = Move::PromotionCapture { from: f, to: t, new_piece: Bishop, victim };
+                // if self.move_is_legal(&ts, m) { out.push(m); }
+
+                let m = Move::PromotionCapture { from: f, to: t, new_piece: Queen, victim };
+                let legal = self.move_is_legal(&ts, m);
+                if legal { out.push(m); }
+                let m = Move::PromotionCapture { from: f, to: t, new_piece: Knight, victim };
+                if legal { out.push(m); }
+                let m = Move::PromotionCapture { from: f, to: t, new_piece: Rook, victim };
+                if legal { out.push(m); }
+                let m = Move::PromotionCapture { from: f, to: t, new_piece: Bishop, victim };
+                if legal { out.push(m); }
+
+
             }
         });
 

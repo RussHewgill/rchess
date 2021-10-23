@@ -86,6 +86,12 @@ pub struct ZbTable {
     pub en_passant:    [u64; 8],
 }
 
+impl Default for ZbTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ZbTable {
 
     pub fn get_piece(&self, pc: Piece, col: Color) -> [u64; 64] {

@@ -31,6 +31,8 @@ pub struct GameState {
     pub queens:             BitBoard,
     pub kings:              BitBoard,
 
+    pub occupied:           BitBoard,
+
     pub en_passant:         Option<Coord>,
     pub castling:           Castling,
 
@@ -338,6 +340,7 @@ impl Game {
         self.update_pins_mut(&ts);
         self.update_checkers_mut(&ts);
         self.update_check_block_mut(&ts);
+        // self.update_occupied_mut();
 
         Ok(())
     }
@@ -347,6 +350,16 @@ impl Game {
         self.state.king_blocks_w = None;
         self.state.king_blocks_b = None;
         self.state.pinners       = None;
+    }
+
+    fn update_occupied_mut(&mut self) {
+        self.state.occupied =
+            self.state.pawns
+            | self.state.rooks
+            | self.state.knights
+            | self.state.bishops
+            | self.state.queens
+            | self.state.kings
     }
 
     fn update_pins_mut(&mut self, ts: &Tables) {
@@ -545,14 +558,19 @@ impl Game {
 
     pub fn get_pins(&self, col: Color) -> BitBoard {
 
-        if let Some(pins) = match col {
-            White => self.state.king_blocks_w,
-            Black => self.state.king_blocks_b,
-        } {
-            return pins;
-        } else {
-            panic!("no pinned BBs?");
+        match col {
+            White => self.state.king_blocks_w.unwrap(),
+            Black => self.state.king_blocks_b.unwrap(),
         }
+
+        // if let Some(pins) = match col {
+        //     White => self.state.king_blocks_w,
+        //     Black => self.state.king_blocks_b,
+        // } {
+        //     return pins;
+        // } else {
+        //     panic!("no pinned BBs?");
+        // }
 
         // match self.state.pinned {
         //     None => panic!("no pinned BBs?"),
@@ -565,6 +583,7 @@ impl Game {
     }
 
     pub fn all_occupied(&self) -> BitBoard {
+        // self.state.occupied
         self.state.pawns
             | self.state.rooks
             | self.state.knights
@@ -694,14 +713,14 @@ impl Game {
 
     pub fn get_at(&self, c0: Coord) -> Option<(Color, Piece)> {
         let b0 = BitBoard::single(c0);
-        if (self.all_occupied() & b0).is_empty() { return None; }
+        // if (self.all_occupied() & b0).is_empty() { return None; }
         let color = if (b0 & self.get_color(White)).is_not_empty() { White } else { Black };
         if (b0 & self.state.pawns).is_not_empty()   { return Some((color,Pawn)); }
-        if (b0 & self.state.rooks).is_not_empty()   { return Some((color,Rook)); }
-        if (b0 & self.state.knights).is_not_empty() { return Some((color,Knight)); }
-        if (b0 & self.state.bishops).is_not_empty() { return Some((color,Bishop)); }
-        if (b0 & self.state.queens).is_not_empty()  { return Some((color,Queen)); }
-        if (b0 & self.state.kings).is_not_empty()   { return Some((color,King)); }
+        else if (b0 & self.state.rooks).is_not_empty()   { return Some((color,Rook)); }
+        else if (b0 & self.state.knights).is_not_empty() { return Some((color,Knight)); }
+        else if (b0 & self.state.bishops).is_not_empty() { return Some((color,Bishop)); }
+        else if (b0 & self.state.queens).is_not_empty()  { return Some((color,Queen)); }
+        else if (b0 & self.state.kings).is_not_empty()   { return Some((color,King)); }
         None
     }
 

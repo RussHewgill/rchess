@@ -10,6 +10,8 @@ pub use log::{debug, error};
 
 pub use self::{Color::*,Piece::*};
 
+pub static PIECES: [Piece; 6] = [Pawn,Rook,Knight,Bishop,Queen,King];
+
 pub type Depth = u8;
 
 // #[derive(Debug,Hash,Eq,PartialEq,PartialOrd,ShallowCopy,Clone,Copy)]
@@ -327,6 +329,25 @@ impl<T> std::ops::IndexMut<Piece> for [T; 6] {
 //     }
 // }
 
+struct PcIter(Option<Piece>);
+
+impl Iterator for PcIter {
+    type Item = Piece;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.0 {
+            Some(King) => {
+                self.0 = None;
+                Some(King)
+            },
+            Some(pc) => {
+                self.0 = Some(PIECES[pc.index() + 1]);
+                Some(pc)
+            },
+            None => None,
+        }
+    }
+}
+
 impl Piece {
 
     pub fn index(self) -> usize {
@@ -341,8 +362,7 @@ impl Piece {
     }
 
     pub fn iter_pieces() -> impl Iterator<Item = Piece> {
-        let xs = vec![Pawn,Rook,Knight,Bishop,Queen,King];
-        xs.into_iter()
+        PcIter(Some(Pawn))
     }
 
     pub fn print(&self, c: Color) -> char {

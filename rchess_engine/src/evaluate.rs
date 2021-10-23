@@ -2,6 +2,8 @@
 use crate::types::*;
 use crate::tables::*;
 
+use serde::{Serialize,Deserialize};
+
 pub type Score = i32;
 
 #[derive(Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
@@ -11,7 +13,8 @@ pub struct Eval {
     pub piece_positions:  [[Score; 6]; 2],
 }
 
-#[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+// #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Serialize,Deserialize,Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct TaperedScore {
     mid: Score,
     end: Score,

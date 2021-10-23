@@ -2,11 +2,14 @@
 use crate::types::*;
 use crate::tables::*;
 
-#[derive(Hash,Eq,PartialEq,PartialOrd,Clone,Copy)]
+use serde::{Serialize,Deserialize};
+
+// #[derive(Hash,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Serialize,Deserialize,Hash,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct BitBoard(pub u64);
 
 impl Iterator for BitBoard {
-    type Item = u32;
+    type Item = u8;
     fn next(&mut self) -> Option<Self::Item> {
         if self.is_empty() {
             None
@@ -15,6 +18,25 @@ impl Iterator for BitBoard {
         }
     }
 }
+
+// impl serde::Serialize for BitBoard {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: serde::Serializer,
+//     {
+//         serializer.serialize_newtype_struct("BitBoard", &self.0)
+//     }
+// }
+
+// impl serde::Serialize for [BitBoard; 64] {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: serde::Serializer,
+//     {
+//         // serializer.serialize_newtype_struct("BitBoard", &self.0)
+//         unimplemented!()
+//     }
+// }
 
 /// creation
 impl BitBoard {
@@ -120,6 +142,7 @@ impl BitBoard {
 
 }
 
+/// Masks, Bitscan
 impl BitBoard {
 
     // #[inline]
@@ -199,66 +222,66 @@ impl BitBoard {
         }
     }
 
-    pub fn bitscan(&self) -> u32 {
+    pub fn bitscan(&self) -> u8 {
         // Bitscan Forward
         // self.0.leading_zeros()
-        self.0.trailing_zeros()
+        self.0.trailing_zeros() as u8
     }
 
     pub fn bitscan_isolate(&self) -> Self {
-        let x = self.bitscan();
+        let x = self.bitscan() as u32;
         Self::single(x.into())
     }
 
     pub fn bitscan_rev_isolate(&self) -> Self {
-        let x = self.bitscan_rev();
+        let x = self.bitscan_rev() as u32;
         Self::single(x.into())
     }
 
-    pub fn bitscan_reset(&self) -> (Self, u32) {
+    pub fn bitscan_reset(&self) -> (Self, u8) {
         let x = self.bitscan();
         // (*self & BitBoard(self.0.overflowing_sub(1).0),x)
-        (*self & !Self::single(x.into()),x)
+        (*self & !Self::single((x as u32).into()),x)
     }
 
-    pub fn bitscan_reset_mut(&mut self) -> u32 {
+    pub fn bitscan_reset_mut(&mut self) -> u8 {
         let (b,x) = self.bitscan_reset();
         *self = b;
         x
     }
 
-    pub fn bitscan_rev(&self) -> u32 {
+    pub fn bitscan_rev(&self) -> u8 {
         // Bitscan Reverse
-        63 - self.0.leading_zeros()
+        63 - self.0.leading_zeros() as u8
     }
 
-    pub fn bitscan_rev_reset(&self) -> (Self, u32) {
+    pub fn bitscan_rev_reset(&self) -> (Self, u8) {
         let x = self.bitscan_rev();
-        (*self & !Self::single(x.into()),x)
+        (*self & !Self::single((x as u32).into()),x)
     }
 
-    pub fn bitscan_rev_reset_mut(&mut self) -> u32 {
+    pub fn bitscan_rev_reset_mut(&mut self) -> u8 {
         let (b,x) = self.bitscan_rev_reset();
         *self = b;
         x
     }
 
-    pub fn serialize(&self) -> Vec<Coord> {
-        let mut b = *self;
-        let mut out = vec![];
-        let mut x;
-        loop {
-            x = b.bitscan_reset_mut();
-            // out.push(Self::index_bit(x as u64));
-            out.push(x.into());
-            if b.0 == 0 {
-                break;
-            }
-        }
-        out
-    }
+    // pub fn serialize(&self) -> Vec<Coord> {
+    //     let mut b = *self;
+    //     let mut out = vec![];
+    //     let mut x;
+    //     loop {
+    //         x = b.bitscan_reset_mut();
+    //         // out.push(Self::index_bit(x as u64));
+    //         out.push(x.into());
+    //         if b.0 == 0 {
+    //             break;
+    //         }
+    //     }
+    //     out
+    // }
 
-    pub fn popcount(&self) -> u32 {
+    pub fn popcount(&self) -> u8 {
         const K1: u64 = 0x5555555555555555; /*  -1/3   */
         const K2: u64 = 0x3333333333333333; /*  -1/5   */
         const K4: u64 = 0x0f0f0f0f0f0f0f0f; /*  -1/17  */
@@ -269,7 +292,7 @@ impl BitBoard {
         x = (x       +  (x >> 4)) & K4 ; /* put count of each 8 bits into those 8 bits */
         /* returns 8 most significant bits of x + (x<<8) + (x<<16) + (x<<24) + ...  */
         x = (x.overflowing_mul(KF)).0 >> 56;
-        x as u32
+        x as u8
     }
 
 }
@@ -277,17 +300,33 @@ impl BitBoard {
 /// iter_bitscan
 impl BitBoard {
 
-    pub fn iter_bitscan<F>(&self, mut f: F)
-    where F: FnMut(u32) {
-        let mut b = *self;
-        while b.0 != 0 {
-            let p = b.bitscan_reset_mut();
-            f(p);
-        }
+    // pub fn iter_bitscan<F>(&self, mut f: F)
+    // where F: FnMut(u32) {
+    //     let mut b = *self;
+    //     while b.0 != 0 {
+    //         let p = b.bitscan_reset_mut();
+    //         f(p);
+    //     }
+    // }
+
+    // pub fn into_iter_rev(&mut self) -> impl Iterator<Item = u32> 
+
+    // fn next(&mut self) -> Option<Self::Item> {
+    //     if self.is_empty() {
+    //         None
+    //     } else {
+    //         Some(self.bitscan_reset_mut())
+    //     }
+    // }
+
+    pub fn iter_bitscan<F>(self, mut f: F)
+    // where F: FnMut(u32) {
+    where F: FnMut(u8) {
+        self.into_iter().for_each(|p| { f(p); })
     }
 
     pub fn iter_bitscan_rev<F>(&self, mut f: F)
-    where F: FnMut(u32) {
+    where F: FnMut(u8) {
         let mut b = *self;
         while b.0 != 0 {
             let p = b.bitscan_rev_reset_mut();
