@@ -12,17 +12,17 @@ use std::sync::Arc;
 // use rustc_hash::Fx;
 use dashmap::DashMap;
 
-#[derive(Debug,Default)]
-// pub struct RwTransTable(pub RwLock<TransTable>, pub RwLock<TTStats>);
-pub struct RwTransTable {
-    // pub trans_table: RwLock<TransTable>,
-    // pub quiescent:   RwLock<TransTable>,
-    pub trans_table: RwLock<FxHashMap<Zobrist, SearchInfo>>,
-    pub quiescent:   RwLock<FxHashMap<Zobrist, SearchInfo>>,
-}
+// #[derive(Debug,Default)]
+// // pub struct RwTransTable(pub RwLock<TransTable>, pub RwLock<TTStats>);
+// pub struct RwTransTable {
+//     // pub trans_table: RwLock<TransTable>,
+//     // pub quiescent:   RwLock<TransTable>,
+//     pub trans_table: RwLock<FxHashMap<Zobrist, SearchInfo>>,
+//     pub quiescent:   RwLock<FxHashMap<Zobrist, SearchInfo>>,
+// }
 
-pub type TransTable = FxHashMap<Zobrist, SearchInfo>;
-// pub type TransTable = Arc<DashMap<Zobrist, SearchInfo>>;
+// pub type TransTable = FxHashMap<Zobrist, SearchInfo>;
+pub type TransTable = Arc<DashMap<Zobrist, SearchInfo>>;
 
 // #[derive(Debug,Default)]
 // pub struct TransTable {
@@ -83,112 +83,112 @@ pub enum Node {
     // NodeCut(Score), // Score = lower bound
 }
 
-impl RwTransTable {
+// impl RwTransTable {
 
-    // pub fn new() -> Self {
-    //     // RwTransTable(RwLock::new(TransTable::default()), RwLock::new(Default::default()))
-    //     // let m = evmap::new();
-    //     unimplemented!()
-    // }
+//     // pub fn new() -> Self {
+//     //     // RwTransTable(RwLock::new(TransTable::default()), RwLock::new(Default::default()))
+//     //     // let m = evmap::new();
+//     //     unimplemented!()
+//     // }
 
-    pub fn clear(&self) {
-        self.tt_with_mut(|m| {
-            m.clear();
-        });
-    }
+//     pub fn clear(&self) {
+//         self.tt_with_mut(|m| {
+//             m.clear();
+//         });
+//     }
 
-    /// Always replace
-    /// Returns false if new insert, true if replace
-    pub fn tt_insert_replace(&self, zb: Zobrist, search: SearchInfo) -> bool {
-        self.tt_with_mut(|m| {
-            let b = m.contains_key(&zb);
-            m.insert(zb, search);
-            b
-        })
-    }
+//     /// Always replace
+//     /// Returns false if new insert, true if replace
+//     pub fn tt_insert_replace(&self, zb: Zobrist, search: SearchInfo) -> bool {
+//         self.tt_with_mut(|m| {
+//             let b = m.contains_key(&zb);
+//             m.insert(zb, search);
+//             b
+//         })
+//     }
 
-    pub fn tt_get(&self, zb: &Zobrist) -> Option<SearchInfo> {
-        self.tt_with(|m| {
-            let s: Option<&SearchInfo> = m.get(&zb);
-            s.copied()
-        })
-    }
+//     pub fn tt_get(&self, zb: &Zobrist) -> Option<SearchInfo> {
+//         self.tt_with(|m| {
+//             let s: Option<&SearchInfo> = m.get(&zb);
+//             s.copied()
+//         })
+//     }
 
-    /// Always replace
-    /// Returns false if new insert, true if replace
-    pub fn qt_insert_replace(&self, zb: Zobrist, search: SearchInfo) -> bool {
-        self.qt_with_mut(|m| {
-            let b = m.contains_key(&zb);
-            m.insert(zb, search);
-            b
-        })
-    }
+//     /// Always replace
+//     /// Returns false if new insert, true if replace
+//     pub fn qt_insert_replace(&self, zb: Zobrist, search: SearchInfo) -> bool {
+//         self.qt_with_mut(|m| {
+//             let b = m.contains_key(&zb);
+//             m.insert(zb, search);
+//             b
+//         })
+//     }
 
-    pub fn qt_get(&self, zb: &Zobrist) -> Option<SearchInfo> {
-        self.qt_with(|m| {
-            let s: Option<&SearchInfo> = m.get(&zb);
-            s.copied()
-        })
-    }
+//     pub fn qt_get(&self, zb: &Zobrist) -> Option<SearchInfo> {
+//         self.qt_with(|m| {
+//             let s: Option<&SearchInfo> = m.get(&zb);
+//             s.copied()
+//         })
+//     }
 
-    pub fn tt_with<F,T>(&self, mut f: F) -> T
-    where
-        F: FnOnce(&TransTable) -> T,
-        T: Copy,
-    {
-        let r = self.trans_table.read();
-        let s = f(&r);
-        s
-    }
+//     pub fn tt_with<F,T>(&self, mut f: F) -> T
+//     where
+//         F: FnOnce(&TransTable) -> T,
+//         T: Copy,
+//     {
+//         let r = self.trans_table.read();
+//         let s = f(&r);
+//         s
+//     }
 
-    pub fn tt_with_mut<F, T>(&self, mut f: F) -> T
-    where
-        F: FnMut(&mut TransTable) -> T {
-        {
-            let mut w = self.trans_table.write();
-            f(&mut w)
-        }
-    }
+//     pub fn tt_with_mut<F, T>(&self, mut f: F) -> T
+//     where
+//         F: FnMut(&mut TransTable) -> T {
+//         {
+//             let mut w = self.trans_table.write();
+//             f(&mut w)
+//         }
+//     }
 
-    pub fn qt_with<F,T>(&self, mut f: F) -> T
-    where
-        F: FnOnce(&TransTable) -> T,
-        T: Copy,
-    {
-        let r = self.quiescent.read();
-        let s = f(&r);
-        s
-    }
+//     pub fn qt_with<F,T>(&self, mut f: F) -> T
+//     where
+//         F: FnOnce(&TransTable) -> T,
+//         T: Copy,
+//     {
+//         let r = self.quiescent.read();
+//         let s = f(&r);
+//         s
+//     }
 
-    pub fn qt_with_mut<F, T>(&self, mut f: F) -> T
-    where
-        F: FnMut(&mut TransTable) -> T {
-        {
-            let mut w = self.quiescent.write();
-            f(&mut w)
-        }
-    }
+//     pub fn qt_with_mut<F, T>(&self, mut f: F) -> T
+//     where
+//         F: FnMut(&mut TransTable) -> T {
+//         {
+//             let mut w = self.quiescent.write();
+//             f(&mut w)
+//         }
+//     }
 
-    // pub fn with_stats<F,T>(&self, mut f: F) -> T
-    // where
-    //     F: FnOnce(&TTStats) -> T,
-    //     T: Copy,
-    // {
-    //     let r = self.1.read();
-    //     let s = f(&r);
-    //     s
-    // }
+//     // pub fn with_stats<F,T>(&self, mut f: F) -> T
+//     // where
+//     //     F: FnOnce(&TTStats) -> T,
+//     //     T: Copy,
+//     // {
+//     //     let r = self.1.read();
+//     //     let s = f(&r);
+//     //     s
+//     // }
 
-    // pub fn with_stats_mut<F, T>(&self, mut f: F) -> T
-    // where
-    //     F: FnMut(&mut TTStats) -> T {
-    //     {
-    //         let mut w = self.1.write();
-    //         f(&mut w)
-    //     }
-    // }
+//     // pub fn with_stats_mut<F, T>(&self, mut f: F) -> T
+//     // where
+//     //     F: FnMut(&mut TTStats) -> T {
+//     //     {
+//     //         let mut w = self.1.write();
+//     //         f(&mut w)
+//     //     }
+//     // }
 
-}
+// }
 
 // impl RwTransTable {
 //     pub fn inc_hits(&self) { self.with_stats_mut(|s| s.hits += 1) }

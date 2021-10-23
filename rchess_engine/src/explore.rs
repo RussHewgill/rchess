@@ -30,7 +30,8 @@ pub struct Explorer {
     pub max_depth:     Depth,
     pub timer:         Timer,
     pub parallel:      bool,
-    pub trans_table:   RwTransTable,
+    // pub trans_table:   RwTransTable,
+    pub trans_table:   TransTable,
     // pub trans_table:   TransTable,
     // pub trans_table:   RwLock<TransTable>,
 }
@@ -213,6 +214,8 @@ impl Explorer {
 impl Explorer {
 
     pub fn lazy_smp(&self, ts: &Tables,) -> (Vec<Move>,Score) {
+
+
         unimplemented!()
     }
 
