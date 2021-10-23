@@ -5,19 +5,24 @@ use crate::evaluate::*;
 
 use parking_lot::RwLock;
 use rustc_hash::FxHashMap;
+use std::sync::Arc;
 
 // use evmap::{ReadHandle,WriteHandle};
 // use evmap_derive::ShallowCopy;
 // use rustc_hash::Fx;
+use dashmap::DashMap;
 
 #[derive(Debug,Default)]
 // pub struct RwTransTable(pub RwLock<TransTable>, pub RwLock<TTStats>);
-pub struct RwTransTable{
-    pub trans_table: RwLock<TransTable>,
-    pub quiescent:   RwLock<TransTable>,
+pub struct RwTransTable {
+    // pub trans_table: RwLock<TransTable>,
+    // pub quiescent:   RwLock<TransTable>,
+    pub trans_table: RwLock<FxHashMap<Zobrist, SearchInfo>>,
+    pub quiescent:   RwLock<FxHashMap<Zobrist, SearchInfo>>,
 }
 
 pub type TransTable = FxHashMap<Zobrist, SearchInfo>;
+// pub type TransTable = Arc<DashMap<Zobrist, SearchInfo>>;
 
 // #[derive(Debug,Default)]
 // pub struct TransTable {

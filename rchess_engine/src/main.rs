@@ -64,8 +64,8 @@ fn main() {
     // main4(); // perft
 
     // main8(); // eval testing
-    // main7();
-    main3(); // read from file and test
+    main7();
+    // main3(); // read from file and test
 
 }
 
@@ -286,34 +286,30 @@ fn main7() {
             // let see = ex.static_exchange(&ts, &g, "D5".into());
             // eprintln!("see = {:?}", see);
 
-            // let moves = g.search_all(&ts, None).get_moves_unsafe();
+            let (mvs,stats) = ex.lazy_smp(&ts);
 
-            // let (moves,stats) = ex.iterative_deepening(&ts, false, true);
-            let (moves,stats) = ex.iterative_deepening(&ts, false, false);
-            // let (moves,stats) = ex._iterative_deepening(&ts, false, moves.clone(), false);
-            // let mv = moves.get(0).map(|x| x.0);
-            let (mv,mvs,_) = moves.get(0).unwrap();
-            println!("m #{} = {:?}", q, mv);
-            println!("good = c8b7");
+
+            // // let (moves,stats) = ex.iterative_deepening(&ts, false, true);
+            // let (moves,stats) = ex.iterative_deepening(&ts, false, false);
+            // // let (moves,stats) = ex._iterative_deepening(&ts, false, moves.clone(), false);
+            // // let mv = moves.get(0).map(|x| x.0);
+            // let (mv,mvs,_) = moves.get(0).unwrap();
+            // println!("m #{} = {:?}", q, mv);
+            // println!("good = c8b7");
 
             // print!("\n");
             // for (m,mvs,score) in moves.iter() {
             //     eprintln!("{:?} = {:?}", m, score);
             // }
 
+            // let g = g.flip_sides(&ts);
+            // // eprintln!("g 1 = {:?}", g);
+            // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+            // let (moves,stats) = ex.iterative_deepening(&ts, false, false);
+            // let (mv,mvs,_) = moves.get(0).unwrap();
             // print!("\n");
-            // for m in mvs.iter() {
-            //     eprintln!("m = {:?}", m);
-            // }
-
-            let g = g.flip_sides(&ts);
-            // eprintln!("g 1 = {:?}", g);
-            let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
-            let (moves,stats) = ex.iterative_deepening(&ts, false, false);
-            let (mv,mvs,_) = moves.get(0).unwrap();
-            print!("\n");
-            println!("m #{} = {:?}", q, mv);
-            println!("good = f1g2");
+            // println!("m #{} = {:?}", q, mv);
+            // println!("good = f1g2");
 
             // let (mvs,stats) = ex._iterative_deepening(&ts, false, moves.clone(), false);
             // // let (mvs,stats) = ex.iterative_deepening(&ts, false);

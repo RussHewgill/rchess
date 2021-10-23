@@ -89,48 +89,6 @@ impl Explorer {
         unimplemented!()
     }
 
-    // pub fn rank_moves_list(&self, ts: &Tables, print: bool, moves: Vec<Move>
-    // ) -> (Vec<(Move,Score)>,SearchStats) {
-
-    //     self.trans_table.clear();
-
-    //     if print {
-    //         eprintln!("moves.len() = {:?}", moves.len());
-    //     }
-
-    //     // eprintln!("Explorer: not parallel");
-    //     // let (mut out,ss): (Vec<(Move,i32)>,Vec<SearchStats>) = moves.into_iter()
-    //     let (mut out,ss): (Vec<(Move,i32)>,Vec<SearchStats>) = moves.into_par_iter()
-    //             .map(|mv| {
-    //                 let g2 = self.game.make_move_unchecked(&ts, &mv).unwrap();
-    //                 // let alpha = i32::MIN;
-    //                 // let beta  = i32::MAX;
-    //                 let alpha = Arc::new(AtomicI32::new(i32::MIN));
-    //                 let beta = Arc::new(AtomicI32::new(i32::MAX));
-    //                 let mut stats = SearchStats::default();
-    //                 let score = self._ab_search(
-    //                     &ts, &g2, self.max_depth, 1, alpha, beta, false, &mut stats);
-    //                 ((mv,score),stats)
-    //             })
-    //             // .collect();
-    //             .unzip();
-
-    //     let stats = ss.iter().sum();
-
-    //     out.sort_by(|a,b| a.1.cmp(&b.1));
-
-    //     if self.side == self.game.state.side_to_move {
-    //         out.reverse();
-    //     }
-
-    //     if print {
-    //         for (m,s) in out.iter() {
-    //             eprintln!("{:>8} = {:?}", s, m);
-    //         }
-    //     }
-    //     (out,stats)
-    // }
-
     pub fn iterative_deepening(&self, ts: &Tables, print: bool, par: bool)
                                -> (Vec<(Move,Vec<Move>,Score)>,SearchStats) {
 
@@ -251,7 +209,13 @@ impl Explorer {
 
 }
 
+/// Lazy SMP
 impl Explorer {
+
+    pub fn lazy_smp(&self, ts: &Tables,) -> (Vec<Move>,Score) {
+        unimplemented!()
+    }
+
 
 }
 
