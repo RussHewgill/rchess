@@ -20,7 +20,8 @@ debug = 1
 incremental = true
 
 # https://deterministic.space/high-performance-rust.html
-lto = "thin"
+lto = false
+# lto = "thin"
 # lto = "fat"
 # codegen-units = 1
 

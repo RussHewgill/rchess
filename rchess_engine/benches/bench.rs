@@ -25,7 +25,7 @@ pub fn crit_bench_1(c: &mut Criterion) {
     // let fen = "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1"; // WAC.001 = Qg6 = g3g6
     // let m0 = Some(Move::Quiet { from: Coord(6,2), to: Coord(6,5) });
 
-    let n = 4;
+    let n = 3;
 
     let ts    = Tables::new();
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -44,11 +44,11 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
     group.bench_function("rank moves iter", |b| b.iter(|| {
         // let (m,stats) = ex.explore(&ts, None);
-        let (m,stats) = ex.iterative_deepening(&ts, false);
+        let (m,stats) = ex.iterative_deepening(&ts, false, true);
     }));
 
     group.bench_function("rank moves lazy_smp", |b| b.iter(|| {
-        let (m,stats) = ex.lazy_smp(&ts, false);
+        let (m,stats) = ex.lazy_smp(&ts, false, true);
     }));
 
     // group.bench_function("search_all", |b| b.iter(|| {

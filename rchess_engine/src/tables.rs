@@ -580,7 +580,7 @@ impl Tables {
     }
 
     fn gen_knight_move(c: Coord) -> BitBoard {
-        let b = BitBoard::new(&vec![c]);
+        let b = BitBoard::new(&[c]);
 
         let l1 = b.0.overflowing_shr(1).0 & !BitBoard::mask_file(7).0;
         let l2 = b.0.overflowing_shr(2).0 & !(BitBoard::mask_file(7).0 | BitBoard::mask_file(6).0);

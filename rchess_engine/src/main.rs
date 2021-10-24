@@ -172,7 +172,7 @@ fn main7() {
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"; // Perft Position 2
 
-    let fen = "5k2/6pp/p1qN4/1p1p4/3P4/2PKP2Q/PP3r2/3R4 b - - 0 1"; // WAC.005, Qc4 = c6c4
+    // let fen = "5k2/6pp/p1qN4/1p1p4/3P4/2PKP2Q/PP3r2/3R4 b - - 0 1"; // WAC.005, Qc4 = c6c4
     // let fen = "4r3/2R3pp/q2pkp2/4p3/4P1P1/4nQ1P/PP6/2K5 w - - 0 1"; // WAC.005, color reversed
 
     // let fen = "rnbqkb1r/pppp1ppp/8/4P3/6n1/7P/PPPNPPP1/R1BQKBNR b KQkq - 0 1"; // WAC.007, Ne3 = g4e3
@@ -186,6 +186,7 @@ fn main7() {
     // let fen = "k7/2n5/4p3/3p3R/2P1P1P1/4N3/8/7K w - - 0 1"; // SEE test
 
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
+    let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
 
     // let mut games = read_epd("WAC.epd").unwrap();
     // let fen = &games[8 - 1].0;
@@ -257,7 +258,7 @@ fn main7() {
 
             // n = 20;
             // n = 10;
-            let n = 5;
+            let n = 4;
 
             ex.max_depth = n;
 
@@ -277,7 +278,6 @@ fn main7() {
                      stats.max_depth, t0.elapsed().as_secs_f64());
 
             println!("====");
-
             let t0 = std::time::Instant::now();
             let (moves,stats) = ex.iterative_deepening(&ts, !true, true);
             let (mv,mvs,_) = moves.get(0).unwrap();
