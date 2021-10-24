@@ -10,7 +10,7 @@ use rustc_hash::FxHashMap;
 use std::sync::Arc;
 
 // use evmap::{ReadHandle,WriteHandle};
-// use evmap_derive::ShallowCopy;
+use evmap_derive::ShallowCopy;
 // use rustc_hash::Fx;
 use dashmap::DashMap;
 
@@ -48,6 +48,10 @@ pub type TransTable = Arc<DashMap<Zobrist, SearchInfo>>;
 
 impl Explorer {
 
+    // pub fn tt_insert_deepest(&self, zb: Zobrist, si: SearchInfo) -> bool {
+    //     unimplemented!()
+    // }
+
     pub fn tt_insert_deepest(&self, zb: Zobrist, si: SearchInfo) -> bool {
         let d = si.depth_searched;
         let nt = si.node_type;
@@ -80,7 +84,7 @@ pub enum SICanUse {
 
 // #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 // #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
-#[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone)]
+#[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone)]
 pub struct SearchInfo {
     pub mv:                 Move,
     pub depth_searched:     Depth,
@@ -103,8 +107,8 @@ pub struct SearchInfo {
 /// All, // UpperBound
 /// Cut, // LowerBound
 /// Quiet,
-// #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
-#[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
+#[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
+// #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
 pub enum Node {
     PV,
     All, // UpperBound

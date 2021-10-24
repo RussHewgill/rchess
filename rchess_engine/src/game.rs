@@ -31,7 +31,7 @@ pub struct GameState {
     pub queens:             BitBoard,
     pub kings:              BitBoard,
 
-    pub occupied:           BitBoard,
+    // pub occupied:           BitBoard,
 
     pub en_passant:         Option<Coord>,
     pub castling:           Castling,
@@ -41,7 +41,7 @@ pub struct GameState {
     pub checkers:           Option<BitBoard>,
     pub king_blocks_w:      Option<BitBoard>,
     pub king_blocks_b:      Option<BitBoard>,
-    pub pinners:            Option<BitBoard>,
+    // pub pinners:            Option<BitBoard>,
     // pub pinned:         Option<(BitBoard,BitBoard)>,
 
     pub check_block_mask:   Option<BitBoard>,
@@ -335,7 +335,7 @@ impl Game {
         self.state.checkers      = None;
         self.state.king_blocks_w = None;
         self.state.king_blocks_b = None;
-        self.state.pinners       = None;
+        // self.state.pinners       = None;
 
         self.update_pins_mut(&ts);
         self.update_checkers_mut(&ts);
@@ -349,18 +349,18 @@ impl Game {
         self.state.checkers      = None;
         self.state.king_blocks_w = None;
         self.state.king_blocks_b = None;
-        self.state.pinners       = None;
+        // self.state.pinners       = None;
     }
 
-    fn update_occupied_mut(&mut self) {
-        self.state.occupied =
-            self.state.pawns
-            | self.state.rooks
-            | self.state.knights
-            | self.state.bishops
-            | self.state.queens
-            | self.state.kings
-    }
+    // fn update_occupied_mut(&mut self) {
+    //     self.state.occupied =
+    //         self.state.pawns
+    //         | self.state.rooks
+    //         | self.state.knights
+    //         | self.state.bishops
+    //         | self.state.queens
+    //         | self.state.kings
+    // }
 
     fn update_pins_mut(&mut self, ts: &Tables) {
         // let pw = self.find_pins_absolute(&ts, White);
@@ -386,7 +386,7 @@ impl Game {
         self.state.king_blocks_w = Some(bs_w);
         self.state.king_blocks_b = Some(bs_b);
 
-        self.state.pinners = Some(ps_b | ps_w);
+        // self.state.pinners = Some(ps_b | ps_w);
 
     }
 

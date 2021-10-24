@@ -9,7 +9,7 @@ pub use crate::searchstats::*;
 
 use std::hash::Hasher;
 use std::iter::successors;
-use std::sync::atomic::{AtomicU8,AtomicI32};
+use std::sync::atomic::AtomicU8;
 use std::thread;
 use std::time::Duration;
 
@@ -21,7 +21,8 @@ use parking_lot::{Mutex,RwLock};
 use rand::prelude::{SliceRandom,thread_rng};
 use rayon::prelude::*;
 
-use rustc_hash::FxHashMap;
+// use rustc_hash::FxHashMap;
+use evmap::{ReadHandle,WriteHandle};
 
 #[derive(Debug)]
 pub struct Explorer {
@@ -34,6 +35,8 @@ pub struct Explorer {
     // pub trans_table:   RwTransTable,
     pub trans_table:   TransTable,
     // pub trans_table:   RwLock<TransTable>,
+    // pub trans_table_r:   ReadHandle<Zobrist, SearchInfo>,
+    // pub trans_table_w:   WriteHandle<Zobrist, SearchInfo>,
 }
 
 impl Explorer {
@@ -44,8 +47,9 @@ impl Explorer {
                settings:      TimeSettings,
     ) -> Self {
         // let tt = RwTransTable::default();
-        let tt = TransTable::default();
+        // let tt = TransTable::default();
         // let tt = TransTable::new();
+        // let (tr,tw) = evmap::new();
         Self {
             side,
             game,
@@ -53,8 +57,10 @@ impl Explorer {
             max_depth,
             timer: Timer::new(side, should_stop, settings),
             parallel: true,
-            // trans_table: TransTable::default(),
-            trans_table: tt,
+            trans_table: TransTable::default(),
+            // trans_table: tt,
+            // trans_table_r: tr,
+            // trans_table_w: tw,
         }
     }
 }
@@ -114,6 +120,9 @@ impl Explorer {
     pub fn _iterative_deepening(&self, ts: &Tables, print: bool, moves: Vec<Move>, strict_depth: bool)
                                 -> (Vec<(Move,Vec<Move>,Score)>,SearchStats) {
 
+        // self.trans_table_w.purge();
+        // self.trans_table_w.refresh();
+
         self.trans_table.clear();
 
         let mut timer = self.timer.clone();
@@ -169,14 +178,6 @@ impl Explorer {
             {
                 (out,ss) = gs.par_iter().map(|(mv,g2)| {
                     let mut stats = SearchStats::default();
-                    #[cfg(feature = "atomic_ab")]
-                    let (mut mv_seq,score) = {
-                        let alpha = Arc::new(AtomicI32::new(i32::MIN));
-                        let beta  = Arc::new(AtomicI32::new(i32::MAX));
-                        self._ab_search(
-                            &ts, &g2, depth, 1, alpha, beta, false, &mut stats, *mv)
-                    };
-                    #[cfg(not(feature = "atomic_ab"))]
                     let (mut mv_seq,score) = {
                         let alpha = i32::MIN;
                         let beta  = i32::MAX;
@@ -192,21 +193,12 @@ impl Explorer {
             {
                 // eprintln!("Explorer: not parallel");
                 (out,ss) = gs.iter().map(|(mv,g2)| {
-                    #[cfg(feature = "atomic_ab")]
-                    let (mut mv_seq,score) = {
-                        let alpha = Arc::new(AtomicI32::new(i32::MIN));
-                        let beta  = Arc::new(AtomicI32::new(i32::MAX));
-                        self._ab_search(
-                            &ts, &g2, depth, 1, alpha, beta, false, &mut stats, mv)
-                    };
-                    #[cfg(not(feature = "atomic_ab"))]
                     let (mut mv_seq,score) = {
                         let alpha = i32::MIN;
                         let beta  = i32::MAX;
                         self._ab_search(
                             &ts, &g2, depth, 1, alpha, beta, false, &mut stats, mv)
                     };
-
                     mv_seq.push(*mv);
                     mv_seq.reverse();
                     ((*mv,mv_seq,score),stats)
@@ -267,14 +259,6 @@ impl Explorer {
             let mut stats = SearchStats::default();
             let out = gs.into_iter().map(|(mv,g2)| {
                 let mut ss = SearchStats::default();
-                #[cfg(feature = "atomic_ab")]
-                let (mut mv_seq,score) = {
-                    let alpha = Arc::new(AtomicI32::new(i32::MIN));
-                    let beta  = Arc::new(AtomicI32::new(i32::MAX));
-                    self._ab_search(
-                        &ts, &g2, depth, 1, alpha, beta, false, &mut stats, mv)
-                };
-                #[cfg(not(feature = "atomic_ab"))]
                 let (mut mv_seq,score) = {
                     let alpha = i32::MIN;
                     let beta  = i32::MAX;
@@ -322,6 +306,10 @@ impl Explorer {
         let (n_cpus,np_cpus)  = (num_cpus::get(),num_cpus::get_physical());
 
         self.trans_table.clear();
+
+        // self.trans_table_w.purge();
+        // self.trans_table_w.refresh();
+
         let mut timer = self.timer.clone();
         timer.reset();
 
@@ -362,8 +350,8 @@ impl Explorer {
 
         if print { eprintln!("threadcount = {:?}", threadcount); }
 
-        while (depth <= self.max_depth)
-            && (strict_depth || (|| timer.should_search(self.side, depth - 1))()) {
+        while (depth <= self.max_depth) && (strict_depth ||
+                                            (|| timer.should_search(self.side, depth - 1))()) {
 
             let r2  = results.clone();
             let gs2 = gs.clone();
@@ -371,18 +359,23 @@ impl Explorer {
             let depths = depths.clone();
             let stats2 = stats.clone();
 
-            crossbeam::scope(move |s| {
+            // let k_max = np_cpus;
+            // (0..k_max).into_par_iter().for_each(|k| {
+            //     self._lazy_smp_single(&ts, gs2.clone(), depth, r2.clone(), stats2.clone());
+            // });
 
+            crossbeam::scope(move |s| {
                 let d     = depth + depths[0];
                 let k_max = np_cpus;
+                // let k_max = 12;
                 // let k_max = threadcount[0];
                 /// depth + 0
                 (0..k_max).for_each(|k| {
                     let r3  = r2.clone();
-                    // let gs3 = gs2.clone();
-                    let mut gs3 = gs2.clone();
-                    let x = gs3.len();
-                    gs3.rotate_right((x / k_max) * k);
+                    let gs3 = gs2.clone();
+                    // let mut gs3 = gs2.clone();
+                    // let x = gs3.len();
+                    // gs3.rotate_right((x / k_max) * k);
                     let stats3 = stats2.clone();
                     s.spawn(move |_| {
                         self._lazy_smp_single(
@@ -390,7 +383,6 @@ impl Explorer {
                         );
                     });
                 });
-
             }).unwrap();
 
             {
@@ -444,6 +436,7 @@ impl Explorer {
     ) -> Option<(SICanUse,SearchInfo)> {
         // if let Some(si) = self.trans_table.tt_get(&g.zobrist) {
         if let Some(si) = self.trans_table.get(&g.zobrist) {
+        // if let Some(si) = self.trans_table_r.get(&g.zobrist) {
 
             // if si.depth_searched == depth {
             if si.depth_searched >= depth {
@@ -456,6 +449,7 @@ impl Explorer {
                 Some((SICanUse::UseOrdering,si.clone()))
                 // None
             }
+
         } else {
             stats.tt_misses += 1;
             // let score = self._ab_search(&ts, &g, depth - 1, k + 1, alpha, beta, !maximizing);
@@ -472,13 +466,7 @@ impl Explorer {
         g:                  &Game,
         depth:              Depth,
         k:                  i16,
-        #[cfg(feature = "atomic_ab")]
-        alpha:              Arc<AtomicI32>,
-        #[cfg(feature = "atomic_ab")]
-        beta:               Arc<AtomicI32>,
-        #[cfg(not(feature = "atomic_ab"))]
         mut alpha:          i32,
-        #[cfg(not(feature = "atomic_ab"))]
         mut beta:           i32,
         maximizing:         bool,
         mut stats:          &mut SearchStats,
@@ -681,18 +669,9 @@ impl Explorer {
             let (mut mv_seq,score) = match tt {
                 Some((SICanUse::UseScore,si)) => (si.moves.clone(),si.score),
                 _ => {
-                    #[cfg(feature = "atomic_ab")]
-                    {
-                        let alpha2 = Arc::new(AtomicI32::new(alpha.load(Ordering::Relaxed)));
-                        let beta2  = Arc::new(AtomicI32::new(beta.load(Ordering::Relaxed)));
-                        self._ab_search(
-                            &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut stats, mv)
-                    }
-                    #[cfg(not(feature = "atomic_ab"))]
-                    {
-                        self._ab_search(
-                            &ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut stats, mv)
-                    }
+                    self._ab_search(
+                        &ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut stats, mv)
+
                 },
             };
 
@@ -712,13 +691,7 @@ impl Explorer {
                 (mv_seq,score),
                 &mut val,
                 depth,
-                #[cfg(feature = "atomic_ab")]
-                alpha.clone(),
-                #[cfg(feature = "atomic_ab")]
-                beta.clone(),
-                #[cfg(not(feature = "atomic_ab"))]
                 &mut alpha,
-                #[cfg(not(feature = "atomic_ab"))]
                 &mut beta,
                 maximizing,
                 mv0);
@@ -726,58 +699,6 @@ impl Explorer {
                 node_type = Node::Cut;
                 break;
             }
-
-            // if maximizing {
-            //     if score > val.1 {
-            //         val = (Some((zb,mv)),score);
-            //     }
-            //     if val.1 > alpha {
-            //         alpha = val.1;
-            //         // self.trans_table.insert_replace(
-            //         //     zb, SearchInfo::new(mv, depth, val.1));
-            //     }
-            //     if val.1 >= beta { // Beta cutoff
-            //         // self.trans_table.insert(zb, SearchInfo::new(depth, NodeType::NodeLowerBound(beta)));
-            //         self.trans_table.insert_replace(
-            //             zb, SearchInfo::new(mv, depth, Node::LowerBound(val.1)));
-            //         break;
-            //     }
-            // } else {
-            //     if score < val.1 {
-            //         val = (Some((zb,mv)),score);
-            //     }
-            //     if val.1 < beta {
-            //         beta = val.1;
-            //         // self.trans_table.insert_replace(
-            //         //     zb, SearchInfo::new(mv, depth, val.1));
-            //     }
-            //     if val.1 <= alpha { // Alpha cutoff
-            //         self.trans_table.insert_replace(
-            //             zb, SearchInfo::new(mv, depth, Node::UpperBound(val.1)));
-            //         break;
-            //     }
-            // }
-
-            /*
-            if maximizing {
-                val = i32::max(val, score);
-                alpha = i32::max(val, alpha); // fail soft
-                if val >= beta {
-                    // maximum score that the minimizing player is assured of
-                    break;
-                }
-                // alpha = i32::max(val, alpha); // fail hard
-            } else {
-                val = i32::min(val, score);
-                beta = i32::min(val, beta); // fail soft
-                if val <= alpha {
-                    // score for this node is less than the least bad move for self
-                    // the minimum score that the maximizing player is assured of
-                    break
-                }
-                // beta = i32::min(val, beta); // fail hard
-            }
-            */
 
         }
 
@@ -803,16 +724,8 @@ impl Explorer {
         //     },
         // }
 
-        #[cfg(feature = "atomic_ab")]
-        {
-            stats.alpha = stats.alpha.max(alpha.load(Ordering::SeqCst));
-            stats.beta = stats.beta.max(beta.load(Ordering::SeqCst));
-        }
-        #[cfg(not(feature = "atomic_ab"))]
-        {
-            stats.alpha = stats.alpha.max(alpha);
-            stats.beta = stats.beta.max(beta);
-        }
+        stats.alpha = stats.alpha.max(alpha);
+        stats.beta = stats.beta.max(beta);
 
         match &val.0 {
             Some((zb,mv,mv_seq)) => (mv_seq.clone(),val.1),
@@ -828,13 +741,7 @@ impl Explorer {
         (mut mv_seq,score): (Vec<Move>,Score),
         mut val:            &mut (Option<(Zobrist,Move,Vec<Move>)>,i32),
         depth:              Depth,
-        #[cfg(feature = "atomic_ab")]
-        alpha:              Arc<AtomicI32>,
-        #[cfg(feature = "atomic_ab")]
-        beta:               Arc<AtomicI32>,
-        #[cfg(not(feature = "atomic_ab"))]
         mut alpha:          &mut i32,
-        #[cfg(not(feature = "atomic_ab"))]
         mut beta:           &mut i32,
         maximizing:         bool,
         mv0:                Move,
@@ -846,23 +753,11 @@ impl Explorer {
                 *val = (Some((zb,mv,mv_seq.clone())),score);
             }
 
-            #[cfg(feature = "atomic_ab")]
-            {
-                alpha.fetch_max(val.1, Ordering::SeqCst);
-                if val.1 >= beta.load(Ordering::SeqCst) { // Beta cutoff
-                    // if val.1 >= *beta { // Beta cutoff
-                    // self.trans_table.insert(
-                    //     zb, SearchInfo::new(mv, mv_seq.clone(), depth, Node::Cut, val.1));
-                    return true;
-                }
-            }
-
-            #[cfg(not(feature = "atomic_ab"))]
-            {
-                *alpha = i32::max(*alpha, val.1);
-                if val.1 >= *beta { // Beta cutoff
-                    return true;
-                }
+            *alpha = i32::max(*alpha, val.1);
+            if val.1 >= *beta { // Beta cutoff
+                // self.trans_table.insert(
+                //     zb, SearchInfo::new(mv, mv_seq.clone(), depth, Node::Cut, val.1));
+                return true;
             }
 
             // self.trans_table.insert_replace(
@@ -873,24 +768,11 @@ impl Explorer {
                 *val = (Some((zb,mv,mv_seq.clone())),score);
             }
 
-            #[cfg(feature = "atomic_ab")]
-            {
-                beta.fetch_min(val.1, Ordering::SeqCst);
-                if val.1 <= alpha.load(Ordering::SeqCst) { // Alpha cutoff
-                    // if val.1 <= *alpha { // Alpha cutoff
-                    // self.trans_table.insert(
-                    //     zb, SearchInfo::new(mv, mv_seq.clone(), depth, Node::Cut, val.1));
-                    return true;
-                }
-            }
-
-
-            #[cfg(not(feature = "atomic_ab"))]
-            {
-                *beta = i32::min(*beta, val.1);
-                if val.1 <= *alpha {
-                    return true;
-                }
+            *beta = i32::min(*beta, val.1);
+            if val.1 <= *alpha {
+                // self.trans_table.insert(
+                //     zb, SearchInfo::new(mv, mv_seq.clone(), depth, Node::Cut, val.1));
+                return true;
             }
 
             // node_type = Node::All;
@@ -975,6 +857,7 @@ impl Explorer {
             }
         }
         // return stand_pat; // correct
+        unimplemented!();
 
         if alpha < stand_pat {
             alpha = stand_pat;
@@ -983,12 +866,12 @@ impl Explorer {
 
         let mut captures = ms.into_iter().filter(|m| m.filter_all_captures()).collect::<Vec<_>>();
 
-        // TODO: sort reverse for max / min ?
-        #[cfg(feature = "par")]
-        // captures.par_sort_unstable();
-        captures.par_sort();
-        #[cfg(not(feature = "par"))]
-        captures.sort();
+        // // TODO: sort reverse for max / min ?
+        // #[cfg(feature = "par")]
+        // // captures.par_sort_unstable();
+        // captures.par_sort();
+        // #[cfg(not(feature = "par"))]
+        // captures.sort();
 
         captures.reverse();
 

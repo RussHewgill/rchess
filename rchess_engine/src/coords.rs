@@ -2,7 +2,7 @@
 use crate::types::*;
 use crate::tables::*;
 
-// use evmap_derive::ShallowCopy;
+use evmap_derive::ShallowCopy;
 
 // use packed_struct::prelude::*;
 
@@ -22,8 +22,8 @@ pub enum D {
     NW,
 }
 
-// #[derive(Eq,Hash,PartialEq,PartialOrd,ShallowCopy,Clone,Copy)]
-#[derive(Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
+#[derive(Eq,Hash,PartialEq,PartialOrd,ShallowCopy,Clone,Copy)]
+// #[derive(Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
 pub struct Coord(pub u8, pub u8);
 
 // pub type PackedCoords = Integer<u8, packed_bits::Bits::<6>>;
