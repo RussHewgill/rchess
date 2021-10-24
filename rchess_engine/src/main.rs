@@ -158,8 +158,6 @@ fn main7() {
     // // AB = 808182 leaves, 1.87 s
     // let fen = "7k/2pq2p1/6rp/1P2p3/2Qp1n2/P2P3P/R1P2PPK/3N2R1 b - - 0 28";
 
-    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"; // Perft Position 2
-
     // let fen = "2rr3k/pp3pp1/1nnqbN1p/3pN3/2pP4/2P3Q1/PPB4P/R4RK1 w - - 0 1"; // WAC.001 = Qg6 = g3g6
     // let fen = "2rr3k/pp3pp1/1nnqbNQ1/3pN2p/2pP4/2P5/PPB4P/R4RK1 w - - 0 2"; // WAC.001 = Qg6 = g3g6
     // let fen = "2rr3k/pp4p1/1nnqbNpp/3pN3/2pP4/2P5/PPB4P/R4RK1 w - - 0 2"; // WAC.001
@@ -169,11 +167,15 @@ fn main7() {
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
 
     // let fen = "Q3b3/4bkp1/1q2np1p/NPp1p3/2P1P3/4BP1P/4B1P1/7K b - - 1 1"; // Correct = e6c7
-    let fen = "rnbqkb1r/pppp1ppp/8/4P3/6n1/7P/PPPNPPP1/R1BQKBNR b KQkq - 0 1"; // WAC.007, Ne3 = g4e3
+    // let fen = "rnbqkb1r/pppp1ppp/8/4P3/6n1/7P/PPPNPPP1/R1BQKBNR b KQkq - 0 1"; // WAC.007, Ne3 = g4e3
     // let fen = "3q1rk1/p4pp1/2pb3p/3p4/6Pr/1PNQ4/P1PB1PP1/4RRK1 b - - 0 1"; // WAC.009, Bh2+ = d6h2
 
-    // let fen = "5k2/6pp/p1qN4/1p1p4/3P4/2PKP2Q/PP3r2/3R4 b - - 0 1"; // WAC.005, Qc4 = c6c4
+    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"; // Perft Position 2
+
+    let fen = "5k2/6pp/p1qN4/1p1p4/3P4/2PKP2Q/PP3r2/3R4 b - - 0 1"; // WAC.005, Qc4 = c6c4
     // let fen = "4r3/2R3pp/q2pkp2/4p3/4P1P1/4nQ1P/PP6/2K5 w - - 0 1"; // WAC.005, color reversed
+
+    // let fen = "rnbqkb1r/pppp1ppp/8/4P3/6n1/7P/PPPNPPP1/R1BQKBNR b KQkq - 0 1"; // WAC.007, Ne3 = g4e3
 
     // let fen = "rn2kbnr/pppppppp/8/8/6b1/1QP4P/PP1PqPPN/RNB1KB1R w KQkq - 0 2"; // 1 move, then lots
 
@@ -215,10 +217,11 @@ fn main7() {
 
     let stop = Arc::new(AtomicBool::new(false));
     let timesettings = TimeSettings::new_f64(
+        5.0,
+        // 60.0,
+        0.1,
         // 5.0,
-        10.0,
-        // 20.0,
-        0.1);
+    );
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
 
     // let moves = vec![
@@ -233,63 +236,11 @@ fn main7() {
 
     // eprintln!("g = {:?}", g);
 
-    let mut ps = vec![
-        Move::Capture { from: "E4".into(), to: "F5".into(), pc: Pawn, victim: Queen },
-        Move::Capture { from: "E4".into(), to: "D5".into(), pc: Pawn, victim: Pawn },
-        Move::Quiet { from: "E4".into(), to: "E5".into() },
-    ];
-
-    // let maximizing = true;
-    // Explorer::order_moves(&ts, &g, maximizing, &mut ps);
-    // // cap f5 = queen
-    // // cap d5 = pawn
-    // // quiet
-    // println!("maximizing");
-    // for p in ps.iter() {
-    //     eprintln!("p = {:?}", p);
-    // }
-    // let maximizing = false;
-    // Explorer::order_moves(&ts, &g, maximizing, &mut ps);
-    // println!("minimizing");
-    // for p in ps.iter() {
-    //     eprintln!("p = {:?}", p);
-    // }
-
-    // let depth = 2;
-    // let mut vs0: Vec<(u8,u8,Option<(SICanUse,SearchInfo)>)> = vec![
-    //     (0,0,Some((SICanUse::UseScore,SearchInfo::new(ps[0], 1, Node::PV, 10)))),
-    //     (0,0,Some((SICanUse::UseScore,SearchInfo::new(ps[0], 1, Node::PV, 20)))),
-    //     (0,0,None),
+    // let mut ps = vec![
+    //     Move::Capture { from: "E4".into(), to: "F5".into(), pc: Pawn, victim: Queen },
+    //     Move::Capture { from: "E4".into(), to: "D5".into(), pc: Pawn, victim: Pawn },
+    //     Move::Quiet { from: "E4".into(), to: "E5".into() },
     // ];
-    // let vs: &mut [(u8,u8,Option<(bool,SearchInfo)>)] = &mut vs0;
-    // let mut vs = &mut vs0[..];
-    // Explorer::order_searchinfo(true, vs);
-    // println!("true:");
-    // for v in vs.iter() {
-    //     eprintln!("v = {:?}", v);
-    // }
-    // println!("\nfalse:");
-    // Explorer::order_searchinfo(false, vs);
-    // for v in vs.iter() {
-    //     eprintln!("v = {:?}", v);
-    // }
-
-
-    // println!("wat 0");
-    // let x = crossbeam::scope(|s| {
-    //     std::thread::sleep_ms(1000);
-    //     println!("wat 0 a");
-    //     5
-    // }).unwrap();
-    // println!("wat 1");
-    // let y = crossbeam::scope(|s| {
-    //     std::thread::sleep_ms(1000);
-    //     println!("wat 1 a");
-    //     10
-    // }).unwrap();
-    // println!("wat 2");
-
-    // println!("(x,y) = {:?}", (x,y));
 
     // return;
 
@@ -306,34 +257,46 @@ fn main7() {
 
             // n = 20;
             // n = 10;
-            let n = 6;
+            let n = 5;
 
             ex.max_depth = n;
 
-            // let m = moves[0];
-            // // let m = Move::Quiet { from: "C6".into(), to: "E6".into() };
-            // let g = g.make_move_unchecked(&ts, &m).unwrap();
-            // eprintln!("g = {:?}", g);
-            // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+            ex.timer.settings = TimeSettings::new_f64(
+                10.0,
+                // 2.0,
+                0.1,
+            );
 
-            // let b = g.move_is_legal(&ts, &m);
-            // eprintln!("b = {:?}", b);
+            let (mvs,stats) = ex.lazy_smp(&ts, !true, true);
+            let (mv,mvs,_) = mvs.get(0).unwrap();
+            println!("m #{} = {:?}", q, mv);
+            // println!("good = g4e3");
+            // println!("good = c6c4");
+            // stats.print(t0.elapsed());
+            println!("explore lazy_smp  (depth: {}) done in {} seconds.",
+                     stats.max_depth, t0.elapsed().as_secs_f64());
 
-            // let see = ex.static_exchange(&ts, &g, "D5".into());
-            // eprintln!("see = {:?}", see);
+            println!("====");
 
-            let (mvs,stats) = ex.lazy_smp(&ts);
-            println!("good = g4e3");
-            stats.print(t0.elapsed());
-
-            // // let (moves,stats) = ex.iterative_deepening(&ts, false, true);
-            // let (moves,stats) = ex.iterative_deepening(&ts, false, false);
-            // // let (moves,stats) = ex._iterative_deepening(&ts, false, moves.clone(), false);
-            // // let mv = moves.get(0).map(|x| x.0);
-            // let (mv,mvs,_) = moves.get(0).unwrap();
-            // println!("m #{} = {:?}", q, mv);
+            let t0 = std::time::Instant::now();
+            let (moves,stats) = ex.iterative_deepening(&ts, !true, true);
+            let (mv,mvs,_) = moves.get(0).unwrap();
+            println!("m #{} = {:?}", q, mv);
             // println!("good = g4e3");
             // stats.print(t0.elapsed());
+            println!("explore iterative (depth: {}) done in {} seconds.",
+                     stats.max_depth, t0.elapsed().as_secs_f64());
+
+            // for si in ex.trans_table.iter() {
+            //     let depth = si.depth_searched;
+            //     eprintln!("node, d, len() = {:?}: {:?}, {:?}", si.node_type, depth, si.moves.len());
+            // }
+
+            // let ts = ex.trans_table.clone();
+            // let xs0 = ts.iter().filter(|x| x.node_type == Node::PV).collect::<Vec<_>>();
+            // let xs1 = ts.iter().filter(|x| x.node_type == Node::All).collect::<Vec<_>>();
+            // let xs2 = ts.iter().filter(|x| x.node_type == Node::Cut).collect::<Vec<_>>();
+            // eprintln!("PV, Cut, All = {}, {}, {}", xs0.len(), xs1.len(), xs2.len());
 
             // print!("\n");
             // for (m,mvs,score) in moves.iter() {
@@ -383,7 +346,7 @@ fn main7() {
 
             t += t0.elapsed();
         }
-        println!("\n===\nexplore {} times, done in avg {:.3} seconds.", k, t.as_secs_f64() / k as f64);
+        // println!("\n===\nexplore {} times, done in avg {:.3} seconds.", k, t.as_secs_f64() / k as f64);
 
     } else {
 

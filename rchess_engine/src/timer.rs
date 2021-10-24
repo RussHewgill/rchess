@@ -68,16 +68,47 @@ impl Timer {
         self.time_left[side] -= dt;
     }
 
+    pub fn should_search2(&self, side: Color, depth: Depth) -> bool {
+        if depth <= 2 { return true; }
+        // let d = depth as usize;
+
+        // let n0 = self.nodes[d-1];
+        // let n1 = self.nodes[d-2];
+        // let k = n0 as f64 / n1 as f64;
+        // eprintln!("k = {:?}", k);
+        // let rate = (n0 - n1) as f64 / self.times[d-1];
+        // // eprintln!("n0 = {:?}", n0);
+        // // eprintln!("n1 = {:?}", n1);
+        // eprintln!("rate = {:?} nodes / s", rate);
+        // // let rate = self.nodes[d-1];
+        // if depth <= 3 { return true; }
+
+        let alloc_time = (1.0 - self.settings.safety) * self.settings.clock_time[side] / 40.0
+            + self.settings.increment[side];
+
+        self.time_left[side] > alloc_time
+
+        // false
+
+    }
+
 
     /// https://github.com/Johnson-A/Crabby/blob/master/src/timer.rs
     pub fn should_search(&self, side: Color, depth: Depth) -> bool {
         if depth <= 2 { return true; }
 
+        // let d = (depth - 1) as usize;
         let d = depth as usize;
         let estimate = self.times[d - 1] * self.nodes[d-1] as f64 / self.nodes[d-2] as f64;
 
+
         let alloc_time = (1.0 - self.settings.safety) * self.settings.clock_time[side] / 40.0
             + self.settings.increment[side];
+
+        // eprintln!("estimate = {:?}", estimate);
+        // eprintln!("alloc_time = {:?}", alloc_time);
+        // eprintln!("times[d-1], estimate * 0.3 = {:?}, {:?}", self.times[d-1], estimate * 0.3);
+        // eprintln!("elapsed = {:?}", self.elapsed_f64());
 
         // !self.should_stop() && (self.time_left[side] > 0.0)
 

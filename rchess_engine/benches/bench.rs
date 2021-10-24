@@ -32,7 +32,7 @@ pub fn crit_bench_1(c: &mut Criterion) {
     let _     = g.recalc_gameinfo_mut(&ts);
 
     let stop = Arc::new(AtomicBool::new(false));
-    let timesettings = TimeSettings::new_f64(5., 0.1);
+    let timesettings = TimeSettings::new_f64(2., 0.1);
     let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
 
     let mut group = c.benchmark_group("group");
@@ -43,7 +43,12 @@ pub fn crit_bench_1(c: &mut Criterion) {
     // group.bench_function("rank moves", |b| b.iter(|| ex.explore(&ts, ex.depth)));
 
     group.bench_function("rank moves iter", |b| b.iter(|| {
-        let (m,stats) = ex.explore(&ts, None);
+        // let (m,stats) = ex.explore(&ts, None);
+        let (m,stats) = ex.iterative_deepening(&ts, false);
+    }));
+
+    group.bench_function("rank moves lazy_smp", |b| b.iter(|| {
+        let (m,stats) = ex.lazy_smp(&ts, false);
     }));
 
     // group.bench_function("search_all", |b| b.iter(|| {

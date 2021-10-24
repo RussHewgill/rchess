@@ -43,14 +43,14 @@ impl SearchStats {
         println!("rate         = {:.1} nodes/s", (self.nodes as f64 / 1000.) / dt.as_secs_f64());
         println!("max depth    = {}", self.max_depth);
         println!("leaves       = {}", Self::_print(self.leaves as i32));
-        println!("quiet_leaves = {}", Self::_print(self.quiet_leaves as i32));
+        // println!("quiet_leaves = {}", Self::_print(self.quiet_leaves as i32));
         println!("checkmates   = {}", Self::_print(self.checkmates as i32));
-        println!("stalemates   = {}", Self::_print(self.stalemates as i32));
+        // println!("stalemates   = {}", Self::_print(self.stalemates as i32));
         println!("hits         = {}", Self::_print(self.tt_hits as i32));
         println!("misses       = {}", Self::_print(self.tt_misses as i32));
-        println!("qt_nodes     = {}", Self::_print(self.qt_nodes as i32));
-        println!("qt_hits      = {}", Self::_print(self.qt_hits as i32));
-        println!("qt_misses    = {}", Self::_print(self.qt_misses as i32));
+        // println!("qt_nodes     = {}", Self::_print(self.qt_nodes as i32));
+        // println!("qt_hits      = {}", Self::_print(self.qt_hits as i32));
+        // println!("qt_misses    = {}", Self::_print(self.qt_misses as i32));
 
         // println!("alpha      = {:?}", self.alpha);
         // println!("beta       = {:?}", self.beta);

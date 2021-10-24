@@ -1,4 +1,5 @@
 
+use crate::explore::Explorer;
 use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
@@ -44,6 +45,25 @@ pub type TransTable = Arc<DashMap<Zobrist, SearchInfo>>;
 //         // unimplemented!()
 //     }
 // }
+
+impl Explorer {
+
+    pub fn tt_insert_deepest(&self, zb: Zobrist, si: SearchInfo) -> bool {
+        let d = si.depth_searched;
+        let nt = si.node_type;
+        if let Some(prev_si) = self.trans_table.insert(zb, si) {
+            if d < prev_si.depth_searched {
+                self.trans_table.insert(zb, prev_si);
+                return true;
+            } else if prev_si.node_type != Node::PV && nt == Node::PV {
+                self.trans_table.insert(zb, prev_si);
+                return true;
+            }
+        }
+        false
+    }
+
+}
 
 #[derive(Debug,Default)]
 pub struct TTStats {

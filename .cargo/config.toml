@@ -1,0 +1,14 @@
+[build]
+rustflags = [
+    "-C",
+    # "-Ctarget-cpu=native",
+    "link-arg=-fuse-ld=lld",
+    ]
+
+[target.x86_64-unknown-linux-gnu]
+rustflags = [
+    "-Ctarget-cpu=native",
+    # "-Clink-arg=-fuse-ld=lld"
+]
+
+

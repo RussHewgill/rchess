@@ -19,3 +19,8 @@ opt-level = 3
 debug = 1
 incremental = true
 
+# https://deterministic.space/high-performance-rust.html
+lto = "thin"
+# lto = "fat"
+# codegen-units = 1
+
