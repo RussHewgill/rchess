@@ -222,7 +222,8 @@ fn main7() {
     // let fen = "8/6B1/p5p1/Pp4kp/1P5r/5P1Q/4q1PK/8 w - - 0 32"   // Qxh4; id "zugzwang.004";
     // let fen = "8/8/1p1r1k2/p1pPN1p1/P3KnP1/1P6/8/3R4 b - - 0 1" // Nxd5; id "zugzwang.005";
 
-    let fen = STARTPOS;
+    // let fen = STARTPOS;
+    let fen = "5b1r/1P3ppp/3p4/4p1B1/1P6/6PK/4rk1P/2R5 b - - 0 35";
 
     // let ts = Tables::new();
     let ts = Tables::read_from_file("tables.bin").unwrap();
@@ -264,15 +265,15 @@ fn main7() {
 
             println!("g = {:?}", g);
 
-            // let n = 25;
-            let n = 10;
+            let n = 25;
+            // let n = 10;
             // let n = 5;
 
             ex.max_depth = n;
 
             ex.timer.settings = TimeSettings::new_f64(
                 1.0,
-                5.0,
+                2.0,
             );
 
             env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))

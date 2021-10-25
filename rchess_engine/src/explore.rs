@@ -11,7 +11,7 @@ use std::sync::atomic::AtomicU8;
 use std::sync::atomic::Ordering::SeqCst;
 use std::time::{Instant,Duration};
 
-use crossbeam::channel::{Sender,Receiver,RecvError};
+use crossbeam::channel::{Sender,Receiver,RecvError,TryRecvError};
 use crossbeam::thread::ScopedJoinHandle;
 
 use either::Either;
@@ -74,7 +74,10 @@ impl Explorer {
         // (moves.get(0).map(|x| x.0),stats)
 
         let (moves,stats) = self.lazy_smp(&ts, false, false);
-        (moves.get(0).map(|x| x.0),stats)
+        let mv = moves.get(0).map(|x| x.0);
+        debug!("explore: best move = {:?}", mv);
+        (mv,stats)
+
 
         // unimplemented!()
         // if iterative {
@@ -428,27 +431,51 @@ impl Explorer {
             let thread_counter2 = thread_counter.clone();
             let search_id       = Arc::new(AtomicU8::new(0));
             let stop            = Arc::new(AtomicBool::new(false));
+            let stop2           = stop.clone();
             let best_depth      = Arc::new(AtomicU8::new(0));
             let best_depth2     = best_depth.clone();
 
             let max_threads = np_cpus;
 
+            // s.spawn(move |_| loop {
+            //     match rx.recv() {
+            //         Err(RecvError)    => {
+            //             trace!("Breaking thread counter loop");
+            //             break;
+            //         },
+            //         Ok((depth,scores)) => {
+            //             if depth > best_depth2.load(SeqCst) {
+            //                 best_depth2.store(depth,SeqCst);
+            //                 let mut w = out.write();
+            //                 *w = (depth, scores);
+            //             }
+            //             thread_counter2.fetch_sub(1, SeqCst);
+            //             trace!("decrementing thread counter, new val = {}", thread_counter2.load(SeqCst));
+            //         },
+            //     }
+            // });
+
             s.spawn(move |_| loop {
-                match rx.recv() {
-                    Err(RecvError)    => {
-                        trace!("Breaking thread counter loop");
+                match rx.try_recv() {
+                    Err(TryRecvError::Empty)    => {
+                        std::thread::sleep(Duration::from_millis(10));
+                    },
+                    Err(TryRecvError::Disconnected)    => {
+                        trace!("Breaking thread counter loop (Disconnect)");
                         break;
                     },
                     Ok((depth,scores)) => {
-
                         if depth > best_depth2.load(SeqCst) {
                             best_depth2.store(depth,SeqCst);
                             let mut w = out.write();
                             *w = (depth, scores);
                         }
-
                         thread_counter2.fetch_sub(1, SeqCst);
                         trace!("decrementing thread counter, new val = {}", thread_counter2.load(SeqCst));
+                        if stop2.load(SeqCst) {
+                            trace!("Breaking thread counter loop (Force Stop)");
+                            break;
+                        }
                     },
                 }
             });
@@ -466,7 +493,7 @@ impl Explorer {
             ];
 
             // let mut k = 3;
-            loop {
+            'outer: loop {
                 // if timer.should_search(self.side, depth)
 
                 // let cur_depth = best_depth.load(SeqCst) + 1;
@@ -478,20 +505,29 @@ impl Explorer {
 
                 // if !timer.should_search(self.side, cur_depth) {
                 // if k <= 0 {
-                if cur_depth > self.max_depth {
+                // if cur_depth > self.max_depth {
+                // if best_depth.load(SeqCst) >= self.max_depth + 1 {
+                if best_depth.load(SeqCst) > self.max_depth {
                     let d = best_depth.load(SeqCst);
                     debug!("breaking loop (Depth), d: {}, t0: {:.3}", d, t0.elapsed().as_secs_f64());
                     drop(tx);
-                    break;
-                } else if t0.elapsed() > t_max {
+                    loop {
+                        if t0.elapsed() > t_max {
+                            debug!("breaking loop (Depth -> Time),  d: {}, t0: {:.3}",
+                                   d, t0.elapsed().as_secs_f64());
+                            stop.store(true, SeqCst);
+                            break 'outer;
+                        }
+                    }
+                    // break;
+                }
+                if t0.elapsed() > t_max {
                     let d = best_depth.load(SeqCst);
                     debug!("breaking loop (Time),  d: {}, t0: {:.3}", d, t0.elapsed().as_secs_f64());
                     // Only force threads to stop if out of time
                     stop.store(true, SeqCst);
                     drop(tx);
                     break;
-                } else {
-                    // debug!("continuing loop, t: {:.3}", t0.elapsed().as_secs_f64());
                 }
                 // k -= 1;
 
