@@ -27,7 +27,8 @@ use rayon::prelude::*;
 // use rustc_hash::FxHashMap;
 use evmap::{ReadHandle,WriteHandle};
 
-#[derive(Debug)]
+// #[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Explorer {
     pub side:          Color,
     pub game:          Game,
@@ -35,7 +36,7 @@ pub struct Explorer {
     pub max_depth:     Depth,
     pub timer:         Timer,
     // pub trans_table:   RwTransTable,
-    pub trans_table:   TransTable,
+    // pub trans_table:   TransTable,
     // pub move_table:    Arc<MvTable>,
     // pub trans_table:   RwLock<TransTable>,
     // pub trans_table_r:   ReadHandle<Zobrist, SearchInfo>,
@@ -58,7 +59,7 @@ impl Explorer {
             game,
             max_depth,
             timer:          Timer::new(side, should_stop, settings),
-            trans_table:    TransTable::default(),
+            // trans_table:    TransTable::default(),
             // move_table:     Arc::new(MvTable::default()),
         }
     }
@@ -122,7 +123,7 @@ impl Explorer {
         // self.trans_table_w.purge();
         // self.trans_table_w.refresh();
 
-        self.trans_table.clear();
+        // self.trans_table.clear();
 
         let mut timer = self.timer.clone();
         timer.reset();
@@ -173,17 +174,29 @@ impl Explorer {
             //     ((*mv,mv_seq,score),stats)
             // }).unzip();
 
-            let stop            = Arc::new(AtomicBool::new(false));
+            let stop = Arc::new(AtomicBool::new(false));
+
+            // let (tt_r, tt_w) = evmap::new();
+            // let tt_w = Arc::new(Mutex::new(tt_w));
 
             #[cfg(feature = "par")]
             {
+                // let gs2 = gs.into_iter().map(|(mv,g2)| {
+                //     ((mv,g2),tt_r.clone(),tt_w.clone())
+                // }).collect::<Vec<_>>();
+                // (out,ss) = gs2.par_iter().map(|((mv,g2),tt_r2,tt_w2)| {
                 (out,ss) = gs.par_iter().map(|(mv,g2)| {
+                    let (tt_r, tt_w) = evmap::new();
+                    let tt_w = Arc::new(Mutex::new(tt_w));
                     let mut stats = SearchStats::default();
                     let (mut mv_seq,score) = {
                         let alpha = i32::MIN;
                         let beta  = i32::MAX;
                         self._ab_search(
-                            &ts, &g2, depth, 1, alpha, beta, false, &mut stats, stop.clone(), *mv)
+                            &ts, &g2, depth, 1, alpha, beta, false, &mut stats, stop.clone(), *mv,
+                            // &tt_r2, tt_w2,
+                            &tt_r, tt_w,
+                        )
                             .unwrap()
                     };
                     mv_seq.push(*mv);
@@ -255,8 +268,8 @@ impl Explorer {
         stop:             Arc<AtomicBool>,
         tx:               Sender<(Depth,Vec<(Move,Vec<Move>,Score)>)>,
         stats:            Arc<RwLock<SearchStats>>,
-        // tt_r:             TTRead,
-        // tt_w:             Arc<Mutex<TTWrite>>,
+        tt_r:             TTRead,
+        tt_w:             TTWrite,
     // ) -> (Depth,Vec<(Move,Vec<Move>,Score)>) {
     ) {
 
@@ -288,7 +301,7 @@ impl Explorer {
         let mut ss = SearchStats::default();
         for (mv,g2) in gs.into_iter() {
 
-            match self.check_tt(&ts, &g2, depth, false, &mut ss) {
+            match self.check_tt(&ts, &g2, depth, false, &tt_r, &mut ss) {
                 Some((SICanUse::UseScore,si)) => {
                     out.push((mv,si.moves,si.score));
                     continue;
@@ -300,12 +313,17 @@ impl Explorer {
                 let alpha = i32::MIN;
                 let beta  = i32::MAX;
                 self._ab_search(
-                    &ts, &g2, depth, 1, alpha, beta, false, &mut ss, stop.clone(), mv)
+                    // &ts, &g2, depth, 1, alpha, beta, false, &mut ss, stop.clone(), mv)
+                    &ts, &g2, depth, 1, alpha, beta, false, &mut ss, stop.clone(), mv,
+                    &tt_r, tt_w.clone(),
+                )
             } {
                 mv_seq.push(mv);
                 mv_seq.reverse();
 
-                self.tt_insert_deepest(
+                // self.tt_insert_deepest(
+                Self::tt_insert_deepest(
+                    &tt_r, tt_w.clone(),
                     g2.zobrist, SearchInfo::new(mv, mv_seq.clone(), depth, Node::Root, score));
 
                 out.push((mv,mv_seq,score));
@@ -351,7 +369,7 @@ impl Explorer {
         // 12, 6
         let (n_cpus,np_cpus)  = (num_cpus::get() as u8,num_cpus::get_physical() as u8);
 
-        self.trans_table.clear();
+        // self.trans_table.clear();
 
         // self.trans_table_w.purge();
         // self.trans_table_w.refresh();
@@ -407,6 +425,9 @@ impl Explorer {
         if print { eprintln!("threadcount = {:?}", threadcount); }
 
         let out = Arc::new(RwLock::new((0,vec![])));
+
+        let (tt_r, tt_w) = evmap::new();
+        let tt_w = Arc::new(Mutex::new(tt_w));
 
         crossbeam::scope(|s| {
 
@@ -486,10 +507,13 @@ impl Explorer {
                     let stats2 = stats.clone();
                     let tx2    = tx.clone();
                     let stop2  = stop.clone();
+                    let tt_r2  = tt_r.clone();
+                    let tt_w2  = tt_w.clone();
 
                     s.spawn(move |_| {
                         trace!("spawning thread: (sid: {}) = cur_depth {:?}", sid, cur_depth);
-                        self._lazy_smp_single(&ts, gs2, cur_depth, stop2, tx2, stats2);
+                        self._lazy_smp_single(
+                            &ts, gs2, cur_depth, stop2, tx2, stats2, tt_r2, tt_w2);
                     });
 
                     thread_counter.fetch_add(1, SeqCst);
@@ -629,6 +653,9 @@ impl Explorer {
             out.reverse();
         }
 
+        let k = tt_r.len();
+        eprintln!("k = {:?}", k);
+
         (out,stats)
     }
 
@@ -645,14 +672,15 @@ impl Explorer {
                 g:              &Game,
                 depth:          Depth,
                 maximizing:     bool,
+                tt_r:           &TTRead,
                 mut stats:      &mut SearchStats,
     ) -> Option<(SICanUse,SearchInfo)> {
         // if let Some(si) = self.trans_table.tt_get(&g.zobrist) {
 
         // if g.zobrist == Zobrist(0x1eebfbac03c62e9d) { println!("wat wat 0 {}", depth); }
 
-        if let Some(si) = self.trans_table.get(&g.zobrist) {
-        // if let Some(si) = self.trans_table_r.get(&g.zobrist) {
+        // if let Some(si) = self.trans_table.get(&g.zobrist) {
+        if let Some(si) = tt_r.get_one(&g.zobrist) {
 
             // if si.depth_searched == depth {
             if si.depth_searched >= depth {
@@ -691,6 +719,8 @@ impl Explorer {
         mut stats:          &mut SearchStats,
         stop:               Arc<AtomicBool>,
         mv0:                Move,
+        tt_r:               &TTRead,
+        tt_w:               TTWrite,
     ) -> Option<(Vec<Move>, Score)> {
 
         // if stop.load(SeqCst) {
@@ -701,7 +731,8 @@ impl Explorer {
         let moves: Vec<Move> = match moves {
             Outcome::Checkmate(c) => {
                 let score = 100_000_000 - k as Score;
-                if !self.tt_contains(&g.zobrist) {
+                // if !self.tt_contains(&g.zobrist) {
+                if !tt_r.contains_key(&g.zobrist) {
                     stats.leaves += 1;
                     stats.checkmates += 1;
                 }
@@ -714,7 +745,8 @@ impl Explorer {
             },
             Outcome::Stalemate    => {
                 let score = -100_000_000 + k as Score;
-                if !self.tt_contains(&g.zobrist) {
+                // if !self.tt_contains(&g.zobrist) {
+                if !tt_r.contains_key(&g.zobrist) {
                     stats.leaves += 1;
                     stats.stalemates += 1;
                 }
@@ -726,7 +758,8 @@ impl Explorer {
         if depth == 0 {
             let score = g.evaluate(&ts).sum();
 
-            if !self.tt_contains(&g.zobrist) {
+            // if !self.tt_contains(&g.zobrist) {
+            if !tt_r.contains_key(&g.zobrist) {
                 stats.leaves += 1;
             }
             if self.side == Black {
@@ -743,7 +776,7 @@ impl Explorer {
             // let mut gs0 = moves.into_par_iter().flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, m) {
             let mut gs0 = moves.into_iter().flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, m) {
                 let mut ss = SearchStats::default();
-                let tt = self.check_tt(&ts, &g2, depth, maximizing, &mut ss);
+                let tt = self.check_tt(&ts, &g2, depth, maximizing, &tt_r, &mut ss);
                 // Some(((m,g2,tt), ss))
                 *stats = *stats + ss;
                 Some((m,g2,tt))
@@ -778,7 +811,8 @@ impl Explorer {
 
         let mut node_type = Node::PV;
 
-        let moves = match self.trans_table.get(&g.zobrist) {
+        // let moves = match self.trans_table.get(&g.zobrist) {
+        let moves = match tt_r.get_one(&g.zobrist) {
             None     => {},
             Some(si) => {
                 match si.node_type {
@@ -855,7 +889,8 @@ impl Explorer {
         //     *stats += ss;
 
             let zb = g2.zobrist;
-            if !self.tt_contains(&zb) {
+            // if !self.tt_contains(&zb) {
+            if !tt_r.contains_key(&g.zobrist) {
                 stats.nodes += 1;
             }
 
@@ -874,7 +909,9 @@ impl Explorer {
                 _ => {
                     let (mv_seq,score) = self._ab_search(
                         &ts, &g2, depth - 1, k + 1,
-                        alpha, beta, !maximizing, &mut stats, stop.clone(), *mv)?;
+                        alpha, beta, !maximizing, &mut stats, stop.clone(), *mv,
+                        tt_r, tt_w.clone(),
+                    )?;
                     (false,mv_seq,score)
                 },
             };
@@ -916,7 +953,8 @@ impl Explorer {
             let mut mv_seq = mv_seq.clone();
             // mv_seq.push(*mv);
             // mv_seq.push(mv0);
-            self.tt_insert_deepest(
+            Self::tt_insert_deepest(
+                &tt_r, tt_w,
             // self.trans_table.insert(
                 // zb, SearchInfo::new(mv, depth, Node::PV, val.1));
                 // *zb, SearchInfo::new(*mv, depth, Node::PV, val.1));
@@ -1049,15 +1087,16 @@ impl Explorer {
             Err(win)                => panic!("other win? {:?}: {:?}\n{:?}", mv0, win, g_prev),
         };
 
-        /// lookup game in trans table
-        let node_type = match self.check_tt(&ts, &g, depth, maximizing, &mut stats) {
-            Some((SICanUse::UseScore,si))    => {
-                /// use saved score if appropriate
-                return (si.moves.clone(), si.score);
-            },
-            Some((SICanUse::UseOrdering,si)) => Some(si.node_type),
-            None                             => None,
-        };
+        // /// lookup game in trans table
+        // let node_type = match self.check_tt(&ts, &g, depth, maximizing, &mut stats) {
+        //     Some((SICanUse::UseScore,si))    => {
+        //         /// use saved score if appropriate
+        //         return (si.moves.clone(), si.score);
+        //     },
+        //     Some((SICanUse::UseOrdering,si)) => Some(si.node_type),
+        //     None                             => None,
+        // };
+        // let node_type = None;
 
         /// Search for all legal moves, return score if none found
         let moves = match g.search_all(&ts, None) {

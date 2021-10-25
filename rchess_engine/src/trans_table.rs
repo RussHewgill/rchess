@@ -5,7 +5,7 @@ use crate::tables::*;
 use crate::evaluate::*;
 
 // use arrayvec::ArrayVec;
-use parking_lot::RwLock;
+use parking_lot::{RwLock,Mutex};
 use rustc_hash::FxHashMap;
 use std::hash::Hasher;
 use std::sync::Arc;
@@ -18,7 +18,7 @@ use evmap_derive::ShallowCopy;
 use dashmap::{DashMap,DashSet};
 
 pub type TTRead  = ReadHandle<Zobrist, SearchInfo>;
-pub type TTWrite = WriteHandle<Zobrist, SearchInfo>;
+pub type TTWrite = Arc<Mutex<WriteHandle<Zobrist, SearchInfo>>>;
 
 // pub type TransTable = FxHashMap<Zobrist, SearchInfo>;
 pub type TransTable = Arc<DashMap<Zobrist, SearchInfo>>;
@@ -64,29 +64,71 @@ impl Explorer {
     //     unimplemented!()
     // }
 
-    pub fn tt_insert_deepest(&self, zb: Zobrist, si: SearchInfo) -> bool {
+    pub fn tt_insert_deepest(
+        tt_r: &TTRead, tt_w: TTWrite, zb: Zobrist, si: SearchInfo) -> bool {
 
         // if si.depth_searched as usize != si.moves.len() {
         //     eprintln!("si = {:?}", si);
         // }
 
-        let d = si.depth_searched;
+        // let w = tt_w.lock();
+
+        let d  = si.depth_searched;
         let nt = si.node_type;
-        if let Some(prev_si) = self.trans_table.insert(zb, si) {
+
+        if let Some(prev_si) = tt_r.get_one(&zb) {
             if d < prev_si.depth_searched {
-                self.trans_table.insert(zb, prev_si);
+                // self.trans_table.insert(zb, prev_si);
                 return true;
             } else if prev_si.node_type != Node::PV && nt == Node::PV {
-                self.trans_table.insert(zb, prev_si);
+                // self.trans_table.insert(zb, prev_si);
                 return true;
             }
         }
+
+        {
+            let mut w = tt_w.lock();
+            w.clear(zb);
+            // w.remove(&zb, prev_si);
+            w.insert(zb, si);
+            w.refresh();
+        }
+
+        // if let Some(prev_si) = w.insert(zb, si) {
+        //     if d < prev_si.depth_searched {
+        //         self.trans_table.insert(zb, prev_si);
+        //         return true;
+        //     } else if prev_si.node_type != Node::PV && nt == Node::PV {
+        //         self.trans_table.insert(zb, prev_si);
+        //         return true;
+        //     }
+        // }
+
         false
     }
 
-    pub fn tt_contains(&self, zb: &Zobrist) -> bool {
-        self.trans_table.contains_key(&zb)
-    }
+    // pub fn tt_insert_deepest(&self, zb: Zobrist, si: SearchInfo) -> bool {
+    //     // if si.depth_searched as usize != si.moves.len() {
+    //     //     eprintln!("si = {:?}", si);
+    //     // }
+    //     // let d = si.depth_searched;
+    //     // let nt = si.node_type;
+    //     // if let Some(prev_si) = self.trans_table.insert(zb, si) {
+    //     //     if d < prev_si.depth_searched {
+    //     //         self.trans_table.insert(zb, prev_si);
+    //     //         return true;
+    //     //     } else if prev_si.node_type != Node::PV && nt == Node::PV {
+    //     //         self.trans_table.insert(zb, prev_si);
+    //     //         return true;
+    //     //     }
+    //     // }
+    //     // false
+    // }
+
+    // pub fn tt_contains(&self, zb: &Zobrist) -> bool {
+    //     // self.trans_table.contains_key(&zb)
+    //     unimplemented!()
+    // }
 
 }
 

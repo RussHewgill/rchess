@@ -254,6 +254,7 @@ fn main7() {
             // n = 20;
             // n = 10;
             let n = 6;
+            // let n = 4;
 
             ex.max_depth = n;
 
@@ -286,15 +287,15 @@ fn main7() {
             //     eprintln!("m = {:?}", m);
             // }
 
-            // println!("====");
-            // let t0 = std::time::Instant::now();
-            // let (moves,stats1) = ex.iterative_deepening(&ts, !true, true);
-            // let (mv,mvs,_) = moves.get(0).unwrap();
-            // println!("m #{} = {:?}", q, mv);
-            // // println!("good = g4e3");
-            // println!("explore iterative (depth: {}) done in {:.3} seconds.",
-            //          stats1.max_depth, t0.elapsed().as_secs_f64());
-            // stats1.print(t0.elapsed());
+            println!("====");
+            let t0 = std::time::Instant::now();
+            let (moves,stats1) = ex.iterative_deepening(&ts, !true, true);
+            let (mv,mvs,_) = moves.get(0).unwrap();
+            println!("m #{} = {:?}", q, mv);
+            // println!("good = g4e3");
+            println!("explore iterative (depth: {}) done in {:.3} seconds.",
+                     stats1.max_depth, t0.elapsed().as_secs_f64());
+            stats1.print(t0.elapsed());
 
             // print!("\n");
             // for m in mvs.iter() {
