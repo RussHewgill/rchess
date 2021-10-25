@@ -7,44 +7,56 @@ use crate::evaluate::*;
 // use arrayvec::ArrayVec;
 use parking_lot::RwLock;
 use rustc_hash::FxHashMap;
+use std::hash::Hasher;
 use std::sync::Arc;
 
-// use evmap::{ReadHandle,WriteHandle};
+use std::hash::Hash;
+
+use evmap::{ReadHandle,WriteHandle};
 use evmap_derive::ShallowCopy;
 // use rustc_hash::Fx;
-use dashmap::DashMap;
+use dashmap::{DashMap,DashSet};
 
-// #[derive(Debug,Default)]
-// // pub struct RwTransTable(pub RwLock<TransTable>, pub RwLock<TTStats>);
-// pub struct RwTransTable {
-//     // pub trans_table: RwLock<TransTable>,
-//     // pub quiescent:   RwLock<TransTable>,
-//     pub trans_table: RwLock<FxHashMap<Zobrist, SearchInfo>>,
-//     pub quiescent:   RwLock<FxHashMap<Zobrist, SearchInfo>>,
-// }
+pub type TTRead  = ReadHandle<Zobrist, SearchInfo>;
+pub type TTWrite = WriteHandle<Zobrist, SearchInfo>;
 
 // pub type TransTable = FxHashMap<Zobrist, SearchInfo>;
 pub type TransTable = Arc<DashMap<Zobrist, SearchInfo>>;
 
-// #[derive(Debug,Default)]
-// pub struct TransTable {
-//     pub map:    FxHashMap<Zobrist, SearchInfo>,
-//     // pub map_r:    ReadHandle<Zobrist, SearchInfo>,
-//     // pub map_w:    WriteHandle<Zobrist, SearchInfo>,
-// }
+#[derive(Debug,Default,Clone)]
+pub struct MvTable {
+    set: DashSet<u64>,
+}
 
-// impl Default for TransTable {
-//     fn default() -> Self {
-//         let (r,w) = evmap::Options::default()
-//             // .with_hasher()
-//             .construct();
-//         Self {
-//             map_r: r,
-//             map_w: w,
-//         }
-//         // unimplemented!()
-//     }
-// }
+impl MvTable {
+
+    fn make_key(depth: Depth, zb: Zobrist, mv: Move) -> u64 {
+        let mut out = 0;
+        out |= zb.0;
+        out |= depth as u64;
+        let m = {
+            let mut h = rustc_hash::FxHasher::default();
+            mv.hash(&mut h);
+            h.finish()
+        };
+        out |= m;
+        out
+    }
+
+    /// Returns true if key was already in set
+    pub fn insert(&self, depth: Depth, zb: Zobrist, mv: Move) -> bool {
+        self.set.insert(Self::make_key(depth, zb, mv))
+    }
+
+    pub fn remove(&self, depth: Depth, zb: Zobrist, mv: Move) {
+        self.set.remove(&Self::make_key(depth, zb, mv));
+    }
+
+    pub fn contains(&self, depth: Depth, zb: Zobrist, mv: Move) -> bool {
+        self.set.contains(&Self::make_key(depth, zb, mv))
+    }
+
+}
 
 impl Explorer {
 
@@ -70,6 +82,10 @@ impl Explorer {
             }
         }
         false
+    }
+
+    pub fn tt_contains(&self, zb: &Zobrist) -> bool {
+        self.trans_table.contains_key(&zb)
     }
 
 }
@@ -119,6 +135,7 @@ pub enum Node {
     All, // UpperBound
     Cut, // LowerBound
     Quiet, // XXX: ?
+    Root, // XXX: ??
     // NodeAll(Score), // Score = upper bound
     // NodeCut(Score), // Score = lower bound
 }

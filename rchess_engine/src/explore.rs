@@ -9,7 +9,7 @@ pub use crate::searchstats::*;
 
 use std::sync::atomic::AtomicU8;
 use std::sync::atomic::Ordering::SeqCst;
-use std::time::Duration;
+use std::time::{Instant,Duration};
 
 use crossbeam::channel::{Sender,Receiver,RecvError};
 use crossbeam::thread::ScopedJoinHandle;
@@ -18,6 +18,8 @@ use either::Either;
 
 use itertools::Itertools;
 use parking_lot::{Mutex,RwLock};
+
+use dashmap::{DashMap,DashSet};
 
 use rand::prelude::{SliceRandom,thread_rng};
 use rayon::prelude::*;
@@ -32,9 +34,9 @@ pub struct Explorer {
     // pub stats:      ABStats
     pub max_depth:     Depth,
     pub timer:         Timer,
-    pub parallel:      bool,
     // pub trans_table:   RwTransTable,
     pub trans_table:   TransTable,
+    // pub move_table:    Arc<MvTable>,
     // pub trans_table:   RwLock<TransTable>,
     // pub trans_table_r:   ReadHandle<Zobrist, SearchInfo>,
     // pub trans_table_w:   WriteHandle<Zobrist, SearchInfo>,
@@ -54,14 +56,10 @@ impl Explorer {
         Self {
             side,
             game,
-            // stats: ABStats::new(),
             max_depth,
-            timer: Timer::new(side, should_stop, settings),
-            parallel: true,
-            trans_table: TransTable::default(),
-            // trans_table: tt,
-            // trans_table_r: tr,
-            // trans_table_w: tw,
+            timer:          Timer::new(side, should_stop, settings),
+            trans_table:    TransTable::default(),
+            // move_table:     Arc::new(MvTable::default()),
         }
     }
 }
@@ -186,6 +184,7 @@ impl Explorer {
                         let beta  = i32::MAX;
                         self._ab_search(
                             &ts, &g2, depth, 1, alpha, beta, false, &mut stats, stop.clone(), *mv)
+                            .unwrap()
                     };
                     mv_seq.push(*mv);
                     mv_seq.reverse();
@@ -256,6 +255,8 @@ impl Explorer {
         stop:             Arc<AtomicBool>,
         tx:               Sender<(Depth,Vec<(Move,Vec<Move>,Score)>)>,
         stats:            Arc<RwLock<SearchStats>>,
+        // tt_r:             TTRead,
+        // tt_w:             Arc<Mutex<TTWrite>>,
     // ) -> (Depth,Vec<(Move,Vec<Move>,Score)>) {
     ) {
 
@@ -263,29 +264,61 @@ impl Explorer {
         // let mut rng = thread_rng();
         // gs.shuffle(&mut rng);
 
-        let (out,ss): (Vec<(Move,Vec<Move>,Score)>,SearchStats) = {
-            let mut stats = SearchStats::default();
-            let out = gs.into_iter().map(|(mv,g2)| {
-                let mut ss = SearchStats::default();
-                let (mut mv_seq,score) = {
-                    let alpha = i32::MIN;
-                    let beta  = i32::MAX;
-                    self._ab_search(
-                        &ts, &g2, depth, 1, alpha, beta, false, &mut stats, stop.clone(), mv)
-                };
+        // let (out,ss): (Vec<(Move,Vec<Move>,Score)>,SearchStats) = {
+        //     let mut stats = SearchStats::default();
+        //     let out = gs.into_iter().map(|(mv,g2)| {
+        //         let mut ss = SearchStats::default();
+        //         let (mut mv_seq,score) = {
+        //             let alpha = i32::MIN;
+        //             let beta  = i32::MAX;
+        //             self._ab_search(
+        //                 &ts, &g2, depth, 1, alpha, beta, false, &mut stats, stop.clone(), mv)
+        //                 .unwrap()
+        //         };
+        //         mv_seq.push(mv);
+        //         mv_seq.reverse();
+        //         stats = stats + ss;
+        //         (mv,mv_seq,score)
+        //     }).collect();
+        //     (out,stats)
+        // };
 
+        let mut out = vec![];
+
+        let mut ss = SearchStats::default();
+        for (mv,g2) in gs.into_iter() {
+
+            match self.check_tt(&ts, &g2, depth, false, &mut ss) {
+                Some((SICanUse::UseScore,si)) => {
+                    out.push((mv,si.moves,si.score));
+                    continue;
+                },
+                _ => {},
+            }
+
+            if let Some((mut mv_seq,score)) = {
+                let alpha = i32::MIN;
+                let beta  = i32::MAX;
+                self._ab_search(
+                    &ts, &g2, depth, 1, alpha, beta, false, &mut ss, stop.clone(), mv)
+            } {
                 mv_seq.push(mv);
                 mv_seq.reverse();
-                stats = stats + ss;
-                (mv,mv_seq,score)
-            }).collect();
 
-            (out,stats)
-        };
+                self.tt_insert_deepest(
+                    g2.zobrist, SearchInfo::new(mv, mv_seq.clone(), depth, Node::Root, score));
 
-        let mut s = stats.write();
-        *s = *s + ss;
-        s.max_depth = depth;
+                out.push((mv,mv_seq,score));
+            } else {
+                break;
+            }
+        }
+
+        {
+            let mut s = stats.write();
+            *s = *s + ss;
+            s.max_depth = depth;
+        }
 
         // let d = results.read().0;
         // if depth > d {
@@ -304,7 +337,7 @@ impl Explorer {
         //     *s = *s + ss;
         // }
 
-        debug!("sending tx, depth = {}", depth);
+        trace!("sending tx, depth = {}", depth);
         tx.send((depth,out)).unwrap();
         drop(tx);
 
@@ -328,8 +361,8 @@ impl Explorer {
 
         let mut depth = 1;
 
-        let results: Arc<RwLock<(Depth,Vec<(Move,Vec<Move>,Score)>)>> =
-            Arc::new(RwLock::new((depth,vec![])));
+        // let results: Arc<RwLock<(Depth,Vec<(Move,Vec<Move>,Score)>)>> =
+        //     Arc::new(RwLock::new((depth,vec![])));
 
         let stats: Arc<RwLock<SearchStats>> =
             Arc::new(RwLock::new(SearchStats::default()));
@@ -370,15 +403,14 @@ impl Explorer {
             2,
             1,
         ];
-        let depths = vec![
-            0,
-            1,
-            2,
-        ];
 
         if print { eprintln!("threadcount = {:?}", threadcount); }
 
+        let out = Arc::new(RwLock::new((0,vec![])));
+
         crossbeam::scope(|s| {
+
+            let out = out.clone();
 
             // let (tx,rx): (Sender<ScopedJoinHandle<(Depth,Vec<(Move,Vec<Move>,Score)>)>>,
             //               Receiver<ScopedJoinHandle<(Depth,Vec<(Move,Vec<Move>,Score)>)>>) =
@@ -394,33 +426,60 @@ impl Explorer {
             let thread_counter2 = thread_counter.clone();
             let search_id       = Arc::new(AtomicU8::new(0));
             let stop            = Arc::new(AtomicBool::new(false));
+            let best_depth      = Arc::new(AtomicU8::new(0));
+            let best_depth2     = best_depth.clone();
 
             let max_threads = np_cpus;
 
             s.spawn(move |_| loop {
                 match rx.recv() {
-                    Err(RecvError) => {
-                        debug!("Breaking thread counter loop");
+                    Err(RecvError)    => {
+                        trace!("Breaking thread counter loop");
                         break;
                     },
-                    Ok(_)          => {
+                    Ok((depth,scores)) => {
+
+                        if depth > best_depth2.load(SeqCst) {
+                            best_depth2.store(depth,SeqCst);
+                            let mut w = out.write();
+                            *w = (depth, scores);
+                        }
+
                         thread_counter2.fetch_sub(1, SeqCst);
-                        debug!("decrementing thread counter, new val = {}", thread_counter2.load(SeqCst));
+                        trace!("decrementing thread counter, new val = {}", thread_counter2.load(SeqCst));
                     },
                 }
             });
 
-            let mut k = 3;
+            // let t0 = Instant::now();
+            // let t_max = Duration::from_secs_f64(2.);
+
+            let depths = vec![
+                // 0, 1, 0, 2, 0, 1,
+                2, 1, 0, 0, 1, 0,
+            ];
+
+            // let mut k = 3;
             loop {
                 // if timer.should_search(self.side, depth)
 
-                // if !timer.should_search2(self.side, depth) {
-                if k <= 0 {
-                    stop.store(true, Ordering::Relaxed);
+                // let cur_depth = best_depth.load(SeqCst) + 1;
+                // let tc        = thread_counter.load(SeqCst);
+
+                let sid       = search_id.load(SeqCst);
+                // let cur_depth = depth + 1 + sid.trailing_zeros() as u8;
+                let cur_depth = best_depth.load(SeqCst) + 1 + depths[sid as usize];
+
+                // if !timer.should_search(self.side, cur_depth) {
+                // if k <= 0 {
+                // if t0.elapsed() > t_max {
+                if cur_depth > self.max_depth {
+                    trace!("breaking thread loop");
+                    stop.store(true, SeqCst);
                     drop(tx);
                     break;
                 }
-                k -= 1;
+                // k -= 1;
 
                 if thread_counter.load(SeqCst) < np_cpus {
                     let gs2    = gs.clone();
@@ -428,27 +487,22 @@ impl Explorer {
                     let tx2    = tx.clone();
                     let stop2  = stop.clone();
 
-                    // let tc = thread_counter.load(SeqCst);
-                    let sid = search_id.load(SeqCst);
-                    let cur_depth = depth + 1 + sid.trailing_zeros() as u8;
-
                     s.spawn(move |_| {
-                        debug!("spawning thread: (sid: {}) = cur_depth {:?}", sid, cur_depth);
+                        trace!("spawning thread: (sid: {}) = cur_depth {:?}", sid, cur_depth);
                         self._lazy_smp_single(&ts, gs2, cur_depth, stop2, tx2, stats2);
                     });
 
                     thread_counter.fetch_add(1, SeqCst);
 
                     search_id.fetch_update(SeqCst, SeqCst, |sid| {
-                        if sid > max_threads {
+                        if sid >= max_threads - 1 {
                             Some(0)
                         } else { Some(sid + 1) }
                     }).unwrap();
 
                 }
 
-                let r = stats.read();
-                timer.update_times(self.side, r.nodes);
+                timer.update_times(self.side, stats.read().nodes);
             }
 
             // {
@@ -555,10 +609,16 @@ impl Explorer {
         //     timer.update_times(self.side, r.nodes);
         // }
 
-        let d = results.read();
-        let mut out = d.1.clone();
+        // let d = results.read();
+        // let mut out = d.1.clone();
+
+        let (d,mut out) = {
+            let r = out.read();
+            r.clone()
+        };
+
         let mut stats = stats.read().clone();
-        stats.max_depth = d.0;
+        stats.max_depth = d;
 
         #[cfg(feature = "par")]
         out.par_sort_unstable_by(|a,b| a.2.cmp(&b.2));
@@ -631,7 +691,7 @@ impl Explorer {
         mut stats:          &mut SearchStats,
         stop:               Arc<AtomicBool>,
         mv0:                Move,
-    ) -> (Vec<Move>, Score) {
+    ) -> Option<(Vec<Move>, Score)> {
 
         // if stop.load(SeqCst) {
         // }
@@ -641,20 +701,24 @@ impl Explorer {
         let moves: Vec<Move> = match moves {
             Outcome::Checkmate(c) => {
                 let score = 100_000_000 - k as Score;
-                stats.leaves += 1;
-                stats.checkmates += 1;
+                if !self.tt_contains(&g.zobrist) {
+                    stats.leaves += 1;
+                    stats.checkmates += 1;
+                }
                 if maximizing {
-                    return (vec![mv0], -score);
+                    return Some((vec![mv0], -score));
                 } else {
-                    return (vec![mv0], score);
+                    return Some((vec![mv0], score));
                 }
 
             },
             Outcome::Stalemate    => {
                 let score = -100_000_000 + k as Score;
-                stats.leaves += 1;
-                stats.stalemates += 1;
-                return (vec![],score);
+                if !self.tt_contains(&g.zobrist) {
+                    stats.leaves += 1;
+                    stats.stalemates += 1;
+                }
+                return Some((vec![],score));
             },
             Outcome::Moves(ms)    => ms,
         };
@@ -662,13 +726,15 @@ impl Explorer {
         if depth == 0 {
             let score = g.evaluate(&ts).sum();
 
-            stats.leaves += 1;
+            if !self.tt_contains(&g.zobrist) {
+                stats.leaves += 1;
+            }
             if self.side == Black {
                 // return (vec![mv0], -score);
-                return (vec![], -score);
+                return Some((vec![], -score));
             } else {
                 // return (vec![mv0], score);
-                return (vec![], score);
+                return Some((vec![], score));
             }
         }
 
@@ -679,18 +745,12 @@ impl Explorer {
                 let mut ss = SearchStats::default();
                 let tt = self.check_tt(&ts, &g2, depth, maximizing, &mut ss);
                 // Some(((m,g2,tt), ss))
+                *stats = *stats + ss;
                 Some((m,g2,tt))
             } else {
                 None
             });
-
-            // let mut gs = gs.map(|x| x.0);
-
-            // stats = stats + 
-            // let ss: SearchInfo = ss.sum();
-
             gs0.collect()
-            // gs
         };
 
         // // #[cfg(not(feature = "par"))]
@@ -773,7 +833,15 @@ impl Explorer {
         //         // (m,g2,tt,score,ss)
         //     });
 
-        for (mv,g2,tt) in gs {
+        // let mut gs2 = vec![];
+        // loop {
+        //     gs.extend_from_slice(&gs2[..]);
+        //     gs2.clear();
+        //     if gs2.len() == 0 { break; }
+        //     gs.clear();
+        // }
+
+        for (mv,g2,tt) in gs.iter() {
         // for (mv,g2,tt) in gs.into_iter() {
         // for (mv,g2,tt,score,ss) in gs2 {
         //     *stats += ss;
@@ -787,7 +855,16 @@ impl Explorer {
         //     *stats += ss;
 
             let zb = g2.zobrist;
-            stats.nodes += 1;
+            if !self.tt_contains(&zb) {
+                stats.nodes += 1;
+            }
+
+            // if self.move_table.contains(depth, zb, *mv) {
+            //     gs2.push((*mv,*g2,tt.clone()));
+            //     continue;
+            // } else {
+            //     self.move_table.insert(depth, zb, *mv);
+            // }
 
             let (can_use,mut mv_seq,score) = match tt {
                 Some((SICanUse::UseScore,si)) => {
@@ -797,7 +874,7 @@ impl Explorer {
                 _ => {
                     let (mv_seq,score) = self._ab_search(
                         &ts, &g2, depth - 1, k + 1,
-                        alpha, beta, !maximizing, &mut stats, stop.clone(), mv);
+                        alpha, beta, !maximizing, &mut stats, stop.clone(), *mv)?;
                     (false,mv_seq,score)
                 },
             };
@@ -814,7 +891,7 @@ impl Explorer {
             // }
 
             let b = self._ab_score(
-                (mv,&g2),
+                (*mv,&g2),
                 (can_use,mv_seq,score),
                 &mut val,
                 depth,
@@ -824,10 +901,14 @@ impl Explorer {
                 mv0);
             if b {
                 node_type = Node::Cut;
+                // self.move_table.remove(depth, zb, *mv);
                 break;
+            } else {
+                // self.move_table.remove(depth, zb, *mv);
             }
 
         }
+
 
         // XXX: depth or depth - 1 ?
         if let Some((zb,mv,mv_seq)) = &val.0 {
@@ -860,7 +941,7 @@ impl Explorer {
         stats.beta = stats.beta.max(beta);
 
         match &val.0 {
-            Some((zb,mv,mv_seq)) => (mv_seq.clone(),val.1),
+            Some((zb,mv,mv_seq)) => Some((mv_seq.clone(),val.1)),
             // _                    => (vec![mv0], val.1),
             _                    => panic!("_ab_search val is None ?"),
         }
@@ -900,7 +981,7 @@ impl Explorer {
             // self.trans_table.insert_replace(
             //     zb, SearchInfo::new(mv, depth, Node::All, val.1));
         } else {
-            if zb == Zobrist(0x1eebfbac03c62e9d) { println!("wat 3"); }
+            // if zb == Zobrist(0x1eebfbac03c62e9d) { println!("wat 3"); }
             if score < val.1 {
                 // if zb == Zobrist(0x1eebfbac03c62e9d) { println!("wat 4"); }
                 // mv_seq.push(mv);

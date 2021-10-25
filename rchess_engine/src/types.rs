@@ -4,8 +4,8 @@ pub use crate::coords::*;
 pub use crate::game::*;
 pub use crate::hashing::*;
 
-pub use log::{debug, error};
-// pub use log::{debug, error, warn, info, trace};
+// pub use log::{debug, error};
+pub use log::{debug, error, warn, info, trace};
 use evmap_derive::ShallowCopy;
 
 pub use self::{Color::*,Piece::*};

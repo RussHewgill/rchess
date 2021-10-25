@@ -39,15 +39,13 @@ fn main() {
 
     // let err_redirect = Redirect::stderr(logfile).unwrap();
 
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
-    // .format(|buf, record| {
-    //     writeln!(buf, "{}")
-    // })
-        .format_timestamp(None)
-        .format_module_path(false)
-        .format_target(false)
-        // .format_level(false)
-        .init();
+    // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
+    // // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("trace"))
+    //     .format_timestamp(None)
+    //     .format_module_path(false)
+    //     .format_target(false)
+    //     // .format_level(false)
+    //     .init();
 
     // rayon::ThreadPoolBuilder::new()
     //     .num_threads(1)
@@ -265,29 +263,43 @@ fn main7() {
                 0.1,
             );
 
+            env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
+            // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("trace"))
+                .format_timestamp(None)
+                .format_module_path(false)
+                .format_target(false)
+            // .format_level(false)
+                .init();
+
+            let t0 = std::time::Instant::now();
             let (mvs,stats0) = ex.lazy_smp(&ts, !true, true);
             let (mv,mvs,_) = mvs.get(0).unwrap();
             println!("m #{} = {:?}", q, mv);
             // println!("good = g4e3");
             // println!("good = c6c4");
-            // stats.print(t0.elapsed());
-            println!("explore lazy_smp  (depth: {}) done in {} seconds.",
+            println!("explore lazy_smp  (depth: {}) done in {:.3} seconds.",
                      stats0.max_depth, t0.elapsed().as_secs_f64());
+            stats0.print(t0.elapsed());
 
-            println!("====");
-            let t0 = std::time::Instant::now();
-            let (moves,stats1) = ex.iterative_deepening(&ts, !true, true);
-            let (mv,mvs,_) = moves.get(0).unwrap();
-            println!("m #{} = {:?}", q, mv);
-            // println!("good = g4e3");
-            // stats.print(t0.elapsed());
-            println!("explore iterative (depth: {}) done in {} seconds.",
-                     stats1.max_depth, t0.elapsed().as_secs_f64());
+            // print!("\n");
+            // for m in mvs.iter() {
+            //     eprintln!("m = {:?}", m);
+            // }
 
-            print!("\n");
-            for m in mvs.iter() {
-                eprintln!("m = {:?}", m);
-            }
+            // println!("====");
+            // let t0 = std::time::Instant::now();
+            // let (moves,stats1) = ex.iterative_deepening(&ts, !true, true);
+            // let (mv,mvs,_) = moves.get(0).unwrap();
+            // println!("m #{} = {:?}", q, mv);
+            // // println!("good = g4e3");
+            // println!("explore iterative (depth: {}) done in {:.3} seconds.",
+            //          stats1.max_depth, t0.elapsed().as_secs_f64());
+            // stats1.print(t0.elapsed());
+
+            // print!("\n");
+            // for m in mvs.iter() {
+            //     eprintln!("m = {:?}", m);
+            // }
 
 
             // let tt = ex.trans_table.clone();
@@ -298,37 +310,35 @@ fn main7() {
 
 
 
-            let ms0 = vec![
-                "g4e3",
-                "g1f3",
-                "e3d1",
-                "e1d1",
-                "d7d5",
-                // "e5d6", // EP
-                // "c7d6",
-            ];
-            let mut g2 = g.clone();
-            for m in ms0.into_iter() {
-                let from = &m[0..2];
-                let to = &m[2..4];
-                let other = &m[4..];
-                let mm = g2.convert_move(from, to, other).unwrap();
-                g2 = g2.make_move_unchecked(&ts, mm).unwrap();
-            }
+            // let ms0 = vec![
+            //     "g4e3",
+            //     "g1f3",
+            //     "e3d1",
+            //     "e1d1",
+            //     "d7d5",
+            //     // "e5d6", // EP
+            //     // "c7d6",
+            // ];
+            // let mut g2 = g.clone();
+            // for m in ms0.into_iter() {
+            //     let from = &m[0..2];
+            //     let to = &m[2..4];
+            //     let other = &m[4..];
+            //     let mm = g2.convert_move(from, to, other).unwrap();
+            //     g2 = g2.make_move_unchecked(&ts, mm).unwrap();
+            // }
+            // let mm = Move::EnPassant {
+            //     from: "E5".into(), to: "D6".into(), capture: "D5".into(), victim: Pawn,
+            // };
+            // let g2 = g2.make_move_unchecked(&ts, mm).unwrap();
+            // let mm = Move::Capture { from: "C7".into(), to: "D6".into(), pc: Pawn, victim: Pawn };
+            // let g2 = g2.make_move_unchecked(&ts, mm).unwrap();
 
-            let mm = Move::EnPassant {
-                from: "E5".into(), to: "D6".into(), capture: "D5".into(), victim: Pawn,
-            };
-            let g2 = g2.make_move_unchecked(&ts, mm).unwrap();
-
-            let mm = Move::Capture { from: "C7".into(), to: "D6".into(), pc: Pawn, victim: Pawn };
-            let g2 = g2.make_move_unchecked(&ts, mm).unwrap();
-
-            // let fen0 = "rnbqkb1r/pppp1ppp/8/4P3/8/5N1P/PPPNPPP1/R1BnKB1R w KQkq - 0 3";
-            // let fen0 = "rnbqkb1r/pppp1ppp/8/4P3/8/5N1P/PPPNPPP1/R1BK1B1R b kq - 0 3";
-            let fen0 = "rnbqkb1r/pp3ppp/3p4/8/8/5N1P/PPPNPPP1/R1BK1B1R w kq - 0 5";
-            // let fen0 = "rnbqkb1r/ppp2ppp/8/3pP3/8/5N1P/PPPNPPP1/R1BK1B1R w kq d6 0 4";
-            let g = Game::from_fen(&ts, fen0).unwrap();
+            // // let fen0 = "rnbqkb1r/pppp1ppp/8/4P3/8/5N1P/PPPNPPP1/R1BnKB1R w KQkq - 0 3";
+            // // let fen0 = "rnbqkb1r/pppp1ppp/8/4P3/8/5N1P/PPPNPPP1/R1BK1B1R b kq - 0 3";
+            // let fen0 = "rnbqkb1r/pp3ppp/3p4/8/8/5N1P/PPPNPPP1/R1BK1B1R w kq - 0 5";
+            // // let fen0 = "rnbqkb1r/ppp2ppp/8/3pP3/8/5N1P/PPPNPPP1/R1BK1B1R w kq d6 0 4";
+            // let g = Game::from_fen(&ts, fen0).unwrap();
 
             // let zb0 = Zobrist(0x24914ff4bc5af138);
 
@@ -339,13 +349,10 @@ fn main7() {
             // let c = Castling::new(false,true,false,true);
             // let zb2 = zb1.update_castling(&ts, c);
 
-            eprintln!("g.zobrist = {:?}", g.zobrist);
-            eprintln!("g2.zobrist = {:?}", g2.zobrist);
-
-            let si = ex.trans_table.get(&g.zobrist).unwrap();
-
-            eprintln!("si = {:?}", *si);
-
+            // eprintln!("g.zobrist = {:?}", g.zobrist);
+            // eprintln!("g2.zobrist = {:?}", g2.zobrist);
+            // let si = ex.trans_table.get(&g.zobrist).unwrap();
+            // eprintln!("si = {:?}", *si);
 
             // for si in ex.trans_table.iter() {
             //     let depth = si.depth_searched;
