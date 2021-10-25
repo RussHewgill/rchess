@@ -42,14 +42,14 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
     // group.bench_function("rank moves", |b| b.iter(|| ex.explore(&ts, ex.depth)));
 
-    group.bench_function("rank moves iter", |b| b.iter(|| {
-        // let (m,stats) = ex.explore(&ts, None);
-        let (m,stats) = ex.iterative_deepening(&ts, false, true);
-    }));
-
     group.bench_function("rank moves lazy_smp", |b| b.iter(|| {
         let (m,stats) = ex.lazy_smp(&ts, false, true);
     }));
+
+    // group.bench_function("rank moves iter", |b| b.iter(|| {
+    //     // let (m,stats) = ex.explore(&ts, None);
+    //     let (m,stats) = ex.iterative_deepening(&ts, false, true);
+    // }));
 
     // group.bench_function("search_all", |b| b.iter(|| {
     //     let mvs = g.search_all(&ts, black_box(None));

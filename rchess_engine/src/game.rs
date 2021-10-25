@@ -103,6 +103,16 @@ mod castling {
                 Black => ((self.0 & Self::BK) != 0,(self.0 & Self::BQ) != 0),
             }
         }
+
+        pub fn new(wk: bool, bk: bool, wq: bool, bq: bool) -> Castling {
+            let mut out = Castling(0);
+            out.set_king(White, wk);
+            out.set_king(Black, bk);
+            out.set_queen(White, wq);
+            out.set_queen(Black, bq);
+            out
+        }
+
         pub fn new_with(w: bool, b: bool) -> Castling {
             let mut out = 0;
             if w { out |= Self::WK | Self::WQ; }
@@ -288,35 +298,42 @@ impl Game {
 
     #[must_use]
     // pub fn make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Self> {
-    pub fn make_move_unchecked(&self, ts: &Tables, m: &Move) -> GameResult<Game> {
+    pub fn make_move_unchecked(&self, ts: &Tables, m: Move) -> GameResult<Game> {
 
-        if let Some(mut x) = self._make_move_unchecked(&ts, &m) {
-            match m {
-                Move::PawnDouble { .. }                   => {
-                },
-                _                                         => {
-                    if let Some(ep) = x.state.en_passant {
-                        x.zobrist = x.zobrist.update_ep(&ts, ep);
-                    }
-                    x.state.en_passant = None;
-                },
-            }
+        match self._make_move_unchecked(&ts, &m) {
+            Some(mut x) => {
+                match m {
+                    Move::PawnDouble { .. }                   => {
+                    },
+                    _                                         => {
+                        if let Some(ep) = x.state.en_passant {
+                            x.zobrist = x.zobrist.update_ep(&ts, ep);
+                        }
+                        x.state.en_passant = None;
+                    },
+                }
 
-            x.state.side_to_move = !x.state.side_to_move;
-            x.zobrist = x.zobrist.update_side_to_move(&ts);
-            // x.move_history.push(*m);
-            x.reset_gameinfo_mut();
+                x.state.side_to_move = !x.state.side_to_move;
+                x.zobrist = x.zobrist.update_side_to_move(&ts);
+                // x.move_history.push(*m);
+                x.reset_gameinfo_mut();
 
-            self.update_castles(&ts, m, &mut x);
+                self.update_castles(&ts, m, &mut x);
 
-            match x.recalc_gameinfo_mut(&ts) {
-                // Err(win) => panic!("wot"),
-                Err(win) => Err(win),
-                Ok(_)    => Ok(x),
-            }
-        } else {
-            return Err(GameEnd::Error);
+                match x.recalc_gameinfo_mut(&ts) {
+                    // Err(win) => panic!("wot"),
+                    Err(win) => Err(win),
+                    Ok(_)    => Ok(x),
+                }
+            },
+            _ => {
+                return Err(GameEnd::Error);
+            },
         }
+
+        // if let Some(mut x) = self._make_move_unchecked(&ts, &m) {
+        // } else {
+        // }
 
     }
 
@@ -420,29 +437,33 @@ impl Game {
         self.state.check_block_mask = Some(b);
     }
 
-    fn update_castles(&self, ts: &Tables, m: &Move, x: &mut Self) {
+    fn update_castles(&self, ts: &Tables, m: Move, x: &mut Self) {
         match m {
             Move::Quiet { from, .. } | Move::Capture { from, .. } => {
-                match (self.state.side_to_move, self.get_at(*from)) {
+                match (self.state.side_to_move, self.get_at(from)) {
                     (col, Some((_,King))) => {
+                        x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
                         x.state.castling.set_king(col,false);
                         x.state.castling.set_queen(col,false);
                         x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
                     }
                     (White, Some((_,Rook))) => {
-                        if *from == Coord(7,0) { x.state.castling.set_king(White,false); };
-                        if *from == Coord(0,0) { x.state.castling.set_queen(White,false); };
+                        x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
+                        if from == Coord(7,0) { x.state.castling.set_king(White,false); };
+                        if from == Coord(0,0) { x.state.castling.set_queen(White,false); };
                         x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
                     },
                     (Black, Some((_,Rook))) => {
-                        if *from == Coord(7,7) { x.state.castling.set_king(Black,false); };
-                        if *from == Coord(0,7) { x.state.castling.set_queen(Black,false); };
+                        x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
+                        if from == Coord(7,7) { x.state.castling.set_king(Black,false); };
+                        if from == Coord(0,7) { x.state.castling.set_queen(Black,false); };
                         x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
                     },
                     _              => {},
                 }
             },
             Move::Castle { .. }                       => {
+                x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
                 let col = self.state.side_to_move;
                 x.state.castling.set_king(col,false);
                 x.state.castling.set_queen(col,false);
@@ -932,8 +953,8 @@ impl std::fmt::Debug for Game {
 
         f.write_str(&format!("Castling (KQkq): {} {} {} {}\n",wk,wq,bk,bq))?;
 
-        f.write_str(&format!("Moves: \n"))?;
-        let mut k = 0;
+        // f.write_str(&format!("Moves: \n"))?;
+        // let mut k = 0;
         // for m in self.move_history.iter() {
         //     f.write_str(&format!("{:>2}: {:?}\n", k, m))?;
         //     k += 1;

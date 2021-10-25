@@ -105,7 +105,7 @@ fn main() -> std::io::Result<()> {
                                     let to = &m[2..4];
                                     let other = &m[4..];
                                     let mm = g.convert_move(from, to, other).unwrap();
-                                    g = g.make_move_unchecked(&ts, &mm).unwrap();
+                                    g = g.make_move_unchecked(&ts, mm).unwrap();
                                     // eprintln!("from, to = {:?}, {:?}", from, to);
                                 }
                                 // explorer.lock().unwrap().side = g.state.side_to_move;

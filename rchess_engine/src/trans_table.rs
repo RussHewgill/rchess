@@ -53,6 +53,11 @@ impl Explorer {
     // }
 
     pub fn tt_insert_deepest(&self, zb: Zobrist, si: SearchInfo) -> bool {
+
+        // if si.depth_searched as usize != si.moves.len() {
+        //     eprintln!("si = {:?}", si);
+        // }
+
         let d = si.depth_searched;
         let nt = si.node_type;
         if let Some(prev_si) = self.trans_table.insert(zb, si) {

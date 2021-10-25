@@ -161,7 +161,7 @@ pub fn find_move_error(
                 let _ = g.recalc_gameinfo_mut(&ts);
                 // eprintln!("g0 = {:?}", g);
 
-                let mut g = g.make_move_unchecked(&ts, m0).unwrap();
+                let mut g = g.make_move_unchecked(&ts, *m0).unwrap();
                 let _ = g.recalc_gameinfo_mut(&ts);
                 // eprintln!("g1 = {:?}", g);
                 let fen2 = g.to_fen();

@@ -174,7 +174,7 @@ impl Game {
 
         // let out = moves.into_iter().flat_map(|m| {
         let out = moves.into_par_iter().flat_map(|m| {
-            if let Ok(g2) = self.make_move_unchecked(&ts, &m) {
+            if let Ok(g2) = self.make_move_unchecked(&ts, m) {
                 let (ns,cs) = g2._perft(ts, depth - 1, false);
                 // match m {
                 //     Move::Capture { .. } => captures += 1,
@@ -231,7 +231,7 @@ impl Game {
         // eprintln!("moves.len() = {:?}", moves.len());
         let mut k = 0;
         for m in moves.into_iter() {
-            if let Ok(g2) = self.make_move_unchecked(&ts, &m) {
+            if let Ok(g2) = self.make_move_unchecked(&ts, m) {
                 let (ns,cs) = g2._perft(ts, depth - 1, false);
                 match m {
                     Move::Capture { .. } => captures += 1,
@@ -265,7 +265,7 @@ impl Game {
         let moves = self.search_all(&ts, None);
         if moves.is_end() { return (0,0); }
 
-        let moves = moves.into_iter().flat_map(|m| if let Ok(g2) = self.make_move_unchecked(&ts, &m) {
+        let moves = moves.into_iter().flat_map(|m| if let Ok(g2) = self.make_move_unchecked(&ts, m) {
             Some((m,g2)) } else { None });
 
         for (m,g2) in moves.into_iter() {

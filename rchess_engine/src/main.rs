@@ -68,6 +68,8 @@ fn main() {
 
 }
 
+/// XXX: Could possibly get entire move sequence by simply looking up best Zobrist?
+
 fn main8() {
     let fen = STARTPOS;
     let n = 4;
@@ -167,7 +169,7 @@ fn main7() {
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
 
     // let fen = "Q3b3/4bkp1/1q2np1p/NPp1p3/2P1P3/4BP1P/4B1P1/7K b - - 1 1"; // Correct = e6c7
-    // let fen = "rnbqkb1r/pppp1ppp/8/4P3/6n1/7P/PPPNPPP1/R1BQKBNR b KQkq - 0 1"; // WAC.007, Ne3 = g4e3
+    let fen = "rnbqkb1r/pppp1ppp/8/4P3/6n1/7P/PPPNPPP1/R1BQKBNR b KQkq - 0 1"; // WAC.007, Ne3 = g4e3
     // let fen = "3q1rk1/p4pp1/2pb3p/3p4/6Pr/1PNQ4/P1PB1PP1/4RRK1 b - - 0 1"; // WAC.009, Bh2+ = d6h2
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"; // Perft Position 2
@@ -186,21 +188,13 @@ fn main7() {
     // let fen = "k7/2n5/4p3/3p3R/2P1P1P1/4N3/8/7K w - - 0 1"; // SEE test
 
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
-    let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
+    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
 
     // let mut games = read_epd("WAC.epd").unwrap();
     // let fen = &games[8 - 1].0;
 
-    // let fen = "r4q1k/p2bR1rp/2p2Q1N/5p2/5p2/2P5/PP3PPP/R5K1 w - - 0 1";
-    // let fen = "r4q1k/p2bRNrp/2p2Q2/5p2/5p2/2P5/PP3PPP/R5K1 b - - 1 1";
-    // let fen = "r4qk1/p2bRNrp/2p2Q2/5p2/5p2/2P5/PP3PPP/R5K1 w - - 2 2";
-
-    // let fen = "rn1q1k1r/1p2b1p1/p2p1nQ1/2pP2p1/2P3P1/5N1P/PP3P2/RN3RK1 w - - 0 2";
-
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
     // let fen = "3q1rk1/p4pp1/2pb3p/3p4/6Pr/1PNQ4/P1PB1PP1/4RRK1 b - - 0 1"; // WAC.009, Bh2+ = d6h2
-
-    // let fen = "k7/8/8/3p1q2/4P3/3P4/8/7K w - - 0 1";
 
     // /// https://www.chessprogramming.org/Caesar#HorizonEffect
     // let fen = "2kr4/3nR3/p2B1p2/1p1p1Bp1/1P1P3p/2P4P/P5PK/8 b - - 1 32"; // Horizon
@@ -258,7 +252,7 @@ fn main7() {
 
             // n = 20;
             // n = 10;
-            let n = 4;
+            let n = 6;
 
             ex.max_depth = n;
 
@@ -268,35 +262,93 @@ fn main7() {
                 0.1,
             );
 
-            let (mvs,stats) = ex.lazy_smp(&ts, !true, true);
+            let (mvs,stats0) = ex.lazy_smp(&ts, !true, true);
             let (mv,mvs,_) = mvs.get(0).unwrap();
             println!("m #{} = {:?}", q, mv);
             // println!("good = g4e3");
             // println!("good = c6c4");
             // stats.print(t0.elapsed());
             println!("explore lazy_smp  (depth: {}) done in {} seconds.",
-                     stats.max_depth, t0.elapsed().as_secs_f64());
+                     stats0.max_depth, t0.elapsed().as_secs_f64());
 
             println!("====");
             let t0 = std::time::Instant::now();
-            let (moves,stats) = ex.iterative_deepening(&ts, !true, true);
+            let (moves,stats1) = ex.iterative_deepening(&ts, !true, true);
             let (mv,mvs,_) = moves.get(0).unwrap();
             println!("m #{} = {:?}", q, mv);
             // println!("good = g4e3");
             // stats.print(t0.elapsed());
             println!("explore iterative (depth: {}) done in {} seconds.",
-                     stats.max_depth, t0.elapsed().as_secs_f64());
+                     stats1.max_depth, t0.elapsed().as_secs_f64());
+
+            print!("\n");
+            for m in mvs.iter() {
+                eprintln!("m = {:?}", m);
+            }
+
+
+            // let tt = ex.trans_table.clone();
+            // let xs0 = tt.iter().filter(|x| x.node_type == Node::PV).collect::<Vec<_>>();
+            // let xs1 = tt.iter().filter(|x| x.node_type == Node::All).collect::<Vec<_>>();
+            // let xs2 = tt.iter().filter(|x| x.node_type == Node::Cut).collect::<Vec<_>>();
+            // eprintln!("PV, Cut, All = {}, {}, {}", xs0.len(), xs1.len(), xs2.len());
+
+
+
+            let ms0 = vec![
+                "g4e3",
+                "g1f3",
+                "e3d1",
+                "e1d1",
+                "d7d5",
+                // "e5d6", // EP
+                // "c7d6",
+            ];
+            let mut g2 = g.clone();
+            for m in ms0.into_iter() {
+                let from = &m[0..2];
+                let to = &m[2..4];
+                let other = &m[4..];
+                let mm = g2.convert_move(from, to, other).unwrap();
+                g2 = g2.make_move_unchecked(&ts, mm).unwrap();
+            }
+
+            let mm = Move::EnPassant {
+                from: "E5".into(), to: "D6".into(), capture: "D5".into(), victim: Pawn,
+            };
+            let g2 = g2.make_move_unchecked(&ts, mm).unwrap();
+
+            let mm = Move::Capture { from: "C7".into(), to: "D6".into(), pc: Pawn, victim: Pawn };
+            let g2 = g2.make_move_unchecked(&ts, mm).unwrap();
+
+            // let fen0 = "rnbqkb1r/pppp1ppp/8/4P3/8/5N1P/PPPNPPP1/R1BnKB1R w KQkq - 0 3";
+            // let fen0 = "rnbqkb1r/pppp1ppp/8/4P3/8/5N1P/PPPNPPP1/R1BK1B1R b kq - 0 3";
+            let fen0 = "rnbqkb1r/pp3ppp/3p4/8/8/5N1P/PPPNPPP1/R1BK1B1R w kq - 0 5";
+            // let fen0 = "rnbqkb1r/ppp2ppp/8/3pP3/8/5N1P/PPPNPPP1/R1BK1B1R w kq d6 0 4";
+            let g = Game::from_fen(&ts, fen0).unwrap();
+
+            // let zb0 = Zobrist(0x24914ff4bc5af138);
+
+            // let zb1 = zb0.update_piece(&ts, Knight, Black, "D1".into());
+            // let zb1 = zb1.update_piece(&ts, King, White, "E1".into());
+            // let zb1 = zb1.update_piece(&ts, King, White, "D1".into());
+
+            // let c = Castling::new(false,true,false,true);
+            // let zb2 = zb1.update_castling(&ts, c);
+
+            eprintln!("g.zobrist = {:?}", g.zobrist);
+            eprintln!("g2.zobrist = {:?}", g2.zobrist);
+
+            let si = ex.trans_table.get(&g.zobrist).unwrap();
+
+            eprintln!("si = {:?}", *si);
+
 
             // for si in ex.trans_table.iter() {
             //     let depth = si.depth_searched;
             //     eprintln!("node, d, len() = {:?}: {:?}, {:?}", si.node_type, depth, si.moves.len());
+            //     assert!( depth as usize == si.moves.len());
             // }
-
-            // let ts = ex.trans_table.clone();
-            // let xs0 = ts.iter().filter(|x| x.node_type == Node::PV).collect::<Vec<_>>();
-            // let xs1 = ts.iter().filter(|x| x.node_type == Node::All).collect::<Vec<_>>();
-            // let xs2 = ts.iter().filter(|x| x.node_type == Node::Cut).collect::<Vec<_>>();
-            // eprintln!("PV, Cut, All = {}, {}, {}", xs0.len(), xs1.len(), xs2.len());
 
             // print!("\n");
             // for (m,mvs,score) in moves.iter() {
@@ -369,7 +421,7 @@ fn main7() {
             let to = &m[2..4];
             let other = &m[4..];
             let mm = g2.convert_move(from, to, other).unwrap();
-            g2 = g2.make_move_unchecked(&ts, &mm).unwrap();
+            g2 = g2.make_move_unchecked(&ts, mm).unwrap();
         }
         eprintln!("g2 = {:?}", g2);
         // eprintln!("hash0 = {:?}", g2.zobrist);
