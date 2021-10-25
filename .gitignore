@@ -10,3 +10,4 @@ WAC Score.txt
 *.rar
 testpositions/*
 *.bin
+logs/*

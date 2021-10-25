@@ -22,6 +22,8 @@ use rchess_engine_lib::tuning::*;
 
 use log::{debug, error, log_enabled, info, Level};
 use gag::Redirect;
+use simplelog::*;
+use chrono::Timelike;
 
 const STARTPOS: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -46,6 +48,20 @@ fn main() {
     //     .format_target(false)
     //     // .format_level(false)
     //     .init();
+
+    // let now = chrono::Local::now();
+    // let logpath = format!(
+    //     "/home/me/code/rust/rchess/logs/log-{:0>2}:{:0>2}:{:0>2}.log",
+    //     now.hour(), now.minute(), now.second());
+    // let mut logfile = std::fs::OpenOptions::new()
+    //     .truncate(true)
+    //     .read(true)
+    //     .create(true)
+    //     .write(true)
+    //     .open(logpath)
+    //     .unwrap();
+    // WriteLogger::init(LevelFilter::Debug, Config::default(), logfile).unwrap();
+    // // WriteLogger::init(LevelFilter::Trace, Config::default(), logfile).unwrap();
 
     // rayon::ThreadPoolBuilder::new()
     //     .num_threads(1)
@@ -147,7 +163,7 @@ fn main8() {
 
 fn main7() {
     let fen = STARTPOS;
-    let n = 5;
+    let n = 10;
 
     // let fen = "rnbqkbnr/ppppp1pp/8/5P2/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2";
     // let fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
@@ -206,18 +222,15 @@ fn main7() {
     // let fen = "8/6B1/p5p1/Pp4kp/1P5r/5P1Q/4q1PK/8 w - - 0 32"   // Qxh4; id "zugzwang.004";
     // let fen = "8/8/1p1r1k2/p1pPN1p1/P3KnP1/1P6/8/3R4 b - - 0 1" // Nxd5; id "zugzwang.005";
 
+    let fen = STARTPOS;
+
     // let ts = Tables::new();
     let ts = Tables::read_from_file("tables.bin").unwrap();
 
     let mut g = Game::from_fen(&ts, fen).unwrap();
 
     let stop = Arc::new(AtomicBool::new(false));
-    let timesettings = TimeSettings::new_f64(
-        5.0,
-        // 60.0,
-        0.1,
-        // 5.0,
-    );
+    let timesettings = TimeSettings::new_f64(10.0,0.1);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
 
     // let moves = vec![
@@ -249,19 +262,17 @@ fn main7() {
         for q in 0..k {
             let t0 = std::time::Instant::now();
 
-            // println!("g = {:?}", g);
+            println!("g = {:?}", g);
 
-            // n = 20;
-            // n = 10;
-            let n = 6;
-            // let n = 4;
+            // let n = 25;
+            let n = 10;
+            // let n = 5;
 
             ex.max_depth = n;
 
             ex.timer.settings = TimeSettings::new_f64(
-                10.0,
-                // 2.0,
-                0.1,
+                1.0,
+                5.0,
             );
 
             env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
@@ -269,11 +280,11 @@ fn main7() {
                 .format_timestamp(None)
                 .format_module_path(false)
                 .format_target(false)
-            // .format_level(false)
                 .init();
 
             let t0 = std::time::Instant::now();
-            let (mvs,stats0) = ex.lazy_smp(&ts, !true, true);
+            // let (mvs,stats0) = ex.lazy_smp(&ts, false, true);
+            let (mvs,stats0) = ex.lazy_smp(&ts, false, false);
             let (mv,mvs,_) = mvs.get(0).unwrap();
             println!("m #{} = {:?}", q, mv);
             // println!("good = g4e3");
@@ -287,15 +298,15 @@ fn main7() {
             //     eprintln!("m = {:?}", m);
             // }
 
-            println!("====");
-            let t0 = std::time::Instant::now();
-            let (moves,stats1) = ex.iterative_deepening(&ts, !true, true);
-            let (mv,mvs,_) = moves.get(0).unwrap();
-            println!("m #{} = {:?}", q, mv);
-            // println!("good = g4e3");
-            println!("explore iterative (depth: {}) done in {:.3} seconds.",
-                     stats1.max_depth, t0.elapsed().as_secs_f64());
-            stats1.print(t0.elapsed());
+            // println!("====");
+            // let t0 = std::time::Instant::now();
+            // let (moves,stats1) = ex.iterative_deepening(&ts, !true, true);
+            // let (mv,mvs,_) = moves.get(0).unwrap();
+            // println!("m #{} = {:?}", q, mv);
+            // // println!("good = g4e3");
+            // println!("explore iterative (depth: {}) done in {:.3} seconds.",
+            //          stats1.max_depth, t0.elapsed().as_secs_f64());
+            // stats1.print(t0.elapsed());
 
             // print!("\n");
             // for m in mvs.iter() {
@@ -413,20 +424,23 @@ fn main7() {
 
     } else {
 
+        let fen0 = "rnb1kb1r/pppppNpp/8/8/8/3n4/P1PPPPPP/R1B1KB1R w KQkq - 0 1";
+        let g0 = Game::from_fen(&ts, fen0).unwrap();
+
         let fen = STARTPOS;
+        let mut g2 = Game::from_fen(&ts, fen).unwrap();
 
-        let mut g = Game::from_fen(&ts, fen).unwrap();
+        // let ms0 = vec![
+        //     "e2e4",
+        //     "e7e6",
+        //     "d2d3",
+        // ];
 
+        let ms = "g1f3 g8f6 f3e5 f6e4 b1c3 e4c3 e5c6 c3d1 c6d8 d1b2 d8f7 b2d3";
 
-        let ms0 = vec![
-            "e2e4",
-            "e7e6",
-            "d2d3",
-        ];
+        let ms0 = ms.split(" ");
 
-        // let ms0 = ms.split(" ");
-
-        let mut g2 = g.clone();
+        let mut g2 = g2.clone();
         for m in ms0.into_iter() {
             let from = &m[0..2];
             let to = &m[2..4];
@@ -434,10 +448,18 @@ fn main7() {
             let mm = g2.convert_move(from, to, other).unwrap();
             g2 = g2.make_move_unchecked(&ts, mm).unwrap();
         }
-        eprintln!("g2 = {:?}", g2);
         // eprintln!("hash0 = {:?}", g2.zobrist);
 
-        // let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);
+        // eprintln!("g2 = {:?}", g2);
+        // eprintln!("g0 = {:?}", g0);
+
+        // eprintln!("g0.zobrist == g2.zobrist = {:?}", g0.zobrist == g2.zobrist);
+        // g0.state.debug_equal(g2.state);
+
+        let n = 10;
+
+        let mut ex0 = Explorer::new(g0.state.side_to_move, g0.clone(), n, stop.clone(), timesettings);
+        let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);
 
         // let moves = vec![
         //     Move::Quiet { from: "E2".into(), to: "E4".into() },
@@ -445,11 +467,11 @@ fn main7() {
         //     // Move::Quiet { from: "H2".into(), to: "H3".into() },
         // ];
 
-        // let t = std::time::Instant::now();
-        // let (m,stats) = ex2.explore(&ts, None);
-        // eprintln!("m = {:?}", m.unwrap());
-        // // ex.rank_moves(&ts, true);
-        // println!("explore done in {} seconds.", t.elapsed().as_secs_f64());
+        let t = std::time::Instant::now();
+        let (m,stats) = ex2.explore(&ts, None);
+        eprintln!("m = {:?}", m.unwrap());
+        // ex.rank_moves(&ts, true);
+        println!("explore done in {} seconds.", t.elapsed().as_secs_f64());
 
     }
 

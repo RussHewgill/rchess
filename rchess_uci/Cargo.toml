@@ -14,4 +14,7 @@ rayon = "1.5.1"
 log = "0.4.*"
 env_logger = "0.9.*"
 gag = "1.0.0"
+simplelog = "0.10.2"
+
+chrono = "0.4.19"
 

@@ -277,25 +277,6 @@ impl Explorer {
         // let mut rng = thread_rng();
         // gs.shuffle(&mut rng);
 
-        // let (out,ss): (Vec<(Move,Vec<Move>,Score)>,SearchStats) = {
-        //     let mut stats = SearchStats::default();
-        //     let out = gs.into_iter().map(|(mv,g2)| {
-        //         let mut ss = SearchStats::default();
-        //         let (mut mv_seq,score) = {
-        //             let alpha = i32::MIN;
-        //             let beta  = i32::MAX;
-        //             self._ab_search(
-        //                 &ts, &g2, depth, 1, alpha, beta, false, &mut stats, stop.clone(), mv)
-        //                 .unwrap()
-        //         };
-        //         mv_seq.push(mv);
-        //         mv_seq.reverse();
-        //         stats = stats + ss;
-        //         (mv,mv_seq,score)
-        //     }).collect();
-        //     (out,stats)
-        // };
-
         let mut out = vec![];
 
         let mut ss = SearchStats::default();
@@ -472,8 +453,12 @@ impl Explorer {
                 }
             });
 
-            // let t0 = Instant::now();
-            // let t_max = Duration::from_secs_f64(2.);
+            let t0 = Instant::now();
+            // let t_max = Duration::from_secs_f64(
+            //     2.0
+            // );
+            let t_max = self.timer.settings.increment[self.side];
+            let t_max = Duration::from_secs_f64(t_max);
 
             let depths = vec![
                 // 0, 1, 0, 2, 0, 1,
@@ -493,12 +478,20 @@ impl Explorer {
 
                 // if !timer.should_search(self.side, cur_depth) {
                 // if k <= 0 {
-                // if t0.elapsed() > t_max {
                 if cur_depth > self.max_depth {
-                    trace!("breaking thread loop");
+                    let d = best_depth.load(SeqCst);
+                    debug!("breaking loop (Depth), d: {}, t0: {:.3}", d, t0.elapsed().as_secs_f64());
+                    drop(tx);
+                    break;
+                } else if t0.elapsed() > t_max {
+                    let d = best_depth.load(SeqCst);
+                    debug!("breaking loop (Time),  d: {}, t0: {:.3}", d, t0.elapsed().as_secs_f64());
+                    // Only force threads to stop if out of time
                     stop.store(true, SeqCst);
                     drop(tx);
                     break;
+                } else {
+                    // debug!("continuing loop, t: {:.3}", t0.elapsed().as_secs_f64());
                 }
                 // k -= 1;
 
@@ -653,8 +646,24 @@ impl Explorer {
             out.reverse();
         }
 
-        let k = tt_r.len();
-        eprintln!("k = {:?}", k);
+        if out.len() == 0 {
+            debug!("no moves found");
+        }
+
+        // if out.len() == 0 {
+        //     debug!("no moves found");
+        //     // panic!("no moves found");
+        //     let mut gs = gs;
+        //     gs.sort_unstable_by(|a,b| {
+        //         let x = a.1.evaluate(&ts).sum();
+        //         let y = b.1.evaluate(&ts).sum();
+        //         x.cmp(&y)
+        //     });
+        //     let out = vec![(gs[0].0,vec![],gs[0].1.evaluate(&ts).sum())];
+        //     (out,stats)
+        // } else {
+        //     (out,stats)
+        // }
 
         (out,stats)
     }
@@ -723,8 +732,9 @@ impl Explorer {
         tt_w:               TTWrite,
     ) -> Option<(Vec<Move>, Score)> {
 
-        // if stop.load(SeqCst) {
-        // }
+        if stop.load(SeqCst) {
+            return None;
+        }
 
         let moves = g.search_all(&ts, None);
 
@@ -907,12 +917,15 @@ impl Explorer {
                     (true,si.moves.clone(),si.score)
                 },
                 _ => {
-                    let (mv_seq,score) = self._ab_search(
+                    if let Some((mv_seq,score)) = self._ab_search(
                         &ts, &g2, depth - 1, k + 1,
                         alpha, beta, !maximizing, &mut stats, stop.clone(), *mv,
                         tt_r, tt_w.clone(),
-                    )?;
-                    (false,mv_seq,score)
+                    ) {
+                        (false,mv_seq,score)
+                    } else {
+                        break;
+                    }
                 },
             };
 
@@ -981,7 +994,8 @@ impl Explorer {
         match &val.0 {
             Some((zb,mv,mv_seq)) => Some((mv_seq.clone(),val.1)),
             // _                    => (vec![mv0], val.1),
-            _                    => panic!("_ab_search val is None ?"),
+            // _                    => panic!("_ab_search val is None ?"),
+            _                    => None,
         }
 
     }

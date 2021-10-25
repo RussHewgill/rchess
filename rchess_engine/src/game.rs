@@ -166,6 +166,23 @@ impl GameState {
             & (self.castling == other.castling)
     }
 
+
+    pub fn debug_equal(&self, other: Self) {
+        println!("side_to_move: {}", self.side_to_move == other.side_to_move);
+        println!("white: {}", self.white == other.white);
+        println!("black: {}", self.black == other.black);
+
+        println!("pawns: {}", self.pawns == other.pawns);
+        println!("rooks: {}", self.rooks == other.rooks);
+        println!("knights: {}", self.knights == other.knights);
+        println!("bishops: {}", self.bishops == other.bishops);
+        println!("queens: {}", self.queens == other.queens);
+        println!("kings: {}", self.kings == other.kings);
+
+        println!("en_passant: {}", self.en_passant == other.en_passant);
+        println!("castling: {}", self.castling == other.castling);
+    }
+
 }
 
 /// make move

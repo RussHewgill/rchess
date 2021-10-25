@@ -12,7 +12,7 @@ pub type Seconds = f64;
 #[derive(Debug,PartialEq,PartialOrd,Clone,Copy)]
 pub struct TimeSettings {
     clock_time:      [Seconds; 2],
-    increment:       [Seconds; 2],
+    pub increment:   [Seconds; 2],
     pub safety:      Seconds,
     pub ponder:      bool,
     pub infinite:    bool,

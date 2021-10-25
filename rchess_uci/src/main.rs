@@ -5,6 +5,7 @@
 
 pub mod notation;
 
+use chrono::Timelike;
 use rchess_engine_lib::types::*;
 use rchess_engine_lib::tables::*;
 use rchess_engine_lib::explore::*;
@@ -22,6 +23,7 @@ use std::sync::atomic::{AtomicBool,Ordering};
 
 use std::io::Write;
 use log::{debug, error, log_enabled, info, Level};
+use simplelog::*;
 use gag::Redirect;
 
 use rayon::ThreadPoolBuilder;
@@ -36,8 +38,12 @@ fn main() -> std::io::Result<()> {
     //     .unwrap();
 
     let depth = 10;
+    // let depth = 25;
 
-    let logpath = "log.log";
+    let now = chrono::Local::now();
+    let logpath = format!(
+        "/home/me/code/rust/rchess/logs/log-{:0>2}:{:0>2}:{:0>2}.log",
+        now.hour(), now.minute(), now.second());
     let mut logfile = std::fs::OpenOptions::new()
         .truncate(true)
         .read(true)
@@ -46,11 +52,18 @@ fn main() -> std::io::Result<()> {
         .open(logpath)
         .unwrap();
 
+    WriteLogger::init(LevelFilter::Debug, Config::default(), logfile).unwrap();
+    // WriteLogger::init(LevelFilter::Trace, Config::default(), logfile).unwrap();
+
     // let timer = Timer::default(should_stop.clone());
     // let searcher = Arc::new(Mutex::new(Searcher::new(EngineSettings::default(), timer)));
 
     let should_stop  = Arc::new(AtomicBool::new(false));
-    let timesettings = TimeSettings::new_f64(10., 0.1);
+    // let timesettings = TimeSettings::new_f64(10., 0.1);
+    let timesettings = TimeSettings::new_f64(
+        1.0,
+        1.0,
+    );
 
     // let explorer = Arc::new(Mutex::new(
     //     Explorer::new(White,Game::empty(), depth, should_stop.clone(), timesettings)));
@@ -67,7 +80,8 @@ fn main() -> std::io::Result<()> {
     for line in stdin.lock().lines() {
         if let Ok(line) = line {
             if line != "" {
-                writeln!(&mut logfile, "{}", line)?;
+                // writeln!(&mut logfile, "{}", line)?;
+                debug!("{}", line);
                 let mut params = line.split_whitespace();
 
                 match params.next().unwrap() {
