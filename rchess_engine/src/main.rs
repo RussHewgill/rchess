@@ -39,12 +39,15 @@ fn main() {
 
     // let err_redirect = Redirect::stderr(logfile).unwrap();
 
-    // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
-    // // .format(|buf, record| {
-    // //     writeln!(buf, "{}")
-    // // })
-    //     .format_timestamp(None)
-    //     .init();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
+    // .format(|buf, record| {
+    //     writeln!(buf, "{}")
+    // })
+        .format_timestamp(None)
+        .format_module_path(false)
+        .format_target(false)
+        // .format_level(false)
+        .init();
 
     // rayon::ThreadPoolBuilder::new()
     //     .num_threads(1)

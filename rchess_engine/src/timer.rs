@@ -86,6 +86,8 @@ impl Timer {
         let alloc_time = (1.0 - self.settings.safety) * self.settings.clock_time[side] / 40.0
             + self.settings.increment[side];
 
+        println!("alloc_time = {:?}", alloc_time);
+
         self.time_left[side] > alloc_time
 
         // false

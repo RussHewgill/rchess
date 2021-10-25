@@ -7,11 +7,12 @@ pub use crate::timer::*;
 pub use crate::trans_table::*;
 pub use crate::searchstats::*;
 
-use std::hash::Hasher;
-use std::iter::successors;
 use std::sync::atomic::AtomicU8;
-use std::thread;
+use std::sync::atomic::Ordering::SeqCst;
 use std::time::Duration;
+
+use crossbeam::channel::{Sender,Receiver,RecvError};
+use crossbeam::thread::ScopedJoinHandle;
 
 use either::Either;
 
@@ -174,6 +175,8 @@ impl Explorer {
             //     ((*mv,mv_seq,score),stats)
             // }).unzip();
 
+            let stop            = Arc::new(AtomicBool::new(false));
+
             #[cfg(feature = "par")]
             {
                 (out,ss) = gs.par_iter().map(|(mv,g2)| {
@@ -182,7 +185,7 @@ impl Explorer {
                         let alpha = i32::MIN;
                         let beta  = i32::MAX;
                         self._ab_search(
-                            &ts, &g2, depth, 1, alpha, beta, false, &mut stats, *mv)
+                            &ts, &g2, depth, 1, alpha, beta, false, &mut stats, stop.clone(), *mv)
                     };
                     mv_seq.push(*mv);
                     mv_seq.reverse();
@@ -199,7 +202,7 @@ impl Explorer {
                         let alpha = i32::MIN;
                         let beta  = i32::MAX;
                         self._ab_search(
-                            &ts, &g2, depth, 1, alpha, beta, false, &mut stats, *mv)
+                            &ts, &g2, depth, 1, alpha, beta, false, &mut stats, stop, *mv)
                     };
                     mv_seq.push(*mv);
                     mv_seq.reverse();
@@ -250,8 +253,11 @@ impl Explorer {
         mut gs:           Vec<(Move,Game)>,
         depth:            Depth,
         // results:          Arc<RwLock<(Depth,Vec<(Move,Vec<Move>,Score)>)>>,
+        stop:             Arc<AtomicBool>,
+        tx:               Sender<(Depth,Vec<(Move,Vec<Move>,Score)>)>,
         stats:            Arc<RwLock<SearchStats>>,
-    ) -> (Depth,Vec<(Move,Vec<Move>,Score)>) {
+    // ) -> (Depth,Vec<(Move,Vec<Move>,Score)>) {
+    ) {
 
         // // XXX: wtf
         // let mut rng = thread_rng();
@@ -265,7 +271,7 @@ impl Explorer {
                     let alpha = i32::MIN;
                     let beta  = i32::MAX;
                     self._ab_search(
-                        &ts, &g2, depth, 1, alpha, beta, false, &mut stats, mv)
+                        &ts, &g2, depth, 1, alpha, beta, false, &mut stats, stop.clone(), mv)
                 };
 
                 mv_seq.push(mv);
@@ -298,7 +304,11 @@ impl Explorer {
         //     *s = *s + ss;
         // }
 
-        (depth, out)
+        debug!("sending tx, depth = {}", depth);
+        tx.send((depth,out)).unwrap();
+        drop(tx);
+
+        // (depth, out)
         // unimplemented!()
     }
 
@@ -306,7 +316,7 @@ impl Explorer {
     pub fn lazy_smp(&self, ts: &Tables, print: bool, strict_depth: bool)
                     -> (Vec<(Move,Vec<Move>,Score)>,SearchStats) {
         // 12, 6
-        let (n_cpus,np_cpus)  = (num_cpus::get(),num_cpus::get_physical());
+        let (n_cpus,np_cpus)  = (num_cpus::get() as u8,num_cpus::get_physical() as u8);
 
         self.trans_table.clear();
 
@@ -368,119 +378,102 @@ impl Explorer {
 
         if print { eprintln!("threadcount = {:?}", threadcount); }
 
-        let stats2 = stats.clone();
+        crossbeam::scope(|s| {
 
+            // let (tx,rx): (Sender<ScopedJoinHandle<(Depth,Vec<(Move,Vec<Move>,Score)>)>>,
+            //               Receiver<ScopedJoinHandle<(Depth,Vec<(Move,Vec<Move>,Score)>)>>) =
+            //     crossbeam::channel::bounded(np_cpus * 2);
 
-        use futures::prelude::*;
-        use futures::executor::ThreadPool;
+            let (tx,rx): (Sender<(Depth,Vec<(Move,Vec<Move>,Score)>)>,
+                          Receiver<(Depth,Vec<(Move,Vec<Move>,Score)>)>) =
+                crossbeam::channel::bounded(np_cpus as usize * 2);
 
-        let pool = ThreadPool::new().expect("Failed to build pool");
+            // let mut thread_counter: u8 = 0;
 
-        let fut_values = async {
+            let thread_counter  = Arc::new(AtomicU8::new(0));
+            let thread_counter2 = thread_counter.clone();
+            let search_id       = Arc::new(AtomicU8::new(0));
+            let stop            = Arc::new(AtomicBool::new(false));
 
-            let (tx, rx) = futures::channel::mpsc::unbounded::<usize>();
+            let max_threads = np_cpus;
 
-            let results2 = results.clone();
-            let stats2 = stats.clone();
+            s.spawn(move |_| loop {
+                match rx.recv() {
+                    Err(RecvError) => {
+                        debug!("Breaking thread counter loop");
+                        break;
+                    },
+                    Ok(_)          => {
+                        thread_counter2.fetch_sub(1, SeqCst);
+                        debug!("decrementing thread counter, new val = {}", thread_counter2.load(SeqCst));
+                    },
+                }
+            });
 
-            let fut_result = async move {
-                (0..np_cpus).for_each(|k| {
+            let mut k = 3;
+            loop {
+                // if timer.should_search(self.side, depth)
 
-                    tx.unbounded_send(k).expect("Failed to send");
+                // if !timer.should_search2(self.side, depth) {
+                if k <= 0 {
+                    stop.store(true, Ordering::Relaxed);
+                    drop(tx);
+                    break;
+                }
+                k -= 1;
 
-                    // let (d, out) = self._lazy_smp_single(&ts, gs.clone(), depth, stats2.clone());
-                    // let d = results2.read().0;
-                    // if depth > d {
-                    //     // eprintln!("_lazy_smp_single: 0, depth = {:?}", depth);
-                    //     drop(d);
-                    //     let mut r = results2.write();
-                    //     r.0 = depth;
-                    //     r.1 = out;
-                    // } else {
-                    //     // eprintln!("_lazy_smp_single: 1, depth = {:?}", depth);
-                    //     drop(d);
-                    // }
+                if thread_counter.load(SeqCst) < np_cpus {
+                    let gs2    = gs.clone();
+                    let stats2 = stats.clone();
+                    let tx2    = tx.clone();
+                    let stop2  = stop.clone();
 
-                })
-            };
+                    // let tc = thread_counter.load(SeqCst);
+                    let sid = search_id.load(SeqCst);
+                    let cur_depth = depth + 1 + sid.trailing_zeros() as u8;
 
-            pool.spawn_ok(fut_result);
+                    s.spawn(move |_| {
+                        debug!("spawning thread: (sid: {}) = cur_depth {:?}", sid, cur_depth);
+                        self._lazy_smp_single(&ts, gs2, cur_depth, stop2, tx2, stats2);
+                    });
 
-            let fut_values = rx
-                .map(|v| v * 2)
-                .collect();
+                    thread_counter.fetch_add(1, SeqCst);
 
-            fut_values.await
-        };
+                    search_id.fetch_update(SeqCst, SeqCst, |sid| {
+                        if sid > max_threads {
+                            Some(0)
+                        } else { Some(sid + 1) }
+                    }).unwrap();
 
-        let values: Vec<usize> = futures::executor::block_on(fut_values);
+                }
 
-        eprintln!("values = {:?}", values);
+                let r = stats.read();
+                timer.update_times(self.side, r.nodes);
+            }
 
-        // use crossbeam::channel::{Sender,Receiver};
-        // use crossbeam::thread::ScopedJoinHandle;
-        // crossbeam::scope(|s| {
+            // {
+            //     let mut s = stats2.write();
+            //     s.max_depth = depth;
+            // }
+            // depth += 1;
+            // let r = stats2.read();
+            // timer.update_times(self.side, r.nodes);
 
-        //     // let (tx,rx): (Sender<ScopedJoinHandle<(Depth,Vec<(Move,Vec<Move>,Score)>)>>,
-        //     //               Receiver<ScopedJoinHandle<(Depth,Vec<(Move,Vec<Move>,Score)>)>>) =
-        //     //     crossbeam::channel::bounded(np_cpus * 2);
+            // while (depth <= self.max_depth) && (strict_depth ||
+            //                                     (|| timer.should_search(self.side, depth - 1))()) {
+            // // (0..k_max).into_iter().for_each(|k| {
+            // //     let r3 = r2.clone();
+            // //     let stats3 = stats2.clone();
+            // //     let mut gs3 = gs2.clone();
+            // //     let x = gs3.len();
+            // //     gs3.rotate_right((x / k_max) * k);
+            // //     s.spawn(move |_| {
+            // //         self._lazy_smp_single(&ts, gs3, d, r3, stats3);
+            // //     });
+            // // });
+            // }
 
-        //     // s.spawn(move |s| {
-        //     //     let mut handles = vec![];
-        //     //     loop {
-        //     //         match rx.try_recv() {
-        //     //             Ok(h)  => {
-        //     //                 handles.push(h);
-        //     //             },
-        //     //             Err(_) => unimplemented!(),
-        //     //         }
-        //     //     }
-        //     // });
-
-        //     let mut thread_counter = 0;
-        //     let mut search_id: Depth = 0;
-
-        //     loop {
-        //         // if timer.should_search(self.side, depth)
-        //         if !timer.should_search2(self.side, depth) {
-        //             drop(tx);
-        //             break;
-        //         }
-
-        //         if thread_counter < np_cpus {
-        //             let cur_depth = depth + 1 + search_id.trailing_zeros() as Depth;
-
-        //             let handle = s.spawn(|s| {
-        //                 unimplemented!()
-        //             });
-        //         }
-
-        //         break;
-        //     }
-
-        //     // {
-        //     //     let mut s = stats2.write();
-        //     //     s.max_depth = depth;
-        //     // }
-        //     // depth += 1;
-        //     // let r = stats2.read();
-        //     // timer.update_times(self.side, r.nodes);
-
-        //     // while (depth <= self.max_depth) && (strict_depth ||
-        //     //                                     (|| timer.should_search(self.side, depth - 1))()) {
-        //     // // (0..k_max).into_iter().for_each(|k| {
-        //     // //     let r3 = r2.clone();
-        //     // //     let stats3 = stats2.clone();
-        //     // //     let mut gs3 = gs2.clone();
-        //     // //     let x = gs3.len();
-        //     // //     gs3.rotate_right((x / k_max) * k);
-        //     // //     s.spawn(move |_| {
-        //     // //         self._lazy_smp_single(&ts, gs3, d, r3, stats3);
-        //     // //     });
-        //     // // });
-        //     // }
-
-        // }).unwrap();
+        }).unwrap();
 
         // while !true && (depth <= self.max_depth) && (strict_depth ||
         //                                     (|| timer.should_search(self.side, depth - 1))()) {
@@ -636,8 +629,12 @@ impl Explorer {
         mut beta:           i32,
         maximizing:         bool,
         mut stats:          &mut SearchStats,
+        stop:               Arc<AtomicBool>,
         mv0:                Move,
     ) -> (Vec<Move>, Score) {
+
+        // if stop.load(SeqCst) {
+        // }
 
         let moves = g.search_all(&ts, None);
 
@@ -799,7 +796,8 @@ impl Explorer {
                 },
                 _ => {
                     let (mv_seq,score) = self._ab_search(
-                        &ts, &g2, depth - 1, k + 1, alpha, beta, !maximizing, &mut stats, mv);
+                        &ts, &g2, depth - 1, k + 1,
+                        alpha, beta, !maximizing, &mut stats, stop.clone(), mv);
                     (false,mv_seq,score)
                 },
             };
