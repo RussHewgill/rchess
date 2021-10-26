@@ -788,6 +788,12 @@ impl Game {
 
 /// Debugging
 impl Game {
+
+    pub fn zobrist_from_fen(ts: &Tables, fen: &str) -> Zobrist {
+        let g = Game::from_fen(ts, fen).unwrap();
+        g.zobrist
+    }
+
     pub fn flip_sides(&self, ts: &Tables) -> Self {
         let mut st = self.state.clone();
         st.side_to_move = !st.side_to_move;
@@ -808,13 +814,9 @@ impl Game {
 
         st.castling = st.castling.mirror_sides();
 
-        // let mut out = Game {
-        //     state:      st,
-        //     zobrist:    Zobrist(0),
-        //     history:    ArrayVec::default(),
-        // };
         let mut out = Game::default();
 
+        out.state = st;
         out.zobrist = Zobrist::new(&ts, out.clone());
         out
     }

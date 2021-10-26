@@ -60,10 +60,7 @@ impl MvTable {
 
 impl Explorer {
 
-    // pub fn tt_insert_deepest(&self, zb: Zobrist, si: SearchInfo) -> bool {
-    //     unimplemented!()
-    // }
-
+    // XXX: clear old values?
     pub fn tt_insert_deepest(
         tt_r: &TTRead, tt_w: TTWrite, zb: Zobrist, si: SearchInfo) -> bool {
 
@@ -76,15 +73,25 @@ impl Explorer {
         let d  = si.depth_searched;
         let nt = si.node_type;
 
-        if let Some(prev_si) = tt_r.get_one(&zb) {
-            if d < prev_si.depth_searched || (prev_si.node_type != Node::PV && nt == Node::PV) {
-                return true;
+        if let Some(prevs) = tt_r.get(&zb) {
+            if let Some(prev_si) = prevs.into_iter().max_by(|a,b| a.depth_searched.cmp(&b.depth_searched)) {
+                if d < prev_si.depth_searched || (prev_si.node_type != Node::PV && nt == Node::PV) {
+                    return true;
+                }
             }
         }
 
+        // let mut clear = false;
+        // if let Some(prev_si) = tt_r.get_one(&zb) {
+        //     if d < prev_si.depth_searched || (prev_si.node_type != Node::PV && nt == Node::PV) {
+        //         return true;
+        //     }
+        //     clear = true;
+        // }
+
         {
             let mut w = tt_w.lock();
-            w.clear(zb);
+            // if clear { w.clear(zb); }
             // w.remove(&zb, prev_si);
             w.insert(zb, si);
             w.refresh();

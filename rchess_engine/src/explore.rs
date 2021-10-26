@@ -11,6 +11,7 @@ pub use crate::searchstats::*;
 use std::sync::atomic::AtomicU8;
 use std::sync::atomic::Ordering::SeqCst;
 use std::time::{Instant,Duration};
+use atom::Atom;
 
 use crossbeam::channel::{Sender,Receiver,RecvError,TryRecvError};
 use crossbeam::thread::ScopedJoinHandle;
@@ -33,15 +34,10 @@ use evmap::{ReadHandle,WriteHandle};
 pub struct Explorer {
     pub side:          Color,
     pub game:          Game,
-    // pub stats:      ABStats
     pub max_depth:     Depth,
     pub timer:         Timer,
-    // pub trans_table:   RwTransTable,
-    // pub trans_table:   TransTable,
-    // pub move_table:    Arc<MvTable>,
-    // pub trans_table:   RwLock<TransTable>,
-    // pub trans_table_r:   ReadHandle<Zobrist, SearchInfo>,
-    // pub trans_table_w:   WriteHandle<Zobrist, SearchInfo>,
+    pub stop:          Arc<AtomicBool>,
+    pub best_mate:     Arc<RwLock<Option<Depth>>>,
 }
 
 impl Explorer {
@@ -51,17 +47,13 @@ impl Explorer {
                should_stop:   Arc<AtomicBool>,
                settings:      TimeSettings,
     ) -> Self {
-        // let tt = RwTransTable::default();
-        // let tt = TransTable::default();
-        // let tt = TransTable::new();
-        // let (tr,tw) = evmap::new();
         Self {
             side,
             game,
             max_depth,
             timer:          Timer::new(side, should_stop, settings),
-            // trans_table:    TransTable::default(),
-            // move_table:     Arc::new(MvTable::default()),
+            stop:           Arc::new(AtomicBool::new(false)),
+            best_mate:      Arc::new(RwLock::new(None)),
         }
     }
 }
@@ -74,7 +66,7 @@ impl Explorer {
         // let (moves,stats) = self.iterative_deepening(&ts, false, false);
         // (moves.get(0).map(|x| x.0),stats)
 
-        let (moves,stats) = self.lazy_smp(&ts, false, false);
+        let (moves,stats,_) = self.lazy_smp(&ts, false, false);
         let mv = moves.get(0).map(|x| x.0);
         debug!("explore: best move = {:?}", mv);
         (mv,stats)
@@ -191,7 +183,7 @@ impl Explorer {
                         let alpha = i32::MIN;
                         let beta  = i32::MAX;
                         self._ab_search(
-                            &ts, &g2, depth, 1, alpha, beta, false, &mut stats, stop.clone(), *mv,
+                            &ts, &g2, depth, depth, 1, alpha, beta, false, &mut stats, *mv,
                             // &tt_r2, tt_w2,
                             &tt_r, tt_w,
                         )
@@ -262,13 +254,10 @@ impl Explorer {
         ts:               &Tables,
         mut gs:           Vec<(Move,Game)>,
         depth:            Depth,
-        // results:          Arc<RwLock<(Depth,Vec<(Move,Vec<Move>,Score)>)>>,
-        stop:             Arc<AtomicBool>,
         tx:               Sender<(Depth,Vec<(Move,Vec<Move>,Score)>)>,
         stats:            Arc<RwLock<SearchStats>>,
         tt_r:             TTRead,
         tt_w:             TTWrite,
-    // ) -> (Depth,Vec<(Move,Vec<Move>,Score)>) {
     ) {
 
         // // XXX: wtf
@@ -276,6 +265,9 @@ impl Explorer {
         // gs.shuffle(&mut rng);
 
         let mut out = vec![];
+
+        let mut best_alpha = i32::MIN;
+        let mut best_beta  = i32::MAX;
 
         let mut ss = SearchStats::default();
         for (mv,g2) in gs.into_iter() {
@@ -292,15 +284,13 @@ impl Explorer {
                 let alpha = i32::MIN;
                 let beta  = i32::MAX;
                 self._ab_search(
-                    // &ts, &g2, depth, 1, alpha, beta, false, &mut ss, stop.clone(), mv)
-                    &ts, &g2, depth, 1, alpha, beta, false, &mut ss, stop.clone(), mv,
+                    &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss, mv,
                     &tt_r, tt_w.clone(),
                 )
             } {
                 mv_seq.push(mv);
                 mv_seq.reverse();
 
-                // self.tt_insert_deepest(
                 Self::tt_insert_deepest(
                     &tt_r, tt_w.clone(),
                     g2.zobrist, SearchInfo::new(mv, mv_seq.clone(), depth, Node::Root, score));
@@ -317,37 +307,17 @@ impl Explorer {
             s.max_depth = depth;
         }
 
-        // let d = results.read().0;
-        // if depth > d {
-        //     // eprintln!("_lazy_smp_single: 0, depth = {:?}", depth);
-        //     drop(d);
-        //     let mut r = results.write();
-        //     r.0 = depth;
-        //     r.1 = out;
-        //     let mut s = stats.write();
-        //     *s = *s + ss;
-        //     s.max_depth = depth;
-        // } else {
-        //     // eprintln!("_lazy_smp_single: 1, depth = {:?}", depth);
-        //     drop(d);
-        //     let mut s = stats.write();
-        //     *s = *s + ss;
-        // }
-
         trace!("sending tx, depth = {}", depth);
         match tx.send((depth,out)) {
             Ok(_)  => {},
             Err(_) => {},
         }
         drop(tx);
-
-        // (depth, out)
-        // unimplemented!()
     }
 
     #[allow(unused_doc_comments)]
     pub fn lazy_smp(&self, ts: &Tables, print: bool, strict_depth: bool)
-                    -> (Vec<(Move,Vec<Move>,Score)>,SearchStats) {
+                    -> (Vec<(Move,Vec<Move>,Score)>,SearchStats,(TTRead,TTWrite)) {
         // 12, 6
         let (n_cpus,np_cpus)  = (num_cpus::get() as u8,num_cpus::get_physical() as u8);
 
@@ -427,29 +397,34 @@ impl Explorer {
 
             // let mut thread_counter: u8 = 0;
 
+            self.stop.store(false, SeqCst);
+
             let thread_counter  = Arc::new(AtomicU8::new(0));
             let thread_counter2 = thread_counter.clone();
             let search_id       = Arc::new(AtomicU8::new(0));
-            let stop            = Arc::new(AtomicBool::new(false));
-            let stop2           = stop.clone();
+            let stop            = self.stop.clone();
+            let stop2           = self.stop.clone();
             let best_depth      = Arc::new(AtomicU8::new(0));
             let best_depth2     = best_depth.clone();
 
             let max_threads = np_cpus;
+            // let max_threads = 1;
 
             let depths = vec![
-                // 0, 1, 0, 2, 0, 1,
-                2, 1, 0, 0, 1, 0,
+                0, 1, 0, 2, 0, 1,
+                // 2, 1, 0, 0, 1, 0,
             ];
 
             let t0 = Instant::now();
-            let t_max = self.timer.settings.increment[self.side];
+            let t_max = self.timer.settings.increment[self.side]
+                + self.timer.settings.safety;
             let t_max = Duration::from_secs_f64(t_max);
 
             s.spawn(move |_| loop {
                 match rx.try_recv() {
                     Err(TryRecvError::Empty)    => {
-                        std::thread::sleep(sleep_time);
+                        // std::thread::sleep(sleep_time);
+                        std::thread::sleep(Duration::from_millis(1));
                     },
                     Err(TryRecvError::Disconnected)    => {
                         trace!("Breaking thread counter loop (Disconnect)");
@@ -460,19 +435,33 @@ impl Explorer {
                             trace!("Breaking thread counter loop (Force Stop)");
                             break;
                         }
-                        if depth > best_depth2.load(SeqCst) {
+                        if scores.len() > 0 && depth > best_depth2.load(SeqCst) {
                             best_depth2.store(depth,SeqCst);
-                            let mut w = out.write();
 
-                            scores.sort_unstable_by(|a,b| a.2.cmp(&b.2));
-                            if self.side == self.game.state.side_to_move {
-                                scores.reverse();
+                            let (mv,_,score) = scores.iter().max_by(|a,b| a.2.cmp(&b.2)).unwrap();
+
+                            // let (mv,_,score) = scores.get(0).unwrap();
+                            // trace!("new best move ({}), {:?} = {:?}", depth, score, mv);
+                            debug!("new best move d({}): {:.3}s: {}: {:?}",
+                                   depth, t0.elapsed().as_secs_f64(), score, mv,
+                            );
+
+                            // let (worst,_,_) = scores.iter().min_by(|a,b| a.2.cmp(&b.2)).unwrap();
+                            // debug!("worst move: {:?}", worst);
+
+                            if (self.side == White && *score > 100_000_000 - 50)
+                                || (self.side == Black && *score < -100_000_000 + 50) {
+                                    let k = 100_000_000 - score.abs();
+                                    debug!("Found mate in {}: d({}), {:?}", k, depth, mv);
+                                    let mut best = self.best_mate.write();
+                                    *best = Some(k as u8);
+                                    let mut w = out.write();
+                                    *w = (depth, scores);
+                                    break;
+                            } else {
+                                    let mut w = out.write();
+                                    *w = (depth, scores);
                             }
-                            let (mv,_,score) = scores.get(0).unwrap();
-                            trace!("new best move ({}), {:?} = {:?}", depth, score, mv);
-                            debug!("finished depth {} in {:.3}", depth, t0.elapsed().as_secs_f64());
-
-                            *w = (depth, scores);
                         }
                         thread_counter2.fetch_sub(1, SeqCst);
                         trace!("decrementing thread counter, new val = {}", thread_counter2.load(SeqCst));
@@ -490,6 +479,14 @@ impl Explorer {
                 let sid       = search_id.load(SeqCst);
                 // let cur_depth = depth + 1 + sid.trailing_zeros() as u8;
                 let cur_depth = best_depth.load(SeqCst) + 1 + depths[sid as usize];
+
+                {
+                    let r = self.best_mate.read();
+                    if r.is_some() {
+                        stop.store(true, SeqCst);
+                        break 'outer;
+                    }
+                }
 
                 if best_depth.load(SeqCst) > self.max_depth {
                     let d = best_depth.load(SeqCst);
@@ -514,7 +511,7 @@ impl Explorer {
                     stop.store(true, SeqCst);
                     drop(tx);
                     break;
-                } else if thread_counter.load(SeqCst) < np_cpus {
+                } else if thread_counter.load(SeqCst) < max_threads {
                     let gs2    = gs.clone();
                     let stats2 = stats.clone();
                     let tx2    = tx.clone();
@@ -522,10 +519,10 @@ impl Explorer {
                     let tt_r2  = tt_r.clone();
                     let tt_w2  = tt_w.clone();
 
+                    trace!("spawning thread: (sid: {}) = cur_depth {:?}", sid, cur_depth);
                     s.spawn(move |_| {
-                        trace!("spawning thread: (sid: {}) = cur_depth {:?}", sid, cur_depth);
                         self._lazy_smp_single(
-                            &ts, gs2, cur_depth, stop2, tx2, stats2, tt_r2, tt_w2);
+                            &ts, gs2, cur_depth, tx2, stats2, tt_r2, tt_w2);
                     });
 
                     thread_counter.fetch_add(1, SeqCst);
@@ -536,9 +533,10 @@ impl Explorer {
                         } else { Some(sid + 1) }
                     }).unwrap();
 
+                } else {
+                    std::thread::sleep(sleep_time);
                 }
 
-                std::thread::sleep(sleep_time);
                 timer.update_times(self.side, stats.read().nodes);
             }
 
@@ -557,9 +555,11 @@ impl Explorer {
         #[cfg(not(feature = "par"))]
         out.sort_unstable_by(|a,b| a.2.cmp(&b.2));
 
-        if self.side == self.game.state.side_to_move {
-            out.reverse();
-        }
+        out.reverse();
+
+        // for (mv,_,score) in out.iter() {
+        //     debug!("mv: {}: {:?}", score, mv);
+        // }
 
         if out.len() == 0 {
             debug!("no moves found");
@@ -580,7 +580,7 @@ impl Explorer {
         //     (out,stats)
         // }
 
-        (out,stats)
+        (out, stats, (tt_r,tt_w))
     }
 
 }
@@ -635,20 +635,32 @@ impl Explorer {
         &self,
         ts:                 &Tables,
         g:                  &Game,
+        max_depth:          Depth,
         depth:              Depth,
         k:                  i16,
         mut alpha:          i32,
         mut beta:           i32,
         maximizing:         bool,
         mut stats:          &mut SearchStats,
-        stop:               Arc<AtomicBool>,
         mv0:                Move,
         tt_r:               &TTRead,
         tt_w:               TTWrite,
     ) -> Option<(Vec<Move>, Score)> {
+    // ) -> Option<((Vec<Move>, Score), (i32, i32))> {
 
-        if stop.load(SeqCst) {
+        if self.stop.load(SeqCst) {
             return None;
+        }
+
+        {
+            let r = self.best_mate.read();
+            if let Some(best) = *r {
+                drop(r);
+                if best <= max_depth {
+                    debug!("halting search of depth {}, faster mate found", max_depth);
+                    return None;
+                }
+            }
         }
 
         let moves = g.search_all(&ts, None);
@@ -833,16 +845,18 @@ impl Explorer {
                 },
                 _ => {
 
-                    // XXX: possibly perpetual check?
+                    // XXX: Check extension
                     let depth2 = if g2.state.checkers.unwrap().is_not_empty() && k < 40 {
                         depth
                     } else {
                         depth - 1
                     };
 
+                    let depth2 = depth - 1;
+
                     if let Some((mv_seq,score)) = self._ab_search(
-                        &ts, &g2, depth2, k + 1,
-                        alpha, beta, !maximizing, &mut stats, stop.clone(), *mv,
+                        &ts, &g2, max_depth, depth2, k + 1,
+                        alpha, beta, !maximizing, &mut stats, *mv,
                         tt_r, tt_w.clone(),
                     ) {
                         (false,mv_seq,score)

@@ -10,3 +10,4 @@ dhat.*
 testpositions/*
 *.bin
 logs/*
+test.log
