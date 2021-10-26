@@ -3,6 +3,12 @@ use crate::types::*;
 use crate::tables::*;
 use crate::util::*;
 
+// fn test_WAC() -> std::io::Result<()> {
+//     let mut games = read_epd("testpositions/WAC.epd").unwrap();
+//     let n = 25;
+// }
+
+
 #[test]
 fn test_moves_01() -> std::io::Result<()> {
 

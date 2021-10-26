@@ -80,8 +80,8 @@ fn main() {
     // main4(); // perft
 
     // main8(); // eval testing
-    main7();
-    // main3(); // read from file and test
+    // main7();
+    main3(); // read from file and test
 
 }
 
@@ -186,7 +186,7 @@ fn main7() {
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
 
     // let fen = "Q3b3/4bkp1/1q2np1p/NPp1p3/2P1P3/4BP1P/4B1P1/7K b - - 1 1"; // Correct = e6c7
-    let fen = "rnbqkb1r/pppp1ppp/8/4P3/6n1/7P/PPPNPPP1/R1BQKBNR b KQkq - 0 1"; // WAC.007, Ne3 = g4e3
+    // let fen = "rnbqkb1r/pppp1ppp/8/4P3/6n1/7P/PPPNPPP1/R1BQKBNR b KQkq - 0 1"; // WAC.007, Ne3 = g4e3
     // let fen = "3q1rk1/p4pp1/2pb3p/3p4/6Pr/1PNQ4/P1PB1PP1/4RRK1 b - - 0 1"; // WAC.009, Bh2+ = d6h2
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"; // Perft Position 2
@@ -207,9 +207,6 @@ fn main7() {
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
 
-    // let mut games = read_epd("WAC.epd").unwrap();
-    // let fen = &games[8 - 1].0;
-
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
     // let fen = "3q1rk1/p4pp1/2pb3p/3p4/6Pr/1PNQ4/P1PB1PP1/4RRK1 b - - 0 1"; // WAC.009, Bh2+ = d6h2
 
@@ -222,10 +219,11 @@ fn main7() {
     // let fen = "8/6B1/p5p1/Pp4kp/1P5r/5P1Q/4q1PK/8 w - - 0 32"   // Qxh4; id "zugzwang.004";
     // let fen = "8/8/1p1r1k2/p1pPN1p1/P3KnP1/1P6/8/3R4 b - - 0 1" // Nxd5; id "zugzwang.005";
 
-    // let fen = STARTPOS;
-    let fen = "5b1r/1P3ppp/3p4/4p1B1/1P6/6PK/4rk1P/2R5 b - - 0 35";
+    let mut games = read_epd("testpositions/WAC.epd").unwrap();
+    let fen = &games[4 - 1].0;
 
     // let ts = Tables::new();
+    // ts.write_to_file("tables.bin").unwrap();
     let ts = Tables::read_from_file("tables.bin").unwrap();
 
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -267,7 +265,7 @@ fn main7() {
 
             let n = 25;
             // let n = 10;
-            // let n = 5;
+            // let n = 3;
 
             ex.max_depth = n;
 
@@ -491,7 +489,7 @@ fn main3() {
     // let g = &games[8];
     // let games = vec![g.clone()];
     // games.truncate(2);
-    games.truncate(10);
+    // games.truncate(10);
 
     let n = 25;
 
@@ -499,8 +497,8 @@ fn main3() {
     let ts = Tables::read_from_file("tables.bin").unwrap();
 
     let timesettings = TimeSettings::new_f64(
-        5.0,
-        0.1,
+        0.0,
+        0.5,
     );
 
     let mut total = (0,0);
@@ -532,7 +530,10 @@ fn main3() {
             total.1 += 1;
         } else {
             total.1 += 1;
-            println!("#{:>2}: Wrong, Correct: {}, engine: {}, {}/{}", i, m[0], mv, total.0, total.1);
+            let t = t0.elapsed().as_secs_f64() / total.1 as f64;
+            println!(
+                "#{:>2}: Wrong, Correct: {:>5}, engine: {:>5}, ({}/{}), avg: {:.2}",
+                i, m[0], mv, total.0, total.1, t);
             // println!("Correct        Engine");
             // println!("{:<8}       {}", m[0], mv);
         }

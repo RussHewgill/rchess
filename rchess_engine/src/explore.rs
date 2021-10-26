@@ -150,12 +150,6 @@ impl Explorer {
             } else { None }
         }).collect();
 
-        // std::thread::spawn(|| {
-        //     loop {
-        //         std::thread::sleep_ms(100);
-        //     }
-        // });
-
         // let alpha = Arc::new(AtomicI32::new(i32::MIN));
         // let beta  = Arc::new(AtomicI32::new(i32::MAX));
 
@@ -340,7 +334,10 @@ impl Explorer {
         // }
 
         trace!("sending tx, depth = {}", depth);
-        tx.send((depth,out)).unwrap();
+        match tx.send((depth,out)) {
+            Ok(_)  => {},
+            Err(_) => {},
+        }
         drop(tx);
 
         // (depth, out)
@@ -413,6 +410,8 @@ impl Explorer {
         let (tt_r, tt_w) = evmap::new();
         let tt_w = Arc::new(Mutex::new(tt_w));
 
+        let sleep_time = Duration::from_millis(10);
+
         crossbeam::scope(|s| {
 
             let out = out.clone();
@@ -437,53 +436,40 @@ impl Explorer {
 
             let max_threads = np_cpus;
 
-            // s.spawn(move |_| loop {
-            //     match rx.recv() {
-            //         Err(RecvError)    => {
-            //             trace!("Breaking thread counter loop");
-            //             break;
-            //         },
-            //         Ok((depth,scores)) => {
-            //             if depth > best_depth2.load(SeqCst) {
-            //                 best_depth2.store(depth,SeqCst);
-            //                 let mut w = out.write();
-            //                 *w = (depth, scores);
-            //             }
-            //             thread_counter2.fetch_sub(1, SeqCst);
-            //             trace!("decrementing thread counter, new val = {}", thread_counter2.load(SeqCst));
-            //         },
-            //     }
-            // });
-
             s.spawn(move |_| loop {
                 match rx.try_recv() {
                     Err(TryRecvError::Empty)    => {
-                        std::thread::sleep(Duration::from_millis(10));
+                        std::thread::sleep(sleep_time);
                     },
                     Err(TryRecvError::Disconnected)    => {
                         trace!("Breaking thread counter loop (Disconnect)");
                         break;
                     },
-                    Ok((depth,scores)) => {
-                        if depth > best_depth2.load(SeqCst) {
-                            best_depth2.store(depth,SeqCst);
-                            let mut w = out.write();
-                            *w = (depth, scores);
-                        }
-                        thread_counter2.fetch_sub(1, SeqCst);
-                        trace!("decrementing thread counter, new val = {}", thread_counter2.load(SeqCst));
+                    Ok((depth,mut scores)) => {
                         if stop2.load(SeqCst) {
                             trace!("Breaking thread counter loop (Force Stop)");
                             break;
                         }
+                        if depth > best_depth2.load(SeqCst) {
+                            best_depth2.store(depth,SeqCst);
+                            let mut w = out.write();
+
+                            scores.sort_unstable_by(|a,b| a.2.cmp(&b.2));
+                            if self.side == self.game.state.side_to_move {
+                                scores.reverse();
+                            }
+                            let (mv,_,score) = scores.get(0).unwrap();
+                            trace!("new best move ({}), {:?} = {:?}", depth, score, mv);
+
+                            *w = (depth, scores);
+                        }
+                        thread_counter2.fetch_sub(1, SeqCst);
+                        trace!("decrementing thread counter, new val = {}", thread_counter2.load(SeqCst));
                     },
                 }
             });
 
             let t0 = Instant::now();
-            // let t_max = Duration::from_secs_f64(
-            //     2.0
-            // );
             let t_max = self.timer.settings.increment[self.side];
             let t_max = Duration::from_secs_f64(t_max);
 
@@ -503,14 +489,11 @@ impl Explorer {
                 // let cur_depth = depth + 1 + sid.trailing_zeros() as u8;
                 let cur_depth = best_depth.load(SeqCst) + 1 + depths[sid as usize];
 
-                // if !timer.should_search(self.side, cur_depth) {
-                // if k <= 0 {
-                // if cur_depth > self.max_depth {
-                // if best_depth.load(SeqCst) >= self.max_depth + 1 {
                 if best_depth.load(SeqCst) > self.max_depth {
                     let d = best_depth.load(SeqCst);
                     debug!("breaking loop (Depth), d: {}, t0: {:.3}", d, t0.elapsed().as_secs_f64());
                     drop(tx);
+
                     loop {
                         if t0.elapsed() > t_max {
                             debug!("breaking loop (Depth -> Time),  d: {}, t0: {:.3}",
@@ -518,20 +501,18 @@ impl Explorer {
                             stop.store(true, SeqCst);
                             break 'outer;
                         }
+                        std::thread::sleep(sleep_time);
                     }
-                    // break;
-                }
-                if t0.elapsed() > t_max {
+
+                    // break 'outer;
+                } else if t0.elapsed() > t_max {
                     let d = best_depth.load(SeqCst);
                     debug!("breaking loop (Time),  d: {}, t0: {:.3}", d, t0.elapsed().as_secs_f64());
                     // Only force threads to stop if out of time
                     stop.store(true, SeqCst);
                     drop(tx);
                     break;
-                }
-                // k -= 1;
-
-                if thread_counter.load(SeqCst) < np_cpus {
+                } else if thread_counter.load(SeqCst) < np_cpus {
                     let gs2    = gs.clone();
                     let stats2 = stats.clone();
                     let tx2    = tx.clone();
@@ -555,6 +536,7 @@ impl Explorer {
 
                 }
 
+                std::thread::sleep(sleep_time);
                 timer.update_times(self.side, stats.read().nodes);
             }
 
@@ -1090,137 +1072,6 @@ impl Explorer {
             //     zb, SearchInfo::new(mv, depth, Node::All, val.1));
         }
         false
-    }
-
-}
-
-/// AB search 2
-impl Explorer {
-
-    #[allow(unused_doc_comments)]
-    /// alpha: the MIN score that the maximizing player is assured of
-    /// beta:  the MAX score that the minimizing player is assured of
-    pub fn _ab_search2(
-        &self,
-        ts:                 &Tables,
-        g_prev:             &Game,
-        depth:              Depth,
-        k:                  i16,
-        mut alpha:          i32,
-        mut beta:           i32,
-        maximizing:         bool,
-        mut stats:          &mut SearchStats,
-        mv0:                Move,
-    ) -> (Vec<Move>, Score) {
-
-        /// Make move, return game, if terminal node return score
-        let g = match g_prev.make_move_unchecked(&ts, mv0) {
-            Ok(g)                          => g,
-            Err(GameEnd::Checkmate { .. }) => {
-                let score = 100_000_000 - k as Score;
-                stats.leaves += 1;
-                stats.checkmates += 1;
-
-                // return (vec![mv0], score);
-                if maximizing {
-                    return (vec![mv0], -score);
-                } else {
-                    return (vec![mv0], score);
-                }
-            },
-            Err(GameEnd::Stalemate | GameEnd::Draw) => {
-                let score = -100_000_000 + k as Score;
-                stats.leaves += 1;
-                stats.stalemates += 1;
-                return (vec![],score);
-            },
-            Err(win)                => panic!("other win? {:?}: {:?}\n{:?}", mv0, win, g_prev),
-        };
-
-        // /// lookup game in trans table
-        // let node_type = match self.check_tt(&ts, &g, depth, maximizing, &mut stats) {
-        //     Some((SICanUse::UseScore,si))    => {
-        //         /// use saved score if appropriate
-        //         return (si.moves.clone(), si.score);
-        //     },
-        //     Some((SICanUse::UseOrdering,si)) => Some(si.node_type),
-        //     None                             => None,
-        // };
-        // let node_type = None;
-
-        /// Search for all legal moves, return score if none found
-        let moves = match g.search_all(&ts, None) {
-            Outcome::Checkmate(_) => {
-                let score = 100_000_000 - k as Score;
-                stats.leaves += 1;
-                stats.checkmates += 1;
-
-                // return (vec![mv0], score);
-                if maximizing {
-                    return (vec![mv0], -score);
-                } else {
-                    return (vec![mv0], score);
-                }
-            },
-            Outcome::Stalemate => {
-                let score = -100_000_000 + k as Score;
-                stats.leaves += 1;
-                stats.stalemates += 1;
-                return (vec![],score);
-            },
-            Outcome::Moves(ms) => ms,
-        };
-
-        /// Evaluate node at max depth
-        if depth == 0 {
-            let score = g.evaluate(&ts).sum();
-            stats.leaves += 1;
-            // return (vec![mv0], score);
-            if self.side == Black {
-                return (vec![mv0], -score);
-            } else {
-                return (vec![mv0], score);
-            }
-        }
-
-        let mut bestscore: (Option<Vec<Move>>, Score) = (None,Score::MIN);
-
-        for mv in moves {
-            let (mut mv_seq,score) = self._ab_search2(
-                &ts, &g, depth - 1, k + 1, alpha, beta, !maximizing, &mut stats, mv);
-
-            if maximizing {
-                if score > bestscore.1 {
-                    bestscore.1 = score;
-                    mv_seq.push(mv);
-                    bestscore.0 = Some(mv_seq);
-                }
-                alpha = i32::max(alpha, bestscore.1);
-                if bestscore.1 >= beta {
-                    break;
-                }
-            } else {
-
-                if score < bestscore.1 {
-                    bestscore.1 = score;
-                    mv_seq.push(mv);
-                    bestscore.0 = Some(mv_seq);
-                }
-                beta = i32::min(beta, bestscore.1);
-                if bestscore.1 <= alpha {
-                    break;
-                }
-
-            }
-
-        }
-
-        match bestscore.0 {
-            Some(mv_seq) => (mv_seq, bestscore.1),
-            None         => (vec![mv0], bestscore.1),
-        }
-
-        // unimplemented!()
     }
 
 }
