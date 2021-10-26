@@ -272,8 +272,8 @@ fn main7() {
             ex.max_depth = n;
 
             ex.timer.settings = TimeSettings::new_f64(
-                1.0,
-                2.0,
+                0.0,
+                0.5,
             );
 
             env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
