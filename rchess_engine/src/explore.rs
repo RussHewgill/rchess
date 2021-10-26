@@ -146,7 +146,8 @@ impl Explorer {
         // let alpha = Arc::new(AtomicI32::new(i32::MIN));
         // let beta  = Arc::new(AtomicI32::new(i32::MAX));
 
-        while (depth <= self.max_depth) && (strict_depth || (|| timer.should_search(self.side, depth))()) {
+        // while (depth <= self.max_depth) && (strict_depth || (|| timer.should_search(self.side, depth))()) {
+        while (depth <= self.max_depth) && (strict_depth || (timer.should_search(self.side, depth))) {
         // while (depth <= self.max_depth) && (timer.should_search(self.side, depth)) {
 
             // // eprintln!("Explorer: not parallel");
@@ -179,7 +180,7 @@ impl Explorer {
                     let (tt_r, tt_w) = evmap::new();
                     let tt_w = Arc::new(Mutex::new(tt_w));
                     let mut stats = SearchStats::default();
-                    let (mut mv_seq,score) = {
+                    let ((mut mv_seq,score),_) = {
                         let alpha = i32::MIN;
                         let beta  = i32::MAX;
                         self._ab_search(
@@ -253,6 +254,7 @@ impl Explorer {
         &self,
         ts:               &Tables,
         mut gs:           Vec<(Move,Game)>,
+        prev_best:        Option<Score>,
         depth:            Depth,
         tx:               Sender<(Depth,Vec<(Move,Vec<Move>,Score)>)>,
         stats:            Arc<RwLock<SearchStats>>,
@@ -280,9 +282,22 @@ impl Explorer {
                 _ => {},
             }
 
-            if let Some((mut mv_seq,score)) = {
+            if let Some(((mut mv_seq,score),_)) = {
+
+                // let (alpha,beta) = match prev_best {
+                //     Some(prev) => {
+                //         let delta = 1000;
+                //         let alpha = i32::max(prev - delta, i32::MIN);
+                //         let beta  = i32::min(prev + delta, i32::MAX);
+                //         // debug!("Using aspiration window ({}, {})", alpha, beta);
+                //         (alpha,beta)
+                //     },
+                //     None       => (i32::MIN,i32::MAX),
+                // };
+
                 let alpha = i32::MIN;
                 let beta  = i32::MAX;
+
                 self._ab_search(
                     &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss, mv,
                     &tt_r, tt_w.clone(),
@@ -376,16 +391,16 @@ impl Explorer {
 
         if print { eprintln!("threadcount = {:?}", threadcount); }
 
-        let out = Arc::new(RwLock::new((0,vec![])));
+        let out: Arc<RwLock<(Depth,Vec<_>,Option<Score>)>> = Arc::new(RwLock::new((0, vec![], None)));
 
         let (tt_r, tt_w) = evmap::new();
         let tt_w = Arc::new(Mutex::new(tt_w));
 
-        let sleep_time = Duration::from_millis(10);
+        // let sleep_time = Duration::from_millis(10);
+        let sleep_time = Duration::from_millis(1);
 
         crossbeam::scope(|s| {
 
-            let out = out.clone();
 
             // let (tx,rx): (Sender<ScopedJoinHandle<(Depth,Vec<(Move,Vec<Move>,Score)>)>>,
             //               Receiver<ScopedJoinHandle<(Depth,Vec<(Move,Vec<Move>,Score)>)>>) =
@@ -399,6 +414,8 @@ impl Explorer {
 
             self.stop.store(false, SeqCst);
 
+            let out1            = out.clone();
+            let out2            = out.clone();
             let thread_counter  = Arc::new(AtomicU8::new(0));
             let thread_counter2 = thread_counter.clone();
             let search_id       = Arc::new(AtomicU8::new(0));
@@ -414,10 +431,11 @@ impl Explorer {
                 0, 1, 0, 2, 0, 1,
                 // 2, 1, 0, 0, 1, 0,
             ];
+            let depths_largest: Depth = *depths.iter().max().unwrap();
 
             let t0 = Instant::now();
             let t_max = self.timer.settings.increment[self.side]
-                + self.timer.settings.safety;
+                + (self.timer.settings.safety / 2.0);
             let t_max = Duration::from_secs_f64(t_max);
 
             s.spawn(move |_| loop {
@@ -439,6 +457,7 @@ impl Explorer {
                             best_depth2.store(depth,SeqCst);
 
                             let (mv,_,score) = scores.iter().max_by(|a,b| a.2.cmp(&b.2)).unwrap();
+                            let score = *score;
 
                             // let (mv,_,score) = scores.get(0).unwrap();
                             // trace!("new best move ({}), {:?} = {:?}", depth, score, mv);
@@ -449,18 +468,20 @@ impl Explorer {
                             // let (worst,_,_) = scores.iter().min_by(|a,b| a.2.cmp(&b.2)).unwrap();
                             // debug!("worst move: {:?}", worst);
 
-                            if (self.side == White && *score > 100_000_000 - 50)
-                                || (self.side == Black && *score < -100_000_000 + 50) {
+                            if (self.side == White && score > 100_000_000 - 50)
+                                || (self.side == Black && score < -100_000_000 + 50) {
                                     let k = 100_000_000 - score.abs();
                                     debug!("Found mate in {}: d({}), {:?}", k, depth, mv);
                                     let mut best = self.best_mate.write();
                                     *best = Some(k as u8);
-                                    let mut w = out.write();
-                                    *w = (depth, scores);
+                                    let mut w = out1.write();
+                                    // *w = (depth, scores, Some(score));
+                                    *w = (depth, scores, None);
                                     break;
                             } else {
-                                    let mut w = out.write();
-                                    *w = (depth, scores);
+                                    let mut w = out1.write();
+                                    // *w = (depth, scores, Some(score));
+                                    *w = (depth, scores, None);
                             }
                         }
                         thread_counter2.fetch_sub(1, SeqCst);
@@ -488,13 +509,20 @@ impl Explorer {
                     }
                 }
 
-                if best_depth.load(SeqCst) > self.max_depth {
+                if best_depth.load(SeqCst) + 1 + depths_largest > self.max_depth {
                     let d = best_depth.load(SeqCst);
                     debug!("breaking loop (Depth), d: {}, t0: {:.3}", d, t0.elapsed().as_secs_f64());
-                    drop(tx);
+                    // drop(tx);
 
                     loop {
-                        if t0.elapsed() > t_max {
+                        if thread_counter.load(SeqCst) == 0 {
+                            let d = best_depth.load(SeqCst);
+                            debug!("breaking loop (Depth -> Threads),  d: {}, t0: {:.3}",
+                                   d, t0.elapsed().as_secs_f64());
+                            stop.store(true, SeqCst);
+                            break 'outer;
+                        } else if t0.elapsed() > t_max {
+                            let d = best_depth.load(SeqCst);
                             debug!("breaking loop (Depth -> Time),  d: {}, t0: {:.3}",
                                    d, t0.elapsed().as_secs_f64());
                             stop.store(true, SeqCst);
@@ -504,6 +532,8 @@ impl Explorer {
                     }
 
                     // break 'outer;
+                } if cur_depth > self.max_depth {
+                    continue;
                 } else if t0.elapsed() > t_max {
                     let d = best_depth.load(SeqCst);
                     debug!("breaking loop (Time),  d: {}, t0: {:.3}", d, t0.elapsed().as_secs_f64());
@@ -512,6 +542,7 @@ impl Explorer {
                     drop(tx);
                     break;
                 } else if thread_counter.load(SeqCst) < max_threads {
+
                     let gs2    = gs.clone();
                     let stats2 = stats.clone();
                     let tx2    = tx.clone();
@@ -519,10 +550,15 @@ impl Explorer {
                     let tt_r2  = tt_r.clone();
                     let tt_w2  = tt_w.clone();
 
+                    // let best: Option<Score> = {
+                    //     let r = out2.read();
+                    //     r.2
+                    // };
+
                     trace!("spawning thread: (sid: {}) = cur_depth {:?}", sid, cur_depth);
                     s.spawn(move |_| {
                         self._lazy_smp_single(
-                            &ts, gs2, cur_depth, tx2, stats2, tt_r2, tt_w2);
+                            &ts, gs2, None, cur_depth, tx2, stats2, tt_r2, tt_w2);
                     });
 
                     thread_counter.fetch_add(1, SeqCst);
@@ -542,7 +578,7 @@ impl Explorer {
 
         }).unwrap();
 
-        let (d,mut out) = {
+        let (d,mut out,_) = {
             let r = out.read();
             r.clone()
         };
@@ -645,8 +681,8 @@ impl Explorer {
         mv0:                Move,
         tt_r:               &TTRead,
         tt_w:               TTWrite,
-    ) -> Option<(Vec<Move>, Score)> {
-    // ) -> Option<((Vec<Move>, Score), (i32, i32))> {
+    // ) -> Option<(Vec<Move>, Score)> {
+    ) -> Option<((Vec<Move>, Score), (i32, i32))> {
 
         if self.stop.load(SeqCst) {
             return None;
@@ -674,9 +710,11 @@ impl Explorer {
                     stats.checkmates += 1;
                 }
                 if maximizing {
-                    return Some((vec![mv0], -score));
+                    // return Some((vec![mv0],-score));
+                    return Some(((vec![mv0], -score),(alpha,beta)));
                 } else {
-                    return Some((vec![mv0], score));
+                    // return Some((vec![mv0],score));
+                    return Some(((vec![mv0], score),(alpha,beta)));
                 }
 
             },
@@ -687,7 +725,8 @@ impl Explorer {
                     stats.leaves += 1;
                     stats.stalemates += 1;
                 }
-                return Some((vec![],score));
+                // return Some((vec![],score));
+                return Some(((vec![], score),(alpha,beta)));
             },
             Outcome::Moves(ms)    => ms,
         };
@@ -701,10 +740,12 @@ impl Explorer {
             }
             if self.side == Black {
                 // return (vec![mv0], -score);
-                return Some((vec![], -score));
+                // return Some((vec![], -score));
+                return Some(((vec![], -score),(alpha,beta)));
             } else {
                 // return (vec![mv0], score);
-                return Some((vec![], score));
+                // return Some((vec![], score));
+                return Some(((vec![], score),(alpha,beta)));
             }
         }
 
@@ -845,16 +886,20 @@ impl Explorer {
                 },
                 _ => {
 
-                    // XXX: Check extension
-                    let depth2 = if g2.state.checkers.unwrap().is_not_empty() && k < 40 {
-                        depth
-                    } else {
-                        depth - 1
-                    };
-
                     let depth2 = depth - 1;
 
-                    if let Some((mv_seq,score)) = self._ab_search(
+                    // // XXX: Check extension
+                    // let depth2 = if (g2.state.checkers.unwrap().is_not_empty()
+                    //                  || g.state.checkers.unwrap().is_not_empty()) && k < 50 {
+                    //     trace!("found check at depth {}, extending by 1", k);
+                    //     // XXX: 2 plies
+                    //     // depth + 1
+                    //     depth
+                    // } else {
+                    //     depth - 1
+                    // };
+
+                    if let Some(((mv_seq,score),_)) = self._ab_search(
                         &ts, &g2, max_depth, depth2, k + 1,
                         alpha, beta, !maximizing, &mut stats, *mv,
                         tt_r, tt_w.clone(),
@@ -929,7 +974,8 @@ impl Explorer {
         stats.beta = stats.beta.max(beta);
 
         match &val.0 {
-            Some((zb,mv,mv_seq)) => Some((mv_seq.clone(),val.1)),
+            // Some((zb,mv,mv_seq)) => Some((mv_seq.clone(),val.1)),
+            Some((zb,mv,mv_seq)) => Some(((mv_seq.clone(),val.1),(alpha,beta))),
             // _                    => (vec![mv0], val.1),
             // _                    => panic!("_ab_search val is None ?"),
             _                    => None,

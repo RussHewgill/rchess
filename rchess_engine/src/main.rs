@@ -37,6 +37,7 @@ use chrono::Timelike;
 
 const STARTPOS: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+#[allow(unreachable_code)]
 fn main() {
 
     // let logpath = "./log.log";
@@ -90,6 +91,9 @@ fn main() {
     // args.pop();
     // args.reverse();
     // let a = args.join(" ");
+
+    // let ts = Tables::new();
+    // ts.write_to_file("tables.bin").unwrap();
 
     match args.get(1) {
         Some(s) => match s.as_str() {
@@ -280,11 +284,10 @@ fn main7() {
 
     // let fen = &games(1); // g3g6
     // let fen = &games(6); // b6b7, #11
-    // let fen = &games(9); // d6h2, #-5
+    let fen = &games(9); // d6h2, #-5
     // let fen = &games(17); // c4e5
     // let fen = &games(18); // a8h8, #27, Tablebase
     // let fen = &games(21); // d2h6
-    let fen = &games(30); // 
     eprintln!("fen = {:?}", fen);
 
     // let ts = Tables::new();
@@ -310,13 +313,6 @@ fn main7() {
 
     // return;
 
-    // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
-    // // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("trace"))
-    //     .format_timestamp(None)
-    //     .format_module_path(false)
-    //     .format_target(false)
-    //     .init();
-
     #[allow(unreachable_code)]
     if true {
 
@@ -328,15 +324,15 @@ fn main7() {
 
             println!("g = {:?}", g);
 
-            // let n = 25;
-            let n = 10;
-            // let n = 3;
+            let n = 25;
+            // let n = 10;
+            // let n = 5;
 
             ex.max_depth = n;
 
             ex.timer.settings = TimeSettings::new_f64(
                 0.0,
-                1.5,
+                5.0,
             );
 
             let t0 = std::time::Instant::now();
@@ -345,12 +341,12 @@ fn main7() {
             println!("m #{} = {:?}", q, mv0);
             println!("explore lazy_smp  (depth: {}) done in {:.3} seconds.",
                      stats0.max_depth, t0.elapsed().as_secs_f64());
-            // stats0.print(t0.elapsed());
+            stats0.print(t0.elapsed());
 
-            // print!("\n");
-            // for m in mvs.iter() {
-            //     eprintln!("m = {:?}", m);
-            // }
+            print!("\n");
+            for m in mvs.iter() {
+                eprintln!("m = {:?}", m);
+            }
 
             // let g2 = g.flip_sides(&ts);
             // let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);

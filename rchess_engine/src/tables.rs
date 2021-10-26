@@ -198,11 +198,18 @@ impl Tables {
 
     pub fn read_from_file(path: &str) -> std::io::Result<Self> {
 
-        let b: Vec<u8> = std::fs::read(&path)?;
+        // let b: Vec<u8> = ;
+        match std::fs::read(&path) {
+            Ok(b) => {
+                let ts: Tables = bincode::deserialize(&b).unwrap();
+                Ok(ts)
+            },
+            Err(_) => {
+                debug!("tables file not found, generating");
+                Ok(Self::new())
+            }
+        }
 
-        let ts: Tables = bincode::deserialize(&b).unwrap();
-
-        Ok(ts)
     }
 
     pub(crate) fn _new(magics: bool) -> Self {
@@ -669,34 +676,9 @@ mod eval {
     use crate::evaluate::*;
     use crate::tuning::*;
 
-    use serde_big_array::BigArray;
-
-    #[derive(Serialize,Deserialize,Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
-    pub struct Wat {
-        // #[serde(with = "BigArray")]
-        // wat: [Score; 64],
-        // #[serde(serialize_with = "<[BigArray]>::serialize")]
-        // wat: [[Score; 64]; 2],
-        // #[serde(serialize_with = "<[_]>::serialize")]
-        // wat: [Score; 64],
-        // #[serde(flatten)]
-
-
-        // #[serde(with = "BigArray",flatten)]
-        // wat: [[Score; 2]; 64],
-
-        // #[serde(with = "<[_]>::serialize")]
-        // #[serde(with = "BigArray",flatten)]
-        // wat: [[Score; 64]; 6],
-
-    }
-
     #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
-    // #[derive(Serialize,Deserialize,Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
     pub struct PcTables {
-        // #[serde(with = "BigArray",flatten)]
         tables_mid:         [[Score; 64]; 6],
-        // #[serde(with = "BigArray",flatten)]
         tables_end:         [[Score; 64]; 6],
         pub ev_pawn:        EvPawn,
         pub ev_rook:        EvRook,
@@ -729,26 +711,26 @@ mod eval {
 
         pub fn get_mid<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
             let c1: Coord = c0.into();
-            let c1 = if col == White { c1 } else { Coord(c1.0,7-c1.1) };
+            let c1 = if col == White { c1 } else { Coord(7 - c1.0,7 - c1.1) };
             self.tables_mid[pc.index()][c1]
         }
 
         pub fn get_end<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
             let c1: Coord = c0.into();
-            let c1 = if col == White { c1 } else { Coord(c1.0,7-c1.1) };
+            let c1 = if col == White { c1 } else { Coord(7 -c1.0,7 - c1.1) };
             self.tables_end[pc.index()][c1]
         }
 
-        // [
-        //     0,  0,  0,  0,  0,  0,  0,  0,
-        //     50, 50, 50, 50, 50, 50, 50, 50,
+        // let out = [
         //     0,  0,  0,  0,  0,  0,  0,  0,
         //     0,  0,  0,  0,  0,  0,  0,  0,
         //     0,  0,  0,  0,  0,  0,  0,  0,
-        //     5, -5,-10,  0,  0,-10, -5,  5,
-        //     5, 10, 10,-20,-20, 10, 10,  5,
         //     0,  0,  0,  0,  0,  0,  0,  0,
-        // ]
+        //     0,  0,  0,  0,  0,  0,  0,  0,
+        //     0,  0,  0,  0,  0,  0,  0,  0,
+        //     0,  0,  0,  0,  0,  0,  0,  5,
+        //     0,  0,  0,  0,  0,  0,  0,  0,
+        // ];
 
     }
 
@@ -756,24 +738,27 @@ mod eval {
     impl PcTables {
 
         pub fn new() -> Self {
-            let pawns = Self::gen_pawns();
+            let pawns   = Self::gen_pawns();
+            let rooks   = Self::gen_rooks();
             let knights = Self::gen_knights();
-            let kings = Self::gen_kings_opening();
+            let bishops = Self::gen_bishops();
+            let queens  = Self::gen_queens();
+            let kings   = Self::gen_kings_opening();
 
             let out = Self {
                 tables_mid: [pawns,
-                             [0; 64], // Rook
+                             rooks,
                              knights,
-                             [0; 64], // b
-                             [0; 64], // q
+                             bishops,
+                             queens,
                              kings,
                 ],
                 tables_end: [pawns,
-                            [0; 64], // Rook
-                            knights,
-                            [0; 64], // b
-                            [0; 64], // q
-                            kings,
+                             rooks,
+                             knights,
+                             bishops,
+                             queens,
+                             kings,
                 ],
                 ev_pawn:   EvPawn::new(),
                 ev_rook:   EvRook::new(),
@@ -840,39 +825,60 @@ mod eval {
             out
         }
 
+        fn gen_rooks() -> [Score; 64] {
+            [
+                 0,  0,  0,  0,  0,  0,  0,  0,
+                 5, 10, 10, 10, 10, 10, 10,  5,
+                -5,  0,  0,  0,  0,  0,  0, -5,
+                -5,  0,  0,  0,  0,  0,  0, -5,
+                -5,  0,  0,  0,  0,  0,  0, -5,
+                -5,  0,  0,  0,  0,  0,  0, -5,
+                -5,  0,  0,  0,  0,  0,  0, -5,
+                 0,  0,  0,  5,  5,  0,  0,  0
+            ]
+        }
+
         pub fn gen_knights() -> [Score; 64] {
             let mut scores: Vec<(&str,Score)> = vec![];
 
             let out = [
-                0,  0,  0,  0,  0,  0,  0,  0,
-                0,  0,  0,  0,  0,  0,  0,  0,
-                0,  0,  0,  0,  0,  0,  0,  0,
-                0,  0,  0,  0,  0,  0,  0,  0,
-                0,  0,  0,  0,  0,  0,  0,  0,
-                0,  0,  0,  0,  0,  0,  0,  0,
-                0,  0,  0,  0,  0,  0,  0,  5,
-                0,  0,  0,  0,  0,  0,  0,  0,
+                -50,-40,-30,-30,-30,-30,-40,-50,
+                -40,-20,  0,  0,  0,  0,-20,-40,
+                -30,  0, 10, 15, 15, 10,  0,-30,
+                -30,  5, 15, 20, 20, 15,  5,-30,
+                -30,  0, 15, 20, 20, 15,  0,-30,
+                -30,  5, 10, 15, 15, 10,  5,-30,
+                -40,-20,  0,  5,  5,  0,-20,-40,
+                -50,-40,-30,-30,-30,-30,-40,-50,
             ];
 
-            // for sq in 0u32..64 {
-            //     let c0: Coord = sq.into();
-            //     let s: Score = c0.center_distance().into();
-            //     let s = (3 - s) * 1;
-            //     out[c0] = s;
-            // }
-
-            // let mut out = [0; 64];
-
-            // for (c,s) in scores.into_iter() {
-            //     let c0: Coord = c.into();
-            //     let sq: usize = c0.into();
-            //     out[sq] = s;
-            //     let c1 = Coord(7-c0.0,c0.1);
-            //     let sq: usize = c1.into();
-            //     out[sq] = s;
-            // }
-
             out
+        }
+
+        fn gen_bishops() -> [Score; 64] {
+            [
+                -20,-10,-10,-10,-10,-10,-10,-20,
+                -10,  0,  0,  0,  0,  0,  0,-10,
+                -10,  0,  5, 10, 10,  5,  0,-10,
+                -10,  5,  5, 10, 10,  5,  5,-10,
+                -10,  0, 10, 10, 10, 10,  0,-10,
+                -10, 10, 10, 10, 10, 10, 10,-10,
+                -10,  5,  0,  0,  0,  0,  5,-10,
+                -20,-10,-10,-10,-10,-10,-10,-20,
+            ]
+        }
+
+        fn gen_queens() -> [Score; 64] {
+            [
+                -20,-10,-10, -5, -5,-10,-10,-20,
+                -10,  0,  0,  0,  0,  0,  0,-10,
+                -10,  0,  5,  5,  5,  5,  0,-10,
+                 -5,  0,  5,  5,  5,  5,  0, -5,
+                  0,  0,  5,  5,  5,  5,  0, -5,
+                -10,  5,  5,  5,  5,  5,  0,-10,
+                -10,  0,  5,  0,  0,  0,  0,-10,
+                -20,-10,-10, -5, -5,-10,-10,-20,
+            ]
         }
 
         pub fn gen_kings_opening() -> [Score; 64] {
@@ -883,8 +889,8 @@ mod eval {
                 -30,-40,-40,-50,-50,-40,-40,-30,
                 -20,-30,-30,-40,-40,-30,-30,-20,
                 -10,-20,-20,-20,-20,-20,-20,-10,
-                20, 20,  0,  0,  0,  0, 20, 20,
-                20, 30, 10,  0,  0, 10, 30, 20
+                 20, 20,  0,  0,  0,  0, 20, 20,
+                 20, 30, 10,  0,  0, 10, 30, 20,
             ]
         }
 
