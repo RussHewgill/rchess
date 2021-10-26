@@ -203,7 +203,7 @@ pub fn stockfish_eval(
     child.stdin
         .as_mut()
         .unwrap()
-        .write_all(format!("eval\n").as_bytes())?;
+        .write_all("eval\n".as_bytes())?;
 
     let output = child.wait_with_output()?;
     let output = String::from_utf8(output.stdout).unwrap();
@@ -299,7 +299,7 @@ pub fn test_stockfish(
     let done_sf = now.elapsed().as_secs_f64();
     // let done_sf = 0.;
 
-    let mut g = Game::from_fen(&ts, &fen).unwrap();
+    let mut g = Game::from_fen(ts, fen).unwrap();
     let ts = Tables::new();
     let _ = g.recalc_gameinfo_mut(&ts);
     // eprintln!("g = {:?}", g);

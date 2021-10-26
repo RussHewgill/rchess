@@ -5,6 +5,25 @@
 
 #![feature(destructuring_assignment)]
 
+#![allow(
+    // clippy::all,
+    clippy::restriction,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::cargo,
+    clippy::complexity,
+    // clippy::correctness,
+    clippy::nursery,
+    // clippy::restriction,
+    clippy::style,
+    // clippy::suspicious,
+    // clippy::perf,
+)]
+
+// #![warn(
+//     clippy::perf,
+// )]
+
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
@@ -25,6 +44,7 @@ pub mod trans_table;
 pub mod searchstats;
 pub mod pruning;
 
+#[allow(clippy::all)]
 pub mod util;
 
 #[cfg(test)]

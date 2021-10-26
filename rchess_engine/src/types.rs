@@ -57,6 +57,7 @@ pub enum GameEnd {
     Checkmate { win: Color },
     Stalemate,
     Draw,
+    DrawRepetition,
     Error,
 }
 

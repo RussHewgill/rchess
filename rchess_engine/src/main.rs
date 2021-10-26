@@ -6,6 +6,16 @@
 
 #![feature(destructuring_assignment)]
 
+#![allow(clippy::all)]
+
+// #![allow(
+//     clippy::all,
+//     clippy::restriction,
+//     clippy::pedantic,
+//     clippy::nursery,
+//     clippy::cargo,
+// )]
+
 use std::collections::HashMap;
 use std::str::FromStr;
 
@@ -70,6 +80,7 @@ fn main() {
 
     // // let s = std::mem::size_of::<Eval>();
     // let s = std::mem::size_of::<Game>();
+    // // let s = std::mem::size_of::<GHistory>();
     // eprintln!("s = {:?}", s);
     // // let s = u16::MAX;
     // // eprintln!("s = {:#8x}", s);
@@ -211,6 +222,7 @@ fn main7() {
     // let fen = "3q1rk1/p4pp1/2pb3p/3p4/6Pr/1PNQ4/P1PB1PP1/4RRK1 b - - 0 1"; // WAC.009, Bh2+ = d6h2
 
     let fen = "r2rb1k1/pp1q1p1p/2n1p1p1/2bp4/5P2/PP1BPR1Q/1BPN2PP/R5K1 w - - 0 1"; // WAC.014, h3h7
+    let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"; // Perft Position 2
 
     // /// https://www.chessprogramming.org/Caesar#HorizonEffect
     // let fen = "2kr4/3nR3/p2B1p2/1p1p1Bp1/1P1P3p/2P4P/P5PK/8 b - - 1 32"; // Horizon
@@ -234,17 +246,10 @@ fn main7() {
     let timesettings = TimeSettings::new_f64(10.0,0.1);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
 
-    // let moves = vec![
-    //     Move::Quiet { from: "G4".into(), to: "E3".into() },
-    //     Move::Capture { from: "G4".into(), to: "E5".into() },
-    // ];
-
     // let t0 = std::time::Instant::now();
     // let (mv,stats) = ex.explore(&ts, None);
     // println!("m = {:?}", mv);
     // println!("explore done in {} seconds.", t0.elapsed().as_secs_f64());
-
-    // eprintln!("g = {:?}", g);
 
     // let mut ps = vec![
     //     Move::Capture { from: "E4".into(), to: "F5".into(), pc: Pawn, victim: Queen },
@@ -265,15 +270,15 @@ fn main7() {
 
             println!("g = {:?}", g);
 
-            let n = 25;
+            // let n = 25;
             // let n = 10;
-            // let n = 3;
+            let n = 3;
 
             ex.max_depth = n;
 
             ex.timer.settings = TimeSettings::new_f64(
                 0.0,
-                0.5,
+                1.0,
             );
 
             env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
@@ -320,94 +325,6 @@ fn main7() {
             // let xs1 = tt.iter().filter(|x| x.node_type == Node::All).collect::<Vec<_>>();
             // let xs2 = tt.iter().filter(|x| x.node_type == Node::Cut).collect::<Vec<_>>();
             // eprintln!("PV, Cut, All = {}, {}, {}", xs0.len(), xs1.len(), xs2.len());
-
-
-
-            // let ms0 = vec![
-            //     "g4e3",
-            //     "g1f3",
-            //     "e3d1",
-            //     "e1d1",
-            //     "d7d5",
-            //     // "e5d6", // EP
-            //     // "c7d6",
-            // ];
-            // let mut g2 = g.clone();
-            // for m in ms0.into_iter() {
-            //     let from = &m[0..2];
-            //     let to = &m[2..4];
-            //     let other = &m[4..];
-            //     let mm = g2.convert_move(from, to, other).unwrap();
-            //     g2 = g2.make_move_unchecked(&ts, mm).unwrap();
-            // }
-            // let mm = Move::EnPassant {
-            //     from: "E5".into(), to: "D6".into(), capture: "D5".into(), victim: Pawn,
-            // };
-            // let g2 = g2.make_move_unchecked(&ts, mm).unwrap();
-            // let mm = Move::Capture { from: "C7".into(), to: "D6".into(), pc: Pawn, victim: Pawn };
-            // let g2 = g2.make_move_unchecked(&ts, mm).unwrap();
-
-            // // let fen0 = "rnbqkb1r/pppp1ppp/8/4P3/8/5N1P/PPPNPPP1/R1BnKB1R w KQkq - 0 3";
-            // // let fen0 = "rnbqkb1r/pppp1ppp/8/4P3/8/5N1P/PPPNPPP1/R1BK1B1R b kq - 0 3";
-            // let fen0 = "rnbqkb1r/pp3ppp/3p4/8/8/5N1P/PPPNPPP1/R1BK1B1R w kq - 0 5";
-            // // let fen0 = "rnbqkb1r/ppp2ppp/8/3pP3/8/5N1P/PPPNPPP1/R1BK1B1R w kq d6 0 4";
-            // let g = Game::from_fen(&ts, fen0).unwrap();
-
-            // let zb0 = Zobrist(0x24914ff4bc5af138);
-
-            // let zb1 = zb0.update_piece(&ts, Knight, Black, "D1".into());
-            // let zb1 = zb1.update_piece(&ts, King, White, "E1".into());
-            // let zb1 = zb1.update_piece(&ts, King, White, "D1".into());
-
-            // let c = Castling::new(false,true,false,true);
-            // let zb2 = zb1.update_castling(&ts, c);
-
-            // eprintln!("g.zobrist = {:?}", g.zobrist);
-            // eprintln!("g2.zobrist = {:?}", g2.zobrist);
-            // let si = ex.trans_table.get(&g.zobrist).unwrap();
-            // eprintln!("si = {:?}", *si);
-
-            // for si in ex.trans_table.iter() {
-            //     let depth = si.depth_searched;
-            //     eprintln!("node, d, len() = {:?}: {:?}, {:?}", si.node_type, depth, si.moves.len());
-            //     assert!( depth as usize == si.moves.len());
-            // }
-
-            // print!("\n");
-            // for (m,mvs,score) in moves.iter() {
-            //     eprintln!("{:?} = {:?}", m, score);
-            // }
-
-            // let g = g.flip_sides(&ts);
-            // // eprintln!("g 1 = {:?}", g);
-            // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
-            // let (moves,stats) = ex.iterative_deepening(&ts, false, false);
-            // let (mv,mvs,_) = moves.get(0).unwrap();
-            // print!("\n");
-            // println!("m #{} = {:?}", q, mv);
-            // println!("good = f1g2");
-
-            // let (mvs,stats) = ex._iterative_deepening(&ts, false, moves.clone(), false);
-            // // let (mvs,stats) = ex.iterative_deepening(&ts, false);
-            // // let (mvs,stats) = ex.rank_moves_list(&ts, false, moves.clone());
-            // for (m,mvs2,s) in mvs.iter() {
-            //     eprintln!("{:>8} = {:?}", s, m);
-            // }
-
-            // eprintln!("\nbest move = {:?}", mvs.get(0).unwrap());
-
-            // print!("\n");
-            // let tt = ex.trans_table.0.read().map.clone();
-
-            // let pv = tt.iter()
-            //     .filter(|(k,v)| v.node_type == Node::PV)
-            //     .collect::<Vec<_>>();
-            // let all = tt.iter()
-            //     .filter(|(k,v)| v.node_type == Node::All)
-            //     .collect::<Vec<_>>();
-            // let cut = tt.iter()
-            //     .filter(|(k,v)| v.node_type == Node::Cut)
-            //     .collect::<Vec<_>>();
 
             // eprintln!("tt.len() = {:?}", tt.len());
             // eprintln!("pv  = {:?}", pv.len());
@@ -500,7 +417,7 @@ fn main3() {
 
     let timesettings = TimeSettings::new_f64(
         0.0,
-        0.5,
+        1.0,
     );
 
     let mut total = (0,0);

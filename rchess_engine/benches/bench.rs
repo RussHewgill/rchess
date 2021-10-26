@@ -32,7 +32,7 @@ pub fn crit_bench_1(c: &mut Criterion) {
     let _     = g.recalc_gameinfo_mut(&ts);
 
     let stop = Arc::new(AtomicBool::new(false));
-    let timesettings = TimeSettings::new_f64(2., 0.1);
+    let timesettings = TimeSettings::new_f64(0.0, 0.2);
     let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
 
     let mut group = c.benchmark_group("group");

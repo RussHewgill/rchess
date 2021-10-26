@@ -11,6 +11,12 @@ use rand::prelude::StdRng;
 #[derive(Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
 pub struct Zobrist(pub u64);
 
+impl Default for Zobrist {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
 impl Zobrist {
     pub fn new(ts: &Tables, g: Game) -> Self {
         let mut out = 0u64;

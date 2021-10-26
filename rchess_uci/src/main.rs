@@ -3,6 +3,8 @@
 #![allow(dead_code)]
 #![allow(unused_mut)]
 
+#![allow(clippy::all)]
+
 pub mod notation;
 
 use chrono::Timelike;
@@ -42,7 +44,8 @@ fn main() -> std::io::Result<()> {
 
     let now = chrono::Local::now();
     let logpath = format!(
-        "/home/me/code/rust/rchess/logs/log-{:0>2}:{:0>2}:{:0>2}.log",
+        "/home/me/code/rust/rchess/logs/log_{}-{:0>2}:{:0>2}:{:0>2}.log",
+        std::process::id(),
         now.hour(), now.minute(), now.second());
     let mut logfile = std::fs::OpenOptions::new()
         .truncate(true)
@@ -52,7 +55,15 @@ fn main() -> std::io::Result<()> {
         .open(logpath)
         .unwrap();
 
-    WriteLogger::init(LevelFilter::Debug, Config::default(), logfile).unwrap();
+    let cfg = ConfigBuilder::new()
+        .set_time_level(LevelFilter::Off)
+        .set_target_level(LevelFilter::Off)
+        // .set_thread_level(LevelFilter::Info)
+        .set_thread_level(LevelFilter::Off)
+        .set_location_level(LevelFilter::Off)
+        .build();
+
+    WriteLogger::init(LevelFilter::Debug, cfg, logfile).unwrap();
     // WriteLogger::init(LevelFilter::Trace, Config::default(), logfile).unwrap();
 
     // let timer = Timer::default(should_stop.clone());
@@ -61,7 +72,7 @@ fn main() -> std::io::Result<()> {
     let should_stop  = Arc::new(AtomicBool::new(false));
     // let timesettings = TimeSettings::new_f64(10., 0.1);
     let timesettings = TimeSettings::new_f64(
-        1.0,
+        0.0,
         1.0,
     );
 
@@ -79,7 +90,8 @@ fn main() -> std::io::Result<()> {
     let stdin = std::io::stdin();
     for line in stdin.lock().lines() {
         if let Ok(line) = line {
-            if line != "" {
+            // if line != "" {
+            if !line.is_empty() {
                 // writeln!(&mut logfile, "{}", line)?;
                 debug!("{}", line);
                 let mut params = line.split_whitespace();

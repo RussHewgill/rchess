@@ -37,7 +37,7 @@ impl SearchStats {
     }
 
     pub fn print(&self, dt: Duration) {
-        print!("\n");
+        println!();
         println!("time         = {:.3}s", dt.as_secs_f64());
         println!("nodes        = {}", Self::_print(self.nodes as i32));
         println!("rate         = {:.1} nodes/s", (self.nodes as f64 / 1000.) / dt.as_secs_f64());

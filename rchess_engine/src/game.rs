@@ -5,14 +5,55 @@ use crate::evaluate::*;
 use crate::hashing::*;
 
 pub use self::castling::*;
+pub use self::ghistory::*;
 
+use std::collections::VecDeque;
 use std::hash::{Hash,Hasher};
 
-#[derive(PartialEq,PartialOrd,Clone,Copy)]
+// use arrayvec::ArrayVec;
+use ringbuffer::ConstGenericRingBuffer;
+
+// #[derive(PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Default,PartialEq,Clone)]
 pub struct Game {
     // pub move_history: Vec<Move>,
     pub state:        GameState,
     pub zobrist:      Zobrist,
+    // pub history:      ArrayVec<Zobrist, 5>,
+    // pub history:      VecDeque<Zobrist>,
+    // pub history:      GHistory,
+}
+
+mod ghistory {
+    use ringbuffer::{ConstGenericRingBuffer, RingBuffer, RingBufferExt, RingBufferWrite, RingBufferRead};
+
+    use crate::hashing::Zobrist;
+
+    #[derive(Debug,Default,PartialEq,Clone)]
+    pub struct GHistory {
+        buf: ConstGenericRingBuffer<Zobrist, 5>,
+    }
+
+    impl GHistory {
+
+        pub fn len(&self) -> usize {
+            self.buf.len()
+        }
+
+        pub fn push_back(&mut self, zb: Zobrist) {
+            self.buf.push(zb);
+        }
+
+        pub fn pop_front(&mut self) -> Option<Zobrist> {
+            self.buf.dequeue()
+        }
+
+        pub fn get_at(&self, idx: isize) -> Option<&Zobrist> {
+            self.buf.get(idx)
+        }
+
+    }
+
 }
 
 // #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
@@ -188,54 +229,6 @@ impl GameState {
 /// make move
 impl Game {
 
-    pub fn convert_move(&self, from: &str, to: &str, other: &str) -> Option<Move> {
-        let from: Coord = from.into();
-        let to: Coord = to.into();
-        match (self.get_at(from), self.get_at(to)) {
-            (Some((col,pc)),None) => {
-                let cc = if col == White { 7 } else { 0 };
-                if (pc == King) & (from.file_dist(to) == 2) {
-                    // Queenside
-                    let (rook_from,rook_to) = if to.0 == 2 {
-                        (0,3)
-                    } else if to.0 == 6 {
-                        (7,5)
-                    } else {
-                        panic!("bad castle?");
-                    };
-                    let r = if col == White { 0 } else { 7 };
-                    let (rook_from,rook_to) = (Coord(rook_from,r),Coord(rook_to,r));
-                    Some(Move::Castle { from, to, rook_from, rook_to })
-                } else if Some(to) == self.state.en_passant {
-                    let capture = if col == White { S.shift_coord(to).unwrap() }
-                        else { N.shift_coord(to).unwrap() };
-                    let (_,victim) = self.get_at(capture).unwrap();
-                    Some(Move::EnPassant { from, to, capture, victim })
-                } else if (pc == Pawn) & (to.1 == cc) {
-                    // XXX: bad
-                    let new_piece = Queen;
-                    Some(Move::Promotion { from, to, new_piece })
-                } else {
-                    Some(Move::Quiet { from, to })
-                }
-            },
-            (Some((col0,pc0)),Some((col1,pc1))) => {
-                if col0 == col1 { panic!("self capture?"); }
-
-                let cc = if col0 == White { 7 } else { 0 };
-                if (pc0 == Pawn) & (to.1 == cc) {
-                    let (_,victim) = self.get_at(to).unwrap();
-                    Some(Move::PromotionCapture { from, to, new_piece: Queen, victim })
-                } else {
-                    let (_,victim) = self.get_at(to).unwrap();
-                    Some(Move::Capture { from, to, pc: pc0, victim })
-                }
-            },
-            (None,None) => None,
-            _ => unimplemented!(),
-        }
-    }
-
     pub fn _make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Game> {
         match m {
             &Move::Quiet      { from, to } => {
@@ -340,7 +333,13 @@ impl Game {
                 match x.recalc_gameinfo_mut(&ts) {
                     // Err(win) => panic!("wot"),
                     Err(win) => Err(win),
-                    Ok(_)    => Ok(x),
+                    Ok(_)    => {
+                        if self._check_history() {
+                            Err(GameEnd::DrawRepetition)
+                        } else {
+                            Ok(x)
+                        }
+                    },
                 }
             },
             _ => {
@@ -352,6 +351,19 @@ impl Game {
         // } else {
         // }
 
+    }
+
+    /// [m-4, m-3, m-2, m-1, m]
+    /// draw when:
+    ///     m == m-2
+    fn _check_history(&self) -> bool {
+
+        // // self.history
+        // let m0 = self.history.get_at(0);
+        // let m2 = self.history.get_at(2);
+
+        // unimplemented!()
+        false
     }
 
 }
@@ -375,6 +387,11 @@ impl Game {
         self.update_checkers_mut(&ts);
         self.update_check_block_mut(&ts);
         // self.update_occupied_mut();
+
+        // if self.history.len() > 5 {
+        //     self.history.pop_front();
+        // }
+        // self.history.push_back(self.zobrist);
 
         Ok(())
     }
@@ -551,6 +568,58 @@ impl Game {
 
 }
 
+/// Convert Move
+impl Game {
+
+    pub fn convert_move(&self, from: &str, to: &str, other: &str) -> Option<Move> {
+        let from: Coord = from.into();
+        let to: Coord = to.into();
+        match (self.get_at(from), self.get_at(to)) {
+            (Some((col,pc)),None) => {
+                let cc = if col == White { 7 } else { 0 };
+                if (pc == King) & (from.file_dist(to) == 2) {
+                    // Queenside
+                    let (rook_from,rook_to) = if to.0 == 2 {
+                        (0,3)
+                    } else if to.0 == 6 {
+                        (7,5)
+                    } else {
+                        panic!("bad castle?");
+                    };
+                    let r = if col == White { 0 } else { 7 };
+                    let (rook_from,rook_to) = (Coord(rook_from,r),Coord(rook_to,r));
+                    Some(Move::Castle { from, to, rook_from, rook_to })
+                } else if Some(to) == self.state.en_passant {
+                    let capture = if col == White { S.shift_coord(to).unwrap() }
+                        else { N.shift_coord(to).unwrap() };
+                    let (_,victim) = self.get_at(capture).unwrap();
+                    Some(Move::EnPassant { from, to, capture, victim })
+                } else if (pc == Pawn) & (to.1 == cc) {
+                    // XXX: bad
+                    let new_piece = Queen;
+                    Some(Move::Promotion { from, to, new_piece })
+                } else {
+                    Some(Move::Quiet { from, to })
+                }
+            },
+            (Some((col0,pc0)),Some((col1,pc1))) => {
+                if col0 == col1 { panic!("self capture?"); }
+
+                let cc = if col0 == White { 7 } else { 0 };
+                if (pc0 == Pawn) & (to.1 == cc) {
+                    let (_,victim) = self.get_at(to).unwrap();
+                    Some(Move::PromotionCapture { from, to, new_piece: Queen, victim })
+                } else {
+                    let (_,victim) = self.get_at(to).unwrap();
+                    Some(Move::Capture { from, to, pc: pc0, victim })
+                }
+            },
+            (None,None) => None,
+            _ => unimplemented!(),
+        }
+    }
+}
+
 /// get bitboards
 impl Game {
 
@@ -640,12 +709,14 @@ impl Game {
 impl Game {
 
     pub fn empty() -> Game {
-        Game {
-            // move_history: vec![],
-            // state: GameState::empty(),
-            state:        GameState::default(),
-            zobrist:      Zobrist(0),
-        }
+        // Game {
+        //     // move_history: vec![],
+        //     // state: GameState::empty(),
+        //     state:        GameState::default(),
+        //     zobrist:      Zobrist(0),
+        //     history:      ArrayVec::default(),
+        // }
+        Game::default()
     }
 
     // pub fn new() -> Game {
@@ -737,10 +808,13 @@ impl Game {
 
         st.castling = st.castling.mirror_sides();
 
-        let mut out = Game {
-            state: st,
-            zobrist: Zobrist(0),
-        };
+        // let mut out = Game {
+        //     state:      st,
+        //     zobrist:    Zobrist(0),
+        //     history:    ArrayVec::default(),
+        // };
+        let mut out = Game::default();
+
         out.zobrist = Zobrist::new(&ts, out.clone());
         out
     }

@@ -723,7 +723,7 @@ mod eval {
                     let s = ss[Coord(x,y)];
                     print!("{:>3?},", s);
                 }
-                print!("\n");
+                println!();
             }
         }
 
@@ -787,6 +787,7 @@ mod eval {
             // (opening,endgame)
         }
 
+        #[allow(clippy::vec_init_then_push)]
         fn gen_pawns() -> [Score; 64] {
             // let mut out = [0; 64];
             let mut scores: Vec<(&str,Score)> = vec![];

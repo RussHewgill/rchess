@@ -77,11 +77,7 @@ impl Explorer {
         let nt = si.node_type;
 
         if let Some(prev_si) = tt_r.get_one(&zb) {
-            if d < prev_si.depth_searched {
-                // self.trans_table.insert(zb, prev_si);
-                return true;
-            } else if prev_si.node_type != Node::PV && nt == Node::PV {
-                // self.trans_table.insert(zb, prev_si);
+            if d < prev_si.depth_searched || (prev_si.node_type != Node::PV && nt == Node::PV) {
                 return true;
             }
         }

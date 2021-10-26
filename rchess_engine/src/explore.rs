@@ -3,6 +3,7 @@ use crate::searchstats;
 use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
+use crate::pruning::*;
 pub use crate::timer::*;
 pub use crate::trans_table::*;
 pub use crate::searchstats::*;
@@ -436,6 +437,15 @@ impl Explorer {
 
             let max_threads = np_cpus;
 
+            let depths = vec![
+                // 0, 1, 0, 2, 0, 1,
+                2, 1, 0, 0, 1, 0,
+            ];
+
+            let t0 = Instant::now();
+            let t_max = self.timer.settings.increment[self.side];
+            let t_max = Duration::from_secs_f64(t_max);
+
             s.spawn(move |_| loop {
                 match rx.try_recv() {
                     Err(TryRecvError::Empty)    => {
@@ -460,6 +470,7 @@ impl Explorer {
                             }
                             let (mv,_,score) = scores.get(0).unwrap();
                             trace!("new best move ({}), {:?} = {:?}", depth, score, mv);
+                            debug!("finished depth {} in {:.3}", depth, t0.elapsed().as_secs_f64());
 
                             *w = (depth, scores);
                         }
@@ -468,15 +479,6 @@ impl Explorer {
                     },
                 }
             });
-
-            let t0 = Instant::now();
-            let t_max = self.timer.settings.increment[self.side];
-            let t_max = Duration::from_secs_f64(t_max);
-
-            let depths = vec![
-                // 0, 1, 0, 2, 0, 1,
-                2, 1, 0, 0, 1, 0,
-            ];
 
             // let mut k = 3;
             'outer: loop {
@@ -540,112 +542,7 @@ impl Explorer {
                 timer.update_times(self.side, stats.read().nodes);
             }
 
-            // {
-            //     let mut s = stats2.write();
-            //     s.max_depth = depth;
-            // }
-            // depth += 1;
-            // let r = stats2.read();
-            // timer.update_times(self.side, r.nodes);
-
-            // while (depth <= self.max_depth) && (strict_depth ||
-            //                                     (|| timer.should_search(self.side, depth - 1))()) {
-            // // (0..k_max).into_iter().for_each(|k| {
-            // //     let r3 = r2.clone();
-            // //     let stats3 = stats2.clone();
-            // //     let mut gs3 = gs2.clone();
-            // //     let x = gs3.len();
-            // //     gs3.rotate_right((x / k_max) * k);
-            // //     s.spawn(move |_| {
-            // //         self._lazy_smp_single(&ts, gs3, d, r3, stats3);
-            // //     });
-            // // });
-            // }
-
         }).unwrap();
-
-        // while !true && (depth <= self.max_depth) && (strict_depth ||
-        //                                     (|| timer.should_search(self.side, depth - 1))()) {
-
-        //     let r2  = results.clone();
-        //     let gs2 = gs.clone();
-        //     let threadcount = threadcount.clone();
-        //     let depths = depths.clone();
-        //     let stats2 = stats.clone();
-
-        //     // let k_max = np_cpus;
-        //     // let k = gs2.len();
-        //     // let gs3 = gs2.into_par_iter().chunks(k / k_max);
-        //     // gs3.for_each(|gs4| {
-        //     //     self._lazy_smp_single(
-        //     //         &ts,
-        //     //         gs4,
-        //     //         depth,
-        //     //         r2.clone(),
-        //     //         stats2.clone(),
-        //     //     );
-        //     // });
-
-        //     // self._lazy_smp_single(
-        //     //     &ts,
-        //     //     gs2.clone(),
-        //     //     depth,
-        //     //     r2.clone(),
-        //     //     stats2.clone(),
-        //     // );
-
-        //     crossbeam::scope(move |s| {
-
-        //         // let k_max = np_cpus;
-        //         // let k_max = threadcount[0];
-        //         let k_max = 6;
-        //         let d = depth;
-        //         (0..k_max).into_iter().for_each(|k| {
-        //             let r3 = r2.clone();
-        //             let stats3 = stats2.clone();
-        //             let mut gs3 = gs2.clone();
-        //             let x = gs3.len();
-        //             gs3.rotate_right((x / k_max) * k);
-        //             s.spawn(move |_| {
-        //                 self._lazy_smp_single(&ts, gs3, d, r3, stats3);
-        //             });
-        //         });
-
-        //         // // let k_max = threadcount[1];
-        //         // let k_max = 2;
-        //         // let d = depth + 1;
-        //         // (0..k_max).into_iter().for_each(|k| {
-        //         //     let r3 = r2.clone();
-        //         //     let stats3 = stats2.clone();
-        //         //     let mut gs3 = gs2.clone();
-        //         //     let x = gs3.len();
-        //         //     gs3.rotate_right((x / k_max) * k);
-        //         //     s.spawn(move |_| {
-        //         //         self._lazy_smp_single(&ts, gs3, d, r3, stats3);
-        //         //     });
-        //         // });
-
-        //     }).unwrap();
-
-        //     {
-        //         let mut s = stats.write();
-        //         s.max_depth = depth;
-        //     }
-
-        //     if print
-        //     {
-        //         let r = stats.read();
-        //         eprintln!("depth = {:?}", depth);
-        //         eprintln!("nodes = {:?}", r.nodes);
-        //     }
-
-        //     depth += 1;
-        //     let r = stats.read();
-        //     timer.update_times(self.side, r.nodes);
-        // }
-
-        // let d = results.read();
-        // let mut out = d.1.clone();
 
         let (d,mut out) = {
             let r = out.read();
@@ -935,8 +832,16 @@ impl Explorer {
                     (true,si.moves.clone(),si.score)
                 },
                 _ => {
+
+                    // XXX: possibly perpetual check?
+                    let depth2 = if g2.state.checkers.unwrap().is_not_empty() && k < 40 {
+                        depth
+                    } else {
+                        depth - 1
+                    };
+
                     if let Some((mv_seq,score)) = self._ab_search(
-                        &ts, &g2, depth - 1, k + 1,
+                        &ts, &g2, depth2, k + 1,
                         alpha, beta, !maximizing, &mut stats, stop.clone(), *mv,
                         tt_r, tt_w.clone(),
                     ) {
@@ -1072,38 +977,6 @@ impl Explorer {
             //     zb, SearchInfo::new(mv, depth, Node::All, val.1));
         }
         false
-    }
-
-}
-
-/// Static Exchange
-impl Explorer {
-
-    pub fn static_exchange(&self, ts: &Tables, g: &Game, c0: Coord) -> Option<Score> {
-        let mut val = 0;
-
-        let attackers_own   = g.find_attackers_to(&ts, c0, !g.state.side_to_move);
-        if attackers_own.is_empty() { return None; }
-
-        let attackers_other = g.find_attackers_to(&ts, c0, g.state.side_to_move);
-
-        // let attackers = attackers_own | attackers_other;
-
-        // let mut attackers_own = attackers_own.into_iter()
-        //     .flat_map(|sq| {
-        //         let c1: Coord = sq.into();
-        //         if let Some((col,pc)) = g.get_at(c1) {
-        //             Some((c1,pc))
-        //         } else { None }
-        //     }).collect::<Vec<_>>();
-        // attackers_own.sort_by(|a,b| a.1.score().cmp(&b.1.score()));
-
-        // for (c1,pc) in attackers_own.iter() {
-        //     eprintln!("(c1,pc) = {:?}", (c1,pc));
-        // }
-
-
-        unimplemented!()
     }
 
 }

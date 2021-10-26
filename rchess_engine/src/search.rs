@@ -920,7 +920,8 @@ impl Game {
             attacks.iter_bitscan(|sq| {
                 let capture = if col == White { S.shift_coord(ep) } else { N.shift_coord(ep) };
                 let capture = capture
-                    .expect(&format!("en passant bug? ep: {:?}, capture: {:?}", ep, capture));
+                    // .expect(&format!("en passant bug? ep: {:?}, capture: {:?}", ep, capture));
+                    .unwrap_or_else(|| panic!("en passant bug? ep: {:?}, capture: {:?}", ep, capture));
                 let (_,victim) = self.get_at(capture).unwrap();
                 // out.push(Move::EnPassant { from: sq.into(), to: ep, capture, victim });
                 let m = Move::EnPassant { from: sq.into(), to: ep, capture, victim };
