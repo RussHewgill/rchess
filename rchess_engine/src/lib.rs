@@ -23,6 +23,7 @@ pub mod tuning;
 pub mod hashing;
 pub mod trans_table;
 pub mod searchstats;
+pub mod pruning;
 
 pub mod util;
 

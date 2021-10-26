@@ -80,8 +80,8 @@ fn main() {
     // main4(); // perft
 
     // main8(); // eval testing
-    // main7();
-    main3(); // read from file and test
+    main7();
+    // main3(); // read from file and test
 
 }
 
@@ -210,6 +210,8 @@ fn main7() {
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
     // let fen = "3q1rk1/p4pp1/2pb3p/3p4/6Pr/1PNQ4/P1PB1PP1/4RRK1 b - - 0 1"; // WAC.009, Bh2+ = d6h2
 
+    let fen = "r2rb1k1/pp1q1p1p/2n1p1p1/2bp4/5P2/PP1BPR1Q/1BPN2PP/R5K1 w - - 0 1"; // WAC.014, h3h7
+
     // /// https://www.chessprogramming.org/Caesar#HorizonEffect
     // let fen = "2kr4/3nR3/p2B1p2/1p1p1Bp1/1P1P3p/2P4P/P5PK/8 b - - 1 32"; // Horizon
 
@@ -219,8 +221,8 @@ fn main7() {
     // let fen = "8/6B1/p5p1/Pp4kp/1P5r/5P1Q/4q1PK/8 w - - 0 32"   // Qxh4; id "zugzwang.004";
     // let fen = "8/8/1p1r1k2/p1pPN1p1/P3KnP1/1P6/8/3R4 b - - 0 1" // Nxd5; id "zugzwang.005";
 
-    let mut games = read_epd("testpositions/WAC.epd").unwrap();
-    let fen = &games[4 - 1].0;
+    // let mut games = read_epd("testpositions/WAC.epd").unwrap();
+    // let fen = &games[4 - 1].0;
 
     // let ts = Tables::new();
     // ts.write_to_file("tables.bin").unwrap();
