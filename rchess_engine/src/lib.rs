@@ -46,6 +46,8 @@ pub mod searchstats;
 pub mod pruning;
 pub mod move_ordering;
 
+// pub mod lockless_map;
+
 #[allow(clippy::all)]
 pub mod util;
 

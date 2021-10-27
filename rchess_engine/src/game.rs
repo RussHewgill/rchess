@@ -229,6 +229,11 @@ impl GameState {
 /// make move
 impl Game {
 
+    pub fn swap_side_to_move(&mut self, ts: &Tables) {
+        self.state.side_to_move = !self.state.side_to_move;
+        self.zobrist = self.zobrist.update_side_to_move(&ts);
+    }
+
     pub fn _make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Game> {
         match m {
             &Move::Quiet      { from, to, pc } => {
@@ -303,6 +308,10 @@ impl Game {
                 out.insert_pieces_mut_unchecked(&ts, &[(to,King,col),(rook_to,Rook,col)]);
                 Some(out)
             },
+            &Move::NullMove => {
+                let mut out = self.clone();
+                Some(out)
+            }
         }
     }
 

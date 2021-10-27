@@ -43,10 +43,14 @@ fn main() -> std::io::Result<()> {
     // let depth = 25;
 
     let now = chrono::Local::now();
-    let logpath = format!(
-        "/home/me/code/rust/rchess/logs/log_{}-{:0>2}:{:0>2}:{:0>2}.log",
-        std::process::id(),
+    let mut logpath = format!(
+        "/home/me/code/rust/rchess/logs/log-{:0>2}:{:0>2}:{:0>2}-1.log",
         now.hour(), now.minute(), now.second());
+    if std::path::Path::new(&logpath).exists() {
+        logpath = format!(
+            "/home/me/code/rust/rchess/logs/log-{:0>2}:{:0>2}:{:0>2}-2.log",
+            now.hour(), now.minute(), now.second());
+    };
     let mut logfile = std::fs::OpenOptions::new()
         .truncate(true)
         .read(true)
@@ -74,6 +78,8 @@ fn main() -> std::io::Result<()> {
     let timesettings = TimeSettings::new_f64(
         0.0,
         1.0,
+        // 0.4,
+        // 0.4,
     );
 
     // let explorer = Arc::new(Mutex::new(

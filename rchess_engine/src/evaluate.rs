@@ -233,7 +233,11 @@ impl Game {
             // Knight => unimplemented!(),
             // Bishop => unimplemented!(),
             // Queen  => unimplemented!(),
-            // King   => unimplemented!(),
+            King   => {
+                // let safety = self.king_safety(&ts, col);
+                // pos + TaperedScore::new(safety,safety)
+                pos
+            },
             _      => pos,
         }
     }
@@ -249,6 +253,19 @@ impl Game {
         TaperedScore::new(score_mg,score_eg)
     }
 
+}
+
+/// King Safety
+impl Game {
+    fn king_safety(&self, ts: &Tables, side: Color) -> Score {
+
+        let king = self.get(King, side).bitscan();
+        let sqs = ts.get_king(king);
+        let pawns = self.get(Pawn, side) & *sqs;
+        let pawn_shield = pawns.popcount() as Score;
+
+        unimplemented!()
+    }
 }
 
 /// Pawn Structure

@@ -96,6 +96,9 @@ fn main() {
 
     // let ts = Tables::new();
     // ts.write_to_file("tables.bin").unwrap();
+    // let ts = Tables::read_from_file("tables.bin").unwrap();
+
+    // return;
 
     match args.get(1) {
         Some(s) => match s.as_str() {
@@ -267,7 +270,8 @@ fn main7() {
     // let fen = "8/1p4pk/6rp/3Pp3/4Qn2/2P2qP1/1B3P1P/4R1K1 b - - 1 1"; // f4h3, #2
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
-    let fen = "8/p6k/1p5p/4Bpp1/8/1P3q1P/P1Q2P1K/3r4 w - - 0 2"; // c2c7, #5;
+    // let fen = "8/p6k/1p5p/4Bpp1/8/1P3q1P/P1Q2P1K/3r4 w - - 0 2"; // c2c7, #5;
+    // let fen = "1rq2k1r/p1p2p2/2B2P2/3RP2p/1b3N1p/2N4P/PPP1QPP1/2K4R w - - 1 23"; // e5e6, #9
 
     // /// https://www.chessprogramming.org/Caesar#HorizonEffect
     // let fen = "2kr4/3nR3/p2B1p2/1p1p1Bp1/1P1P3p/2P4P/P5PK/8 b - - 1 32"; // Horizon
@@ -278,21 +282,30 @@ fn main7() {
     // let fen = "8/6B1/p5p1/Pp4kp/1P5r/5P1Q/4q1PK/8 w - - 0 32"   // Qxh4; id "zugzwang.004";
     // let fen = "8/8/1p1r1k2/p1pPN1p1/P3KnP1/1P6/8/3R4 b - - 0 1" // Nxd5; id "zugzwang.005";
 
+    // let fen = "2q2rk1/p4pp1/5n1p/8/8/Q4N1P/P4PP1/5RK1 b - - 0 1"; // Null move cutoff
+    // let fen = "5rk1/p4pp1/5n1p/8/8/5N1P/P4PP1/2Q2RK1 b - - 0 2"; // Null move cutoff
+
     fn games(i: usize) -> String {
         let mut games = read_epd("testpositions/WAC.epd").unwrap();
-        // games.truncate(games.len() - 2);
+        // let mut games = read_epd("testpositions/STS6.epd").unwrap();
         let mut games = games.into_iter();
         let games = games.map(|x| x.0).collect::<Vec<_>>();
         games[i - 1].clone()
     }
 
+    // XXX: STS6
+    // let fen = &games(3); // 
+
+    // XXX: WAC
     // let fen = &games(2); // b3b2 (SF says b3b7)
     // let fen = &games(4); // h6h7, #2
     // let fen = &games(6); // b6b7, #11
+    let fen = &games(8); // R e7f7, #7
     // let fen = &games(9); // d6h2, #-5
     // let fen = &games(17); // c4e5
     // let fen = &games(18); // a8h8, #27, Tablebase
     // let fen = &games(21); // d2h6
+
     eprintln!("fen = {:?}", fen);
 
     // let ts = Tables::new();
@@ -375,14 +388,14 @@ fn main7() {
             println!("g = {:?}", g);
 
             // let n = 25;
-            let n = 8;
+            let n = 10;
             // let n = 5;
 
             ex.max_depth = n;
 
             ex.timer.settings = TimeSettings::new_f64(
                 0.0,
-                2.0,
+                5.0,
             );
 
             let t0 = std::time::Instant::now();
@@ -393,10 +406,23 @@ fn main7() {
                      stats0.max_depth, t0.elapsed().as_secs_f64());
             stats0.print(t0.elapsed());
 
-            print!("\n");
-            for m in mvs.iter() {
-                eprintln!("m = {:?}", m);
-            }
+            // print!("\n");
+            // for m in mvs.iter() {
+            //     eprintln!("m = {:?}", m);
+            // }
+
+            let nps = stats0.null_prunes;
+            eprintln!("null prunes = {:?}", nps);
+
+            // let mut arr = stats0.nodes_arr.clone();
+            // arr.reverse();
+            // for (depth,x) in arr.iter().enumerate() {
+            //     if depth > 0 && *x != 0 {
+            //         // let depth = depth - 1;
+            //         let bf = f64::powf(*x as f64, 1.0 / depth as f64);
+            //         eprintln!("nodes, branching factor at d {} = {:>8} {:.2?}", depth, x, bf);
+            //     }
+            // }
 
             // let g2 = g.flip_sides(&ts);
             // let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);
@@ -514,16 +540,12 @@ fn main3(send_url: bool) {
     // let mut games = read_ccr_onehour("ccr_onehour.txt").unwrap();
     // let mut games = read_epd("Midgames250.epd").unwrap();
     let mut games = read_epd("testpositions/WAC.epd").unwrap();
+    // let mut games = read_epd("testpositions/STS6.epd").unwrap();
 
     // for (fen,ms) in games.iter() {
     //     // eprintln!("fen, ms = {:?}: {:?}", fen, ms);
     //     eprintln!("ms = {:?}", ms);
     // }
-
-    // let g = &games[8];
-    // let games = vec![g.clone()];
-    // games.truncate(2);
-    // games.truncate(10);
 
     let n = 25;
 
@@ -567,8 +589,8 @@ fn main3(send_url: bool) {
             total.1 += 1;
             let t = t0.elapsed().as_secs_f64() / total.1 as f64;
             println!(
-                "#{:>2}: Wrong, Correct: {:>5}, engine: {:>5}, ({}/{}), avg: {:.2}",
-                i, m[0], mv, total.0, total.1, t);
+                "#{:>2}: Wrong, Correct: {:>5}, engine: {:>5}({:?}), ({}/{}), avg: {:.2}",
+                i, m[0], mv, m0.unwrap(), total.0, total.1, t);
 
             if send_url {
                 g.open_with_lichess().unwrap();

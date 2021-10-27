@@ -9,16 +9,50 @@ use crate::explore::*;
 /// Null Move
 impl Explorer {
 
-    pub fn prune_null_move(&self,
-                           ts: &Tables
+    pub fn prune_null_move(
+        &self,
+        ts:                 &Tables,
+        mut g:              &Game,
+        max_depth:          Depth,
+        depth:              Depth,
+        k:                  i16,
+        alpha:              i32,
+        beta:               i32,
+        maximizing:         bool,
+        mut stats:          &mut SearchStats,
+        tt_r:               &TTRead,
+        tt_w:               TTWrite,
     ) -> bool {
 
+        let mv = Move::NullMove;
 
+        let r = 2;
 
-        unimplemented!()
+        // if depth <= (1 + r) { return false; }
+        if depth < (1 + r) { return false; }
+
+        if let Ok(g2) = g.make_move_unchecked(ts, mv) {
+            if let Some(((_,score),_)) = self._ab_search(
+                &ts, &g2, max_depth,
+                depth - 1 - r, k + 1,
+                alpha, beta, !maximizing, &mut stats, mv,
+                tt_r, tt_w) {
+
+                if maximizing {
+                    if score >= beta { // Beta cutoff
+                        stats.null_prunes += 1;
+                        return true;
+                    }
+                } else {
+                    if score <= alpha {
+                        stats.null_prunes += 1;
+                        return true;
+                    }
+                }
+            }
+        }
+        false
     }
-
-
 }
 
 /// Static Exchange

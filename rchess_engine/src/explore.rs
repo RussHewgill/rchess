@@ -40,6 +40,7 @@ pub struct Explorer {
     pub timer:         Timer,
     pub stop:          Arc<AtomicBool>,
     pub best_mate:     Arc<RwLock<Option<Depth>>>,
+    // pub prev_eval:     Arc<>
 }
 
 impl Explorer {
@@ -270,8 +271,8 @@ impl Explorer {
 
         let mut out = vec![];
 
-        let mut best_alpha = i32::MIN;
-        let mut best_beta  = i32::MAX;
+        // let mut best_alpha = i32::MIN;
+        // let mut best_beta  = i32::MAX;
 
         let mut ss = SearchStats::default();
         for (mv,g2) in gs.into_iter() {
@@ -284,26 +285,38 @@ impl Explorer {
                 _ => {},
             }
 
-            if let Some(((mut mv_seq,score),_)) = {
+            if let Some((mut mv_seq,score)) = {
 
-                // let (alpha,beta) = match prev_best {
-                //     Some(prev) => {
-                //         let delta = 1000;
-                //         let alpha = i32::max(prev - delta, i32::MIN);
-                //         let beta  = i32::min(prev + delta, i32::MAX);
-                //         // debug!("Using aspiration window ({}, {})", alpha, beta);
-                //         (alpha,beta)
-                //     },
-                //     None       => (i32::MIN,i32::MAX),
-                // };
+                let (mut alpha,mut beta) = match prev_best {
+                    Some(prev) => {
+                        let delta = 1000;
+                        let alpha = i32::max(prev - delta, i32::MIN);
+                        let beta  = i32::min(prev + delta, i32::MAX);
+                        // debug!("Using aspiration window ({}, {})", alpha, beta);
+                        (alpha,beta)
+                    },
+                    None       => (i32::MIN,i32::MAX),
+                };
 
-                let alpha = i32::MIN;
-                let beta  = i32::MAX;
+                // let alpha = i32::MIN;
+                // let beta  = i32::MAX;
 
-                self._ab_search(
-                    &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss, mv,
-                    &tt_r, tt_w.clone(),
-                )
+                'inner: loop {
+                    if let Some(((mut mv_seq,score),(a2,b2))) = self._ab_search(
+                        &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss, mv,
+                        &tt_r, tt_w.clone(),
+                    ) {
+                        if score <= alpha || score >= beta {
+                            trace!("Aspiration window failed with score/a/b {}, {}, {}",
+                                   score, alpha, beta);
+                            (alpha,beta) = (i32::MIN,i32::MAX);
+                        } else {
+                            break 'inner Some((mv_seq,score));
+                        }
+                    } else {
+                        break 'inner None;
+                    }
+                }
             } {
                 mv_seq.push(mv);
                 mv_seq.reverse();
@@ -436,8 +449,8 @@ impl Explorer {
             let depths_largest: Depth = *depths.iter().max().unwrap();
 
             let t0 = Instant::now();
-            let t_max = self.timer.settings.increment[self.side]
-                + (self.timer.settings.safety / 2.0);
+            let t_max = self.timer.settings.increment[self.side];
+                // + (self.timer.settings.safety / 2.0);
             let t_max = Duration::from_secs_f64(t_max);
 
             s.spawn(move |_| loop {
@@ -478,13 +491,13 @@ impl Explorer {
                                     let mut best = self.best_mate.write();
                                     *best = Some(k as u8);
                                     let mut w = out1.write();
-                                    // *w = (depth, scores, Some(score));
-                                    *w = (depth, scores, None);
+                                    *w = (depth, scores, Some(score));
+                                    // *w = (depth, scores, None);
                                     break;
                             } else {
                                     let mut w = out1.write();
-                                    // *w = (depth, scores, Some(score));
-                                    *w = (depth, scores, None);
+                                    *w = (depth, scores, Some(score));
+                                    // *w = (depth, scores, None);
                             }
                         }
                         thread_counter2.fetch_sub(1, SeqCst);
@@ -562,15 +575,16 @@ impl Explorer {
                     let tt_r2  = tt_r.clone();
                     let tt_w2  = tt_w.clone();
 
-                    // let best: Option<Score> = {
-                    //     let r = out2.read();
-                    //     r.2
-                    // };
+                    let best: Option<Score> = {
+                        let r = out2.read();
+                        r.2
+                    };
 
                     trace!("spawning thread: (sid: {}) = cur_depth {:?}", sid, cur_depth);
                     s.spawn(move |_| {
                         self._lazy_smp_single(
-                            &ts, gs2, None, cur_depth, tx2, stats2, tt_r2, tt_w2);
+                            // &ts, gs2, None, cur_depth, tx2, stats2, tt_r2, tt_w2);
+                            &ts, gs2, best, cur_depth, tx2, stats2, tt_r2, tt_w2);
                     });
 
                     thread_counter.fetch_add(1, SeqCst);
@@ -677,6 +691,7 @@ impl Explorer {
         }
     }
 
+    #[allow(unused_doc_comments)]
     /// alpha: the MIN score that the maximizing player is assured of
     /// beta:  the MAX score that the minimizing player is assured of
     pub fn _ab_search(
@@ -743,6 +758,11 @@ impl Explorer {
             Outcome::Moves(ms)    => ms,
         };
 
+        if !tt_r.contains_key(&g.zobrist) {
+            stats.nodes += 1;
+            stats.inc_nodes_arr(depth);
+        }
+
         if depth == 0 {
             let score = g.evaluate(&ts).sum();
 
@@ -759,6 +779,12 @@ impl Explorer {
                 // return Some((vec![], score));
                 return Some(((vec![], score),(alpha,beta)));
             }
+        }
+
+        /// Null Move pruning
+        if self.prune_null_move(
+            ts, g, max_depth, depth, k, alpha, beta, maximizing, &mut stats, tt_r, tt_w.clone()) {
+            return None;
         }
 
         // #[cfg(feature = "par")]
@@ -819,77 +845,9 @@ impl Explorer {
         let mut val = if maximizing { i32::MIN } else { i32::MAX };
         let mut val: (Option<(Zobrist,Move,Vec<Move>)>,i32) = (None,val);
 
-        // {
-        //     let (mv,g2,tt) = gs.pop().unwrap();
-        //     let zb = g2.zobrist;
-        //     stats.nodes += 1;
-        //     let alpha2 = Arc::new(AtomicI32::new(alpha.load(Ordering::Relaxed)));
-        //     let beta2  = Arc::new(AtomicI32::new(beta.load(Ordering::Relaxed)));
-        //     let (mut mv_seq,score) = self._ab_search(
-        //         &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut stats, mv);
-        //     let b = self._ab_score(
-        //         (mv,&g2,tt),
-        //         (mv_seq,score),
-        //         &mut val,
-        //         depth,
-        //         alpha.clone(),
-        //         beta.clone(),
-        //         maximizing,
-        //         mv0);
-        // }
-
-        // use crossbeam_channel::unbounded;
-        // let (chan_tx,chan_rx) = unbounded();
-        // // let (chan_tx,chan_rx) = std::sync::mpsc::sync_channel(4);
-
-        // let mut i_max = gs.len() as i16;
-        // // let gs2 = gs.into_par_iter()
-        // let gs2 = gs.into_iter()
-        //     .enumerate()
-        //     .for_each(|(i,(mv,g2,tt))| {
-        //     // .map(|(i,(m,g2,tt))| {
-        //         let mut ss = SearchStats::default();
-        //         let alpha2 = Arc::new(AtomicI32::new(alpha.load(Ordering::SeqCst)));
-        //         let beta2  = Arc::new(AtomicI32::new(beta.load(Ordering::SeqCst)));
-        //         let score = self._ab_search(
-        //             &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut ss, mv);
-        //         chan_tx.send((mv,g2,tt,score,ss)).unwrap();
-        //         // (m,g2,tt,score,ss)
-        //     });
-
-        // let mut gs2 = vec![];
-        // loop {
-        //     gs.extend_from_slice(&gs2[..]);
-        //     gs2.clear();
-        //     if gs2.len() == 0 { break; }
-        //     gs.clear();
-        // }
-
         for (mv,g2,tt) in gs.iter() {
-        // for (mv,g2,tt) in gs.into_iter() {
-        // for (mv,g2,tt,score,ss) in gs2 {
-        //     *stats += ss;
-
-        // loop {
-        //     if i_max == 0 { break; } else { i_max -= 1; }
-        //     let (mv,g2,tt,score,ss) = match chan_rx.recv() {
-        //         Ok(x)  => x,
-        //         Err(_) => break,
-        //     };
-        //     *stats += ss;
 
             let zb = g2.zobrist;
-            // if !self.tt_contains(&zb) {
-            if !tt_r.contains_key(&g.zobrist) {
-                stats.nodes += 1;
-            }
-
-            // if self.move_table.contains(depth, zb, *mv) {
-            //     gs2.push((*mv,*g2,tt.clone()));
-            //     continue;
-            // } else {
-            //     self.move_table.insert(depth, zb, *mv);
-            // }
 
             let (can_use,mut mv_seq,score) = match tt {
                 Some((SICanUse::UseScore,si)) => {
@@ -962,34 +920,15 @@ impl Explorer {
             // mv_seq.push(mv0);
             Self::tt_insert_deepest(
                 &tt_r, tt_w,
-            // self.trans_table.insert(
-                // zb, SearchInfo::new(mv, depth, Node::PV, val.1));
-                // *zb, SearchInfo::new(*mv, depth, Node::PV, val.1));
                 // *zb, SearchInfo::new(*mv,mv_seq.clone(), depth, Node::PV, val.1));
                 *zb, SearchInfo::new(*mv, mv_seq, depth - 1, node_type, val.1));
         }
 
-        // match node_type {
-        //     Node::PV         => {
-        //         if let Some((zb,mv)) = val.0 {
-        //             self.trans_table.insert_replace(
-        //                 zb, SearchInfo::new(mv, depth, Node::PV, val.1));
-        //         }
-        //     },
-        //     Node::All => {
-        //     },
-        //     Node::Cut => {
-        //     },
-        // }
-
         stats.alpha = stats.alpha.max(alpha);
-        stats.beta = stats.beta.max(beta);
+        stats.beta  = stats.beta.max(beta);
 
         match &val.0 {
-            // Some((zb,mv,mv_seq)) => Some((mv_seq.clone(),val.1)),
             Some((zb,mv,mv_seq)) => Some(((mv_seq.clone(),val.1),(alpha,beta))),
-            // _                    => (vec![mv0], val.1),
-            // _                    => panic!("_ab_search val is None ?"),
             _                    => None,
         }
 

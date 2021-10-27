@@ -7,6 +7,7 @@ use crate::tables::*;
 #[derive(Debug,Default,PartialEq,PartialOrd,Clone,Copy)]
 pub struct SearchStats {
     pub nodes:          u32,
+    pub nodes_arr:      [u32; 32],
     pub leaves:         u32,
     pub quiet_leaves:   u32,
     pub max_depth:      u8,
@@ -22,9 +23,14 @@ pub struct SearchStats {
     pub ns_pv:          u32,
     pub ns_all:         u32,
     pub ns_cut:         u32,
+    pub null_prunes:    u32,
 }
 
 impl SearchStats {
+
+    pub fn inc_nodes_arr(&mut self, d: Depth) {
+        self.nodes_arr[d as usize] += 1;
+    }
 
     fn _print(x: i32) -> String {
         if x.abs() > 1_000_000 {
@@ -64,8 +70,16 @@ impl SearchStats {
 impl std::ops::Add for SearchStats {
     type Output = Self;
     fn add(self, other: Self) -> Self {
+
+        // let arr = self.nodes_arr + other.nodes_arr
+        let mut arr = self.nodes_arr;
+        other.nodes_arr.iter().enumerate().for_each(|(i,x)| {
+            arr[i] += x;
+        });
+
         Self {
             nodes:              self.nodes + other.nodes,
+            nodes_arr:          arr,
             leaves:             self.leaves + other.leaves,
             quiet_leaves:       self.quiet_leaves + other.quiet_leaves,
             max_depth:          u8::max(self.max_depth, other.max_depth),
@@ -81,6 +95,7 @@ impl std::ops::Add for SearchStats {
             ns_pv:              self.ns_pv + other.ns_pv,
             ns_all:             self.ns_all + other.ns_all,
             ns_cut:             self.ns_cut + other.ns_cut,
+            null_prunes:        self.null_prunes + other.null_prunes,
         }
     }
 }

@@ -55,6 +55,7 @@ pub enum Move {
     Castle             { from: Coord, to: Coord, rook_from: Coord, rook_to: Coord },
     Promotion          { from: Coord, to: Coord, new_piece: Piece },
     PromotionCapture   { from: Coord, to: Coord, new_piece: Piece, victim: Piece },
+    NullMove,
 }
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
@@ -166,6 +167,7 @@ impl Move {
             &Move::Promotion { from, .. }        => from,
             &Move::PromotionCapture { from, .. } => from,
             &Move::Castle { from, .. }           => from,
+            &Move::NullMove                      => unimplemented!(),
         }
     }
 
@@ -178,6 +180,7 @@ impl Move {
             &Move::Promotion { to, .. }        => to,
             &Move::PromotionCapture { to, .. } => to,
             &Move::Castle { to, .. }           => to,
+            &Move::NullMove                    => unimplemented!(),
         }
     }
 
@@ -227,6 +230,7 @@ impl Move {
             Move::Castle     { from, to, rook_from, rook_to } => {
                 Move::Castle     { from: to, to: from, rook_from, rook_to }
             },
+            Move::NullMove                    => unimplemented!(),
         }
     }
 
@@ -433,22 +437,25 @@ impl std::fmt::Debug for Move {
                 f.write_str(&format!("Qt {} {:?}{:?}", pc.print_char(), from, to))?;
             },
             PawnDouble         { from, to } => {
-                f.write_str(&format!("Db    {:?}{:?}", from, to))?;
+                f.write_str(&format!("Db   {:?}{:?}", from, to))?;
             },
             Capture            { from, to, pc, victim } => {
                 f.write_str(&format!("Cp {} {:?}{:?}", pc.print_char(), from, to))?;
             },
             EnPassant          { from, to, capture, victim } => {
-                f.write_str(&format!("EP    {:?}{:?}", from, to))?;
+                f.write_str(&format!("EP   {:?}{:?}", from, to))?;
             },
             Promotion          { from, to, new_piece } => {
-                f.write_str(&format!("Prom  {:?}{:?}={}", from, to, new_piece.print_char()))?;
+                f.write_str(&format!("Prom {:?}{:?}={}", from, to, new_piece.print_char()))?;
             },
             PromotionCapture   { from, to, new_piece, victim } => {
-                f.write_str(&format!("PCap  {:?}{:?}={}", from, to, new_piece.print_char()))?;
+                f.write_str(&format!("PCap {:?}{:?}={}", from, to, new_piece.print_char()))?;
             },
             Castle             { from, to, rook_from, rook_to } => {
-                f.write_str(&format!("Cast  {:?}{:?}", from, to))?;
+                f.write_str(&format!("Cast {:?}{:?}", from, to))?;
+            },
+            NullMove => {
+                f.write_str(&format!("NullMove"))?;
             },
         }
         Ok(())
