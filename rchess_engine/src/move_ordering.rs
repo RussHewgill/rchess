@@ -8,54 +8,48 @@ use rayon::prelude::*;
 
 
 
-/// Sort Order:
-///     TT Lookups sorted by score,
-///     Captures sorted by MVV/LVA
-///     Promotions // TODO:
-///     rest
-pub fn order_searchinfo(maximizing: bool, mut xs: &mut [(Move,Game,Option<(SICanUse,SearchInfo)>)]) {
-    use std::cmp::Ordering;
+// /// Sort Order:
+// ///     TT Lookups sorted by score,
+// ///     Captures sorted by MVV/LVA
+// ///     Promotions // TODO:
+// ///     rest
+// pub fn order_searchinfo(maximizing: bool, mut xs: &mut [(Move,Game,Option<(SICanUse,SearchInfo)>)]) {
+//     use std::cmp::Ordering;
+//     if maximizing {
+//         xs.par_sort_unstable_by(|(mv0,g0,msi0),(mv1,g1,msi1)| {
+//             match (msi0,msi1) {
+//                 (Some((_,si0)),Some((_,si1))) => si0.score.cmp(&si1.score).reverse(),
+//                 (Some((_,si0)),None)          => Ordering::Less,
+//                 (None,Some((_,si1)))          => Ordering::Greater,
+//                 _                             => {
+//                     _order_mvv_lva(mv0, mv1)
+//                     // mv0.cmp(mv1)
+//                 },
+//             }
+//         });
+//     } else {
+//         xs.par_sort_unstable_by(|(mv0,g0,msi0),(mv1,g1,msi1)| {
+//             match (msi0,msi1) {
+//                 (Some((_,si0)),Some((_,si1))) => si0.score.cmp(&si1.score),
+//                 (Some((_,si0)),None)          => Ordering::Less,
+//                 (None,Some((_,si1)))          => Ordering::Greater,
+//                 _                             => {
+//                     // _order_mvv_lva(mv0, mv1).reverse()
+//                     _order_mvv_lva(mv0, mv1)
+//                     // mv0.cmp(mv1).reverse()
+//                 },
+//             }
+//         });
+//     }
+//     // xs.reverse()
+// }
 
-    if maximizing {
-        xs.par_sort_unstable_by(|(mv0,g0,msi0),(mv1,g1,msi1)| {
-            match (msi0,msi1) {
-                (Some((_,si0)),Some((_,si1))) => si0.score.cmp(&si1.score).reverse(),
-                (Some((_,si0)),None)          => Ordering::Less,
-                (None,Some((_,si1)))          => Ordering::Greater,
-                _                             => {
-                    _order_mvv_lva(mv0, mv1)
-                    // mv0.cmp(mv1)
-                },
-            }
-        });
-    } else {
-        xs.par_sort_unstable_by(|(mv0,g0,msi0),(mv1,g1,msi1)| {
-            match (msi0,msi1) {
-                (Some((_,si0)),Some((_,si1))) => si0.score.cmp(&si1.score),
-                (Some((_,si0)),None)          => Ordering::Less,
-                (None,Some((_,si1)))          => Ordering::Greater,
-                _                             => {
-                    // _order_mvv_lva(mv0, mv1).reverse()
-                    _order_mvv_lva(mv0, mv1)
-                    // mv0.cmp(mv1).reverse()
-                },
-            }
-        });
-    }
-    // xs.reverse()
-
-}
-
-// pub fn order_mvv_lva(mut xs: &mut [(&str, Move)]) {
 pub fn order_mvv_lva(mut xs: &mut [Move]) {
     use Move::*;
     use std::cmp::Ordering;
-
-    // xs.par_sort_unstable_by(|(_,a),(_,b)| {
     xs.par_sort_unstable_by(|a,b| {
         _order_mvv_lva(a, b)
     });
-    // xs.reverse();
 }
 
 pub fn _order_mvv_lva(a: &Move, b: &Move) -> std::cmp::Ordering {
@@ -75,7 +69,7 @@ pub fn _order_mvv_lva(a: &Move, b: &Move) -> std::cmp::Ordering {
     }
 }
 
-pub fn order_searchinfo2(maximizing: bool, mut xs: &mut [(Move,Game,Option<(SICanUse,SearchInfo)>)]) {
+pub fn order_searchinfo(maximizing: bool, mut xs: &mut [(Move,Game,Option<(SICanUse,SearchInfo)>)]) {
 
     // #[cfg(feature = "par")]
     // xs.par_sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
@@ -91,8 +85,8 @@ pub fn order_searchinfo2(maximizing: bool, mut xs: &mut [(Move,Game,Option<(SICa
             xs.par_sort_unstable_by(|a,b| {
                 match (a.2.as_ref(),b.2.as_ref()) {
                     (Some((_,a)),Some((_,b))) => a.score.cmp(&b.score),
-                    // (a,b)                     => a.partial_cmp(&b).unwrap(),
-                    (a0,b0)                     => _order_mvv_lva(&a.0, &b.0)
+                    (None,None)               => _order_mvv_lva(&a.0, &b.0),
+                    (a,b)                     => a.partial_cmp(&b).unwrap(),
                 }
             });
             xs.reverse();
@@ -100,8 +94,8 @@ pub fn order_searchinfo2(maximizing: bool, mut xs: &mut [(Move,Game,Option<(SICa
             xs.par_sort_unstable_by(|a,b| {
                 match (a.2.as_ref(),b.2.as_ref()) {
                     (Some((_,a)),Some((_,b))) => a.score.cmp(&b.score).reverse(),
-                    // (a,b)                     => a.partial_cmp(&b).unwrap(),
-                    (a0,b0)                     => _order_mvv_lva(&a.0, &b.0)
+                    (None,None)               => _order_mvv_lva(&a.0, &b.0),
+                    (a,b)                     => a.partial_cmp(&b).unwrap(),
                 }
             });
             xs.reverse();
@@ -109,26 +103,29 @@ pub fn order_searchinfo2(maximizing: bool, mut xs: &mut [(Move,Game,Option<(SICa
     }
 
     #[cfg(not(feature = "par"))]
-    {
-        if maximizing {
-            xs.sort_unstable_by(|a,b| {
-                match (a.2.as_ref(),b.2.as_ref()) {
-                    // (Some((_,a)),Some((_,b))) => a.partial_cmp(&b).unwrap(),
-                    (Some((_,a)),Some((_,b))) => a.score.partial_cmp(&b.score).unwrap(),
-                    _                         => a.partial_cmp(&b).unwrap(),
-                }
-            });
-            xs.reverse();
-        } else {
-            xs.sort_unstable_by(|a,b| {
-                match (a.2.as_ref(),b.2.as_ref()) {
-                    (Some((_,a)),Some((_,b))) => a.score.partial_cmp(&b.score).unwrap().reverse(),
-                    _                         => a.partial_cmp(&b).unwrap(),
-                }
-            });
-            xs.reverse();
-        }
-    }
+    panic!("not par order_searchinfo2");
+
+    // #[cfg(not(feature = "par"))]
+    // {
+    //     if maximizing {
+    //         xs.sort_unstable_by(|a,b| {
+    //             match (a.2.as_ref(),b.2.as_ref()) {
+    //                 // (Some((_,a)),Some((_,b))) => a.partial_cmp(&b).unwrap(),
+    //                 (Some((_,a)),Some((_,b))) => a.score.partial_cmp(&b.score).unwrap(),
+    //                 _                         => a.partial_cmp(&b).unwrap(),
+    //             }
+    //         });
+    //         xs.reverse();
+    //     } else {
+    //         xs.sort_unstable_by(|a,b| {
+    //             match (a.2.as_ref(),b.2.as_ref()) {
+    //                 (Some((_,a)),Some((_,b))) => a.score.partial_cmp(&b.score).unwrap().reverse(),
+    //                 _                         => a.partial_cmp(&b).unwrap(),
+    //             }
+    //         });
+    //         xs.reverse();
+    //     }
+    // }
 
 }
 

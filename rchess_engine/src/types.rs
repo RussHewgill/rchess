@@ -8,6 +8,8 @@ pub use crate::hashing::*;
 pub use log::{debug, error, warn, info, trace};
 use evmap_derive::ShallowCopy;
 
+use serde::{Serialize,Deserialize};
+
 pub use self::{Color::*,Piece::*};
 
 pub static PIECES: [Piece; 6] = [Pawn,Rook,Knight,Bishop,Queen,King];
@@ -21,7 +23,8 @@ pub enum Color {
     Black,
 }
 
-#[derive(Debug,Hash,Eq,PartialEq,Ord,PartialOrd,ShallowCopy,Clone,Copy)]
+#[derive(Serialize,Deserialize,Debug,Hash,Eq,PartialEq,Ord,PartialOrd,ShallowCopy,Clone,Copy)]
+// #[derive(Debug,Hash,Eq,PartialEq,Ord,PartialOrd,ShallowCopy,Clone,Copy)]
 // #[derive(Debug,Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
 pub enum Piece {
     Pawn,
@@ -38,7 +41,8 @@ pub enum Piece {
 //     to:   Coord,
 // }
 
-#[derive(Eq,PartialEq,Ord,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
+// #[derive(Eq,PartialEq,Ord,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
+#[derive(Serialize,Deserialize,Eq,PartialEq,Ord,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 // #[derive(Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
 // #[derive(Eq,PartialEq,Ord,PartialOrd,Hash,Clone,Copy)]
 pub enum Move {

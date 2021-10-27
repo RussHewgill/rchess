@@ -797,8 +797,7 @@ impl Explorer {
         //     gs.reverse();
         // }
 
-        order_searchinfo2(maximizing, &mut gs[..]);
-        // order_searchinfo(maximizing, &mut gs[..]);
+        order_searchinfo(maximizing, &mut gs[..]);
 
         let mut node_type = Node::PV;
 

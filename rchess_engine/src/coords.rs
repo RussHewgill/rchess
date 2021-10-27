@@ -4,6 +4,8 @@ use crate::tables::*;
 
 use evmap_derive::ShallowCopy;
 
+use serde::{Serialize,Deserialize};
+
 // use packed_struct::prelude::*;
 
 pub use self::D::*;
@@ -22,7 +24,8 @@ pub enum D {
     NW,
 }
 
-#[derive(Eq,Ord,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
+// #[derive(Eq,Ord,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
+#[derive(Serialize,Deserialize,Eq,Ord,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 // #[derive(Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
 pub struct Coord(pub u8, pub u8);
 
