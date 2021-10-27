@@ -4,10 +4,15 @@
 #![allow(unused_mut)]
 
 #![feature(iter_partition_in_place)]
+#![feature(core_intrinsics)]
 
 use rchess_engine_lib::types::*;
 use rchess_engine_lib::tables::*;
 use rchess_engine_lib::explore::*;
+use rchess_engine_lib::util::*;
+use rchess_engine_lib::search::*;
+
+use std::time::{Duration};
 
 use criterion::BenchmarkId;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
@@ -31,20 +36,34 @@ pub fn crit_bench_1(c: &mut Criterion) {
     let mut g = Game::from_fen(&ts, fen).unwrap();
     let _     = g.recalc_gameinfo_mut(&ts);
 
+    let mut games = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
+    let mut games: Vec<Game> = games.into_iter().map(|(fen,_)| {
+        Game::from_fen(&ts, &fen).unwrap()
+    }).collect();
+    // games.truncate(10);
+
     let stop = Arc::new(AtomicBool::new(false));
     let timesettings = TimeSettings::new_f64(0.0, 0.2);
     let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
 
     let mut group = c.benchmark_group("group");
 
-    group.sample_size(10);
-    group.measurement_time(std::time::Duration::from_secs_f64(5.));
+    group.warm_up_time(Duration::from_secs_f64(1.0));
 
-    // group.bench_function("rank moves", |b| b.iter(|| ex.explore(&ts, ex.depth)));
-
-    group.bench_function("rank moves lazy_smp", |b| b.iter(|| {
-        let (m,stats) = ex.lazy_smp(&ts, false, true);
+    // group.sample_size(50);
+    // group.measurement_time(Duration::from_secs_f64(5.));
+    group.bench_function("search_all", |b| b.iter(|| {
+        for g in games.iter() {
+            let mvs = g.search_all(&ts, black_box(None));
+        }
     }));
+
+    // group.sample_size(10);
+    // group.measurement_time(std::time::Duration::from_secs_f64(5.));
+
+    // group.bench_function("rank moves lazy_smp", |b| b.iter(|| {
+    //     let (m,stats) = ex.lazy_smp(&ts, false, true);
+    // }));
 
     // group.bench_function("rank moves iter", |b| b.iter(|| {
     //     // let (m,stats) = ex.explore(&ts, None);

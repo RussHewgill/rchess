@@ -789,6 +789,15 @@ impl Game {
 /// Debugging
 impl Game {
 
+    pub fn open_with_lichess(&self) -> std::io::Result<()> {
+
+        let fen = self.to_fen();
+        let url = format!("https://lichess.org/analysis/fromPosition/{}", fen);
+
+        open::with(url, "firefox")
+    }
+
+
     pub fn zobrist_from_fen(ts: &Tables, fen: &str) -> Zobrist {
         let g = Game::from_fen(ts, fen).unwrap();
         g.zobrist

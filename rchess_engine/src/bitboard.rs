@@ -226,6 +226,10 @@ impl BitBoard {
         // Bitscan Forward
         // self.0.leading_zeros()
         self.0.trailing_zeros() as u8
+
+        // // XXX: No Improvement
+        // std::intrinsics::cttz(self.0) as u8
+        // unsafe { core::arch::x86_64::_tzcnt_u64(self.0) as u8 }
     }
 
     pub fn bitscan_isolate(&self) -> Self {

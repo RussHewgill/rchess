@@ -4,6 +4,7 @@
 #![allow(unused_mut)]
 
 #![feature(destructuring_assignment)]
+#![feature(core_intrinsics)]
 
 #![allow(
     // clippy::all,
@@ -43,10 +44,11 @@ pub mod hashing;
 pub mod trans_table;
 pub mod searchstats;
 pub mod pruning;
+pub mod move_ordering;
 
 #[allow(clippy::all)]
 pub mod util;
 
-#[cfg(test)]
-pub mod tests;
+// #[cfg(test)]
+// pub mod tests;
 

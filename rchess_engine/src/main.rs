@@ -4,7 +4,7 @@
 #![allow(unused_mut)]
 #![allow(unused_doc_comments)]
 
-#![feature(destructuring_assignment)]
+#![feature(core_intrinsics)]
 
 #![allow(clippy::all)]
 
@@ -97,9 +97,10 @@ fn main() {
 
     match args.get(1) {
         Some(s) => match s.as_str() {
-            "wac" => main3(), // read from file and test
-            _     => {},
-        }
+            "wac"  => main3(false), // read from file and test
+            "wac2" => main3(true), // read from file and test, send URL to firefox
+            _      => {},
+        },
         None    => main7(),
     }
 
@@ -282,9 +283,9 @@ fn main7() {
         games[i - 1].clone()
     }
 
-    // let fen = &games(1); // g3g6
+    let fen = &games(2); // b3b2 (SF says b3b7)
     // let fen = &games(6); // b6b7, #11
-    let fen = &games(9); // d6h2, #-5
+    // let fen = &games(9); // d6h2, #-5
     // let fen = &games(17); // c4e5
     // let fen = &games(18); // a8h8, #27, Tablebase
     // let fen = &games(21); // d2h6
@@ -311,7 +312,37 @@ fn main7() {
     //     Move::Quiet { from: "E4".into(), to: "E5".into() },
     // ];
 
-    // return;
+    let g = Game::from_fen(&ts, "k7/8/8/8/7p/2q3pP/1P4P1/7K w - - 0 1").unwrap();
+
+    fn f(cap: bool, s: Score) -> SearchInfo {
+        let m = if cap {
+            Move::Capture { from: "B2".into(), to: "C3".into(), pc: Pawn, victim: Queen }
+        } else {
+            Move::Quiet { from: "B2".into(), to: "B3".into() }
+        };
+        SearchInfo::new(m, vec![], 1, Node::PV, s)
+    }
+
+    let mut vs = vec![
+        f(true, 0),
+        f(true, 10),
+        f(true, -10),
+    ];
+
+    let mut gs = vs.into_iter().map(|si| {
+        let g2 = g.make_move_unchecked(&ts, si.mv).unwrap();
+        (si.mv, g2, Some((SICanUse::UseOrdering, si)))
+    }).collect::<Vec<_>>();
+
+    order_searchinfo(true, &mut gs[..]);
+
+    let out = gs.into_iter().map(|(mv,g,msi)| mv);
+
+    for m in out {
+        eprintln!("m = {:?}", m);
+    }
+
+    return;
 
     #[allow(unreachable_code)]
     if true {
@@ -324,15 +355,15 @@ fn main7() {
 
             println!("g = {:?}", g);
 
-            let n = 25;
-            // let n = 10;
+            // let n = 25;
+            let n = 8;
             // let n = 5;
 
             ex.max_depth = n;
 
             ex.timer.settings = TimeSettings::new_f64(
                 0.0,
-                5.0,
+                2.0,
             );
 
             let t0 = std::time::Instant::now();
@@ -460,7 +491,7 @@ fn main7() {
 
 }
 
-fn main3() {
+fn main3(send_url: bool) {
     // let mut games = read_ccr_onehour("ccr_onehour.txt").unwrap();
     // let mut games = read_epd("Midgames250.epd").unwrap();
     let mut games = read_epd("testpositions/WAC.epd").unwrap();
@@ -519,6 +550,12 @@ fn main3() {
             println!(
                 "#{:>2}: Wrong, Correct: {:>5}, engine: {:>5}, ({}/{}), avg: {:.2}",
                 i, m[0], mv, total.0, total.1, t);
+
+            if send_url {
+                g.open_with_lichess().unwrap();
+                break;
+            }
+
             // println!("Correct        Engine");
             // println!("{:<8}       {}", m[0], mv);
         }

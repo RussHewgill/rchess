@@ -4,6 +4,8 @@ use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
 use crate::pruning::*;
+
+pub use crate::move_ordering::*;
 pub use crate::timer::*;
 pub use crate::trans_table::*;
 pub use crate::searchstats::*;
@@ -785,7 +787,7 @@ impl Explorer {
         //     gs.reverse();
         // }
 
-        Explorer::order_searchinfo(maximizing, &mut gs[..]);
+        order_searchinfo(maximizing, &mut gs[..]);
 
         let mut node_type = Node::PV;
 
@@ -1166,101 +1168,5 @@ impl Explorer {
 
 /// Misc
 impl Explorer {
-
-    pub fn order_searchinfo(
-        maximizing: bool, mut xs: &mut [(Move,Game,Option<(SICanUse,SearchInfo)>)])
-    {
-
-        // #[cfg(feature = "par")]
-        // xs.par_sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
-        // #[cfg(not(feature = "par"))]
-        // xs.sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
-        // if !maximizing {
-        //     xs.reverse();
-        // }
-
-        #[cfg(feature = "par")]
-        {
-            if maximizing {
-                xs.par_sort_unstable_by(|a,b| {
-
-                    match (a.2.as_ref(),b.2.as_ref()) {
-                        (Some((_,a)),Some((_,b))) => a.score.partial_cmp(&b.score).unwrap(),
-                        (a,b)                     => a.partial_cmp(&b).unwrap(),
-                    }
-                });
-                xs.reverse();
-            } else {
-                xs.par_sort_unstable_by(|a,b| {
-                    match (a.2.as_ref(),b.2.as_ref()) {
-                        (Some((_,a)),Some((_,b))) => a.score.partial_cmp(&b.score).unwrap().reverse(),
-                        (a,b)                     => a.partial_cmp(&b).unwrap(),
-                    }
-                });
-                xs.reverse();
-            }
-        }
-
-        #[cfg(not(feature = "par"))]
-        {
-            if maximizing {
-                xs.sort_unstable_by(|a,b| {
-                    match (a.2.as_ref(),b.2.as_ref()) {
-                        // (Some((_,a)),Some((_,b))) => a.partial_cmp(&b).unwrap(),
-                        (Some((_,a)),Some((_,b))) => a.score.partial_cmp(&b.score).unwrap(),
-                        _                         => a.partial_cmp(&b).unwrap(),
-                    }
-                });
-                xs.reverse();
-            } else {
-                xs.sort_unstable_by(|a,b| {
-                    match (a.2.as_ref(),b.2.as_ref()) {
-                        (Some((_,a)),Some((_,b))) => a.score.partial_cmp(&b.score).unwrap().reverse(),
-                        _                         => a.partial_cmp(&b).unwrap(),
-                    }
-                });
-                xs.reverse();
-            }
-        }
-
-    }
-
-    pub fn order_moves(ts: &Tables, g: &Game, maximizing: bool, mut moves: &mut [Move]) {
-
-        // if maximizing {
-        //     moves.reverse();
-        // } else {
-        //     vs.sort_by(|a,b| {
-        //         match (a,b) {
-        //             (Some(a),Some(b)) => a.partial_cmp(&b).unwrap().reverse(),
-        //             _                 => a.partial_cmp(&b).unwrap(),
-        //         }
-        //     });
-        //     moves.reverse();
-        // }
-
-    }
-
-    // pub fn order_moves(&self, ts: &Tables, mut moves: &mut [(Move,Score,Game)]) {
-    //     use std::cmp::Ordering;
-    //     moves.sort_unstable_by(|a,b| {
-    //         let a_cap = a.0.filter_all_captures();
-    //         let b_cap = b.0.filter_all_captures();
-    //         let a_castle = a.0.filter_castle();
-    //         let b_castle = b.0.filter_castle();
-    //         if a_cap & !b_cap {
-    //             Ordering::Greater
-    //         } else if !a_cap & b_cap {
-    //             Ordering::Less
-    //         } else if a_castle & !b_castle {
-    //             Ordering::Greater
-    //         } else if !a_castle & b_castle {
-    //             Ordering::Less
-    //         } else {
-    //             Ordering::Equal
-    //         }
-    //     });
-    // }
-
 }
 
