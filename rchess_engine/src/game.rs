@@ -231,7 +231,7 @@ impl Game {
 
     pub fn _make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Game> {
         match m {
-            &Move::Quiet      { from, to } => {
+            &Move::Quiet      { from, to, pc } => {
                 let (c,pc) = self.get_at(from)?;
                 let mut out = self.clone();
                 out.delete_piece_mut_unchecked(&ts, from, pc, c);
@@ -599,7 +599,7 @@ impl Game {
                     let new_piece = Queen;
                     Some(Move::Promotion { from, to, new_piece })
                 } else {
-                    Some(Move::Quiet { from, to })
+                    Some(Move::Quiet { from, to, pc })
                 }
             },
             (Some((col0,pc0)),Some((col1,pc1))) => {

@@ -21,7 +21,7 @@ pub enum Color {
     Black,
 }
 
-#[derive(Debug,Hash,Eq,PartialEq,PartialOrd,ShallowCopy,Clone,Copy)]
+#[derive(Debug,Hash,Eq,PartialEq,Ord,PartialOrd,ShallowCopy,Clone,Copy)]
 // #[derive(Debug,Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
 pub enum Piece {
     Pawn,
@@ -38,10 +38,11 @@ pub enum Piece {
 //     to:   Coord,
 // }
 
-#[derive(Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
+#[derive(Eq,PartialEq,Ord,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
+// #[derive(Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
 // #[derive(Eq,PartialEq,Ord,PartialOrd,Hash,Clone,Copy)]
 pub enum Move {
-    Quiet              { from: Coord, to: Coord },
+    Quiet              { from: Coord, to: Coord, pc: Piece },
     PawnDouble         { from: Coord, to: Coord },
     // Capture            { from: Coord, to: Coord },
     Capture            { from: Coord, to: Coord, pc: Piece, victim: Piece },
@@ -176,26 +177,31 @@ impl Move {
         }
     }
 
+    // pub fn capture(&self) -> Option<(Piece,Piece)>
+
     pub fn piece(&self) -> Option<Piece> {
         match self {
-            &Move::Capture { pc, .. } => Some(pc),
-            _                         => None,
+            &Move::Capture { pc, .. }              => Some(pc),
+            &Move::EnPassant { .. }                => Some(Pawn),
+            &Move::PromotionCapture { victim, .. } => Some(Pawn),
+            _                                      => None,
         }
     }
 
     pub fn victim(&self) -> Option<Piece> {
         match self {
             &Move::Capture { victim, .. }          => Some(victim),
-            &Move::EnPassant { victim, .. }        => Some(victim),
+            &Move::EnPassant { .. }                => Some(Pawn),
             &Move::PromotionCapture { victim, .. } => Some(victim),
             _                                      => None,
         }
     }
 
-    pub fn reverse(&self) -> Self {
+    pub fn reverse(&self, g: &Game) -> Self {
         match *self {
-            Move::Quiet      { from, to } => {
-                Move::Quiet      { from: to, to: from }
+            Move::Quiet      { from, to, pc } => {
+                // Move::Quiet      { from: to, to: from }
+                unimplemented!()
             },
             Move::PawnDouble { from, to } => {
                 Move::PawnDouble { from: to, to: from }
@@ -387,6 +393,18 @@ impl Piece {
             },
         }
     }
+
+    fn print_char(&self) -> char {
+        match self {
+            Pawn   => 'p',
+            Rook   => 'R',
+            Knight => 'N',
+            Bishop => 'B',
+            Queen  => 'Q',
+            King   => 'K',
+        }
+    }
+
 }
 
 impl Default for Color {
@@ -407,26 +425,26 @@ impl std::fmt::Debug for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use Move::*;
         match self {
-            Quiet              { from, to } => {
-                f.write_str(&format!("Quiet {:?}{:?}", from, to))?;
+            Quiet              { from, to, pc } => {
+                f.write_str(&format!("Qt {} {:?}{:?}", pc.print_char(), from, to))?;
             },
             PawnDouble         { from, to } => {
-                f.write_str(&format!("Doub  {:?}{:?}", from, to))?;
+                f.write_str(&format!("Db    {:?}{:?}", from, to))?;
             },
             Capture            { from, to, pc, victim } => {
-                f.write_str(&format!("Cap   {:?}{:?}", from, to))?;
+                f.write_str(&format!("Cp {} {:?}{:?}", pc.print_char(), from, to))?;
             },
             EnPassant          { from, to, capture, victim } => {
                 f.write_str(&format!("EP    {:?}{:?}", from, to))?;
             },
             Promotion          { from, to, new_piece } => {
-                f.write_str(&format!("Prom  {:?}{:?}", from, to))?;
+                f.write_str(&format!("Prom  {:?}{:?}={}", from, to, new_piece.print_char()))?;
             },
             PromotionCapture   { from, to, new_piece, victim } => {
-                f.write_str(&format!("PCap {:?}{:?}", from, to))?;
+                f.write_str(&format!("PCap  {:?}{:?}={}", from, to, new_piece.print_char()))?;
             },
             Castle             { from, to, rook_from, rook_to } => {
-                f.write_str(&format!("Cast {:?}{:?}", from, to))?;
+                f.write_str(&format!("Cast  {:?}{:?}", from, to))?;
             },
         }
         Ok(())

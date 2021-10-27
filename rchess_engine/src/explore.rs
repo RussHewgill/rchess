@@ -470,8 +470,9 @@ impl Explorer {
                             // let (worst,_,_) = scores.iter().min_by(|a,b| a.2.cmp(&b.2)).unwrap();
                             // debug!("worst move: {:?}", worst);
 
-                            if (self.side == White && score > 100_000_000 - 50)
-                                || (self.side == Black && score < -100_000_000 + 50) {
+                            // if (self.side == White && score > 100_000_000 - 50)
+                            //     || (self.side == Black && score < -100_000_000 + 50) {
+                            if score > 100_000_000 - 50 {
                                     let k = 100_000_000 - score.abs();
                                     debug!("Found mate in {}: d({}), {:?}", k, depth, mv);
                                     let mut best = self.best_mate.write();
@@ -492,20 +493,17 @@ impl Explorer {
                 }
             });
 
-            // let mut k = 3;
             'outer: loop {
-                // if timer.should_search(self.side, depth)
-
-                // let cur_depth = best_depth.load(SeqCst) + 1;
-                // let tc        = thread_counter.load(SeqCst);
 
                 let sid       = search_id.load(SeqCst);
-                // let cur_depth = depth + 1 + sid.trailing_zeros() as u8;
                 let cur_depth = best_depth.load(SeqCst) + 1 + depths[sid as usize];
 
                 {
                     let r = self.best_mate.read();
                     if r.is_some() {
+                        let d = best_depth.load(SeqCst);
+                        debug!("breaking loop (Mate),  d: {}, t0: {:.3}",
+                               d, t0.elapsed().as_secs_f64());
                         stop.store(true, SeqCst);
                         break 'outer;
                     }
@@ -517,6 +515,18 @@ impl Explorer {
                     // drop(tx);
 
                     loop {
+
+                        {
+                            let r = self.best_mate.read();
+                            if r.is_some() {
+                                let d = best_depth.load(SeqCst);
+                                debug!("breaking loop (Depth -> Mate),  d: {}, t0: {:.3}",
+                                       d, t0.elapsed().as_secs_f64());
+                                stop.store(true, SeqCst);
+                                break 'outer;
+                            }
+                        }
+
                         if thread_counter.load(SeqCst) == 0 {
                             let d = best_depth.load(SeqCst);
                             debug!("breaking loop (Depth -> Threads),  d: {}, t0: {:.3}",
@@ -695,7 +705,7 @@ impl Explorer {
             if let Some(best) = *r {
                 drop(r);
                 if best <= max_depth {
-                    debug!("halting search of depth {}, faster mate found", max_depth);
+                    trace!("halting search of depth {}, faster mate found", max_depth);
                     return None;
                 }
             }
@@ -787,7 +797,8 @@ impl Explorer {
         //     gs.reverse();
         // }
 
-        order_searchinfo(maximizing, &mut gs[..]);
+        order_searchinfo2(maximizing, &mut gs[..]);
+        // order_searchinfo(maximizing, &mut gs[..]);
 
         let mut node_type = Node::PV;
 

@@ -544,7 +544,7 @@ impl Game {
                     let (_,victim) = self.get_at(to).unwrap();
                     Move::Capture { from: sq2, to: to, pc, victim }
                 } else {
-                    Move::Quiet { from: sq2, to: to.into() }
+                    Move::Quiet { from: sq2, to: to.into(), pc }
                 }
             })
 
@@ -571,7 +571,7 @@ impl Game {
             });
             quiets.into_iter().for_each(|sq2| {
                 // out.push(Move::Quiet { from: sq.into(), to: sq2.into() });
-                let m = Move::Quiet { from: sq.into(), to: sq2.into() };
+                let m = Move::Quiet { from: sq.into(), to: sq2.into(), pc };
 
                 if self.move_is_legal(&ts, m) { out.push(m); }
                 // out.push(m);
@@ -729,7 +729,7 @@ impl Game {
                 }
             } else {
                 if forbid_check && !self.find_attacks_by_side(&ts, to, !col, false) {
-                    Some(Move::Quiet { from: p1, to: to })
+                    Some(Move::Quiet { from: p1, to: to, pc: King })
                 } else {
                     None
                 }
@@ -774,7 +774,7 @@ impl Game {
                 true
             };
             if go {
-                out.push(Move::Quiet { from: p0.into(), to: sq.into()});
+                out.push(Move::Quiet { from: p0.into(), to: sq.into(), pc: King });
             }
         });
 
@@ -826,7 +826,7 @@ impl Game {
 
             quiets.iter_bitscan(|t| {
                 // out.push(Move::Quiet { from: sq.into(), to: t.into()});
-                let m = Move::Quiet { from: sq.into(), to: t.into() };
+                let m = Move::Quiet { from: sq.into(), to: t.into(), pc: Knight };
                 if self.move_is_legal(&ts, m) { out.push(m); }
             });
 
@@ -888,7 +888,7 @@ impl Game {
             let t = t.into();
             if let Some(f) = (!dir).shift_coord(t) {
                 // out.push(Move::Quiet { from: f, to: t });
-                let m = Move::Quiet { from: f, to: t };
+                let m = Move::Quiet { from: f, to: t, pc: Pawn };
                 if self.move_is_legal(&ts, m) { out.push(m); }
             }
         });

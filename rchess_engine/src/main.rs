@@ -17,8 +17,10 @@
 // )]
 
 use std::collections::HashMap;
+use std::slice::SliceIndex;
 use std::str::FromStr;
 
+use itertools::Itertools;
 use rchess_engine_lib::explore::Explorer;
 // use crate::lib::*;
 use rchess_engine_lib::types::*;
@@ -259,12 +261,13 @@ fn main7() {
     let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"; // Perft Position 2
 
     let fen = "r2rb1k1/pp1q1p1p/2n1p1p1/2bp4/5P2/PP1BPR1Q/1BPN2PP/R5K1 w - - 0 1"; // WAC.014, h3h7
-    let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w - - 0 1"; // WAC.004, h6h7, #2
 
-    let fen = "3q1rk1/p4pp1/2pb3p/3p4/6Pr/1PNQ4/P1PB1PP1/4RRK1 b - - 0 1"; // WAC.009, Bh2+ = d6h2
+    // let fen = "3q1rk1/p4pp1/2pb3p/3p4/6Pr/1PNQ4/P1PB1PP1/4RRK1 b - - 0 1"; // WAC.009, Bh2+ = d6h2
 
     // let fen = "8/1p4pk/6rp/3Pp3/4Qn2/2P2qP1/1B3P1P/4R1K1 b - - 1 1"; // f4h3, #2
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
+    // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
+    let fen = "8/p6k/1p5p/4Bpp1/8/1P3q1P/P1Q2P1K/3r4 w - - 0 2"; // c2c7, #5;
 
     // /// https://www.chessprogramming.org/Caesar#HorizonEffect
     // let fen = "2kr4/3nR3/p2B1p2/1p1p1Bp1/1P1P3p/2P4P/P5PK/8 b - - 1 32"; // Horizon
@@ -283,7 +286,8 @@ fn main7() {
         games[i - 1].clone()
     }
 
-    let fen = &games(2); // b3b2 (SF says b3b7)
+    // let fen = &games(2); // b3b2 (SF says b3b7)
+    // let fen = &games(4); // h6h7, #2
     // let fen = &games(6); // b6b7, #11
     // let fen = &games(9); // d6h2, #-5
     // let fen = &games(17); // c4e5
@@ -307,42 +311,57 @@ fn main7() {
     // println!("explore done in {} seconds.", t0.elapsed().as_secs_f64());
 
     // let mut ps = vec![
-    //     Move::Capture { from: "E4".into(), to: "F5".into(), pc: Pawn, victim: Queen },
-    //     Move::Capture { from: "E4".into(), to: "D5".into(), pc: Pawn, victim: Pawn },
-    //     Move::Quiet { from: "E4".into(), to: "E5".into() },
+    //     ("pawn x queen", Move::Capture { from: "E4".into(), to: "F5".into(), pc: Pawn, victim: Queen }),
+    //     ("queen x pawn", Move::Capture { from: "E4".into(), to: "F5".into(), pc: Queen, victim: Pawn }),
+    //     ("pawn x pawn", Move::Capture { from: "E4".into(), to: "D5".into(), pc: Pawn, victim: Pawn }),
+    //     ("pawn x rook",   Move::Capture { from: "E4".into(), to: "D5".into(), pc: Pawn, victim: Rook }),
+    //     ("bishop x pawn", Move::Capture { from: "E4".into(), to: "D5".into(), pc: Bishop, victim: Pawn }),
+    //     ("quiet", Move::Quiet { from: "E4".into(), to: "E5".into() }),
+    //     ("promotion", Move::Promotion { from: "E7".into(), to: "E8".into(), new_piece: Queen }),
+    //     ("EP", Move::EnPassant { from: "E5".into(), to: "D6".into(), capture: "D5".into(), victim: Pawn }),
     // ];
 
-    let g = Game::from_fen(&ts, "k7/8/8/8/7p/2q3pP/1P4P1/7K w - - 0 1").unwrap();
+    // order_mvv_lva(&mut ps[..]);
 
-    fn f(cap: bool, s: Score) -> SearchInfo {
-        let m = if cap {
-            Move::Capture { from: "B2".into(), to: "C3".into(), pc: Pawn, victim: Queen }
-        } else {
-            Move::Quiet { from: "B2".into(), to: "B3".into() }
-        };
-        SearchInfo::new(m, vec![], 1, Node::PV, s)
-    }
+    // for (s,m) in ps.iter() {
+    //     eprintln!("{:>15} = {:?}", s, m);
+    // }
 
-    let mut vs = vec![
-        f(true, 0),
-        f(true, 10),
-        f(true, -10),
-    ];
+    // return;
 
-    let mut gs = vs.into_iter().map(|si| {
-        let g2 = g.make_move_unchecked(&ts, si.mv).unwrap();
-        (si.mv, g2, Some((SICanUse::UseOrdering, si)))
-    }).collect::<Vec<_>>();
+    // let g = Game::from_fen(&ts, "k7/7p/8/5B2/r7/1P6/8/7K w - - 0 1").unwrap();
+    // let moves = g.search_all(&ts, None).get_moves_unsafe();
+    // let mut moves: Vec<(Move,Game,Option<(SICanUse,SearchInfo)>)>  =
+    //     moves.into_iter().flat_map(|mv| if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
+    //     Some((mv,g2,None))
+    // } else { None }).collect::<Vec<_>>();
+    // moves[0].2 = Some((SICanUse::UseOrdering, SearchInfo::new(
+    //     moves[0].0, vec![], 1, Node::PV, 0, // h1g1
+    // )));
+    // moves[1].2 = Some((SICanUse::UseOrdering, SearchInfo::new(
+    //     moves[1].0, vec![], 1, Node::PV, 100, // h1g2
+    // )));
 
-    order_searchinfo(true, &mut gs[..]);
+    // order_searchinfo(true, &mut moves[..]);
+    // println!("Correct: (max)");
+    // println!("  h1g2");
+    // println!("  h1g1");
+    // println!("  b3a4");
+    // println!("  f5h7");
 
-    let out = gs.into_iter().map(|(mv,g,msi)| mv);
+    // order_searchinfo(false, &mut moves[..]);
+    // println!("Correct: (min)");
+    // println!("  h1g1");
+    // println!("  h1g2");
+    // println!("  b3a4");
+    // println!("  f5h7");
 
-    for m in out {
-        eprintln!("m = {:?}", m);
-    }
+    // // moves.truncate(6);
+    // for (m,_,_) in moves.iter() {
+    //     eprintln!("m = {:?}", m);
+    // }
 
-    return;
+    // return;
 
     #[allow(unreachable_code)]
     if true {

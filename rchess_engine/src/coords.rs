@@ -22,7 +22,7 @@ pub enum D {
     NW,
 }
 
-#[derive(Eq,Hash,PartialEq,PartialOrd,ShallowCopy,Clone,Copy)]
+#[derive(Eq,Ord,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 // #[derive(Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
 pub struct Coord(pub u8, pub u8);
 
