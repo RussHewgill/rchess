@@ -269,7 +269,7 @@ fn main7() {
 
     // let fen = "8/1p4pk/6rp/3Pp3/4Qn2/2P2qP1/1B3P1P/4R1K1 b - - 1 1"; // f4h3, #2
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
-    // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
+    let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
     // let fen = "8/p6k/1p5p/4Bpp1/8/1P3q1P/P1Q2P1K/3r4 w - - 0 2"; // c2c7, #5;
     // let fen = "1rq2k1r/p1p2p2/2B2P2/3RP2p/1b3N1p/2N4P/PPP1QPP1/2K4R w - - 1 23"; // e5e6, #9
 
@@ -300,7 +300,7 @@ fn main7() {
     // let fen = &games(2); // b3b2 (SF says b3b7)
     // let fen = &games(4); // h6h7, #2
     // let fen = &games(6); // b6b7, #11
-    let fen = &games(8); // R e7f7, #7
+    // let fen = &games(8); // R e7f7, #7
     // let fen = &games(9); // d6h2, #-5
     // let fen = &games(17); // c4e5
     // let fen = &games(18); // a8h8, #27, Tablebase
@@ -387,8 +387,8 @@ fn main7() {
 
             println!("g = {:?}", g);
 
-            // let n = 25;
-            let n = 10;
+            let n = 25;
+            // let n = 10;
             // let n = 5;
 
             ex.max_depth = n;
@@ -406,13 +406,15 @@ fn main7() {
                      stats0.max_depth, t0.elapsed().as_secs_f64());
             stats0.print(t0.elapsed());
 
-            // print!("\n");
-            // for m in mvs.iter() {
-            //     eprintln!("m = {:?}", m);
-            // }
+            print!("\n");
+            for m in mvs.iter() {
+                eprintln!("m = {:?}", m);
+            }
 
             let nps = stats0.null_prunes;
             eprintln!("null prunes = {:?}", nps);
+
+            eprintln!("window fails = {:?}", stats0.window_fails);
 
             // let mut arr = stats0.nodes_arr.clone();
             // arr.reverse();

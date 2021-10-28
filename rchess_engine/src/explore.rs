@@ -253,13 +253,125 @@ impl Explorer {
 /// Lazy SMP
 impl Explorer {
 
+    fn _lazy_smp_single_aspiration(
+        &self,
+        ts:               &Tables,
+        mut gs:           Vec<(Move,Game)>,
+        prev_best:        Option<Score>,
+        depth:            Depth,
+        tx:               Sender<(Depth,Vec<(Move,Vec<Move>,Score)>,Option<(Move,Score)>)>,
+        stats:            Arc<RwLock<SearchStats>>,
+        tt_r:             TTRead,
+        tt_w:             TTWrite,
+    ) {
+        let mut out: Vec<(Move,Vec<Move>,Score)> = vec![];
+
+        let mut best_alpha = i32::MIN;
+        let mut best_beta  = i32::MAX;
+
+        let (mut alpha,mut beta) = match prev_best {
+            Some(prev) => {
+                let delta = 2000;
+                let alpha = i32::max(prev - delta, i32::MIN);
+                let beta  = i32::min(prev + delta, i32::MAX);
+                trace!("Using aspiration window ({}, {})", alpha, beta);
+                (alpha,beta)
+            },
+            None       => (i32::MIN,i32::MAX),
+        };
+        let mut ss = SearchStats::default();
+
+        let (mv,score): (Move,Score) = 'outer: loop {
+            for (mv,g2) in gs.iter() {
+
+                match self.check_tt(&ts, &g2, depth, false, &tt_r, &mut ss) {
+                    Some((SICanUse::UseScore,si)) => {
+                        out.push((*mv,si.moves,si.score));
+                        continue;
+                    },
+                    _ => {},
+                }
+
+                if let Some((mut mv_seq,score)) = {
+
+                    let (mut alpha,mut beta) = (i32::MIN,i32::MAX);
+
+                    self._ab_search(
+                        &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss, *mv,
+                        &tt_r, tt_w.clone()).map(|x| x.0)
+
+                } {
+                    mv_seq.push(*mv);
+                    mv_seq.reverse();
+
+                    // XXX: ??
+                    Self::tt_insert_deepest(
+                        &tt_r, tt_w.clone(),
+                        g2.zobrist, SearchInfo::new(*mv, mv_seq.clone(), depth, Node::Root, score));
+
+                    out.push((*mv,mv_seq,score));
+                } else {
+                    break;
+                }
+            }
+
+            if out.len() == 0 {
+                trace!("Aspiration window failed (no moves) a/b {}, {}",
+                       alpha, beta);
+                if alpha == i32::MIN && beta == i32::MAX {
+                    {
+                        let mut s = stats.write();
+                        *s = *s + ss;
+                        s.max_depth = depth;
+                    }
+                    return;
+                }
+                alpha = i32::MIN;
+                beta  = i32::MAX;
+            } else {
+                let (mv,_,score) = out.iter().max_by(|a,b| a.2.cmp(&b.2)).unwrap();
+                let (mv,score) = (*mv,*score);
+
+                if score <= alpha || score >= beta {
+                    trace!("Aspiration window failed with score/a/b {}, {}, {}",
+                            score, alpha, beta);
+                    // (alpha,beta) = (i32::MIN,i32::MAX);
+                    ss.window_fails += 1;
+                    if score <= alpha {
+                        alpha = i32::MIN;
+                    }
+                    if score >= beta {
+                        beta = i32::MAX;
+                    }
+                } else {
+                    break 'outer (mv,score);
+                }
+            }
+
+        };
+
+        {
+            let mut s = stats.write();
+            *s = *s + ss;
+            s.max_depth = depth;
+        }
+
+        trace!("sending tx, depth = {}", depth);
+        match tx.send((depth,out,Some((mv,score)))) {
+            Ok(_)  => {},
+            Err(_) => {},
+        }
+        drop(tx);
+    }
+
     fn _lazy_smp_single(
         &self,
         ts:               &Tables,
         mut gs:           Vec<(Move,Game)>,
         prev_best:        Option<Score>,
         depth:            Depth,
-        tx:               Sender<(Depth,Vec<(Move,Vec<Move>,Score)>)>,
+        // tx:               Sender<(Depth,Vec<(Move,Vec<Move>,Score)>)>,
+        tx:               Sender<(Depth,Vec<(Move,Vec<Move>,Score)>,Option<(Move,Score)>)>,
         stats:            Arc<RwLock<SearchStats>>,
         tt_r:             TTRead,
         tt_w:             TTWrite,
@@ -269,17 +381,16 @@ impl Explorer {
         // let mut rng = thread_rng();
         // gs.shuffle(&mut rng);
 
-        let mut out = vec![];
+        let mut out: Vec<(Move,Vec<Move>,Score)> = vec![];
 
-        // let mut best_alpha = i32::MIN;
-        // let mut best_beta  = i32::MAX;
-
+        let (alpha,beta) = (i32::MIN,i32::MAX);
         let mut ss = SearchStats::default();
-        for (mv,g2) in gs.into_iter() {
+
+        for (mv,g2) in gs.iter() {
 
             match self.check_tt(&ts, &g2, depth, false, &tt_r, &mut ss) {
                 Some((SICanUse::UseScore,si)) => {
-                    out.push((mv,si.moves,si.score));
+                    out.push((*mv,si.moves,si.score));
                     continue;
                 },
                 _ => {},
@@ -287,45 +398,22 @@ impl Explorer {
 
             if let Some((mut mv_seq,score)) = {
 
-                let (mut alpha,mut beta) = match prev_best {
-                    Some(prev) => {
-                        let delta = 1000;
-                        let alpha = i32::max(prev - delta, i32::MIN);
-                        let beta  = i32::min(prev + delta, i32::MAX);
-                        // debug!("Using aspiration window ({}, {})", alpha, beta);
-                        (alpha,beta)
-                    },
-                    None       => (i32::MIN,i32::MAX),
-                };
+                let (mut alpha,mut beta) = (i32::MIN,i32::MAX);
 
-                // let alpha = i32::MIN;
-                // let beta  = i32::MAX;
+                self._ab_search(
+                    &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss, *mv,
+                    &tt_r, tt_w.clone()).map(|x| x.0)
 
-                'inner: loop {
-                    if let Some(((mut mv_seq,score),(a2,b2))) = self._ab_search(
-                        &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss, mv,
-                        &tt_r, tt_w.clone(),
-                    ) {
-                        if score <= alpha || score >= beta {
-                            trace!("Aspiration window failed with score/a/b {}, {}, {}",
-                                   score, alpha, beta);
-                            (alpha,beta) = (i32::MIN,i32::MAX);
-                        } else {
-                            break 'inner Some((mv_seq,score));
-                        }
-                    } else {
-                        break 'inner None;
-                    }
-                }
             } {
-                mv_seq.push(mv);
+                mv_seq.push(*mv);
                 mv_seq.reverse();
 
+                // XXX: ??
                 Self::tt_insert_deepest(
                     &tt_r, tt_w.clone(),
-                    g2.zobrist, SearchInfo::new(mv, mv_seq.clone(), depth, Node::Root, score));
+                    g2.zobrist, SearchInfo::new(*mv, mv_seq.clone(), depth, Node::Root, score));
 
-                out.push((mv,mv_seq,score));
+                out.push((*mv,mv_seq,score));
             } else {
                 break;
             }
@@ -337,8 +425,14 @@ impl Explorer {
             s.max_depth = depth;
         }
 
+        if out.len() == 0 {
+            return;
+        }
+        let (mv,_,score) = out.iter().max_by(|a,b| a.2.cmp(&b.2)).unwrap();
+        let (mv,score) = (*mv,*score);
+
         trace!("sending tx, depth = {}", depth);
-        match tx.send((depth,out)) {
+        match tx.send((depth,out,Some((mv,score)))) {
             Ok(_)  => {},
             Err(_) => {},
         }
@@ -368,19 +462,6 @@ impl Explorer {
             Arc::new(RwLock::new(SearchStats::default()));
 
         let moves = self.game.search_all(&ts, None).get_moves_unsafe();
-
-        // #[cfg(feature = "par")]
-        // let mut gs: Vec<(Move,Game)> = moves.par_iter().flat_map(|mv| {
-        //     if let Ok(g2) = self.game.make_move_unchecked(&ts, *mv) {
-        //         Some((*mv,g2))
-        //     } else { None }
-        // }).collect();
-        // #[cfg(not(feature = "par"))]
-        // let mut gs: Vec<(Move,Game)> = moves.iter().flat_map(|mv| {
-        //     if let Ok(g2) = self.game.make_move_unchecked(&ts, *mv) {
-        //         Some((*mv,g2))
-        //     } else { None }
-        // }).collect();
 
         let mut gs = moves.par_iter().flat_map(|mv| {
             if let Ok(g2) = self.game.make_move_unchecked(&ts, *mv) {
@@ -421,8 +502,10 @@ impl Explorer {
             //               Receiver<ScopedJoinHandle<(Depth,Vec<(Move,Vec<Move>,Score)>)>>) =
             //     crossbeam::channel::bounded(np_cpus * 2);
 
-            let (tx,rx): (Sender<(Depth,Vec<(Move,Vec<Move>,Score)>)>,
-                          Receiver<(Depth,Vec<(Move,Vec<Move>,Score)>)>) =
+            // let (tx,rx): (Sender<(Depth,Vec<(Move,Vec<Move>,Score)>)>,
+            //               Receiver<(Depth,Vec<(Move,Vec<Move>,Score)>)>) =
+            let (tx,rx): (Sender<(Depth,Vec<(Move,Vec<Move>,Score)>,Option<(Move,Score)>)>,
+                          Receiver<(Depth,Vec<(Move,Vec<Move>,Score)>,Option<(Move,Score)>)>) =
                 crossbeam::channel::bounded(np_cpus as usize * 2);
 
             // let mut thread_counter: u8 = 0;
@@ -463,7 +546,7 @@ impl Explorer {
                         trace!("Breaking thread counter loop (Disconnect)");
                         break;
                     },
-                    Ok((depth,mut scores)) => {
+                    Ok((depth,mut scores,mv)) => {
                         if stop2.load(SeqCst) {
                             trace!("Breaking thread counter loop (Force Stop)");
                             break;
@@ -471,8 +554,10 @@ impl Explorer {
                         if scores.len() > 0 && depth > best_depth2.load(SeqCst) {
                             best_depth2.store(depth,SeqCst);
 
-                            let (mv,_,score) = scores.iter().max_by(|a,b| a.2.cmp(&b.2)).unwrap();
-                            let score = *score;
+                            let (mv,score) = mv.unwrap();
+
+                            // let (mv,_,score) = scores.iter().max_by(|a,b| a.2.cmp(&b.2)).unwrap();
+                            // let score = *score;
 
                             // let (mv,_,score) = scores.get(0).unwrap();
                             // trace!("new best move ({}), {:?} = {:?}", depth, score, mv);
@@ -583,6 +668,7 @@ impl Explorer {
                     trace!("spawning thread: (sid: {}) = cur_depth {:?}", sid, cur_depth);
                     s.spawn(move |_| {
                         self._lazy_smp_single(
+                        // self._lazy_smp_single_aspiration(
                             // &ts, gs2, None, cur_depth, tx2, stats2, tt_r2, tt_w2);
                             &ts, gs2, best, cur_depth, tx2, stats2, tt_r2, tt_w2);
                     });

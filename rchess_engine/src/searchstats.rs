@@ -24,6 +24,7 @@ pub struct SearchStats {
     pub ns_all:         u32,
     pub ns_cut:         u32,
     pub null_prunes:    u32,
+    pub window_fails:   u32,
 }
 
 impl SearchStats {
@@ -96,6 +97,7 @@ impl std::ops::Add for SearchStats {
             ns_all:             self.ns_all + other.ns_all,
             ns_cut:             self.ns_cut + other.ns_cut,
             null_prunes:        self.null_prunes + other.null_prunes,
+            window_fails:       self.window_fails + other.window_fails,
         }
     }
 }
