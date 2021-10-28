@@ -276,14 +276,14 @@ fn main7() {
     // /// https://www.chessprogramming.org/Caesar#HorizonEffect
     // let fen = "2kr4/3nR3/p2B1p2/1p1p1Bp1/1P1P3p/2P4P/P5PK/8 b - - 1 32"; // Horizon
 
-    // let fen = "8/8/p1p5/1p5p/1P5p/8/PPP2K1p/4R1rk w - - 0 1"    // Rf1; id "zugzwang.001";
-    // let fen = "1q1k4/2Rr4/8/2Q3K1/8/8/8/8 w - - 0 1"            // Kh6;  id "zugzwang.002";
-    // let fen = "7k/5K2/5P1p/3p4/6P1/3p4/8/8 w - - 0 1"           // g5; id "zugzwang.003";
-    // let fen = "8/6B1/p5p1/Pp4kp/1P5r/5P1Q/4q1PK/8 w - - 0 32"   // Qxh4; id "zugzwang.004";
-    // let fen = "8/8/1p1r1k2/p1pPN1p1/P3KnP1/1P6/8/3R4 b - - 0 1" // Nxd5; id "zugzwang.005";
+    // let fen = "8/8/p1p5/1p5p/1P5p/8/PPP2K1p/4R1rk w - - 0 1";    // Rf1; id ";zugzwang.001";;
+    // let fen = "1q1k4/2Rr4/8/2Q3K1/8/8/8/8 w - - 0 1";            // Kh6;  id ";zugzwang.002";;
+    // let fen = "7k/5K2/5P1p/3p4/6P1/3p4/8/8 w - - 0 1";           // g5; id ";zugzwang.003";;
+    // let fen = "8/6B1/p5p1/Pp4kp/1P5r/5P1Q/4q1PK/8 w - - 0 32";   // Qxh4; id ";zugzwang.004";;
+    // let fen = "8/8/1p1r1k2/p1pPN1p1/P3KnP1/1P6/8/3R4 b - - 0 1"; // Nxd5; id ";zugzwang.005";;
 
-    // let fen = "2q2rk1/p4pp1/5n1p/8/8/Q4N1P/P4PP1/5RK1 b - - 0 1"; // Null move cutoff
-    // let fen = "5rk1/p4pp1/5n1p/8/8/5N1P/P4PP1/2Q2RK1 b - - 0 2"; // Null move cutoff
+    // let fen = "2q2rk1/p4pp1/5n1p/8/8/Q4N1P/P4PP1/5RK1 b - - 0 1";; // Null move cutoff
+    // let fen = "5rk1/p4pp1/5n1p/8/8/5N1P/P4PP1/2Q2RK1 b - - 0 2";; // Null move cutoff
 
     fn games(i: usize) -> String {
         let mut games = read_epd("testpositions/WAC.epd").unwrap();
@@ -310,7 +310,8 @@ fn main7() {
 
     // let ts = Tables::new();
     // ts.write_to_file("tables.bin").unwrap();
-    let ts = Tables::read_from_file("tables.bin").unwrap();
+    // let ts = Tables::read_from_file("tables.bin").unwrap();
+    let ts = &_TABLES;
 
     let mut g = Game::from_fen(&ts, fen).unwrap();
 
@@ -406,25 +407,43 @@ fn main7() {
                      stats0.max_depth, t0.elapsed().as_secs_f64());
             stats0.print(t0.elapsed());
 
-            print!("\n");
-            for m in mvs.iter() {
-                eprintln!("m = {:?}", m);
-            }
+            println!();
+            println!("Correct move: Cp Q b6f2");
+            println!();
 
-            let nps = stats0.null_prunes;
-            eprintln!("null prunes = {:?}", nps);
-
-            eprintln!("window fails = {:?}", stats0.window_fails);
-
-            // let mut arr = stats0.nodes_arr.clone();
-            // arr.reverse();
-            // for (depth,x) in arr.iter().enumerate() {
-            //     if depth > 0 && *x != 0 {
-            //         // let depth = depth - 1;
-            //         let bf = f64::powf(*x as f64, 1.0 / depth as f64);
-            //         eprintln!("nodes, branching factor at d {} = {:>8} {:.2?}", depth, x, bf);
-            //     }
+            // for m in mvs.iter() {
+            //     eprintln!("m = {:?}", m);
             // }
+
+            // let nps = stats0.null_prunes;
+            // eprintln!("null prunes = {:?}", nps);
+
+            // let zb = Game::zobrist_from_fen(&ts, "5rk1/ppR3p1/8/8/8/1P6/P5PP/4rRK1 b - - 1 4");
+            // let sis = tt_r.get(&zb).unwrap();
+            // for si in sis.iter() {
+            //     eprintln!("si = {:?}", si);
+            // }
+
+            // eprintln!("window fails = {:?}", stats0.window_fails);
+
+            // stats0.print_ebf(false);
+            stats0.print_node_types(&tt_r);
+
+            for (zb,sis) in tt_r.read().unwrap().iter() {
+                let si = sis.iter().next().unwrap();
+
+                // if si.depth_searched == 0 {
+                //     eprintln!("si = {:?}", si);
+                // }
+
+                // match si.node_type {
+                //     Node::Root => {
+                //         eprintln!("si ({:>8}) = {:?}", k, si);
+                //     },
+                //     _ => {},
+                // }
+
+            }
 
             // let g2 = g.flip_sides(&ts);
             // let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);
@@ -452,22 +471,11 @@ fn main7() {
             //          stats1.max_depth, t0.elapsed().as_secs_f64());
             // stats1.print(t0.elapsed());
 
-            // let zb = Game::zobrist_from_fen(&ts, "4Q1k1/6pp/3q4/5p2/1P1pB3/4P1P1/4KPP1/2r5 b - - 1 2");
-            // eprintln!("zb = {:?}", zb);
-            // let si = tt_r.get_one(&zb).unwrap();
-            // eprintln!("si = {:?}", si);
-
             // print!("\n");
             // for m in mvs.iter() {
             //     eprintln!("m = {:?}", m);
             // }
 
-
-            // let tt = ex.trans_table.clone();
-            // let xs0 = tt.iter().filter(|x| x.node_type == Node::PV).collect::<Vec<_>>();
-            // let xs1 = tt.iter().filter(|x| x.node_type == Node::All).collect::<Vec<_>>();
-            // let xs2 = tt.iter().filter(|x| x.node_type == Node::Cut).collect::<Vec<_>>();
-            // eprintln!("PV, Cut, All = {}, {}, {}", xs0.len(), xs1.len(), xs2.len());
 
             // eprintln!("tt.len() = {:?}", tt.len());
             // eprintln!("pv  = {:?}", pv.len());

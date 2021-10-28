@@ -40,6 +40,10 @@ lazy_static! {
 
 }
 
+lazy_static! {
+    pub static ref _TABLES: Tables = Tables::read_from_file("tables.bin").unwrap();
+}
+
 pub static CENTERDIST: [u8; 64] = [
     3, 3, 3, 3, 3, 3, 3, 3,
     3, 2, 2, 2, 2, 2, 2, 3,

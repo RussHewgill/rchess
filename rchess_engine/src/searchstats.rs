@@ -1,8 +1,10 @@
 
 use std::time::Duration;
 
+use crate::explore::TTRead;
 use crate::types::*;
 use crate::tables::*;
+use crate::explore::Node;
 
 #[derive(Debug,Default,PartialEq,PartialOrd,Clone,Copy)]
 pub struct SearchStats {
@@ -24,7 +26,7 @@ pub struct SearchStats {
     pub ns_all:         u32,
     pub ns_cut:         u32,
     pub null_prunes:    u32,
-    pub window_fails:   u32,
+    pub window_fails:   (u32,u32),
 }
 
 impl SearchStats {
@@ -41,6 +43,58 @@ impl SearchStats {
         } else {
             format!("{}", x)
         }
+    }
+
+    pub fn print_node_types(&self, tt_r: &TTRead) {
+        let tt_r2 = tt_r.read().unwrap();
+
+        let n_pv = tt_r2.iter().filter(|(_,sis)| {
+            sis.iter().next().unwrap().node_type == Node::PV});
+        let n_all = tt_r2.iter().filter(|(_,sis)| {
+            sis.iter().next().unwrap().node_type == Node::All});
+        let n_cut = tt_r2.iter().filter(|(_,sis)| {
+            sis.iter().next().unwrap().node_type == Node::Cut});
+        let n_root = tt_r2.iter().filter(|(_,sis)| {
+            sis.iter().next().unwrap().node_type == Node::Root});
+
+        eprintln!("n_pv   = {:?}", n_pv.collect::<Vec<_>>().len());
+        eprintln!("n_cut  = {:?}", n_cut.collect::<Vec<_>>().len());
+        eprintln!("n_all  = {:?}", n_all.collect::<Vec<_>>().len());
+        eprintln!("n_root = {:?}", n_root.collect::<Vec<_>>().len());
+    }
+
+    pub fn print_ebf(&self, full: bool) {
+        let mut arr = self.nodes_arr.clone();
+        let k = arr.len();
+        let dmax = self.max_depth as usize;
+        eprintln!("dmax = {:?}", dmax);
+        // let mut arr2 = &mut arr[1..((self.max_depth as usize) + 1)];
+        let mut arr2 = &mut arr[..dmax + 1];
+        arr2.reverse();
+
+        // for (depth,n) in arr2.iter().enumerate() {
+        //     eprintln!("depth, n = {:>2}: {:>8}", depth, n);
+        // }
+
+        let mut xs = vec![];
+        for depth in 1..arr2.len() {
+            let n = arr2[depth];
+            let ebf = n as f64 / arr2[depth - 1] as f64;
+            xs.push(ebf);
+            if full {
+                debug!("EBF depth {:>2} = {:>8} nodes, {:.2?}", depth, n, ebf);
+            }
+        }
+        let s: f64 = xs.iter().sum();
+        debug!("Average EBF: {:.2}", s / xs.len() as f64);
+
+        // let xs = arr.clone().iter()
+        //     // .filter(|x| **x != 0)
+        //     .enumerate()
+        //     .for_each(|(depth,x)| {
+        //     eprintln!("x {} = {:?}", depth, x);
+        // });
+
     }
 
     pub fn print(&self, dt: Duration) {
@@ -97,7 +151,8 @@ impl std::ops::Add for SearchStats {
             ns_all:             self.ns_all + other.ns_all,
             ns_cut:             self.ns_cut + other.ns_cut,
             null_prunes:        self.null_prunes + other.null_prunes,
-            window_fails:       self.window_fails + other.window_fails,
+            window_fails:       (self.window_fails.0 + other.window_fails.0,
+                                 self.window_fails.1 + other.window_fails.1),
         }
     }
 }

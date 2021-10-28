@@ -271,7 +271,7 @@ impl Explorer {
 
         let (mut alpha,mut beta) = match prev_best {
             Some(prev) => {
-                let delta = 2000;
+                let delta = 100;
                 let alpha = i32::max(prev - delta, i32::MIN);
                 let beta  = i32::min(prev + delta, i32::MAX);
                 trace!("Using aspiration window ({}, {})", alpha, beta);
@@ -332,17 +332,18 @@ impl Explorer {
                 let (mv,_,score) = out.iter().max_by(|a,b| a.2.cmp(&b.2)).unwrap();
                 let (mv,score) = (*mv,*score);
 
-                if score <= alpha || score >= beta {
+                if score > 99_000_000 || score < -99_000_000 {
+                    break 'outer (mv,score);
+                } else if score <= alpha {
                     trace!("Aspiration window failed with score/a/b {}, {}, {}",
                             score, alpha, beta);
-                    // (alpha,beta) = (i32::MIN,i32::MAX);
-                    ss.window_fails += 1;
-                    if score <= alpha {
-                        alpha = i32::MIN;
-                    }
-                    if score >= beta {
-                        beta = i32::MAX;
-                    }
+                    // fail low
+                    ss.window_fails.0 += 1;
+                    alpha = i32::MIN;
+                } else if score >= beta {
+                    // fail high
+                    ss.window_fails.1 += 1;
+                    beta = i32::MAX;
                 } else {
                     break 'outer (mv,score);
                 }
@@ -669,7 +670,6 @@ impl Explorer {
                     s.spawn(move |_| {
                         self._lazy_smp_single(
                         // self._lazy_smp_single_aspiration(
-                            // &ts, gs2, None, cur_depth, tx2, stats2, tt_r2, tt_w2);
                             &ts, gs2, best, cur_depth, tx2, stats2, tt_r2, tt_w2);
                     });
 
@@ -747,25 +747,13 @@ impl Explorer {
                 tt_r:           &TTRead,
                 mut stats:      &mut SearchStats,
     ) -> Option<(SICanUse,SearchInfo)> {
-        // if let Some(si) = self.trans_table.tt_get(&g.zobrist) {
-
-        // if g.zobrist == Zobrist(0x1eebfbac03c62e9d) { println!("wat wat 0 {}", depth); }
-
-        // if let Some(si) = self.trans_table.get(&g.zobrist) {
         if let Some(si) = tt_r.get_one(&g.zobrist) {
-
-            // if si.depth_searched == depth {
             if si.depth_searched >= depth {
-                // if g.zobrist == Zobrist(0x1eebfbac03c62e9d) { println!("wat wat 1"); }
                 stats.tt_hits += 1;
-                // Some((SICanUse::UseScore,*si))
                 Some((SICanUse::UseScore,si.clone()))
             } else {
-                // if g.zobrist == Zobrist(0x1eebfbac03c62e9d) { println!("wat wat 2"); }
                 stats.tt_misses += 1;
-                // Some((SICanUse::UseOrdering,*si))
                 Some((SICanUse::UseOrdering,si.clone()))
-                // None
             }
 
         } else {
@@ -824,10 +812,10 @@ impl Explorer {
                 }
                 if maximizing {
                     // return Some((vec![mv0],-score));
-                    return Some(((vec![mv0], -score),(alpha,beta)));
+                    return Some(((vec![], -score),(alpha,beta)));
                 } else {
                     // return Some((vec![mv0],score));
-                    return Some(((vec![mv0], score),(alpha,beta)));
+                    return Some(((vec![], score),(alpha,beta)));
                 }
 
             },
@@ -844,10 +832,10 @@ impl Explorer {
             Outcome::Moves(ms)    => ms,
         };
 
-        if !tt_r.contains_key(&g.zobrist) {
-            stats.nodes += 1;
-            stats.inc_nodes_arr(depth);
-        }
+        // XXX: stat padding by including nodes found in TT
+        // if !tt_r.contains_key(&g.zobrist) {}
+        stats.nodes += 1;
+        stats.inc_nodes_arr(depth);
 
         if depth == 0 {
             let score = g.evaluate(&ts).sum();
@@ -873,6 +861,7 @@ impl Explorer {
             return None;
         }
 
+        /// Make move, Lookup games in Trans Table
         // #[cfg(feature = "par")]
         let mut gs: Vec<(Move,Game,Option<(SICanUse,SearchInfo)>)> = {
             // let mut gs0 = moves.into_par_iter().flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, m) {
@@ -909,19 +898,23 @@ impl Explorer {
         //     gs.reverse();
         // }
 
+        /// Move Ordering
         order_searchinfo(maximizing, &mut gs[..]);
 
+        // let mut node_type = Node::All;
         let mut node_type = Node::PV;
 
-        // let moves = match self.trans_table.get(&g.zobrist) {
+        /// Get parent node type
         let moves = match tt_r.get_one(&g.zobrist) {
             None     => {},
             Some(si) => {
                 match si.node_type {
                     Node::Cut => {
+                        node_type = Node::All;
+                        /// Cut nodes only need one child to be searched
                         gs.truncate(1);
                     },
-                    // All children of an All node are Cut nodes
+                    /// Each child of an All node is a Cut nodes
                     Node::All => node_type = Node::Cut,
                     _         => {},
                 }
@@ -930,6 +923,8 @@ impl Explorer {
 
         let mut val = if maximizing { i32::MIN } else { i32::MAX };
         let mut val: (Option<(Zobrist,Move,Vec<Move>)>,i32) = (None,val);
+
+        // let (alpha0,beta0) = (alpha,beta);
 
         for (mv,g2,tt) in gs.iter() {
 
@@ -967,11 +962,7 @@ impl Explorer {
                 },
             };
 
-            // let alpha2 = Arc::new(AtomicI32::new(alpha.load(Ordering::Relaxed)));
-            // let beta2  = Arc::new(AtomicI32::new(beta.load(Ordering::Relaxed)));
-            // let (mut mv_seq,score) = self._ab_search(
-            //     &ts, &g2, depth - 1, k + 1, alpha2, beta2, !maximizing, &mut stats, mv);
-
+            // /// basic minimax
             // if maximizing {
             //     val.1 = i32::max(val.1, score);
             // } else {
@@ -989,24 +980,21 @@ impl Explorer {
                 mv0);
             if b {
                 node_type = Node::Cut;
-                // self.move_table.remove(depth, zb, *mv);
                 break;
-            } else {
-                // self.move_table.remove(depth, zb, *mv);
             }
 
         }
 
+        // // if alpha0 < val.1 && val.1 < beta0 {
+        // if alpha < val.1 && val.1 < beta {
+        //     node_type = Node::PV;
+        // }
 
-        // XXX: depth or depth - 1 ?
+        // XXX: depth or depth - 1? Update: Pretty sure depth - 1 is correct
         if let Some((zb,mv,mv_seq)) = &val.0 {
-            // if *zb == Zobrist(0x1eebfbac03c62e9d) { println!("wat 0 {:?}, {:?}", mv, mv_seq); }
             let mut mv_seq = mv_seq.clone();
-            // mv_seq.push(*mv);
-            // mv_seq.push(mv0);
             Self::tt_insert_deepest(
                 &tt_r, tt_w,
-                // *zb, SearchInfo::new(*mv,mv_seq.clone(), depth, Node::PV, val.1));
                 *zb, SearchInfo::new(*mv, mv_seq, depth - 1, node_type, val.1));
         }
 
@@ -1042,12 +1030,17 @@ impl Explorer {
                 *val = (Some((zb,mv,mv_seq.clone())),score);
             }
 
-            *alpha = i32::max(*alpha, val.1);
+            if val.1 > *alpha {
+                *alpha = val.1;
+            }
+
+            // *alpha = i32::max(*alpha, val.1);
             if val.1 >= *beta { // Beta cutoff
                 // if zb == Zobrist(0x1eebfbac03c62e9d) { println!("wat 2"); }
                 // self.trans_table.insert(
                 //     zb, SearchInfo::new(mv, mv_seq.clone(), depth, Node::Cut, val.1));
                 return true;
+                // return Some(Node::Cut);
             }
 
             // self.trans_table.insert_replace(
@@ -1067,6 +1060,7 @@ impl Explorer {
                 // self.trans_table.insert(
                 //     zb, SearchInfo::new(mv, mv_seq.clone(), depth, Node::Cut, val.1));
                 return true;
+                // return Some(Node::Cut);
             }
 
             // node_type = Node::All;
@@ -1074,6 +1068,7 @@ impl Explorer {
             //     zb, SearchInfo::new(mv, depth, Node::All, val.1));
         }
         false
+        // None
     }
 
 }

@@ -83,6 +83,7 @@ open = "2.0.1"
 
 # serde = "1.0.*"
 # serde_json = "1.0.*"
+zerocopy = { version = "0.6.0", features = ["simd-nightly"] }
 
 # bitflags = "1.3"
 
