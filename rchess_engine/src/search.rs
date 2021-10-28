@@ -39,28 +39,33 @@ impl Game {
     // pub fn search_all(&self, ts: &Tables, col: Color) -> Option<Vec<Move>> {
     pub fn search_all(&self, ts: &Tables, col: Option<Color>) -> Outcome {
         let col = if let Some(c) = col { c } else { self.state.side_to_move };
-        match self.state.checkers {
-            Some(cs) if !cs.is_empty() => {
-                // if let Some(win) = self.is_checkmate(&ts) {
-                //     return Outcome::Checkmate(win);
-                // }
-                // println!("wat check");
-                self._search_in_check(&ts, col)
-            },
-            _                          => {
 
-                self._search_all(&ts, col)
-
-                // let moves = self._search_all_iters(&ts, col);
-                // let moves = moves.collect::<Vec<_>>();
-                // if moves.len() == 0 {
-                //     Outcome::Stalemate
-                // } else {
-                //     Outcome::Moves(moves)
-                // }
-
-            },
+        if self.state.checkers.is_not_empty() {
+            self._search_in_check(&ts, col)
+        } else {
+            self._search_all(&ts, col)
         }
+
+        // match self.state.checkers {
+        //     Some(cs) if !cs.is_empty() => {
+        //         // if let Some(win) = self.is_checkmate(&ts) {
+        //         //     return Outcome::Checkmate(win);
+        //         // }
+        //         // println!("wat check");
+        //         self._search_in_check(&ts, col)
+        //     },
+        //     _                          => {
+        //         self._search_all(&ts, col)
+        //         // let moves = self._search_all_iters(&ts, col);
+        //         // let moves = moves.collect::<Vec<_>>();
+        //         // if moves.len() == 0 {
+        //         //     Outcome::Stalemate
+        //         // } else {
+        //         //     Outcome::Moves(moves)
+        //         // }
+        //     },
+        // }
+
     }
 
     pub fn _search_all_iters<'a>(&'a self, ts: &'a Tables, col: Color)
@@ -137,7 +142,7 @@ impl Game {
         out.extend(&self.search_king(&ts, col));
 
         let mut x = 0;
-        self.state.checkers.unwrap().iter_bitscan(|sq| x += 1);
+        self.state.checkers.iter_bitscan(|sq| x += 1);
         if x == 1 {
             out.extend(&self.search_sliding(&ts, Bishop, col));
             out.extend(&self.search_sliding(&ts, Rook, col));
@@ -350,12 +355,12 @@ impl Game {
                     || (ts.aligned(m.sq_from(), m.sq_to(), self.get(King, col).bitscan().into()).0 != 0);
 
                 // not in check
-                let x0 = x & self.state.checkers.unwrap().is_empty();
+                let x0 = x & self.state.checkers.is_empty();
 
-                x0 & self.state.checkers.unwrap().is_empty()
-                    || (x && m.sq_to() == self.state.checkers.unwrap().bitscan().into())
+                x0 & self.state.checkers.is_empty()
+                    || (x && m.sq_to() == self.state.checkers.bitscan().into())
                     || (x && (BitBoard::single(m.sq_to())
-                              & self.state.check_block_mask.unwrap()).is_not_empty())
+                              & self.state.check_block_mask).is_not_empty())
 
 
             },
@@ -611,7 +616,7 @@ impl Game {
         let col = self.state.side_to_move;
         let (kingside,queenside) = self.state.castling.get_color(col);
 
-        if self.state.checkers.unwrap().is_not_empty() { return out; }
+        if self.state.checkers.is_not_empty() { return out; }
 
         let king: Coord = self.get(King, col).bitscan().into();
 

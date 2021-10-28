@@ -27,6 +27,41 @@ pub struct SearchStats {
     pub ns_cut:         u32,
     pub null_prunes:    u32,
     pub window_fails:   (u32,u32),
+    pub lmrs:           (u32,u32),
+}
+
+impl std::ops::Add for SearchStats {
+    type Output = Self;
+    fn add(self, other: Self) -> Self {
+        let mut arr = self.nodes_arr;
+        other.nodes_arr.iter().enumerate().for_each(|(i,x)| {
+            arr[i] += x;
+        });
+        Self {
+            nodes:              self.nodes + other.nodes,
+            nodes_arr:          arr,
+            leaves:             self.leaves + other.leaves,
+            quiet_leaves:       self.quiet_leaves + other.quiet_leaves,
+            max_depth:          u8::max(self.max_depth, other.max_depth),
+            checkmates:         self.checkmates + other.checkmates,
+            stalemates:         self.stalemates + other.stalemates,
+            tt_hits:            self.tt_hits + other.tt_hits,
+            tt_misses:          self.tt_misses + other.tt_misses,
+            qt_nodes:           self.qt_nodes + other.qt_nodes,
+            qt_hits:            self.qt_hits + other.qt_hits,
+            qt_misses:          self.qt_misses + other.qt_misses,
+            alpha:              i32::max(self.alpha, other.alpha),
+            beta:               i32::min(self.beta, other.beta),
+            ns_pv:              self.ns_pv + other.ns_pv,
+            ns_all:             self.ns_all + other.ns_all,
+            ns_cut:             self.ns_cut + other.ns_cut,
+            null_prunes:        self.null_prunes + other.null_prunes,
+            window_fails:       (self.window_fails.0 + other.window_fails.0,
+                                 self.window_fails.1 + other.window_fails.1),
+            lmrs:               (self.lmrs.0 + other.lmrs.0,
+                                 self.lmrs.1 + other.lmrs.1),
+        }
+    }
 }
 
 impl SearchStats {
@@ -120,41 +155,6 @@ impl SearchStats {
         // println!("Cut Nodes  = {:?}", self.ns_cut);
     }
 
-}
-
-impl std::ops::Add for SearchStats {
-    type Output = Self;
-    fn add(self, other: Self) -> Self {
-
-        // let arr = self.nodes_arr + other.nodes_arr
-        let mut arr = self.nodes_arr;
-        other.nodes_arr.iter().enumerate().for_each(|(i,x)| {
-            arr[i] += x;
-        });
-
-        Self {
-            nodes:              self.nodes + other.nodes,
-            nodes_arr:          arr,
-            leaves:             self.leaves + other.leaves,
-            quiet_leaves:       self.quiet_leaves + other.quiet_leaves,
-            max_depth:          u8::max(self.max_depth, other.max_depth),
-            checkmates:         self.checkmates + other.checkmates,
-            stalemates:         self.stalemates + other.stalemates,
-            tt_hits:            self.tt_hits + other.tt_hits,
-            tt_misses:          self.tt_misses + other.tt_misses,
-            qt_nodes:           self.qt_nodes + other.qt_nodes,
-            qt_hits:            self.qt_hits + other.qt_hits,
-            qt_misses:          self.qt_misses + other.qt_misses,
-            alpha:              i32::max(self.alpha, other.alpha),
-            beta:               i32::min(self.beta, other.beta),
-            ns_pv:              self.ns_pv + other.ns_pv,
-            ns_all:             self.ns_all + other.ns_all,
-            ns_cut:             self.ns_cut + other.ns_cut,
-            null_prunes:        self.null_prunes + other.null_prunes,
-            window_fails:       (self.window_fails.0 + other.window_fails.0,
-                                 self.window_fails.1 + other.window_fails.1),
-        }
-    }
 }
 
 impl std::ops::AddAssign for SearchStats {

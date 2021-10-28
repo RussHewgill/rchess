@@ -5,6 +5,7 @@
 
 #![feature(destructuring_assignment)]
 #![feature(core_intrinsics)]
+#![feature(label_break_value)]
 
 #![allow(
     // clippy::all,
@@ -37,6 +38,7 @@ pub mod parsing;
 
 pub mod search;
 pub mod explore;
+pub mod alphabeta;
 pub mod evaluate;
 pub mod timer;
 pub mod tuning;

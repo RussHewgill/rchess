@@ -79,13 +79,14 @@ pub struct GameState {
 
     // pub score:              Score,
 
-    pub checkers:           Option<BitBoard>,
-    pub king_blocks_w:      Option<BitBoard>,
-    pub king_blocks_b:      Option<BitBoard>,
-    // pub pinners:            Option<BitBoard>,
-    // pub pinned:         Option<(BitBoard,BitBoard)>,
-
-    pub check_block_mask:   Option<BitBoard>,
+    // pub checkers:           Option<BitBoard>,
+    // pub king_blocks_w:      Option<BitBoard>,
+    // pub king_blocks_b:      Option<BitBoard>,
+    // pub check_block_mask:   Option<BitBoard>,
+    pub checkers:           BitBoard,
+    pub king_blocks_w:      BitBoard,
+    pub king_blocks_b:      BitBoard,
+    pub check_block_mask:   BitBoard,
 }
 
 mod castling {
@@ -387,9 +388,9 @@ impl Game {
             return Err(GameEnd::Checkmate{ win: !self.state.side_to_move});
         }
 
-        self.state.checkers      = None;
-        self.state.king_blocks_w = None;
-        self.state.king_blocks_b = None;
+        self.state.checkers      = BitBoard::empty();
+        self.state.king_blocks_w = BitBoard::empty();
+        self.state.king_blocks_b = BitBoard::empty();
         // self.state.pinners       = None;
 
         self.update_pins_mut(&ts);
@@ -406,9 +407,9 @@ impl Game {
     }
 
     fn reset_gameinfo_mut(&mut self) {
-        self.state.checkers      = None;
-        self.state.king_blocks_w = None;
-        self.state.king_blocks_b = None;
+        self.state.checkers      = BitBoard::empty();
+        self.state.king_blocks_w = BitBoard::empty();
+        self.state.king_blocks_b = BitBoard::empty();
         // self.state.pinners       = None;
     }
 
@@ -443,8 +444,8 @@ impl Game {
         // let bs_w = bs_w & self.get_color(White);
         // let bs_b = bs_b & self.get_color(Black);
 
-        self.state.king_blocks_w = Some(bs_w);
-        self.state.king_blocks_b = Some(bs_b);
+        self.state.king_blocks_w = bs_w;
+        self.state.king_blocks_b = bs_b;
 
         // self.state.pinners = Some(ps_b | ps_w);
 
@@ -462,22 +463,22 @@ impl Game {
         // // XXX: trim this unless needed?
         // let moves = moves | self.find_checkers(&ts, !self.state.side_to_move);
 
-        self.state.checkers = Some(moves);
+        self.state.checkers = moves;
 
         // unimplemented!()
     }
 
     fn update_check_block_mut(&mut self, ts: &Tables) {
-        let c0 = self.state.checkers.unwrap();
+        let c0 = self.state.checkers;
         if c0.is_empty() | c0.more_than_one() {
-            self.state.check_block_mask = Some(BitBoard::empty());
+            self.state.check_block_mask = BitBoard::empty();
             return;
         }
 
         let king = self.get(King, self.state.side_to_move).bitscan();
         let b = ts.between_exclusive(king, c0.bitscan());
 
-        self.state.check_block_mask = Some(b);
+        self.state.check_block_mask = b;
     }
 
     fn update_castles(&self, ts: &Tables, m: Move, x: &mut Self) {
@@ -675,8 +676,8 @@ impl Game {
     pub fn get_pins(&self, col: Color) -> BitBoard {
 
         match col {
-            White => self.state.king_blocks_w.unwrap(),
-            Black => self.state.king_blocks_b.unwrap(),
+            White => self.state.king_blocks_w,
+            Black => self.state.king_blocks_b,
         }
 
         // if let Some(pins) = match col {
@@ -1048,9 +1049,7 @@ impl std::fmt::Debug for Game {
         }
         f.write_str(&format!("{}\n", line))?;
 
-        if self.state.checkers.is_none() {
-            f.write_str(&format!("Checkers = None?\n"))?;
-        } else if self.state.checkers.unwrap().is_not_empty() {
+        if self.state.checkers.is_not_empty() {
             f.write_str(&format!("In Check\n"))?;
         } else {
             f.write_str(&format!("Not In Check\n"))?;

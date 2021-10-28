@@ -269,9 +269,13 @@ fn main7() {
 
     // let fen = "8/1p4pk/6rp/3Pp3/4Qn2/2P2qP1/1B3P1P/4R1K1 b - - 1 1"; // f4h3, #2
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
-    let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
+    // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
     // let fen = "8/p6k/1p5p/4Bpp1/8/1P3q1P/P1Q2P1K/3r4 w - - 0 2"; // c2c7, #5;
     // let fen = "1rq2k1r/p1p2p2/2B2P2/3RP2p/1b3N1p/2N4P/PPP1QPP1/2K4R w - - 1 23"; // e5e6, #9
+
+    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+
+    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Horizon
 
     // /// https://www.chessprogramming.org/Caesar#HorizonEffect
     // let fen = "2kr4/3nR3/p2B1p2/1p1p1Bp1/1P1P3p/2P4P/P5PK/8 b - - 1 32"; // Horizon
@@ -388,15 +392,16 @@ fn main7() {
 
             println!("g = {:?}", g);
 
-            let n = 25;
+            // let n = 25;
             // let n = 10;
             // let n = 5;
+            let n = 2;
 
             ex.max_depth = n;
 
             ex.timer.settings = TimeSettings::new_f64(
                 0.0,
-                5.0,
+                2.0,
             );
 
             let t0 = std::time::Instant::now();
@@ -408,7 +413,8 @@ fn main7() {
             stats0.print(t0.elapsed());
 
             println!();
-            println!("Correct move: Cp Q b6f2");
+            // println!("Correct move: Cp Q b6f2");
+            println!("Correct move: Q cap d6b4");
             println!();
 
             // for m in mvs.iter() {
@@ -428,6 +434,8 @@ fn main7() {
 
             stats0.print_ebf(false);
             stats0.print_node_types(&tt_r);
+
+            eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
 
             for (zb,sis) in tt_r.read().unwrap().iter() {
                 let si = sis.iter().next().unwrap();
