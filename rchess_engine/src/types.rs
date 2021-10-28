@@ -204,31 +204,40 @@ impl Move {
         }
     }
 
-    pub fn reverse(&self, g: &Game) -> Self {
+    pub fn reverse(&self, g: &Game) -> Option<Self> {
         match *self {
             Move::Quiet      { from, to, pc } => {
-                // Move::Quiet      { from: to, to: from }
-                unimplemented!()
+                if pc == Pawn {
+                    None
+                } else {
+                    Some(Move::Quiet { from: to, to: from, pc })
+                }
             },
             Move::PawnDouble { from, to } => {
-                Move::PawnDouble { from: to, to: from }
+                // Move::PawnDouble { from: to, to: from }
+                None
             },
             Move::Capture    { from, to, pc, victim } => {
-                Move::Capture    { from: to, to: from, pc: victim, victim: pc }
+                // Move::Capture    { from: to, to: from, pc: victim, victim: pc }
+                None
             },
             Move::EnPassant  { from, to, capture, victim } => {
                 // Move::EnPassant  { from: to, to: from, capture }
-                panic!("reverse en passant?")
+                // panic!("reverse en passant?")
+                None
             },
             Move::Promotion  { from, to, new_piece } => {
-                Move::Promotion  { from: to, to: from, new_piece }
+                // Move::Promotion  { from: to, to: from, new_piece }
+                None
             },
             Move::PromotionCapture  { from, to, new_piece, victim } => {
                 // Move::PromotionCapture  { from: to, to: from, new_piece }
-                panic!("reverse promotion capture?")
+                // panic!("reverse promotion capture?")
+                None
             },
             Move::Castle     { from, to, rook_from, rook_to } => {
-                Move::Castle     { from: to, to: from, rook_from, rook_to }
+                // Move::Castle     { from: to, to: from, rook_from, rook_to }
+                None
             },
             Move::NullMove                    => unimplemented!(),
         }

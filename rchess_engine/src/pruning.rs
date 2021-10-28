@@ -1,5 +1,6 @@
 
-use crate::searchstats;
+use std::collections::VecDeque;
+
 use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
@@ -20,7 +21,8 @@ impl Explorer {
         beta:               i32,
         maximizing:         bool,
         mut stats:          &mut SearchStats,
-        prev_mvs:           Vec<Move>,
+        // prev_mvs:           Vec<Move>,
+        prev_mvs:           VecDeque<(Zobrist,Move)>,
         tt_r:               &TTRead,
         tt_w:               TTWrite,
     ) -> bool {
@@ -34,7 +36,7 @@ impl Explorer {
 
         if let Ok(g2) = g.make_move_unchecked(ts, mv) {
             let mut pms = prev_mvs.clone();
-            pms.push(mv);
+            pms.push_back((g.zobrist,mv));
 
             if let Some(((_,score),_)) = self._ab_search(
                 &ts, &g2, max_depth,
@@ -58,6 +60,30 @@ impl Explorer {
         }
         false
     }
+}
+
+/// Cycle prevention
+impl Explorer {
+
+
+    pub fn cycle_prevention(
+        &self,
+        ts:           &Tables,
+        (mv,g2):      (&Move, &Game),
+        prev_mvs:     &VecDeque<(Zobrist, Move)>,
+    ) -> bool {
+
+        for (zb,mv) in prev_mvs.iter().rev() {
+        }
+
+        // if Some(&(g2.zobrist,*mv)) == prev_mvs.get(prev_mvs.len() - 3) {
+        //     panic!("wat: {:?}\n {:?}", mv, g2)
+        // }
+
+        // unimplemented!()
+        false
+    }
+
 }
 
 /// Static Exchange

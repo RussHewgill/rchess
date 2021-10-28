@@ -10,6 +10,8 @@ pub use crate::timer::*;
 pub use crate::trans_table::*;
 pub use crate::searchstats::*;
 
+use std::collections::VecDeque;
+use std::intrinsics::log10f32;
 use std::sync::atomic::AtomicU8;
 use std::sync::atomic::Ordering::SeqCst;
 use std::time::{Instant,Duration};
@@ -40,6 +42,7 @@ pub struct Explorer {
     pub timer:         Timer,
     pub stop:          Arc<AtomicBool>,
     pub best_mate:     Arc<RwLock<Option<Depth>>>,
+    move_history:      VecDeque<(Zobrist, Move)>,
     // pub prev_eval:     Arc<>
 }
 
@@ -57,6 +60,7 @@ impl Explorer {
             timer:          Timer::new(side, should_stop, settings),
             stop:           Arc::new(AtomicBool::new(false)),
             best_mate:      Arc::new(RwLock::new(None)),
+            move_history:   VecDeque::default(),
         }
     }
 }
@@ -254,6 +258,7 @@ impl Explorer {
 /// Lazy SMP
 impl Explorer {
 
+    #[cfg(feature = "aspiration")]
     fn _lazy_smp_single_aspiration(
         &self,
         ts:               &Tables,
@@ -299,7 +304,7 @@ impl Explorer {
 
                     self._ab_search(
                         // &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss, *mv,
-                        &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss, vec![*mv],
+                        &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss, vec![(g.zobrist, *mv)],
                         &tt_r, tt_w.clone()).map(|x| x.0)
 
                 } {
@@ -405,7 +410,8 @@ impl Explorer {
 
                 self._ab_search(
                     // &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss, *mv,
-                    &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss, vec![*mv],
+                    &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss,
+                    VecDeque::from([(self.game.zobrist,*mv)]),
                     &tt_r, tt_w.clone()).map(|x| x.0)
 
             } {
@@ -783,7 +789,7 @@ impl Explorer {
         maximizing:         bool,
         mut stats:          &mut SearchStats,
         // mv0:                Move,
-        prev_mvs:           Vec<Move>,
+        prev_mvs:           VecDeque<(Zobrist,Move)>,
         tt_r:               &TTRead,
         tt_w:               TTWrite,
     // ) -> Option<(Vec<Move>, Score)> {
@@ -909,11 +915,15 @@ impl Explorer {
 
         // let mut node_type = Node::All;
         let mut node_type = Node::PV;
+        // let mut parent_node_type = None;
 
         /// Get parent node type
         let moves = match tt_r.get_one(&g.zobrist) {
-            None     => {},
+            None     => {
+                // panic!("no parent node?");
+            },
             Some(si) => {
+                // parent_node_type = Some(si.node_type);
                 match si.node_type {
                     Node::Cut => {
                         node_type = Node::All;
@@ -932,9 +942,22 @@ impl Explorer {
 
         // let (alpha0,beta0) = (alpha,beta);
 
+        let mut moves_searched = 0;
+
         for (mv,g2,tt) in gs.iter() {
 
             let zb = g2.zobrist;
+
+            /// Cycle prevention
+            if self.cycle_prevention(&ts, (mv,g2), &prev_mvs) {
+                panic!("wat: {:?}\n {:?}", mv, g2)
+            }
+
+            // if Some(&(g2.zobrist,*mv)) == prev_mvs.get(prev_mvs.len() - 3) {
+            //     panic!("wat: {:?}\n {:?}", mv, g2)
+            // }
+
+            // if mv.reverse(g)
 
             let (can_use,mut mv_seq,score) = match tt {
                 Some((SICanUse::UseScore,si)) => {
@@ -956,8 +979,23 @@ impl Explorer {
                     //     depth - 1
                     // };
 
+                    // if parent_node_type != Some(Node::PV) && late_mv_reduce == 0 {
+                    //     if depth 
+                    //     depth = depth 
+                    // }
+
+                    if moves_searched >= 4
+                        && k >= 3
+                        && depth < 3
+                        && !mv.filter_all_captures()
+                        && !mv.filter_promotion()
+                        && g2.state.checkers.unwrap().is_empty() {
+                            unimplemented!()
+                        }
+
+
                     let mut pms = prev_mvs.clone();
-                    pms.push(*mv);
+                    pms.push_back((g.zobrist,*mv));
                     if let Some(((mv_seq,score),_)) = self._ab_search(
                         &ts, &g2, max_depth, depth2, k + 1,
                         // alpha, beta, !maximizing, &mut stats, *mv,
@@ -993,6 +1031,7 @@ impl Explorer {
                 break;
             }
 
+            moves_searched += 1;
         }
 
         // // if alpha0 < val.1 && val.1 < beta0 {

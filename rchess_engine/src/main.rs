@@ -426,7 +426,7 @@ fn main7() {
 
             // eprintln!("window fails = {:?}", stats0.window_fails);
 
-            // stats0.print_ebf(false);
+            stats0.print_ebf(false);
             stats0.print_node_types(&tt_r);
 
             for (zb,sis) in tt_r.read().unwrap().iter() {
