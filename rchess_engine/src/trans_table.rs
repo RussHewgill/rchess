@@ -4,6 +4,7 @@ use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
 
+use evmap::shallow_copy::CopyValue;
 // use arrayvec::ArrayVec;
 use parking_lot::{RwLock,Mutex};
 use rustc_hash::FxHashMap;
@@ -53,6 +54,7 @@ pub struct SearchInfo {
     // pub eval:               Eval,
 
     pub moves:              Vec<Move>,
+    // pub moves:              CopyValue<VMoves>,
     // pub moves:              ArrayVec<Move, 100>,
 
     // pub best_move:          Move,
@@ -61,6 +63,31 @@ pub struct SearchInfo {
     // pub score:              NodeType,
     // pub age:                Duration, // or # of moves?
 }
+
+// #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
+// pub struct VMoves {
+//     buf:          [Option<Move>; 25],
+//     ptr:          usize,
+// }
+
+// impl VMoves {
+//     pub fn from_vec(v: Vec<Move>) -> Self {
+//         assert!(v.len() <= 25);
+//         let mut out = Self::default();
+//         for x in v.into_iter() {
+//             out.buf[out.ptr] = Some(x);
+//             out.ptr += 1;
+//         }
+//         out
+//     }
+//     pub fn to_vec(&self) -> Vec<Move> {
+//         self.buf.to_vec()
+//             .into_iter()
+//             .filter(|x| x.is_some())
+//             .flatten()
+//             .collect::<Vec<Move>>()
+//     }
+// }
 
 /// PV,  // Exact
 /// All, // UpperBound, Fail low
@@ -144,6 +171,8 @@ impl Explorer {
 
 
 impl SearchInfo {
+    // pub fn new(mv: Move, moves: Vec<Move>, depth_searched: Depth, node_type: Node, score: Score) -> Self {
+    //     let moves = VMoves::from_vec(moves).into();
     pub fn new(mv: Move, moves: Vec<Move>, depth_searched: Depth, node_type: Node, score: Score) -> Self {
         Self {
             mv,

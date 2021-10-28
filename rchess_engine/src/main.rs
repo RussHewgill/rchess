@@ -81,18 +81,12 @@ fn main() {
     //     .build_global()
     //     .unwrap();
 
-    // // let s = std::mem::size_of::<Eval>();
-    // let s = std::mem::size_of::<Game>();
-    // // let s = std::mem::size_of::<GHistory>();
-    // eprintln!("s = {:?}", s);
-    // // let s = u16::MAX;
-    // // eprintln!("s = {:#8x}", s);
-
-    let mut args: Vec<String> = std::env::args().collect();
-    // args.reverse();
-    // args.pop();
-    // args.reverse();
-    // let a = args.join(" ");
+    // let s = std::mem::size_of::<Eval>();
+    let s = std::mem::size_of::<SearchStats>();
+    // let s = std::mem::size_of::<GHistory>();
+    eprintln!("s = {:?}", s);
+    // let s = u16::MAX;
+    // eprintln!("s = {:#8x}", s);
 
     // let ts = Tables::new();
     // ts.write_to_file("tables.bin").unwrap();
@@ -100,6 +94,7 @@ fn main() {
 
     // return;
 
+    let mut args: Vec<String> = std::env::args().collect();
     match args.get(1) {
         Some(s) => match s.as_str() {
             "wac"  => main3(false), // read from file and test
@@ -275,7 +270,10 @@ fn main7() {
 
     let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
-    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Horizon
+    // let fen = "7k/1n1n4/2P5/8/5b2/8/7P/7K b - - 0 1"; // Horizon
+    // let fen = "7k/8/8/r7/r7/8/p1RR4/7K w - - 0 1"; // Horizon
+
+    let fen = "r2qkbr1/ppp1p1p1/4p2p/4n1P1/3nN3/3PP3/PPP2PBP/R2QK2R b KQq - 0 14";
 
     // /// https://www.chessprogramming.org/Caesar#HorizonEffect
     // let fen = "2kr4/3nR3/p2B1p2/1p1p1Bp1/1P1P3p/2P4P/P5PK/8 b - - 1 32"; // Horizon
@@ -393,9 +391,8 @@ fn main7() {
             println!("g = {:?}", g);
 
             // let n = 25;
-            // let n = 10;
+            let n = 10;
             // let n = 5;
-            let n = 2;
 
             ex.max_depth = n;
 
@@ -414,26 +411,19 @@ fn main7() {
 
             println!();
             // println!("Correct move: Cp Q b6f2");
-            println!("Correct move: Q cap d6b4");
-            println!();
+            // println!("Correct move: Q cap d6b4");
+            // println!();
 
-            // for m in mvs.iter() {
-            //     eprintln!("m = {:?}", m);
-            // }
+            for m in mvs.iter() {
+                eprintln!("m = {:?}", m);
+            }
 
-            // let nps = stats0.null_prunes;
-            // eprintln!("null prunes = {:?}", nps);
-
-            // let zb = Game::zobrist_from_fen(&ts, "5rk1/ppR3p1/8/8/8/1P6/P5PP/4rRK1 b - - 1 4");
-            // let sis = tt_r.get(&zb).unwrap();
-            // for si in sis.iter() {
-            //     eprintln!("si = {:?}", si);
-            // }
-
+            // eprintln!("qt nodes = {:?}", stats0.qt_nodes);
+            // eprintln!("null prunes = {:?}", stats0.null_prunes);
             // eprintln!("window fails = {:?}", stats0.window_fails);
 
             stats0.print_ebf(false);
-            stats0.print_node_types(&tt_r);
+            // stats0.print_node_types(&tt_r);
 
             eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
 

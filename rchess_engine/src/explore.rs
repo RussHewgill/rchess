@@ -398,6 +398,7 @@ impl Explorer {
             match self.check_tt(&ts, &g2, depth, false, &tt_r, &mut ss) {
                 Some((SICanUse::UseScore,si)) => {
                     out.push((*mv,si.moves,si.score));
+                    // out.push((*mv,si.moves.to_vec(),si.score));
                     continue;
                 },
                 _ => {},
@@ -616,7 +617,9 @@ impl Explorer {
                     }
                 }
 
-                if best_depth.load(SeqCst) + 1 + depths_largest > self.max_depth {
+                // if best_depth.load(SeqCst) + 1 + depths_largest > self.max_depth {
+                if best_depth.load(SeqCst) + 1 > self.max_depth {
+                // if thread_counter.load(SeqCst) != 0 && best_depth.load(SeqCst) + 1 > self.max_depth {
                     let d = best_depth.load(SeqCst);
                     debug!("breaking loop (Depth), d: {}, t0: {:.3}", d, t0.elapsed().as_secs_f64());
                     // drop(tx);
@@ -651,6 +654,7 @@ impl Explorer {
                     }
 
                     // break 'outer;
+                // } if thread_counter.load(SeqCst) != 0 && cur_depth > self.max_depth {
                 } if cur_depth > self.max_depth {
                     continue;
                 } else if t0.elapsed() > t_max {
@@ -744,6 +748,7 @@ impl Explorer {
 /// Quiescence
 impl Explorer {
 
+    #[allow(unused_doc_comments)]
     #[allow(unreachable_code)]
     pub fn quiescence(
         &self,
@@ -757,7 +762,7 @@ impl Explorer {
         mut stats:      &mut SearchStats,
         m0:             Move,
     ) -> Score {
-        // debug!("quiescence {}", k);
+        trace!("quiescence {}", k);
 
         stats.qt_nodes += 1;
         let stand_pat = g.evaluate(&ts).sum();
@@ -767,22 +772,22 @@ impl Explorer {
         if stand_pat >= beta {
             // debug!("quiescence beta cutoff: {}", k);
             // return score; // fail soft
+            trace!("Quiescence returning beta: {}", beta);
             return beta; // fail hard
         }
         // return stand_pat; // correct
 
-        // Delta prune
-        let mut big_delta = Queen.score();
-        if m0.filter_promotion() {
-            big_delta += Queen.score() - Pawn.score();
-        }
-        if !maximizing {
-            if stand_pat >= (beta + big_delta) {
-                return beta;
-            }
-        }
-        // return stand_pat; // correct
-        unimplemented!();
+        // /// Delta prune
+        // let mut big_delta = Queen.score();
+        // if m0.filter_promotion() {
+        //     big_delta += Queen.score() - Pawn.score();
+        // }
+        // if !maximizing {
+        //     if stand_pat >= (beta + big_delta) {
+        //         return beta;
+        //     }
+        // }
+        // // return stand_pat; // correct
 
         if alpha < stand_pat {
             alpha = stand_pat;
@@ -798,7 +803,7 @@ impl Explorer {
         // #[cfg(not(feature = "par"))]
         // captures.sort();
 
-        captures.reverse();
+        // captures.reverse();
 
         // if !maximizing {
         //     captures.reverse();
@@ -808,34 +813,31 @@ impl Explorer {
             if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
                 match g2.search_all(&ts, None) {
                     Outcome::Moves(ms2) => {
-                        stats.nodes += 1;
-                        let score = -self.quiescence(
-                            &ts, &g2, ms2, k + 1, -alpha, -beta,
+                        // stats.nodes += 1;
+
+                        // let eval = -self.quiescence(
+                        //     &ts, &g2, ms2, k + 1, -alpha, -beta,
+                        //     !maximizing, &mut stats, mv);
+
+                        let score = self.quiescence(
+                            &ts, &g2, ms2, k + 1, alpha, beta,
                             !maximizing, &mut stats, mv);
 
                         if maximizing {
-                            if score >= beta {
-                                break;
-                            }
                             if score > alpha {
                                 alpha = score;
                             }
-                        } else {
-                            if score <= alpha {
-                                break;
+                            if score >= beta {
+                                return beta;
                             }
+                        } else {
                             if score < beta {
                                 beta = score;
                             }
+                            if score <= alpha {
+                                return alpha;
+                            }
                         }
-
-                        // if score >= beta {
-                        //     // stats.leaves += 1;
-                        //     return beta;
-                        // }
-                        // if score > alpha {
-                        //     alpha = score;
-                        // }
 
                     },
                     Outcome::Checkmate(_) => {

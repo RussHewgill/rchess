@@ -58,6 +58,7 @@ impl Explorer {
         mut stats:          &mut SearchStats,
         // mv0:                Move,
         prev_mvs:           VecDeque<(Zobrist,Move)>,
+        // mut history:        &mut [[Score; 64]; 64],
         tt_r:               &TTRead,
         tt_w:               TTWrite,
     // ) -> Option<(Vec<Move>, Score)> {
@@ -116,9 +117,14 @@ impl Explorer {
         stats.nodes += 1;
 
         if depth == 0 {
+
             let score = g.evaluate(&ts).sum();
 
-            // if !self.tt_contains(&g.zobrist) {
+            // let mv0 = prev_mvs.back().unwrap().1;
+            // let score = self.quiescence(
+            //     ts, g, moves, k, alpha, beta, !maximizing, &mut stats, mv0,
+            // );
+
             if !tt_r.contains_key(&g.zobrist) {
                 stats.leaves += 1;
             }
@@ -230,7 +236,8 @@ impl Explorer {
             let (can_use,mut mv_seq,score) = match tt {
                 Some((SICanUse::UseScore,si)) => {
                     // return (si.moves.clone(),si.score);
-                    (true,si.moves.clone(),si.score)
+                    // (true,si.moves.clone(),si.score)
+                    (true,si.moves.to_vec(),si.score)
                 },
                 _ => 'search: {
                     let mut pms = prev_mvs.clone();

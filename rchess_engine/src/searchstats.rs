@@ -6,6 +6,10 @@ use crate::types::*;
 use crate::tables::*;
 use crate::explore::Node;
 
+// #[derive(Debug,Default,PartialEq,PartialOrd,Clone,Copy)]
+// pub struct SearchStats {
+// }
+
 #[derive(Debug,Default,PartialEq,PartialOrd,Clone,Copy)]
 pub struct SearchStats {
     pub nodes:          u32,

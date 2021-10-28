@@ -39,7 +39,7 @@ fn main() -> std::io::Result<()> {
     //     .build_global()
     //     .unwrap();
 
-    let depth = 10;
+    let depth = 15;
     // let depth = 25;
 
     let now = chrono::Local::now();
