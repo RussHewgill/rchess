@@ -20,6 +20,7 @@ impl Explorer {
         beta:               i32,
         maximizing:         bool,
         mut stats:          &mut SearchStats,
+        prev_mvs:           Vec<Move>,
         tt_r:               &TTRead,
         tt_w:               TTWrite,
     ) -> bool {
@@ -32,10 +33,14 @@ impl Explorer {
         if depth < (1 + r) { return false; }
 
         if let Ok(g2) = g.make_move_unchecked(ts, mv) {
+            let mut pms = prev_mvs.clone();
+            pms.push(mv);
+
             if let Some(((_,score),_)) = self._ab_search(
                 &ts, &g2, max_depth,
                 depth - 1 - r, k + 1,
-                alpha, beta, !maximizing, &mut stats, mv,
+                // alpha, beta, !maximizing, &mut stats, mv,
+                alpha, beta, !maximizing, &mut stats, pms,
                 tt_r, tt_w) {
 
                 if maximizing {

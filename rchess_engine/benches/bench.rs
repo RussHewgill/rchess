@@ -32,7 +32,8 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
     let n = 3;
 
-    let ts    = Tables::new();
+    let ts = &_TABLES;
+    // let ts    = Tables::new();
     let mut g = Game::from_fen(&ts, fen).unwrap();
     let _     = g.recalc_gameinfo_mut(&ts);
 
@@ -50,20 +51,20 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
     group.warm_up_time(Duration::from_secs_f64(1.0));
 
-    // group.sample_size(50);
-    // group.measurement_time(Duration::from_secs_f64(5.));
-    group.bench_function("search_all", |b| b.iter(|| {
-        for g in games.iter() {
-            let mvs = g.search_all(&ts, black_box(None));
-        }
-    }));
+    // // group.sample_size(50);
+    // // group.measurement_time(Duration::from_secs_f64(5.));
+    // group.bench_function("search_all", |b| b.iter(|| {
+    //     for g in games.iter() {
+    //         let mvs = g.search_all(&ts, black_box(None));
+    //     }
+    // }));
 
     // group.sample_size(10);
     // group.measurement_time(std::time::Duration::from_secs_f64(5.));
 
-    // group.bench_function("rank moves lazy_smp", |b| b.iter(|| {
-    //     let (m,stats) = ex.lazy_smp(&ts, false, true);
-    // }));
+    group.bench_function("rank moves lazy_smp", |b| b.iter(|| {
+        let (m,stats,_) = ex.lazy_smp(&ts, false, true);
+    }));
 
     // group.bench_function("rank moves iter", |b| b.iter(|| {
     //     // let (m,stats) = ex.explore(&ts, None);

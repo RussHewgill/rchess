@@ -102,6 +102,7 @@ impl Explorer {
 }
 
 /// iterative_deepening
+#[cfg(feature = "iterative")]
 impl Explorer {
 
     pub fn iterative_deepening(&self, ts: &Tables, print: bool, strict_depth: bool)
@@ -297,7 +298,8 @@ impl Explorer {
                     let (mut alpha,mut beta) = (i32::MIN,i32::MAX);
 
                     self._ab_search(
-                        &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss, *mv,
+                        // &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss, *mv,
+                        &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss, vec![*mv],
                         &tt_r, tt_w.clone()).map(|x| x.0)
 
                 } {
@@ -402,7 +404,8 @@ impl Explorer {
                 let (mut alpha,mut beta) = (i32::MIN,i32::MAX);
 
                 self._ab_search(
-                    &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss, *mv,
+                    // &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss, *mv,
+                    &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss, vec![*mv],
                     &tt_r, tt_w.clone()).map(|x| x.0)
 
             } {
@@ -779,7 +782,8 @@ impl Explorer {
         mut beta:           i32,
         maximizing:         bool,
         mut stats:          &mut SearchStats,
-        mv0:                Move,
+        // mv0:                Move,
+        prev_mvs:           Vec<Move>,
         tt_r:               &TTRead,
         tt_w:               TTWrite,
     // ) -> Option<(Vec<Move>, Score)> {
@@ -857,7 +861,9 @@ impl Explorer {
 
         /// Null Move pruning
         if self.prune_null_move(
-            ts, g, max_depth, depth, k, alpha, beta, maximizing, &mut stats, tt_r, tt_w.clone()) {
+            // ts, g, max_depth, depth, k, alpha, beta, maximizing, &mut stats, tt_r, tt_w.clone()) {
+            ts, g, max_depth, depth, k, alpha, beta, maximizing, &mut stats,
+            prev_mvs.clone(), tt_r, tt_w.clone()) {
             return None;
         }
 
@@ -950,9 +956,12 @@ impl Explorer {
                     //     depth - 1
                     // };
 
+                    let mut pms = prev_mvs.clone();
+                    pms.push(*mv);
                     if let Some(((mv_seq,score),_)) = self._ab_search(
                         &ts, &g2, max_depth, depth2, k + 1,
-                        alpha, beta, !maximizing, &mut stats, *mv,
+                        // alpha, beta, !maximizing, &mut stats, *mv,
+                        alpha, beta, !maximizing, &mut stats, pms,
                         tt_r, tt_w.clone(),
                     ) {
                         (false,mv_seq,score)
@@ -977,7 +986,8 @@ impl Explorer {
                 &mut alpha,
                 &mut beta,
                 maximizing,
-                mv0);
+                // mv0
+            );
             if b {
                 node_type = Node::Cut;
                 break;
@@ -1018,7 +1028,7 @@ impl Explorer {
         mut alpha:                     &mut i32,
         mut beta:                      &mut i32,
         maximizing:                    bool,
-        mv0:                           Move,
+        // mv0:                           Move,
     ) -> bool {
         let zb = g2.zobrist;
         if maximizing {
