@@ -44,7 +44,8 @@ pub enum SICanUse {
 
 // #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 // #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
-#[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone)]
+#[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone)]
+// #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone)]
 pub struct SearchInfo {
     pub mv:                 Move,
     pub depth_searched:     Depth,
@@ -62,6 +63,21 @@ pub struct SearchInfo {
     // pub pv:                 Move,
     // pub score:              NodeType,
     // pub age:                Duration, // or # of moves?
+}
+
+impl PartialOrd for SearchInfo {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.score.cmp(&other.score))
+
+        // use std::cmp::Ordering;
+        // match (self.node_type,other.node_type) {
+        //     (a,b) if a == b => Some(self.score.cmp(&other.score)),
+        //     (Node::PV, _)   => Some(Ordering::Greater),
+        //     (_, Node::PV)   => Some(Ordering::Less),
+        //     _               => Some(self.score.cmp(&other.score)),
+        // }
+
+    }
 }
 
 // #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]

@@ -43,6 +43,7 @@ pub enum Piece {
 
 // #[derive(Eq,PartialEq,Ord,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 #[derive(Serialize,Deserialize,Eq,PartialEq,Ord,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
+// #[derive(Serialize,Deserialize,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
 // #[derive(Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
 // #[derive(Eq,PartialEq,Ord,PartialOrd,Hash,Clone,Copy)]
 pub enum Move {
@@ -51,12 +52,20 @@ pub enum Move {
     // Capture            { from: Coord, to: Coord },
     Capture            { from: Coord, to: Coord, pc: Piece, victim: Piece },
     // EnPassant          { from: Coord, to: Coord, capture: Coord },
-    EnPassant          { from: Coord, to: Coord, capture: Coord, victim: Piece },
+    EnPassant          { from: Coord, to: Coord, capture: Coord },
     Castle             { from: Coord, to: Coord, rook_from: Coord, rook_to: Coord },
     Promotion          { from: Coord, to: Coord, new_piece: Piece },
     PromotionCapture   { from: Coord, to: Coord, new_piece: Piece, victim: Piece },
     NullMove,
 }
+
+// impl PartialOrd for Move {
+//     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+//         match (self, other) {
+//             ()
+//         }
+//     }
+// }
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
 pub enum GameEnd {
@@ -221,7 +230,7 @@ impl Move {
                 // Move::Capture    { from: to, to: from, pc: victim, victim: pc }
                 None
             },
-            Move::EnPassant  { from, to, capture, victim } => {
+            Move::EnPassant  { from, to, capture } => {
                 // Move::EnPassant  { from: to, to: from, capture }
                 // panic!("reverse en passant?")
                 None
@@ -451,7 +460,7 @@ impl std::fmt::Debug for Move {
             Capture            { from, to, pc, victim } => {
                 f.write_str(&format!("Cp {} {:?}{:?}", pc.print_char(), from, to))?;
             },
-            EnPassant          { from, to, capture, victim } => {
+            EnPassant          { from, to, capture } => {
                 f.write_str(&format!("EP   {:?}{:?}", from, to))?;
             },
             Promotion          { from, to, new_piece } => {

@@ -927,9 +927,9 @@ impl Game {
                 let capture = capture
                     // .expect(&format!("en passant bug? ep: {:?}, capture: {:?}", ep, capture));
                     .unwrap_or_else(|| panic!("en passant bug? ep: {:?}, capture: {:?}", ep, capture));
-                let (_,victim) = self.get_at(capture).unwrap();
+                // let (_,victim) = self.get_at(capture).unwrap();
                 // out.push(Move::EnPassant { from: sq.into(), to: ep, capture, victim });
-                let m = Move::EnPassant { from: sq.into(), to: ep, capture, victim };
+                let m = Move::EnPassant { from: sq.into(), to: ep, capture };
                 if self.move_is_legal(&ts, m) { out.push(m); }
             });
 

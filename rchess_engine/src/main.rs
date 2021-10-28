@@ -81,18 +81,35 @@ fn main() {
     //     .build_global()
     //     .unwrap();
 
-    // let s = std::mem::size_of::<Eval>();
-    let s = std::mem::size_of::<SearchStats>();
-    // let s = std::mem::size_of::<GHistory>();
-    eprintln!("s = {:?}", s);
-    // let s = u16::MAX;
-    // eprintln!("s = {:#8x}", s);
+    // // let s = std::mem::size_of::<Eval>();
+    // let s = std::mem::size_of::<SearchStats>();
+    // // let s = std::mem::size_of::<GHistory>();
+    // eprintln!("s = {:?}", s);
+    // // let s = u16::MAX;
+    // // eprintln!("s = {:#8x}", s);
 
     // let ts = Tables::new();
     // ts.write_to_file("tables.bin").unwrap();
     // let ts = Tables::read_from_file("tables.bin").unwrap();
 
-    // return;
+    let from: Coord = "A1".into();
+    let to: Coord = "B2".into();
+
+    let mut mvs = vec![
+        Move::Quiet { from, to, pc: Pawn },
+        Move::Quiet { from, to, pc: Queen },
+        Move::PawnDouble { from, to },
+        Move::Capture { from, to, pc: Pawn, victim: Pawn },
+        Move::EnPassant { from, to, capture: from }
+    ];
+
+    mvs.sort();
+
+    for m in mvs.iter() {
+        eprintln!("m = {:?}", m);
+    }
+
+    return;
 
     let mut args: Vec<String> = std::env::args().collect();
     match args.get(1) {
@@ -273,8 +290,6 @@ fn main7() {
     // let fen = "7k/1n1n4/2P5/8/5b2/8/7P/7K b - - 0 1"; // Horizon
     // let fen = "7k/8/8/r7/r7/8/p1RR4/7K w - - 0 1"; // Horizon
 
-    let fen = "r2qkbr1/ppp1p1p1/4p2p/4n1P1/3nN3/3PP3/PPP2PBP/R2QK2R b KQq - 0 14";
-
     // /// https://www.chessprogramming.org/Caesar#HorizonEffect
     // let fen = "2kr4/3nR3/p2B1p2/1p1p1Bp1/1P1P3p/2P4P/P5PK/8 b - - 1 32"; // Horizon
 
@@ -411,12 +426,12 @@ fn main7() {
 
             println!();
             // println!("Correct move: Cp Q b6f2");
-            // println!("Correct move: Q cap d6b4");
-            // println!();
+            println!("Correct move: Q cap d6b4");
+            println!();
 
-            for m in mvs.iter() {
-                eprintln!("m = {:?}", m);
-            }
+            // for m in mvs.iter() {
+            //     eprintln!("m = {:?}", m);
+            // }
 
             // eprintln!("qt nodes = {:?}", stats0.qt_nodes);
             // eprintln!("null prunes = {:?}", stats0.null_prunes);
@@ -425,23 +440,15 @@ fn main7() {
             stats0.print_ebf(false);
             // stats0.print_node_types(&tt_r);
 
-            eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
+            // eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
+            eprintln!("stats0.beta_cut_first = {:?}", stats0.beta_cut_first);
 
+            let mut k = 0;
             for (zb,sis) in tt_r.read().unwrap().iter() {
-                let si = sis.iter().next().unwrap();
-
-                // if si.depth_searched == 0 {
-                //     eprintln!("si = {:?}", si);
-                // }
-
-                // match si.node_type {
-                //     Node::Root => {
-                //         eprintln!("si ({:>8}) = {:?}", k, si);
-                //     },
-                //     _ => {},
-                // }
-
+                // let si = sis.iter().next().unwrap();
+                k += 1;
             }
+            eprintln!("k = {:?}", k);
 
             // let g2 = g.flip_sides(&ts);
             // let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);

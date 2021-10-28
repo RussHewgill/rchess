@@ -272,14 +272,14 @@ impl Game {
                 out.insert_piece_mut_unchecked(&ts, to, pc, col);
                 Some(out)
             },
-            &Move::EnPassant  { from, to, capture, victim } => {
+            &Move::EnPassant  { from, to, capture } => {
                 let col = self.state.side_to_move;
                 // let (c0,pc0) = self.get_at(from)?;
                 // let to1 = if col == White { S.shift_coord(to)? } else { N.shift_coord(to)? };
                 // let (c1,_) = self.get_at(capture)?;
                 let mut out = self.clone();
                 out.delete_piece_mut_unchecked(&ts, from, Pawn, col);
-                out.delete_piece_mut_unchecked(&ts, capture, victim, !col);
+                out.delete_piece_mut_unchecked(&ts, capture, Pawn, !col);
                 out.insert_piece_mut_unchecked(&ts, to, Pawn, col);
                 Some(out)
             },
@@ -602,8 +602,7 @@ impl Game {
                 } else if Some(to) == self.state.en_passant {
                     let capture = if col == White { S.shift_coord(to).unwrap() }
                         else { N.shift_coord(to).unwrap() };
-                    let (_,victim) = self.get_at(capture).unwrap();
-                    Some(Move::EnPassant { from, to, capture, victim })
+                    Some(Move::EnPassant { from, to, capture })
                 } else if (pc == Pawn) & (to.1 == cc) {
                     // XXX: bad
                     let new_piece = Queen;

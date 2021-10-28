@@ -163,27 +163,6 @@ impl Explorer {
             gs0.collect()
         };
 
-        // // #[cfg(not(feature = "par"))]
-        // let mut gs: Vec<(Move,Game,Option<(SICanUse,SearchInfo)>)> = {
-        //     let gs = moves.into_iter().flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, &m) {
-        //         let mut ss = SearchStats::default();
-        //         // let tt = self.check_tt(&ts, &g2, depth, maximizing, &mut stats);
-        //         let tt = self.check_tt(&ts, &g2, depth, maximizing, &mut ss);
-        //         Some((m,g2,tt))
-        //     } else {
-        //         None
-        //     });
-        //     gs.collect()
-        // };
-
-        // #[cfg(feature = "par")]
-        // gs.par_sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
-        // #[cfg(not(feature = "par"))]
-        // gs.sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
-        // if !maximizing {
-        //     gs.reverse();
-        // }
-
         /// Move Ordering
         order_searchinfo(maximizing, &mut gs[..]);
 
@@ -227,12 +206,6 @@ impl Explorer {
                 panic!("wat: {:?}\n {:?}", mv, g2)
             }
 
-            // if Some(&(g2.zobrist,*mv)) == prev_mvs.get(prev_mvs.len() - 3) {
-            //     panic!("wat: {:?}\n {:?}", mv, g2)
-            // }
-
-            // if mv.reverse(g)
-
             let (can_use,mut mv_seq,score) = match tt {
                 Some((SICanUse::UseScore,si)) => {
                     // return (si.moves.clone(),si.score);
@@ -255,11 +228,6 @@ impl Explorer {
                     // } else {
                     //     depth - 1
                     // };
-
-                    // if parent_node_type != Some(Node::PV) && late_mv_reduce == 0 {
-                    //     if depth 
-                    //     depth = depth 
-                    // }
 
                     if moves_searched >= 4
                         && k >= 3
@@ -326,16 +294,16 @@ impl Explorer {
             );
             if b {
                 node_type = Node::Cut;
+
+                if moves_searched == 0 {
+                    stats.beta_cut_first += 1;
+                }
+
                 break;
             }
 
             moves_searched += 1;
         }
-
-        // // if alpha0 < val.1 && val.1 < beta0 {
-        // if alpha < val.1 && val.1 < beta {
-        //     node_type = Node::PV;
-        // }
 
         // XXX: depth or depth - 1? Update: Pretty sure depth - 1 is correct
         if let Some((zb,mv,mv_seq)) = &val.0 {

@@ -85,7 +85,8 @@ pub fn order_searchinfo(maximizing: bool, mut xs: &mut [(Move,Game,Option<(SICan
             xs.par_sort_unstable_by(|a,b| {
                 match (a.2.as_ref(),b.2.as_ref()) {
                     (Some((_,a)),Some((_,b))) => a.score.cmp(&b.score),
-                    // (None,None)               => _order_mvv_lva(&a.0, &b.0),
+                    (None,None)               => _order_mvv_lva(&a.0, &b.0),
+                    // (None,None)               => a.0.cmp(&b.0),
                     (a,b)                     => a.partial_cmp(&b).unwrap(),
                 }
             });
@@ -94,8 +95,8 @@ pub fn order_searchinfo(maximizing: bool, mut xs: &mut [(Move,Game,Option<(SICan
             xs.par_sort_unstable_by(|a,b| {
                 match (a.2.as_ref(),b.2.as_ref()) {
                     (Some((_,a)),Some((_,b))) => a.score.cmp(&b.score).reverse(),
-                    // (None,None)               => _order_mvv_lva(&a.0, &b.0),
-                    // (a,b)                     => a.partial_cmp(&b).unwrap().reverse(),
+                    (None,None)               => _order_mvv_lva(&a.0, &b.0).reverse(),
+                    // (None,None)               => a.0.cmp(&b.0).reverse(),
                     (a,b)                     => a.partial_cmp(&b).unwrap(),
                 }
             });

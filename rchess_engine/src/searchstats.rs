@@ -6,10 +6,6 @@ use crate::types::*;
 use crate::tables::*;
 use crate::explore::Node;
 
-// #[derive(Debug,Default,PartialEq,PartialOrd,Clone,Copy)]
-// pub struct SearchStats {
-// }
-
 #[derive(Debug,Default,PartialEq,PartialOrd,Clone,Copy)]
 pub struct SearchStats {
     pub nodes:          u32,
@@ -32,6 +28,7 @@ pub struct SearchStats {
     pub null_prunes:    u32,
     pub window_fails:   (u32,u32),
     pub lmrs:           (u32,u32),
+    pub beta_cut_first: u32,
 }
 
 impl std::ops::Add for SearchStats {
@@ -64,6 +61,7 @@ impl std::ops::Add for SearchStats {
                                  self.window_fails.1 + other.window_fails.1),
             lmrs:               (self.lmrs.0 + other.lmrs.0,
                                  self.lmrs.1 + other.lmrs.1),
+            beta_cut_first:     self.beta_cut_first + other.beta_cut_first,
         }
     }
 }
@@ -106,7 +104,6 @@ impl SearchStats {
         let mut arr = self.nodes_arr.clone();
         let k = arr.len();
         let dmax = self.max_depth as usize;
-        eprintln!("dmax = {:?}", dmax);
         // let mut arr2 = &mut arr[1..((self.max_depth as usize) + 1)];
         let mut arr2 = &mut arr[..dmax + 1];
         arr2.reverse();
