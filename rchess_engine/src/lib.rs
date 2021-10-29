@@ -33,6 +33,7 @@ pub mod types;
 pub mod bitboard;
 pub mod coords;
 pub mod tables;
+pub mod magics;
 pub mod game;
 pub mod parsing;
 

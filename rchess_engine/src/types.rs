@@ -41,11 +41,8 @@ pub enum Piece {
 //     to:   Coord,
 // }
 
-// #[derive(Eq,PartialEq,Ord,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 #[derive(Serialize,Deserialize,Eq,PartialEq,Ord,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 // #[derive(Serialize,Deserialize,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
-// #[derive(Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
-// #[derive(Eq,PartialEq,Ord,PartialOrd,Hash,Clone,Copy)]
 pub enum Move {
     Quiet              { from: Coord, to: Coord, pc: Piece },
     PawnDouble         { from: Coord, to: Coord },
@@ -59,11 +56,22 @@ pub enum Move {
     NullMove,
 }
 
+// impl Ord for Move {
+//     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+//         use Move::*;
+//         use std::cmp::Ordering::*;
+//         match (self, other) {
+//             (Capture { pc: pc0, victim: v0, .. },
+//              Capture { pc: pc1, victim: v1, .. }) => unimplemented!(),
+//             (Quiet { .. }, Quiet { .. })          => Equal,
+//             _                                     => unimplemented!()
+//         }
+//     }
+// }
+
 // impl PartialOrd for Move {
 //     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-//         match (self, other) {
-//             ()
-//         }
+//         Some(self.cmp(other))
 //     }
 // }
 

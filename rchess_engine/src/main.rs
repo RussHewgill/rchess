@@ -76,10 +76,47 @@ fn main() {
     // WriteLogger::init(LevelFilter::Debug, Config::default(), logfile).unwrap();
     // // WriteLogger::init(LevelFilter::Trace, Config::default(), logfile).unwrap();
 
+    let cfg = ConfigBuilder::new()
+        .set_time_level(LevelFilter::Off)
+        .set_target_level(LevelFilter::Off)
+        .set_thread_level(LevelFilter::Info)
+    // .set_thread_level(LevelFilter::Off)
+        .set_location_level(LevelFilter::Off)
+        .build();
+
+    let logfile = std::fs::File::create("test.log").unwrap();
+    let log0 = WriteLogger::new(LevelFilter::Trace, cfg.clone(), logfile);
+
+    // let log1 = TermLogger::new(LevelFilter::Trace, cfg.clone(), TerminalMode::Stderr, ColorChoice::Auto);
+    let log1 = TermLogger::new(LevelFilter::Debug, cfg.clone(), TerminalMode::Stderr, ColorChoice::Auto);
+
+    CombinedLogger::init(vec![
+        log0,
+        log1,
+    ]).unwrap();
+
     // rayon::ThreadPoolBuilder::new()
     //     .num_threads(1)
     //     .build_global()
     //     .unwrap();
+
+    // let ts = Tables::new();
+    // ts.write_to_file("tables.bin").unwrap();
+    // let ts = Tables::read_from_file("tables.bin").unwrap();
+
+    // let from: Coord = "A1".into();
+    // let to: Coord = "B2".into();
+    // let mut mvs = vec![
+    //     Move::Quiet { from, to, pc: Pawn },
+    //     Move::Quiet { from, to, pc: Queen },
+    //     Move::PawnDouble { from, to },
+    //     Move::Capture { from, to, pc: Pawn, victim: Pawn },
+    //     Move::EnPassant { from, to, capture: from }
+    // ];
+    // mvs.sort();
+    // for m in mvs.iter() {
+    //     eprintln!("m = {:?}", m);
+    // }
 
     // // let s = std::mem::size_of::<Eval>();
     // let s = std::mem::size_of::<SearchStats>();
@@ -88,26 +125,34 @@ fn main() {
     // // let s = u16::MAX;
     // // eprintln!("s = {:#8x}", s);
 
-    // let ts = Tables::new();
-    // ts.write_to_file("tables.bin").unwrap();
-    // let ts = Tables::read_from_file("tables.bin").unwrap();
+    let t0 = std::time::Instant::now();
+    println!("starting tables");
+    let ts = Tables::new();
+    println!("tables done in {} seconds.", t0.elapsed().as_secs_f64());
 
-    let from: Coord = "A1".into();
-    let to: Coord = "B2".into();
+    // let g = Game::from_fen(&ts, "k7/8/1p1p1p2/8/1p1q1p2/8/1P1P1P2/7K w - - 0 1").unwrap();
+    // let rook   = ts.attacks_rook("D4".into(), g.all_occupied());
+    // let bishop = ts.attacks_bishop("D4".into(), g.all_occupied());
+    // let b = rook | bishop;
+    // eprintln!("rook = {:?}", rook);
+    // eprintln!("bishop = {:?}", bishop);
 
-    let mut mvs = vec![
-        Move::Quiet { from, to, pc: Pawn },
-        Move::Quiet { from, to, pc: Queen },
-        Move::PawnDouble { from, to },
-        Move::Capture { from, to, pc: Pawn, victim: Pawn },
-        Move::EnPassant { from, to, capture: from }
-    ];
+    // let tr = ts.table_rook;
 
-    mvs.sort();
+    let m = ts.magics_rook[49];
 
-    for m in mvs.iter() {
-        eprintln!("m = {:?}", m);
+    let mut k = (0,0);
+
+    // for x in ts.magics_rook.iter() {
+    for x in ts.table_rook.iter() {
+        k.1 += 1;
+        // if x.magic.0 != 0 {
+        if x.0 != 0 {
+            k.0 += 1;
+        }
     }
+
+    eprintln!("k = {:?}", k);
 
     return;
 
@@ -211,26 +256,6 @@ fn main8() {
 fn main7() {
     let fen = STARTPOS;
     let n = 10;
-
-    let cfg = ConfigBuilder::new()
-        .set_time_level(LevelFilter::Off)
-        .set_target_level(LevelFilter::Off)
-        .set_thread_level(LevelFilter::Info)
-    // .set_thread_level(LevelFilter::Off)
-        .set_location_level(LevelFilter::Off)
-        .build();
-
-    let logfile = std::fs::File::create("test.log").unwrap();
-    let log0 = WriteLogger::new(LevelFilter::Trace, cfg.clone(), logfile);
-
-    // let log1 = TermLogger::new(LevelFilter::Trace, cfg.clone(), TerminalMode::Stderr, ColorChoice::Auto);
-    let log1 = TermLogger::new(LevelFilter::Debug, cfg.clone(), TerminalMode::Stderr, ColorChoice::Auto);
-
-    CombinedLogger::init(vec![
-        log0,
-        log1,
-    ]).unwrap();
-
 
     // let fen = "rnbqkbnr/ppppp1pp/8/5P2/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2";
     // let fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
