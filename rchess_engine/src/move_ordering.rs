@@ -44,19 +44,29 @@ use rayon::prelude::*;
 //     // xs.reverse()
 // }
 
-pub fn order_mvv_lva(mut xs: &mut [Move]) {
+// pub fn order_mvv_lva(mut xs: &mut [Move]) {
+pub fn order_mvv_lva(mut xs: &mut [(&str,Move)]) {
     use Move::*;
     use std::cmp::Ordering;
     xs.par_sort_unstable_by(|a,b| {
-        _order_mvv_lva(a, b)
+        // _order_mvv_lva(a, b)
+        _order_mvv_lva(&a.1, &b.1)
     });
 }
 
 pub fn _order_mvv_lva(a: &Move, b: &Move) -> std::cmp::Ordering {
     use std::cmp::Ordering;
+
     match (a.victim(), b.victim()) {
         (Some(v0), Some(v1)) => match (a.piece(),b.piece()) {
             (Some(pc0),Some(pc1)) => {
+
+                eprintln!("pc0.score = {:?}", pc0.score());
+                eprintln!("pc1.score = {:?}", pc1.score());
+
+                eprintln!("v0.score = {:?}", v0.score());
+                eprintln!("v1.score = {:?}", v1.score());
+
                 let s0 = v0.score() - pc0.score();
                 let s1 = v1.score() - pc1.score();
                 s0.cmp(&s1).reverse()
@@ -67,6 +77,7 @@ pub fn _order_mvv_lva(a: &Move, b: &Move) -> std::cmp::Ordering {
         (None, Some(_))      => Ordering::Greater,
         _                    => a.cmp(&b).reverse(),
     }
+
 }
 
 pub fn order_searchinfo(maximizing: bool, mut xs: &mut [(Move,Game,Option<(SICanUse,SearchInfo)>)]) {

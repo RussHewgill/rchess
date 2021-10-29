@@ -81,7 +81,7 @@ impl Explorer {
 
         let moves = g.search_all(&ts, None);
 
-        let moves: Vec<Move> = match moves {
+        let mut moves: Vec<Move> = match moves {
             Outcome::Checkmate(c) => {
                 let score = 100_000_000 - k as Score;
                 // if !self.tt_contains(&g.zobrist) {
@@ -140,12 +140,16 @@ impl Explorer {
         }
 
         /// Null Move pruning
+        #[cfg(feature = "null_pruning")]
         if self.prune_null_move(
             // ts, g, max_depth, depth, k, alpha, beta, maximizing, &mut stats, tt_r, tt_w.clone()) {
             ts, g, max_depth, depth, k, alpha, beta, maximizing, &mut stats,
             prev_mvs.clone(), tt_r, tt_w.clone()) {
             return None;
         }
+
+        // /// MVV LVA move ordering
+        // order_mvv_lva(&mut moves);
 
         /// Make move, Lookup games in Trans Table
         // #[cfg(feature = "par")]
@@ -229,6 +233,7 @@ impl Explorer {
                     //     depth - 1
                     // };
 
+                    #[cfg(feature = "late_move_reduction")]
                     if moves_searched >= 4
                         && k >= 3
                         && depth > 2

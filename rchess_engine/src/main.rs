@@ -76,25 +76,6 @@ fn main() {
     // WriteLogger::init(LevelFilter::Debug, Config::default(), logfile).unwrap();
     // // WriteLogger::init(LevelFilter::Trace, Config::default(), logfile).unwrap();
 
-    let cfg = ConfigBuilder::new()
-        .set_time_level(LevelFilter::Off)
-        .set_target_level(LevelFilter::Off)
-        .set_thread_level(LevelFilter::Info)
-    // .set_thread_level(LevelFilter::Off)
-        .set_location_level(LevelFilter::Off)
-        .build();
-
-    let logfile = std::fs::File::create("test.log").unwrap();
-    let log0 = WriteLogger::new(LevelFilter::Trace, cfg.clone(), logfile);
-
-    // let log1 = TermLogger::new(LevelFilter::Trace, cfg.clone(), TerminalMode::Stderr, ColorChoice::Auto);
-    let log1 = TermLogger::new(LevelFilter::Debug, cfg.clone(), TerminalMode::Stderr, ColorChoice::Auto);
-
-    CombinedLogger::init(vec![
-        log0,
-        log1,
-    ]).unwrap();
-
     // rayon::ThreadPoolBuilder::new()
     //     .num_threads(1)
     //     .build_global()
@@ -158,14 +139,16 @@ fn main() {
     let mut args: Vec<String> = std::env::args().collect();
     match args.get(1) {
         Some(s) => match s.as_str() {
-            "wac"   => main3(false), // read from file and test
-            "wac2"  => main3(true), // read from file and test, send URL to firefox
-            "perft" => {
-                match args.get(2).map(|x| u64::from_str(x).ok()) {
-                    Some(n) => main4(n),
-                    _       => main4(None),
-                }
-            }, // read from file and test, send URL to firefox
+            // "wac"   => main3(false), // read from file and test
+            "wac"   => match args.get(2).map(|x| u64::from_str(x).ok()) {
+                Some(Some(n)) => main3(Some(n),false),
+                _             => main3(None, false),
+            }
+            "wac2"  => main3(None, true), // read from file and test, send URL to firefox
+            "perft" => match args.get(2).map(|x| u64::from_str(x).ok()) {
+                Some(n) => main4(n),
+                _       => main4(None),
+            }
             _       => {},
         },
         None    => main7(),
@@ -262,6 +245,8 @@ fn main7() {
     let fen = STARTPOS;
     let n = 10;
 
+    init_logger();
+
     // let fen = "rnbqkbnr/ppppp1pp/8/5P2/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2";
     // let fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
 
@@ -347,6 +332,7 @@ fn main7() {
     // let fen = &games(2); // b3b2 (SF says b3b7)
     // let fen = &games(4); // h6h7, #2
     // let fen = &games(6); // b6b7, #11
+    let fen = &games(7); // N g4e3
     // let fen = &games(8); // R e7f7, #7
     // let fen = &games(9); // d6h2, #-5
     // let fen = &games(17); // c4e5
@@ -366,21 +352,16 @@ fn main7() {
     let timesettings = TimeSettings::new_f64(10.0,0.1);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
 
-    // let t0 = std::time::Instant::now();
-    // let (mv,stats) = ex.explore(&ts, None);
-    // println!("m = {:?}", mv);
-    // println!("explore done in {} seconds.", t0.elapsed().as_secs_f64());
-
-    // let mut ps = vec![
-    //     ("pawn x queen", Move::Capture { from: "E4".into(), to: "F5".into(), pc: Pawn, victim: Queen }),
-    //     ("queen x pawn", Move::Capture { from: "E4".into(), to: "F5".into(), pc: Queen, victim: Pawn }),
-    //     ("pawn x pawn", Move::Capture { from: "E4".into(), to: "D5".into(), pc: Pawn, victim: Pawn }),
-    //     ("pawn x rook",   Move::Capture { from: "E4".into(), to: "D5".into(), pc: Pawn, victim: Rook }),
-    //     ("bishop x pawn", Move::Capture { from: "E4".into(), to: "D5".into(), pc: Bishop, victim: Pawn }),
-    //     ("quiet", Move::Quiet { from: "E4".into(), to: "E5".into() }),
-    //     ("promotion", Move::Promotion { from: "E7".into(), to: "E8".into(), new_piece: Queen }),
-    //     ("EP", Move::EnPassant { from: "E5".into(), to: "D6".into(), capture: "D5".into(), victim: Pawn }),
-    // ];
+    let mut ps = vec![
+        ("pawn x queen", Move::Capture { from: "E4".into(), to: "F5".into(), pc: Pawn, victim: Queen }),
+        ("queen x pawn", Move::Capture { from: "E4".into(), to: "F5".into(), pc: Queen, victim: Pawn }),
+        ("pawn x pawn", Move::Capture { from: "E4".into(), to: "D5".into(), pc: Pawn, victim: Pawn }),
+        ("pawn x rook",   Move::Capture { from: "E4".into(), to: "D5".into(), pc: Pawn, victim: Rook }),
+        ("bishop x pawn", Move::Capture { from: "E4".into(), to: "D5".into(), pc: Bishop, victim: Pawn }),
+        ("quiet", Move::Quiet { from: "E4".into(), to: "E5".into(), pc: Pawn }),
+        ("promotion", Move::Promotion { from: "E7".into(), to: "E8".into(), new_piece: Queen }),
+        // ("EP", Move::EnPassant { from: "E5".into(), to: "D6".into(), capture: "D5".into() }),
+    ];
 
     // order_mvv_lva(&mut ps[..]);
 
@@ -388,39 +369,16 @@ fn main7() {
     //     eprintln!("{:>15} = {:?}", s, m);
     // }
 
-    // return;
+    // let mut vs = vec![
+    //     ps[0],
+    //     ps[3]
+    // ];
 
-    // let g = Game::from_fen(&ts, "k7/7p/8/5B2/r7/1P6/8/7K w - - 0 1").unwrap();
-    // let moves = g.search_all(&ts, None).get_moves_unsafe();
-    // let mut moves: Vec<(Move,Game,Option<(SICanUse,SearchInfo)>)>  =
-    //     moves.into_iter().flat_map(|mv| if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
-    //     Some((mv,g2,None))
-    // } else { None }).collect::<Vec<_>>();
-    // moves[0].2 = Some((SICanUse::UseOrdering, SearchInfo::new(
-    //     moves[0].0, vec![], 1, Node::PV, 0, // h1g1
-    // )));
-    // moves[1].2 = Some((SICanUse::UseOrdering, SearchInfo::new(
-    //     moves[1].0, vec![], 1, Node::PV, 100, // h1g2
-    // )));
+    let k = _order_mvv_lva(&ps[0].1, &ps[3].1);
 
-    // order_searchinfo(true, &mut moves[..]);
-    // println!("Correct: (max)");
-    // println!("  h1g2");
-    // println!("  h1g1");
-    // println!("  b3a4");
-    // println!("  f5h7");
+    eprintln!("k = {:?}", k);
 
-    // order_searchinfo(false, &mut moves[..]);
-    // println!("Correct: (min)");
-    // println!("  h1g1");
-    // println!("  h1g2");
-    // println!("  b3a4");
-    // println!("  f5h7");
-
-    // // moves.truncate(6);
-    // for (m,_,_) in moves.iter() {
-    //     eprintln!("m = {:?}", m);
-    // }
+    return;
 
     // return;
 
@@ -435,8 +393,8 @@ fn main7() {
 
             println!("g = {:?}", g);
 
-            // let n = 25;
-            let n = 10;
+            let n = 25;
+            // let n = 10;
             // let n = 5;
 
             ex.max_depth = n;
@@ -463,22 +421,22 @@ fn main7() {
             //     eprintln!("m = {:?}", m);
             // }
 
-            // eprintln!("qt nodes = {:?}", stats0.qt_nodes);
-            // eprintln!("null prunes = {:?}", stats0.null_prunes);
-            // eprintln!("window fails = {:?}", stats0.window_fails);
-
             stats0.print_ebf(false);
             // stats0.print_node_types(&tt_r);
 
-            // eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
-            eprintln!("stats0.beta_cut_first = {:?}", stats0.beta_cut_first);
+            // eprintln!("qt nodes = {:?}", stats0.qt_nodes);
+            eprintln!("null prunes = {:?}", stats0.null_prunes);
+            // eprintln!("window fails = {:?}", stats0.window_fails);
 
-            let mut k = 0;
-            for (zb,sis) in tt_r.read().unwrap().iter() {
-                // let si = sis.iter().next().unwrap();
-                k += 1;
-            }
-            eprintln!("k = {:?}", k);
+            eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
+            // eprintln!("stats0.beta_cut_first = {:?}", stats0.beta_cut_first);
+
+            // let mut k = 0;
+            // for (zb,sis) in tt_r.read().unwrap().iter() {
+            //     // let si = sis.iter().next().unwrap();
+            //     k += 1;
+            // }
+            // eprintln!("k = {:?}", k);
 
             // let g2 = g.flip_sides(&ts);
             // let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);
@@ -491,36 +449,6 @@ fn main7() {
             // println!("explore lazy_smp  (depth: {}) done in {:.3} seconds.",
             //          stats0.max_depth, t0.elapsed().as_secs_f64());
             // // stats0.print(t0.elapsed());
-
-            // println!("move, correct #{} = {:?}, g3g6", q, mv0);
-            // println!("move, correct #{} = {:?}, b6b3", q, mv1);
-
-
-            // println!("====");
-            // let t0 = std::time::Instant::now();
-            // let (moves,stats1) = ex.iterative_deepening(&ts, !true, true);
-            // let (mv,mvs,_) = moves.get(0).unwrap();
-            // println!("m #{} = {:?}", q, mv);
-            // // println!("good = g4e3");
-            // println!("explore iterative (depth: {}) done in {:.3} seconds.",
-            //          stats1.max_depth, t0.elapsed().as_secs_f64());
-            // stats1.print(t0.elapsed());
-
-            // print!("\n");
-            // for m in mvs.iter() {
-            //     eprintln!("m = {:?}", m);
-            // }
-
-
-            // eprintln!("tt.len() = {:?}", tt.len());
-            // eprintln!("pv  = {:?}", pv.len());
-            // eprintln!("all = {:?}", all.len());
-            // eprintln!("cut = {:?}", cut.len());
-
-            // println!("explore #{} done in {} seconds.", q, t0.elapsed().as_secs_f64());
-
-            // let m = ex.explore(&ts, ex.max_depth);
-            // eprintln!("m #{} = {:?}", q, m);
 
             t += t0.elapsed();
         }
@@ -581,7 +509,7 @@ fn main7() {
 
 }
 
-fn main3(send_url: bool) {
+fn main3(num: Option<u64>, send_url: bool) {
     // let mut games = read_ccr_onehour("ccr_onehour.txt").unwrap();
     // let mut games = read_epd("Midgames250.epd").unwrap();
     let mut games = read_epd("testpositions/WAC.epd").unwrap();
@@ -591,6 +519,10 @@ fn main3(send_url: bool) {
     //     // eprintln!("fen, ms = {:?}: {:?}", fen, ms);
     //     eprintln!("ms = {:?}", ms);
     // }
+
+    if let Some(num) = num {
+        games.truncate(num as usize);
+    }
 
     let n = 25;
 
@@ -936,19 +868,24 @@ fn main4(depth: Option<u64>) {
     // println!("perft done in {} seconds.", t);
     // println!("stockfish took {} seconds.", t_sf);
 
-    let t0 = std::time::Instant::now();
-    // let (n,_) = g.perft(&ts, n);
-    let (tot,vs) = g.perft2(&ts, n as Depth);
-    // eprintln!("n = {:?}", n);
-    let t1 = t0.elapsed().as_secs_f64();
-    println!("perft done in {} seconds.", t1);
+    // let t0 = std::time::Instant::now();
+    // let (tot,_) = g.perft(&ts, n);
+    // // let (tot,vs) = g.perft2(&ts, n as Depth);
+    // // eprintln!("n = {:?}", n);
+    // let t1 = t0.elapsed().as_secs_f64();
+    // println!("perft done in {} seconds.", t1);
 
-    for (d, n) in vs.iter().enumerate() {
-        if *n > 0 {
-            println!("depth {:>2}: {:>12} leaves", d, n);
-        }
+    for d in 1..n+1 {
+        let (tot,_) = g.perft(&ts, d);
+        println!("depth {:>2}: {:>12} leaves", d, tot);
     }
-    println!("total:    {:>12} leaves", tot);
+
+    // for (d, n) in vs.iter().enumerate() {
+    //     if *n > 0 {
+    //         println!("depth {:>2}: {:>12} leaves", d, n);
+    //     }
+    // }
+    // println!("total:    {:>12} leaves", tot);
 
     fn _print(x: i32) -> String {
         if x.abs() > 1_000_000 {
@@ -960,7 +897,7 @@ fn main4(depth: Option<u64>) {
         }
     }
 
-    println!("speed: {} leaves / second", _print((tot as f64 / t1) as i32));
+    // println!("speed: {} leaves / second", _print((tot as f64 / t1) as i32));
 
 }
 
@@ -1257,4 +1194,25 @@ fn main2() {
     // main2()
 }
 
+fn init_logger() {
+    let cfg = ConfigBuilder::new()
+            .set_time_level(LevelFilter::Off)
+            .set_target_level(LevelFilter::Off)
+            .set_thread_level(LevelFilter::Info)
+        // .set_thread_level(LevelFilter::Off)
+            .set_location_level(LevelFilter::Off)
+            .build();
+
+    let logfile = std::fs::File::create("test.log").unwrap();
+    let log0 = WriteLogger::new(LevelFilter::Trace, cfg.clone(), logfile);
+
+    // let log1 = TermLogger::new(LevelFilter::Trace, cfg.clone(), TerminalMode::Stderr, ColorChoice::Auto);
+    let log1 = TermLogger::new(LevelFilter::Debug, cfg.clone(), TerminalMode::Stderr, ColorChoice::Auto);
+
+    CombinedLogger::init(vec![
+        log0,
+        log1,
+    ]).unwrap();
+
+}
 

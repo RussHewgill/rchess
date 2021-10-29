@@ -171,14 +171,11 @@ impl Game {
 /// Perft
 impl Game {
 
+    /// Far slower ??
     pub fn perft2(&self, ts: &Tables, depth: Depth) -> (u64, [u64; PERFTLENTH]) {
-
         let mut vs = [0; PERFTLENTH];
-
         self._perft2(ts, depth, 0, &mut vs);
-
         let tot = vs.iter().sum();
-
         (tot, vs)
     }
 
@@ -189,7 +186,6 @@ impl Game {
         ply:           usize,
         mut vs:        &mut [u64; PERFTLENTH],
     ) {
-
         if depth == 0 { return; }
 
         let moves = self.search_all(ts, None);
@@ -204,10 +200,8 @@ impl Game {
 
         for (mv, g2) in gs {
             g2._perft2(ts, depth - 1, ply + 1, &mut vs);
-            // vs[PERFTLENTH - 1 - (depth as usize)] += 1;
             vs[ply] += 1;
         }
-
     }
 
     pub fn perft(&self, ts: &Tables, depth: u64) -> (u64,Vec<(Move,u64)>) {
