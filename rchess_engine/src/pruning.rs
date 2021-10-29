@@ -23,6 +23,7 @@ impl Explorer {
         mut stats:          &mut SearchStats,
         // prev_mvs:           Vec<Move>,
         prev_mvs:           VecDeque<(Zobrist,Move)>,
+        mut history:        &mut [[Score; 64]; 64],
         tt_r:               &TTRead,
         tt_w:               TTWrite,
     ) -> bool {
@@ -41,8 +42,8 @@ impl Explorer {
             if let Some(((_,score),_)) = self._ab_search(
                 &ts, &g2, max_depth,
                 depth - 1 - r, k + 1,
-                // alpha, beta, !maximizing, &mut stats, mv,
                 alpha, beta, !maximizing, &mut stats, pms,
+                &mut history,
                 tt_r, tt_w) {
 
                 if maximizing {

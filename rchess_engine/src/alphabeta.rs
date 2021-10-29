@@ -58,7 +58,7 @@ impl Explorer {
         mut stats:          &mut SearchStats,
         // mv0:                Move,
         prev_mvs:           VecDeque<(Zobrist,Move)>,
-        // mut history:        &mut [[Score; 64]; 64],
+        mut history:        &mut [[Score; 64]; 64],
         tt_r:               &TTRead,
         tt_w:               TTWrite,
     // ) -> Option<(Vec<Move>, Score)> {
@@ -141,11 +141,13 @@ impl Explorer {
 
         /// Null Move pruning
         #[cfg(feature = "null_pruning")]
-        if self.prune_null_move(
-            // ts, g, max_depth, depth, k, alpha, beta, maximizing, &mut stats, tt_r, tt_w.clone()) {
-            ts, g, max_depth, depth, k, alpha, beta, maximizing, &mut stats,
-            prev_mvs.clone(), tt_r, tt_w.clone()) {
-            return None;
+        if g.state.checkers.is_empty()
+            && g.game_phase() < 200
+            && self.prune_null_move(
+                // ts, g, max_depth, depth, k, alpha, beta, maximizing, &mut stats, tt_r, tt_w.clone()) {
+                ts, g, max_depth, depth, k, alpha, beta, maximizing, &mut stats,
+                prev_mvs.clone(), &mut history, tt_r, tt_w.clone()) {
+                return None;
         }
 
         /// MVV LVA move ordering
@@ -220,26 +222,20 @@ impl Explorer {
                     let mut pms = prev_mvs.clone();
                     pms.push_back((g.zobrist,*mv));
 
-                    let depth2 = depth - 1;
+                    let mut lmr = true;
 
-                    // // XXX: Check extension
-                    // let depth2 = if (g2.state.checkers.unwrap().is_not_empty()
-                    //                  || g.state.checkers.unwrap().is_not_empty()) && k < 50 {
-                    //     trace!("found check at depth {}, extending by 1", k);
-                    //     // XXX: 2 plies
-                    //     // depth + 1
-                    //     depth
-                    // } else {
-                    //     depth - 1
-                    // };
+                    let mut depth2 = depth - 1;
 
+                    /// not reducing when in check replaces check extension
                     #[cfg(feature = "late_move_reduction")]
-                    if moves_searched >= 4
+                    if lmr
+                        && moves_searched >= 4
                         && k >= 3
                         && depth > 2
                         // && depth > 3
                         && !mv.filter_all_captures()
                         && !mv.filter_promotion()
+                        && g.state.checkers.is_empty()
                         && g2.state.checkers.is_empty()
                     {
                         let depth2 = depth - 2;
@@ -247,6 +243,7 @@ impl Explorer {
                         if let Some(((mv_seq,score),_)) = self._ab_search(
                             &ts, &g2, max_depth, depth2, k + 1,
                             alpha, beta, !maximizing, &mut stats, pms.clone(),
+                            &mut history,
                             tt_r, tt_w.clone()) {
                             if maximizing {
                                 if score <= alpha {
@@ -270,6 +267,7 @@ impl Explorer {
                         &ts, &g2, max_depth, depth2, k + 1,
                         // alpha, beta, !maximizing, &mut stats, *mv,
                         alpha, beta, !maximizing, &mut stats, pms,
+                        &mut history,
                         tt_r, tt_w.clone(),
                     ) {
                         (false,mv_seq,score)

@@ -300,6 +300,12 @@ fn main7() {
     // let fen = "8/p6k/1p5p/4Bpp1/8/1P3q1P/P1Q2P1K/3r4 w - - 0 2"; // c2c7, #5;
     // let fen = "1rq2k1r/p1p2p2/2B2P2/3RP2p/1b3N1p/2N4P/PPP1QPP1/2K4R w - - 1 23"; // e5e6, #9
 
+    // let fen = "2k5/8/KP6/8/8/8/8/8 w - - 1 10"; // #12
+    // let fen = "8/8/1K4k1/8/7Q/8/8/8 w - - 7 16"; // #6
+
+    // let fen = "1k3r1r/p1p3p1/1pn3q1/3R1n2/3P4/P1B1p2p/P1PN1PPP/4QK1R w - - 0 22"; // #-10 if d2b3
+    let fen = "r1bqk1nr/ppppbppp/2n5/8/4Q3/N7/PPP1PPPP/R1B1KBNR w KQkq - 3 5"; // ??
+
     // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
     // let fen = "7k/1n1n4/2P5/8/5b2/8/7P/7K b - - 0 1"; // Horizon
@@ -381,7 +387,8 @@ fn main7() {
 
             println!("g = {:?}", g);
 
-            let n = 25;
+            // let n = 25;
+            let n = 35;
             // let n = 10;
             // let n = 5;
 
@@ -392,37 +399,44 @@ fn main7() {
                 2.5,
             );
 
+            let ph = g.game_phase();
+            eprintln!("ph = {:?}", ph);
+
             let t0 = std::time::Instant::now();
             let (mvs,stats0,(tt_r,tt_w)) = ex.lazy_smp(&ts, false, false);
-            let (mv0,mvs,_) = mvs.get(0).unwrap();
+            let (mv0,mvs,score) = mvs.get(0).unwrap();
             // println!("m #{} = {:?}", q, mv0);
             println!("explore lazy_smp  (depth: {}) done in {:.3} seconds.",
                      stats0.max_depth, t0.elapsed().as_secs_f64());
             stats0.print(t0.elapsed());
 
             println!();
-            println!("m #{} = {:?}", q, mv0);
+            // println!("m #{} = {:?}", q, mv0);
+            println!("score, mv: {} = {:?}", score, mv0);
             // println!("Correct move: Cp Q b6f2");
-            println!("Correct move: Q cap d6b4");
-            println!();
+            // println!("Correct move: Q cap d6b4");
+            // println!();
+
+            // let mm = Move::Quiet { from: "E1".into(), to: "F1".into(), pc: Rook };
+            // assert_eq!(*mv0, mm);
 
             // for m in mvs.iter() {
             //     eprintln!("m = {:?}", m);
             // }
 
             stats0.print_ebf(false);
+            // stats0.print_ebf(true);
             // stats0.print_node_types(&tt_r);
 
             // eprintln!("qt nodes = {:?}", stats0.qt_nodes);
-            eprintln!("null prunes = {:?}", stats0.null_prunes);
+            // eprintln!("null prunes = {:?}", stats0.null_prunes);
             // eprintln!("window fails = {:?}", stats0.window_fails);
+            // eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
 
-            eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
-
-            {
-                let (a,b) = stats0.beta_cut_first;
-                eprintln!("stats0.beta_cut_first = {:.3?}", a as f64 / (a + b) as f64);
-            }
+            // {
+            //     let (a,b) = stats0.beta_cut_first;
+            //     eprintln!("stats0.beta_cut_first = {:.3?}", a as f64 / (a + b) as f64);
+            // }
 
             // let mut k = 0;
             // for (zb,sis) in tt_r.read().unwrap().iter() {
@@ -549,7 +563,7 @@ fn main3(num: Option<u64>, send_url: bool) {
         // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
         // let (m1,_) = ex.explore(&ts, None);
 
-        let mv = m0.unwrap().to_algebraic(&g);
+        let mv = m0.unwrap().0.to_algebraic(&g);
         let mv0 = m[0].replace("+", "");
         if mv0 == mv {
             // println!("#{:>2}: Correct", i);

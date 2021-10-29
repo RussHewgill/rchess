@@ -7,6 +7,7 @@
 
 pub mod notation;
 
+use chrono::Datelike;
 use chrono::Timelike;
 use rchess_engine_lib::types::*;
 use rchess_engine_lib::tables::*;
@@ -39,16 +40,18 @@ fn main() -> std::io::Result<()> {
     //     .build_global()
     //     .unwrap();
 
-    let depth = 15;
+    let depth = 35;
     // let depth = 25;
 
     let now = chrono::Local::now();
     let mut logpath = format!(
-        "/home/me/code/rust/rchess/logs/log-{:0>2}:{:0>2}:{:0>2}-1.log",
+        "/home/me/code/rust/rchess/logs/log{:>4}-{:>2}-{:>2}_{:0>2}:{:0>2}:{:0>2}-1.log",
+        now.year(), now.month(), now.day(),
         now.hour(), now.minute(), now.second());
     if std::path::Path::new(&logpath).exists() {
         logpath = format!(
-            "/home/me/code/rust/rchess/logs/log-{:0>2}:{:0>2}:{:0>2}-2.log",
+            "/home/me/code/rust/rchess/logs/log{:>4}-{:>2}-{:>2}_{:0>2}:{:0>2}:{:0>2}-2.log",
+            now.year(), now.month(), now.day(),
             now.hour(), now.minute(), now.second());
     };
     let mut logfile = std::fs::OpenOptions::new()
@@ -118,9 +121,30 @@ fn main() -> std::io::Result<()> {
                         match params.next().unwrap() {
                             "fen" => {
                                 let fen = line.replace("position fen ", "");
-                                // eprintln!("fen = {:?}", fen);
+
+                                let mut xs = fen.split("moves ");
+                                let fen = xs.next().unwrap();
+
                                 let mut g = Game::from_fen(&ts, &fen).unwrap();
                                 let _ = g.recalc_gameinfo_mut(&ts);
+
+                                // eprintln!("fen = {:?}", fen);
+                                match xs.next() {
+                                    Some(moves) => {
+
+                                        let moves = moves.split(" ");
+                                        for m in moves {
+                                            let from = &m[0..2];
+                                            let to = &m[2..4];
+                                            let other = &m[4..];
+                                            let mm = g.convert_move(from, to, other).unwrap();
+                                            g = g.make_move_unchecked(&ts, mm).unwrap();
+                                        }
+
+                                    },
+                                    None => {},
+                                }
+
                                 // explorer.lock().unwrap().side = g.state.side_to_move;
                                 // explorer.lock().unwrap().game = g;
                                 explorer.side = g.state.side_to_move;
@@ -138,10 +162,7 @@ fn main() -> std::io::Result<()> {
                                     let other = &m[4..];
                                     let mm = g.convert_move(from, to, other).unwrap();
                                     g = g.make_move_unchecked(&ts, mm).unwrap();
-                                    // eprintln!("from, to = {:?}, {:?}", from, to);
                                 }
-                                // explorer.lock().unwrap().side = g.state.side_to_move;
-                                // explorer.lock().unwrap().game = g;
                                 explorer.side = g.state.side_to_move;
                                 explorer.game = g;
                             },

@@ -44,6 +44,13 @@ use rayon::prelude::*;
 //     // xs.reverse()
 // }
 
+pub fn order_moves_piece_tables(ts: &Tables, mut xs: &mut [Move]) {
+    // xs.par_sort_unstable_by(|a,b| {
+    //     let s0 = ts.piece_tables.get_mid(a.piece(), col, a.sq_from())
+    // });
+    unimplemented!()
+}
+
 pub fn order_mvv_lva(mut xs: &mut [Move]) {
 // pub fn order_mvv_lva(mut xs: &mut [(&str,Move)]) {
     use Move::*;

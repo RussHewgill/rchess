@@ -9,7 +9,7 @@ use crate::explore::Node;
 #[derive(Debug,Default,PartialEq,PartialOrd,Clone,Copy)]
 pub struct SearchStats {
     pub nodes:          u32,
-    pub nodes_arr:      [u32; 32],
+    pub nodes_arr:      NArr,
     pub leaves:         u32,
     pub quiet_leaves:   u32,
     pub max_depth:      u8,
@@ -31,12 +31,21 @@ pub struct SearchStats {
     pub beta_cut_first: (u32,u32),
 }
 
+#[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
+pub struct NArr([u32; 50]);
+
+impl Default for NArr {
+    fn default() -> Self {
+        Self([0; 50])
+    }
+}
+
 impl std::ops::Add for SearchStats {
     type Output = Self;
     fn add(self, other: Self) -> Self {
         let mut arr = self.nodes_arr;
-        other.nodes_arr.iter().enumerate().for_each(|(i,x)| {
-            arr[i] += x;
+        other.nodes_arr.0.iter().enumerate().for_each(|(i,x)| {
+            arr.0[i] += x;
         });
         Self {
             nodes:              self.nodes + other.nodes,
@@ -71,7 +80,7 @@ impl SearchStats {
     }
 
     pub fn inc_nodes_arr(&mut self, d: Depth) {
-        self.nodes_arr[d as usize] += 1;
+        self.nodes_arr.0[d as usize] += 1;
     }
 
     fn _print(x: i32) -> String {
@@ -104,10 +113,10 @@ impl SearchStats {
 
     pub fn print_ebf(&self, full: bool) {
         let mut arr = self.nodes_arr.clone();
-        let k = arr.len();
+        let k = arr.0.len();
         let dmax = self.max_depth as usize;
         // let mut arr2 = &mut arr[1..((self.max_depth as usize) + 1)];
-        let mut arr2 = &mut arr[..dmax + 1];
+        let mut arr2 = &mut arr.0[..dmax + 1];
         arr2.reverse();
 
         // for (depth,n) in arr2.iter().enumerate() {

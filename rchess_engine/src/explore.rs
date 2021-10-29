@@ -45,6 +45,7 @@ pub struct Explorer {
     // pub prev_eval:     Arc<>
 }
 
+/// New
 impl Explorer {
     pub fn new(side:          Color,
                game:          Game,
@@ -67,13 +68,14 @@ impl Explorer {
 /// Entry points
 impl Explorer {
 
-    pub fn explore(&self, ts: &Tables, depth: Option<Depth>) -> (Option<Move>,SearchStats) {
+    pub fn explore(&self, ts: &Tables, depth: Option<Depth>) -> (Option<(Move,Score)>,SearchStats) {
 
         // let (moves,stats) = self.iterative_deepening(&ts, false, false);
         // (moves.get(0).map(|x| x.0),stats)
 
         let (moves,stats,_) = self.lazy_smp(&ts, false, false);
-        let mv = moves.get(0).map(|x| x.0);
+        // let mv = moves.get(0).map(|x| x.0);
+        let mv = moves.get(0).map(|x| (x.0,x.2));
         debug!("explore: best move = {:?}", mv);
         (mv,stats)
 
@@ -87,19 +89,6 @@ impl Explorer {
         //     (moves.get(0).map(|x| x.0),stats)
         // }
 
-    }
-
-    pub fn rank_moves(&self, ts: &Tables, print: bool) -> (Vec<(Move,Score)>,SearchStats) {
-        let moves = self.game.search_all(&ts, None);
-
-        if moves.is_end() {
-            return (vec![], SearchStats::default());
-        }
-        let moves = moves.get_moves_unsafe();
-
-        // self.rank_moves_list(&ts, print, moves, par)
-        // self.rank_moves_list(&ts, print, moves)
-        unimplemented!()
     }
 
 }
@@ -393,6 +382,8 @@ impl Explorer {
         let (alpha,beta) = (i32::MIN,i32::MAX);
         let mut ss = SearchStats::default();
 
+        let mut history = [[0; 64]; 64];
+
         for (mv,g2) in gs.iter() {
 
             match self.check_tt(&ts, &g2, depth, false, &tt_r, &mut ss) {
@@ -412,6 +403,7 @@ impl Explorer {
                     // &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss, *mv,
                     &ts, &g2, depth, depth, 1, alpha, beta, false, &mut ss,
                     VecDeque::from([(self.game.zobrist,*mv)]),
+                    &mut history,
                     &tt_r, tt_w.clone()).map(|x| x.0)
 
             } {
@@ -535,8 +527,9 @@ impl Explorer {
             #[cfg(feature = "one_thread")]
             let max_threads = 1;
             #[cfg(not(feature = "one_thread"))]
-            // let max_threads = np_cpus;
-            let max_threads = np_cpus + 2;
+            let max_threads = np_cpus;
+            // let max_threads = np_cpus - 4;
+            // let max_threads = 1;
 
             let depths = vec![
                 0, 1, 0, 2, 0, 1,
@@ -732,26 +725,26 @@ impl Explorer {
         //     debug!("mv: {}: {:?}", score, mv);
         // }
 
-        if out.len() == 0 {
-            debug!("no moves found");
-        }
-
         // if out.len() == 0 {
         //     debug!("no moves found");
-        //     // panic!("no moves found");
-        //     let mut gs = gs;
-        //     gs.sort_unstable_by(|a,b| {
-        //         let x = a.1.evaluate(&ts).sum();
-        //         let y = b.1.evaluate(&ts).sum();
-        //         x.cmp(&y)
-        //     });
-        //     let out = vec![(gs[0].0,vec![],gs[0].1.evaluate(&ts).sum())];
-        //     (out,stats)
-        // } else {
-        //     (out,stats)
         // }
 
-        (out, stats, (tt_r,tt_w))
+        if out.len() == 0 {
+            debug!("no moves found");
+            // panic!("no moves found");
+            let mut gs = gs;
+            gs.sort_unstable_by(|a,b| {
+                let x = a.1.evaluate(&ts).sum();
+                let y = b.1.evaluate(&ts).sum();
+                x.cmp(&y)
+            });
+            let out = vec![(gs[0].0,vec![],gs[0].1.evaluate(&ts).sum())];
+            (out, stats, (tt_r,tt_w))
+        } else {
+            (out, stats, (tt_r,tt_w))
+        }
+
+        // (out, stats, (tt_r,tt_w))
     }
 
 }
