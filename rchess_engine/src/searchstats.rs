@@ -28,7 +28,7 @@ pub struct SearchStats {
     pub null_prunes:    u32,
     pub window_fails:   (u32,u32),
     pub lmrs:           (u32,u32),
-    pub beta_cut_first: u32,
+    pub beta_cut_first: (u32,u32),
 }
 
 impl std::ops::Add for SearchStats {
@@ -57,16 +57,18 @@ impl std::ops::Add for SearchStats {
             ns_all:             self.ns_all + other.ns_all,
             ns_cut:             self.ns_cut + other.ns_cut,
             null_prunes:        self.null_prunes + other.null_prunes,
-            window_fails:       (self.window_fails.0 + other.window_fails.0,
-                                 self.window_fails.1 + other.window_fails.1),
-            lmrs:               (self.lmrs.0 + other.lmrs.0,
-                                 self.lmrs.1 + other.lmrs.1),
-            beta_cut_first:     self.beta_cut_first + other.beta_cut_first,
+            window_fails:       Self::_add_2(self.window_fails, other.window_fails),
+            lmrs:               Self::_add_2(self.lmrs, other.lmrs),
+            beta_cut_first:     Self::_add_2(self.beta_cut_first, other.beta_cut_first),
         }
     }
 }
 
 impl SearchStats {
+
+    fn _add_2<T: std::ops::Add<Output = T>>(a: (T,T), b: (T,T)) -> (T,T) {
+        (a.0 + b.0, a.1 + b.1)
+    }
 
     pub fn inc_nodes_arr(&mut self, d: Depth) {
         self.nodes_arr[d as usize] += 1;

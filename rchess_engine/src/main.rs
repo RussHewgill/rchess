@@ -296,11 +296,11 @@ fn main7() {
 
     // let fen = "8/1p4pk/6rp/3Pp3/4Qn2/2P2qP1/1B3P1P/4R1K1 b - - 1 1"; // f4h3, #2
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
-    // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
+    let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
     // let fen = "8/p6k/1p5p/4Bpp1/8/1P3q1P/P1Q2P1K/3r4 w - - 0 2"; // c2c7, #5;
     // let fen = "1rq2k1r/p1p2p2/2B2P2/3RP2p/1b3N1p/2N4P/PPP1QPP1/2K4R w - - 1 23"; // e5e6, #9
 
-    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
     // let fen = "7k/1n1n4/2P5/8/5b2/8/7P/7K b - - 0 1"; // Horizon
     // let fen = "7k/8/8/r7/r7/8/p1RR4/7K w - - 0 1"; // Horizon
@@ -332,7 +332,7 @@ fn main7() {
     // let fen = &games(2); // b3b2 (SF says b3b7)
     // let fen = &games(4); // h6h7, #2
     // let fen = &games(6); // b6b7, #11
-    let fen = &games(7); // N g4e3
+    // let fen = &games(7); // N g4e3
     // let fen = &games(8); // R e7f7, #7
     // let fen = &games(9); // d6h2, #-5
     // let fen = &games(17); // c4e5
@@ -352,33 +352,21 @@ fn main7() {
     let timesettings = TimeSettings::new_f64(10.0,0.1);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
 
-    let mut ps = vec![
-        ("pawn x queen", Move::Capture { from: "E4".into(), to: "F5".into(), pc: Pawn, victim: Queen }),
-        ("queen x pawn", Move::Capture { from: "E4".into(), to: "F5".into(), pc: Queen, victim: Pawn }),
-        ("pawn x pawn", Move::Capture { from: "E4".into(), to: "D5".into(), pc: Pawn, victim: Pawn }),
-        ("pawn x rook",   Move::Capture { from: "E4".into(), to: "D5".into(), pc: Pawn, victim: Rook }),
-        ("bishop x pawn", Move::Capture { from: "E4".into(), to: "D5".into(), pc: Bishop, victim: Pawn }),
-        ("quiet", Move::Quiet { from: "E4".into(), to: "E5".into(), pc: Pawn }),
-        ("promotion", Move::Promotion { from: "E7".into(), to: "E8".into(), new_piece: Queen }),
-        // ("EP", Move::EnPassant { from: "E5".into(), to: "D6".into(), capture: "D5".into() }),
-    ];
+    // let mut ps = vec![
+    //     ("pawn x queen", Move::Capture { from: "E4".into(), to: "F5".into(), pc: Pawn, victim: Queen }),
+    //     ("queen x pawn", Move::Capture { from: "E4".into(), to: "F5".into(), pc: Queen, victim: Pawn }),
+    //     ("pawn x pawn", Move::Capture { from: "E4".into(), to: "D5".into(), pc: Pawn, victim: Pawn }),
+    //     ("pawn x rook",   Move::Capture { from: "E4".into(), to: "D5".into(), pc: Pawn, victim: Rook }),
+    //     ("bishop x pawn", Move::Capture { from: "E4".into(), to: "D5".into(), pc: Bishop, victim: Pawn }),
+    //     ("quiet", Move::Quiet { from: "E4".into(), to: "E5".into(), pc: Pawn }),
+    //     ("promotion", Move::Promotion { from: "E7".into(), to: "E8".into(), new_piece: Queen }),
+    //     // ("EP", Move::EnPassant { from: "E5".into(), to: "D6".into(), capture: "D5".into() }),
+    // ];
 
     // order_mvv_lva(&mut ps[..]);
-
     // for (s,m) in ps.iter() {
     //     eprintln!("{:>15} = {:?}", s, m);
     // }
-
-    // let mut vs = vec![
-    //     ps[0],
-    //     ps[3]
-    // ];
-
-    let k = _order_mvv_lva(&ps[0].1, &ps[3].1);
-
-    eprintln!("k = {:?}", k);
-
-    return;
 
     // return;
 
@@ -401,18 +389,19 @@ fn main7() {
 
             ex.timer.settings = TimeSettings::new_f64(
                 0.0,
-                2.0,
+                2.5,
             );
 
             let t0 = std::time::Instant::now();
             let (mvs,stats0,(tt_r,tt_w)) = ex.lazy_smp(&ts, false, false);
             let (mv0,mvs,_) = mvs.get(0).unwrap();
-            println!("m #{} = {:?}", q, mv0);
+            // println!("m #{} = {:?}", q, mv0);
             println!("explore lazy_smp  (depth: {}) done in {:.3} seconds.",
                      stats0.max_depth, t0.elapsed().as_secs_f64());
             stats0.print(t0.elapsed());
 
             println!();
+            println!("m #{} = {:?}", q, mv0);
             // println!("Correct move: Cp Q b6f2");
             println!("Correct move: Q cap d6b4");
             println!();
@@ -429,7 +418,11 @@ fn main7() {
             // eprintln!("window fails = {:?}", stats0.window_fails);
 
             eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
-            // eprintln!("stats0.beta_cut_first = {:?}", stats0.beta_cut_first);
+
+            {
+                let (a,b) = stats0.beta_cut_first;
+                eprintln!("stats0.beta_cut_first = {:.3?}", a as f64 / (a + b) as f64);
+            }
 
             // let mut k = 0;
             // for (zb,sis) in tt_r.read().unwrap().iter() {

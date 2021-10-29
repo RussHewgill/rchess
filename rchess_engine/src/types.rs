@@ -12,7 +12,8 @@ use serde::{Serialize,Deserialize};
 
 pub use self::{Color::*,Piece::*};
 
-pub static PIECES: [Piece; 6] = [Pawn,Rook,Knight,Bishop,Queen,King];
+// pub static PIECES: [Piece; 6] = [Pawn,Rook,Knight,Bishop,Queen,King];
+pub static PIECES: [Piece; 6] = [Pawn,Knight,Bishop,Rook,Queen,King];
 
 pub type Depth = u8;
 
@@ -28,9 +29,9 @@ pub enum Color {
 // #[derive(Debug,Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
 pub enum Piece {
     Pawn,
-    Rook,
     Knight,
     Bishop,
+    Rook,
     Queen,
     King,
 }
@@ -41,8 +42,9 @@ pub enum Piece {
 //     to:   Coord,
 // }
 
-#[derive(Serialize,Deserialize,Eq,PartialEq,Ord,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
-// #[derive(Serialize,Deserialize,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
+// #[derive(Serialize,Deserialize,Eq,PartialEq,Ord,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
+#[derive(Serialize,Deserialize,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
+// #[derive(Serialize,Deserialize,Ord,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
 pub enum Move {
     Quiet              { from: Coord, to: Coord, pc: Piece },
     PawnDouble         { from: Coord, to: Coord },
@@ -56,24 +58,53 @@ pub enum Move {
     NullMove,
 }
 
-// impl Ord for Move {
-//     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-//         use Move::*;
-//         use std::cmp::Ordering::*;
-//         match (self, other) {
-//             (Capture { pc: pc0, victim: v0, .. },
-//              Capture { pc: pc1, victim: v1, .. }) => unimplemented!(),
-//             (Quiet { .. }, Quiet { .. })          => Equal,
-//             _                                     => unimplemented!()
-//         }
-//     }
-// }
+impl Ord for Move {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        use Move::*;
+        use std::cmp::Ordering::*;
+        match (self, other) {
+            (PromotionCapture { .. }, PromotionCapture { .. }) => Equal,
+            (PromotionCapture { .. }, _)                       => Greater,
+            (_, PromotionCapture { .. })                       => Less,
 
-// impl PartialOrd for Move {
-//     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-//         Some(self.cmp(other))
-//     }
-// }
+            (Promotion { .. }, Promotion { .. })               => Equal,
+            (Promotion { .. }, _)                              => Greater,
+            (_, Promotion { .. })                              => Less,
+
+            (EnPassant { .. }, EnPassant { .. })               => Equal,
+            (EnPassant { .. }, _)                              => Greater,
+            (_, EnPassant { .. })                              => Less,
+
+            (Capture { .. }, Capture { .. })                   => Equal,
+            (Capture { .. }, _)                                => Greater,
+            (_, Capture { .. })                                => Less,
+
+            (Castle { .. }, Castle { .. })                     => Equal,
+            (Castle { .. }, _)                                 => Greater,
+            (_, Castle { .. })                                 => Less,
+
+            (Quiet { .. }, Quiet { .. })                       => Equal,
+            (Quiet { .. }, _)                                  => Greater,
+            (_, Quiet { .. })                                  => Less,
+
+            (PawnDouble { .. }, PawnDouble { .. })             => Equal,
+            (_, PawnDouble { .. })                             => Equal,
+            (PawnDouble { .. }, _)                             => Equal,
+
+            _                                                  => {
+                debug!("cmp move: {:?}, {:?}", self, other);
+                panic!("cmp move: {:?}, {:?}", self, other);
+                // Equal
+            },
+        }
+    }
+}
+
+impl PartialOrd for Move {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
 pub enum GameEnd {
@@ -394,9 +425,9 @@ impl Piece {
     pub fn index(self) -> usize {
         match self {
             Pawn   => 0,
-            Rook   => 1,
-            Knight => 2,
-            Bishop => 3,
+            Knight => 1,
+            Bishop => 2,
+            Rook   => 3,
             Queen  => 4,
             King   => 5,
         }

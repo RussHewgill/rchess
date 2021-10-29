@@ -148,8 +148,8 @@ impl Explorer {
             return None;
         }
 
-        // /// MVV LVA move ordering
-        // order_mvv_lva(&mut moves);
+        /// MVV LVA move ordering
+        order_mvv_lva(&mut moves);
 
         /// Make move, Lookup games in Trans Table
         // #[cfg(feature = "par")]
@@ -243,20 +243,20 @@ impl Explorer {
                         && g2.state.checkers.is_empty()
                     {
                         let depth2 = depth - 2;
-                        trace!("Checking Late Move Reduction");
+                        // trace!("Checking Late Move Reduction");
                         if let Some(((mv_seq,score),_)) = self._ab_search(
                             &ts, &g2, max_depth, depth2, k + 1,
                             alpha, beta, !maximizing, &mut stats, pms.clone(),
                             tt_r, tt_w.clone()) {
                             if maximizing {
                                 if score <= alpha {
-                                    trace!("Late move reduction success 1");
+                                    // trace!("Late move reduction success 1");
                                     stats.lmrs.0 += 1;
                                     break 'search (false,mv_seq,score);
                                 }
                             } else {
                                 if score >= beta {
-                                    trace!("Late move reduction success -1");
+                                    // trace!("Late move reduction success -1");
                                     stats.lmrs.1 += 1;
                                     break 'search (false,mv_seq,score);
                                 }
@@ -301,7 +301,9 @@ impl Explorer {
                 node_type = Node::Cut;
 
                 if moves_searched == 0 {
-                    stats.beta_cut_first += 1;
+                    stats.beta_cut_first.0 += 1;
+                } else {
+                    stats.beta_cut_first.1 += 1;
                 }
 
                 break;

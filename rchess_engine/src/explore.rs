@@ -532,8 +532,11 @@ impl Explorer {
             let best_depth      = Arc::new(AtomicU8::new(0));
             let best_depth2     = best_depth.clone();
 
-            let max_threads = np_cpus;
-            // let max_threads = 1;
+            #[cfg(feature = "one_thread")]
+            let max_threads = 1;
+            #[cfg(not(feature = "one_thread"))]
+            // let max_threads = np_cpus;
+            let max_threads = np_cpus + 2;
 
             let depths = vec![
                 0, 1, 0, 2, 0, 1,
@@ -603,9 +606,6 @@ impl Explorer {
 
             'outer: loop {
 
-                let sid       = search_id.load(SeqCst);
-                let cur_depth = best_depth.load(SeqCst) + 1 + depths[sid as usize];
-
                 {
                     let r = self.best_mate.read();
                     if r.is_some() {
@@ -643,28 +643,38 @@ impl Explorer {
                                    d, t0.elapsed().as_secs_f64());
                             stop.store(true, SeqCst);
                             break 'outer;
-                        } else if t0.elapsed() > t_max {
+                        }
+                        if t0.elapsed() > t_max {
                             let d = best_depth.load(SeqCst);
                             debug!("breaking loop (Depth -> Time),  d: {}, t0: {:.3}",
                                    d, t0.elapsed().as_secs_f64());
                             stop.store(true, SeqCst);
                             break 'outer;
+                        } else {
+                            // trace!("t0.elapsed(), t_max: {:?}, {:?}", t0.elapsed(), t_max);
                         }
                         std::thread::sleep(sleep_time);
                     }
 
                     // break 'outer;
                 // } if thread_counter.load(SeqCst) != 0 && cur_depth > self.max_depth {
-                } if cur_depth > self.max_depth {
-                    continue;
-                } else if t0.elapsed() > t_max {
+                }
+
+                let sid       = search_id.load(SeqCst);
+                let cur_depth = best_depth.load(SeqCst) + 1 + depths[sid as usize];
+
+                if t0.elapsed() > t_max {
                     let d = best_depth.load(SeqCst);
                     debug!("breaking loop (Time),  d: {}, t0: {:.3}", d, t0.elapsed().as_secs_f64());
                     // Only force threads to stop if out of time
                     stop.store(true, SeqCst);
                     drop(tx);
                     break;
-                } else if thread_counter.load(SeqCst) < max_threads {
+                }
+                if cur_depth > self.max_depth {
+                    continue;
+                }
+                if thread_counter.load(SeqCst) < max_threads {
 
                     let gs2    = gs.clone();
                     let stats2 = stats.clone();

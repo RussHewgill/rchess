@@ -22,9 +22,11 @@ default = [
     "par",
     "null_pruning",
     "late_move_reduction",
+    # "one_thread",
     ]
 # default = []
 par = []
+one_thread = []
 null_pruning = []
 late_move_reduction = []
 
