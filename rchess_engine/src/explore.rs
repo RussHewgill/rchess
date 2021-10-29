@@ -540,6 +540,7 @@ impl Explorer {
 
             let depths = vec![
                 0, 1, 0, 2, 0, 1,
+                0, 1, 0, 2, 0, 1,
                 // 2, 1, 0, 0, 1, 0,
             ];
             let depths_largest: Depth = *depths.iter().max().unwrap();
