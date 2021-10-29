@@ -125,10 +125,10 @@ fn main() {
     // // let s = u16::MAX;
     // // eprintln!("s = {:#8x}", s);
 
-    let t0 = std::time::Instant::now();
-    println!("starting tables");
-    let ts = Tables::new();
-    println!("tables done in {} seconds.", t0.elapsed().as_secs_f64());
+    // let t0 = std::time::Instant::now();
+    // println!("starting tables");
+    // let ts = Tables::new();
+    // println!("tables done in {} seconds.", t0.elapsed().as_secs_f64());
 
     // let g = Game::from_fen(&ts, "k7/8/1p1p1p2/8/1p1q1p2/8/1P1P1P2/7K w - - 0 1").unwrap();
     // let rook   = ts.attacks_rook("D4".into(), g.all_occupied());
@@ -139,29 +139,34 @@ fn main() {
 
     // let tr = ts.table_rook;
 
-    let m = ts.magics_rook[49];
+    // let m = ts.magics_rook[49];
 
-    let mut k = (0,0);
+    // let mut k = (0,0);
 
-    // for x in ts.magics_rook.iter() {
-    for x in ts.table_rook.iter() {
-        k.1 += 1;
-        // if x.magic.0 != 0 {
-        if x.0 != 0 {
-            k.0 += 1;
-        }
-    }
+    // // for x in ts.magics_rook.iter() {
+    // for x in ts.table_rook.iter() {
+    //     k.1 += 1;
+    //     // if x.magic.0 != 0 {
+    //     if x.0 != 0 {
+    //         k.0 += 1;
+    //     }
+    // }
+    // eprintln!("k = {:?}", k);
 
-    eprintln!("k = {:?}", k);
-
-    return;
+    // return;
 
     let mut args: Vec<String> = std::env::args().collect();
     match args.get(1) {
         Some(s) => match s.as_str() {
-            "wac"  => main3(false), // read from file and test
-            "wac2" => main3(true), // read from file and test, send URL to firefox
-            _      => {},
+            "wac"   => main3(false), // read from file and test
+            "wac2"  => main3(true), // read from file and test, send URL to firefox
+            "perft" => {
+                match args.get(2).map(|x| u64::from_str(x).ok()) {
+                    Some(n) => main4(n),
+                    _       => main4(None),
+                }
+            }, // read from file and test, send URL to firefox
+            _       => {},
         },
         None    => main7(),
     }
@@ -899,7 +904,8 @@ fn main5() {
 
 }
 
-fn main4() {
+/// Perft
+fn main4(depth: Option<u64>) {
 
     // let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
@@ -909,27 +915,52 @@ fn main4() {
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
-    let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
+    // let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
     // let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  "; // Position 5
 
     // let fen = "rnbqkbnr/ppppp3/8/4N3/2BP1BQ1/4P1Pp/PPP4P/RN2K2R w KQkq - 0 1";
 
-    let n = 4;
+    let n = match depth {
+        None    => 4,
+        Some(d) => d,
+    };
 
-    let ts = Tables::new();
+    // let ts = Tables::new();
+    let ts = &_TABLES;
     let mut g = Game::from_fen(&ts, fen).unwrap();
     let _ = g.recalc_gameinfo_mut(&ts);
     // eprintln!("g = {:?}", g);
 
-    let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, n, true).unwrap();
-    // let (t,(_,_)) = test_stockfish(fen, n, false).unwrap();
-    println!("perft done in {} seconds.", t);
-    println!("stockfish took {} seconds.", t_sf);
+    // let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, n, true).unwrap();
+    // // let (t,(_,_)) = test_stockfish(fen, n, false).unwrap();
+    // println!("perft done in {} seconds.", t);
+    // println!("stockfish took {} seconds.", t_sf);
 
-    // let t = std::time::Instant::now();
+    let t0 = std::time::Instant::now();
     // let (n,_) = g.perft(&ts, n);
+    let (tot,vs) = g.perft2(&ts, n as Depth);
     // eprintln!("n = {:?}", n);
-    // println!("perft done in {} seconds.", t.elapsed().as_secs_f64());
+    let t1 = t0.elapsed().as_secs_f64();
+    println!("perft done in {} seconds.", t1);
+
+    for (d, n) in vs.iter().enumerate() {
+        if *n > 0 {
+            println!("depth {:>2}: {:>12} leaves", d, n);
+        }
+    }
+    println!("total:    {:>12} leaves", tot);
+
+    fn _print(x: i32) -> String {
+        if x.abs() > 1_000_000 {
+            format!("{:.1}M", x as f64 / 1_000_000.)
+        } else if x > 1000 {
+            format!("{:.1}k", x as f64 / 1000.)
+        } else {
+            format!("{}", x)
+        }
+    }
+
+    println!("speed: {} leaves / second", _print((tot as f64 / t1) as i32));
 
 }
 

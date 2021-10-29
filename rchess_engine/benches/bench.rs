@@ -62,9 +62,9 @@ pub fn crit_bench_1(c: &mut Criterion) {
     // group.sample_size(10);
     // group.measurement_time(std::time::Duration::from_secs_f64(5.));
 
-    group.bench_function("rank moves lazy_smp", |b| b.iter(|| {
-        let (m,stats,_) = ex.lazy_smp(&ts, false, true);
-    }));
+    // group.bench_function("rank moves lazy_smp", |b| b.iter(|| {
+    //     let (m,stats,_) = ex.lazy_smp(&ts, false, true);
+    // }));
 
     // group.bench_function("rank moves iter", |b| b.iter(|| {
     //     // let (m,stats) = ex.explore(&ts, None);
@@ -82,24 +82,13 @@ pub fn crit_bench_1(c: &mut Criterion) {
     //     }
     // }));
 
-    // no collect, captures first      = 18.2 ms
-    // sort by score                   = 18.8
-    // order moves                     = 31.2
+    group.bench_function("perft", |b| b.iter(
+        || g.perft(&ts, black_box(4))
+    ));
 
-
-
-    // group.sample_size(100);
-    // // group.measurement_time(std::time::Duration::from_secs_f64(5.));
-    // // group.bench_with_input(BenchmarkId::new("table getters", c0), &c0, |b, &c| {
-    // group.bench_function("table getters", |b| {
-    //     b.iter(||
-    //            for x in 0..8 {
-    //                for y in 0..8 {
-    //                    let _ = ts.get_rook(Coord(x,y));
-    //                }
-    //            }
-    //     )
-    // });
+    group.bench_function("perft2", |b| b.iter(
+        || g.perft2(&ts, black_box(4))
+    ));
 
     // group.bench_function("sliding_old", |b| b.iter(
     //     || g._search_all_test(&ts, White, false)

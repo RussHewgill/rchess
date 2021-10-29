@@ -37,6 +37,7 @@ pub mod magics;
 pub mod game;
 pub mod parsing;
 
+pub mod movegen;
 pub mod search;
 pub mod explore;
 pub mod alphabeta;

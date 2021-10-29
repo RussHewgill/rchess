@@ -57,7 +57,8 @@ pub fn _gen_magics(bishop: bool)
     let mut magics: [Option<Magic>; 64] = [None; 64];
     let (r1bb,r8bb) = (BitBoard::mask_rank(0),BitBoard::mask_rank(7));
     let (f1bb,f8bb) = (BitBoard::mask_file(0),BitBoard::mask_file(7));
-    let mut epoch = [0; 4096];
+    // let mut epoch = [0; 4096];
+    let mut epoch = [0; 65536];
     let mut cnt   = 0;
     let mut size: usize = 0;
 
@@ -86,7 +87,7 @@ pub fn _gen_magics(bishop: bool)
             Tables::gen_blockermask_rook(c0) & !edges
         };
 
-        let shift = 64 - mask.popcount();
+        // let shift = 64 - mask.popcount();
 
         let attacks = if sq == 0 {
             0
@@ -116,10 +117,12 @@ pub fn _gen_magics(bishop: bool)
         }
         let mut mm: u64;
 
-        let mut n1s = vec![];
+        // let mut n1s = vec![];
+        // let mut n = mask.popcount() - 1;
+        // let mut n1 = true;
 
-        let mut n = mask.popcount() - 1;
-        let mut n1 = true;
+        let n = mask.popcount();
+        let shift = 64 - n;
 
         let t0 = std::time::Instant::now();
 
@@ -131,10 +134,12 @@ pub fn _gen_magics(bishop: bool)
             // mm = 0x48FFFE99FECFAA00;
             // mm = 0x90a207c5e7ae23ff;
 
-            if t0.elapsed().as_secs_f64() > 1.0 {
-                n = n + 1;
-                n1 = false;
-            }
+            // if t0.elapsed().as_secs_f64() > 1.0 {
+            //     n = n + 1;
+            //     n1 = false;
+            //     epoch = [0; 65536];
+            //     shift = 64 - n;
+            // }
 
             loop {
                 mm = Tables::sparse_rand(&mut rng);
@@ -151,7 +156,7 @@ pub fn _gen_magics(bishop: bool)
                 let result = reference[s];
 
                 let idx = b.0.overflowing_mul(mm).0;
-                let idx = idx.overflowing_shr((64 - n) as u32).0 as usize;
+                let idx = idx.overflowing_shr(shift as u32).0 as usize;
 
                 let tb = if bishop {
                     table_b[attacks + idx]
@@ -197,12 +202,12 @@ pub fn _gen_magics(bishop: bool)
 
         }
 
-        if n1 {
-            debug!("Found N-1 for {:?}", c0);
-            n1s.push((n1, sq, c0));
-        } else {
-            debug!("Found only N for {:?}", c0);
-        }
+        // if n1 {
+        //     debug!("Found N-1 for {:?}", c0);
+        //     n1s.push((n1, sq, c0));
+        // } else {
+        //     debug!("Found only N for {:?}", c0);
+        // }
 
         if mm == 0 {
             panic!("wot");

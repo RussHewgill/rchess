@@ -7,6 +7,9 @@ use crate::tables::*;
 
 use rayon::prelude::*;
 
+const PERFTLENTH: usize = 20;
+
+/// Search All
 impl Game {
 
     // XXX: slower than could be
@@ -163,6 +166,50 @@ impl Game {
         }
     }
 
+}
+
+/// Perft
+impl Game {
+
+    pub fn perft2(&self, ts: &Tables, depth: Depth) -> (u64, [u64; PERFTLENTH]) {
+
+        let mut vs = [0; PERFTLENTH];
+
+        self._perft2(ts, depth, 0, &mut vs);
+
+        let tot = vs.iter().sum();
+
+        (tot, vs)
+    }
+
+    pub fn _perft2(
+        &self,
+        ts:            &Tables,
+        depth:         Depth,
+        ply:           usize,
+        mut vs:        &mut [u64; PERFTLENTH],
+    ) {
+
+        if depth == 0 { return; }
+
+        let moves = self.search_all(ts, None);
+        if moves.is_end() { return; }
+        let moves = moves.get_moves_unsafe();
+
+        let gs = moves.into_iter().flat_map(|mv| {
+            if let Ok(g2) = self.make_move_unchecked(ts, mv) {
+                Some((mv,g2))
+            } else { None }
+        });
+
+        for (mv, g2) in gs {
+            g2._perft2(ts, depth - 1, ply + 1, &mut vs);
+            // vs[PERFTLENTH - 1 - (depth as usize)] += 1;
+            vs[ply] += 1;
+        }
+
+    }
+
     pub fn perft(&self, ts: &Tables, depth: u64) -> (u64,Vec<(Move,u64)>) {
         // let mut nodes = 0;
         // let mut captures = 0;
@@ -292,6 +339,7 @@ impl Game {
 
 }
 
+/// Helpers
 impl Game {
 
     pub fn move_is_legal(&self, ts: &Tables, m: Move) -> bool {
