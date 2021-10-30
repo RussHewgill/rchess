@@ -281,7 +281,8 @@ impl Tables {
         let sq: u32 = c0.into();
         let m = self.magics_rook[sq as usize];
         if m.magic.0 == 0 {
-            panic!("Magics not initialized");
+            trace!("Magics not initialized");
+            return BitBoard::empty();
         }
         let mut occ = occ;
         let occ = (occ & m.mask).0;
@@ -294,7 +295,8 @@ impl Tables {
         let sq: u32 = c0.into();
         let m = self.magics_bishop[sq as usize];
         if m.magic.0 == 0 {
-            panic!("Magics not initialized");
+            trace!("Magics not initialized");
+            return BitBoard::empty();
         }
         let mut occ = occ;
         let occ = (occ & m.mask).0;

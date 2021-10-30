@@ -124,30 +124,6 @@ pub struct Tables {
     // endgames: 
 }
 
-// impl serde::Serialize for Tables {
-//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//     where
-//         S: serde::Serializer,
-//     {
-//         let mut s = serializer.serialize_struct("Table", 13)?;
-//         s.serialize_field("pawn_moves",   &self.pawn_moves[..])?;
-//         s.serialize_field("rook_moves",   &self.rook_moves[..])?;
-//         s.serialize_field("knight_moves", &self.knight_moves[..])?;
-//         s.serialize_field("bishop_moves", &self.bishop_moves[..])?;
-//         s.serialize_field("king_moves",   &self.king_moves[..])?;
-//         // s.serialize_field("line_bb",   &self.line_bb[..])?;
-//         // line_bb:       [[BitBoard; 64]; 64],
-//         // between_bb:    [[BitBoard; 64]; 64],
-//         // magics_rook:   [Magic; 64],
-//         // table_rook:    [BitBoard; 0x19000],
-//         // magics_bishop: [Magic; 64],
-//         // table_bishop:  [BitBoard; 0x1480],
-//         // pub piece_tables:  PcTables,
-//         // pub zobrist_tables: ZbTable,
-//         s.end()
-//     }
-// }
-
 /// Piece getters
 impl Tables {
     // pub fn get_rook(&self, Coord(x,y): Coord) -> &MoveSetRook {
@@ -220,7 +196,7 @@ impl Tables {
 
     }
 
-    pub(crate) fn _new(magics: bool) -> Self {
+    pub fn _new(magics: bool) -> Self {
         let rook_moves   = Self::gen_rooks();
         let bishop_moves = Self::gen_bishops();
 

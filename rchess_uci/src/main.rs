@@ -179,7 +179,8 @@ fn main() -> std::io::Result<()> {
                         let m = m.unwrap();
 
                         match m {
-                            Move::Promotion { new_piece, .. } | Move::PromotionCapture { new_piece, .. } => {
+                            (m@Move::Promotion { new_piece, .. },_)
+                                | (m@Move::PromotionCapture { new_piece, .. },_) => {
                                 let c = match new_piece {
                                     Queen  => 'q',
                                     Knight => 'n',
@@ -191,7 +192,7 @@ fn main() -> std::io::Result<()> {
                                 // let mm = format!("{:?}{:?}", m.sq_from(), m.sq_to(), c).to_ascii_lowercase();
                                 println!("bestmove {}", mm);
                             },
-                            _ => {
+                            (m,_) => {
                                 let mm = format!("{:?}{:?}", m.sq_from(), m.sq_to()).to_ascii_lowercase();
                                 println!("bestmove {}", mm);
                             },

@@ -134,7 +134,11 @@ fn main() {
     // }
     // eprintln!("k = {:?}", k);
 
-    // return;
+    let c0: Coord = "D4".into();
+    let sq0: u8 = c0.into();
+
+
+    return;
 
     let mut args: Vec<String> = std::env::args().collect();
     match args.get(1) {
@@ -345,12 +349,17 @@ fn main7() {
     // let fen = &games(18); // a8h8, #27, Tablebase
     // let fen = &games(21); // d2h6
 
+    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
+    let fen = "r3k2r/p1Ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"; // Pos 2 + pawn prom
+    // let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
+
     eprintln!("fen = {:?}", fen);
 
     // let ts = Tables::new();
     // ts.write_to_file("tables.bin").unwrap();
     // let ts = Tables::read_from_file("tables.bin").unwrap();
-    let ts = &_TABLES;
+    // let ts = &_TABLES;
+    let ts = Tables::_new(false);
 
     let mut g = Game::from_fen(&ts, fen).unwrap();
 
@@ -374,6 +383,17 @@ fn main7() {
     //     eprintln!("{:>15} = {:?}", s, m);
     // }
 
+    // let col = White;
+    // let b = g.search_sliding(&ts, Bishop, col);
+    // let r = g.search_sliding(&ts, Rook, col);
+    // let q = g.search_sliding(&ts, Queen, col);
+
+    // let moves = g.search_sliding(&ts, None).get_moves_unsafe();
+
+    // eprintln!("b.len() = {:?}", b.len());
+    // eprintln!("r.len() = {:?}", r.len());
+    // eprintln!("q.len() = {:?}", q.len());
+
     // return;
 
     #[allow(unreachable_code)]
@@ -388,15 +408,15 @@ fn main7() {
             println!("g = {:?}", g);
 
             // let n = 25;
-            let n = 35;
+            // let n = 35;
             // let n = 10;
-            // let n = 5;
+            let n = 5;
 
             ex.max_depth = n;
 
             ex.timer.settings = TimeSettings::new_f64(
                 0.0,
-                1.5,
+                2.5,
             );
 
             let ph = g.game_phase();
@@ -429,9 +449,9 @@ fn main7() {
             // stats0.print_node_types(&tt_r);
 
             // eprintln!("qt nodes = {:?}", stats0.qt_nodes);
-            // eprintln!("null prunes = {:?}", stats0.null_prunes);
+            eprintln!("null prunes = {:?}", stats0.null_prunes);
             // eprintln!("window fails = {:?}", stats0.window_fails);
-            // eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
+            eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
 
             let bcs = stats0.beta_cut_first;
             eprintln!("stats0.beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
@@ -880,18 +900,6 @@ fn main4(depth: Option<u64>) {
     // let t1 = t0.elapsed().as_secs_f64();
     // println!("perft done in {} seconds.", t1);
 
-    for d in 1..n+1 {
-        let (tot,_) = g.perft(&ts, d);
-        println!("depth {:>2}: {:>12} leaves", d, tot);
-    }
-
-    // for (d, n) in vs.iter().enumerate() {
-    //     if *n > 0 {
-    //         println!("depth {:>2}: {:>12} leaves", d, n);
-    //     }
-    // }
-    // println!("total:    {:>12} leaves", tot);
-
     fn _print(x: i32) -> String {
         if x.abs() > 1_000_000 {
             format!("{:.1}M", x as f64 / 1_000_000.)
@@ -901,6 +909,20 @@ fn main4(depth: Option<u64>) {
             format!("{}", x)
         }
     }
+
+    for d in 1..n+1 {
+        let t0 = std::time::Instant::now();
+        let (tot,_) = g.perft(&ts, d);
+        let t1 = t0.elapsed().as_secs_f64();
+        println!("depth {:>2}: {:>12} leaves, {} leaves/sec", d, tot, _print((tot as f64 / t1) as i32));
+    }
+
+    // for (d, n) in vs.iter().enumerate() {
+    //     if *n > 0 {
+    //         println!("depth {:>2}: {:>12} leaves", d, n);
+    //     }
+    // }
+    // println!("total:    {:>12} leaves", tot);
 
     // println!("speed: {} leaves / second", _print((tot as f64 / t1) as i32));
 

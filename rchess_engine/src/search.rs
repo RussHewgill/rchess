@@ -104,26 +104,31 @@ impl Game {
 
     pub fn _search_all(&self, ts: &Tables, col: Color) -> Outcome {
 
-        let k = self.search_king(&ts, col);
-        let b = self.search_sliding(&ts, Bishop, col);
-        let r = self.search_sliding(&ts, Rook, col);
-        let q = self.search_sliding(&ts, Queen, col);
-        // let b = self.search_sliding_iter(&ts, Bishop, col).collect();
-        // let r = self.search_sliding_iter(&ts, Rook, col).collect();
-        // let q = self.search_sliding_iter(&ts, Queen, col).collect();
+        // let k = self.search_king(&ts, col);
+        // let b = self.search_sliding(&ts, Bishop, col);
+        // let r = self.search_sliding(&ts, Rook, col);
+        // let q = self.search_sliding(&ts, Queen, col);
+        // // let b = self.search_sliding_iter(&ts, Bishop, col).collect();
+        // // let r = self.search_sliding_iter(&ts, Rook, col).collect();
+        // // let q = self.search_sliding_iter(&ts, Queen, col).collect();
 
-        // let mut k = self.search_king(&ts, col);
+        let mut k = self.search_king(&ts, col);
         // k.extend(self.search_sliding_iter(&ts, Bishop, col));
         // k.extend(self.search_sliding_iter(&ts, Rook, col));
         // k.extend(self.search_sliding_iter(&ts, Queen, col));
+        let b = self.search_sliding_iter(&ts, Bishop, col);
+        let r = self.search_sliding_iter(&ts, Rook, col);
+        let q = self.search_sliding_iter(&ts, Queen, col);
+
+        k.extend(b.chain(r).chain(q));
 
         let n = self.search_knights(&ts, col);
         let p = self.search_pawns(&ts, col);
         let pp = self._search_promotions(&ts, None, col);
         let cs = self._search_castles(&ts);
 
-        let out = vec![k,b,r,q,n,p,pp,cs].concat();
-        // let out = vec![k,n,p,pp,cs].concat();
+        // let out = vec![k,b,r,q,n,p,pp,cs].concat();
+        let out = vec![k,n,p,pp,cs].concat();
 
         // // XXX: par == way slower ?
         // let out: Vec<Move> = out.into_par_iter().filter(|m| {
@@ -568,36 +573,6 @@ impl Game {
 
 /// Sliding
 impl Game {
-
-    pub fn search_sliding_iter<'a>(
-        &'a self,
-        ts:           &'a Tables,
-        pc:           Piece,
-        col:          Color,
-    ) -> impl Iterator<Item = Move> + 'a {
-        let pieces = self.get(pc, col);
-
-        let moves = pieces.into_iter().flat_map(move |sq| {
-            let ms = self._search_sliding_single(&ts, pc, sq.into(), col, None);
-            let sq2: Coord = sq.into();
-
-            // let attacks = moves & self.get_color(!col);
-            // let quiets  = moves & self.all_empty();
-            let attacks = self.get_color(!col);
-
-            ms.into_iter().map(move |to| {
-                if attacks.is_one_at(to) {
-                    let to = to.into();
-                    let (_,victim) = self.get_at(to).unwrap();
-                    Move::Capture { from: sq2, to: to, pc, victim }
-                } else {
-                    Move::Quiet { from: sq2, to: to.into(), pc }
-                }
-            })
-
-        });
-        moves
-    }
 
     pub fn search_sliding(&self, ts: &Tables, pc: Piece, col: Color) -> Vec<Move> {
         let mut out = vec![];

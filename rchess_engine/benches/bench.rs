@@ -51,20 +51,59 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
     group.warm_up_time(Duration::from_secs_f64(1.0));
 
-    // // group.sample_size(50);
-    // // group.measurement_time(Duration::from_secs_f64(5.));
+    // group.sample_size(50);
+    group.measurement_time(Duration::from_secs_f64(5.));
+
     // group.bench_function("search_all", |b| b.iter(|| {
     //     for g in games.iter() {
     //         let mvs = g.search_all(&ts, black_box(None));
     //     }
     // }));
 
-    group.sample_size(10);
-    group.measurement_time(std::time::Duration::from_secs_f64(5.));
-
-    group.bench_function("rank moves lazy_smp", |b| b.iter(|| {
-        let (m,stats,_) = ex.lazy_smp(&ts, false, true);
+    group.bench_function("_search_pawns", |b| b.iter(|| {
+        for g in games.iter() {
+            let col = White;
+            let pawns = g.search_pawns(&ts, black_box(col));
+            let n = pawns.len();
+        }
     }));
+    group.bench_function("_search_pawns_iter", |b| b.iter(|| {
+        for g in games.iter() {
+            let col = White;
+            let pawns = g.search_pawns_iter(&ts, black_box(col));
+            let n = pawns.collect::<Vec<_>>().len();
+        }
+    }));
+
+    // group.bench_function("search_sliding 1", |b| b.iter(|| {
+    //     for g in games.iter() {
+    //         let col = White;
+    //         let b = g.search_sliding(&ts, black_box(Bishop), black_box(col));
+    //         let r = g.search_sliding(&ts, black_box(Rook), black_box(col));
+    //         let q = g.search_sliding(&ts, black_box(Queen), black_box(col));
+    //         let n = b.len() + r.len() + q.len();
+    //     }
+    // }));
+    // group.bench_function("search_sliding 2", |b| b.iter(|| {
+    //     for g in games.iter() {
+    //         let col = White;
+    //         let b = g.search_sliding_iter(&ts, black_box(Bishop), black_box(col));
+    //         let r = g.search_sliding_iter(&ts, black_box(Rook), black_box(col));
+    //         let q = g.search_sliding_iter(&ts, black_box(Queen), black_box(col));
+    //         // let n = b.len() + r.len() + q.len();
+    //         let b = b.collect::<Vec<_>>();
+    //         let r = r.collect::<Vec<_>>();
+    //         let q = q.collect::<Vec<_>>();
+    //     }
+    // }));
+
+
+    // group.sample_size(10);
+    // group.measurement_time(std::time::Duration::from_secs_f64(5.));
+
+    // group.bench_function("rank moves lazy_smp", |b| b.iter(|| {
+    //     let (m,stats,_) = ex.lazy_smp(&ts, false, true);
+    // }));
 
     // group.bench_function("rank moves iter", |b| b.iter(|| {
     //     // let (m,stats) = ex.explore(&ts, None);

@@ -154,6 +154,7 @@ impl Explorer {
         order_mvv_lva(&mut moves);
 
         /// History Heuristic ordering
+        #[cfg(feature = "history_heuristic")]
         order_moves_history(&history[g.state.side_to_move], &mut moves);
 
         /// Make move, Lookup games in Trans Table
