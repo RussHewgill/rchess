@@ -382,7 +382,7 @@ impl Explorer {
         let (alpha,beta) = (i32::MIN,i32::MAX);
         let mut ss = SearchStats::default();
 
-        let mut history = [[0; 64]; 64];
+        let mut history = [[[0; 64]; 64]; 2];
 
         for (mv,g2) in gs.iter() {
 

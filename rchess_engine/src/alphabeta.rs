@@ -58,7 +58,7 @@ impl Explorer {
         mut stats:          &mut SearchStats,
         // mv0:                Move,
         prev_mvs:           VecDeque<(Zobrist,Move)>,
-        mut history:        &mut [[Score; 64]; 64],
+        mut history:        &mut [[[Score; 64]; 64]; 2],
         tt_r:               &TTRead,
         tt_w:               TTWrite,
     // ) -> Option<(Vec<Move>, Score)> {
@@ -152,6 +152,9 @@ impl Explorer {
 
         /// MVV LVA move ordering
         order_mvv_lva(&mut moves);
+
+        /// History Heuristic ordering
+        order_moves_history(&history[g.state.side_to_move], &mut moves);
 
         /// Make move, Lookup games in Trans Table
         // #[cfg(feature = "par")]
@@ -297,6 +300,10 @@ impl Explorer {
             );
             if b {
                 node_type = Node::Cut;
+
+                if !mv.filter_all_captures() {
+                    history[g.state.side_to_move][mv.sq_from()][mv.sq_to()] += k as Score * k as Score;
+                }
 
                 if moves_searched == 0 {
                     stats.beta_cut_first.0 += 1;

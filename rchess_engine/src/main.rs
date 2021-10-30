@@ -296,7 +296,7 @@ fn main7() {
 
     // let fen = "8/1p4pk/6rp/3Pp3/4Qn2/2P2qP1/1B3P1P/4R1K1 b - - 1 1"; // f4h3, #2
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
-    let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
+    // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
     // let fen = "8/p6k/1p5p/4Bpp1/8/1P3q1P/P1Q2P1K/3r4 w - - 0 2"; // c2c7, #5;
     // let fen = "1rq2k1r/p1p2p2/2B2P2/3RP2p/1b3N1p/2N4P/PPP1QPP1/2K4R w - - 1 23"; // e5e6, #9
 
@@ -304,9 +304,9 @@ fn main7() {
     // let fen = "8/8/1K4k1/8/7Q/8/8/8 w - - 7 16"; // #6
 
     // let fen = "1k3r1r/p1p3p1/1pn3q1/3R1n2/3P4/P1B1p2p/P1PN1PPP/4QK1R w - - 0 22"; // #-10 if d2b3
-    let fen = "r1bqk1nr/ppppbppp/2n5/8/4Q3/N7/PPP1PPPP/R1B1KBNR w KQkq - 3 5"; // ??
+    // let fen = "r1bqk1nr/ppppbppp/2n5/8/4Q3/N7/PPP1PPPP/R1B1KBNR w KQkq - 3 5"; // ??
 
-    // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
     // let fen = "7k/1n1n4/2P5/8/5b2/8/7P/7K b - - 0 1"; // Horizon
     // let fen = "7k/8/8/r7/r7/8/p1RR4/7K w - - 0 1"; // Horizon
@@ -396,7 +396,7 @@ fn main7() {
 
             ex.timer.settings = TimeSettings::new_f64(
                 0.0,
-                2.5,
+                1.5,
             );
 
             let ph = g.game_phase();
@@ -414,8 +414,8 @@ fn main7() {
             // println!("m #{} = {:?}", q, mv0);
             println!("score, mv: {} = {:?}", score, mv0);
             // println!("Correct move: Cp Q b6f2");
-            // println!("Correct move: Q cap d6b4");
-            // println!();
+            println!("Correct move: Q cap d6b4");
+            println!();
 
             // let mm = Move::Quiet { from: "E1".into(), to: "F1".into(), pc: Rook };
             // assert_eq!(*mv0, mm);
@@ -433,10 +433,8 @@ fn main7() {
             // eprintln!("window fails = {:?}", stats0.window_fails);
             // eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
 
-            // {
-            //     let (a,b) = stats0.beta_cut_first;
-            //     eprintln!("stats0.beta_cut_first = {:.3?}", a as f64 / (a + b) as f64);
-            // }
+            let bcs = stats0.beta_cut_first;
+            eprintln!("stats0.beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
 
             // let mut k = 0;
             // for (zb,sis) in tt_r.read().unwrap().iter() {
@@ -531,7 +529,7 @@ fn main3(num: Option<u64>, send_url: bool) {
         games.truncate(num as usize);
     }
 
-    let n = 25;
+    let n = 35;
 
     // let ts = Tables::new();
     let ts = Tables::read_from_file("tables.bin").unwrap();
@@ -573,8 +571,8 @@ fn main3(num: Option<u64>, send_url: bool) {
             total.1 += 1;
             let t = t0.elapsed().as_secs_f64() / total.1 as f64;
             println!(
-                "#{:>2}: Wrong, Correct: {:>5}, engine: {:>5}({:?}), ({}/{}), avg: {:.2}",
-                i, m[0], mv, m0.unwrap(), total.0, total.1, t);
+                "#{:>2}: Wrong, Correct: {:>5}, engine: {:>5} ({:?}), ({}/{}), avg: {:.2}",
+                i, m[0], mv, m0.unwrap().0, total.0, total.1, t);
 
             if send_url {
                 g.open_with_lichess().unwrap();

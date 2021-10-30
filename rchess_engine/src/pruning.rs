@@ -23,7 +23,7 @@ impl Explorer {
         mut stats:          &mut SearchStats,
         // prev_mvs:           Vec<Move>,
         prev_mvs:           VecDeque<(Zobrist,Move)>,
-        mut history:        &mut [[Score; 64]; 64],
+        mut history:        &mut [[[Score; 64]; 64]; 2],
         tt_r:               &TTRead,
         tt_w:               TTWrite,
     ) -> bool {

@@ -3,10 +3,11 @@ use crate::types::*;
 use crate::tables::*;
 use crate::trans_table::*;
 use crate::searchstats::*;
+use crate::evaluate::*;
 
 use rayon::prelude::*;
 
-
+use std::cmp::Ordering;
 
 // /// Sort Order:
 // ///     TT Lookups sorted by score,
@@ -51,10 +52,24 @@ pub fn order_moves_piece_tables(ts: &Tables, mut xs: &mut [Move]) {
     unimplemented!()
 }
 
+pub fn order_moves_history(history: &[[Score; 64]; 64], mut mvs: &mut [Move]) {
+
+    mvs.par_sort_by(|a,b| {
+        if !a.filter_all_captures() && !b.filter_all_captures() {
+            let a0 = history[a.sq_from()][a.sq_to()];
+            let b0 = history[b.sq_from()][b.sq_to()];
+
+            a0.cmp(&b0)
+            // unimplemented!()
+        } else {
+            Ordering::Equal
+        }
+    });
+}
+
 pub fn order_mvv_lva(mut xs: &mut [Move]) {
 // pub fn order_mvv_lva(mut xs: &mut [(&str,Move)]) {
     use Move::*;
-    use std::cmp::Ordering;
     xs.par_sort_unstable_by(|a,b| {
         _order_mvv_lva(a, b)
         // _order_mvv_lva(&a.1, &b.1)
@@ -62,7 +77,6 @@ pub fn order_mvv_lva(mut xs: &mut [Move]) {
 }
 
 pub fn _order_mvv_lva(a: &Move, b: &Move) -> std::cmp::Ordering {
-    use std::cmp::Ordering;
 
     // match (a.victim(), b.piece()) {
     //     (Some(victim), Some(attacker)) => {
