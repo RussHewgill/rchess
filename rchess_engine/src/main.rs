@@ -107,6 +107,25 @@ fn main() {
     // // let s = u16::MAX;
     // // eprintln!("s = {:#8x}", s);
 
+    // let ts = &_TABLES;
+    // let mut games = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
+    // let mut games: Vec<(Game,String)> = games.into_iter().map(|(fen,_)| {
+    //     (Game::from_fen(&ts, &fen).unwrap(), fen)
+    // }).collect();
+    // let col = White;
+
+    // let t0 = std::time::Instant::now();
+    // for k in 0..4000 {
+    // // for k in 0..1 {
+    //     let mut n0 = 0;
+    //     for (i,(g,fen)) in games.iter().enumerate() {
+    //         // eprintln!("i = {:?}, fen = {}", i, fen);
+    //         let moves = g.search_all(&ts, None).get_moves_unsafe();
+    //         n0 += moves.len();
+    //     }
+    // }
+    // println!("Finished in {:.3} seconds.", t0.elapsed().as_secs_f64());
+
     // for k in 0..1000 {
     //     let mut n0 = 0;
     //     for g in games.iter() {
@@ -298,7 +317,9 @@ fn main7() {
     let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
     // let fen = "7k/1n1n4/2P5/8/5b2/8/7P/7K b - - 0 1"; // Horizon
-    // let fen = "7k/8/8/r7/r7/8/p1RR4/7K w - - 0 1"; // Horizon
+    let fen = "7k/8/8/r7/r7/8/p1RR4/7K w - - 0 1"; // Horizon
+
+    // let fen = "r1bqkb1r/1pp2ppp/p1n1pn2/3p4/3P1B2/4PQ2/PPPN1PPP/R3KBNR w KQkq - 4 6"; // ??
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
     // let fen = "r3k2r/p1Ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"; // Pos 2 + pawn prom
@@ -315,10 +336,6 @@ fn main7() {
 
     // let fen = "2q2rk1/p4pp1/5n1p/8/8/Q4N1P/P4PP1/5RK1 b - - 0 1";; // Null move cutoff
     // let fen = "5rk1/p4pp1/5n1p/8/8/5N1P/P4PP1/2Q2RK1 b - - 0 2";; // Null move cutoff
-
-    // let fen = "r3k2r/p1ppqpb1/1n2pnp1/3PN3/1p2P3/2N2Q1p/PPPBbPPP/R4K1R w kq - 0 2"; // ??
-    let fen = "r3k2Q/p1ppqpb1/1n2pnp1/3PN3/1p2P3/2N4p/PPPBbPPP/R3K2R b KQq - 0 2"; // Castle in check ??
-    // let fen = "r3k2r/p1ppqpb1/1n2pnp1/3PN3/1p2P3/2N2Q1p/PPPBbPPP/R2K3R w kq - 0 2";
 
     fn games(i: usize) -> String {
         let mut games = read_epd("testpositions/WAC.epd").unwrap();
@@ -372,47 +389,34 @@ fn main7() {
     //     eprintln!("{:>15} = {:?}", s, m);
     // }
 
-    // let ts = &_TABLES;
-    // let mut games = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
-    // let mut games: Vec<(Game,String)> = games.into_iter().map(|(fen,_)| {
-    //     (Game::from_fen(&ts, &fen).unwrap(), fen)
-    // }).collect();
-    // let col = White;
+    // let ms = vec![
+    //     Move::Capture { from: "C2".into(), to: "A2".into(), pc: Rook, victim: Pawn },
+    //     Move::Quiet { from: "C2".into(), to: "C8".into(), pc: Rook },
+    // ];
+    // let g2 = g.make_move_unchecked(&ts, ms[0]).unwrap();
+    // let g3 = g.make_move_unchecked(&ts, ms[1]).unwrap();
+    // let e0 = g2.evaluate(&ts).sum();
+    // let e1 = g3.evaluate(&ts).sum();
+    // eprintln!("e0 = {:?}", e0);
+    // eprintln!("e1 = {:?}", e1);
 
-    // let t0 = std::time::Instant::now();
-    // for k in 0..4000 {
-    // // for k in 0..1 {
-    //     let mut n0 = 0;
-    //     for (i,(g,fen)) in games.iter().enumerate() {
-    //         // eprintln!("i = {:?}, fen = {}", i, fen);
-    //         let moves = g.search_all(&ts, None).get_moves_unsafe();
-    //         n0 += moves.len();
-    //     }
-    // }
-    // println!("Finished in {:.3} seconds.", t0.elapsed().as_secs_f64());
+    // // let (alpha,beta) = (i32::MIN,i32::MAX);
+    // let (alpha,beta) = (-1000, 1000);
+    // let maximizing = true;
+    // let mut ss = SearchStats::default();
 
-    eprintln!("g = {:?}", g);
+    // let m0 = Move::Capture { from: "C2".into(), to: "A2".into(), pc: Rook, victim: Pawn };
+    // let m1 = Move::Quiet { from: "C2".into(), to: "C8".into(), pc: Rook };
 
-    // let moves = g.search_all(&ts, None).get_moves_unsafe();
-    // let side = !White;
+    // let g2 = g.make_move_unchecked(&ts, m1).unwrap();
+    // let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);
+    // // let ms = g2.search_all(&ts, None).get_moves_unsafe();
 
-    // let b = g.state.checkers;
-    // let b = g.find_checkers(&ts, !White);
+    // let score = ex2.quiescence(
+    //     &ts, &g2, ms, 0, -alpha, -beta, maximizing, &mut ss);
+    // eprintln!("score = {:?}", score);
 
-    // let b = g.find_attackers_to(&ts, "F1".into(), !White);
-
-    // let b = g._search_sliding_single(&ts, Bishop, "F1".into(), side, None);
-    // let b = g._search_sliding_single(&ts, Bishop, "E2".into(), !side, None);
-
-    // eprintln!("b = {:?}", b);
-
-    let moves = g.search_king(&ts, Black);
-
-    for m in moves.iter() {
-        eprintln!("m = {:?}", m);
-    }
-
-    return;
+    // return;
 
     #[allow(unreachable_code)]
     if true {
@@ -427,13 +431,13 @@ fn main7() {
         // let n = 25;
         // let n = 35;
         // let n = 10;
-        let n = 5;
+        let n = 2;
 
         ex.max_depth = n;
 
         ex.timer.settings = TimeSettings::new_f64(
             0.0,
-            2.0,
+            5.0,
         );
 
         let ph = g.game_phase();
@@ -441,11 +445,11 @@ fn main7() {
 
         let t0 = std::time::Instant::now();
         let (mvs,stats0,(tt_r,tt_w)) = ex.lazy_smp(&ts, false, false);
-        let (mv0,mvs,score) = mvs.get(0).unwrap();
+        let (mv0,mvs0,score) = mvs.get(0).unwrap();
         // println!("m #{} = {:?}", q, mv0);
         println!("explore lazy_smp  (depth: {}) done in {:.3} seconds.",
                     stats0.max_depth, t0.elapsed().as_secs_f64());
-        stats0.print(t0.elapsed());
+        // stats0.print(t0.elapsed());
 
         println!();
         // println!("m #{} = {:?}", q, mv0);
@@ -457,22 +461,29 @@ fn main7() {
         // let mm = Move::Quiet { from: "E1".into(), to: "F1".into(), pc: Rook };
         // assert_eq!(*mv0, mm);
 
-        // for m in mvs.iter() {
+        // for m in mvs0.iter() {
         //     eprintln!("m = {:?}", m);
         // }
 
-        // stats0.print_ebf(false);
-        stats0.print_ebf(true);
+        stats0.print_ebf(false);
+        // stats0.print_ebf(true);
         // stats0.print_node_types(&tt_r);
 
         // eprintln!("null prunes = {:?}", stats0.null_prunes);
         // eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
 
-        // eprintln!("qt nodes = {:?}", stats0.qt_nodes);
+        eprintln!("qt nodes = {:?}", stats0.qt_nodes);
         // eprintln!("window fails = {:?}", stats0.window_fails);
 
-        let bcs = stats0.beta_cut_first;
-        eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
+        let mm = Move::Capture { from: "C2".into(), to: "A2".into(), pc: Rook, victim: Pawn };
+        assert!(mm != *mv0);
+
+        // let bcs = stats0.beta_cut_first;
+        // eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
+
+        // for (m,_,s) in mvs.iter() {
+        //     eprintln!("s,m {:>12} = {:?}", s, m);
+        // }
 
         // let mut k = 0;
         // for (zb,sis) in tt_r.read().unwrap().iter() {

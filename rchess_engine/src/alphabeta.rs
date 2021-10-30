@@ -118,12 +118,14 @@ impl Explorer {
 
         if depth == 0 {
 
-            let score = g.evaluate(&ts).sum();
+            // let score = g.evaluate(&ts).sum();
 
-            // let mv0 = prev_mvs.back().unwrap().1;
-            // let score = self.quiescence(
-            //     ts, g, moves, k, alpha, beta, !maximizing, &mut stats, mv0,
-            // );
+            let mv0 = prev_mvs.back().unwrap().1;
+            let score = self.quiescence(
+                // ts, g, moves, k, alpha, beta, !maximizing, &mut stats, mv0,
+                // ts, g, moves, k, alpha, beta, !maximizing, &mut stats,
+                ts, g, moves, k, -alpha, -beta, !maximizing, &mut stats,
+            );
 
             if !tt_r.contains_key(&g.zobrist) {
                 stats.leaves += 1;

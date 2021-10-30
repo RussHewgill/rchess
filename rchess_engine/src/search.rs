@@ -501,14 +501,7 @@ impl Game {
         let moves_p = ts.get_pawn(c0).get_capture(!col);
         if (*moves_p & self.get(Pawn, col)).is_not_empty() { return true; }
 
-        let bq = self.get(Queen, col);
-
-        // let moves_b = ts.get_bishop(c0);
-        // let moves_b = self._search_sliding(Some(c0), Bishop, &ts, col);
-        // let moves_r = self._search_sliding(Some(c0), Rook, &ts, col);
-
         let moves_n = ts.get_knight(c0);
-        // eprintln!("moves_n = {:?}", moves_n);
         if (*moves_n & self.get(Knight, col)).is_not_empty() { return true; }
 
         let occ = if king {
@@ -517,24 +510,15 @@ impl Game {
             self.all_occupied()
         };
 
-        // let moves_r = {
-        //     let (a,b,c,d) = self._search_sliding_single(&ts, c0, Rook, occ, &ts, !col);
-        //     a | b | c | d
-        // };
         let moves_r = self._search_sliding_single(&ts, Rook, c0, !col, Some(occ));
         if ((moves_r & self.get(Rook, col)).is_not_empty())
             | ((moves_r & self.get(Queen, col)).is_not_empty()) { return true; }
 
-        // let moves_b = {
-        //     let (a,b,c,d) = self._search_sliding_single(&ts, c0, Bishop, occ, &ts, !col);
-        //     a | b | c | d
-        // };
         let moves_b = self._search_sliding_single(&ts, Bishop, c0, !col, Some(occ));
         if ((moves_b & self.get(Bishop, col)).is_not_empty())
             | ((moves_b & self.get(Queen, col)).is_not_empty()) { return true; }
 
         false
-        // unimplemented!()
     }
 
     pub fn find_attackers_to(&self, ts: &Tables, c0: Coord, col: Color) -> BitBoard {

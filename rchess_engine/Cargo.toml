@@ -22,6 +22,8 @@ default = [
     "par",
     "one_thread",
 
+    # "positional_scoring",
+
     "null_pruning",
     "late_move_reduction",
     "history_heuristic",
@@ -29,6 +31,9 @@ default = [
 # default = []
 par = []
 one_thread = []
+
+positional_scoring = []
+
 null_pruning = []
 late_move_reduction = []
 history_heuristic = []

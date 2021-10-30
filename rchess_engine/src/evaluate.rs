@@ -104,9 +104,12 @@ impl Game {
                     .taper(phase);
                 out.set_piece_mat_mut(pc, col, mat);
 
-                let pos = self.score_positions(&ts, pc, col)
-                    .taper(phase);
-                out.set_piece_pos_mut(pc, col, pos);
+                #[cfg(feature = "positional_scoring")]
+                {
+                    let pos = self.score_positions(&ts, pc, col)
+                        .taper(phase);
+                    out.set_piece_pos_mut(pc, col, pos);
+                }
 
                 // eprintln!("scoring = {:?} {:?}: {:?}/{:?}", col, pc, m, pos);
             }

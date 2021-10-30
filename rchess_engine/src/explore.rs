@@ -736,7 +736,7 @@ impl Explorer {
             gs.sort_unstable_by(|a,b| {
                 let x = a.1.evaluate(&ts).sum();
                 let y = b.1.evaluate(&ts).sum();
-                x.cmp(&y)
+                x.cmp(&y).reverse()
             });
             let out = vec![(gs[0].0,vec![],gs[0].1.evaluate(&ts).sum())];
             (out, stats, (tt_r,tt_w))
@@ -764,19 +764,21 @@ impl Explorer {
         mut beta:       i32,
         maximizing:     bool,
         mut stats:      &mut SearchStats,
-        m0:             Move,
+        // m0:             Move,
     ) -> Score {
-        trace!("quiescence {}", k);
+        // trace!("quiescence {}", k);
+        // eprintln!("quiescence starting {}", k);
 
         stats.qt_nodes += 1;
         let stand_pat = g.evaluate(&ts).sum();
         // stats.leaves += 1;
-        return stand_pat; // correct
+        // return stand_pat; // correct
 
         if stand_pat >= beta {
             // debug!("quiescence beta cutoff: {}", k);
             // return score; // fail soft
-            trace!("Quiescence returning beta: {}", beta);
+            // trace!("Quiescence returning beta: {}", beta);
+            // eprintln!("Quiescence returning beta 0: {}", beta);
             return beta; // fail hard
         }
         // return stand_pat; // correct
@@ -794,67 +796,90 @@ impl Explorer {
         // // return stand_pat; // correct
 
         if alpha < stand_pat {
+            // eprintln!("Quiescence new alpha 0: {}", alpha);
             alpha = stand_pat;
         }
         // return stand_pat;
 
         let mut captures = ms.into_iter().filter(|m| m.filter_all_captures()).collect::<Vec<_>>();
 
-        // // TODO: sort reverse for max / min ?
-        // #[cfg(feature = "par")]
-        // // captures.par_sort_unstable();
-        // captures.par_sort();
-        // #[cfg(not(feature = "par"))]
-        // captures.sort();
-
-        // captures.reverse();
-
-        // if !maximizing {
-        //     captures.reverse();
-        // }
+        /// MVV LVA move ordering
+        order_mvv_lva(&mut captures);
 
         for mv in captures.into_iter() {
             if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
                 match g2.search_all(&ts, None) {
                     Outcome::Moves(ms2) => {
-                        // stats.nodes += 1;
 
-                        // let eval = -self.quiescence(
-                        //     &ts, &g2, ms2, k + 1, -alpha, -beta,
-                        //     !maximizing, &mut stats, mv);
+                        let score = -self.quiescence(
+                            &ts, &g, ms2, k + 1, -alpha, -beta, !maximizing, &mut stats);
 
-                        let score = self.quiescence(
-                            &ts, &g2, ms2, k + 1, alpha, beta,
-                            !maximizing, &mut stats, mv);
-
-                        if maximizing {
-                            if score > alpha {
-                                alpha = score;
-                            }
-                            if score >= beta {
-                                return beta;
-                            }
-                        } else {
-                            if score < beta {
-                                beta = score;
-                            }
-                            if score <= alpha {
-                                return alpha;
-                            }
+                        if score >= beta {
+                            // eprintln!("Quiescence returning beta 1: {}", beta);
+                            return beta;
                         }
-
+                        if score > alpha {
+                            // eprintln!("Quiescence new alpha 1: {}", alpha);
+                            alpha = score;
+                        }
                     },
                     Outcome::Checkmate(_) => {
-                        // panic!("checkmate in quiescent");
+                        panic!("checkmate in quiescent");
                     },
                     Outcome::Stalemate => {
-                        // panic!("stalemate in quiescent");
+                        panic!("stalemate in quiescent");
                     },
                 }
             }
         }
 
-        // debug!("quiescence return alpha: {}", k);
+
+        // let eval = -self.quiescence(
+        //     &ts, &g2, ms2, k + 1, -alpha, -beta,
+        //     !maximizing, &mut stats, mv);
+
+        // let mut val = if maximizing { i32::MIN } else { i32::MAX };
+        // for mv in captures.into_iter() {
+        //     if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
+        //         match g2.search_all(&ts, None) {
+        //             Outcome::Moves(ms2) => {
+        //                 // stats.nodes += 1;
+        //                 let score = self.quiescence(
+        //                     &ts, &g2, ms2, k + 1, alpha, beta,
+        //                     // !maximizing, &mut stats, mv);
+        //                     !maximizing, &mut stats);
+        //                 if maximizing {
+        //                     if score > alpha {
+        //                         eprintln!("Quiescence new alpha 1: {}", alpha);
+        //                         alpha = score;
+        //                     }
+        //                     if score >= beta {
+        //                         eprintln!("Quiescence returning beta 1: {}", beta);
+        //                         return beta;
+        //                     }
+        //                 } else {
+        //                     if score < beta {
+        //                         eprintln!("Quiescence new beta: {}", alpha);
+        //                         beta = score;
+        //                     }
+        //                     if score <= alpha {
+        //                         eprintln!("Quiescence returning alpha 0: {}", beta);
+        //                         return alpha;
+        //                     }
+        //                 }
+        //             },
+        //             Outcome::Checkmate(_) => {
+        //                 // panic!("checkmate in quiescent");
+        //             },
+        //             Outcome::Stalemate => {
+        //                 // panic!("stalemate in quiescent");
+        //             },
+        //         }
+        //     }
+        // }
+
+        // trace!("quiescence return alpha: {}", alpha);
+        eprintln!("quiescence return alpha: {}", alpha);
         alpha
     }
 
