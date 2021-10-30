@@ -52,8 +52,7 @@ pub fn crit_bench_1(c: &mut Criterion) {
     group.warm_up_time(Duration::from_secs_f64(1.0));
 
     // group.sample_size(50);
-    // group.measurement_time(Duration::from_secs_f64(5.));
-    group.measurement_time(Duration::from_secs_f64(20.));
+    group.measurement_time(Duration::from_secs_f64(5.));
 
     group.bench_function("search_all", |b| b.iter(|| {
         for g in games.iter() {

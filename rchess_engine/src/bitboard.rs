@@ -325,20 +325,20 @@ impl BitBoard {
     //     }
     // }
 
-    pub fn iter_bitscan<F>(self, mut f: F)
-    // where F: FnMut(u32) {
-    where F: FnMut(u8) {
-        self.into_iter().for_each(|p| { f(p); })
-    }
+    // pub fn iter_bitscan<F>(self, mut f: F)
+    // // where F: FnMut(u32) {
+    // where F: FnMut(u8) {
+    //     self.into_iter().for_each(|p| { f(p); })
+    // }
 
-    pub fn iter_bitscan_rev<F>(&self, mut f: F)
-    where F: FnMut(u8) {
-        let mut b = *self;
-        while b.0 != 0 {
-            let p = b.bitscan_rev_reset_mut();
-            f(p);
-        }
-    }
+    // pub fn iter_bitscan_rev<F>(&self, mut f: F)
+    // where F: FnMut(u8) {
+    //     let mut b = *self;
+    //     while b.0 != 0 {
+    //         let p = b.bitscan_rev_reset_mut();
+    //         f(p);
+    //     }
+    // }
 
     // pub fn iter_subsets(&self) -> impl Iterator<Item = BitBoard> {
     pub fn iter_subsets(&self) -> Vec<BitBoard> {

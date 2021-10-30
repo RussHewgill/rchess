@@ -848,9 +848,9 @@ impl Game {
         // if (self.all_occupied() & b0).is_empty() { return None; }
         let color = if (b0 & self.get_color(White)).is_not_empty() { White } else { Black };
         if (b0 & self.state.pawns).is_not_empty()   { return Some((color,Pawn)); }
-        else if (b0 & self.state.rooks).is_not_empty()   { return Some((color,Rook)); }
         else if (b0 & self.state.knights).is_not_empty() { return Some((color,Knight)); }
         else if (b0 & self.state.bishops).is_not_empty() { return Some((color,Bishop)); }
+        else if (b0 & self.state.rooks).is_not_empty()   { return Some((color,Rook)); }
         else if (b0 & self.state.queens).is_not_empty()  { return Some((color,Queen)); }
         else if (b0 & self.state.kings).is_not_empty()   { return Some((color,King)); }
         None

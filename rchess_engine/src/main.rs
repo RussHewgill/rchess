@@ -107,23 +107,6 @@ fn main() {
     // // let s = u16::MAX;
     // // eprintln!("s = {:#8x}", s);
 
-    let ts = &_TABLES;
-    let mut games = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
-    let mut games: Vec<Game> = games.into_iter().map(|(fen,_)| {
-        Game::from_fen(&ts, &fen).unwrap()
-    }).collect();
-    let col = White;
-
-    let t0 = std::time::Instant::now();
-    for k in 0..4000 {
-        let mut n0 = 0;
-        for g in games.iter() {
-            let moves = g.search_all(&ts, None).get_moves_unsafe();
-            n0 += moves.len();
-        }
-    }
-    println!("Finished in {:.3} seconds.", t0.elapsed().as_secs_f64());
-
     // for k in 0..1000 {
     //     let mut n0 = 0;
     //     for g in games.iter() {
@@ -140,7 +123,7 @@ fn main() {
     //     }
     // }
 
-    return;
+    // return;
 
     let mut args: Vec<String> = std::env::args().collect();
     match args.get(1) {
@@ -317,6 +300,10 @@ fn main7() {
     // let fen = "7k/1n1n4/2P5/8/5b2/8/7P/7K b - - 0 1"; // Horizon
     // let fen = "7k/8/8/r7/r7/8/p1RR4/7K w - - 0 1"; // Horizon
 
+    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
+    // let fen = "r3k2r/p1Ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"; // Pos 2 + pawn prom
+    // let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
+
     // /// https://www.chessprogramming.org/Caesar#HorizonEffect
     // let fen = "2kr4/3nR3/p2B1p2/1p1p1Bp1/1P1P3p/2P4P/P5PK/8 b - - 1 32"; // Horizon
 
@@ -328,6 +315,8 @@ fn main7() {
 
     // let fen = "2q2rk1/p4pp1/5n1p/8/8/Q4N1P/P4PP1/5RK1 b - - 0 1";; // Null move cutoff
     // let fen = "5rk1/p4pp1/5n1p/8/8/5N1P/P4PP1/2Q2RK1 b - - 0 2";; // Null move cutoff
+
+    let fen = "2r5/1r6/4pNpk/3pP1qp/8/2P1QP2/5PK1/R7 w - -"; // ??
 
     fn games(i: usize) -> String {
         let mut games = read_epd("testpositions/WAC.epd").unwrap();
@@ -350,10 +339,6 @@ fn main7() {
     // let fen = &games(17); // c4e5
     // let fen = &games(18); // a8h8, #27, Tablebase
     // let fen = &games(21); // d2h6
-
-    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
-    let fen = "r3k2r/p1Ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"; // Pos 2 + pawn prom
-    // let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
 
     eprintln!("fen = {:?}", fen);
 
@@ -385,7 +370,26 @@ fn main7() {
     //     eprintln!("{:>15} = {:?}", s, m);
     // }
 
-    // return;
+    let ts = &_TABLES;
+    let mut games = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
+    let mut games: Vec<(Game,String)> = games.into_iter().map(|(fen,_)| {
+        (Game::from_fen(&ts, &fen).unwrap(), fen)
+    }).collect();
+    let col = White;
+
+    let t0 = std::time::Instant::now();
+    for k in 0..4000 {
+    // for k in 0..1 {
+        let mut n0 = 0;
+        for (i,(g,fen)) in games.iter().enumerate() {
+            // eprintln!("i = {:?}, fen = {}", i, fen);
+            let moves = g.search_all(&ts, None).get_moves_unsafe();
+            n0 += moves.len();
+        }
+    }
+    println!("Finished in {:.3} seconds.", t0.elapsed().as_secs_f64());
+
+    return;
 
     #[allow(unreachable_code)]
     if true {

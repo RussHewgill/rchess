@@ -280,10 +280,10 @@ impl Tables {
     pub fn attacks_rook(&self, c0: Coord, occ: BitBoard) -> BitBoard {
         let sq: u32 = c0.into();
         let m = self.magics_rook[sq as usize];
-        if m.magic.0 == 0 {
-            trace!("Magics not initialized");
-            return BitBoard::empty();
-        }
+        // if m.magic.0 == 0 {
+        //     trace!("Magics not initialized");
+        //     return BitBoard::empty();
+        // }
         let mut occ = occ;
         let occ = (occ & m.mask).0;
         let occ = occ.overflowing_mul(m.magic.0).0;
@@ -294,10 +294,10 @@ impl Tables {
     pub fn attacks_bishop(&self, c0: Coord, occ: BitBoard) -> BitBoard {
         let sq: u32 = c0.into();
         let m = self.magics_bishop[sq as usize];
-        if m.magic.0 == 0 {
-            trace!("Magics not initialized");
-            return BitBoard::empty();
-        }
+        // if m.magic.0 == 0 {
+        //     trace!("Magics not initialized");
+        //     return BitBoard::empty();
+        // }
         let mut occ = occ;
         let occ = (occ & m.mask).0;
         let occ = occ.overflowing_mul(m.magic.0).0;

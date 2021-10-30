@@ -141,9 +141,9 @@ impl Game {
 
         out.extend(&self.search_king(&ts, col));
 
-        let mut x = 0;
+        // let mut x = 0;
         // self.state.checkers.iter_bitscan(|sq| x += 1);
-        self.state.checkers.into_iter().count();
+        let x = self.state.checkers.into_iter().count();
         if x == 1 {
             out.extend(&self.search_sliding(&ts, Bishop, col));
             out.extend(&self.search_sliding(&ts, Rook, col));
@@ -336,13 +336,23 @@ impl Game {
 
     pub fn move_is_legal(&self, ts: &Tables, m: Move) -> bool {
 
-        let col = if self.get_color(White).is_one_at(m.sq_to()) { White } else { Black };
+        if m.filter_en_passant() {
+            if self.state.en_passant.is_none() {
+                return false;
+            } else if let Some(g2) = self.clone()._make_move_unchecked(&ts, &m) {
+                let checks = g2.find_checkers(&ts, self.state.side_to_move);
+                return checks.is_empty();
+            } else {
+                return false;
+            }
+        }
+
+        let col = if self.get_color(White).is_one_at(m.sq_from()) { White } else { Black };
 
         match m.piece() {
             Some(King) => {
                 !self.find_attacks_by_side(&ts, m.sq_to(), !col, true)
             },
-            // Some(pc) => {
             _ => {
                 let pins = self.get_pins(col);
 
@@ -359,8 +369,8 @@ impl Game {
                     || (x && (BitBoard::single(m.sq_to())
                               & self.state.check_block_mask).is_not_empty())
             },
-            // None => panic!("move without piece?")
         }
+
     }
 
     pub fn move_is_legal2(&self, ts: &Tables, m: Move) -> bool {
@@ -372,15 +382,8 @@ impl Game {
             if self.state.en_passant.is_none() {
                 return false;
             } else if let Some(g2) = self.clone()._make_move_unchecked(&ts, &m) {
-            // } else if let Ok(g2) = self.clone().make_move_unchecked(&ts, &m) {
-
                 let checks = g2.find_checkers(&ts, self.state.side_to_move);
                 return checks.is_empty();
-
-                // let b = g2.state.checkers.unwrap();
-                // return b.is_empty();
-
-                // unimplemented!()
             } else {
                 return false;
             }
@@ -449,7 +452,8 @@ impl Game {
 
         // let (col0, _) = self.get_at(c0).unwrap();
 
-        snipers.iter_bitscan(|sq| {
+        // snipers.iter_bitscan(|sq| {
+        snipers.into_iter().for_each(|sq| {
             let b = ts.between(c0, sq.into()) & occ;
             // eprintln!("b = {:?}", b);
             // let cc: Coord = sq.into();
@@ -580,27 +584,7 @@ impl Game {
         let mut out = vec![];
         let pieces = self.get(pc, col);
 
-        pieces.iter_bitscan(|sq| {
-            let moves   = self._search_sliding_single(&ts, pc, sq.into(), col, None);
-            let attacks = moves & self.get_color(!col);
-            let quiets  = moves & self.all_empty();
-            attacks.into_iter().for_each(|sq2| {
-                let to = sq2.into();
-                let (_,victim) = self.get_at(to).unwrap();
-                // out.push(Move::Capture { from: sq.into(), to, pc, victim });
-                let m = Move::Capture { from: sq.into(), to, pc, victim };
-                if self.move_is_legal(&ts, m) { out.push(m); }
-                // out.push(m);
-            });
-            quiets.into_iter().for_each(|sq2| {
-                // out.push(Move::Quiet { from: sq.into(), to: sq2.into() });
-                let m = Move::Quiet { from: sq.into(), to: sq2.into(), pc };
-                if self.move_is_legal(&ts, m) { out.push(m); }
-                // out.push(m);
-            });
-        });
-
-        // for sq in pieces.into_iter() {
+        // pieces.iter_bitscan(|sq| {
         //     let moves   = self._search_sliding_single(&ts, pc, sq.into(), col, None);
         //     let attacks = moves & self.get_color(!col);
         //     let quiets  = moves & self.all_empty();
@@ -618,7 +602,27 @@ impl Game {
         //         if self.move_is_legal(&ts, m) { out.push(m); }
         //         // out.push(m);
         //     });
-        // }
+        // });
+
+        for sq in pieces.into_iter() {
+            let moves   = self._search_sliding_single(&ts, pc, sq.into(), col, None);
+            let attacks = moves & self.get_color(!col);
+            let quiets  = moves & self.all_empty();
+            attacks.into_iter().for_each(|sq2| {
+                let to = sq2.into();
+                let (_,victim) = self.get_at(to).unwrap();
+                // out.push(Move::Capture { from: sq.into(), to, pc, victim });
+                let m = Move::Capture { from: sq.into(), to, pc, victim };
+                if self.move_is_legal(&ts, m) { out.push(m); }
+                // out.push(m);
+            });
+            quiets.into_iter().for_each(|sq2| {
+                // out.push(Move::Quiet { from: sq.into(), to: sq2.into() });
+                let m = Move::Quiet { from: sq.into(), to: sq2.into(), pc };
+                if self.move_is_legal(&ts, m) { out.push(m); }
+                // out.push(m);
+            });
+        }
 
         out
     }
@@ -807,7 +811,8 @@ impl Game {
 
         let mut out = vec![];
 
-        quiets.iter_bitscan(|sq| {
+        // quiets.iter_bitscan(|sq| {
+        quiets.into_iter().for_each(|sq| {
             let go = if forbid_check {
                 // let mut threats = self.find_attacks_to(&ts, sq.into(), !col);
                 // threats.next().is_none()
@@ -820,7 +825,8 @@ impl Game {
             }
         });
 
-        captures.iter_bitscan(|sq| {
+        // captures.iter_bitscan(|sq| {
+        captures.into_iter().for_each(|sq| {
             let to = sq.into();
             let go = if forbid_check {
                 // let mut threats = self.find_attacks_to(&ts, sq.into(), !col);
@@ -860,19 +866,22 @@ impl Game {
             None     => self.get(Knight, col),
         };
 
-        ks.iter_bitscan(|sq| {
+        // ks.iter_bitscan(|sq| {
+        ks.into_iter().for_each(|sq| {
             let ms = ts.get_knight(sq);
 
             let quiets   = *ms & !oc;
             let captures = *ms & self.get_color(!col);
 
-            quiets.iter_bitscan(|t| {
+            // quiets.iter_bitscan(|t| {
+            quiets.into_iter().for_each(|t| {
                 // out.push(Move::Quiet { from: sq.into(), to: t.into()});
                 let m = Move::Quiet { from: sq.into(), to: t.into(), pc: Knight };
                 if self.move_is_legal(&ts, m) { out.push(m); }
             });
 
-            captures.iter_bitscan(|t| {
+            // captures.iter_bitscan(|t| {
+            captures.into_iter().for_each(|t| {
                 let (_,victim) = self.get_at(t.into()).unwrap();
                 // out.push(Move::Capture { from: sq.into(), to: t.into(), pc: Knight, victim});
                 // out.push(Move::Capture { from: sq.into(), to: t.into()});
@@ -919,7 +928,8 @@ impl Game {
         // let b = doubles;
         // eprintln!("{:?}", b);
 
-        pushes.iter_bitscan(|t| {
+        // pushes.iter_bitscan(|t| {
+        pushes.into_iter().for_each(|t| {
             let t = t.into();
             if let Some(f) = (!dir).shift_coord(t) {
                 // out.push(Move::Quiet { from: f, to: t });
@@ -928,7 +938,8 @@ impl Game {
             }
         });
 
-        doubles.iter_bitscan(|t| {
+        // doubles.iter_bitscan(|t| {
+        doubles.into_iter().for_each(|t| {
             let f = BitBoard::single(t.into()).shift_mult(!dir, 2);
             // out.push(Move::PawnDouble { from: f.bitscan().into(), to: t.into() })
             let m = Move::PawnDouble { from: f.bitscan().into(), to: t.into() };
@@ -940,7 +951,8 @@ impl Game {
 
         // eprintln!("{:?}", ps);
 
-        ps.iter_bitscan(|p0| {
+        // ps.iter_bitscan(|p0| {
+        ps.into_iter().for_each(|p0| {
             let f  = BitBoard::index_bit(p0);
             let bb = BitBoard::empty().flip(f);
             let mut cs = (bb.shift_dir(dw) & self.get_color(!col))
@@ -958,7 +970,8 @@ impl Game {
         if let Some(ep) = self.state.en_passant {
             let attacks = ts.get_pawn(ep).get_capture(!col);
             let attacks = *attacks & ps;
-            attacks.iter_bitscan(|sq| {
+            // attacks.iter_bitscan(|sq| {
+            attacks.into_iter().for_each(|sq| {
                 let capture = if col == White { S.shift_coord(ep) } else { N.shift_coord(ep) };
                 let capture = capture
                     // .expect(&format!("en passant bug? ep: {:?}, capture: {:?}", ep, capture));
@@ -994,7 +1007,8 @@ impl Game {
         let pushes = ps.shift_dir(dir);
         let pushes = pushes & !(oc);
 
-        pushes.iter_bitscan(|t| {
+        // pushes.iter_bitscan(|t| {
+        pushes.into_iter().for_each(|t| {
             let t = t.into();
             if let Some(f) = (!dir).shift_coord(t) {
                 // out.push(Move::Quiet { from: f, to: t });
@@ -1026,7 +1040,8 @@ impl Game {
             }
         });
 
-        ps.iter_bitscan(|p0| {
+        // ps.iter_bitscan(|p0| {
+        ps.into_iter().for_each(|p0| {
             let f  = BitBoard::index_bit(p0);
             let bb = BitBoard::empty().flip(f);
             let mut cs = (bb.shift_dir(dw) & self.get_color(!col))
