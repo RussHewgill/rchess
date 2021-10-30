@@ -153,9 +153,9 @@ impl Game {
             out.extend(&self._search_promotions(&ts, None, col));
         }
 
-        let out: Vec<Move> = out.into_iter().filter(|m| {
-            self.move_is_legal(&ts, *m)
-        }).collect();
+        // let out: Vec<Move> = out.into_iter().filter(|m| {
+        //     self.move_is_legal(&ts, *m)
+        // }).collect();
 
         if out.is_empty() {
             Outcome::Checkmate(!self.state.side_to_move)
@@ -816,12 +816,14 @@ impl Game {
             let go = if forbid_check {
                 // let mut threats = self.find_attacks_to(&ts, sq.into(), !col);
                 // threats.next().is_none()
-                !self.find_attacks_by_side(&ts, sq.into(), !col, false)
+                !self.find_attacks_by_side(&ts, sq.into(), !col, true)
             } else {
                 true
             };
             if go {
-                out.push(Move::Quiet { from: p0.into(), to: sq.into(), pc: King });
+                let m = Move::Quiet { from: p0.into(), to: sq.into(), pc: King };
+                // if self.move_is_legal(&ts, m) { out.push(m); }
+                out.push(m);
             }
         });
 
@@ -831,13 +833,16 @@ impl Game {
             let go = if forbid_check {
                 // let mut threats = self.find_attacks_to(&ts, sq.into(), !col);
                 // threats.next().is_none()
-                !self.find_attacks_by_side(&ts, to, !col, false)
+                !self.find_attacks_by_side(&ts, to, !col, true)
             } else {
                 true
             };
             if go {
                 let (_,victim) = self.get_at(to).unwrap();
-                out.push(Move::Capture { from: p0.into(), to, pc: King, victim });
+                let m = Move::Capture { from: p0.into(), to, pc: King, victim };
+                // if self.move_is_legal(&ts, m) { out.push(m); }
+                out.push(m);
+                // out.push(Move::Capture { from: p0.into(), to, pc: King, victim });
                 // out.push(Move::Capture { from: p0.into(), to});
             }
         });

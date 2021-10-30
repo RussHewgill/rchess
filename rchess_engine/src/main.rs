@@ -316,7 +316,9 @@ fn main7() {
     // let fen = "2q2rk1/p4pp1/5n1p/8/8/Q4N1P/P4PP1/5RK1 b - - 0 1";; // Null move cutoff
     // let fen = "5rk1/p4pp1/5n1p/8/8/5N1P/P4PP1/2Q2RK1 b - - 0 2";; // Null move cutoff
 
-    let fen = "2r5/1r6/4pNpk/3pP1qp/8/2P1QP2/5PK1/R7 w - -"; // ??
+    // let fen = "r3k2r/p1ppqpb1/1n2pnp1/3PN3/1p2P3/2N2Q1p/PPPBbPPP/R4K1R w kq - 0 2"; // ??
+    let fen = "r3k2Q/p1ppqpb1/1n2pnp1/3PN3/1p2P3/2N4p/PPPBbPPP/R3K2R b KQq - 0 2"; // Castle in check ??
+    // let fen = "r3k2r/p1ppqpb1/1n2pnp1/3PN3/1p2P3/2N2Q1p/PPPBbPPP/R2K3R w kq - 0 2";
 
     fn games(i: usize) -> String {
         let mut games = read_epd("testpositions/WAC.epd").unwrap();
@@ -345,8 +347,8 @@ fn main7() {
     // let ts = Tables::new();
     // ts.write_to_file("tables.bin").unwrap();
     // let ts = Tables::read_from_file("tables.bin").unwrap();
-    // let ts = &_TABLES;
-    let ts = Tables::_new(false);
+    let ts = &_TABLES;
+    // let ts = Tables::_new(false);
 
     let mut g = Game::from_fen(&ts, fen).unwrap();
 
@@ -370,24 +372,45 @@ fn main7() {
     //     eprintln!("{:>15} = {:?}", s, m);
     // }
 
-    let ts = &_TABLES;
-    let mut games = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
-    let mut games: Vec<(Game,String)> = games.into_iter().map(|(fen,_)| {
-        (Game::from_fen(&ts, &fen).unwrap(), fen)
-    }).collect();
-    let col = White;
+    // let ts = &_TABLES;
+    // let mut games = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
+    // let mut games: Vec<(Game,String)> = games.into_iter().map(|(fen,_)| {
+    //     (Game::from_fen(&ts, &fen).unwrap(), fen)
+    // }).collect();
+    // let col = White;
 
-    let t0 = std::time::Instant::now();
-    for k in 0..4000 {
-    // for k in 0..1 {
-        let mut n0 = 0;
-        for (i,(g,fen)) in games.iter().enumerate() {
-            // eprintln!("i = {:?}, fen = {}", i, fen);
-            let moves = g.search_all(&ts, None).get_moves_unsafe();
-            n0 += moves.len();
-        }
+    // let t0 = std::time::Instant::now();
+    // for k in 0..4000 {
+    // // for k in 0..1 {
+    //     let mut n0 = 0;
+    //     for (i,(g,fen)) in games.iter().enumerate() {
+    //         // eprintln!("i = {:?}, fen = {}", i, fen);
+    //         let moves = g.search_all(&ts, None).get_moves_unsafe();
+    //         n0 += moves.len();
+    //     }
+    // }
+    // println!("Finished in {:.3} seconds.", t0.elapsed().as_secs_f64());
+
+    eprintln!("g = {:?}", g);
+
+    // let moves = g.search_all(&ts, None).get_moves_unsafe();
+    // let side = !White;
+
+    // let b = g.state.checkers;
+    // let b = g.find_checkers(&ts, !White);
+
+    // let b = g.find_attackers_to(&ts, "F1".into(), !White);
+
+    // let b = g._search_sliding_single(&ts, Bishop, "F1".into(), side, None);
+    // let b = g._search_sliding_single(&ts, Bishop, "E2".into(), !side, None);
+
+    // eprintln!("b = {:?}", b);
+
+    let moves = g.search_king(&ts, Black);
+
+    for m in moves.iter() {
+        eprintln!("m = {:?}", m);
     }
-    println!("Finished in {:.3} seconds.", t0.elapsed().as_secs_f64());
 
     return;
 
@@ -397,81 +420,80 @@ fn main7() {
         // let k = 4;
         let k = 1;
         let mut t: std::time::Duration = std::time::Duration::from_secs(0);
-        for q in 0..k {
-            let t0 = std::time::Instant::now();
+        let t0 = std::time::Instant::now();
 
-            println!("g = {:?}", g);
+        println!("g = {:?}", g);
 
-            // let n = 25;
-            // let n = 35;
-            // let n = 10;
-            let n = 5;
+        // let n = 25;
+        // let n = 35;
+        // let n = 10;
+        let n = 5;
 
-            ex.max_depth = n;
+        ex.max_depth = n;
 
-            ex.timer.settings = TimeSettings::new_f64(
-                0.0,
-                2.5,
-            );
+        ex.timer.settings = TimeSettings::new_f64(
+            0.0,
+            2.0,
+        );
 
-            let ph = g.game_phase();
-            eprintln!("ph = {:?}", ph);
+        let ph = g.game_phase();
+        eprintln!("ph = {:?}", ph);
 
-            let t0 = std::time::Instant::now();
-            let (mvs,stats0,(tt_r,tt_w)) = ex.lazy_smp(&ts, false, false);
-            let (mv0,mvs,score) = mvs.get(0).unwrap();
-            // println!("m #{} = {:?}", q, mv0);
-            println!("explore lazy_smp  (depth: {}) done in {:.3} seconds.",
-                     stats0.max_depth, t0.elapsed().as_secs_f64());
-            stats0.print(t0.elapsed());
+        let t0 = std::time::Instant::now();
+        let (mvs,stats0,(tt_r,tt_w)) = ex.lazy_smp(&ts, false, false);
+        let (mv0,mvs,score) = mvs.get(0).unwrap();
+        // println!("m #{} = {:?}", q, mv0);
+        println!("explore lazy_smp  (depth: {}) done in {:.3} seconds.",
+                    stats0.max_depth, t0.elapsed().as_secs_f64());
+        stats0.print(t0.elapsed());
 
-            println!();
-            // println!("m #{} = {:?}", q, mv0);
-            println!("score, mv: {} = {:?}", score, mv0);
-            // println!("Correct move: Cp Q b6f2");
-            println!("Correct move: Q cap d6b4");
-            println!();
+        println!();
+        // println!("m #{} = {:?}", q, mv0);
+        println!("score, mv: {} = {:?}", score, mv0);
+        // println!("Correct move: Cp Q b6f2");
+        // println!("Correct move: Q cap d6b4");
+        // println!();
 
-            // let mm = Move::Quiet { from: "E1".into(), to: "F1".into(), pc: Rook };
-            // assert_eq!(*mv0, mm);
+        // let mm = Move::Quiet { from: "E1".into(), to: "F1".into(), pc: Rook };
+        // assert_eq!(*mv0, mm);
 
-            // for m in mvs.iter() {
-            //     eprintln!("m = {:?}", m);
-            // }
+        // for m in mvs.iter() {
+        //     eprintln!("m = {:?}", m);
+        // }
 
-            stats0.print_ebf(false);
-            // stats0.print_ebf(true);
-            // stats0.print_node_types(&tt_r);
+        // stats0.print_ebf(false);
+        stats0.print_ebf(true);
+        // stats0.print_node_types(&tt_r);
 
-            // eprintln!("qt nodes = {:?}", stats0.qt_nodes);
-            eprintln!("null prunes = {:?}", stats0.null_prunes);
-            // eprintln!("window fails = {:?}", stats0.window_fails);
-            eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
+        // eprintln!("null prunes = {:?}", stats0.null_prunes);
+        // eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
 
-            let bcs = stats0.beta_cut_first;
-            eprintln!("stats0.beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
+        // eprintln!("qt nodes = {:?}", stats0.qt_nodes);
+        // eprintln!("window fails = {:?}", stats0.window_fails);
 
-            // let mut k = 0;
-            // for (zb,sis) in tt_r.read().unwrap().iter() {
-            //     // let si = sis.iter().next().unwrap();
-            //     k += 1;
-            // }
-            // eprintln!("k = {:?}", k);
+        let bcs = stats0.beta_cut_first;
+        eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
 
-            // let g2 = g.flip_sides(&ts);
-            // let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);
-            // eprintln!("g2 = {:?}", g2);
+        // let mut k = 0;
+        // for (zb,sis) in tt_r.read().unwrap().iter() {
+        //     // let si = sis.iter().next().unwrap();
+        //     k += 1;
+        // }
+        // eprintln!("k = {:?}", k);
 
-            // let t0 = std::time::Instant::now();
-            // let (mvs,stats0,(tt_r,tt_w)) = ex2.lazy_smp(&ts, false, false);
-            // let (mv1,mvs,_) = mvs.get(0).unwrap();
-            // println!("m #{} = {:?}", q, mv1);
-            // println!("explore lazy_smp  (depth: {}) done in {:.3} seconds.",
-            //          stats0.max_depth, t0.elapsed().as_secs_f64());
-            // // stats0.print(t0.elapsed());
+        // let g2 = g.flip_sides(&ts);
+        // let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);
+        // eprintln!("g2 = {:?}", g2);
 
-            t += t0.elapsed();
-        }
+        // let t0 = std::time::Instant::now();
+        // let (mvs,stats0,(tt_r,tt_w)) = ex2.lazy_smp(&ts, false, false);
+        // let (mv1,mvs,_) = mvs.get(0).unwrap();
+        // println!("m #{} = {:?}", q, mv1);
+        // println!("explore lazy_smp  (depth: {}) done in {:.3} seconds.",
+        //          stats0.max_depth, t0.elapsed().as_secs_f64());
+        // // stats0.print(t0.elapsed());
+
+        t += t0.elapsed();
         // println!("\n===\nexplore {} times, done in avg {:.3} seconds.", k, t.as_secs_f64() / k as f64);
 
     } else {
@@ -870,7 +892,7 @@ fn main4(depth: Option<u64>) {
     // let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
     let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  "; // Position 5
 
-    // let fen = "rnbqkbnr/ppppp3/8/4N3/2BP1BQ1/4P1Pp/PPP4P/RN2K2R w KQkq - 0 1";
+    // let fen = "r3k2r/p1p1qpb1/bn1ppnp1/3PN3/1p2P3/2N4Q/PPPBBPPP/R3K2R w KQkq - 0 2";
 
     let n = match depth {
         None    => 4,
@@ -883,10 +905,10 @@ fn main4(depth: Option<u64>) {
     let _ = g.recalc_gameinfo_mut(&ts);
     // eprintln!("g = {:?}", g);
 
-    // let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, n, true).unwrap();
-    // // let (t,(_,_)) = test_stockfish(fen, n, false).unwrap();
-    // println!("perft done in {} seconds.", t);
-    // println!("stockfish took {} seconds.", t_sf);
+    let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, n, true).unwrap();
+    // let (t,(_,_)) = test_stockfish(fen, n, false).unwrap();
+    println!("perft done in {} seconds.", t);
+    println!("stockfish took {} seconds.", t_sf);
 
     // let t0 = std::time::Instant::now();
     // let (tot,_) = g.perft(&ts, n);
@@ -905,12 +927,12 @@ fn main4(depth: Option<u64>) {
         }
     }
 
-    for d in 1..n+1 {
-        let t0 = std::time::Instant::now();
-        let (tot,_) = g.perft(&ts, d);
-        let t1 = t0.elapsed().as_secs_f64();
-        println!("depth {:>2}: {:>12} leaves, {} leaves/sec", d, tot, _print((tot as f64 / t1) as i32));
-    }
+    // for d in 1..n+1 {
+    //     let t0 = std::time::Instant::now();
+    //     let (tot,_) = g.perft(&ts, d);
+    //     let t1 = t0.elapsed().as_secs_f64();
+    //     println!("depth {:>2}: {:>12} leaves, {} leaves/sec", d, tot, _print((tot as f64 / t1) as i32));
+    // }
 
     // for (d, n) in vs.iter().enumerate() {
     //     if *n > 0 {
