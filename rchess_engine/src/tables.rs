@@ -608,11 +608,11 @@ impl Tables {
     fn gen_king_move(c0: Coord) -> BitBoard {
         let b0 = BitBoard::single(c0);
         let b1 = b0
-            | b0.shift(W)
-            | b0.shift(E);
+            | b0.shift_dir(W)
+            | b0.shift_dir(E);
         let b2 = b1
-            | b1.shift(N)
-            | b1.shift(S);
+            | b1.shift_dir(N)
+            | b1.shift_dir(S);
 
         b2 & !b0
     }
@@ -899,40 +899,6 @@ mod movesets {
     use crate::types::*;
 
     use serde::ser::{Serialize, SerializeStruct, Serializer};
-
-    // #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
-    // pub struct MoveIter {
-    //     n:     Option<usize>,
-    //     moves: [(D,BitBoard); 8],
-    // }
-
-    // impl Iterator for MoveIter {
-    //     type Item = (D,BitBoard);
-    //     fn next(&mut self) -> Option<Self::Item> {
-    //         match self.n {
-    //             None => None,
-    //             Some(0) => {
-    //                 let out = self.moves[0];
-    //                 self.n = None;
-    //                 Some(out)
-    //             },
-    //             Some(nn) => {
-    //                 let out = self.moves[7 - nn];
-    //                 self.n = Some(nn - 1);
-    //                 Some(out)
-    //             },
-    //         }
-    //     }
-    // }
-
-    // impl MoveIter {
-    //     pub fn new_4(ms: [(D,BitBoard); 4]) -> Self {
-    //         Self {
-    //             n:     Some(3),
-    //             moves: 
-    //         }
-    //     }
-    // }
 
     /// pub n: BitBoard,
     /// pub e: BitBoard,

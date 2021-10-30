@@ -102,6 +102,12 @@ impl std::convert::From<u8> for Coord {
 
 impl std::convert::From<Coord> for u32 {
     fn from(c: Coord) -> Self {
+        BitBoard::index_square(c) as u32
+    }
+}
+
+impl std::convert::From<Coord> for u8 {
+    fn from(c: Coord) -> Self {
         BitBoard::index_square(c)
     }
 }
@@ -174,6 +180,39 @@ impl D {
         } else {
             Some(c0)
         }
+    }
+
+    pub fn get_shift_n(&self) -> i8 {
+        match *self {
+            N  => 8,
+            NE => 9,
+            E  => 1,
+            SE => -7,
+            S  => -8,
+            SW => -9,
+            W  => -1,
+            NW => 7,
+        }
+    }
+
+    // pub fn shift_coord_idx_unchecked<T: Into<u8>>(&self, sq: T) -> u8 {
+    // pub fn shift_coord_idx_unchecked<T: Into<u8>>(&self, sq: T, n: u8) -> u8 {
+    pub fn shift_coord_idx_unchecked(&self, sq: u8, n: u8) -> u8 {
+
+        let k = self.get_shift_n() * n as i8;
+        (sq as i8 + k) as u8
+
+        // match *self {
+        //     N  => sq.into() + 8,
+        //     NE => sq.into() + 9,
+        //     E  => sq.into() + 1,
+        //     SE => sq.into() - 7,
+        //     S  => sq.into() - 8,
+        //     SW => sq.into() - 9,
+        //     W  => sq.into() - 1,
+        //     NW => sq.into() + 7,
+        // }
+
     }
 
     pub fn shift_coord(&self, Coord(x0,y0): Coord) -> Option<Coord> {
@@ -294,14 +333,14 @@ fn test_directions() {
 
     let b = BitBoard::new(&[Coord(1,1)]);
 
-    assert_eq!(b.shift(D::E), BitBoard::new(&[Coord(2,1)]));
-    assert_eq!(b.shift(D::W), BitBoard::new(&[Coord(0,1)]));
-    assert_eq!(b.shift(D::N), BitBoard::new(&[Coord(1,2)]));
-    assert_eq!(b.shift(D::S), BitBoard::new(&[Coord(1,0)]));
-    assert_eq!(b.shift(D::NE), BitBoard::new(&[Coord(2,2)]));
-    assert_eq!(b.shift(D::NW), BitBoard::new(&[Coord(0,2)]));
-    assert_eq!(b.shift(D::SE), BitBoard::new(&[Coord(2,0)]));
-    assert_eq!(b.shift(D::SW), BitBoard::new(&[Coord(0,0)]));
+    assert_eq!(b.shift_dir(D::E), BitBoard::new(&[Coord(2,1)]));
+    assert_eq!(b.shift_dir(D::W), BitBoard::new(&[Coord(0,1)]));
+    assert_eq!(b.shift_dir(D::N), BitBoard::new(&[Coord(1,2)]));
+    assert_eq!(b.shift_dir(D::S), BitBoard::new(&[Coord(1,0)]));
+    assert_eq!(b.shift_dir(D::NE), BitBoard::new(&[Coord(2,2)]));
+    assert_eq!(b.shift_dir(D::NW), BitBoard::new(&[Coord(0,2)]));
+    assert_eq!(b.shift_dir(D::SE), BitBoard::new(&[Coord(2,0)]));
+    assert_eq!(b.shift_dir(D::SW), BitBoard::new(&[Coord(0,0)]));
 
     // let b = BitBoard::new(&vec![Coord(0,0)]);
     // assert_eq!(b.shift(D::W), BitBoard::new(&vec![]));

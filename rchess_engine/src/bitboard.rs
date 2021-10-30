@@ -78,8 +78,10 @@ impl BitBoard {
         (*self & BitBoard::single(c0.into())).is_empty()
     }
 
-    pub fn is_one_at<T: Into<Coord>>(&self, c0: T) -> bool {
-        (*self & BitBoard::single(c0.into())).is_not_empty()
+    // pub fn is_one_at<T: Into<Coord>>(&self, c0: T) -> bool {
+        // (*self & BitBoard::single(c0.into())).is_not_empty()
+    pub fn is_one_at(&self, c0: Coord) -> bool {
+        (*self & BitBoard::single(c0)).is_not_empty()
     }
 
     pub fn more_than_one(&self) -> bool {
@@ -360,10 +362,10 @@ impl BitBoard {
 /// Indexing
 impl BitBoard {
 
-    pub fn index_square(c: Coord) -> u32 {
+    pub fn index_square(c: Coord) -> u8 {
         // Little Endian Rank File Mapping
         // Least Significant File Mapping
-        let p = c.0 as u32 + 8 * c.1 as u32;
+        let p = c.0 as u8 + 8 * c.1 as u8;
         p
     }
 
@@ -465,7 +467,7 @@ impl BitBoard {
         Self(x)
     }
 
-    pub fn shift(&self, d: D) -> Self {
+    pub fn shift_dir(&self, d: D) -> Self {
 
         // let k = d.shift();
         // let b = if k > 0 {
@@ -525,14 +527,14 @@ impl BitBoard {
     pub fn shift_mult(&self, d: D, n: u64) -> Self {
         let mut out = *self;
         for _ in 0..n {
-            out = out.shift(d);
+            out = out.shift_dir(d);
         }
         out
     }
 
     pub fn shift_vec(&self, ds: &[D]) -> Self {
         ds.iter()
-            .fold(*self, |acc, d| acc.shift(*d))
+            .fold(*self, |acc, d| acc.shift_dir(*d))
     }
 
     // pub fn shift_left(&self, k: u32) -> Self {

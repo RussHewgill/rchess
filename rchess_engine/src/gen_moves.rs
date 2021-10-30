@@ -27,33 +27,31 @@ impl Game {
 /// Sliding
 impl Game {
 
-    pub fn search_sliding_iter<'a>(
-        &'a self,
-        ts:           &'a Tables,
-        pc:           Piece,
-        col:          Color,
-    ) -> impl Iterator<Item = Move> + 'a {
-        let pieces = self.get(pc, col);
-
-        let moves = pieces.into_iter().flat_map(move |sq| {
-            let ms = self._search_sliding_single(&ts, pc, sq.into(), col, None);
-            let sq2: Coord = sq.into();
-            // let attacks = moves & self.get_color(!col);
-            // let quiets  = moves & self.all_empty();
-            let attacks = self.get_color(!col);
-            ms.into_iter().map(move |to| {
-                if attacks.is_one_at(to) {
-                    let to = to.into();
-                    let (_,victim) = self.get_at(to).unwrap();
-                    Move::Capture { from: sq2, to: to, pc, victim }
-                } else {
-                    Move::Quiet { from: sq2, to: to.into(), pc }
-                }
-            })
-        });
-        moves
-
-    }
+    // pub fn search_sliding_iter<'a>(
+    //     &'a self,
+    //     ts:           &'a Tables,
+    //     pc:           Piece,
+    //     col:          Color,
+    // ) -> impl Iterator<Item = Move> + 'a {
+    //     let pieces = self.get(pc, col);
+    //     let moves = pieces.into_iter().flat_map(move |sq| {
+    //         let ms = self._search_sliding_single(&ts, pc, sq.into(), col, None);
+    //         let sq2: Coord = sq.into();
+    //         // let attacks = moves & self.get_color(!col);
+    //         // let quiets  = moves & self.all_empty();
+    //         let attacks = self.get_color(!col);
+    //         ms.into_iter().map(move |to| {
+    //             if attacks.is_one_at(to.into()) {
+    //                 let to = to.into();
+    //                 let (_,victim) = self.get_at(to).unwrap();
+    //                 Move::Capture { from: sq2, to: to, pc, victim }
+    //             } else {
+    //                 Move::Quiet { from: sq2, to: to.into(), pc }
+    //             }
+    //         })
+    //     });
+    //     moves
+    // }
 
 }
 
@@ -71,6 +69,9 @@ impl Game {
             White => (N,NW,NE),
             Black => (S,SW,SE),
         };
+        let empty = self.all_empty();
+        let own   = self.get_color(side);
+        let other = self.get_color(!side);
 
         let pawns = self.get(Pawn, side) & !(BitBoard::mask_rank(r_prom));
 
@@ -79,34 +80,46 @@ impl Game {
         } else {
             BitBoard(pawns.0.overflowing_shr(8).0)
         };
-        let quiets = self.all_empty() & qs;
+        let qs = empty & qs;
 
-        let doubles = pawns & BitBoard::mask_rank(r_first);
-        let doubles = if side == White {
-            BitBoard(doubles.0.overflowing_shl(16).0)
-        } else {
-            BitBoard(doubles.0.overflowing_shr(16).0)
-        };
-
-        let quiets = quiets.into_iter()
-            .flat_map(move |to| {
+        let quiets = qs.into_iter()
+            // .flat_map(|to| {
+            .map(move |to| {
                 let t = to.into();
-                if let Some(f) = (!dir).shift_coord(t) {
-                    let m = Move::Quiet { from: f, to: t, pc: Pawn };
-                    if self.move_is_legal(&ts, m) { Some(m) } else { None }
-                } else { None }
+                let f = (!dir).shift_coord_idx_unchecked(to, 1);
+                let m = Move::Quiet { from: f.into(), to: t, pc: Pawn };
+                m
+
+                // if self.move_is_legal(&ts, m) { Some(m) } else { None }
+
+                // if let Some(f) = (!dir).shift_coord(t) {
+                // } else { None }
             });
 
-        // pushes.iter_bitscan(|t| {
-        //     let t = t.into();
-        //     if let Some(f) = (!dir).shift_coord(t) {
-        //         // out.push(Move::Quiet { from: f, to: t });
-        //         let m = Move::Quiet { from: f, to: t, pc: Pawn };
-        //         if self.move_is_legal(&ts, m) { out.push(m); }
-        //     }
-        // });
+        let doubles = if side == White {
+            BitBoard(qs.0.overflowing_shl(8).0)
+        } else {
+            BitBoard(qs.0.overflowing_shr(8).0)
+        };
+        let doubles = empty & doubles;
+
+        let doubles = doubles.into_iter()
+            // .flat_map(|to| {
+            .map(move |to| {
+                let f = (!dir).shift_coord_idx_unchecked(to, 2);
+                let m = Move::PawnDouble { from: f.into(), to: to.into() };
+                // if self.move_is_legal(&ts, m) { Some(m) } else { None }
+                m
+            });
+
+        // let captures = (pawns.shift_dir(dw) && other)
+        //     | (pawns.shift_dir(de) && other);
 
         quiets
+            .chain(doubles)
+            .filter(move |m| self.move_is_legal(&ts, *m))
+
+
         // unimplemented!()
         // vec![].into_iter()
     }

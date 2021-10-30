@@ -52,28 +52,29 @@ pub fn crit_bench_1(c: &mut Criterion) {
     group.warm_up_time(Duration::from_secs_f64(1.0));
 
     // group.sample_size(50);
-    group.measurement_time(Duration::from_secs_f64(5.));
+    // group.measurement_time(Duration::from_secs_f64(5.));
+    group.measurement_time(Duration::from_secs_f64(20.));
 
-    // group.bench_function("search_all", |b| b.iter(|| {
+    group.bench_function("search_all", |b| b.iter(|| {
+        for g in games.iter() {
+            let mvs = g.search_all(&ts, black_box(None));
+        }
+    }));
+
+    // group.bench_function("_search_pawns", |b| b.iter(|| {
     //     for g in games.iter() {
-    //         let mvs = g.search_all(&ts, black_box(None));
+    //         let col = White;
+    //         let pawns = g.search_pawns(&ts, black_box(col));
+    //         let n = pawns.len();
     //     }
     // }));
-
-    group.bench_function("_search_pawns", |b| b.iter(|| {
-        for g in games.iter() {
-            let col = White;
-            let pawns = g.search_pawns(&ts, black_box(col));
-            let n = pawns.len();
-        }
-    }));
-    group.bench_function("_search_pawns_iter", |b| b.iter(|| {
-        for g in games.iter() {
-            let col = White;
-            let pawns = g.search_pawns_iter(&ts, black_box(col));
-            let n = pawns.collect::<Vec<_>>().len();
-        }
-    }));
+    // group.bench_function("_search_pawns_iter", |b| b.iter(|| {
+    //     for g in games.iter() {
+    //         let col = White;
+    //         let pawns = g.search_pawns_iter(&ts, black_box(col));
+    //         let n = pawns.collect::<Vec<_>>().len();
+    //     }
+    // }));
 
     // group.bench_function("search_sliding 1", |b| b.iter(|| {
     //     for g in games.iter() {
@@ -96,7 +97,6 @@ pub fn crit_bench_1(c: &mut Criterion) {
     //         let q = q.collect::<Vec<_>>();
     //     }
     // }));
-
 
     // group.sample_size(10);
     // group.measurement_time(std::time::Duration::from_secs_f64(5.));

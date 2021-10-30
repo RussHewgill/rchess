@@ -17,7 +17,7 @@ pub static PIECES: [Piece; 6] = [Pawn,Knight,Bishop,Rook,Queen,King];
 
 pub type Depth = u8;
 
-#[derive(Debug,Hash,Eq,PartialEq,PartialOrd,ShallowCopy,Clone,Copy)]
+#[derive(Serialize,Deserialize,Debug,Hash,Eq,PartialEq,PartialOrd,ShallowCopy,Clone,Copy)]
 // #[derive(Debug,Hash,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub enum Color {
     White,
@@ -57,6 +57,21 @@ pub enum Move {
     PromotionCapture   { from: Coord, to: Coord, new_piece: Piece, victim: Piece },
     NullMove,
 }
+
+// #[derive(Serialize,Deserialize,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
+// // #[derive(Serialize,Deserialize,Ord,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
+// pub enum Move2 {
+//     Quiet              { side: Color, from: Coord, to: Coord, pc: Piece },
+//     PawnDouble         { side: Color, from: Coord, to: Coord },
+//     // Capture            { side: Color, from: Coord, to: Coord },
+//     Capture            { side: Color, from: Coord, to: Coord, pc: Piece, victim: Piece },
+//     // EnPassant          { side: Color, from: Coord, to: Coord, capture: Coord },
+//     EnPassant          { side: Color, from: Coord, to: Coord, capture: Coord },
+//     Castle             { side: Color, from: Coord, to: Coord, rook_from: Coord, rook_to: Coord },
+//     Promotion          { side: Color, from: Coord, to: Coord, new_piece: Piece },
+//     PromotionCapture   { side: Color, from: Coord, to: Coord, new_piece: Piece, victim: Piece },
+//     NullMove,
+// }
 
 impl Ord for Move {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
@@ -239,7 +254,11 @@ impl Move {
             &Move::Capture { pc, .. }              => Some(pc),
             &Move::EnPassant { .. }                => Some(Pawn),
             &Move::PromotionCapture { victim, .. } => Some(Pawn),
-            _                                      => None,
+            // &Move::PawnDouble { .. }               => Some(Pawn),
+            // &Move::Quiet { pc, .. }                => Some(pc),
+            // &Move::Castle { to, .. }           => to,
+            // &Move::Promotion { new_piece, .. }     => None,
+            _                                   => None,
         }
     }
 

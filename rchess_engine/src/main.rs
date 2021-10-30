@@ -100,43 +100,45 @@ fn main() {
     // }
 
     // // let s = std::mem::size_of::<Eval>();
-    // let s = std::mem::size_of::<SearchStats>();
+    // // let s = std::mem::size_of::<rchess_engine_lib::types::Color>();
+    // let s = std::mem::size_of::<Move2>();
     // // let s = std::mem::size_of::<GHistory>();
     // eprintln!("s = {:?}", s);
     // // let s = u16::MAX;
     // // eprintln!("s = {:#8x}", s);
 
-    // let t0 = std::time::Instant::now();
-    // println!("starting tables");
-    // let ts = Tables::new();
-    // println!("tables done in {} seconds.", t0.elapsed().as_secs_f64());
+    let ts = &_TABLES;
+    let mut games = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
+    let mut games: Vec<Game> = games.into_iter().map(|(fen,_)| {
+        Game::from_fen(&ts, &fen).unwrap()
+    }).collect();
+    let col = White;
 
-    // let g = Game::from_fen(&ts, "k7/8/1p1p1p2/8/1p1q1p2/8/1P1P1P2/7K w - - 0 1").unwrap();
-    // let rook   = ts.attacks_rook("D4".into(), g.all_occupied());
-    // let bishop = ts.attacks_bishop("D4".into(), g.all_occupied());
-    // let b = rook | bishop;
-    // eprintln!("rook = {:?}", rook);
-    // eprintln!("bishop = {:?}", bishop);
+    let t0 = std::time::Instant::now();
+    for k in 0..4000 {
+        let mut n0 = 0;
+        for g in games.iter() {
+            let moves = g.search_all(&ts, None).get_moves_unsafe();
+            n0 += moves.len();
+        }
+    }
+    println!("Finished in {:.3} seconds.", t0.elapsed().as_secs_f64());
 
-    // let tr = ts.table_rook;
-
-    // let m = ts.magics_rook[49];
-
-    // let mut k = (0,0);
-
-    // // for x in ts.magics_rook.iter() {
-    // for x in ts.table_rook.iter() {
-    //     k.1 += 1;
-    //     // if x.magic.0 != 0 {
-    //     if x.0 != 0 {
-    //         k.0 += 1;
+    // for k in 0..1000 {
+    //     let mut n0 = 0;
+    //     for g in games.iter() {
+    //         let pawns = g.search_pawns(&ts, col);
+    //         n0 += pawns.len();
     //     }
     // }
-    // eprintln!("k = {:?}", k);
 
-    let c0: Coord = "D4".into();
-    let sq0: u8 = c0.into();
-
+    // for k in 0..1000 {
+    //     let mut n1 = 0;
+    //     for g in games.iter() {
+    //         let pawns = g.search_pawns_iter(&ts, col);
+    //         n1 += pawns.collect::<Vec<_>>().len();
+    //     }
+    // }
 
     return;
 
@@ -382,17 +384,6 @@ fn main7() {
     // for (s,m) in ps.iter() {
     //     eprintln!("{:>15} = {:?}", s, m);
     // }
-
-    // let col = White;
-    // let b = g.search_sliding(&ts, Bishop, col);
-    // let r = g.search_sliding(&ts, Rook, col);
-    // let q = g.search_sliding(&ts, Queen, col);
-
-    // let moves = g.search_sliding(&ts, None).get_moves_unsafe();
-
-    // eprintln!("b.len() = {:?}", b.len());
-    // eprintln!("r.len() = {:?}", r.len());
-    // eprintln!("q.len() = {:?}", q.len());
 
     // return;
 
@@ -873,7 +864,7 @@ fn main4(depth: Option<u64>) {
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
     // let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
-    // let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  "; // Position 5
+    let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  "; // Position 5
 
     // let fen = "rnbqkbnr/ppppp3/8/4N3/2BP1BQ1/4P1Pp/PPP4P/RN2K2R w KQkq - 0 1";
 
