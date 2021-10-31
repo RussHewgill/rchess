@@ -137,14 +137,17 @@ impl Explorer {
 
             // let moves = moves.into_iter().filter(|x| x.filter_all_captures()).collect();
 
-            let score = self.quiescence(
-                // ts, g, moves, k, alpha, beta, maximizing, &mut stats,
-                ts, g, k, alpha, beta, maximizing, &mut stats,
-            );
+            let score = if g.state.checkers.is_empty() {
+                self.quiescence(
+                    // ts, g, moves, k, alpha, beta, maximizing, &mut stats,
+                    ts, g, k, alpha, beta, maximizing, &mut stats,
+                )
+            } else {
+                let score = g.evaluate(&ts).sum();
+                if self.side == Black { -score } else { score }
+            };
 
             // let score = g.evaluate(&ts).sum();
-
-            // let score = if self.side == Black { -score } else { score };
 
             return Some(((vec![], score),(alpha,beta)));
 

@@ -595,7 +595,7 @@ impl Explorer {
                 match rx.try_recv() {
                     Err(TryRecvError::Empty)    => {
                         // std::thread::sleep(sleep_time);
-                        std::thread::sleep(Duration::from_millis(10));
+                        std::thread::sleep(Duration::from_millis(1));
                     },
                     Err(TryRecvError::Disconnected)    => {
                         trace!("Breaking thread counter loop (Disconnect)");
@@ -732,11 +732,19 @@ impl Explorer {
                     };
 
                     trace!("spawning thread: (sid: {}) = cur_depth {:?}", sid, cur_depth);
-                    s.spawn(move |_| {
-                        self._lazy_smp_single(
-                        // self._lazy_smp_single_aspiration(
-                            &ts, gs2, best, cur_depth, tx2, stats2, tt_r2, tt_w2);
-                    });
+                    s.builder()
+                        .stack_size(4 * 1024 * 1024) // 4 MiB
+                        .spawn(move |_| {
+                            self._lazy_smp_single(
+                                // self._lazy_smp_single_aspiration(
+                                &ts, gs2, best, cur_depth, tx2, stats2, tt_r2, tt_w2);
+                        }).unwrap();
+
+                    // s.spawn(move |_| {
+                    //     self._lazy_smp_single(
+                    //     // self._lazy_smp_single_aspiration(
+                    //         &ts, gs2, best, cur_depth, tx2, stats2, tt_r2, tt_w2);
+                    // });
 
                     thread_counter.fetch_add(1, SeqCst);
 
@@ -885,7 +893,7 @@ impl Explorer {
 impl Explorer {
 
     #[allow(unused_doc_comments)]
-    #[allow(unreachable_code)]
+    // #[allow(unreachable_code)]
     pub fn quiescence(
         &self,
         ts:             &Tables,
@@ -901,8 +909,33 @@ impl Explorer {
         stats.qt_nodes += 1;
 
         let stand_pat = g.evaluate(&ts).sum();
-        let stand_pat = if self.side == Black { -stand_pat } else { stand_pat };
-        return stand_pat;
+        let mut stand_pat = if self.side == Black { -stand_pat } else { stand_pat };
+        // return stand_pat;
+
+        // if k > 
+
+        let mut ms = match g.search_only_captures(&ts) {
+            Outcome::Moves(ms2)    => ms2,
+            Outcome::Checkmate(_) => {
+                let score = 100_000_000 - k as Score;
+                if maximizing { -score } else { score };
+                stand_pat = score;
+                return stand_pat;
+                // vec![]
+                // panic!("checkmate in QS");
+            },
+            Outcome::Stalemate    => {
+                let score = -100_000_000 + k as Score;
+                // unimplemented!()
+                stand_pat = score;
+                // vec![]
+                // panic!("stalemate in QS");
+                // return score;
+                return stand_pat;
+            },
+        };
+
+        // let ms = g.search_only_captures(&ts);
 
         // if self.stop.load(SeqCst) {
         //     return stand_pat;
@@ -916,19 +949,19 @@ impl Explorer {
         //     trace!("found zobrist 4");
         // }
 
-        // if maximizing {
-        //     trace!("quiescence max ({}): a/b = {:?}, {:?} = {:?}", k, alpha, beta, stand_pat);
-        // } else {
-        //     trace!("quiescence min ({}): a/b = {:?}, {:?} = {:?}", k, alpha, beta, stand_pat);
-        // }
+        if maximizing {
+            trace!("quiescence max ({}): a/b = {:?}, {:?} = {:?}", k, alpha, beta, stand_pat);
+        } else {
+            trace!("quiescence min ({}): a/b = {:?}, {:?} = {:?}", k, alpha, beta, stand_pat);
+        }
 
         /// alpha = the MINimum score that the MAXimizing player is assured of
         /// beta  = the MAXimum score that the MINimizing player is assured of
 
         if maximizing {
-            // lower bound is better than the best opponent can get earlier in tree
-            // beta cutoff
-            // opponent will never make this move because better options are available
+            /// lower bound is better than the best opponent can get earlier in tree
+            /// beta cutoff
+            /// opponent will never make this move because better options are available
             if stand_pat >= beta {
                 // trace!("QS returning stand_pat: {}", stand_pat);
                 return stand_pat;
@@ -959,18 +992,6 @@ impl Explorer {
         //         panic!("non capture in QS: {:?}, g = {:?}\n{:?}", m, g, g.zobrist);
         //     }
         // }
-
-        let mut ms = match g.search_only_captures(&ts) {
-            Outcome::Moves(ms2)    => ms2,
-            Outcome::Checkmate(_) => {
-                // let score = 100_000_000 - k as Score;
-                // if maximizing { -score } else { score }
-                unimplemented!()
-            },
-            Outcome::Stalemate    => {
-                unimplemented!()
-            },
-        };
 
         order_mvv_lva(&mut ms);
 
@@ -1093,7 +1114,7 @@ impl Explorer {
                 match g2.search_all(&ts) {
                     Outcome::Moves(ms2) => {
 
-                        let score = -self.quiescence(
+                        let score = -self.quiescence3(
                             &ts, &g, ms2, k + 1, -alpha, -beta, !maximizing, &mut stats);
                             // &ts, &g, ms2, k + 1, -alpha, -beta, &mut stats);
 

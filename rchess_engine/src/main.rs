@@ -101,7 +101,7 @@ fn main() {
 
     // // let s = std::mem::size_of::<Eval>();
     // // let s = std::mem::size_of::<rchess_engine_lib::types::Color>();
-    // let s = std::mem::size_of::<Move2>();
+    // let s = std::mem::size_of::<Tables>();
     // // let s = std::mem::size_of::<GHistory>();
     // eprintln!("s = {:?}", s);
     // // let s = u16::MAX;
@@ -478,7 +478,7 @@ fn main7() {
 
         ex.timer.settings = TimeSettings::new_f64(
             0.0,
-            4.0,
+            2.0,
         );
 
         // let ph = g.game_phase();
@@ -504,41 +504,42 @@ fn main7() {
         // let (mvs,stats0,(tt_r,tt_w)) = ex.lazy_smp_single(&ts, false, false);
         // let t1 = t0.elapsed().as_secs_f64();
 
-        for (m,_,s) in mvs[0..5].iter() {
+        // for (m,_,s) in mvs[0..5].iter() {
+        for (m,_,s) in mvs.iter() {
             eprintln!("s,m {:>12} = {:?}", s, m);
         }
 
-        // println!();
-        // let g2 = g.flip_sides(&ts);
-        // let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), ex.timer.settings);
-        // // eprintln!("g2 = {:?}", g2);
-        // let (mvs,stats0,(tt_r,tt_w)) = ex2.lazy_smp(&ts, false, false);
-        // let (mv0,mvs0,score) = mvs.get(0).unwrap();
-        // println!("score, mv: {} = {:?}", score, mv0);
-        // let fen2 = g2.to_fen();
-        // eprintln!("fen2 = {}", fen2);
+        println!();
+        let g2 = g.flip_sides(&ts);
+        let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), ex.timer.settings);
+        // eprintln!("g2 = {:?}", g2);
+        let (mvs,stats0,(tt_r,tt_w)) = ex2.lazy_smp(&ts, false, false);
+        let (mv0,mvs0,score) = mvs.get(0).unwrap();
+        println!("score, mv: {} = {:?}", score, mv0);
+        let fen2 = g2.to_fen();
+        eprintln!("fen2 = {}", fen2);
 
         // let mm = Move::Quiet { from: "E1".into(), to: "F1".into(), pc: Rook };
         // assert_eq!(*mv0, mm);
 
         // for (m,_,s) in mvs[0..5].iter() {
-        //     eprintln!("s,m {:>12} = {:?}", s, m);
-        // }
+        for (m,_,s) in mvs.iter() {
+            eprintln!("s,m {:>12} = {:?}", s, m);
+        }
 
         // for m in mvs0.iter() {
         //     eprintln!("m = {:?}", m);
         // }
 
-        println!();
-        stats0.print(t0.elapsed());
-        let qs = stats0.qt_nodes;
-        let ns = stats0.nodes;
+        // println!();
+        // stats0.print(t0.elapsed());
+        // let qs = stats0.qt_nodes;
+        // let ns = stats0.nodes;
 
-        eprintln!("qt nodes = {:?}", stats0.qt_nodes);
+        // eprintln!("qt nodes = {:?}", stats0.qt_nodes);
+        // eprintln!("nodes/sec = {:.1?}", (qs + ns) as f64 / t1);
 
-        eprintln!("nodes/sec = {:.1?}", (qs + ns) as f64 / t1);
-
-        stats0.print_ebf(false);
+        // stats0.print_ebf(false);
         // stats0.print_ebf(true);
         // stats0.print_node_types(&tt_r);
 
