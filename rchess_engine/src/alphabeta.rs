@@ -118,27 +118,40 @@ impl Explorer {
 
         if depth == 0 {
 
-            // let score = g.evaluate(&ts).sum();
-
-            let mv0 = prev_mvs.back().unwrap().1;
-            let score = self.quiescence(
-                // ts, g, moves, k, alpha, beta, !maximizing, &mut stats, mv0,
-                // ts, g, moves, k, alpha, beta, !maximizing, &mut stats,
-                ts, g, moves, k, -alpha, -beta, !maximizing, &mut stats,
-            );
-
             if !tt_r.contains_key(&g.zobrist) {
                 stats.leaves += 1;
             }
-            if self.side == Black {
-                // return (vec![mv0], -score);
-                // return Some((vec![], -score));
-                return Some(((vec![], -score),(alpha,beta)));
-            } else {
-                // return (vec![mv0], score);
-                // return Some((vec![], score));
-                return Some(((vec![], score),(alpha,beta)));
-            }
+
+            // let mv0 = prev_mvs.back().unwrap().1;
+
+            // // if self.side == Black {
+            // let score = if !maximizing {
+            //     self.quiescence(
+            //         ts, g, moves, k, -alpha, -beta, maximizing, &mut stats,
+            //     )
+            // } else {
+            //     self.quiescence(
+            //         ts, g, moves, k, alpha, beta, maximizing, &mut stats,
+            //     )
+            // };
+
+            let score = self.quiescence(
+                ts, g, moves, k, alpha, beta, maximizing, &mut stats,
+            );
+
+            // let score = g.evaluate(&ts).sum();
+
+            // let score = if self.side == Black { -score } else { score };
+
+            return Some(((vec![], score),(alpha,beta)));
+
+            // let score = g.evaluate(&ts).sum();
+            // if self.side == Black {
+            //     return Some(((vec![], -score),(alpha,beta)));
+            // } else {
+            //     return Some(((vec![], score),(alpha,beta)));
+            // }
+
         }
 
         /// Null Move pruning

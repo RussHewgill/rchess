@@ -821,14 +821,14 @@ impl Game {
         st.black = mw;
         st.white = mb;
 
-        st.white   = st.white.rotate_180();
-        st.black   = st.black.rotate_180();
-        st.pawns   = st.pawns.rotate_180();
-        st.rooks   = st.rooks.rotate_180();
-        st.knights = st.knights.rotate_180();
-        st.bishops = st.bishops.rotate_180();
-        st.queens  = st.queens.rotate_180();
-        st.kings   = st.kings.rotate_180();
+        st.white   = st.white.rotate_180().mirror_horiz();
+        st.black   = st.black.rotate_180().mirror_horiz();
+        st.pawns   = st.pawns.rotate_180().mirror_horiz();
+        st.rooks   = st.rooks.rotate_180().mirror_horiz();
+        st.knights = st.knights.rotate_180().mirror_horiz();
+        st.bishops = st.bishops.rotate_180().mirror_horiz();
+        st.queens  = st.queens.rotate_180().mirror_horiz();
+        st.kings   = st.kings.rotate_180().mirror_horiz();
 
         st.castling = st.castling.mirror_sides();
 

@@ -281,8 +281,8 @@ fn main7() {
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"; // Perft Position 2
 
-    // let fen = "5k2/6pp/p1qN4/1p1p4/3P4/2PKP2Q/PP3r2/3R4 b - - 0 1"; // WAC.005, Qc4 = c6c4
-    // let fen = "4r3/2R3pp/q2pkp2/4p3/4P1P1/4nQ1P/PP6/2K5 w - - 0 1"; // WAC.005, color reversed
+    let fen = "5k2/6pp/p1qN4/1p1p4/3P4/2PKP2Q/PP3r2/3R4 b - - 0 1"; // WAC.005, Qc4 = c6c4
+    // let fen = "4r3/2R3pp/q2pkp2/4p3/4P1P1/4nQ1P/PP6/2K5 w - - 0 1"; // WAC.005, color reversed, f3f5
 
     // let fen = "rnbqkb1r/pppp1ppp/8/4P3/6n1/7P/PPPNPPP1/R1BQKBNR b KQkq - 0 1"; // WAC.007, Ne3 = g4e3
 
@@ -296,9 +296,9 @@ fn main7() {
 
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
 
-    let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"; // Perft Position 2
+    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"; // Perft Position 2
 
-    let fen = "r2rb1k1/pp1q1p1p/2n1p1p1/2bp4/5P2/PP1BPR1Q/1BPN2PP/R5K1 w - - 0 1"; // WAC.014, h3h7
+    // let fen = "r2rb1k1/pp1q1p1p/2n1p1p1/2bp4/5P2/PP1BPR1Q/1BPN2PP/R5K1 w - - 0 1"; // WAC.014, h3h7
 
     // let fen = "3q1rk1/p4pp1/2pb3p/3p4/6Pr/1PNQ4/P1PB1PP1/4RRK1 b - - 0 1"; // WAC.009, Bh2+ = d6h2
 
@@ -314,12 +314,10 @@ fn main7() {
     // let fen = "1k3r1r/p1p3p1/1pn3q1/3R1n2/3P4/P1B1p2p/P1PN1PPP/4QK1R w - - 0 22"; // #-10 if d2b3
     // let fen = "r1bqk1nr/ppppbppp/2n5/8/4Q3/N7/PPP1PPPP/R1B1KBNR w KQkq - 3 5"; // ??
 
-    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
     // let fen = "7k/1n1n4/2P5/8/5b2/8/7P/7K b - - 0 1"; // Horizon
-    let fen = "7k/8/8/r7/r7/8/p1RR4/7K w - - 0 1"; // Horizon
-
-    // let fen = "r1bqkb1r/1pp2ppp/p1n1pn2/3p4/3P1B2/4PQ2/PPPN1PPP/R3KBNR w KQkq - 4 6"; // ??
+    // let fen = "7k/8/8/r7/r7/8/p1RR4/7K w - - 0 1"; // Horizon
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
     // let fen = "r3k2r/p1Ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"; // Pos 2 + pawn prom
@@ -359,18 +357,22 @@ fn main7() {
     // let fen = &games(18); // a8h8, #27, Tablebase
     // let fen = &games(21); // d2h6
 
+    let fen = "7k/8/8/r7/r7/8/p1RR4/7K w - - 0 1"; // Horizon
+    // let fen = "r1bqkb1r/1pp2ppp/p1n1pn2/3p4/3P1B2/4PQ2/PPPN1PPP/R3KBNR w KQkq - 4 6"; // ??
+    // let fen = "rnbk3r/ppp1nppp/2qp4/2b1p3/4P3/2NP1N1P/PPP2PP1/R1BKQB1R b KQkq - 0 1"; // ??
+
     eprintln!("fen = {:?}", fen);
 
-    // let ts = Tables::new();
+    let ts = Tables::new();
     // ts.write_to_file("tables.bin").unwrap();
     // let ts = Tables::read_from_file("tables.bin").unwrap();
-    let ts = &_TABLES;
+    // let ts = &_TABLES;
     // let ts = Tables::_new(false);
 
     let mut g = Game::from_fen(&ts, fen).unwrap();
 
     let stop = Arc::new(AtomicBool::new(false));
-    let timesettings = TimeSettings::new_f64(10.0,0.1);
+    let timesettings = TimeSettings::new_f64(0.0,2.0);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
 
     // let mut ps = vec![
@@ -400,23 +402,28 @@ fn main7() {
     // eprintln!("e0 = {:?}", e0);
     // eprintln!("e1 = {:?}", e1);
 
-    // // let (alpha,beta) = (i32::MIN,i32::MAX);
+    let (alpha,beta) = (i32::MIN,i32::MAX);
     // let (alpha,beta) = (-1000, 1000);
-    // let maximizing = true;
-    // let mut ss = SearchStats::default();
+    let maximizing = false;
+    let mut ss = SearchStats::default();
 
-    // let m0 = Move::Capture { from: "C2".into(), to: "A2".into(), pc: Rook, victim: Pawn };
-    // let m1 = Move::Quiet { from: "C2".into(), to: "C8".into(), pc: Rook };
+    let m0 = Move::Capture { from: "C2".into(), to: "A2".into(), pc: Rook, victim: Pawn };
+    let m1 = Move::Quiet { from: "C2".into(), to: "C8".into(), pc: Rook };
 
-    // let g2 = g.make_move_unchecked(&ts, m1).unwrap();
-    // let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);
-    // // let ms = g2.search_all(&ts, None).get_moves_unsafe();
+    let g2 = g.make_move_unchecked(&ts, m0).unwrap();
+    let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);
+    // let ms = g2.search_all(&ts, None).get_moves_unsafe();
 
-    // let score = ex2.quiescence(
-    //     &ts, &g2, ms, 0, -alpha, -beta, maximizing, &mut ss);
-    // eprintln!("score = {:?}", score);
+    let ms = vec![
+        Move::Capture { from: "A4".into(), to: "A2".into(), pc: Rook, victim: Pawn },
+        Move::Quiet { from: "A4".into(), to: "B4".into(), pc: Rook },
+    ];
 
-    // return;
+    let score = ex2.quiescence(
+        &ts, &g2, ms, 0, alpha, beta, maximizing, &mut ss);
+    eprintln!("score = {:?}", score);
+
+    return;
 
     #[allow(unreachable_code)]
     if true {
@@ -428,7 +435,6 @@ fn main7() {
 
         println!("g = {:?}", g);
 
-        // let n = 25;
         // let n = 35;
         // let n = 10;
         let n = 2;
@@ -437,11 +443,11 @@ fn main7() {
 
         ex.timer.settings = TimeSettings::new_f64(
             0.0,
-            5.0,
+            2.0,
         );
 
-        let ph = g.game_phase();
-        eprintln!("ph = {:?}", ph);
+        // let ph = g.game_phase();
+        // eprintln!("ph = {:?}", ph);
 
         let t0 = std::time::Instant::now();
         let (mvs,stats0,(tt_r,tt_w)) = ex.lazy_smp(&ts, false, false);
@@ -458,6 +464,17 @@ fn main7() {
         // println!("Correct move: Q cap d6b4");
         // println!();
 
+        println!();
+        let g2 = g.flip_sides(&ts);
+        let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), ex.timer.settings);
+        // eprintln!("g2 = {:?}", g2);
+        let (mvs,stats0,(tt_r,tt_w)) = ex2.lazy_smp(&ts, false, false);
+        let (mv0,mvs0,score) = mvs.get(0).unwrap();
+        println!("score, mv: {} = {:?}", score, mv0);
+
+        let fen2 = g2.to_fen();
+        eprintln!("fen2 = {}", fen2);
+
         // let mm = Move::Quiet { from: "E1".into(), to: "F1".into(), pc: Rook };
         // assert_eq!(*mv0, mm);
 
@@ -465,18 +482,18 @@ fn main7() {
         //     eprintln!("m = {:?}", m);
         // }
 
-        stats0.print_ebf(false);
+        // stats0.print_ebf(false);
         // stats0.print_ebf(true);
         // stats0.print_node_types(&tt_r);
 
         // eprintln!("null prunes = {:?}", stats0.null_prunes);
         // eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
 
-        eprintln!("qt nodes = {:?}", stats0.qt_nodes);
+        // eprintln!("qt nodes = {:?}", stats0.qt_nodes);
         // eprintln!("window fails = {:?}", stats0.window_fails);
 
-        let mm = Move::Capture { from: "C2".into(), to: "A2".into(), pc: Rook, victim: Pawn };
-        assert!(mm != *mv0);
+        // let mm = Move::Capture { from: "C2".into(), to: "A2".into(), pc: Rook, victim: Pawn };
+        // assert!(mm != *mv0);
 
         // let bcs = stats0.beta_cut_first;
         // eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
@@ -491,10 +508,6 @@ fn main7() {
         //     k += 1;
         // }
         // eprintln!("k = {:?}", k);
-
-        // let g2 = g.flip_sides(&ts);
-        // let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);
-        // eprintln!("g2 = {:?}", g2);
 
         // let t0 = std::time::Instant::now();
         // let (mvs,stats0,(tt_r,tt_w)) = ex2.lazy_smp(&ts, false, false);

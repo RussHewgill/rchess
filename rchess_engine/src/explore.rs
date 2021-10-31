@@ -764,24 +764,73 @@ impl Explorer {
         mut beta:       i32,
         maximizing:     bool,
         mut stats:      &mut SearchStats,
+    ) -> Score {
+
+        stats.qt_nodes += 1;
+
+        let stand_pat = g.evaluate(&ts).sum();
+        let stand_pat = if self.side == Black { -stand_pat } else { stand_pat };
+        // return stand_pat;
+
+        if maximizing {
+            trace!("quiescence max: a/b = {:?}, {:?} = {:?}", alpha, beta, stand_pat);
+        } else {
+            trace!("quiescence min: a/b = {:?}, {:?} = {:?}", alpha, beta, stand_pat);
+        }
+
+        if stand_pat >= beta {
+            return stand_pat;
+        }
+
+        if alpha < stand_pat {
+            alpha = stand_pat;
+        }
+
+        ms.into_iter().flat_map(|mv| g.make_move_unchecked(&ts, mv).ok().map(|g2| (mv,g2)))
+            .for_each(|(mv, g2)| {
+                unimplemented!()
+            });
+
+        alpha
+    }
+
+    #[allow(unused_doc_comments)]
+    #[allow(unreachable_code)]
+    pub fn quiescence3(
+        &self,
+        ts:             &Tables,
+        g:              &Game,
+        ms:             Vec<Move>,
+        k:              i16,
+        mut alpha:      i32,
+        mut beta:       i32,
+        maximizing:     bool,
+        mut stats:      &mut SearchStats,
         // m0:             Move,
     ) -> Score {
         // trace!("quiescence {}", k);
         // eprintln!("quiescence starting {}", k);
 
         stats.qt_nodes += 1;
-        let stand_pat = g.evaluate(&ts).sum();
+        // let stand_pat = g.evaluate(&ts).sum();
         // stats.leaves += 1;
-        // return stand_pat; // correct
+        // return stand_pat;
+
+        // let stand_pat = if maximizing {
+        let stand_pat = if self.side == Black {
+            g.evaluate(&ts).sum()
+        } else {
+            -g.evaluate(&ts).sum()
+        };
 
         if stand_pat >= beta {
             // debug!("quiescence beta cutoff: {}", k);
             // return score; // fail soft
-            // trace!("Quiescence returning beta: {}", beta);
+            trace!("Quiescence returning beta: {}", beta);
             // eprintln!("Quiescence returning beta 0: {}", beta);
             return beta; // fail hard
         }
-        // return stand_pat; // correct
+        // return stand_pat;
 
         // /// Delta prune
         // let mut big_delta = Queen.score();
@@ -813,73 +862,30 @@ impl Explorer {
 
                         let score = -self.quiescence(
                             &ts, &g, ms2, k + 1, -alpha, -beta, !maximizing, &mut stats);
+                            // &ts, &g, ms2, k + 1, -alpha, -beta, &mut stats);
 
                         if score >= beta {
-                            // eprintln!("Quiescence returning beta 1: {}", beta);
+                            trace!("Quiescence returning beta 1: {}", beta);
                             return beta;
                         }
                         if score > alpha {
-                            // eprintln!("Quiescence new alpha 1: {}", alpha);
+                            // trace!("Quiescence new alpha 1: {}", alpha);
                             alpha = score;
                         }
                     },
                     Outcome::Checkmate(_) => {
-                        panic!("checkmate in quiescent");
+                        // panic!("checkmate in quiescent");
                     },
                     Outcome::Stalemate => {
-                        panic!("stalemate in quiescent");
+                        // panic!("stalemate in quiescent");
                     },
                 }
             }
         }
 
 
-        // let eval = -self.quiescence(
-        //     &ts, &g2, ms2, k + 1, -alpha, -beta,
-        //     !maximizing, &mut stats, mv);
-
-        // let mut val = if maximizing { i32::MIN } else { i32::MAX };
-        // for mv in captures.into_iter() {
-        //     if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
-        //         match g2.search_all(&ts, None) {
-        //             Outcome::Moves(ms2) => {
-        //                 // stats.nodes += 1;
-        //                 let score = self.quiescence(
-        //                     &ts, &g2, ms2, k + 1, alpha, beta,
-        //                     // !maximizing, &mut stats, mv);
-        //                     !maximizing, &mut stats);
-        //                 if maximizing {
-        //                     if score > alpha {
-        //                         eprintln!("Quiescence new alpha 1: {}", alpha);
-        //                         alpha = score;
-        //                     }
-        //                     if score >= beta {
-        //                         eprintln!("Quiescence returning beta 1: {}", beta);
-        //                         return beta;
-        //                     }
-        //                 } else {
-        //                     if score < beta {
-        //                         eprintln!("Quiescence new beta: {}", alpha);
-        //                         beta = score;
-        //                     }
-        //                     if score <= alpha {
-        //                         eprintln!("Quiescence returning alpha 0: {}", beta);
-        //                         return alpha;
-        //                     }
-        //                 }
-        //             },
-        //             Outcome::Checkmate(_) => {
-        //                 // panic!("checkmate in quiescent");
-        //             },
-        //             Outcome::Stalemate => {
-        //                 // panic!("stalemate in quiescent");
-        //             },
-        //         }
-        //     }
-        // }
-
-        // trace!("quiescence return alpha: {}", alpha);
-        eprintln!("quiescence return alpha: {}", alpha);
+        trace!("quiescence return alpha: {}", alpha);
+        // eprintln!("quiescence return alpha: {}", alpha);
         alpha
     }
 

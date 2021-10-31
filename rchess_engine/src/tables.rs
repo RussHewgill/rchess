@@ -87,7 +87,8 @@ fn def_between_bb()    -> [[BitBoard; 64]; 64] {
 }
 
 // #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
-#[derive(Serialize,Deserialize,Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+// #[derive(Serialize,Deserialize,Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Serialize,Deserialize,Debug,Eq,PartialEq,PartialOrd,Clone)]
 pub struct Tables {
     #[serde(skip,default = "Tables::gen_pawns")]
     // #[serde(serialize_with = "<[_]>::serialize")]
@@ -106,16 +107,15 @@ pub struct Tables {
     #[serde(skip,default = "def_between_bb")]
     pub between_bb:    [[BitBoard; 64]; 64],
     #[serde(with = "BigArray")]
-    // magics_rook:   [Magic; 64],
     pub magics_rook:   [Magic; 64],
     #[serde(with = "BigArray")]
-    // table_rook:    [BitBoard; 0x19000],
+    #[cfg(not(feature = "smallstack"))]
     pub table_rook:    [BitBoard; 0x19000],
+    #[cfg(feature = "smallstack")]
+    pub table_rook:    Vec<BitBoard>,
     #[serde(with = "BigArray")]
-    // magics_bishop: [Magic; 64],
     pub magics_bishop: [Magic; 64],
     #[serde(with = "BigArray")]
-    // table_bishop:  [BitBoard; 0x1480],
     pub table_bishop:  [BitBoard; 0x1480],
     #[serde(skip)]
     pub piece_tables:  PcTables,
@@ -206,6 +206,9 @@ impl Tables {
             ([Magic::new(0, BitBoard::empty(), BitBoard::empty(), 0); 64],
              [BitBoard::empty(); 0x19000])
         };
+
+        #[cfg(feature = "smallstack")]
+        let table_rook = table_rook.to_vec();
 
         let (magics_bishop, table_bishop) = if magics {
             _gen_magics(true).unwrap()
