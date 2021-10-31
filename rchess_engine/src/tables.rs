@@ -41,6 +41,13 @@ lazy_static! {
 }
 
 lazy_static! {
+    // pub static ref _TABLES: Tables = {
+    //     #[cfg(not(feature = "smallstack"))]
+    //     let ts = Tables::read_from_file("tables.bin").unwrap();
+    //     // #[cfg(feature = "smallstack")]
+    //     // let ts = Tables::read_from_file("tables-vec.bin").unwrap();
+    //     ts
+    // };
     pub static ref _TABLES: Tables = Tables::read_from_file("tables.bin").unwrap();
 }
 
@@ -178,6 +185,14 @@ impl Tables {
             .unwrap();
 
         file.write_all(&b)
+    }
+
+    pub fn read_from_file_def() -> std::io::Result<Self> {
+        #[cfg(not(feature = "smallstack"))]
+        let ts = Tables::read_from_file("tables.bin");
+        #[cfg(feature = "smallstack")]
+        let ts = Tables::read_from_file("tables-vec.bin");
+        ts
     }
 
     pub fn read_from_file(path: &str) -> std::io::Result<Self> {

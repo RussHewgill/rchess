@@ -79,7 +79,7 @@ impl Explorer {
             }
         }
 
-        let moves = g.search_all(&ts, None);
+        let moves = g.search_all(&ts);
 
         let mut moves: Vec<Move> = match moves {
             Outcome::Checkmate(c) => {
@@ -135,8 +135,11 @@ impl Explorer {
             //     )
             // };
 
+            // let moves = moves.into_iter().filter(|x| x.filter_all_captures()).collect();
+
             let score = self.quiescence(
-                ts, g, moves, k, alpha, beta, maximizing, &mut stats,
+                // ts, g, moves, k, alpha, beta, maximizing, &mut stats,
+                ts, g, k, alpha, beta, maximizing, &mut stats,
             );
 
             // let score = g.evaluate(&ts).sum();
@@ -159,7 +162,6 @@ impl Explorer {
         if g.state.checkers.is_empty()
             && g.game_phase() < 200
             && self.prune_null_move(
-                // ts, g, max_depth, depth, k, alpha, beta, maximizing, &mut stats, tt_r, tt_w.clone()) {
                 ts, g, max_depth, depth, k, alpha, beta, maximizing, &mut stats,
                 prev_mvs.clone(), &mut history, tt_r, tt_w.clone()) {
                 return None;
@@ -175,13 +177,13 @@ impl Explorer {
         /// Make move, Lookup games in Trans Table
         // #[cfg(feature = "par")]
         let mut gs: Vec<(Move,Game,Option<(SICanUse,SearchInfo)>)> = {
-            // let mut gs0 = moves.into_par_iter().flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, m) {
-            let mut gs0 = moves.into_iter().flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, m) {
-                let mut ss = SearchStats::default();
-                let tt = self.check_tt(&ts, &g2, depth, maximizing, &tt_r, &mut ss);
-                // Some(((m,g2,tt), ss))
-                *stats = *stats + ss;
-                Some((m,g2,tt))
+            let mut gs0 = moves.into_iter()
+                .flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, m) {
+                        let mut ss = SearchStats::default();
+                        let tt = self.check_tt(&ts, &g2, depth, maximizing, &tt_r, &mut ss);
+                        // Some(((m,g2,tt), ss))
+                        *stats = *stats + ss;
+                        Some((m,g2,tt))
             } else {
                 None
             });

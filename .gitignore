@@ -11,3 +11,4 @@ testpositions/*
 *.bin
 logs/*
 test.log
+gdb.log

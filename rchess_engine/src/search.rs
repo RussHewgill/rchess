@@ -26,7 +26,8 @@ impl Game {
         // }
         // out
 
-        let ms = self.search_all(&ts, col);
+        // let ms = self.search_all(&ts, col);
+        let ms = self.search_all(&ts);
         match ms {
             Outcome::Checkmate(win) => Outcome::Checkmate(win),
             Outcome::Stalemate      => Outcome::Stalemate,
@@ -39,14 +40,25 @@ impl Game {
         }
     }
 
+    pub fn search_only_captures(&self, ts: &Tables) -> Outcome {
+        let col = self.state.side_to_move;
+        if self.state.checkers.is_not_empty() {
+            self._search_in_check(&ts, col, true)
+        } else {
+            self._search_all(&ts, col, true)
+        }
+    }
+
     // pub fn search_all(&self, ts: &Tables, col: Color) -> Option<Vec<Move>> {
-    pub fn search_all(&self, ts: &Tables, col: Option<Color>) -> Outcome {
-        let col = if let Some(c) = col { c } else { self.state.side_to_move };
+    // pub fn search_all(&self, ts: &Tables, col: Option<Color>) -> Outcome {
+    pub fn search_all(&self, ts: &Tables) -> Outcome {
+        // let col = if let Some(c) = col { c } else { self.state.side_to_move };
+        let col = self.state.side_to_move;
 
         if self.state.checkers.is_not_empty() {
-            self._search_in_check(&ts, col)
+            self._search_in_check(&ts, col, false)
         } else {
-            self._search_all(&ts, col)
+            self._search_all(&ts, col, false)
         }
 
         // match self.state.checkers {
@@ -95,12 +107,12 @@ impl Game {
     //     // vec![].into_iter()
     // }
 
-    pub fn _search_all(&self, ts: &Tables, col: Color) -> Outcome {
+    pub fn _search_all(&self, ts: &Tables, col: Color, only_caps: bool) -> Outcome {
 
-        let k = self.search_king(&ts, col);
-        let b = self.search_sliding(&ts, Bishop, col);
-        let r = self.search_sliding(&ts, Rook, col);
-        let q = self.search_sliding(&ts, Queen, col);
+        let k = self.search_king(&ts, col, only_caps);
+        let b = self.search_sliding(&ts, Bishop, col, only_caps);
+        let r = self.search_sliding(&ts, Rook, col, only_caps);
+        let q = self.search_sliding(&ts, Queen, col, only_caps);
         // let b = self.search_sliding_iter(&ts, Bishop, col).collect();
         // let r = self.search_sliding_iter(&ts, Rook, col).collect();
         // let q = self.search_sliding_iter(&ts, Queen, col).collect();
@@ -114,10 +126,12 @@ impl Game {
         // let q = self.search_sliding_iter(&ts, Queen, col);
         // k.extend(b.chain(r).chain(q));
 
-        let n = self.search_knights(&ts, col);
-        let p = self.search_pawns(&ts, col);
-        let pp = self._search_promotions(&ts, None, col);
-        let cs = self._search_castles(&ts);
+        let n = self.search_knights(&ts, col, only_caps);
+        let p = self.search_pawns(&ts, col, only_caps);
+        let pp = self._search_promotions(&ts, None, col, only_caps);
+        let cs = if !only_caps {
+            self._search_castles(&ts)
+        } else { Vec::with_capacity(0) };
 
         let out = vec![k,b,r,q,n,p,pp,cs].concat();
         // let out = vec![k,n,p,pp,cs].concat();
@@ -136,21 +150,21 @@ impl Game {
         }
     }
 
-    pub fn _search_in_check(&self, ts: &Tables, col: Color) -> Outcome {
+    pub fn _search_in_check(&self, ts: &Tables, col: Color, only_caps: bool) -> Outcome {
         let mut out = vec![];
 
-        out.extend(&self.search_king(&ts, col));
+        out.extend(&self.search_king(&ts, col, only_caps));
 
         // let mut x = 0;
         // self.state.checkers.iter_bitscan(|sq| x += 1);
         let x = self.state.checkers.into_iter().count();
         if x == 1 {
-            out.extend(&self.search_sliding(&ts, Bishop, col));
-            out.extend(&self.search_sliding(&ts, Rook, col));
-            out.extend(&self.search_sliding(&ts, Queen, col));
-            out.extend(&self.search_knights(&ts, col));
-            out.extend(&self.search_pawns(&ts, col));
-            out.extend(&self._search_promotions(&ts, None, col));
+            out.extend(&self.search_sliding(&ts, Bishop, col, only_caps));
+            out.extend(&self.search_sliding(&ts, Rook, col, only_caps));
+            out.extend(&self.search_sliding(&ts, Queen, col, only_caps));
+            out.extend(&self.search_knights(&ts, col, only_caps));
+            out.extend(&self.search_pawns(&ts, col, only_caps));
+            out.extend(&self._search_promotions(&ts, None, col, only_caps));
         }
 
         // let out: Vec<Move> = out.into_iter().filter(|m| {
@@ -186,7 +200,7 @@ impl Game {
     ) {
         if depth == 0 { return; }
 
-        let moves = self.search_all(ts, None);
+        let moves = self.search_all(ts);
         if moves.is_end() { return; }
         let moves = moves.get_moves_unsafe();
 
@@ -208,7 +222,7 @@ impl Game {
 
         if depth == 0 { return (1,vec![]); }
 
-        let moves = self.search_all(&ts, None);
+        let moves = self.search_all(&ts);
         if moves.is_end() { return (0,vec![]); }
         let moves = moves.get_moves_unsafe();
 
@@ -269,7 +283,7 @@ impl Game {
 
         if depth == 0 { return (1,0); }
 
-        let moves = self.search_all(&ts, None);
+        let moves = self.search_all(&ts);
         if moves.is_end() { return (0,0); }
 
         // eprintln!("moves.len() = {:?}", moves.len());
@@ -306,7 +320,7 @@ impl Game {
 
         if depth == 0 { return (1,0); }
 
-        let moves = self.search_all(&ts, None);
+        let moves = self.search_all(&ts);
         if moves.is_end() { return (0,0); }
 
         let moves = moves.into_iter().flat_map(|m| if let Ok(g2) = self.make_move_unchecked(&ts, m) {
@@ -564,29 +578,9 @@ impl Game {
 /// Sliding
 impl Game {
 
-    pub fn search_sliding(&self, ts: &Tables, pc: Piece, col: Color) -> Vec<Move> {
+    pub fn search_sliding(&self, ts: &Tables, pc: Piece, col: Color, only_caps: bool) -> Vec<Move> {
         let mut out = vec![];
         let pieces = self.get(pc, col);
-
-        // pieces.iter_bitscan(|sq| {
-        //     let moves   = self._search_sliding_single(&ts, pc, sq.into(), col, None);
-        //     let attacks = moves & self.get_color(!col);
-        //     let quiets  = moves & self.all_empty();
-        //     attacks.into_iter().for_each(|sq2| {
-        //         let to = sq2.into();
-        //         let (_,victim) = self.get_at(to).unwrap();
-        //         // out.push(Move::Capture { from: sq.into(), to, pc, victim });
-        //         let m = Move::Capture { from: sq.into(), to, pc, victim };
-        //         if self.move_is_legal(&ts, m) { out.push(m); }
-        //         // out.push(m);
-        //     });
-        //     quiets.into_iter().for_each(|sq2| {
-        //         // out.push(Move::Quiet { from: sq.into(), to: sq2.into() });
-        //         let m = Move::Quiet { from: sq.into(), to: sq2.into(), pc };
-        //         if self.move_is_legal(&ts, m) { out.push(m); }
-        //         // out.push(m);
-        //     });
-        // });
 
         for sq in pieces.into_iter() {
             let moves   = self._search_sliding_single(&ts, pc, sq.into(), col, None);
@@ -600,23 +594,26 @@ impl Game {
                 if self.move_is_legal(&ts, m) { out.push(m); }
                 // out.push(m);
             });
-            quiets.into_iter().for_each(|sq2| {
-                // out.push(Move::Quiet { from: sq.into(), to: sq2.into() });
-                let m = Move::Quiet { from: sq.into(), to: sq2.into(), pc };
-                if self.move_is_legal(&ts, m) { out.push(m); }
-                // out.push(m);
-            });
+            if !only_caps {
+                quiets.into_iter().for_each(|sq2| {
+                    // out.push(Move::Quiet { from: sq.into(), to: sq2.into() });
+                    let m = Move::Quiet { from: sq.into(), to: sq2.into(), pc };
+                    if self.move_is_legal(&ts, m) { out.push(m); }
+                    // out.push(m);
+                });
+            }
         }
 
         out
     }
 
-    pub fn _search_sliding_single(&self,
-                                  ts: &Tables,
-                                  pc: Piece,
-                                  c0: Coord,
-                                  col: Color,
-                                  occ: Option<BitBoard>,
+    pub fn _search_sliding_single(
+        &self,
+        ts:     &Tables,
+        pc:     Piece,
+        c0:     Coord,
+        col:    Color,
+        occ:    Option<BitBoard>,
     ) -> BitBoard {
         let occ = match occ {
             None    => self.all_occupied(),
@@ -727,63 +724,18 @@ impl Game {
         // out
     }
 
-    pub fn search_king(&self, ts: &Tables, col: Color) -> Vec<Move> {
-        self._search_king(&ts, col, true)
+    pub fn search_king(&self, ts: &Tables, col: Color, only_caps: bool) -> Vec<Move> {
+        self._search_king(&ts, col, true, only_caps)
     }
 
-    pub fn search_king_iter<'a>(&'a self, ts: &'a Tables, col: Color)
-                                -> impl Iterator<Item = Move> + 'a {
-        self._search_king_iter(&ts, col, true)
-    }
 
-    pub fn _search_king_iter<'a>(&'a self, ts: &'a Tables, col: Color, forbid_check: bool)
-                            -> impl Iterator<Item = Move> + 'a {
-        let p0 = self.get(King, col).bitscan();
-        // if p0 == 64 { return vec![].into_iter() }
-        let moves = *ts.get_king(p0);
-
-        let moves = moves & !self.get_color(col);
-
-        let attacks = self.get_color(!col);
-
-        let p1: Coord = p0.into();
-        moves.into_iter().flat_map(move |to| {
-            let to: Coord = to.into();
-            if attacks.is_one_at(to) {
-                if forbid_check && !self.find_attacks_by_side(&ts, to, !col, false) {
-                    let (_,victim) = self.get_at(to).unwrap();
-                    Some(Move::Capture { from: p1, to: to, pc: King, victim })
-                    // Some(Move::Capture { from: p1, to: to})
-                } else {
-                    None
-                }
-            } else {
-                if forbid_check && !self.find_attacks_by_side(&ts, to, !col, false) {
-                    Some(Move::Quiet { from: p1, to: to, pc: King })
-                } else {
-                    None
-                }
-            }
-        })
-
-    }
-
-    pub fn _search_king_single(&self, c0: Coord, ts: &Tables, col: Color, forbid_check: bool)
-                               -> Vec<Move> {
-        // let mut out = vec![];
-        let occ = self.all_occupied();
-
-        let moves = ts.get_king(c0);
-        // let quiets   = b3 & !oc;
-        // let captures = b3 & oc;
-
-        eprintln!("moves = {:?}", moves);
-
-        unimplemented!()
-        // out
-    }
-
-    pub fn _search_king(&self, ts: &Tables, col: Color, forbid_check: bool) -> Vec<Move> {
+    pub fn _search_king(
+        &self,
+        ts:               &Tables,
+        col:              Color,
+        forbid_check:     bool,
+        only_caps:        bool,
+    ) -> Vec<Move> {
 
         let p0 = self.get(King, col).bitscan();
         if p0 == 64 { return vec![]; }
@@ -795,21 +747,22 @@ impl Game {
 
         let mut out = vec![];
 
-        // quiets.iter_bitscan(|sq| {
-        quiets.into_iter().for_each(|sq| {
-            let go = if forbid_check {
-                // let mut threats = self.find_attacks_to(&ts, sq.into(), !col);
-                // threats.next().is_none()
-                !self.find_attacks_by_side(&ts, sq.into(), !col, true)
-            } else {
-                true
-            };
-            if go {
-                let m = Move::Quiet { from: p0.into(), to: sq.into(), pc: King };
-                // if self.move_is_legal(&ts, m) { out.push(m); }
-                out.push(m);
-            }
-        });
+        if !only_caps {
+            quiets.into_iter().for_each(|sq| {
+                let go = if forbid_check {
+                    // let mut threats = self.find_attacks_to(&ts, sq.into(), !col);
+                    // threats.next().is_none()
+                    !self.find_attacks_by_side(&ts, sq.into(), !col, true)
+                } else {
+                    true
+                };
+                if go {
+                    let m = Move::Quiet { from: p0.into(), to: sq.into(), pc: King };
+                    // if self.move_is_legal(&ts, m) { out.push(m); }
+                    out.push(m);
+                }
+            });
+        }
 
         // captures.iter_bitscan(|sq| {
         captures.into_iter().for_each(|sq| {
@@ -835,6 +788,58 @@ impl Game {
         out
     }
 
+    // pub fn search_king_iter<'a>(&'a self, ts: &'a Tables, col: Color)
+    //                             -> impl Iterator<Item = Move> + 'a {
+    //     self._search_king_iter(&ts, col, true)
+    // }
+
+    // pub fn _search_king_iter<'a>(&'a self, ts: &'a Tables, col: Color, forbid_check: bool)
+    //                         -> impl Iterator<Item = Move> + 'a {
+    //     let p0 = self.get(King, col).bitscan();
+    //     // if p0 == 64 { return vec![].into_iter() }
+    //     let moves = *ts.get_king(p0);
+
+    //     let moves = moves & !self.get_color(col);
+
+    //     let attacks = self.get_color(!col);
+
+    //     let p1: Coord = p0.into();
+    //     moves.into_iter().flat_map(move |to| {
+    //         let to: Coord = to.into();
+    //         if attacks.is_one_at(to) {
+    //             if forbid_check && !self.find_attacks_by_side(&ts, to, !col, false) {
+    //                 let (_,victim) = self.get_at(to).unwrap();
+    //                 Some(Move::Capture { from: p1, to: to, pc: King, victim })
+    //                 // Some(Move::Capture { from: p1, to: to})
+    //             } else {
+    //                 None
+    //             }
+    //         } else {
+    //             if forbid_check && !self.find_attacks_by_side(&ts, to, !col, false) {
+    //                 Some(Move::Quiet { from: p1, to: to, pc: King })
+    //             } else {
+    //                 None
+    //             }
+    //         }
+    //     })
+
+    // }
+
+    // pub fn _search_king_single(&self, c0: Coord, ts: &Tables, col: Color, forbid_check: bool)
+    //                            -> Vec<Move> {
+    //     // let mut out = vec![];
+    //     let occ = self.all_occupied();
+
+    //     let moves = ts.get_king(c0);
+    //     // let quiets   = b3 & !oc;
+    //     // let captures = b3 & oc;
+
+    //     eprintln!("moves = {:?}", moves);
+
+    //     unimplemented!()
+    //     // out
+    // }
+
     // pub fn search_knight(&self, )
 
 }
@@ -842,11 +847,17 @@ impl Game {
 /// Knights
 impl Game {
 
-    pub fn search_knights(&self, ts: &Tables, col: Color) -> Vec<Move> {
-        self._search_knights(None, ts, col)
+    pub fn search_knights(&self, ts: &Tables, col: Color, only_caps: bool) -> Vec<Move> {
+        self._search_knights(None, ts, col, only_caps)
     }
 
-    pub fn _search_knights(&self, single: Option<Coord>, ts: &Tables, col: Color) -> Vec<Move> {
+    pub fn _search_knights(
+        &self,
+        single:       Option<Coord>,
+        ts:           &Tables,
+        col:          Color,
+        only_caps:    bool,
+    ) -> Vec<Move> {
         let mut out = vec![];
         let oc = self.all_occupied();
 
@@ -855,21 +866,20 @@ impl Game {
             None     => self.get(Knight, col),
         };
 
-        // ks.iter_bitscan(|sq| {
         ks.into_iter().for_each(|sq| {
             let ms = ts.get_knight(sq);
 
             let quiets   = *ms & !oc;
             let captures = *ms & self.get_color(!col);
 
-            // quiets.iter_bitscan(|t| {
-            quiets.into_iter().for_each(|t| {
-                // out.push(Move::Quiet { from: sq.into(), to: t.into()});
-                let m = Move::Quiet { from: sq.into(), to: t.into(), pc: Knight };
-                if self.move_is_legal(&ts, m) { out.push(m); }
-            });
+            if !only_caps {
+                quiets.into_iter().for_each(|t| {
+                    // out.push(Move::Quiet { from: sq.into(), to: t.into()});
+                    let m = Move::Quiet { from: sq.into(), to: t.into(), pc: Knight };
+                    if self.move_is_legal(&ts, m) { out.push(m); }
+                });
+            }
 
-            // captures.iter_bitscan(|t| {
             captures.into_iter().for_each(|t| {
                 let (_,victim) = self.get_at(t.into()).unwrap();
                 // out.push(Move::Capture { from: sq.into(), to: t.into(), pc: Knight, victim});
@@ -888,11 +898,11 @@ impl Game {
 /// Pawns + Promotions
 impl Game {
 
-    pub fn search_pawns(&self, ts: &Tables, col: Color) -> Vec<Move> {
-        self._search_pawns(&ts, None, col)
+    pub fn search_pawns(&self, ts: &Tables, col: Color, only_caps: bool) -> Vec<Move> {
+        self._search_pawns(&ts, None, col, only_caps)
     }
 
-    pub fn _search_pawns(&self, ts: &Tables, single: Option<Coord>, col: Color) -> Vec<Move> {
+    pub fn _search_pawns(&self, ts: &Tables, single: Option<Coord>, col: Color, only_caps: bool) -> Vec<Move> {
         let mut out = vec![];
         let oc = self.all_occupied();
 
@@ -907,40 +917,34 @@ impl Game {
         };
         let ps = ps & !(if col == White { BitBoard::mask_rank(6) } else { BitBoard::mask_rank(1) });
 
-        let pushes = ps.shift_dir(dir);
-        let pushes = pushes & !(oc);
-
-        let doubles = ps & BitBoard::mask_rank(if col == White { 1 } else { 6 });
-        let doubles = doubles.shift_mult(dir, 2);
-        let doubles = doubles & !(oc) & (!(oc)).shift_dir(dir);
-
         // let b = doubles;
         // eprintln!("{:?}", b);
 
-        // pushes.iter_bitscan(|t| {
-        pushes.into_iter().for_each(|t| {
-            let t = t.into();
-            if let Some(f) = (!dir).shift_coord(t) {
-                // out.push(Move::Quiet { from: f, to: t });
-                let m = Move::Quiet { from: f, to: t, pc: Pawn };
+        if !only_caps {
+            let pushes = ps.shift_dir(dir);
+            let pushes = pushes & !(oc);
+
+            let doubles = ps & BitBoard::mask_rank(if col == White { 1 } else { 6 });
+            let doubles = doubles.shift_mult(dir, 2);
+            let doubles = doubles & !(oc) & (!(oc)).shift_dir(dir);
+
+            pushes.into_iter().for_each(|t| {
+                let t = t.into();
+                if let Some(f) = (!dir).shift_coord(t) {
+                    // out.push(Move::Quiet { from: f, to: t });
+                    let m = Move::Quiet { from: f, to: t, pc: Pawn };
+                    if self.move_is_legal(&ts, m) { out.push(m); }
+                }
+            });
+
+            doubles.into_iter().for_each(|t| {
+                let f = BitBoard::single(t.into()).shift_mult(!dir, 2);
+                // out.push(Move::PawnDouble { from: f.bitscan().into(), to: t.into() })
+                let m = Move::PawnDouble { from: f.bitscan().into(), to: t.into() };
                 if self.move_is_legal(&ts, m) { out.push(m); }
-            }
-        });
+            });
+        }
 
-        // doubles.iter_bitscan(|t| {
-        doubles.into_iter().for_each(|t| {
-            let f = BitBoard::single(t.into()).shift_mult(!dir, 2);
-            // out.push(Move::PawnDouble { from: f.bitscan().into(), to: t.into() })
-            let m = Move::PawnDouble { from: f.bitscan().into(), to: t.into() };
-            if self.move_is_legal(&ts, m) { out.push(m); }
-        });
-
-        // let captures = ps.shift(dw) | ps.shift(de);
-        // let captures = captures & self.get_color(!col);
-
-        // eprintln!("{:?}", ps);
-
-        // ps.iter_bitscan(|p0| {
         ps.into_iter().for_each(|p0| {
             let f  = BitBoard::index_bit(p0);
             let bb = BitBoard::empty().flip(f);
@@ -959,7 +963,6 @@ impl Game {
         if let Some(ep) = self.state.en_passant {
             let attacks = ts.get_pawn(ep).get_capture(!col);
             let attacks = *attacks & ps;
-            // attacks.iter_bitscan(|sq| {
             attacks.into_iter().for_each(|sq| {
                 let capture = if col == White { S.shift_coord(ep) } else { N.shift_coord(ep) };
                 let capture = capture
@@ -972,13 +975,16 @@ impl Game {
             });
         }
 
-        // pushes.serialize()
-        // unimplemented!()
-        // vec![]
         out
     }
 
-    pub fn _search_promotions(&self, ts: &Tables, single: Option<Coord>, col: Color) -> Vec<Move> {
+    pub fn _search_promotions(
+        &self,
+        ts:         &Tables,
+        single:     Option<Coord>,
+        col:        Color,
+        only_caps:  bool,
+    ) -> Vec<Move> {
         let mut out = vec![];
         let oc = self.all_occupied();
 
@@ -996,40 +1002,40 @@ impl Game {
         let pushes = ps.shift_dir(dir);
         let pushes = pushes & !(oc);
 
-        // pushes.iter_bitscan(|t| {
-        pushes.into_iter().for_each(|t| {
-            let t = t.into();
-            if let Some(f) = (!dir).shift_coord(t) {
-                // out.push(Move::Quiet { from: f, to: t });
-                // out.push(Move::Promotion { from: f, to: t, new_piece: Queen });
-                // out.push(Move::Promotion { from: f, to: t, new_piece: Knight });
-                // out.push(Move::Promotion { from: f, to: t, new_piece: Rook });
-                // out.push(Move::Promotion { from: f, to: t, new_piece: Bishop });
+        if !only_caps {
+            pushes.into_iter().for_each(|t| {
+                let t = t.into();
+                if let Some(f) = (!dir).shift_coord(t) {
+                    // out.push(Move::Quiet { from: f, to: t });
+                    // out.push(Move::Promotion { from: f, to: t, new_piece: Queen });
+                    // out.push(Move::Promotion { from: f, to: t, new_piece: Knight });
+                    // out.push(Move::Promotion { from: f, to: t, new_piece: Rook });
+                    // out.push(Move::Promotion { from: f, to: t, new_piece: Bishop });
 
-                // let m = Move::Promotion { from: f, to: t, new_piece: Queen };
-                // if self.move_is_legal(&ts, m) { out.push(m); }
-                // let m = Move::Promotion { from: f, to: t, new_piece: Knight };
-                // if self.move_is_legal(&ts, m) { out.push(m); }
-                // let m = Move::Promotion { from: f, to: t, new_piece: Rook };
-                // if self.move_is_legal(&ts, m) { out.push(m); }
-                // let m = Move::Promotion { from: f, to: t, new_piece: Bishop };
-                // if self.move_is_legal(&ts, m) { out.push(m); }
+                    // let m = Move::Promotion { from: f, to: t, new_piece: Queen };
+                    // if self.move_is_legal(&ts, m) { out.push(m); }
+                    // let m = Move::Promotion { from: f, to: t, new_piece: Knight };
+                    // if self.move_is_legal(&ts, m) { out.push(m); }
+                    // let m = Move::Promotion { from: f, to: t, new_piece: Rook };
+                    // if self.move_is_legal(&ts, m) { out.push(m); }
+                    // let m = Move::Promotion { from: f, to: t, new_piece: Bishop };
+                    // if self.move_is_legal(&ts, m) { out.push(m); }
 
-                // XXX: would this ever be different?
-                let m = Move::Promotion { from: f, to: t, new_piece: Queen };
-                let legal = self.move_is_legal(&ts, m);
-                if legal { out.push(m); }
-                let m = Move::Promotion { from: f, to: t, new_piece: Knight };
-                if legal { out.push(m); }
-                let m = Move::Promotion { from: f, to: t, new_piece: Rook };
-                if legal { out.push(m); }
-                let m = Move::Promotion { from: f, to: t, new_piece: Bishop };
-                if legal { out.push(m); }
+                    // XXX: would this ever be different?
+                    let m = Move::Promotion { from: f, to: t, new_piece: Queen };
+                    let legal = self.move_is_legal(&ts, m);
+                    if legal { out.push(m); }
+                    let m = Move::Promotion { from: f, to: t, new_piece: Knight };
+                    if legal { out.push(m); }
+                    let m = Move::Promotion { from: f, to: t, new_piece: Rook };
+                    if legal { out.push(m); }
+                    let m = Move::Promotion { from: f, to: t, new_piece: Bishop };
+                    if legal { out.push(m); }
 
-            }
-        });
+                }
+            });
+        }
 
-        // ps.iter_bitscan(|p0| {
         ps.into_iter().for_each(|p0| {
             let f  = BitBoard::index_bit(p0);
             let bb = BitBoard::empty().flip(f);

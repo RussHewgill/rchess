@@ -442,6 +442,54 @@ impl Explorer {
     }
 
     #[allow(unused_doc_comments)]
+    pub fn lazy_smp_single(&self, ts: &Tables, print: bool, strict_depth: bool)
+                           -> (Vec<(Move,Vec<Move>,Score)>,SearchStats,(TTRead,TTWrite)) {
+        let mut timer = self.timer.clone();
+        timer.reset();
+        let mut depth = 1;
+        let stats: Arc<RwLock<SearchStats>> =
+            Arc::new(RwLock::new(SearchStats::default()));
+
+        let moves = self.game.search_all(&ts).get_moves_unsafe();
+        let mut gs = moves.par_iter().flat_map(|mv| {
+            if let Ok(g2) = self.game.make_move_unchecked(&ts, *mv) {
+                Some((*mv,g2))
+            } else { None }
+        });
+        let gs = gs.collect::<Vec<_>>();
+
+        let (tt_r, tt_w) = evmap::new();
+        let tt_w = Arc::new(Mutex::new(tt_w));
+
+        let (tx,rx): (Sender<(Depth,Vec<(Move,Vec<Move>,Score)>,Option<(Move,Score)>)>,
+                      Receiver<(Depth,Vec<(Move,Vec<Move>,Score)>,Option<(Move,Score)>)>) =
+            crossbeam::channel::bounded(12);
+
+        for depth in 0..self.max_depth+1 {
+            self._lazy_smp_single(
+                &ts, gs.clone(),
+                None,
+                depth,
+                tx.clone(),
+                stats.clone(),
+                tt_r.clone(), tt_w.clone());
+        }
+
+        for (d,mvs,mscore) in rx.into_iter() {
+            if let Some((mv,score)) = mscore {
+                eprintln!("depth {} = {:?}: {:?}", d, score, mv);
+            } else {
+                eprintln!("depth {} no score found?", d);
+            }
+        }
+
+        let mut stats = stats.read().clone();
+
+        (vec![],stats,(tt_r,tt_w))
+        // unimplemented!()
+    }
+
+    #[allow(unused_doc_comments)]
     pub fn lazy_smp(&self, ts: &Tables, print: bool, strict_depth: bool)
                     -> (Vec<(Move,Vec<Move>,Score)>,SearchStats,(TTRead,TTWrite)) {
         // 12, 6
@@ -463,7 +511,7 @@ impl Explorer {
         let stats: Arc<RwLock<SearchStats>> =
             Arc::new(RwLock::new(SearchStats::default()));
 
-        let moves = self.game.search_all(&ts, None).get_moves_unsafe();
+        let moves = self.game.search_all(&ts).get_moves_unsafe();
 
         let mut gs = moves.par_iter().flat_map(|mv| {
             if let Ok(g2) = self.game.make_move_unchecked(&ts, *mv) {
@@ -547,7 +595,7 @@ impl Explorer {
                 match rx.try_recv() {
                     Err(TryRecvError::Empty)    => {
                         // std::thread::sleep(sleep_time);
-                        std::thread::sleep(Duration::from_millis(1));
+                        std::thread::sleep(Duration::from_millis(10));
                     },
                     Err(TryRecvError::Disconnected)    => {
                         trace!("Breaking thread counter loop (Disconnect)");
@@ -666,6 +714,7 @@ impl Explorer {
                     break;
                 }
                 if cur_depth > self.max_depth {
+                    // debug!("cur_depth > self.max_depth");
                     continue;
                 }
                 if thread_counter.load(SeqCst) < max_threads {
@@ -714,13 +763,6 @@ impl Explorer {
         let mut stats = stats.read().clone();
         stats.max_depth = d;
 
-        #[cfg(feature = "par")]
-        out.par_sort_unstable_by(|a,b| a.2.cmp(&b.2));
-        #[cfg(not(feature = "par"))]
-        out.sort_unstable_by(|a,b| a.2.cmp(&b.2));
-
-        out.reverse();
-
         // for (mv,_,score) in out.iter() {
         //     debug!("mv: {}: {:?}", score, mv);
         // }
@@ -732,19 +774,109 @@ impl Explorer {
         if out.len() == 0 {
             debug!("no moves found");
             // panic!("no moves found");
+
             let mut gs = gs;
+
             gs.sort_unstable_by(|a,b| {
                 let x = a.1.evaluate(&ts).sum();
                 let y = b.1.evaluate(&ts).sum();
-                x.cmp(&y).reverse()
+                x.cmp(&y)
             });
+            if self.side == White { gs.reverse(); }
+
+            // if let Some((mv0,g0)) = if self.side == White {
+            //     gs.into_iter().min_by(|a,b| {
+            //         let x = a.1.evaluate(&ts).sum();
+            //         let y = b.1.evaluate(&ts).sum();
+            //         x.cmp(&y)
+            //     })
+            // } else {
+            //     gs.into_iter().max_by(|a,b| {
+            //         let x = a.1.evaluate(&ts).sum();
+            //         let y = b.1.evaluate(&ts).sum();
+            //         x.cmp(&y)
+            //     })
+            // } {
+            //     (out, stats, (tt_r,tt_w))
+            // } else {
+            //     panic!("no moves found ??");
+            // }
+
             let out = vec![(gs[0].0,vec![],gs[0].1.evaluate(&ts).sum())];
             (out, stats, (tt_r,tt_w))
         } else {
+
+            #[cfg(feature = "par")]
+            // out.par_sort_unstable_by(|a,b| a.2.cmp(&b.2));
+            out.par_sort_by(|a,b| a.2.cmp(&b.2));
+            #[cfg(not(feature = "par"))]
+            // out.sort_unstable_by(|a,b| a.2.cmp(&b.2));
+            out.sort_by(|a,b| a.2.cmp(&b.2));
+
+            out.reverse();
+
             (out, stats, (tt_r,tt_w))
         }
 
         // (out, stats, (tt_r,tt_w))
+    }
+
+}
+
+/// MTD(f)
+impl Explorer {
+
+    pub fn mtd_f(
+        &self,
+        ts:             &Tables,
+        firstguess:     Score,
+        // depth:          Depth,
+    ) -> (Vec<Move>, Score) {
+
+        let mut depth = 1;
+
+        let (tt_r, tt_w) = evmap::new();
+        let tt_w = Arc::new(Mutex::new(tt_w));
+
+        let mut stats = SearchStats::default();
+        let mut history = [[[0; 64]; 64]; 2];
+
+        let mut g = firstguess;
+        let mut out;
+
+        let mut upperbound = i32::MAX;
+        let mut lowerbound = i32::MIN;
+
+        loop {
+
+            let beta = if g == lowerbound { g + 1 } else { g };
+            let alpha = beta - 1;
+
+            let ((mv_seq, score),_) = self._ab_search(
+                &ts, &self.game.clone(),
+                self.max_depth, self.max_depth, depth,
+                alpha, beta,
+                true,
+                &mut stats,
+                VecDeque::from([]),
+                &mut history, &tt_r, tt_w.clone(),
+            ).unwrap();
+
+            out = mv_seq;
+
+            if g < beta {
+                upperbound = g;
+            } else {
+                lowerbound = g;
+            }
+
+            if lowerbound >= upperbound {
+                break;
+            }
+
+        }
+
+        (out,g)
     }
 
 }
@@ -758,7 +890,7 @@ impl Explorer {
         &self,
         ts:             &Tables,
         g:              &Game,
-        ms:             Vec<Move>,
+        // mut ms:         Vec<Move>,
         k:              i16,
         mut alpha:      i32,
         mut beta:       i32,
@@ -770,27 +902,128 @@ impl Explorer {
 
         let stand_pat = g.evaluate(&ts).sum();
         let stand_pat = if self.side == Black { -stand_pat } else { stand_pat };
-        // return stand_pat;
+        return stand_pat;
+
+        // if self.stop.load(SeqCst) {
+        //     return stand_pat;
+        // }
+
+        // if g.zobrist == Zobrist(0x5c7013e02d0493c8) {
+        //     // eprintln!("g = {:?}", g);
+        //     trace!("found zobrist 3");
+        // }
+        // if g.zobrist == Zobrist(0x12724159f0aaac53) {
+        //     trace!("found zobrist 4");
+        // }
+
+        // if maximizing {
+        //     trace!("quiescence max ({}): a/b = {:?}, {:?} = {:?}", k, alpha, beta, stand_pat);
+        // } else {
+        //     trace!("quiescence min ({}): a/b = {:?}, {:?} = {:?}", k, alpha, beta, stand_pat);
+        // }
+
+        /// alpha = the MINimum score that the MAXimizing player is assured of
+        /// beta  = the MAXimum score that the MINimizing player is assured of
 
         if maximizing {
-            trace!("quiescence max: a/b = {:?}, {:?} = {:?}", alpha, beta, stand_pat);
+            // lower bound is better than the best opponent can get earlier in tree
+            // beta cutoff
+            // opponent will never make this move because better options are available
+            if stand_pat >= beta {
+                // trace!("QS returning stand_pat: {}", stand_pat);
+                return stand_pat;
+            }
         } else {
-            trace!("quiescence min: a/b = {:?}, {:?} = {:?}", alpha, beta, stand_pat);
+            if stand_pat <= alpha {
+                // trace!("QS returning stand_pat: {}", stand_pat);
+                return stand_pat;
+            }
         }
 
-        if stand_pat >= beta {
-            return stand_pat;
+        if maximizing {
+            if alpha < stand_pat {
+                alpha = stand_pat;
+                // trace!("QS new alpha 0: {}", alpha);
+            }
+        } else {
+            if beta < stand_pat {
+                beta = stand_pat;
+                // trace!("QS new beta 0: {}", alpha);
+            }
         }
 
-        if alpha < stand_pat {
-            alpha = stand_pat;
-        }
+        let mut val = if maximizing { i32::MIN } else { i32::MAX };
 
-        ms.into_iter().flat_map(|mv| g.make_move_unchecked(&ts, mv).ok().map(|g2| (mv,g2)))
-            .for_each(|(mv, g2)| {
+        // for m in ms.iter() {
+        //     if !m.filter_all_captures() {
+        //         panic!("non capture in QS: {:?}, g = {:?}\n{:?}", m, g, g.zobrist);
+        //     }
+        // }
+
+        let mut ms = match g.search_only_captures(&ts) {
+            Outcome::Moves(ms2)    => ms2,
+            Outcome::Checkmate(_) => {
+                // let score = 100_000_000 - k as Score;
+                // if maximizing { -score } else { score }
                 unimplemented!()
-            });
+            },
+            Outcome::Stalemate    => {
+                unimplemented!()
+            },
+        };
 
+        order_mvv_lva(&mut ms);
+
+        // ms.par_sort_by(|a,b| {
+        //     _order_mvv_lva(a, b).reverse()
+        //     // _order_mvv_lva(&a.1, &b.1)
+        // });
+
+        // let ms0 = ms.into_iter()
+        //     .flat_map(|mv| g.make_move_unchecked(&ts, mv).ok().map(|g2| (mv,g2)));
+
+        // for (mv,g2) in ms0 {
+        for mv in ms.into_iter() {
+            if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
+
+                // let score = match g2.search_only_captures(&ts) {
+                //     Outcome::Moves(ms2)    => {
+                //         self.quiescence(
+                //             &ts, &g2, ms2, k + 1, alpha, beta, !maximizing, &mut stats)
+                //     },
+                //     Outcome::Checkmate(_) => {
+                //         let score = 100_000_000 - k as Score;
+                //         if maximizing { -score } else { score }
+                //     },
+                //     Outcome::Stalemate    => {
+                //         let score = -100_000_000 + k as Score;
+                //         score
+                //     },
+                // };
+
+                let score = self.quiescence(
+                    &ts, &g2, k + 1, alpha, beta, !maximizing, &mut stats);
+
+                if maximizing {
+                    val   = Score::max(val, score);
+                    alpha = Score::max(alpha, val);
+                    if val >= beta {
+                        // trace!("QS breaking max: val, beta: {}, {}", val, beta);
+                        break;
+                    }
+                } else {
+                    val = Score::min(val, score);
+                    beta = Score::min(beta, score);
+                    if val <= alpha {
+                        // trace!("QS breaking min: val, beta: {}, {}", val, beta);
+                        // trace!("mv = {:?}", mv);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // trace!("QS returning alpha: {}", alpha);
         alpha
     }
 
@@ -857,7 +1090,7 @@ impl Explorer {
 
         for mv in captures.into_iter() {
             if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
-                match g2.search_all(&ts, None) {
+                match g2.search_all(&ts) {
                     Outcome::Moves(ms2) => {
 
                         let score = -self.quiescence(

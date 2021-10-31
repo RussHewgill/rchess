@@ -357,15 +357,16 @@ fn main7() {
     // let fen = &games(18); // a8h8, #27, Tablebase
     // let fen = &games(21); // d2h6
 
+    // let fen = "7k/1n1n4/2P5/8/5b2/8/7P/7K b - - 0 1"; // Horizon
     let fen = "7k/8/8/r7/r7/8/p1RR4/7K w - - 0 1"; // Horizon
     // let fen = "r1bqkb1r/1pp2ppp/p1n1pn2/3p4/3P1B2/4PQ2/PPPN1PPP/R3KBNR w KQkq - 4 6"; // ??
-    // let fen = "rnbk3r/ppp1nppp/2qp4/2b1p3/4P3/2NP1N1P/PPP2PP1/R1BKQB1R b KQkq - 0 1"; // ??
+    // let fen = "r3kbnr/pppn1ppp/4pq2/3p1b2/3P4/P1N1PN2/1PP2PPP/R1BQKB1R b KQkq - 0 1"; // ??
 
     eprintln!("fen = {:?}", fen);
 
-    let ts = Tables::new();
+    // let ts = Tables::new();
     // ts.write_to_file("tables.bin").unwrap();
-    // let ts = Tables::read_from_file("tables.bin").unwrap();
+    let ts = Tables::read_from_file_def().unwrap();
     // let ts = &_TABLES;
     // let ts = Tables::_new(false);
 
@@ -408,27 +409,62 @@ fn main7() {
     let mut ss = SearchStats::default();
 
     let m0 = Move::Capture { from: "C2".into(), to: "A2".into(), pc: Rook, victim: Pawn };
-    let m1 = Move::Quiet { from: "C2".into(), to: "C8".into(), pc: Rook };
+    // let m1 = Move::Quiet { from: "C2".into(), to: "C8".into(), pc: Rook };
 
-    let g2 = g.make_move_unchecked(&ts, m0).unwrap();
-    let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);
-    // let ms = g2.search_all(&ts, None).get_moves_unsafe();
+    // let m0 = Move::Quiet { from: "F3".into(), to: "G3".into(), pc: Queen };
+    // let m1 = Move::Quiet { from: "F3".into(), to: "H3".into(), pc: Queen };
+    let mm = m0;
 
-    let ms = vec![
-        Move::Capture { from: "A4".into(), to: "A2".into(), pc: Rook, victim: Pawn },
-        Move::Quiet { from: "A4".into(), to: "B4".into(), pc: Rook },
-    ];
+    // let g2 = g.make_move_unchecked(&ts, mm).unwrap();
+    // let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);
 
-    let score = ex2.quiescence(
-        &ts, &g2, ms, 0, alpha, beta, maximizing, &mut ss);
-    eprintln!("score = {:?}", score);
+    // let m00 = Move::Capture { from: "A4".into(), to: "A2".into(), pc: Rook, victim: Rook };
+    // let g3 = g2.make_move_unchecked(&ts, m00).unwrap();
+    // let m01 = Move::Capture { from: "D2".into(), to: "A2".into(), pc: Rook, victim: Rook };
+    // let g4 = g3.make_move_unchecked(&ts, m01).unwrap();
 
-    return;
+    // eprintln!("g4.zobrist = {:?}", g4.zobrist);
+
+    // let zb2 = Zobrist(0x586f4df179d639f6);
+    // let zb3 = Zobrist(0x5c7013e02d0493c8);
+    // let zb4 = Zobrist(0x12724159f0aaac53);
+
+    // return;
+
+    // let ms = vec![
+    //     // Move::Capture { from: "A4".into(), to: "A2".into(), pc: Rook, victim: Pawn },
+    //     // Move::Quiet { from: "A4".into(), to: "B4".into(), pc: Rook },
+    //     // Move::NullMove,
+    // ];
+
+    // eprintln!("g2 = {:?}", g2);
+
+    // let ms = g2.search_only_captures(&ts).get_moves_unsafe();
+    // let score = ex2.quiescence(
+    //     &ts, &g2, ms, 0, alpha, beta, maximizing, &mut ss);
+    // eprintln!("score = {:?}", score);
+
+    // eprintln!("g = {:?}", g);
+    // let firstguess = 0;
+    // let (mvs,score) = ex.mtd_f(&ts, firstguess);
+    // let mv = mvs[mvs.len() - 1];
+    // eprintln!("s, mv = {:?}: {:?}", score, mv);
+
+    // let g = Game::from_fen(&ts, "r6k/8/8/8/r7/8/p1RR4/6K1 w - - 2 2").unwrap();
+    // eprintln!("g = {:?}", g);
+    // eprintln!("g.zobrist = {:?}", g.zobrist);
+
+    // let ms = g.search_only_captures(&ts).get_moves_unsafe();
+    // for m in ms.iter() {
+    //     eprintln!("m = {:?}", m);
+    // }
+
+    // return;
 
     #[allow(unreachable_code)]
     if true {
 
-        // let k = 4;
+        let k = 4;
         let k = 1;
         let mut t: std::time::Duration = std::time::Duration::from_secs(0);
         let t0 = std::time::Instant::now();
@@ -436,14 +472,13 @@ fn main7() {
         println!("g = {:?}", g);
 
         // let n = 35;
-        // let n = 10;
         let n = 2;
 
         ex.max_depth = n;
 
         ex.timer.settings = TimeSettings::new_f64(
             0.0,
-            2.0,
+            4.0,
         );
 
         // let ph = g.game_phase();
@@ -453,8 +488,9 @@ fn main7() {
         let (mvs,stats0,(tt_r,tt_w)) = ex.lazy_smp(&ts, false, false);
         let (mv0,mvs0,score) = mvs.get(0).unwrap();
         // println!("m #{} = {:?}", q, mv0);
+        let t1 = t0.elapsed().as_secs_f64();
         println!("explore lazy_smp  (depth: {}) done in {:.3} seconds.",
-                    stats0.max_depth, t0.elapsed().as_secs_f64());
+                    stats0.max_depth, t1);
         // stats0.print(t0.elapsed());
 
         println!();
@@ -464,32 +500,51 @@ fn main7() {
         // println!("Correct move: Q cap d6b4");
         // println!();
 
-        println!();
-        let g2 = g.flip_sides(&ts);
-        let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), ex.timer.settings);
-        // eprintln!("g2 = {:?}", g2);
-        let (mvs,stats0,(tt_r,tt_w)) = ex2.lazy_smp(&ts, false, false);
-        let (mv0,mvs0,score) = mvs.get(0).unwrap();
-        println!("score, mv: {} = {:?}", score, mv0);
+        // let t0 = std::time::Instant::now();
+        // let (mvs,stats0,(tt_r,tt_w)) = ex.lazy_smp_single(&ts, false, false);
+        // let t1 = t0.elapsed().as_secs_f64();
 
-        let fen2 = g2.to_fen();
-        eprintln!("fen2 = {}", fen2);
+        for (m,_,s) in mvs[0..5].iter() {
+            eprintln!("s,m {:>12} = {:?}", s, m);
+        }
+
+        // println!();
+        // let g2 = g.flip_sides(&ts);
+        // let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), ex.timer.settings);
+        // // eprintln!("g2 = {:?}", g2);
+        // let (mvs,stats0,(tt_r,tt_w)) = ex2.lazy_smp(&ts, false, false);
+        // let (mv0,mvs0,score) = mvs.get(0).unwrap();
+        // println!("score, mv: {} = {:?}", score, mv0);
+        // let fen2 = g2.to_fen();
+        // eprintln!("fen2 = {}", fen2);
 
         // let mm = Move::Quiet { from: "E1".into(), to: "F1".into(), pc: Rook };
         // assert_eq!(*mv0, mm);
+
+        // for (m,_,s) in mvs[0..5].iter() {
+        //     eprintln!("s,m {:>12} = {:?}", s, m);
+        // }
 
         // for m in mvs0.iter() {
         //     eprintln!("m = {:?}", m);
         // }
 
-        // stats0.print_ebf(false);
+        println!();
+        stats0.print(t0.elapsed());
+        let qs = stats0.qt_nodes;
+        let ns = stats0.nodes;
+
+        eprintln!("qt nodes = {:?}", stats0.qt_nodes);
+
+        eprintln!("nodes/sec = {:.1?}", (qs + ns) as f64 / t1);
+
+        stats0.print_ebf(false);
         // stats0.print_ebf(true);
         // stats0.print_node_types(&tt_r);
 
         // eprintln!("null prunes = {:?}", stats0.null_prunes);
         // eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
 
-        // eprintln!("qt nodes = {:?}", stats0.qt_nodes);
         // eprintln!("window fails = {:?}", stats0.window_fails);
 
         // let mm = Move::Capture { from: "C2".into(), to: "A2".into(), pc: Rook, victim: Pawn };
@@ -924,7 +979,8 @@ fn main4(depth: Option<u64>) {
     };
 
     // let ts = Tables::new();
-    let ts = &_TABLES;
+    // let ts = &_TABLES;
+    let ts = Tables::read_from_file_def().unwrap();
     let mut g = Game::from_fen(&ts, fen).unwrap();
     let _ = g.recalc_gameinfo_mut(&ts);
     // eprintln!("g = {:?}", g);

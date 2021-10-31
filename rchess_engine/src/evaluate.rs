@@ -137,7 +137,12 @@ impl Game {
             for pc in pcs {
                 let ps = self.get(pc, col);
                 let pn = ps.popcount() as u16;
-                ph -= pn * phases[pc.index()];
+                let x = pn * phases[pc.index()];
+                if ph < x {
+                    ph = 0;
+                    break;
+                }
+                ph -= x;
             }
         }
 
