@@ -183,9 +183,11 @@ fn main9() {
 
     let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    // let fen = "7k/8/8/8/3N4/1p6/2p5/7K w - - 0 1"; // d4b3
+    // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
 
     // let n = 35;
-    let n = 3;
+    let n = 5;
 
     eprintln!("fen = {:?}", fen);
     let ts = Tables::read_from_file_def().unwrap();
@@ -195,21 +197,24 @@ fn main9() {
     let timesettings = TimeSettings::new_f64(0.0,2.0);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
 
+    let e = g.evaluate(&ts).sum();
+    eprintln!("eval = {:?}", e);
+
     let t0 = std::time::Instant::now();
     println!("g = {:?}", g);
-    let ((mvs,score),stats0,(tt_r,tt_w)) = ex.lazy_smp_single(&ts, false, false);
+    let ((best, scores),stats0,(tt_r,tt_w)) = ex.lazy_smp_single(&ts, false, false);
     let t1 = t0.elapsed().as_secs_f64();
     // let mv0 = mvs.get(0).unwrap();
 
     println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
              n, t1);
+    // println!("correct = Cp N d4b3");
 
-    // eprintln!("s, mv0 = {:>8} {:?}", score, mv0);
-    eprintln!("score = {:?}", score);
+    eprintln!("s, mv0 = {:>8} {:?}", best.score, best.moves);
 
-    for m in mvs {
-        eprintln!("m = {:?}", m);
-    }
+    // for res in scores.iter() {
+    //     eprintln!("s, ms = {:>8}: {:?}", res.score, res.moves);
+    // }
 
 }
 

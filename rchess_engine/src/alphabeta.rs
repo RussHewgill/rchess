@@ -14,30 +14,41 @@ use std::sync::atomic::Ordering::SeqCst;
 
 #[derive(Debug,Default,PartialEq,PartialOrd,Clone)]
 pub struct ABResult {
-    moves:    Vec<Move>,
-    score:    Score,
+    pub moves:    VecDeque<Move>,
+    pub score:    Score,
 }
 
 impl ABResult {
-    pub fn new(moves: Vec<Move>, score: Score) -> Self {
+    pub fn new_empty(score: Score) -> Self {
+        Self {
+            moves: VecDeque::default(),
+            score,
+        }
+    }
+
+    pub fn new_with(moves: VecDeque<Move>, score: Score) -> Self {
         Self {
             moves,
             score,
         }
+    }
+
+    pub fn neg_score(&mut self) {
+        self.score = -self.score;
     }
 }
 
 #[derive(Debug,PartialEq,PartialOrd,Clone)]
 pub enum ABResults {
     ABSingle(ABResult),
-    ABList(Vec<ABResult>),
+    ABList(ABResult, Vec<ABResult>),
     ABNone,
 }
 
 /// Negamax AB
 impl Explorer {
 
-    #[allow(unused_doc_comments)]
+    #[allow(unused_doc_comments,unused_labels)]
     /// alpha: the MIN score that the maximizing player is assured of
     /// beta:  the MAX score that the minimizing player is assured of
     pub fn _ab_search_negamax(
@@ -55,8 +66,6 @@ impl Explorer {
         tt_r:               &TTRead,
         tt_w:               TTWrite,
         root:               bool,
-        // ) -> Option<(Vec<Move>, Score)> {
-    // ) -> Option<((Vec<Move>, Score), (i32, i32))> {
     ) -> ABResults {
 
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
@@ -86,22 +95,19 @@ impl Explorer {
                     stats.checkmates += 1;
                 }
                 if self.side == c {
-                    // return Some(((vec![], score),(alpha,beta)));
-                    return ABSingle(ABResult::new(vec![], score));
+                    return ABSingle(ABResult::new_empty(-score));
                 } else {
-                    // return Some(((vec![], -score),(alpha,beta)));
-                    return ABSingle(ABResult::new(vec![], -score));
+                    return ABSingle(ABResult::new_empty(score));
                 }
             },
             Outcome::Stalemate    => {
-                let score = -20_000_000 + k as Score;
-                // if !self.tt_contains(&g.zobrist) {
+                let score = -200_000_000 + k as Score;
                 if !tt_r.contains_key(&g.zobrist) {
                     stats.leaves += 1;
                     stats.stalemates += 1;
                 }
-                // return Some(((vec![], score),(alpha,beta)));
-                return ABSingle(ABResult::new(vec![], score));
+                // TODO: adjust stalemate value when winning/losing
+                return ABSingle(ABResult::new_empty(-score));
             },
             Outcome::Moves(ms)    => ms,
         };
@@ -112,8 +118,11 @@ impl Explorer {
             }
 
             let score = g.evaluate(&ts).sum();
-            // return Some(((vec![], score),(alpha,beta)));
-            return Some(ABSingle(ABResult::new(vec![], score)));
+
+            // trace!("returning from ply {} score: {:?}", k, -score);
+            // trace!("{:?}", g);
+
+            return ABSingle(ABResult::new_empty(-score));
         }
 
         // TODO: 
@@ -135,14 +144,12 @@ impl Explorer {
         order_moves_history(&history[g.state.side_to_move], &mut moves);
 
         /// Make move, Lookup games in Trans Table
-        // #[cfg(feature = "par")]
         let mut gs: Vec<(Move,Game,Option<(SICanUse,SearchInfo)>)> = {
+            let maximizing = self.side == g.state.side_to_move;
             let mut gs0 = moves.into_iter()
                 .flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, m) {
                     let mut ss = SearchStats::default();
-                    let maximizing = self.side == g.state.side_to_move;
                     let tt = self.check_tt(&ts, &g2, depth, maximizing, &tt_r, &mut ss);
-                    // Some(((m,g2,tt), ss))
                     *stats = *stats + ss;
                     Some((m,g2,tt))
             } else {
@@ -176,30 +183,33 @@ impl Explorer {
 
         let mut moves_searched = 0;
 
-        // let mut val = if maximizing { i32::MIN } else { i32::MAX };
         let mut val = i32::MIN + 200;
-        let mut val: (Option<(Zobrist,Move,Vec<Move>)>,i32) = (None,val);
+        let mut val: (Option<(Zobrist,Move,ABResult)>,i32) = (None,val);
+
+        let mut list = vec![];
 
         'outer: for (mv,g2,tt) in gs.iter() {
             let zb = g2.zobrist;
 
-            let (can_use,mut mv_seq,score) = match tt {
+            let (can_use,res) = match tt {
                 Some((SICanUse::UseScore,si)) => {
-                    // return (si.moves.clone(),si.score);
-                    // (true,si.moves.clone(),si.score)
-                    (true,si.moves.to_vec(),si.score)
+                    (true, ABResult::new_with(si.moves.clone().into(),si.score))
                 },
                 _ => 'search: {
                     let mut pms = prev_mvs.clone();
                     pms.push_back((g.zobrist,*mv));
 
-                    // if let Some(((mv_seq,score),_)) = self._ab_search_negamax(
-                    if let Some(_) = self._ab_search_negamax(
-                        &ts, &g, max_depth, depth - 1, k + 1,
+                    if let ABSingle(mut res) = self._ab_search_negamax(
+                        &ts, &g2, max_depth, depth - 1, k + 1,
                         -beta, -alpha, &mut stats,
                         pms, &mut history, tt_r, tt_w.clone(), false) {
-                        // (false,mv_seq,-score)
-                        unimplemented!()
+
+                        res.moves.push_front(*mv);
+                        res.neg_score();
+                        if root {
+                            list.push(res.clone());
+                        }
+                        (false, res)
                     } else {
                         break 'outer;
                     }
@@ -208,17 +218,17 @@ impl Explorer {
             };
             let mut b = false;
 
-            if score > val.1 {
-                val.1 = score;
+            if res.score > val.1 {
+                val.1 = res.score;
                 // if !can_use { mv_seq.push(*mv) };
-                val.0 = Some((zb, *mv, mv_seq))
+                val.0 = Some((zb, *mv, res.clone()))
             }
 
             if val.1 > alpha {
                 alpha = val.1;
             }
 
-            if score >= beta { // Fail Soft
+            if res.score >= beta { // Fail Soft
                 b = true;
                 // return beta;
             }
@@ -242,14 +252,18 @@ impl Explorer {
             moves_searched += 1;
         }
 
+        if root && k > 5 {
+            trace!("node_type = {:?}", node_type);
+        }
+
         match &val.0 {
             // Some((zb,mv,mv_seq)) => Some(((mv_seq.clone(),val.1),(alpha,beta))),
-            Some((zb,mv,mv_seq)) => if root {
-                unimplemented!()
+            Some((zb,mv,res)) => if root {
+                ABList(res.clone(), list)
             } else {
-                ABSingle(ABResult::new(mv_seq.clone(), val.1))
+                ABSingle(res.clone())
             }
-            _                    => None,
+            _                    => ABNone,
         }
     }
 

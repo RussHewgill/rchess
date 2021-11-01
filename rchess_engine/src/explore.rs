@@ -4,6 +4,7 @@ use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
 use crate::pruning::*;
+use crate::alphabeta::*;
 
 pub use crate::move_ordering::*;
 pub use crate::timer::*;
@@ -247,7 +248,7 @@ impl Explorer {
 impl Explorer {
     #[allow(unused_doc_comments)]
     pub fn lazy_smp_single(&self, ts: &Tables, print: bool, strict_depth: bool)
-                           -> ((Vec<Move>,Score), SearchStats,(TTRead,TTWrite)) {
+                           -> ((ABResult, Vec<ABResult>), SearchStats,(TTRead,TTWrite)) {
     // -> (Vec<(Move,Vec<Move>,Score)>,SearchStats,(TTRead,TTWrite)) {
         let mut timer = self.timer.clone();
         timer.reset();
@@ -276,9 +277,11 @@ impl Explorer {
         let (alpha,beta) = (i32::MIN,i32::MAX);
         let (alpha,beta) = (alpha + 200,beta - 200);
 
-        let mut out = (vec![], i32::MIN);
+        let mut out = vec![];
+        let mut best: Option<ABResult> = None;
 
-        if let Some(((mut mv_seq,score),_)) = self._ab_search_negamax(
+        // if let Some(((mut mv_seq,score),_)) = self._ab_search_negamax(
+        if let ABResults::ABList(b, scores) = self._ab_search_negamax(
             &ts, &self.game, self.max_depth,
             // depth,
             self.max_depth,
@@ -286,10 +289,12 @@ impl Explorer {
             &mut stats,
             VecDeque::new(),
             &mut history,
-            &tt_r, tt_w.clone()) {
+            &tt_r, tt_w.clone(),true) {
 
             // mv_seq.reverse();
-            out = (mv_seq,score);
+            // out = (mv_seq,score);
+            out = scores;
+            best = Some(b);
         }
 
         // for depth in 0..self.max_depth+1 {
@@ -324,7 +329,8 @@ impl Explorer {
 
         // let mut stats = stats.read().clone();
 
-        (out,stats,(tt_r,tt_w))
+        // (out,stats,(tt_r,tt_w))
+        ((best.unwrap(),out),stats,(tt_r,tt_w))
         // unimplemented!()
     }
 
