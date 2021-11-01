@@ -16,6 +16,7 @@ pub struct SearchStats {
     pub checkmates:     u32,
     pub stalemates:     u32,
     pub tt_hits:        u32,
+    pub tt_halfmiss:    u32,
     pub tt_misses:      u32,
     pub qt_nodes:       u32,
     pub qt_hits:        u32,
@@ -56,6 +57,7 @@ impl std::ops::Add for SearchStats {
             checkmates:         self.checkmates + other.checkmates,
             stalemates:         self.stalemates + other.stalemates,
             tt_hits:            self.tt_hits + other.tt_hits,
+            tt_halfmiss:            self.tt_halfmiss + other.tt_halfmiss,
             tt_misses:          self.tt_misses + other.tt_misses,
             qt_nodes:           self.qt_nodes + other.qt_nodes,
             qt_hits:            self.qt_hits + other.qt_hits,
@@ -155,6 +157,7 @@ impl SearchStats {
         println!("checkmates   = {}", Self::_print(self.checkmates as i32));
         // println!("stalemates   = {}", Self::_print(self.stalemates as i32));
         println!("hits         = {}", Self::_print(self.tt_hits as i32));
+        println!("halfmiss     = {}", Self::_print(self.tt_halfmiss as i32));
         println!("misses       = {}", Self::_print(self.tt_misses as i32));
         // println!("qt_nodes     = {}", Self::_print(self.qt_nodes as i32));
         // println!("qt_hits      = {}", Self::_print(self.qt_hits as i32));

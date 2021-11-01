@@ -21,7 +21,7 @@ harness = false
 default = [
     # "par",
     "one_thread",
-    "smallstack",
+    # "smallstack",
 
     # "positional_scoring",
 

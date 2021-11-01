@@ -47,7 +47,7 @@ pub enum SICanUse {
 #[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone)]
 // #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone)]
 pub struct SearchInfo {
-    pub mv:                 Move,
+    pub best_move:          Move,
     pub depth_searched:     Depth,
     // pub score:              Score,
     pub node_type:          Node,
@@ -155,7 +155,6 @@ impl MvTable {
 impl Explorer {
 
     #[allow(unused_doc_comments)]
-    // XXX: clear old values?
     pub fn tt_insert_deepest(
         tt_r: &TTRead, tt_w: TTWrite, zb: Zobrist, si: SearchInfo) -> bool {
 
@@ -164,7 +163,8 @@ impl Explorer {
 
         if let Some(prevs) = tt_r.get(&zb) {
             if let Some(prev_si) = prevs.into_iter().max_by(|a,b| a.depth_searched.cmp(&b.depth_searched)) {
-                if d < prev_si.depth_searched || (prev_si.node_type != Node::PV && nt == Node::PV) {
+                // if d < prev_si.depth_searched || (prev_si.node_type != Node::PV && nt == Node::PV) {
+                if d < prev_si.depth_searched {
                     /// Value already in map is better, keep that instead
                     return true;
                 }
@@ -189,9 +189,15 @@ impl Explorer {
 impl SearchInfo {
     // pub fn new(mv: Move, moves: Vec<Move>, depth_searched: Depth, node_type: Node, score: Score) -> Self {
     //     let moves = VMoves::from_vec(moves).into();
-    pub fn new(mv: Move, moves: Vec<Move>, depth_searched: Depth, node_type: Node, score: Score) -> Self {
+    pub fn new(
+        best_move:          Move,
+        moves:              Vec<Move>,
+        depth_searched:     Depth,
+        node_type:          Node,
+        score:              Score,
+    ) -> Self {
         Self {
-            mv,
+            best_move,
             depth_searched,
             node_type,
             score,

@@ -31,6 +31,7 @@ use rchess_engine_lib::util::*;
 use rchess_engine_lib::evaluate::*;
 use rchess_engine_lib::explore::*;
 use rchess_engine_lib::tuning::*;
+use rchess_engine_lib::alphabeta::*;
 
 use log::{debug, error, log_enabled, info, Level};
 use gag::Redirect;
@@ -183,42 +184,58 @@ fn main9() {
     init_logger();
 
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
-    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
-    // let fen = "7k/8/8/8/3N4/1p6/2p5/7K w - - 0 1"; // d4b3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
+    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
-    // let n = 35;
-    let n = 5;
+    // let fen1 = "7k/8/8/3p4/4P3/8/8/7K w - - 0 1";
+    // let fen2 = "7k/8/8/3p4/4P3/8/8/7K b - - 0 1";
+
+    fn games(i: usize) -> String {
+        let mut games = read_epd("testpositions/WAC.epd").unwrap();
+        // let mut games = read_epd("testpositions/STS6.epd").unwrap();
+        let mut games = games.into_iter();
+        let games = games.map(|x| x.0).collect::<Vec<_>>();
+        games[i - 1].clone()
+    }
+
+    // let fen = &games(7);
 
     eprintln!("fen = {:?}", fen);
     let ts = Tables::read_from_file_def().unwrap();
     let mut g = Game::from_fen(&ts, fen).unwrap();
+    // let g = g.flip_sides(&ts);
 
-    let stop = Arc::new(AtomicBool::new(false));
-    let timesettings = TimeSettings::new_f64(0.0,2.0);
-    let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+    fn go(ts: &Tables, n: Depth, g: Game, t: f64) -> ((ABResult, Vec<ABResult>),SearchStats,(TTRead,TTWrite)) {
+        let stop = Arc::new(AtomicBool::new(false));
+        let timesettings = TimeSettings::new_f64(0.0,t);
+        let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+        ex.lazy_smp_negamax(&ts, false, false)
+    }
 
-    let e = g.evaluate(&ts).sum();
-    eprintln!("eval = {:?}", e);
+    // let n = 35;
+    // let n = 5;
+    let n = 6;
 
-    ex.timer.settings = TimeSettings::new_f64(
-        0.0,
-        2.0,
-    );
+    // let e = g.evaluate(&ts).sum();
+    // eprintln!("eval = {:?}", e);
 
     let t0 = std::time::Instant::now();
     println!("g = {:?}", g);
-    let ((best, scores),stats0,(tt_r,tt_w)) = ex.lazy_smp_negamax_test(&ts, false, false);
-    // let ((best, scores),stats0,(tt_r,tt_w)) = ex.lazy_smp_negamax(&ts, false, false);
+    let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), 4.0);
     let t1 = t0.elapsed();
     let t2 = t1.as_secs_f64();
-    // let mv0 = mvs.get(0).unwrap();
 
-    println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
-             n, t2);
-    // println!("correct = Cp N d4b3");
+    // println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
+    //          stats0.max_depth, t2);
+    // // println!("correct = Cp N d4b3");
 
-    eprintln!("\nBest move = {:>8} {:?}: {:?}", best.score, best.moves[0], best.moves);
+    // let mut g1 = Game::from_fen(&ts, fen1).unwrap();
+    // let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g1.clone(), 4.0);
+    // eprintln!("\nBest move = {:>8} {:?}: {:?}", best.score, best.moves[0], best.moves);
+
+    for m in best.moves.iter() {
+        eprintln!("\t{:?}", m);
+    }
 
     // let t0 = std::time::Instant::now();
     // let (ss,_,_) = ex.lazy_smp(&ts, false, false);
@@ -230,8 +247,26 @@ fn main9() {
     //     eprintln!("s, ms = {:>8}: {:?}", res.score, res.moves);
     // }
 
-    stats0.print(t1);
-    stats0.print_ebf(false);
+    // stats0.print(t1);
+    // stats0.print_ebf(true);
+
+    // eprintln!("qt nodes 0 = {:?}", stats0.qt_nodes);
+    // eprintln!("null prunes = {:?}", stats0.null_prunes);
+    // eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
+
+    // let bcs = stats0.beta_cut_first;
+    // eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
+
+    // let zb = g.zobrist;
+    // let si = tt_r.get_one(&zb).unwrap();
+    // eprintln!("si = {:?}", si);
+
+    // let mut k = 0;
+    // for (zb,sis) in tt_r.read().unwrap().iter() {
+    //     // let si = sis.iter().next().unwrap();
+    //     k += 1;
+    // }
+    // eprintln!("k = {:?}", k);
 
 }
 
@@ -538,7 +573,7 @@ fn main7() {
         println!("g = {:?}", g);
 
         // let n = 35;
-        let n = 2;
+        let n = 4;
 
         ex.max_depth = n;
 
@@ -568,6 +603,10 @@ fn main7() {
         // println!("Correct move: Cp Q b6f2");
         println!("Correct move: Q cap d6b4");
         println!();
+
+        for m in mvs0.iter() {
+            eprintln!("m = {:?}", m);
+        }
 
         // let t0 = std::time::Instant::now();
         // let (mvs,stats0,(tt_r,tt_w)) = ex.lazy_smp_single(&ts, false, false);
@@ -600,10 +639,6 @@ fn main7() {
         //     eprintln!("s,m {:>12} = {:?}", s, m);
         // }
 
-        // for m in mvs0.iter() {
-        //     eprintln!("m = {:?}", m);
-        // }
-
         println!();
         eprintln!("moves0.len() = {:?}", moves0.len());
         // eprintln!("moves1.len() = {:?}", moves1.len());
@@ -617,7 +652,7 @@ fn main7() {
         // eprintln!("qt nodes 1 = {:?}", stats1.qt_nodes);
         // eprintln!("nodes/sec 0 = {:.1?}", (qs + ns) as f64 / t1);
 
-        stats0.print_ebf(false);
+        stats0.print_ebf(true);
         // stats1.print_ebf(false);
         // stats0.print_ebf(true);
         // stats0.print_node_types(&tt_r);
@@ -728,7 +763,8 @@ fn main3(num: Option<u64>, send_url: bool) {
     let n = 35;
 
     // let ts = Tables::new();
-    let ts = Tables::read_from_file("tables.bin").unwrap();
+    // let ts = Tables::read_from_file("tables.bin").unwrap();
+    let ts = Tables::read_from_file_def().unwrap();
 
     let timesettings = TimeSettings::new_f64(
         0.0,

@@ -15,6 +15,7 @@ impl Explorer {
         &self,
         ts:                 &Tables,
         mut g:              &Game,
+        max_depth:          Depth,
         depth:              Depth,
         k:                  i16,
         alpha:              i32,
@@ -38,10 +39,11 @@ impl Explorer {
             pms.push_back((g.zobrist,mv));
 
             if let ABResults::ABSingle(mut res) = self._ab_search_negamax(
-                &ts, &g2,
+                &ts, &g2, max_depth,
                 depth - 1 - r, k + 1,
-                -beta, -beta + 1, &mut stats, pms,
-                &mut history,
+                // -beta, -beta + 1,
+                -beta, -alpha,
+                &mut stats, pms, &mut history,
                 tt_r, tt_w, false) {
 
                 res.moves.push_front(mv);
