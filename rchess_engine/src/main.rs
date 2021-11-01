@@ -158,6 +158,7 @@ fn main() {
                 Some(n) => main4(n),
                 _       => main4(None),
             }
+            "main7" => main7(),
             _       => {},
         },
         // None    => main7(),
@@ -200,9 +201,15 @@ fn main9() {
     let e = g.evaluate(&ts).sum();
     eprintln!("eval = {:?}", e);
 
+    ex.timer.settings = TimeSettings::new_f64(
+        0.0,
+        2.0,
+    );
+
     let t0 = std::time::Instant::now();
     println!("g = {:?}", g);
-    let ((best, scores),stats0,(tt_r,tt_w)) = ex.lazy_smp_single(&ts, false, false);
+    // let ((best, scores),stats0,(tt_r,tt_w)) = ex.lazy_smp_negamax_test(&ts, false, false);
+    let ((best, scores),stats0,(tt_r,tt_w)) = ex.lazy_smp_negamax(&ts, false, false);
     let t1 = t0.elapsed().as_secs_f64();
     // let mv0 = mvs.get(0).unwrap();
 
@@ -211,6 +218,12 @@ fn main9() {
     // println!("correct = Cp N d4b3");
 
     eprintln!("s, mv0 = {:>8} {:?}", best.score, best.moves);
+
+    let t0 = std::time::Instant::now();
+    let (ss,_,_) = ex.lazy_smp(&ts, false, false);
+    let (m0,_,s) = ss.get(0).unwrap();
+    eprintln!("s, m = {:>9} {:?}", s, m0);
+    let t1 = t0.elapsed().as_secs_f64();
 
     // for res in scores.iter() {
     //     eprintln!("s, ms = {:>8}: {:?}", res.score, res.moves);
@@ -346,7 +359,7 @@ fn main7() {
     // let fen = "3q1rk1/p4pp1/2pb3p/3p4/6Pr/1PNQ4/P1PB1PP1/4RRK1 b - - 0 1"; // WAC.009, Bh2+ = d6h2
 
     // let fen = "8/1p4pk/6rp/3Pp3/4Qn2/2P2qP1/1B3P1P/4R1K1 b - - 1 1"; // f4h3, #2
-    // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
+    let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
     // let fen = "8/p6k/1p5p/4Bpp1/8/1P3q1P/P1Q2P1K/3r4 w - - 0 2"; // c2c7, #5;
     // let fen = "1rq2k1r/p1p2p2/2B2P2/3RP2p/1b3N1p/2N4P/PPP1QPP1/2K4R w - - 1 23"; // e5e6, #9
@@ -401,7 +414,7 @@ fn main7() {
     // let fen = &games(21); // d2h6
 
     // let fen = "7k/1n1n4/2P5/8/5b2/8/7P/7K b - - 0 1"; // Horizon
-    let fen = "7k/8/8/r7/r7/8/p1RR4/7K w - - 0 1"; // Horizon
+    // let fen = "7k/8/8/r7/r7/8/p1RR4/7K w - - 0 1"; // Horizon
     // let fen = "r1bqkb1r/1pp2ppp/p1n1pn2/3p4/3P1B2/4PQ2/PPPN1PPP/R3KBNR w KQkq - 4 6"; // ??
     // let fen = "r3kbnr/pppn1ppp/4pq2/3p1b2/3P4/P1N1PN2/1PP2PPP/R1BQKB1R b KQkq - 0 1"; // ??
 
