@@ -182,8 +182,8 @@ fn main9() {
     let fen = STARTPOS;
     init_logger();
 
-    let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
-    // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
+    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
     // let fen = "7k/8/8/8/3N4/1p6/2p5/7K w - - 0 1"; // d4b3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
 
@@ -208,26 +208,30 @@ fn main9() {
 
     let t0 = std::time::Instant::now();
     println!("g = {:?}", g);
-    // let ((best, scores),stats0,(tt_r,tt_w)) = ex.lazy_smp_negamax_test(&ts, false, false);
-    let ((best, scores),stats0,(tt_r,tt_w)) = ex.lazy_smp_negamax(&ts, false, false);
-    let t1 = t0.elapsed().as_secs_f64();
+    let ((best, scores),stats0,(tt_r,tt_w)) = ex.lazy_smp_negamax_test(&ts, false, false);
+    // let ((best, scores),stats0,(tt_r,tt_w)) = ex.lazy_smp_negamax(&ts, false, false);
+    let t1 = t0.elapsed();
+    let t2 = t1.as_secs_f64();
     // let mv0 = mvs.get(0).unwrap();
 
     println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
-             n, t1);
+             n, t2);
     // println!("correct = Cp N d4b3");
 
-    eprintln!("s, mv0 = {:>8} {:?}", best.score, best.moves);
+    eprintln!("\nBest move = {:>8} {:?}: {:?}", best.score, best.moves[0], best.moves);
 
-    let t0 = std::time::Instant::now();
-    let (ss,_,_) = ex.lazy_smp(&ts, false, false);
-    let (m0,_,s) = ss.get(0).unwrap();
-    eprintln!("s, m = {:>9} {:?}", s, m0);
-    let t1 = t0.elapsed().as_secs_f64();
+    // let t0 = std::time::Instant::now();
+    // let (ss,_,_) = ex.lazy_smp(&ts, false, false);
+    // let (m0,_,s) = ss.get(0).unwrap();
+    // eprintln!("s, m = {:>9} {:?}", s, m0);
+    // let t1 = t0.elapsed().as_secs_f64();
 
     // for res in scores.iter() {
     //     eprintln!("s, ms = {:>8}: {:?}", res.score, res.moves);
     // }
+
+    stats0.print(t1);
+    stats0.print_ebf(false);
 
 }
 
@@ -370,7 +374,7 @@ fn main7() {
     // let fen = "1k3r1r/p1p3p1/1pn3q1/3R1n2/3P4/P1B1p2p/P1PN1PPP/4QK1R w - - 0 22"; // #-10 if d2b3
     // let fen = "r1bqk1nr/ppppbppp/2n5/8/4Q3/N7/PPP1PPPP/R1B1KBNR w KQkq - 3 5"; // ??
 
-    // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
     // let fen = "7k/1n1n4/2P5/8/5b2/8/7P/7K b - - 0 1"; // Horizon
     // let fen = "7k/8/8/r7/r7/8/p1RR4/7K w - - 0 1"; // Horizon
@@ -562,8 +566,8 @@ fn main7() {
         // println!("m #{} = {:?}", q, mv0);
         println!("score, mv: {} = {:?}", score, mv0);
         // println!("Correct move: Cp Q b6f2");
-        // println!("Correct move: Q cap d6b4");
-        // println!();
+        println!("Correct move: Q cap d6b4");
+        println!();
 
         // let t0 = std::time::Instant::now();
         // let (mvs,stats0,(tt_r,tt_w)) = ex.lazy_smp_single(&ts, false, false);
@@ -576,25 +580,25 @@ fn main7() {
         //     eprintln!("s,m {:>12} = {:?}", s, m);
         // }
 
-        println!();
-        let g2 = g.flip_sides(&ts);
-        let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), ex.timer.settings);
-        // eprintln!("g2 = {:?}", g2);
-        let (moves1,stats1,(tt_r,tt_w)) = ex2.lazy_smp(&ts, false, false);
-        let (mv0,mvs0,score) = moves1.get(0).unwrap();
-        println!("score, mv: {} = {:?}", score, mv0);
-        let fen2 = g2.to_fen();
-        eprintln!("fen2 = {}", fen2);
+        // println!();
+        // let g2 = g.flip_sides(&ts);
+        // let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), ex.timer.settings);
+        // // eprintln!("g2 = {:?}", g2);
+        // let (moves1,stats1,(tt_r,tt_w)) = ex2.lazy_smp(&ts, false, false);
+        // let (mv0,mvs0,score) = moves1.get(0).unwrap();
+        // println!("score, mv: {} = {:?}", score, mv0);
+        // let fen2 = g2.to_fen();
+        // eprintln!("fen2 = {}", fen2);
 
         // let mm = Move::Quiet { from: "E1".into(), to: "F1".into(), pc: Rook };
         // assert_eq!(*mv0, mm);
 
-        println!("===");
-        let mut moves1 = moves1;
-        moves1.truncate(5);
-        for (m,_,s) in moves1.iter() {
-            eprintln!("s,m {:>12} = {:?}", s, m);
-        }
+        // println!("===");
+        // let mut moves1 = moves1;
+        // moves1.truncate(5);
+        // for (m,_,s) in moves1.iter() {
+        //     eprintln!("s,m {:>12} = {:?}", s, m);
+        // }
 
         // for m in mvs0.iter() {
         //     eprintln!("m = {:?}", m);
@@ -602,7 +606,7 @@ fn main7() {
 
         println!();
         eprintln!("moves0.len() = {:?}", moves0.len());
-        eprintln!("moves1.len() = {:?}", moves1.len());
+        // eprintln!("moves1.len() = {:?}", moves1.len());
 
         println!();
         // stats0.print(t0.elapsed());
@@ -610,11 +614,11 @@ fn main7() {
         // let ns = stats0.nodes;
 
         eprintln!("qt nodes 0 = {:?}", stats0.qt_nodes);
-        eprintln!("qt nodes 1 = {:?}", stats1.qt_nodes);
+        // eprintln!("qt nodes 1 = {:?}", stats1.qt_nodes);
         // eprintln!("nodes/sec 0 = {:.1?}", (qs + ns) as f64 / t1);
 
         stats0.print_ebf(false);
-        stats1.print_ebf(false);
+        // stats1.print_ebf(false);
         // stats0.print_ebf(true);
         // stats0.print_node_types(&tt_r);
 

@@ -283,7 +283,7 @@ impl Explorer {
 
         // if let Some(((mut mv_seq,score),_)) = self._ab_search_negamax(
         if let ABResults::ABList(b, scores) = self._ab_search_negamax(
-            &ts, &self.game, self.max_depth,
+            &ts, &self.game,
             // depth,
             self.max_depth,
             0, alpha, beta,
@@ -359,7 +359,6 @@ impl Explorer {
 
         let res = self._ab_search_negamax(
             &ts, &self.game, self.max_depth,
-            self.max_depth,
             0, alpha, beta,
             &mut stats,
             VecDeque::new(),
@@ -460,7 +459,7 @@ impl Explorer {
                                     break;
                                 } else {
                                     let mut w = out1.write();
-                                    // *w = (depth, scores, Some(score));
+                                    *w = (depth, abres, w.2 + stats0);
                                 }
 
                             },
@@ -587,7 +586,11 @@ impl Explorer {
             ABResults::ABList(best, ress) => {
                 ((best,ress),stats,(tt_r,tt_w))
             },
+            ABResults::ABSingle(_) => {
+                panic!("single result only?");
+            }
             _ => {
+                // ((ABResults::ABNone, vec![]), stats, (tt_r,tt_w))
                 unimplemented!()
             },
         }
@@ -1211,6 +1214,23 @@ impl Explorer {
         maximizing:     bool,
         mut stats:      &mut SearchStats,
     ) -> Score {
+        unimplemented!()
+    }
+
+    /// alpha = the MINimum score that the MAXimizing player is assured of
+    /// beta  = the MAXimum score that the MINimizing player is assured of
+    #[allow(unused_doc_comments)]
+    pub fn quiescence2(
+        &self,
+        ts:             &Tables,
+        g:              &Game,
+        // mut ms:         Vec<Move>,
+        k:              i16,
+        mut alpha:      i32,
+        mut beta:       i32,
+        maximizing:     bool,
+        mut stats:      &mut SearchStats,
+    ) -> Score {
 
         stats.qt_nodes += 1;
 
@@ -1333,7 +1353,7 @@ impl Explorer {
                 //     },
                 // };
 
-                let score = self.quiescence(
+                let score = self.quiescence2(
                     &ts, &g2, k + 1, alpha, beta, !maximizing, &mut stats);
 
                 if maximizing {

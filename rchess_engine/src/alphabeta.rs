@@ -55,7 +55,6 @@ impl Explorer {
         &self,
         ts:                 &Tables,
         g:                  &Game,
-        max_depth:          Depth,
         depth:              Depth,
         k:                  i16,
         mut alpha:          i32,
@@ -78,8 +77,8 @@ impl Explorer {
             let r = self.best_mate.read();
             if let Some(best) = *r {
                 drop(r);
-                if best <= max_depth {
-                    trace!("halting search of depth {}, faster mate found", max_depth);
+                if best <= self.max_depth {
+                    trace!("halting search of depth {}, faster mate found", self.max_depth);
                     return ABNone;
                 }
             }
@@ -112,6 +111,10 @@ impl Explorer {
             Outcome::Moves(ms)    => ms,
         };
 
+        /// XXX: stat padding by including nodes found in TT
+        stats.inc_nodes_arr(depth);
+        stats.nodes += 1;
+
         if depth == 0 {
             if !tt_r.contains_key(&g.zobrist) {
                 stats.leaves += 1;
@@ -125,16 +128,15 @@ impl Explorer {
             return ABSingle(ABResult::new_empty(-score));
         }
 
-        // TODO: 
-        // /// Null Move pruning
-        // #[cfg(feature = "null_pruning")]
-        // if g.state.checkers.is_empty()
-        //     && g.game_phase() < 200
-        //     && self.prune_null_move(
-        //         ts, g, max_depth, depth, k, alpha, beta, maximizing, &mut stats,
-        //         prev_mvs.clone(), &mut history, tt_r, tt_w.clone()) {
-        //         return None;
-        // }
+        /// Null Move pruning
+        #[cfg(feature = "null_pruning")]
+        if g.state.checkers.is_empty()
+            && g.game_phase() < 200
+            && self.prune_null_move_negamax(
+                ts, g, depth, k, alpha, beta, &mut stats,
+                prev_mvs.clone(), &mut history, tt_r, tt_w.clone()) {
+                return ABNone;
+        }
 
         /// MVV LVA move ordering
         order_mvv_lva(&mut moves);
@@ -158,7 +160,7 @@ impl Explorer {
             gs0.collect()
         };
 
-        let mut node_type = Node::PV;
+        let mut node_type = if root { Node::Root } else { Node::All };
 
         /// Get parent node type
         let moves = match tt_r.get_one(&g.zobrist) {
@@ -200,7 +202,7 @@ impl Explorer {
                     pms.push_back((g.zobrist,*mv));
 
                     if let ABSingle(mut res) = self._ab_search_negamax(
-                        &ts, &g2, max_depth, depth - 1, k + 1,
+                        &ts, &g2, depth - 1, k + 1,
                         -beta, -alpha, &mut stats,
                         pms, &mut history, tt_r, tt_w.clone(), false) {
 
@@ -211,6 +213,7 @@ impl Explorer {
                         }
                         (false, res)
                     } else {
+                        // continue 'outer;
                         break 'outer;
                     }
 
@@ -313,7 +316,7 @@ impl Explorer {
         }
     }
 
-    #[allow(unused_doc_comments)]
+    #[allow(unused_doc_comments,unused_labels)]
     /// alpha: the min score that the maximizing player is assured of
     /// beta:  the max score that the minimizing player is assured of
     pub fn _ab_search(
@@ -408,19 +411,18 @@ impl Explorer {
 
             // let moves = moves.into_iter().filter(|x| x.filter_all_captures()).collect();
 
-            let score = if g.state.checkers.is_empty() {
-                self.quiescence(
-                    // ts, g, moves, k, alpha, beta, maximizing, &mut stats,
-                    ts, g, k, alpha, beta, maximizing, &mut stats,
-                )
-            } else {
-                let score = g.evaluate(&ts).sum();
-                if self.side == Black { -score } else { score }
-            };
+            // let score = if g.state.checkers.is_empty() {
+            //     self.quiescence2(
+            //         // ts, g, moves, k, alpha, beta, maximizing, &mut stats,
+            //         ts, g, k, alpha, beta, maximizing, &mut stats,
+            //     )
+            // } else {
+            //     let score = g.evaluate(&ts).sum();
+            //     if self.side == Black { -score } else { score }
+            // };
 
-            // let score = g.evaluate(&ts).sum();
-
-            // let score = if self.side == Black { -score } else { score };
+            let score = g.evaluate(&ts).sum();
+            let score = if self.side == Black { -score } else { score };
 
             return Some(((vec![], score),(alpha,beta)));
 

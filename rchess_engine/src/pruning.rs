@@ -1,6 +1,7 @@
 
 use std::collections::VecDeque;
 
+use crate::alphabeta::*;
 use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
@@ -9,6 +10,52 @@ use crate::explore::*;
 
 /// Null Move
 impl Explorer {
+
+    pub fn prune_null_move_negamax(
+        &self,
+        ts:                 &Tables,
+        mut g:              &Game,
+        depth:              Depth,
+        k:                  i16,
+        alpha:              i32,
+        beta:               i32,
+        mut stats:          &mut SearchStats,
+        prev_mvs:           VecDeque<(Zobrist,Move)>,
+        mut history:        &mut [[[Score; 64]; 64]; 2],
+        tt_r:               &TTRead,
+        tt_w:               TTWrite,
+    ) -> bool {
+
+        let mv = Move::NullMove;
+
+        let r = 2;
+
+        // if depth <= (1 + r) { return false; }
+        if depth < (1 + r) { return false; }
+
+        if let Ok(g2) = g.make_move_unchecked(ts, mv) {
+            let mut pms = prev_mvs.clone();
+            pms.push_back((g.zobrist,mv));
+
+            if let ABResults::ABSingle(mut res) = self._ab_search_negamax(
+                &ts, &g2,
+                depth - 1 - r, k + 1,
+                -beta, -beta + 1, &mut stats, pms,
+                &mut history,
+                tt_r, tt_w, false) {
+
+                res.moves.push_front(mv);
+                res.neg_score();
+
+                if res.score >= beta { // Beta cutoff
+                    // trace!("null move beta cutoff, a/b: {}, {}, score = {}", -beta, -beta + 1, res.score);
+                    stats.null_prunes += 1;
+                    return true;
+                }
+            }
+        }
+        false
+    }
 
     pub fn prune_null_move(
         &self,

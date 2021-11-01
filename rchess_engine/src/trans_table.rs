@@ -106,8 +106,8 @@ impl PartialOrd for SearchInfo {
 // }
 
 /// PV,  // Exact
-/// All, // UpperBound, Fail low
-/// Cut, // LowerBound, Fail high
+/// All, // UpperBound, Fail low, evaluation never exceeded alpha
+/// Cut, // LowerBound, Fail high, evaluation caused cutoff
 /// Quiet,
 /// // Root,
 #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
