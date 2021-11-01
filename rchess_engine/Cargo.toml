@@ -19,9 +19,9 @@ harness = false
 
 [features]
 default = [
-    "par",
+    # "par",
     "one_thread",
-    # "smallstack",
+    "smallstack",
 
     # "positional_scoring",
 

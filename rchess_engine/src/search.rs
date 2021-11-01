@@ -42,11 +42,17 @@ impl Game {
 
     pub fn search_only_captures(&self, ts: &Tables) -> Outcome {
         let col = self.state.side_to_move;
-        if self.state.checkers.is_not_empty() {
+        let moves = if self.state.checkers.is_not_empty() {
             self._search_in_check(&ts, col, true)
         } else {
             self._search_all(&ts, col, true)
-        }
+        };
+        // if moves.is_end() {
+        //     self.search_all(&ts)
+        // } else {
+        //     moves
+        // }
+        moves
     }
 
     // pub fn search_all(&self, ts: &Tables, col: Color) -> Option<Vec<Move>> {

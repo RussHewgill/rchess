@@ -243,6 +243,93 @@ impl Explorer {
 
 }
 
+/// Negamax testing
+impl Explorer {
+    #[allow(unused_doc_comments)]
+    pub fn lazy_smp_single(&self, ts: &Tables, print: bool, strict_depth: bool)
+                           -> ((Vec<Move>,Score), SearchStats,(TTRead,TTWrite)) {
+    // -> (Vec<(Move,Vec<Move>,Score)>,SearchStats,(TTRead,TTWrite)) {
+        let mut timer = self.timer.clone();
+        timer.reset();
+        let mut depth = 1;
+        // let stats: Arc<RwLock<SearchStats>> =
+        //     Arc::new(RwLock::new(SearchStats::default()));
+
+        let mut stats = SearchStats::default();
+        let mut history = [[[0; 64]; 64]; 2];
+
+        // let moves = self.game.search_all(&ts).get_moves_unsafe();
+        // let mut gs = moves.par_iter().flat_map(|mv| {
+        //     if let Ok(g2) = self.game.make_move_unchecked(&ts, *mv) {
+        //         Some((*mv,g2))
+        //     } else { None }
+        // });
+        // let gs = gs.collect::<Vec<_>>();
+
+        let (tt_r, tt_w) = evmap::new();
+        let tt_w = Arc::new(Mutex::new(tt_w));
+
+        let (tx,rx): (Sender<(Depth,Vec<(Move,Vec<Move>,Score)>,Option<(Move,Score)>)>,
+                      Receiver<(Depth,Vec<(Move,Vec<Move>,Score)>,Option<(Move,Score)>)>) =
+            crossbeam::channel::bounded(12);
+
+        let (alpha,beta) = (i32::MIN,i32::MAX);
+        let (alpha,beta) = (alpha + 200,beta - 200);
+
+        let mut out = (vec![], i32::MIN);
+
+        if let Some(((mut mv_seq,score),_)) = self._ab_search_negamax(
+            &ts, &self.game, self.max_depth,
+            // depth,
+            self.max_depth,
+            0, alpha, beta,
+            &mut stats,
+            VecDeque::new(),
+            &mut history,
+            &tt_r, tt_w.clone()) {
+
+            // mv_seq.reverse();
+            out = (mv_seq,score);
+        }
+
+        // for depth in 0..self.max_depth+1 {
+        //     debug!("starting depth {}", depth);
+        //     if let Some(((mut mv_seq,score),_)) = self._ab_search_negamax(
+        //         &ts, &self.game,
+        //         self.max_depth, depth, 0,
+        //         alpha, beta,
+        //         &mut stats,
+        //         VecDeque::new(),
+        //         &mut history,
+        //         &tt_r, tt_w.clone()) {
+        //         mv_seq.reverse();
+        //         out = (mv_seq,score);
+        //     }
+        //     // self._lazy_smp_single(
+        //     //     &ts, gs.clone(),
+        //     //     None,
+        //     //     depth,
+        //     //     tx.clone(),
+        //     //     stats.clone(),
+        //     //     tt_r.clone(), tt_w.clone());
+        // }
+
+        // for (d,mvs,mscore) in rx.into_iter() {
+        //     if let Some((mv,score)) = mscore {
+        //         eprintln!("depth {} = {:?}: {:?}", d, score, mv);
+        //     } else {
+        //         eprintln!("depth {} no score found?", d);
+        //     }
+        // }
+
+        // let mut stats = stats.read().clone();
+
+        (out,stats,(tt_r,tt_w))
+        // unimplemented!()
+    }
+
+}
+
 /// Lazy SMP
 impl Explorer {
 
@@ -439,54 +526,6 @@ impl Explorer {
             Err(_) => {},
         }
         drop(tx);
-    }
-
-    #[allow(unused_doc_comments)]
-    pub fn lazy_smp_single(&self, ts: &Tables, print: bool, strict_depth: bool)
-                           -> (Vec<(Move,Vec<Move>,Score)>,SearchStats,(TTRead,TTWrite)) {
-        let mut timer = self.timer.clone();
-        timer.reset();
-        let mut depth = 1;
-        let stats: Arc<RwLock<SearchStats>> =
-            Arc::new(RwLock::new(SearchStats::default()));
-
-        let moves = self.game.search_all(&ts).get_moves_unsafe();
-        let mut gs = moves.par_iter().flat_map(|mv| {
-            if let Ok(g2) = self.game.make_move_unchecked(&ts, *mv) {
-                Some((*mv,g2))
-            } else { None }
-        });
-        let gs = gs.collect::<Vec<_>>();
-
-        let (tt_r, tt_w) = evmap::new();
-        let tt_w = Arc::new(Mutex::new(tt_w));
-
-        let (tx,rx): (Sender<(Depth,Vec<(Move,Vec<Move>,Score)>,Option<(Move,Score)>)>,
-                      Receiver<(Depth,Vec<(Move,Vec<Move>,Score)>,Option<(Move,Score)>)>) =
-            crossbeam::channel::bounded(12);
-
-        for depth in 0..self.max_depth+1 {
-            self._lazy_smp_single(
-                &ts, gs.clone(),
-                None,
-                depth,
-                tx.clone(),
-                stats.clone(),
-                tt_r.clone(), tt_w.clone());
-        }
-
-        for (d,mvs,mscore) in rx.into_iter() {
-            if let Some((mv,score)) = mscore {
-                eprintln!("depth {} = {:?}: {:?}", d, score, mv);
-            } else {
-                eprintln!("depth {} no score found?", d);
-            }
-        }
-
-        let mut stats = stats.read().clone();
-
-        (vec![],stats,(tt_r,tt_w))
-        // unimplemented!()
     }
 
     #[allow(unused_doc_comments)]
@@ -892,6 +931,8 @@ impl Explorer {
 /// Quiescence
 impl Explorer {
 
+    /// alpha = the MINimum score that the MAXimizing player is assured of
+    /// beta  = the MAXimum score that the MINimizing player is assured of
     #[allow(unused_doc_comments)]
     // #[allow(unreachable_code)]
     pub fn quiescence(
@@ -908,45 +949,14 @@ impl Explorer {
 
         stats.qt_nodes += 1;
 
+        let in_check = g.state.checkers.is_not_empty();
+
         let stand_pat = g.evaluate(&ts).sum();
         let mut stand_pat = if self.side == Black { -stand_pat } else { stand_pat };
         // return stand_pat;
 
-        // if k > 
-
-        let mut ms = match g.search_only_captures(&ts) {
-            Outcome::Moves(ms2)    => ms2,
-            Outcome::Checkmate(_) => {
-                let score = 100_000_000 - k as Score;
-                if maximizing { -score } else { score };
-                stand_pat = score;
-                return stand_pat;
-                // vec![]
-                // panic!("checkmate in QS");
-            },
-            Outcome::Stalemate    => {
-                let score = -100_000_000 + k as Score;
-                // unimplemented!()
-                stand_pat = score;
-                // vec![]
-                // panic!("stalemate in QS");
-                // return score;
-                return stand_pat;
-            },
-        };
-
-        // let ms = g.search_only_captures(&ts);
-
-        // if self.stop.load(SeqCst) {
+        // if k > self.max_depth as i16 * 2 {
         //     return stand_pat;
-        // }
-
-        // if g.zobrist == Zobrist(0x5c7013e02d0493c8) {
-        //     // eprintln!("g = {:?}", g);
-        //     trace!("found zobrist 3");
-        // }
-        // if g.zobrist == Zobrist(0x12724159f0aaac53) {
-        //     trace!("found zobrist 4");
         // }
 
         if maximizing {
@@ -955,23 +965,32 @@ impl Explorer {
             trace!("quiescence min ({}): a/b = {:?}, {:?} = {:?}", k, alpha, beta, stand_pat);
         }
 
-        /// alpha = the MINimum score that the MAXimizing player is assured of
-        /// beta  = the MAXimum score that the MINimizing player is assured of
-
         if maximizing {
             /// lower bound is better than the best opponent can get earlier in tree
             /// beta cutoff
             /// opponent will never make this move because better options are available
-            if stand_pat >= beta {
+            if !in_check && stand_pat >= beta {
                 // trace!("QS returning stand_pat: {}", stand_pat);
                 return stand_pat;
             }
         } else {
-            if stand_pat <= alpha {
+            if !in_check && stand_pat <= alpha {
                 // trace!("QS returning stand_pat: {}", stand_pat);
                 return stand_pat;
             }
         }
+
+        // /// Delta prune
+        // let mut big_delta = Queen.score();
+        // if m0.filter_promotion() {
+        //     big_delta += Queen.score() - Pawn.score();
+        // }
+        // if maximizing {
+        //     if stand_pat >= (beta + big_delta) {
+        //         return stand_pat;
+        //     }
+        // }
+        // // return stand_pat; // correct
 
         if maximizing {
             if alpha < stand_pat {
@@ -992,6 +1011,33 @@ impl Explorer {
         //         panic!("non capture in QS: {:?}, g = {:?}\n{:?}", m, g, g.zobrist);
         //     }
         // }
+
+        let mut ms = match g.search_only_captures(&ts) {
+            Outcome::Moves(ms) => ms,
+            _                  => {
+                if in_check {
+                    trace!("QS in check, no capture evasions: {:?}\n{}", g, g.to_fen());
+                    match g.search_all(&ts) {
+                        Outcome::Moves(ms) => {
+                            ms
+                        },
+                        Outcome::Checkmate(win) => {
+                            let score = 100_000_000 - k as Score;
+                            if self.side == win {
+                                return score;
+                            } else {
+                                return -score;
+                            }
+                        }
+                        Outcome::Stalemate => {
+                            return 0;
+                        }
+                    }
+                } else {
+                    vec![]
+                }
+            },
+        };
 
         order_mvv_lva(&mut ms);
 

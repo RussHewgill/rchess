@@ -71,7 +71,13 @@ pub fn order_mvv_lva(mut xs: &mut [Move]) {
 // pub fn order_mvv_lva(mut xs: &mut [(&str,Move)]) {
     use Move::*;
     // xs.par_sort_unstable_by(|a,b| {
+    #[cfg(feature = "par")]
     xs.par_sort_by(|a,b| {
+        _order_mvv_lva(a, b)
+        // _order_mvv_lva(&a.1, &b.1)
+    });
+    #[cfg(not(feature = "par"))]
+    xs.sort_by(|a,b| {
         _order_mvv_lva(a, b)
         // _order_mvv_lva(&a.1, &b.1)
     });

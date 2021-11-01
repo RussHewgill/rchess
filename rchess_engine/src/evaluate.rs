@@ -160,9 +160,9 @@ impl Piece {
     pub fn score_basic(&self) -> i32 {
         match self {
             Pawn   => 100,
-            Rook   => 500,
             Knight => 300,
             Bishop => 300,
+            Rook   => 500,
             Queen  => 900,
             King   => 1000000,
         }
@@ -170,9 +170,9 @@ impl Piece {
     pub fn score(&self) -> i32 {
         match self {
             Pawn   => 100,
-            Rook   => 500,
             Knight => 320,
             Bishop => 330,
+            Rook   => 500,
             Queen  => 900,
             King   => 1000000,
         }
