@@ -584,10 +584,12 @@ impl Game {
     pub fn convert_move(&self, from: &str, to: &str, other: &str) -> Option<Move> {
         let from: Coord = from.into();
         let to: Coord = to.into();
+        // eprintln!("from,to = {:?}, {:?}", from, to);
         match (self.get_at(from), self.get_at(to)) {
             (Some((col,pc)),None) => {
                 let cc = if col == White { 7 } else { 0 };
                 if (pc == King) & (from.file_dist(to) == 2) {
+                    println!("wat 0");
                     // Queenside
                     let (rook_from,rook_to) = if to.0 == 2 {
                         (0,3)
@@ -603,10 +605,13 @@ impl Game {
                     let capture = if col == White { S.shift_coord(to).unwrap() }
                         else { N.shift_coord(to).unwrap() };
                     Some(Move::EnPassant { from, to, capture })
-                } else if (pc == Pawn) & (to.1 == cc) {
+                } else if (pc == Pawn) && (to.1 == cc) {
                     // XXX: bad
                     let new_piece = Queen;
                     Some(Move::Promotion { from, to, new_piece })
+                } else if (pc == Pawn) && SQUAREDIST[from][to] == 2 {
+                    println!("wat 0");
+                    Some(Move::PawnDouble { from, to })
                 } else {
                     Some(Move::Quiet { from, to, pc })
                 }

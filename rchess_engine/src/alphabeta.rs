@@ -156,12 +156,12 @@ impl Explorer {
             // trace!("{:?}", g);
 
             let score = if g.state.side_to_move == Black {
-                score
-            } else {
                 -score
+            } else {
+                score
             };
 
-            return ABSingle(ABResult::new_empty(-score));
+            return ABSingle(ABResult::new_empty(score));
         }
 
         /// Null Move pruning
@@ -242,11 +242,11 @@ impl Explorer {
                     match si.node_type {
                         Node::PV  => {},
                         Node::All => if si.score <= alpha {
-                            trace!("Node::All, using alpha {}", alpha);
+                            // trace!("Node::All, using alpha {}", alpha);
                             si.score = alpha;
                         },
                         Node::Cut => if si.score >= beta {
-                            trace!("Node::Cut, using beta {}", beta);
+                            // trace!("Node::Cut, using beta {}", beta);
                             si.score = beta;
                         },
                         _         => unimplemented!(),
@@ -257,8 +257,39 @@ impl Explorer {
                     let mut pms = prev_mvs.clone();
                     pms.push_back((g.zobrist,*mv));
 
+                    let mut lmr = true;
+                    let mut depth2 = depth - 1;
+
+                    /// not reducing when in check replaces check extension
+                    #[cfg(feature = "late_move_reduction")]
+                    if lmr
+                        && moves_searched >= 4
+                        && k >= 3
+                        && depth > 2
+                        // && depth > 3
+                        && !mv.filter_all_captures()
+                        && !mv.filter_promotion()
+                        && g.state.checkers.is_empty()
+                        && g2.state.checkers.is_empty()
+                    {
+                        let depth3 = depth - 3;
+                        if let ABSingle(mut res) = self._ab_search_negamax(
+                            &ts, &g2, max_depth, depth3, k + 1,
+                            -beta, -alpha, &mut stats,
+                            pms.clone(), &mut history, tt_r, tt_w.clone(), false) {
+
+                            res.neg_score();
+                            if res.score <= alpha {
+                                stats.lmrs.0 += 1;
+                                res.moves.push_front(*mv);
+                                break 'search (false,res);
+                            }
+                        }
+
+                    }
+
                     if let ABSingle(mut res) = self._ab_search_negamax(
-                        &ts, &g2, max_depth, depth - 1, k + 1,
+                        &ts, &g2, max_depth, depth2, k + 1,
                         -beta, -alpha, &mut stats,
                         pms, &mut history, tt_r, tt_w.clone(), false) {
 
@@ -283,32 +314,33 @@ impl Explorer {
                 val.0 = Some((zb, *mv, res.clone()))
             }
 
-            // if res.score >= beta { // Fail Soft
-            //     b = true;
-            //     // return beta;
-            // }
+            if res.score >= beta { // Fail Soft
+                b = true;
+                // return beta;
+            }
 
-            // if !b && val.1 > alpha {
-            //     node_type = Node::PV;
-            //     alpha = val.1;
-            // }
+            if !b && val.1 > alpha {
+                node_type = Node::PV;
+                alpha = val.1;
+            }
 
-            // if b {
-            //     // node_type = Some(Node::Cut);
-            //     node_type = Node::Cut;
+            if b {
+                // node_type = Some(Node::Cut);
+                node_type = Node::Cut;
 
-            //     if !mv.filter_all_captures() {
-            //         history[g.state.side_to_move][mv.sq_from()][mv.sq_to()] += k as Score * k as Score;
-            //     }
+                #[cfg(feature = "history_heuristic")]
+                if !mv.filter_all_captures() {
+                    history[g.state.side_to_move][mv.sq_from()][mv.sq_to()] += k as Score * k as Score;
+                }
 
-            //     if moves_searched == 0 {
-            //         stats.beta_cut_first.0 += 1;
-            //     } else {
-            //         stats.beta_cut_first.1 += 1;
-            //     }
+                if moves_searched == 0 {
+                    stats.beta_cut_first.0 += 1;
+                } else {
+                    stats.beta_cut_first.1 += 1;
+                }
 
-            //     break;
-            // }
+                break;
+            }
 
             moves_searched += 1;
         }
@@ -321,20 +353,20 @@ impl Explorer {
             // Some((zb,mv,mv_seq)) => Some(((mv_seq.clone(),val.1),(alpha,beta))),
             Some((zb,mv,res)) => {
 
-                // Self::tt_insert_deepest(
-                //     &tt_r, tt_w, g.zobrist,
-                //     // &tt_r, tt_w, *zb,
-                //     SearchInfo::new(
-                //         *mv,
-                //         res.moves.clone().into(),
-                //         // res.moves.len() as u8,
-                //         // res.moves.len() as u8 - 1,
-                //         // res.moves.len() as u8,
-                //         // depth - 1,
-                //         depth,
-                //         node_type,
-                //         res.score,
-                //     ));
+                Self::tt_insert_deepest(
+                    &tt_r, tt_w, g.zobrist,
+                    // &tt_r, tt_w, *zb,
+                    SearchInfo::new(
+                        *mv,
+                        res.moves.clone().into(),
+                        // res.moves.len() as u8,
+                        // res.moves.len() as u8 - 1,
+                        // res.moves.len() as u8,
+                        // depth - 1,
+                        depth,
+                        node_type,
+                        res.score,
+                    ));
 
                 // match node_type {
                 //     None => {},

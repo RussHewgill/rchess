@@ -247,15 +247,15 @@ fn main9() {
     //     eprintln!("s, ms = {:>8}: {:?}", res.score, res.moves);
     // }
 
-    // stats0.print(t1);
-    // stats0.print_ebf(true);
+    stats0.print(t1);
+    stats0.print_ebf(true);
 
     // eprintln!("qt nodes 0 = {:?}", stats0.qt_nodes);
-    // eprintln!("null prunes = {:?}", stats0.null_prunes);
-    // eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
+    eprintln!("null prunes = {:?}", stats0.null_prunes);
+    eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
 
-    // let bcs = stats0.beta_cut_first;
-    // eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
+    let bcs = stats0.beta_cut_first;
+    eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
 
     // let zb = g.zobrist;
     // let si = tt_r.get_one(&zb).unwrap();
@@ -721,6 +721,15 @@ fn main7() {
         // eprintln!("g2 = {:?}", g2);
         // eprintln!("g0 = {:?}", g0);
 
+        // let m0 = g2.convert_move("d7", "d5", "").unwrap();
+        // let m0 = g2.convert_move("e5", "d6", "").unwrap();
+
+        // eprintln!("m0 = {:?}", m0);
+
+        // let m0 = Move::EnPassant { from: "E5".into(), to: "D6".into(), capture: "D5".into() };
+        // let g3 = g2.make_move_unchecked(&ts, m0).unwrap();
+        // eprintln!("g3 = {:?}", g3);
+
         // eprintln!("g0.zobrist == g2.zobrist = {:?}", g0.zobrist == g2.zobrist);
         // g0.state.debug_equal(g2.state);
 
@@ -735,11 +744,11 @@ fn main7() {
         //     // Move::Quiet { from: "H2".into(), to: "H3".into() },
         // ];
 
-        let t = std::time::Instant::now();
-        let (m,stats) = ex2.explore(&ts, None);
-        eprintln!("m = {:?}", m.unwrap());
-        // ex.rank_moves(&ts, true);
-        println!("explore done in {} seconds.", t.elapsed().as_secs_f64());
+        // let t = std::time::Instant::now();
+        // let (m,stats) = ex2.explore(&ts, None);
+        // eprintln!("m = {:?}", m.unwrap());
+        // // ex.rank_moves(&ts, true);
+        // println!("explore done in {} seconds.", t.elapsed().as_secs_f64());
 
     }
 

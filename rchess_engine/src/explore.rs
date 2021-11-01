@@ -420,7 +420,8 @@ impl Explorer {
             #[cfg(feature = "one_thread")]
             let max_threads = 1;
             #[cfg(not(feature = "one_thread"))]
-            let max_threads = np_cpus;
+            let max_threads = 6;
+            // let max_threads = np_cpus;
 
             let depths = vec![
                 0, 1, 0, 2, 0, 1,

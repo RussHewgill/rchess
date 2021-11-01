@@ -23,11 +23,11 @@ default = [
     "one_thread",
     # "smallstack",
 
-    # "positional_scoring",
+    "positional_scoring",
 
-    # "null_pruning",
-    # "late_move_reduction",
-    # "history_heuristic",
+    "null_pruning",
+    "late_move_reduction",
+    "history_heuristic",
 
     ]
 # default = []

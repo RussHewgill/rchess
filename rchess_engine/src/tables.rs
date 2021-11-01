@@ -21,9 +21,9 @@ use serde_big_array::BigArray;
 lazy_static! {
     pub static ref SQUAREDIST: [[u8; 64]; 64] = {
         let mut out = [[0; 64]; 64];
-        for s1 in 0u32..8 {
-            for s2 in 0u32..8 {
-                let (c1,c2): (Coord,Coord) = (s1.into(),s1.into());
+        for s1 in 0u32..64 {
+            for s2 in 0u32..64 {
+                let (c1,c2): (Coord,Coord) = (s1.into(),s2.into());
 
                 let dist = {
                     let r = c1.rank_dist(c2);
@@ -32,7 +32,8 @@ lazy_static! {
                 };
 
                 // out[s1 as usize][s2 as usize] = c1.square_dist(c2);
-                out[s1 as usize][s2 as usize] = dist;
+                // out[s1 as usize][s2 as usize] = dist;
+                out[c1][c2] = dist;
             }
         }
         out
