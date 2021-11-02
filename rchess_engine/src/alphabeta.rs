@@ -85,7 +85,7 @@ impl Explorer {
         g:                  &Game,
         max_depth:          Depth,
         depth:              Depth,
-        k:                  i16,
+        ply:                i16,
         mut alpha:          i32,
         mut beta:           i32,
         mut stats:          &mut SearchStats,
@@ -94,6 +94,7 @@ impl Explorer {
         tt_r:               &TTRead,
         tt_w:               TTWrite,
         root:               bool,
+        do_null:            bool,
     ) -> ABResults {
 
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
@@ -117,7 +118,7 @@ impl Explorer {
 
         let mut moves: Vec<Move> = match moves {
             Outcome::Checkmate(c) => {
-                let score = 100_000_000 - k as Score;
+                let score = 100_000_000 - ply as Score;
                 if !tt_r.contains_key(&g.zobrist) {
                     stats.leaves += 1;
                     stats.checkmates += 1;
@@ -130,7 +131,7 @@ impl Explorer {
                 }
             },
             Outcome::Stalemate    => {
-                let score = -200_000_000 + k as Score;
+                let score = -200_000_000 + ply as Score;
                 if !tt_r.contains_key(&g.zobrist) {
                     stats.leaves += 1;
                     stats.stalemates += 1;
@@ -175,8 +176,9 @@ impl Explorer {
         #[cfg(feature = "null_pruning")]
         if g.state.checkers.is_empty()
             && g.state.phase < 200
+            && do_null
             && self.prune_null_move_negamax(
-                ts, g, max_depth, depth, k, alpha, beta, &mut stats,
+                ts, g, max_depth, depth, ply, alpha, beta, &mut stats,
                 prev_mvs.clone(), &mut history, tt_r, tt_w.clone()) {
                 return ABNone;
         }
@@ -278,7 +280,7 @@ impl Explorer {
                     #[cfg(feature = "late_move_reduction")]
                     if lmr
                         && moves_searched >= 4
-                        && k >= 3
+                        && ply >= 3
                         && depth > 2
                         // && depth > 3
                         && !mv.filter_all_captures()
@@ -288,9 +290,9 @@ impl Explorer {
                     {
                         let depth3 = depth - 3;
                         if let ABSingle(mut res) = self._ab_search_negamax(
-                            &ts, &g2, max_depth, depth3, k + 1,
+                            &ts, &g2, max_depth, depth3, ply + 1,
                             -beta, -alpha, &mut stats,
-                            pms.clone(), &mut history, tt_r, tt_w.clone(), false) {
+                            pms.clone(), &mut history, tt_r, tt_w.clone(), false, do_null) {
 
                             res.neg_score();
                             if res.score <= alpha {
@@ -303,9 +305,9 @@ impl Explorer {
                     }
 
                     if let ABSingle(mut res) = self._ab_search_negamax(
-                        &ts, &g2, max_depth, depth2, k + 1,
+                        &ts, &g2, max_depth, depth2, ply + 1,
                         -beta, -alpha, &mut stats,
-                        pms, &mut history, tt_r, tt_w.clone(), false) {
+                        pms, &mut history, tt_r, tt_w.clone(), false, do_null) {
 
                         res.moves.push_front(*mv);
                         res.neg_score();
@@ -345,7 +347,7 @@ impl Explorer {
 
                 #[cfg(feature = "history_heuristic")]
                 if !mv.filter_all_captures() {
-                    history[g.state.side_to_move][mv.sq_from()][mv.sq_to()] += k as Score * k as Score;
+                    history[g.state.side_to_move][mv.sq_from()][mv.sq_to()] += ply as Score * ply as Score;
                 }
 
                 if moves_searched == 0 {
@@ -366,7 +368,7 @@ impl Explorer {
 
         if !tt_r.contains_key(&g.zobrist) {
             // /// XXX: stat padding by including nodes found in TT
-            stats.inc_nodes_arr(k);
+            stats.inc_nodes_arr(ply);
             stats.nodes += 1;
             // trace!("adding node: {}, {:?}", k, g.zobrist);
         } else {

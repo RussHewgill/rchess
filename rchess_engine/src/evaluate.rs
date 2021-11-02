@@ -226,20 +226,20 @@ impl Game {
         let mut pos = self._score_positions(&ts, pc, col);
         match pc {
             Pawn   => {
-                let ds = self.count_pawns_doubled(&ts, col);
-                let ds = ts.piece_tables.ev_pawn.doubled * ds as Score;
-                pos = pos + ds;
+                // let ds = self.count_pawns_doubled(&ts, col);
+                // let ds = ts.piece_tables.ev_pawn.doubled * ds as Score;
+                // pos = pos + ds;
                 pos
             },
             Rook   => {
                 let rs = self.get(Rook, col);
 
-                let r_7r = if col == White {
-                    rs & BitBoard::mask_rank(6)
-                } else {
-                    rs & BitBoard::mask_rank(1)
-                };
-                let r_7r = r_7r.popcount();
+                // let r_7r = if col == White {
+                //     rs & BitBoard::mask_rank(6)
+                // } else {
+                //     rs & BitBoard::mask_rank(1)
+                // };
+                // let r_7r = r_7r.popcount();
 
                 // let r_7r = ts.pie
 

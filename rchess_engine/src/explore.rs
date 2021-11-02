@@ -372,7 +372,7 @@ impl Explorer {
             &mut stats,
             VecDeque::new(),
             &mut history,
-            &tt_r, tt_w.clone(),true);
+            &tt_r, tt_w.clone(),true,true);
 
         match tx.send((depth,res,stats)) {
             Ok(_) => {},

@@ -17,7 +17,7 @@ impl Explorer {
         mut g:              &Game,
         max_depth:          Depth,
         depth:              Depth,
-        k:                  i16,
+        ply:                i16,
         alpha:              i32,
         beta:               i32,
         mut stats:          &mut SearchStats,
@@ -40,11 +40,11 @@ impl Explorer {
 
             if let ABResults::ABSingle(mut res) = self._ab_search_negamax(
                 &ts, &g2, max_depth,
-                depth - 1 - r, k + 1,
-                // -beta, -beta + 1,
-                -beta, -alpha,
+                depth - 1 - r, ply + 1,
+                -beta, -beta + 1,
+                // -beta, -alpha,
                 &mut stats, pms, &mut history,
-                tt_r, tt_w, false) {
+                tt_r, tt_w, false, false) {
 
                 res.moves.push_front(mv);
                 res.neg_score();

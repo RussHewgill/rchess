@@ -745,31 +745,36 @@ mod eval {
 
         pub fn new() -> Self {
             let pawns   = Self::gen_pawns();
-            let rooks   = Self::gen_rooks();
-            let knights = Self::gen_knights();
-            let bishops = Self::gen_bishops();
-            let queens  = Self::gen_queens();
-            let kings   = Self::gen_kings_opening();
+            // let knights = Self::gen_knights();
+            // let bishops = Self::gen_bishops();
+            // let rooks   = Self::gen_rooks();
+            // let queens  = Self::gen_queens();
+            // let kings   = Self::gen_kings_opening();
+            let knights = [0; 64];
+            let bishops = [0; 64];
+            let rooks   = [0; 64];
+            let queens  = [0; 64];
+            let kings   = [0; 64];
 
             let out = Self {
                 tables_mid: [pawns,
-                             rooks,
                              knights,
                              bishops,
+                             rooks,
                              queens,
                              kings,
                 ],
                 tables_end: [pawns,
-                             rooks,
                              knights,
                              bishops,
+                             rooks,
                              queens,
                              kings,
                 ],
                 ev_pawn:   EvPawn::new(),
-                ev_rook:   EvRook::new(),
                 ev_knight: EvKnight::new(),
                 ev_bishop: EvBishop::new(),
+                ev_rook:   EvRook::new(),
                 ev_queen:  EvQueen::new(),
                 ev_king:   EvKing::new(),
             };

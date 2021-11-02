@@ -193,49 +193,42 @@ fn main9() {
         ex.lazy_smp(&ts, false, false)
     }
 
-    // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
+    // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
+    let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
     // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
-    // let fen = "rnb1k1nr/pppp1ppp/5q2/2b1p3/4P1P1/7P/PPPP1P2/RNBQKBNR w KQkq - 1 4"; // #-1.5
-    // let fen = "rnb1k1nr/pppp1ppp/5q2/2b1p3/4P1P1/7P/PPPPNP2/RNBQKB1R b KQkq - 2 4"; // #-1
-
-    // let fen1 = "7k/8/8/3p4/4P3/8/8/7K w - - 0 1";
-    // let fen2 = "7k/8/8/3p4/4P3/8/8/7K b - - 0 1";
-
-    // let fen = "7k/p7/1p6/8/8/1Q6/8/7K w - - 0 1"; // SEE test
-    // let fen = "7k/p7/1q6/8/8/1Q6/8/1R5K w - - 0 1"; // SEE test
-    // let fen = "7k/p7/1q6/8/8/1Q6/8/7K w - - 0 1"; // SEE test
-    let fen = "7k/p7/1q6/8/3Q4/8/5B2/7K w - - 0 1"; // SEE test
-
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
-    let g = g.flip_sides(&ts);
-
-    eprintln!("g = {:?}", g);
+    // let g = g.flip_sides(&ts);
 
     // let n = 35;
     // let n = 5;
     // let n = 8;
-    let n = 4;
+    let n = 6;
 
-    let t = 2.0;
-
+    let t = 4.0;
 
     // let mv = Move::Capture { from: "B3".into(), to: "B6".into(), pc: Queen, victim: Queen };
-    let mv = Move::Capture { from: "D5".into(), to: "B3".into(), pc: Queen, victim: Queen };
-
-    let see = g.static_exchange(&ts, mv);
+    // // let mv = Move::Capture { from: "D5".into(), to: "B3".into(), pc: Queen, victim: Queen };
+    // let see = g.static_exchange(&ts, mv);
+    // eprintln!("see = {:?}", see);
+    // return;
 
     let e = g.evaluate(&ts).sum();
-    eprintln!("e0 = {:?}", e);
+    eprintln!("eval = {:?}", e);
 
-    eprintln!("see = {:?}", see);
+    // let ms = vec![
+    //     // "b1c3",
+    //     "g1e2",
+    // ];
+    // let g2 = g.run_moves(&ts, ms);
+    // // eprintln!("g2 = {:?}", g2);
 
-    return;
+    // let e = g2.evaluate(&ts).sum();
+    // eprintln!("eval 2 = {:?}", e);
 
-    // let e = g.evaluate(&ts).sum();
-    // eprintln!("eval = {:?}", e);
+    // return;
 
     let t0 = std::time::Instant::now();
     println!("g = {:?}", g);
@@ -273,8 +266,7 @@ fn main9() {
     // }
 
     stats0.print(t1);
-    // stats0.print_ebf(false);
-    stats0.print_ebf(true);
+    stats0.print_ebf(false);
 
     // eprintln!("qt nodes 0 = {:?}", stats0.qt_nodes);
     eprintln!("null prunes = {:?}", stats0.null_prunes);
