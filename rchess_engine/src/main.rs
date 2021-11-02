@@ -211,6 +211,14 @@ fn main9() {
         let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
         ex.lazy_smp_negamax(&ts, false, false)
     }
+    fn go2(ts: &Tables, n: Depth, g: Game, t: f64)
+           -> (Vec<(Move,Vec<Move>,Score)>,SearchStats,(TTRead,TTWrite)) {
+        let stop = Arc::new(AtomicBool::new(false));
+        let timesettings = TimeSettings::new_f64(0.0,t);
+        let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+        // ex.lazy_smp_negamax(&ts, false, false)
+        ex.lazy_smp(&ts, false, false)
+    }
 
     // let n = 35;
     // let n = 5;
@@ -225,6 +233,16 @@ fn main9() {
     let t1 = t0.elapsed();
     let t2 = t1.as_secs_f64();
 
+    // let t0 = std::time::Instant::now();
+    // let (moves0,stats0,(tt_r,tt_w)) = go2(&ts, n, g.clone(), 4.0);
+    // let (mv0,mvs0,score) = moves0.get(0).unwrap();
+    // println!("m = {:?}", mv0);
+    // let t1 = t0.elapsed();
+    // let t2 = t1.as_secs_f64();
+    // println!("explore lazy_smp  (depth: {}) done in {:.3} seconds.",
+    //          stats0.max_depth, t2);
+    // // stats0.print(t0.elapsed());
+
     // println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
     //          stats0.max_depth, t2);
     // // println!("correct = Cp N d4b3");
@@ -233,9 +251,9 @@ fn main9() {
     // let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g1.clone(), 4.0);
     // eprintln!("\nBest move = {:>8} {:?}: {:?}", best.score, best.moves[0], best.moves);
 
-    for m in best.moves.iter() {
-        eprintln!("\t{:?}", m);
-    }
+    // for m in best.moves.iter() {
+    //     eprintln!("\t{:?}", m);
+    // }
 
     // let t0 = std::time::Instant::now();
     // let (ss,_,_) = ex.lazy_smp(&ts, false, false);

@@ -115,10 +115,6 @@ impl Explorer {
 
         let moves = g.search_all(&ts);
 
-        /// XXX: stat padding by including nodes found in TT
-        stats.inc_nodes_arr(depth);
-        stats.nodes += 1;
-
         let mut moves: Vec<Move> = match moves {
             Outcome::Checkmate(c) => {
                 let score = 100_000_000 - k as Score;
@@ -144,6 +140,10 @@ impl Explorer {
             },
             Outcome::Moves(ms)    => ms,
         };
+
+        /// XXX: stat padding by including nodes found in TT
+        stats.inc_nodes_arr(depth);
+        stats.nodes += 1;
 
         if depth == 0 {
             if !tt_r.contains_key(&g.zobrist) {
