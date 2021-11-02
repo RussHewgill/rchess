@@ -89,6 +89,13 @@ impl Eval {
 
 }
 
+/// Attack and defend maps
+impl Game {
+
+
+
+}
+
 /// Main Evaluation
 impl Game {
 

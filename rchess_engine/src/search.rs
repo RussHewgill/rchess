@@ -550,20 +550,10 @@ impl Game {
 
         let knights = *ts.get_knight(c0) & self.get_piece(Knight);
 
-        // let moves_r = {
-        //     let (a,b,c,d) = self._search_sliding_single(&ts, c0, Rook, self.all_occupied(), White);
-        //     let (e,f,g,h) = self._search_sliding_single(&ts, c0, Rook, self.all_occupied(), Black);
-        //     a | b | c | d | e | f | g | h
-        // };
         let moves_r = self._search_sliding_single(&ts, Rook, c0, col, None);
             // | self._search_sliding_single(&ts, Rook, c0, !col, Some(occ));
         let rooks = moves_r & (self.get_piece(Rook) | self.get_piece(Queen));
 
-        // let moves_b = {
-        //     let (a,b,c,d) = self._search_sliding_single(&ts, c0, Bishop, self.all_occupied(), White);
-        //     let (e,f,g,h) = self._search_sliding_single(&ts, c0, Bishop, self.all_occupied(), Black);
-        //     a | b | c | d | e | f | g | h
-        // };
         let moves_b = self._search_sliding_single(&ts, Bishop, c0, col, None);
             // | self._search_sliding_single(&ts, Bishop, c0, !col, Some(occ));
         let bishops = moves_b & (self.get_piece(Bishop) | self.get_piece(Queen));

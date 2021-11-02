@@ -7,6 +7,17 @@ use std::collections::{HashMap,HashSet};
 use std::io::Write;
 use std::process::{Command,Stdio};
 
+
+pub fn pretty_print_si(x: i64) -> String {
+    if x.abs() > 1_000_000 {
+        format!("{:.1}M", x as f64 / 1_000_000.)
+    } else if x > 1000 {
+        format!("{:.1}k", x as f64 / 1000.)
+    } else {
+        format!("{}", x)
+    }
+}
+
 pub fn read_epd(path: &str) -> std::io::Result<Vec<(String, Vec<String>)>> {
 // pub fn read_epd(path: &str) -> std::io::Result<Vec<(String, String)>> {
     let file = std::fs::read_to_string(path)?;

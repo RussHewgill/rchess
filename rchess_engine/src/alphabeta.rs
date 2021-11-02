@@ -141,9 +141,16 @@ impl Explorer {
             Outcome::Moves(ms)    => ms,
         };
 
-        /// XXX: stat padding by including nodes found in TT
-        stats.inc_nodes_arr(depth);
-        stats.nodes += 1;
+        // if !tt_r.contains_key(&g.zobrist) {
+        //     // /// XXX: stat padding by including nodes found in TT
+        //     stats.inc_nodes_arr(k);
+        //     stats.nodes += 1;
+        //     trace!("adding node: {}, {:?}", k, g.zobrist);
+        // } else {
+        //     trace!("skipped node: {}, {:?}", k, g.zobrist);
+        // }
+
+        let mvs = self.move_history.clone();
 
         if depth == 0 {
             if !tt_r.contains_key(&g.zobrist) {
@@ -259,6 +266,14 @@ impl Explorer {
                     let mut lmr = true;
                     let mut depth2 = depth - 1;
 
+                    // #[cfg(not(feature = "late_move_reduction"))]
+                    // {
+                    //     if g2.state.checkers.is_not_empty() || g.state.checkers.is_not_empty() {
+                    //         trace!("check extension: = {:?}, {:?}", mv, pms.front().unwrap().1);
+                    //         depth2 = depth;
+                    //     }
+                    // }
+
                     /// not reducing when in check replaces check extension
                     #[cfg(feature = "late_move_reduction")]
                     if lmr
@@ -313,7 +328,8 @@ impl Explorer {
                 val.0 = Some((zb, *mv, res.clone()))
             }
 
-            if res.score >= beta { // Fail Soft
+            #[cfg(not(feature = "negamax_only"))]
+            { if res.score >= beta { // Fail Soft
                 b = true;
                 // return beta;
             }
@@ -339,7 +355,7 @@ impl Explorer {
                 }
 
                 break;
-            }
+            }}
 
             moves_searched += 1;
         }
@@ -348,10 +364,20 @@ impl Explorer {
         //     trace!("node_type = {:?}", node_type);
         // }
 
+        if !tt_r.contains_key(&g.zobrist) {
+            // /// XXX: stat padding by including nodes found in TT
+            stats.inc_nodes_arr(k);
+            stats.nodes += 1;
+            // trace!("adding node: {}, {:?}", k, g.zobrist);
+        } else {
+            // trace!("skipped node: {}, {:?}", k, g.zobrist);
+        }
+
         match &val.0 {
             // Some((zb,mv,mv_seq)) => Some(((mv_seq.clone(),val.1),(alpha,beta))),
             Some((zb,mv,res)) => {
 
+                // trace!("inserting TT, zb = {:?}", g.zobrist);
                 Self::tt_insert_deepest(
                     &tt_r, tt_w, g.zobrist,
                     // &tt_r, tt_w, *zb,
@@ -500,7 +526,7 @@ impl Explorer {
 
         // if !tt_r.contains_key(&g.zobrist) {}
         /// XXX: stat padding by including nodes found in TT
-        stats.inc_nodes_arr(depth);
+        stats.inc_nodes_arr(k);
         stats.nodes += 1;
 
         if depth == 0 {

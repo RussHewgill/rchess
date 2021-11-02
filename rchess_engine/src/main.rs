@@ -161,16 +161,12 @@ fn main() {
 
 /// XXX: Could possibly get entire move sequence by simply looking up best Zobrist?
 
+#[allow(unreachable_code)]
 fn main9() {
     let fen = STARTPOS;
     init_logger();
 
-    // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
-    // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
-    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
-
-    // let fen1 = "7k/8/8/3p4/4P3/8/8/7K w - - 0 1";
-    // let fen2 = "7k/8/8/3p4/4P3/8/8/7K b - - 0 1";
+    let ts = Tables::read_from_file_def().unwrap();
 
     fn games(i: usize) -> String {
         let mut games = read_epd("testpositions/WAC.epd").unwrap();
@@ -181,11 +177,6 @@ fn main9() {
     }
 
     // let fen = &games(7);
-
-    eprintln!("fen = {:?}", fen);
-    let ts = Tables::read_from_file_def().unwrap();
-    let mut g = Game::from_fen(&ts, fen).unwrap();
-    // let g = g.flip_sides(&ts);
 
     fn go(ts: &Tables, n: Depth, g: Game, t: f64) -> ((ABResult, Vec<ABResult>),SearchStats,(TTRead,TTWrite)) {
         let stop = Arc::new(AtomicBool::new(false));
@@ -202,11 +193,46 @@ fn main9() {
         ex.lazy_smp(&ts, false, false)
     }
 
-    let n = 35;
+    // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
+    // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
+    // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+
+    // let fen = "rnb1k1nr/pppp1ppp/5q2/2b1p3/4P1P1/7P/PPPP1P2/RNBQKBNR w KQkq - 1 4"; // #-1.5
+    // let fen = "rnb1k1nr/pppp1ppp/5q2/2b1p3/4P1P1/7P/PPPPNP2/RNBQKB1R b KQkq - 2 4"; // #-1
+
+    // let fen1 = "7k/8/8/3p4/4P3/8/8/7K w - - 0 1";
+    // let fen2 = "7k/8/8/3p4/4P3/8/8/7K b - - 0 1";
+
+    // let fen = "7k/p7/1p6/8/8/1Q6/8/7K w - - 0 1"; // SEE test
+    // let fen = "7k/p7/1q6/8/8/1Q6/8/1R5K w - - 0 1"; // SEE test
+    // let fen = "7k/p7/1q6/8/8/1Q6/8/7K w - - 0 1"; // SEE test
+    let fen = "7k/p7/1q6/8/3Q4/8/5B2/7K w - - 0 1"; // SEE test
+
+    eprintln!("fen = {:?}", fen);
+    let mut g = Game::from_fen(&ts, fen).unwrap();
+    let g = g.flip_sides(&ts);
+
+    eprintln!("g = {:?}", g);
+
+    // let n = 35;
     // let n = 5;
     // let n = 8;
+    let n = 4;
 
     let t = 2.0;
+
+
+    // let mv = Move::Capture { from: "B3".into(), to: "B6".into(), pc: Queen, victim: Queen };
+    let mv = Move::Capture { from: "D5".into(), to: "B3".into(), pc: Queen, victim: Queen };
+
+    let see = g.static_exchange(&ts, mv);
+
+    let e = g.evaluate(&ts).sum();
+    eprintln!("e0 = {:?}", e);
+
+    eprintln!("see = {:?}", see);
+
+    return;
 
     // let e = g.evaluate(&ts).sum();
     // eprintln!("eval = {:?}", e);
@@ -220,6 +246,12 @@ fn main9() {
              stats0.max_depth, t2);
     // println!("correct = Cp N d4b3");
     // eprintln!("\nBest move = {:>8} {:?}: {:?}", best.score, best.moves[0], best.moves);
+
+    // println!();
+    // for res in scores.iter() {
+    //     eprintln!("s, ms = {:>8}: {:?}", res.score, res.moves);
+    // }
+
     eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
     for m in best.moves.iter() { eprintln!("\t{:?}", m); }
 
@@ -233,15 +265,6 @@ fn main9() {
     //          stats0.max_depth, t2);
     // // stats0.print(t0.elapsed());
 
-    // let mut arr = stats0.nodes_arr.clone();
-    // eprintln!("arr = {:?}", arr);
-    // let k = arr.0.len();
-    // let dmax = stats0.max_depth as usize;
-    // let mut arr2 = &mut arr.0[..dmax + 2];
-    // arr2.reverse();
-    // eprintln!("arr2 = {:?}", arr2);
-
-
     // let mut g1 = Game::from_fen(&ts, fen1).unwrap();
     // let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g1.clone(), 4.0);
 
@@ -249,17 +272,8 @@ fn main9() {
     //     eprintln!("\t{:?}", m);
     // }
 
-    // let t0 = std::time::Instant::now();
-    // let (ss,_,_) = ex.lazy_smp(&ts, false, false);
-    // let (m0,_,s) = ss.get(0).unwrap();
-    // eprintln!("s, m = {:>9} {:?}", s, m0);
-    // let t1 = t0.elapsed().as_secs_f64();
-
-    // for res in scores.iter() {
-    //     eprintln!("s, ms = {:>8}: {:?}", res.score, res.moves);
-    // }
-
     stats0.print(t1);
+    // stats0.print_ebf(false);
     stats0.print_ebf(true);
 
     // eprintln!("qt nodes 0 = {:?}", stats0.qt_nodes);
@@ -575,7 +589,7 @@ fn main7() {
     // return;
 
     #[allow(unreachable_code)]
-    if true {
+    if !true {
 
         let k = 4;
         let k = 1;
@@ -716,7 +730,11 @@ fn main7() {
         //     "d2d3",
         // ];
 
-        let ms = "g1f3 g8f6 f3e5 f6e4 b1c3 e4c3 e5c6 c3d1 c6d8 d1b2 d8f7 b2d3";
+        // let ms = "g1f3 g8f6 f3e5 f6e4 b1c3 e4c3 e5c6 c3d1 c6d8 d1b2 d8f7 b2d3";
+
+        // e5d6 not legal
+
+        let ms = "d2d4 d7d5 c1e3 d8d6 b1c3 d6b4 d1d3 b4b2 a1b1 b2a3 b1b3 a3a6 d3a6 b8a6 e3f4 e7e6 e2e4 a6b8 f4c7 b8d7 e4d5 e6d5 f1d3 f8e7 c3d5 e7g5 c7e5";
 
         let ms0 = ms.split(" ");
 
@@ -730,7 +748,9 @@ fn main7() {
         }
         // eprintln!("hash0 = {:?}", g2.zobrist);
 
-        // eprintln!("g2 = {:?}", g2);
+        eprintln!("g2 = {:?}", g2);
+        let g2fen = g2.to_fen();
+        eprintln!("g2fen = {:?}", g2fen);
         // eprintln!("g0 = {:?}", g0);
 
         // let m0 = g2.convert_move("d7", "d5", "").unwrap();
@@ -745,7 +765,8 @@ fn main7() {
         // eprintln!("g0.zobrist == g2.zobrist = {:?}", g0.zobrist == g2.zobrist);
         // g0.state.debug_equal(g2.state);
 
-        let n = 10;
+        let n = 35;
+        // let n = 10;
 
         let mut ex0 = Explorer::new(g0.state.side_to_move, g0.clone(), n, stop.clone(), timesettings);
         let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);
@@ -756,11 +777,14 @@ fn main7() {
         //     // Move::Quiet { from: "H2".into(), to: "H3".into() },
         // ];
 
-        // let t = std::time::Instant::now();
-        // let (m,stats) = ex2.explore(&ts, None);
-        // eprintln!("m = {:?}", m.unwrap());
-        // // ex.rank_moves(&ts, true);
-        // println!("explore done in {} seconds.", t.elapsed().as_secs_f64());
+        // let moves = g2.search_all(&ts).get_moves_unsafe();
+        // for m in moves.iter() { println!("m = {:?}", m); }
+
+        let t = std::time::Instant::now();
+        let (m,stats) = ex2.explore(&ts, None);
+        eprintln!("m = {:?}", m.unwrap());
+        // ex.rank_moves(&ts, true);
+        println!("explore done in {} seconds.", t.elapsed().as_secs_f64());
 
     }
 
@@ -1110,6 +1134,8 @@ fn main4(depth: Option<u64>) {
 
     // let fen = "r3k2r/p1p1qpb1/bn1ppnp1/3PN3/1p2P3/2N4Q/PPPBBPPP/R3K2R w KQkq - 0 2";
 
+    // let fen = "rnb1k1nr/pppp1ppp/5q2/2b1p3/4P1P1/7P/PPPP1P2/RNBQKBNR w KQkq - 1 4";
+
     let n = match depth {
         None    => 4,
         Some(d) => d,
@@ -1122,27 +1148,17 @@ fn main4(depth: Option<u64>) {
     let _ = g.recalc_gameinfo_mut(&ts);
     // eprintln!("g = {:?}", g);
 
-    let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, n, true).unwrap();
-    // let (t,(_,_)) = test_stockfish(fen, n, false).unwrap();
-    println!("perft done in {} seconds.", t);
-    println!("stockfish took {} seconds.", t_sf);
+    // let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, n, true).unwrap();
+    // // let (t,(_,_)) = test_stockfish(fen, n, false).unwrap();
+    // println!("perft done in {} seconds.", t);
+    // println!("stockfish took {} seconds.", t_sf);
 
-    // let t0 = std::time::Instant::now();
-    // let (tot,_) = g.perft(&ts, n);
-    // // let (tot,vs) = g.perft2(&ts, n as Depth);
-    // // eprintln!("n = {:?}", n);
-    // let t1 = t0.elapsed().as_secs_f64();
-    // println!("perft done in {} seconds.", t1);
-
-    fn _print(x: i32) -> String {
-        if x.abs() > 1_000_000 {
-            format!("{:.1}M", x as f64 / 1_000_000.)
-        } else if x > 1000 {
-            format!("{:.1}k", x as f64 / 1000.)
-        } else {
-            format!("{}", x)
-        }
-    }
+    let t0 = std::time::Instant::now();
+    let (tot,_) = g.perft(&ts, n);
+    // let (tot,vs) = g.perft2(&ts, n as Depth);
+    // eprintln!("n = {:?}", n);
+    let t1 = t0.elapsed().as_secs_f64();
+    println!("perft done in {} seconds.", t1);
 
     // for d in 1..n+1 {
     //     let t0 = std::time::Instant::now();
@@ -1156,7 +1172,8 @@ fn main4(depth: Option<u64>) {
     //         println!("depth {:>2}: {:>12} leaves", d, n);
     //     }
     // }
-    // println!("total:    {:>12} leaves", tot);
+
+    println!("total:    {:>12} leaves", pretty_print_si(tot as i64));
 
     // println!("speed: {} leaves / second", _print((tot as f64 / t1) as i32));
 

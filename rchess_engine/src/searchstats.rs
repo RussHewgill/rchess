@@ -10,6 +10,7 @@ use crate::explore::Node;
 pub struct SearchStats {
     pub nodes:          u32,
     pub nodes_arr:      NArr,
+    // pub nodes_zb:       NHashes,
     pub leaves:         u32,
     pub quiet_leaves:   u32,
     pub max_depth:      u8,
@@ -31,6 +32,8 @@ pub struct SearchStats {
     pub lmrs:           (u32,u32),
     pub beta_cut_first: (u32,u32),
 }
+
+// pub struct NHashes
 
 #[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
 pub struct NArr(pub [u32; 50]);
@@ -81,8 +84,9 @@ impl SearchStats {
         (a.0 + b.0, a.1 + b.1)
     }
 
-    pub fn inc_nodes_arr(&mut self, d: Depth) {
-        self.nodes_arr.0[d as usize] += 1;
+    pub fn inc_nodes_arr(&mut self, ply: i16) {
+        // self.nodes_arr.0[d as usize] += 1;
+        self.nodes_arr.0[ply as usize] += 1;
     }
 
     fn _print(x: i32) -> String {
@@ -114,6 +118,34 @@ impl SearchStats {
     }
 
     pub fn print_ebf(&self, full: bool) {
+
+        let mut arr = self.nodes_arr.0.iter()
+            .enumerate()
+            .filter(|x| *x.1 != 0)
+            .map(|(i,n)| if i != 0 {
+                (i,(*n,self.nodes_arr.0[i-1]))
+            } else { (i,(*n,1)) })
+            .collect::<Vec<(usize,(u32,u32))>>();
+
+        arr.sort_by(|a,b| a.0.cmp(&b.0));
+        // arr.reverse();
+
+        let mut xs = vec![];
+        for (i,(n0,n1)) in arr.iter() {
+            // let n = arr2[depth];
+            // let ebf = n as f64 / arr2[depth - 1] as f64;
+            let ebf = *n0 as f64 / *n1 as f64;
+            xs.push(ebf);
+            if full {
+                debug!("EBF depth {:>2} = {:>8} nodes, {:.2?}", i, n0, ebf);
+            }
+        }
+        let s: f64 = xs.iter().sum();
+        debug!("Average EBF: {:.2}", s / xs.len() as f64);
+
+    }
+
+    fn print_ebf2(&self, full: bool) {
         let mut arr = self.nodes_arr.clone();
         let k = arr.0.len();
         let dmax = self.max_depth as usize;
@@ -151,14 +183,16 @@ impl SearchStats {
         println!("time         = {:.3}s", dt.as_secs_f64());
         println!("nodes        = {}", Self::_print(self.nodes as i32));
         println!("rate         = {:.1} K nodes/s", (self.nodes as f64 / 1000.) / dt.as_secs_f64());
-        println!("max depth    = {}", self.max_depth);
-        println!("leaves       = {}", Self::_print(self.leaves as i32));
+        // println!("max depth    = {}", self.max_depth);
+        // println!("leaves       = {}", Self::_print(self.leaves as i32));
         // println!("quiet_leaves = {}", Self::_print(self.quiet_leaves as i32));
         println!("checkmates   = {}", Self::_print(self.checkmates as i32));
         // println!("stalemates   = {}", Self::_print(self.stalemates as i32));
-        println!("hits         = {}", Self::_print(self.tt_hits as i32));
-        println!("halfmiss     = {}", Self::_print(self.tt_halfmiss as i32));
-        println!("misses       = {}", Self::_print(self.tt_misses as i32));
+        println!("hits/half/miss  = {}, {}, {}",
+                 Self::_print(self.tt_hits as i32),
+                 Self::_print(self.tt_halfmiss as i32),
+                 Self::_print(self.tt_misses as i32),
+        );
         // println!("qt_nodes     = {}", Self::_print(self.qt_nodes as i32));
         // println!("qt_hits      = {}", Self::_print(self.qt_hits as i32));
         // println!("qt_misses    = {}", Self::_print(self.qt_misses as i32));

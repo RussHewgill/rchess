@@ -45,12 +45,12 @@ fn main() -> std::io::Result<()> {
 
     let now = chrono::Local::now();
     let mut logpath = format!(
-        "/home/me/code/rust/rchess/logs/log{:>4}-{:>2}-{:>2}_{:0>2}:{:0>2}:{:0>2}-1.log",
+        "/home/me/code/rust/rchess/logs/log{:0>4}-{:0>2}-{:0>2}_{:0>2}:{:0>2}:{:0>2}-1.log",
         now.year(), now.month(), now.day(),
         now.hour(), now.minute(), now.second());
     if std::path::Path::new(&logpath).exists() {
         logpath = format!(
-            "/home/me/code/rust/rchess/logs/log{:>4}-{:>2}-{:>2}_{:0>2}:{:0>2}:{:0>2}-2.log",
+            "/home/me/code/rust/rchess/logs/log{:0>4}-{:0>2}-{:0>2}_{:0>2}:{:0>2}:{:0>2}-2.log",
             now.year(), now.month(), now.day(),
             now.hour(), now.minute(), now.second());
     };
@@ -147,6 +147,7 @@ fn main() -> std::io::Result<()> {
 
                                 // explorer.lock().unwrap().side = g.state.side_to_move;
                                 // explorer.lock().unwrap().game = g;
+                                debug!("setting game FEN = {}", g.to_fen());
                                 explorer.side = g.state.side_to_move;
                                 explorer.game = g;
                             },
@@ -163,6 +164,7 @@ fn main() -> std::io::Result<()> {
                                     let mm = g.convert_move(from, to, other).unwrap();
                                     g = g.make_move_unchecked(&ts, mm).unwrap();
                                 }
+                                debug!("setting game FEN = {}", g.to_fen());
                                 explorer.side = g.state.side_to_move;
                                 explorer.game = g;
                             },

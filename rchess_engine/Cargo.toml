@@ -29,6 +29,8 @@ default = [
     "late_move_reduction",
     "history_heuristic",
 
+    # "negamax_only",
+
     ]
 # default = []
 par = []
@@ -40,6 +42,8 @@ positional_scoring = []
 null_pruning = []
 late_move_reduction = []
 history_heuristic = []
+
+negamax_only = []
 
 [dev-dependencies]
 criterion = { version = "0.3.5", features = [ "html_reports" ] }
