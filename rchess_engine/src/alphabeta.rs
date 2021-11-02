@@ -42,6 +42,7 @@ impl ABResult {
 pub enum ABResults {
     ABSingle(ABResult),
     ABList(ABResult, Vec<ABResult>),
+    // ABPrune,
     ABNone,
 }
 
@@ -172,23 +173,37 @@ impl Explorer {
             return ABSingle(ABResult::new_empty(score));
         }
 
+        let mut is_pv_node = beta == alpha + 1;
+
+        // if is_pv_node {
+        //     // trace!("is_pv_node, ply {}: g = {:?}", ply, g);
+        //     trace!("is pv_node, ply {}: {}, {}", ply, alpha, beta);
+        // } else {
+        //     trace!("not pv_node, ply {}: {}, {}", ply, alpha, beta);
+        // }
+
         /// Null Move pruning
         #[cfg(feature = "null_pruning")]
         if g.state.checkers.is_empty()
+            && depth >= 3
+            && !is_pv_node
             && g.state.phase < 200
-            && do_null
-            && self.prune_null_move_negamax(
-                ts, g, max_depth, depth, ply, alpha, beta, &mut stats,
-                prev_mvs.clone(), &mut history, tt_r, tt_w.clone()) {
-                return ABNone;
+            && do_null {
+                if self.prune_null_move_negamax(
+                    ts, g, max_depth, depth, ply, alpha, beta, &mut stats,
+                    prev_mvs.clone(), &mut history, tt_r, tt_w.clone()) {
+
+                    // return ABNone;
+                    return ABSingle(ABResult::new_empty(beta));
+                }
         }
 
-        /// MVV LVA move ordering
-        order_mvv_lva(&mut moves);
+        // /// MVV LVA move ordering
+        // order_mvv_lva(&mut moves);
 
-        /// History Heuristic ordering
-        #[cfg(feature = "history_heuristic")]
-        order_moves_history(&history[g.state.side_to_move], &mut moves);
+        // /// History Heuristic ordering
+        // #[cfg(feature = "history_heuristic")]
+        // order_moves_history(&history[g.state.side_to_move], &mut moves);
 
         /// Make move, Lookup games in Trans Table
         let mut gs: Vec<(Move,Game,Option<(SICanUse,SearchInfo)>)> = {
@@ -241,6 +256,8 @@ impl Explorer {
 
         let mut list = vec![];
 
+        let mut search_pv = true;
+
         'outer: for (mv,g2,tt) in gs.iter() {
             let zb = g2.zobrist;
 
@@ -279,6 +296,7 @@ impl Explorer {
                     /// not reducing when in check replaces check extension
                     #[cfg(feature = "late_move_reduction")]
                     if lmr
+                        && !is_pv_node
                         && moves_searched >= 4
                         && ply >= 3
                         && depth > 2
@@ -289,35 +307,73 @@ impl Explorer {
                         && g2.state.checkers.is_empty()
                     {
                         let depth3 = depth - 3;
-                        if let ABSingle(mut res) = self._ab_search_negamax(
+                        match self._ab_search_negamax(
                             &ts, &g2, max_depth, depth3, ply + 1,
                             -beta, -alpha, &mut stats,
-                            pms.clone(), &mut history, tt_r, tt_w.clone(), false, do_null) {
-
-                            res.neg_score();
-                            if res.score <= alpha {
-                                stats.lmrs.0 += 1;
-                                res.moves.push_front(*mv);
-                                break 'search (false,res);
-                            }
+                            pms.clone(), &mut history, tt_r, tt_w.clone(),
+                            false,
+                            // XXX: No Null pruning inside reduced depth search ?
+                            true) {
+                            ABSingle(mut res) => {
+                                res.neg_score();
+                                if res.score <= alpha {
+                                    stats.lmrs.0 += 1;
+                                    res.moves.push_front(*mv);
+                                    break 'search (false,res);
+                                }
+                            },
+                            // ABNone => {},
+                            _ => {},
                         }
 
                     }
 
-                    if let ABSingle(mut res) = self._ab_search_negamax(
-                        &ts, &g2, max_depth, depth2, ply + 1,
-                        -beta, -alpha, &mut stats,
-                        pms, &mut history, tt_r, tt_w.clone(), false, do_null) {
-
-                        res.moves.push_front(*mv);
-                        res.neg_score();
-                        if root {
-                            list.push(res.clone());
-                        }
-                        (false, res)
+                    #[cfg(feature = "pvs_search")]
+                    let (a2,b2) = if search_pv {
+                        (-beta, -alpha)
                     } else {
-                        // continue 'outer;
-                        break 'outer;
+                        (-alpha - 1, -alpha)
+                    };
+                    #[cfg(not(feature = "pvs_search"))]
+                    let (a2,b2) = (-beta, -alpha);
+
+                    match self._ab_search_negamax(
+                        &ts, &g2, max_depth, depth2, ply + 1,
+                        a2, b2, &mut stats,
+                        pms.clone(), &mut history, tt_r, tt_w.clone(), false, true) {
+                        ABSingle(mut res) => {
+                            res.moves.push_front(*mv);
+                            res.neg_score();
+
+                            #[cfg(feature = "pvs_search")]
+                            if !search_pv && res.score > alpha {
+                                match self._ab_search_negamax(
+                                    &ts, &g2, max_depth, depth2, ply + 1,
+                                    -beta, -alpha, &mut stats,
+                                    pms, &mut history, tt_r, tt_w.clone(), false, true) {
+                                    ABSingle(mut res2) => {
+                                        res2.neg_score();
+                                        res2.moves.push_front(*mv);
+                                        res = res2;
+                                    },
+                                    _ => {
+                                        break 'outer
+                                    },
+                                }
+                            }
+
+                            if root {
+                                list.push(res.clone());
+                            }
+                            (false, res)
+                        },
+                        // ABPrune => {
+                        //     unimplemented!()
+                        // },
+                        _ => {
+                            // continue 'outer;
+                            break 'outer;
+                        },
                     }
 
                 },
@@ -339,6 +395,7 @@ impl Explorer {
             if !b && val.1 > alpha {
                 node_type = Node::PV;
                 alpha = val.1;
+                search_pv = false;
             }
 
             if b {

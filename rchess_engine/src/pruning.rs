@@ -50,7 +50,8 @@ impl Explorer {
                 res.neg_score();
 
                 if res.score >= beta { // Beta cutoff
-                    // trace!("null move beta cutoff, a/b: {}, {}, score = {}", -beta, -beta + 1, res.score);
+                    // trace!("null move beta cutoff, a/b: {}, {}, score = {}\n{:?}",
+                    //        -beta, -beta + 1, res.score, g2);
                     stats.null_prunes += 1;
                     return true;
                 }
