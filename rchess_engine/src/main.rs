@@ -17,6 +17,7 @@
 // )]
 
 use std::collections::HashMap;
+use std::collections::VecDeque;
 use std::slice::SliceIndex;
 use std::str::FromStr;
 
@@ -101,14 +102,6 @@ fn main() {
     //     eprintln!("m = {:?}", m);
     // }
 
-    // // let s = std::mem::size_of::<Eval>();
-    // // let s = std::mem::size_of::<rchess_engine_lib::types::Color>();
-    // let s = std::mem::size_of::<Tables>();
-    // // let s = std::mem::size_of::<GHistory>();
-    // eprintln!("s = {:?}", s);
-    // // let s = u16::MAX;
-    // // eprintln!("s = {:#8x}", s);
-
     // let ts = &_TABLES;
     // let mut games = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
     // let mut games: Vec<(Game,String)> = games.into_iter().map(|(fen,_)| {
@@ -116,33 +109,22 @@ fn main() {
     // }).collect();
     // let col = White;
 
-    // let t0 = std::time::Instant::now();
-    // for k in 0..4000 {
-    // // for k in 0..1 {
-    //     let mut n0 = 0;
-    //     for (i,(g,fen)) in games.iter().enumerate() {
-    //         // eprintln!("i = {:?}, fen = {}", i, fen);
-    //         let moves = g.search_all(&ts, None).get_moves_unsafe();
-    //         n0 += moves.len();
-    //     }
-    // }
-    // println!("Finished in {:.3} seconds.", t0.elapsed().as_secs_f64());
 
-    // for k in 0..1000 {
-    //     let mut n0 = 0;
-    //     for g in games.iter() {
-    //         let pawns = g.search_pawns(&ts, col);
-    //         n0 += pawns.len();
-    //     }
+    // #[derive(Debug,PartialEq,PartialOrd,Clone)]
+    // pub enum Wat {
+    //     Wat1(ABResult),
+    //     // Wat2(Vec<ABResult>),
+    //     Wat2(ABResult, Vec<ABResult>),
+    //     Wat3
     // }
 
-    // for k in 0..1000 {
-    //     let mut n1 = 0;
-    //     for g in games.iter() {
-    //         let pawns = g.search_pawns_iter(&ts, col);
-    //         n1 += pawns.collect::<Vec<_>>().len();
-    //     }
-    // }
+    // // let s = std::mem::size_of::<Eval>();
+    // // let s = std::mem::size_of::<rchess_engine_lib::types::Color>();
+    // let s = std::mem::size_of::<VecDeque<()>>();
+    // // let s = std::mem::size_of::<GHistory>();
+    // eprintln!("s = {:?}", s);
+    // // let s = u16::MAX;
+    // // eprintln!("s = {:#8x}", s);
 
     // return;
 
@@ -220,18 +202,26 @@ fn main9() {
         ex.lazy_smp(&ts, false, false)
     }
 
-    // let n = 35;
+    let n = 35;
     // let n = 5;
-    let n = 6;
+    // let n = 8;
+
+    let t = 2.0;
 
     // let e = g.evaluate(&ts).sum();
     // eprintln!("eval = {:?}", e);
 
     let t0 = std::time::Instant::now();
     println!("g = {:?}", g);
-    let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), 4.0);
+    let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), t);
     let t1 = t0.elapsed();
     let t2 = t1.as_secs_f64();
+    println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
+             stats0.max_depth, t2);
+    // println!("correct = Cp N d4b3");
+    // eprintln!("\nBest move = {:>8} {:?}: {:?}", best.score, best.moves[0], best.moves);
+    eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
+    for m in best.moves.iter() { eprintln!("\t{:?}", m); }
 
     // let t0 = std::time::Instant::now();
     // let (moves0,stats0,(tt_r,tt_w)) = go2(&ts, n, g.clone(), 4.0);
@@ -243,15 +233,19 @@ fn main9() {
     //          stats0.max_depth, t2);
     // // stats0.print(t0.elapsed());
 
-    // println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
-    //          stats0.max_depth, t2);
-    // // println!("correct = Cp N d4b3");
+    // let mut arr = stats0.nodes_arr.clone();
+    // eprintln!("arr = {:?}", arr);
+    // let k = arr.0.len();
+    // let dmax = stats0.max_depth as usize;
+    // let mut arr2 = &mut arr.0[..dmax + 2];
+    // arr2.reverse();
+    // eprintln!("arr2 = {:?}", arr2);
+
 
     // let mut g1 = Game::from_fen(&ts, fen1).unwrap();
     // let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g1.clone(), 4.0);
-    // eprintln!("\nBest move = {:>8} {:?}: {:?}", best.score, best.moves[0], best.moves);
 
-    // for m in best.moves.iter() {
+    // for m in mvs0.iter() {
     //     eprintln!("\t{:?}", m);
     // }
 

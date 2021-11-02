@@ -167,7 +167,7 @@ impl Explorer {
         /// Null Move pruning
         #[cfg(feature = "null_pruning")]
         if g.state.checkers.is_empty()
-            && g.game_phase() < 200
+            && g.state.phase < 200
             && self.prune_null_move_negamax(
                 ts, g, max_depth, depth, k, alpha, beta, &mut stats,
                 prev_mvs.clone(), &mut history, tt_r, tt_w.clone()) {
@@ -176,7 +176,6 @@ impl Explorer {
 
         /// MVV LVA move ordering
         order_mvv_lva(&mut moves);
-        // moves.reverse();
 
         /// History Heuristic ordering
         #[cfg(feature = "history_heuristic")]
@@ -552,7 +551,7 @@ impl Explorer {
         /// Null Move pruning
         #[cfg(feature = "null_pruning")]
         if g.state.checkers.is_empty()
-            && g.game_phase() < 200
+            && g.state.phase < 200
             && self.prune_null_move(
                 ts, g, max_depth, depth, k, alpha, beta, maximizing, &mut stats,
                 prev_mvs.clone(), &mut history, tt_r, tt_w.clone()) {

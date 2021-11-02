@@ -33,7 +33,7 @@ pub struct SearchStats {
 }
 
 #[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
-pub struct NArr([u32; 50]);
+pub struct NArr(pub [u32; 50]);
 
 impl Default for NArr {
     fn default() -> Self {
@@ -118,7 +118,7 @@ impl SearchStats {
         let k = arr.0.len();
         let dmax = self.max_depth as usize;
         // let mut arr2 = &mut arr[1..((self.max_depth as usize) + 1)];
-        let mut arr2 = &mut arr.0[..dmax + 1];
+        let mut arr2 = &mut arr.0[..dmax + 2];
         arr2.reverse();
 
         // for (depth,n) in arr2.iter().enumerate() {

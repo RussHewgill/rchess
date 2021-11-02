@@ -4,7 +4,13 @@ use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
 
+pub use self::piece_square_tables::*;
+
 use serde::{Serialize,Deserialize};
+
+mod piece_square_tables {
+}
+
 
 /// Passed bonus = passed * ranks past 2nd
 // #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]

@@ -95,7 +95,7 @@ impl Game {
     pub fn evaluate(&self, ts: &Tables) -> Eval {
         let mut out = Eval::default();
 
-        let phase = self.game_phase();
+        let phase = self.state.phase;
 
         for &col in [White,Black].iter() {
             for pc in Piece::iter_pieces() {

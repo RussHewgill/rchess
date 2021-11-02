@@ -78,6 +78,7 @@ pub struct GameState {
     pub castling:           Castling,
 
     // pub score:              Score,
+    pub phase:              u16,
 
     // pub checkers:           Option<BitBoard>,
     // pub king_blocks_w:      Option<BitBoard>,
@@ -397,6 +398,8 @@ impl Game {
         self.update_checkers_mut(&ts);
         self.update_check_block_mut(&ts);
         // self.update_occupied_mut();
+
+        self.state.phase = self.game_phase();
 
         // if self.history.len() > 5 {
         //     self.history.pop_front();

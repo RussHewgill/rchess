@@ -132,6 +132,9 @@ pub struct Tables {
     // endgames: 
 }
 
+#[cfg(not(feature = "smallstack"))]
+impl Copy for Tables {}
+
 /// Piece getters
 impl Tables {
     // pub fn get_rook(&self, Coord(x,y): Coord) -> &MoveSetRook {
