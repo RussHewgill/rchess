@@ -25,10 +25,10 @@ default = [
 
     "keep_stats",
 
-    # "positional_scoring",
+    "positional_scoring",
 
-    "null_pruning",
-    "late_move_reduction",
+    # "null_pruning",
+    # "late_move_reduction",
     "history_heuristic",
     "qsearch",
 

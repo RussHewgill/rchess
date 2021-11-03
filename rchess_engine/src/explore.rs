@@ -42,7 +42,7 @@ pub struct Explorer {
     pub timer:         Timer,
     pub stop:          Arc<AtomicBool>,
     pub best_mate:     Arc<RwLock<Option<Depth>>>,
-    pub move_history:      VecDeque<(Zobrist, Move)>,
+    // pub move_history:  VecDeque<(Zobrist, Move)>,
     // pub 
     // pub prev_eval:     Arc<>
 }
@@ -62,7 +62,7 @@ impl Explorer {
             timer:          Timer::new(side, should_stop, settings),
             stop:           Arc::new(AtomicBool::new(false)),
             best_mate:      Arc::new(RwLock::new(None)),
-            move_history:   VecDeque::default(),
+            // move_history:   VecDeque::default(),
         }
     }
 }
@@ -397,6 +397,10 @@ impl Explorer {
         let sleep_time = Duration::from_millis(1);
 
         self.stop.store(false, SeqCst);
+        {
+            let mut w = self.best_mate.write();
+            *w = None;
+        }
 
         // let stop3 = self.stop.clone();
         // ctrlc::set_handler(move || {
@@ -609,6 +613,9 @@ impl Explorer {
 
         match out {
             ABResults::ABList(best, ress) => {
+
+                debug!("finished lazy_smp_negamax: moves {:?}", best.moves);
+
                 ((best,ress),stats,(tt_r,tt_w))
             },
             ABResults::ABSingle(_) => {

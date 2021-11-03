@@ -323,6 +323,13 @@ impl Game {
     // pub fn make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Self> {
     pub fn make_move_unchecked(&self, ts: &Tables, mv: Move) -> GameResult<Game> {
 
+        if mv != Move::NullMove {
+            let (side,_) = self.get_at(mv.sq_from()).unwrap();
+            if self.state.side_to_move != side {
+                panic!("non legal move: {:?}", self);
+            }
+        }
+
         match self._make_move_unchecked(&ts, &mv) {
             Some(mut x) => {
                 match mv {

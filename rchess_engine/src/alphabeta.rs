@@ -161,7 +161,7 @@ impl Explorer {
         //     trace!("skipped node: {}, {:?}", k, g.zobrist);
         // }
 
-        let mvs = self.move_history.clone();
+        // let mvs = self.move_history.clone();
 
         if depth == 0 {
             if !tt_r.contains_key(&g.zobrist) {
@@ -203,7 +203,7 @@ impl Explorer {
         /// Null Move pruning
         #[cfg(feature = "null_pruning")]
         if g.state.checkers.is_empty()
-            && depth >= 3
+            && depth >= 2
             && !is_pv_node
             && g.state.phase < 200
             && do_null {
@@ -218,6 +218,9 @@ impl Explorer {
 
         /// MVV LVA move ordering
         order_mvv_lva(&mut moves);
+
+        // moves.sort_by_cached_key(|m| g.static_exchange(&ts, *m));
+        // moves.reverse();
 
         /// History Heuristic ordering
         #[cfg(feature = "history_heuristic")]

@@ -44,17 +44,23 @@ impl Explorer {
             // trace!("qsearch new alpha: {:?}", alpha);
         }
 
-        let mut moves = if qply > 6 && g.state.last_capture.is_some() {
+        const RECAPS_ONLY: i16 = 5;
+        let mut moves = if qply > RECAPS_ONLY && !g.in_check() && g.state.last_capture.is_some() {
             let cap = g.state.last_capture.unwrap();
 
-            match g.search_all_single(&ts, cap, None) {
-                Outcome::Moves(ms) => ms,
+            match g.search_all_single_to(&ts, cap, None) {
+                Outcome::Moves(ms) => {
+                    // stats.qt_hits += 1;
+                    ms
+                },
                 _                  => vec![],
             }
-        } else if qply > 5 {
+        } else if qply > RECAPS_ONLY && !g.in_check() {
+            // stats.qt_misses += 1;
             return stand_pat;
         } else {
-                match g.search_only_captures(&ts) {
+            // stats.qt_misses += 1;
+            match g.search_only_captures(&ts) {
                 Outcome::Moves(ms) => ms,
                 _                  => {
                     // trace!("qsearch no legal capture moves");
@@ -68,14 +74,23 @@ impl Explorer {
                                 ms
                             },
                             Outcome::Checkmate(c) => {
-                                // trace!("qsearch checkmate");
+                                // trace!("qsearch checkmate {:?}: ply {}, {}\n{:?}", c, ply, qply, g);
                                 let score = 100_000_000 - ply as Score;
+
+                                // if g.state.side_to_move == Black {
+                                //     return -score;
+                                // } else {
+                                //     return score;
+                                // }
+
                                 return -score;
+                                // vec![]
                             },
                             Outcome::Stalemate => {
                                 // trace!("qsearch stalemate");
-                                let score = -200_000_000 + ply as Score;
-                                return -score;
+                                // let score = -200_000_000 + ply as Score;
+                                // return -score;
+                                vec![]
                             },
                         }
                     }
@@ -95,6 +110,11 @@ impl Explorer {
         }
 
         order_mvv_lva(&mut moves);
+
+        // moves.par_sort_by(|a,b| {
+        // });
+        // moves.sort_by_cached_key(|m| g.static_exchange(&ts, *m));
+        // moves.reverse();
 
         // let ms = moves.into_iter()
         //     .flat_map(|m| g.make_move_unchecked(&ts, m).ok().map(|x| (m,x)));

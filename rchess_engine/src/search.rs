@@ -12,8 +12,22 @@ const PERFTLENTH: usize = 20;
 /// Search All
 impl Game {
 
+    pub fn search_all_single_to(&self, ts: &Tables, c0: Coord, col: Option<Color>) -> Outcome {
+        let ms = self.search_all(&ts);
+        match ms {
+            Outcome::Checkmate(win) => Outcome::Checkmate(win),
+            Outcome::Stalemate      => Outcome::Stalemate,
+            Outcome::Moves(ms)      => {
+                let out: Vec<Move> = ms.into_iter()
+                    .filter(|m| m.sq_to() == c0)
+                    .collect();
+                Outcome::Moves(out)
+            },
+        }
+    }
+
     // XXX: slower than could be
-    pub fn search_all_single(&self, ts: &Tables, c0: Coord, col: Option<Color>) -> Outcome {
+    pub fn search_all_single_from(&self, ts: &Tables, c0: Coord, col: Option<Color>) -> Outcome {
         // let mut out = vec![];
         // match self.get_at(c0) {
         //     Some((col1,Pawn))                  => {

@@ -168,7 +168,8 @@ fn main9() {
     let fen = STARTPOS;
     init_logger();
 
-    let ts = Tables::read_from_file_def().unwrap();
+    // let ts = Tables::read_from_file_def().unwrap();
+    let ts = &_TABLES;
 
     fn games(i: usize) -> String {
         let mut games = read_epd("testpositions/WAC.epd").unwrap();
@@ -194,17 +195,17 @@ fn main9() {
     }
 
     // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
-    // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
+    let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
     // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
     // let fen = "5rk1/pp3pp1/8/4q1N1/6b1/4r3/PP3QP1/5K1R w - - 0 2"; // R h1h8, #4
-    let fen = "r4r1k/2Q5/1p5p/2p2n2/2Pp2R1/PN1Pq3/6PP/R3N2K b - - 0 1"; // #4
+    // let fen = "r4r1k/2Q5/1p5p/2p2n2/2Pp2R1/PN1Pq3/6PP/R3N2K b - - 0 1"; // #4, Qt N f5g3, slow
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
 
     // let fen = "4r1k1/4nppp/2b5/1r2N3/5P2/3Q4/6PP/5RK1 w - - 0 1"; // QS test,
-    // // let fen = "4r1k1/4nppp/2N5/1r6/5P2/3Q4/6PP/5RK1 b - - 0 1"; // After N e5c6
+    // let fen = "4r1k1/4nppp/2N5/1r6/5P2/3Q4/6PP/5RK1 b - - 0 1"; // After N e5c6
     // // let fen = "4r1k1/5ppp/2n5/1r6/5P2/3Q4/6PP/5RK1 w - - 0 2"; // After N e7c6, recapture, WRONG
     // // let fen = "4r1k1/1r2nppp/2N5/8/5P2/3Q4/6PP/5RK1 w - - 1 2"; // After R b5b7, Correct
 
@@ -214,6 +215,8 @@ fn main9() {
     // // let fen = "5rk1/4npp1/1p4b1/1B2p3/1P1P2Q1/4P3/4KPP1/7r w - - 0 4"; // after evade, -320
     // // let fen = "5rk1/4npp1/1p4b1/1B2p3/1P1P4/4P3/5PP1/3K3R b - - 0 4"; // after block, -220
 
+    let fen = "4r2k/3Q2pp/4p3/p3p3/P1P1N3/5P2/1P4P1/1KR5 b - -"; // Non legal move, e4f6
+
     // let fen = &games(8); // Qt R e7f7, #7
 
     eprintln!("fen = {:?}", fen);
@@ -222,12 +225,12 @@ fn main9() {
 
     eprintln!("g = {:?}", g);
 
-    let n = 35;
-    // let n = 1;
+    // let n = 35;
+    let n = 6;
 
-    let t = 10.0;
-    // let t = 5.0;
     // let t = 1.0;
+    // let t = 5.0;
+    let t = 0.5;
 
     // let mv = Move::Capture { from: "B7".into(), to: "E7".into(), pc: Rook, victim: Knight };
     // let s = g.static_exchange(&ts, mv);
@@ -242,6 +245,9 @@ fn main9() {
     // eprintln!("wm = {:?}", wm);
     // eprintln!("bm = {:?}", bm);
 
+    // let mv = Move::Quiet { from: "E4".into(), to: "F6".into(), pc: Knight };
+    // let g2 = g.make_move_unchecked(&ts, mv).unwrap();
+    // eprintln!("g2 = {:?}", g2);
     // return;
 
     let stop = Arc::new(AtomicBool::new(false));
@@ -272,15 +278,26 @@ fn main9() {
     // let e = g.evaluate(&ts).sum();
     // eprintln!("eval = {:?}", e);
 
-    let t0 = std::time::Instant::now();
-    println!("g = {:?}", g);
-    let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), t);
-    let t1 = t0.elapsed();
-    let t2 = t1.as_secs_f64();
+    // let t0 = std::time::Instant::now();
+    // // println!("g = {:?}", g);
+    // let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), t);
+    // let t1 = t0.elapsed();
+    // let t2 = t1.as_secs_f64();
 
-    stats!(println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
-                    stats0.max_depth, t2));
-    not_stats!(println!("explore lazy_smp_negamax (depth: ?) done in {:.3} seconds.", t2));
+    let mut t1;
+    let mut t2;
+    let ((best, scores),stats0,(tt_r,tt_w)) = loop {
+        let t0 = std::time::Instant::now();
+        let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), t);
+        t1 = t0.elapsed();
+        t2 = t1.as_secs_f64();
+        if best.score > 50000 {
+            break ((best, scores),stats0,(tt_r,tt_w));
+        }
+    };
+
+    println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
+             stats0.max_depth, t2);
 
     // println!("correct = Cp N d4b3");
     // eprintln!("\nBest move = {:>8} {:?}: {:?}", best.score, best.moves[0], best.moves);
@@ -306,17 +323,19 @@ fn main9() {
     stats0.print(t1);
     // stats0.print_ebf(true);
 
-    eprintln!("nodes/qt nodes 0 = {:.3?}", stats0.qt_nodes as f64 / stats0.nodes as f64);
-    eprintln!("qt nodes 0 = {:?}", stats0.qt_nodes);
-    stats!(eprintln!("stats0.q_max_depth = {:?}", stats0.q_max_depth));
+    eprintln!();
+    eprintln!("nodes/qt nodes 0 = {:.1?}", stats0.qt_nodes as f64 / stats0.nodes as f64);
+    eprintln!("qt nodes 0 = {}", pretty_print_si(stats0.qt_nodes as i64));
+    eprintln!("stats0.q_max_depth = {:?}", stats0.q_max_depth);
 
-    stats!(eprintln!("null prunes = {:?}", stats0.null_prunes));
-    stats!(eprintln!("stats0.lmrs = {:?}", stats0.lmrs));
+    eprintln!("stats0.qt_hits = {}", pretty_print_si(stats0.qt_hits as i64));
+    eprintln!("stats0.qt_misses = {}", pretty_print_si(stats0.qt_misses as i64));
 
-    stats!({
-        let bcs = stats0.beta_cut_first;
-        eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64)
-    });
+    eprintln!("null prunes = {:?}", stats0.null_prunes);
+    eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
+
+    let bcs = stats0.beta_cut_first;
+    eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
 
     // let zb = g.zobrist;
     // let si = tt_r.get_one(&zb).unwrap();
@@ -531,7 +550,7 @@ fn main7() {
     let mut g = Game::from_fen(&ts, fen).unwrap();
 
     let stop = Arc::new(AtomicBool::new(false));
-    let timesettings = TimeSettings::new_f64(0.0,2.0);
+    let mut timesettings = TimeSettings::new_f64(0.0,2.0);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
 
     // let mut ps = vec![
@@ -771,7 +790,7 @@ fn main7() {
 
         // e5d6 not legal
 
-        let ms = "d2d4 d7d5 c1e3 d8d6 b1c3 d6b4 d1d3 b4b2 a1b1 b2a3 b1b3 a3a6 d3a6 b8a6 e3f4 e7e6 e2e4 a6b8 f4c7 b8d7 e4d5 e6d5 f1d3 f8e7 c3d5 e7g5 c7e5";
+        let ms = "e2e4 e7e5 b1a3 b8a6 f1b5 c7c6 b5e2 c6c5 e2b5 e8e7 d1h5 d7d6 h5g5 f7f6 g5e3 d6d5 d2d3 a6c7 b5a4";
 
         let ms0 = ms.split(" ");
 
@@ -785,10 +804,10 @@ fn main7() {
         }
         // eprintln!("hash0 = {:?}", g2.zobrist);
 
-        eprintln!("g2 = {:?}", g2);
-        let g2fen = g2.to_fen();
-        eprintln!("g2fen = {:?}", g2fen);
-        // eprintln!("g0 = {:?}", g0);
+        // eprintln!("g2 = {:?}", g2);
+        // let g2fen = g2.to_fen();
+        // eprintln!("g2fen = {:?}", g2fen);
+        // // eprintln!("g0 = {:?}", g0);
 
         // let m0 = g2.convert_move("d7", "d5", "").unwrap();
         // let m0 = g2.convert_move("e5", "d6", "").unwrap();
@@ -802,9 +821,18 @@ fn main7() {
         // eprintln!("g0.zobrist == g2.zobrist = {:?}", g0.zobrist == g2.zobrist);
         // g0.state.debug_equal(g2.state);
 
-        let n = 35;
-        // let n = 10;
+        // let fen = "4r2k/3Q2pp/4p3/p3p3/P1P1N3/5P2/1P4P1/1KR5 b - -";
+        // let g2 = Game::from_fen(&ts, &fen).unwrap();
 
+        // eprintln!("g2 = {:?}", g2);
+
+        // let n = 35;
+        // let n = 10;
+        let n = 6;
+
+        let t = 2.0;
+
+        timesettings.increment = [t, t];
         let mut ex0 = Explorer::new(g0.state.side_to_move, g0.clone(), n, stop.clone(), timesettings);
         let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);
 
@@ -821,7 +849,7 @@ fn main7() {
         let (m,stats) = ex2.explore(&ts, None);
         eprintln!("m = {:?}", m.unwrap());
         // ex.rank_moves(&ts, true);
-        println!("explore done in {} seconds.", t.elapsed().as_secs_f64());
+        println!("explore done in {:.3} seconds.", t.elapsed().as_secs_f64());
 
     }
 

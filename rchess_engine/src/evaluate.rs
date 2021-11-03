@@ -128,23 +128,23 @@ impl Game {
     }
 
     pub fn game_phase(&self) -> u16 {
-        let pawn_ph   = 0;
-        let knight_ph = 1;
-        let bishop_ph = 1;
-        let rook_ph   = 2;
-        let queen_ph  = 4;
+        const PAWN_PH: u16   = 0;
+        const KNIGHT_PH: u16 = 1;
+        const BISHOP_PH: u16 = 1;
+        const ROOK_PH: u16   = 2;
+        const QUEEN_PH: u16  = 4;
 
-        let pcs = [Pawn,Rook,Knight,Bishop,Queen];
-        let phases: [u16; 5] = [pawn_ph,rook_ph,knight_ph,bishop_ph,queen_ph];
+        const PCS: [Piece; 5] = [Pawn,Knight,Bishop,Rook,Queen];
+        const PHASES: [u16; 5] = [PAWN_PH,KNIGHT_PH,BISHOP_PH,ROOK_PH,QUEEN_PH];
 
-        let ph_total = pawn_ph * 16 + knight_ph * 4 + bishop_ph * 4 + rook_ph * 4 + queen_ph * 2;
+        let ph_total = PAWN_PH * 16 + KNIGHT_PH * 4 + BISHOP_PH * 4 + ROOK_PH * 4 + QUEEN_PH * 2;
         let mut ph = ph_total;
 
         for &col in [White,Black].iter() {
-            for pc in pcs {
+            for pc in PCS {
                 let ps = self.get(pc, col);
                 let pn = ps.popcount() as u16;
-                let x = pn * phases[pc.index()];
+                let x = pn * PHASES[pc.index()];
                 if ph < x {
                     ph = 0;
                     break;
