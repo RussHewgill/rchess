@@ -368,7 +368,7 @@ impl Explorer {
 
         let res = self._ab_search_negamax(
             &ts, &self.game, depth, depth,
-            0, alpha, beta,
+            0, (alpha, beta),
             &mut stats,
             VecDeque::new(),
             &mut history,

@@ -84,20 +84,19 @@ impl Explorer {
     /// beta:  the MAX score that the minimizing player is assured of
     pub fn _ab_search_negamax(
         &self,
-        ts:                 &Tables,
-        g:                  &Game,
-        max_depth:          Depth,
-        depth:              Depth,
-        ply:                i16,
-        mut alpha:          i32,
-        mut beta:           i32,
-        mut stats:          &mut SearchStats,
-        prev_mvs:           VecDeque<(Zobrist,Move)>,
-        mut history:        &mut [[[Score; 64]; 64]; 2],
-        tt_r:               &TTRead,
-        tt_w:               TTWrite,
-        root:               bool,
-        do_null:            bool,
+        ts:                      &Tables,
+        g:                       &Game,
+        max_depth:               Depth,
+        depth:                   Depth,
+        ply:                     i16,
+        (mut alpha, mut beta):   (i32,i32),
+        mut stats:               &mut SearchStats,
+        prev_mvs:                VecDeque<(Zobrist,Move)>,
+        mut history:             &mut [[[Score; 64]; 64]; 2],
+        tt_r:                    &TTRead,
+        tt_w:                    TTWrite,
+        root:                    bool,
+        do_null:                 bool,
     ) -> ABResults {
 
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
@@ -171,10 +170,12 @@ impl Explorer {
 
             #[cfg(feature = "qsearch")]
             let score = {
-                // trace!("beginning qsearch, {:?}, a/b: {:?},{:?}", prev_mvs.front().unwrap().1, alpha, beta);
+                // trace!("    beginning qsearch, {:?}, a/b: {:?},{:?}",
+                //        prev_mvs.front().unwrap().1, alpha, beta);
                 let score = self.qsearch(&ts, &g, (ply,0), alpha, beta, &mut stats);
-                // trace!("returned from qsearch, score = {}", score);
+                // trace!("    returned from qsearch, score = {}", score);
                 score
+                // if g.state.side_to_move == Black { score } else { -score }
             };
 
             #[cfg(not(feature = "qsearch"))]
@@ -306,7 +307,7 @@ impl Explorer {
                         let depth3 = depth - 3;
                         match self._ab_search_negamax(
                             &ts, &g2, max_depth, depth3, ply + 1,
-                            -beta, -alpha, &mut stats,
+                            (-beta, -alpha), &mut stats,
                             pms.clone(), &mut history, tt_r, tt_w.clone(),
                             false,
                             // XXX: No Null pruning inside reduced depth search ?
@@ -336,7 +337,7 @@ impl Explorer {
 
                     match self._ab_search_negamax(
                         &ts, &g2, max_depth, depth2, ply + 1,
-                        a2, b2, &mut stats,
+                        (a2, b2), &mut stats,
                         pms.clone(), &mut history, tt_r, tt_w.clone(), false, true) {
                         ABSingle(mut res) => {
                             res.moves.push_front(*mv);
@@ -346,7 +347,7 @@ impl Explorer {
                             if !search_pv && res.score > alpha {
                                 match self._ab_search_negamax(
                                     &ts, &g2, max_depth, depth2, ply + 1,
-                                    -beta, -alpha, &mut stats,
+                                    (-beta, -alpha), &mut stats,
                                     pms, &mut history, tt_r, tt_w.clone(), false, true) {
                                     ABSingle(mut res2) => {
                                         res2.neg_score();

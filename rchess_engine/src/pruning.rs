@@ -41,7 +41,7 @@ impl Explorer {
             if let ABResults::ABSingle(mut res) = self._ab_search_negamax(
                 &ts, &g2, max_depth,
                 depth - 1 - r, ply + 1,
-                -beta, -beta + 1,
+                (-beta, -beta + 1),
                 // -beta, -alpha,
                 &mut stats, pms, &mut history,
                 tt_r, tt_w, false, false) {
