@@ -376,7 +376,9 @@ impl Explorer {
 
         match tx.send((depth,res,stats)) {
             Ok(_) => {},
-            Err(_) => panic!("tx send error: depth {}", depth),
+            // Err(_) => panic!("tx send error: depth {}", depth),
+            Err(_) => trace!("tx send error: depth {}", depth),
+            // Err(_) => {},
         }
         drop(tx);
 

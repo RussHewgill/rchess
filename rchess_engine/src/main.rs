@@ -176,8 +176,6 @@ fn main9() {
         games[i - 1].clone()
     }
 
-    // let fen = &games(7);
-
     fn go(ts: &Tables, n: Depth, g: Game, t: f64) -> ((ABResult, Vec<ABResult>),SearchStats,(TTRead,TTWrite)) {
         let stop = Arc::new(AtomicBool::new(false));
         let timesettings = TimeSettings::new_f64(0.0,t);
@@ -194,20 +192,25 @@ fn main9() {
     }
 
     // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
-    let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
+    // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
     // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+
+    let fen = "5rk1/pp3pp1/8/4q1N1/6b1/4r3/PP3QP1/5K1R w - - 0 2"; // R h1h8, #4
+    // let fen = "r4r1k/2Q5/1p5p/2p2n2/2Pp2R1/PN1Pq3/6PP/R3N2K b - - 0 1"; // #4
+
+    // let fen = &games(8); // Qt R e7f7, #7
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
 
-    // let n = 35;
+    let n = 35;
     // let n = 5;
     // let n = 8;
-    let n = 6;
+    // let n = 6;
 
-    let t = 4.0;
+    let t = 10.0;
 
     // let mv = Move::Capture { from: "B3".into(), to: "B6".into(), pc: Queen, victim: Queen };
     // // let mv = Move::Capture { from: "D5".into(), to: "B3".into(), pc: Queen, victim: Queen };
@@ -215,8 +218,8 @@ fn main9() {
     // eprintln!("see = {:?}", see);
     // return;
 
-    let e = g.evaluate(&ts).sum();
-    eprintln!("eval = {:?}", e);
+    // let e = g.evaluate(&ts).sum();
+    // eprintln!("eval = {:?}", e);
 
     // let ms = vec![
     //     // "b1c3",
@@ -247,6 +250,14 @@ fn main9() {
 
     eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
     for m in best.moves.iter() { eprintln!("\t{:?}", m); }
+
+    // let zb0 = Game::zobrist_from_fen(&ts, "5rk1/ppR3p1/8/8/8/1P6/P4RPP/4r1K1 w - - 0 4");
+    // let zb1 = Game::zobrist_from_fen(&ts, "5rk1/ppR3p1/8/8/8/1P6/P5PP/4rRK1 b - - 1 4");
+    // let zb2 = Game::zobrist_from_fen(&ts, "5rk1/ppR3p1/8/8/8/1P6/P5PP/5rK1 w - - 0 5");
+
+    // eprintln!("zb0 = {:?}", zb0);
+    // eprintln!("zb1 = {:?}", zb1);
+    // eprintln!("zb2 = {:?}", zb2);
 
     // let t0 = std::time::Instant::now();
     // let (moves0,stats0,(tt_r,tt_w)) = go2(&ts, n, g.clone(), 4.0);
@@ -782,6 +793,7 @@ fn main7() {
 
 }
 
+/// WAC
 fn main3(num: Option<u64>, send_url: bool) {
     // let mut games = read_ccr_onehour("ccr_onehour.txt").unwrap();
     // let mut games = read_epd("Midgames250.epd").unwrap();
@@ -841,7 +853,7 @@ fn main3(num: Option<u64>, send_url: bool) {
             let t = t0.elapsed().as_secs_f64() / total.1 as f64;
             println!(
                 "#{:>2}: Wrong, Correct: {:>5}, engine: {:>5} ({:?}), ({}/{}), avg: {:.2}",
-                i, m[0], mv, m0.unwrap().0, total.0, total.1, t);
+                i, m[0], mv, m0.unwrap().0, total.0, total.1, total.0 as f64 / total.1 as f64);
 
             if send_url {
                 g.open_with_lichess().unwrap();

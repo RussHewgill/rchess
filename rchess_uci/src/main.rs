@@ -70,8 +70,8 @@ fn main() -> std::io::Result<()> {
         .set_location_level(LevelFilter::Off)
         .build();
 
-    // WriteLogger::init(LevelFilter::Debug, cfg, logfile).unwrap();
-    WriteLogger::init(LevelFilter::Trace, cfg, logfile).unwrap();
+    WriteLogger::init(LevelFilter::Debug, cfg, logfile).unwrap();
+    // WriteLogger::init(LevelFilter::Trace, cfg, logfile).unwrap();
 
     // let timer = Timer::default(should_stop.clone());
     // let searcher = Arc::new(Mutex::new(Searcher::new(EngineSettings::default(), timer)));

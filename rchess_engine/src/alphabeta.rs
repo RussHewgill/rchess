@@ -115,6 +115,16 @@ impl Explorer {
             }
         }
 
+        // let mut depth = depth;
+        if g.zobrist == Zobrist(0xd838cc2a5928f490) {
+            // depth += 1;
+            // debug!("found zb 1: {}\n\t{:?}", ply, prev_mvs.iter().map(|x| x.1).collect::<Vec<_>>());
+            debug!("found zb 1: {}, ({},{})", ply, alpha, beta);
+        }
+        if g.zobrist == Zobrist(0x75646221800f2fd8) {
+            debug!("found zb 2: {}, ({},{})", ply, alpha, beta);
+        }
+
         let moves = g.search_all(&ts);
 
         let mut moves: Vec<Move> = match moves {
@@ -124,12 +134,16 @@ impl Explorer {
                     stats.leaves += 1;
                     stats.checkmates += 1;
                 }
-                // XXX: backwards, but gets negated 1 level above
-                if self.side == g.state.side_to_move {
-                    return ABSingle(ABResult::new_empty(score));
-                } else {
-                    return ABSingle(ABResult::new_empty(-score));
-                }
+
+                return ABSingle(ABResult::new_empty(-score));
+
+                // // XXX: backwards, but gets negated 1 level above
+                // if self.side == g.state.side_to_move {
+                //     return ABSingle(ABResult::new_empty(score));
+                // } else {
+                //     return ABSingle(ABResult::new_empty(-score));
+                // }
+
             },
             Outcome::Stalemate    => {
                 let score = -200_000_000 + ply as Score;
@@ -142,6 +156,10 @@ impl Explorer {
             },
             Outcome::Moves(ms)    => ms,
         };
+
+        if g.zobrist == Zobrist(0x75646221800f2fd8) {
+            debug!("found zb 2, not mate??: {}", ply);
+        }
 
         // if !tt_r.contains_key(&g.zobrist) {
         //     // /// XXX: stat padding by including nodes found in TT
@@ -173,7 +191,10 @@ impl Explorer {
             return ABSingle(ABResult::new_empty(score));
         }
 
+        #[cfg(feature = "pvs_search")]
         let mut is_pv_node = beta == alpha + 1;
+        #[cfg(not(feature = "pvs_search"))]
+        let is_pv_node = false;
 
         // if is_pv_node {
         //     // trace!("is_pv_node, ply {}: g = {:?}", ply, g);
@@ -198,12 +219,12 @@ impl Explorer {
                 }
         }
 
-        // /// MVV LVA move ordering
-        // order_mvv_lva(&mut moves);
+        /// MVV LVA move ordering
+        order_mvv_lva(&mut moves);
 
-        // /// History Heuristic ordering
-        // #[cfg(feature = "history_heuristic")]
-        // order_moves_history(&history[g.state.side_to_move], &mut moves);
+        /// History Heuristic ordering
+        #[cfg(feature = "history_heuristic")]
+        order_moves_history(&history[g.state.side_to_move], &mut moves);
 
         /// Make move, Lookup games in Trans Table
         let mut gs: Vec<(Move,Game,Option<(SICanUse,SearchInfo)>)> = {
@@ -223,40 +244,13 @@ impl Explorer {
         /// Move Ordering
         order_searchinfo(false, &mut gs[..]);
 
-        // let mut node_type = if root { Node::Root } else { Node::All };
-        // let mut node_type = if root { Some(Node::Root) } else { None };
-        // let mut node_type = if root { Node::Root } else { None };
         let mut node_type = Node::All;
-
-        // /// Get parent node type
-        // let moves = match tt_r.get_one(&g.zobrist) {
-        //     None     => {
-        //         // panic!("no parent node?");
-        //     },
-        //     Some(si) => {
-        //         // parent_node_type = Some(si.node_type);
-        //         match si.node_type {
-        //             Node::Cut => {
-        //                 node_type = Node::All;
-        //                 /// Children of Cut nodes are All nodes
-        //                 /// Cut nodes only need one child to be searched
-        //                 gs.truncate(1);
-        //             },
-        //             /// Each child of an All node is a Cut nodes
-        //             Node::All => node_type = Node::Cut,
-        //             _         => {},
-        //         }
-        //     }
-        // };
+        let mut search_pv = true;
 
         let mut moves_searched = 0;
-
         let mut val = i32::MIN + 200;
         let mut val: (Option<(Zobrist,Move,ABResult)>,i32) = (None,val);
-
         let mut list = vec![];
-
-        let mut search_pv = true;
 
         'outer: for (mv,g2,tt) in gs.iter() {
             let zb = g2.zobrist;
@@ -395,7 +389,8 @@ impl Explorer {
             if !b && val.1 > alpha {
                 node_type = Node::PV;
                 alpha = val.1;
-                search_pv = false;
+                #[cfg(feature = "pvs_search")]
+                if true { search_pv = false; }
             }
 
             if b {
