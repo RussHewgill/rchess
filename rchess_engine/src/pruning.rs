@@ -52,7 +52,7 @@ impl Explorer {
                 if res.score >= beta { // Beta cutoff
                     // trace!("null move beta cutoff, a/b: {}, {}, score = {}\n{:?}",
                     //        -beta, -beta + 1, res.score, g2);
-                    stats.null_prunes += 1;
+                    stats!(stats.null_prunes += 1);
                     return true;
                 }
             }
@@ -98,12 +98,12 @@ impl Explorer {
 
                 if maximizing {
                     if score >= beta { // Beta cutoff
-                        stats.null_prunes += 1;
+                        stats!(stats.null_prunes += 1);
                         return true;
                     }
                 } else {
                     if score <= alpha {
-                        stats.null_prunes += 1;
+                        stats!(stats.null_prunes += 1);
                         return true;
                     }
                 }

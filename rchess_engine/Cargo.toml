@@ -23,6 +23,8 @@ default = [
     "one_thread",
     # "smallstack",
 
+    "keep_stats",
+
     # "positional_scoring",
 
     "null_pruning",
@@ -38,6 +40,8 @@ default = [
 par = []
 one_thread = []
 smallstack = []
+
+keep_stats = []
 
 positional_scoring = []
 
@@ -60,6 +64,8 @@ log = "0.4.*"
 env_logger = "0.9.*"
 gag = "1.0.0"
 simplelog = "0.10.2"
+
+ctrlc = "3.2.1"
 
 chrono = "0.4.19"
 

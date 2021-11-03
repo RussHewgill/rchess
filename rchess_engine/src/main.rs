@@ -33,6 +33,7 @@ use rchess_engine_lib::evaluate::*;
 use rchess_engine_lib::explore::*;
 use rchess_engine_lib::tuning::*;
 use rchess_engine_lib::alphabeta::*;
+use rchess_engine_lib::{stats,not_stats,stats_or};
 
 use log::{debug, error, log_enabled, info, Level};
 use gag::Redirect;
@@ -196,76 +197,92 @@ fn main9() {
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
     // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
-    let fen = "5rk1/pp3pp1/8/4q1N1/6b1/4r3/PP3QP1/5K1R w - - 0 2"; // R h1h8, #4
+    // let fen = "5rk1/pp3pp1/8/4q1N1/6b1/4r3/PP3QP1/5K1R w - - 0 2"; // R h1h8, #4
     // let fen = "r4r1k/2Q5/1p5p/2p2n2/2Pp2R1/PN1Pq3/6PP/R3N2K b - - 0 1"; // #4
 
-    let fen = "7k/8/8/r7/r7/8/p1RR4/7K w - - 0 1"; // Qsearch test, c2a2 WRONG
-    // let fen = "7k/8/8/r7/r7/8/R2R4/7K b - - 0 1"; // Qsearch test, after bad capture
+    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
 
-    // let fen = "6rk/8/8/8/r7/8/R1R5/7K b - -"; // ??? broken movegen, Cp R a1a2
+    // QS test,
+    // 1 ply: Cp Q d3b5 WRONG
+    //        Cp N e5c6 Right
+    let fen = "4r1k1/4nppp/2b5/1r2N3/5P2/3Q4/6PP/5RK1 w - - 0 1";
+
+    let fen = "4r1k1/4nppp/2N5/1r6/5P2/3Q4/6PP/5RK1 b - - 0 1"; // After N e5c6
+
+    // let fen = "4r1k1/5ppp/2n5/1r6/5P2/3Q4/6PP/5RK1 w - - 0 2"; // After N e7c6, recapture, WRONG
+    // let fen = "4r1k1/1r2nppp/2N5/8/5P2/3Q4/6PP/5RK1 w - - 1 2"; // After R b5b7, Correct
+
+    // base = +400
+    // after recapture with N = +80, should be +580
 
     // let fen = &games(8); // Qt R e7f7, #7
+
+    // let fen = "4r1k1/1r2Nppp/8/8/5P2/3Q4/6PP/5RK1 b - - 0 2"; // SEE e7 ?
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
 
-    let n = 35;
-    // let n = 5;
-    // let n = 8;
-    // let n = 6;
+    eprintln!("g = {:?}", g);
 
-    let t = 10.0;
+    // let n = 35;
+    let n = 1;
 
-    // // let mv = Move::Capture { from: "B3".into(), to: "B6".into(), pc: Queen, victim: Queen };
-    // // let mv = Move::Capture { from: "D5".into(), to: "B3".into(), pc: Queen, victim: Queen };
-    // let mv = Move::Capture { from: "D5".into(), to: "B3".into(), pc: Queen, victim: Queen };
-    // let see = g.static_exchange(&ts, mv);
-    // eprintln!("see = {:?}", see);
+    // let t = 10.0;
+    let t = 5.0;
+    // let t = 1.0;
 
+    // let mv = Move::Capture { from: "B7".into(), to: "E7".into(), pc: Rook, victim: Knight };
+    // let s = g.static_exchange(&ts, mv);
+    // eprintln!("see = {:?}", s);
     // return;
 
-    // let stop = Arc::new(AtomicBool::new(false));
-    // let timesettings = TimeSettings::new_f64(0.0,t);
-    // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
-    // let mut stats = SearchStats::default();
+    let e = g.evaluate(&ts).sum();
+    eprintln!("base eval = {:?}", e);
 
-    // let (alpha,beta) = (i32::MIN,i32::MAX);
-    // let (alpha,beta) = (alpha + 200,beta - 200);
-    // let s = -ex.qsearch(&ts, &g, 0, alpha, beta, &mut stats);
-    // eprintln!("s = {:?}", s);
+    let stop = Arc::new(AtomicBool::new(false));
+    let timesettings = TimeSettings::new_f64(0.0,t);
+    let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+    let mut stats = SearchStats::default();
+
+    let (alpha,beta) = (i32::MIN,i32::MAX);
+    let (alpha,beta) = (alpha + 200,beta - 200);
+    // let (alpha,beta) = (-100,-99);
 
     // let moves = g.search_only_captures(&ts).get_moves_unsafe();
     // for m in moves.iter() {
     //     eprintln!("m = {:?}", m);
     // }
 
+    // let s = ex.qsearch(&ts, &g, 0, alpha, beta, &mut stats);
+    // eprintln!("qsearch result = {:?}", s);
     // return;
 
-    // let e = g.evaluate(&ts).sum();
-    // eprintln!("eval = {:?}", e);
-
-    // let ms = vec![
-    //     // "b1c3",
-    //     "g1e2",
-    // ];
+    // let ms = vec![ "g1e2", ];
     // let g2 = g.run_moves(&ts, ms);
-    // // eprintln!("g2 = {:?}", g2);
-
     // let e = g2.evaluate(&ts).sum();
     // eprintln!("eval 2 = {:?}", e);
 
     // return;
+
+    // let e = g.evaluate(&ts).sum();
+    // eprintln!("eval = {:?}", e);
 
     let t0 = std::time::Instant::now();
     println!("g = {:?}", g);
     let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), t);
     let t1 = t0.elapsed();
     let t2 = t1.as_secs_f64();
-    println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
-             stats0.max_depth, t2);
+
+    stats!(println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
+                    stats0.max_depth, t2));
+    not_stats!(println!("explore lazy_smp_negamax (depth: ?) done in {:.3} seconds.", t2));
+
     // println!("correct = Cp N d4b3");
     // eprintln!("\nBest move = {:>8} {:?}: {:?}", best.score, best.moves[0], best.moves);
+
+    // let arr = stats0.nodes_arr;
+    // eprintln!("arr = {:?}", arr);
 
     // println!();
     // for res in scores.iter() {
@@ -275,24 +292,6 @@ fn main9() {
     eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
     for m in best.moves.iter() { eprintln!("\t{:?}", m); }
 
-    // let zb0 = Game::zobrist_from_fen(&ts, "5rk1/ppR3p1/8/8/8/1P6/P4RPP/4r1K1 w - - 0 4");
-    // let zb1 = Game::zobrist_from_fen(&ts, "5rk1/ppR3p1/8/8/8/1P6/P5PP/4rRK1 b - - 1 4");
-    // let zb2 = Game::zobrist_from_fen(&ts, "5rk1/ppR3p1/8/8/8/1P6/P5PP/5rK1 w - - 0 5");
-
-    // eprintln!("zb0 = {:?}", zb0);
-    // eprintln!("zb1 = {:?}", zb1);
-    // eprintln!("zb2 = {:?}", zb2);
-
-    // let t0 = std::time::Instant::now();
-    // let (moves0,stats0,(tt_r,tt_w)) = go2(&ts, n, g.clone(), 4.0);
-    // let (mv0,mvs0,score) = moves0.get(0).unwrap();
-    // println!("m = {:?}", mv0);
-    // let t1 = t0.elapsed();
-    // let t2 = t1.as_secs_f64();
-    // println!("explore lazy_smp  (depth: {}) done in {:.3} seconds.",
-    //          stats0.max_depth, t2);
-    // // stats0.print(t0.elapsed());
-
     // let mut g1 = Game::from_fen(&ts, fen1).unwrap();
     // let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g1.clone(), 4.0);
 
@@ -301,14 +300,18 @@ fn main9() {
     // }
 
     stats0.print(t1);
-    stats0.print_ebf(false);
+    stats0.print_ebf(true);
 
-    // eprintln!("qt nodes 0 = {:?}", stats0.qt_nodes);
-    eprintln!("null prunes = {:?}", stats0.null_prunes);
-    eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
+    eprintln!("qt nodes 0 = {:?}", stats0.qt_nodes);
+    stats!(eprintln!("stats0.q_max_depth = {:?}", stats0.q_max_depth));
 
-    let bcs = stats0.beta_cut_first;
-    eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
+    stats!(eprintln!("null prunes = {:?}", stats0.null_prunes));
+    stats!(eprintln!("stats0.lmrs = {:?}", stats0.lmrs));
+
+    stats!({
+        let bcs = stats0.beta_cut_first;
+        eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64)
+    });
 
     // let zb = g.zobrist;
     // let si = tt_r.get_one(&zb).unwrap();
@@ -643,8 +646,10 @@ fn main7() {
         let (mv0,mvs0,score) = moves0.get(0).unwrap();
         // println!("m #{} = {:?}", q, mv0);
         let t1 = t0.elapsed().as_secs_f64();
-        println!("explore lazy_smp  (depth: {}) done in {:.3} seconds.",
-                    stats0.max_depth, t1);
+
+        // println!("explore lazy_smp  (depth: {}) done in {:.3} seconds.",
+        //             stats0.max_depth, t1);
+
         // stats0.print(t0.elapsed());
 
         // let ((mvs,score),stats0,(tt_r,tt_w)) = ex.lazy_smp_single(&ts, false, false);
@@ -701,7 +706,7 @@ fn main7() {
         // let qs = stats0.qt_nodes;
         // let ns = stats0.nodes;
 
-        eprintln!("qt nodes 0 = {:?}", stats0.qt_nodes);
+        stats!(eprintln!("qt nodes 0 = {:?}", stats0.qt_nodes));
         // eprintln!("qt nodes 1 = {:?}", stats1.qt_nodes);
         // eprintln!("nodes/sec 0 = {:.1?}", (qs + ns) as f64 / t1);
 

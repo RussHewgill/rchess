@@ -6,6 +6,8 @@ use crate::evaluate::*;
 use crate::pruning::*;
 use crate::explore::*;
 
+use crate::stats;
+
 pub use ABResults::*;
 
 use std::collections::VecDeque;
@@ -62,15 +64,15 @@ impl Explorer {
     ) -> Option<(SICanUse,SearchInfo)> {
         if let Some(si) = tt_r.get_one(&g.zobrist) {
             if si.depth_searched >= depth {
-                stats.tt_hits += 1;
+                stats!(stats.tt_hits += 1);
                 Some((SICanUse::UseScore,si.clone()))
             } else {
-                stats.tt_halfmiss += 1;
+                stats!(stats.tt_halfmiss += 1);
                 Some((SICanUse::UseOrdering,si.clone()))
             }
         } else {
             // if g.zobrist == Zobrist(0x1eebfbac03c62e9d) { println!("wat wat 3"); }
-            stats.tt_misses += 1;
+            stats!(stats.tt_misses += 1);
             // let score = self._ab_search(&ts, &g, depth - 1, k + 1, alpha, beta, !maximizing);
             // score
             None
@@ -115,24 +117,14 @@ impl Explorer {
             }
         }
 
-        // let mut depth = depth;
-        if g.zobrist == Zobrist(0xd838cc2a5928f490) {
-            // depth += 1;
-            // debug!("found zb 1: {}\n\t{:?}", ply, prev_mvs.iter().map(|x| x.1).collect::<Vec<_>>());
-            debug!("found zb 1: {}, ({},{})", ply, alpha, beta);
-        }
-        if g.zobrist == Zobrist(0x75646221800f2fd8) {
-            debug!("found zb 2: {}, ({},{})", ply, alpha, beta);
-        }
-
         let moves = g.search_all(&ts);
 
         let mut moves: Vec<Move> = match moves {
             Outcome::Checkmate(c) => {
                 let score = 100_000_000 - ply as Score;
                 if !tt_r.contains_key(&g.zobrist) {
-                    stats.leaves += 1;
-                    stats.checkmates += 1;
+                    stats!(stats.leaves += 1);
+                    stats!(stats.checkmates += 1);
                 }
 
                 return ABSingle(ABResult::new_empty(-score));
@@ -148,8 +140,8 @@ impl Explorer {
             Outcome::Stalemate    => {
                 let score = -200_000_000 + ply as Score;
                 if !tt_r.contains_key(&g.zobrist) {
-                    stats.leaves += 1;
-                    stats.stalemates += 1;
+                    stats!(stats.leaves += 1);
+                    stats!(stats.stalemates += 1);
                 }
                 // TODO: adjust stalemate value when winning/losing
                 return ABSingle(ABResult::new_empty(-score));
@@ -157,14 +149,14 @@ impl Explorer {
             Outcome::Moves(ms)    => ms,
         };
 
-        if g.zobrist == Zobrist(0x75646221800f2fd8) {
-            debug!("found zb 2, not mate??: {}", ply);
-        }
+        // /// XXX: stat padding by including nodes found in TT
+        // stats!(stats.inc_nodes_arr(ply));
+        // stats!(stats.nodes += 1);
 
         // if !tt_r.contains_key(&g.zobrist) {
         //     // /// XXX: stat padding by including nodes found in TT
-        //     stats.inc_nodes_arr(k);
-        //     stats.nodes += 1;
+        //     stats!(stats.inc_nodes_arr(k));
+        //     stats!(stats.nodes += 1);
         //     trace!("adding node: {}, {:?}", k, g.zobrist);
         // } else {
         //     trace!("skipped node: {}, {:?}", k, g.zobrist);
@@ -174,26 +166,38 @@ impl Explorer {
 
         if depth == 0 {
             if !tt_r.contains_key(&g.zobrist) {
-                stats.leaves += 1;
+                stats!(stats.leaves += 1);
             }
 
 
+            trace!("beginning qsearch, {:?}, a/b: {:?},{:?}", prev_mvs.front().unwrap().1, alpha, beta);
             #[cfg(feature = "qsearch")]
             let score = self.qsearch(&ts, &g, ply, alpha, beta, &mut stats);
-            #[cfg(not(feature = "qsearch"))]
-            let score = g.evaluate(&ts).sum();
 
+            trace!("returned from qsearch, score = {}", score);
+
+            // #[cfg(feature = "qsearch")]
+            // let score = if g.state.side_to_move == Black {
+            //     score
+            // } else {
+            //     -score
+            // };
+
+            // #[cfg(not(feature = "qsearch"))]
+            // let score = g.evaluate(&ts).sum();
+
+            #[cfg(not(feature = "qsearch"))]
             let score = if g.state.side_to_move == Black {
-                -score
+                -g.evaluate(&ts).sum()
             } else {
-                score
+                g.evaluate(&ts).sum()
             };
 
             return ABSingle(ABResult::new_empty(score));
         }
 
         #[cfg(feature = "pvs_search")]
-        let mut is_pv_node = beta == alpha + 1;
+        let mut is_pv_node = beta != alpha + 1;
         #[cfg(not(feature = "pvs_search"))]
         let is_pv_node = false;
 
@@ -319,7 +323,7 @@ impl Explorer {
                             ABSingle(mut res) => {
                                 res.neg_score();
                                 if res.score <= alpha {
-                                    stats.lmrs.0 += 1;
+                                    stats!(stats.lmrs.0 += 1);
                                     res.moves.push_front(*mv);
                                     break 'search (false,res);
                                 }
@@ -411,9 +415,9 @@ impl Explorer {
                 }
 
                 if moves_searched == 0 {
-                    stats.beta_cut_first.0 += 1;
+                    stats!(stats.beta_cut_first.0 += 1);
                 } else {
-                    stats.beta_cut_first.1 += 1;
+                    stats!(stats.beta_cut_first.1 += 1);
                 }
 
                 break;
@@ -426,14 +430,19 @@ impl Explorer {
         //     trace!("node_type = {:?}", node_type);
         // }
 
-        if !tt_r.contains_key(&g.zobrist) {
-            // /// XXX: stat padding by including nodes found in TT
-            stats.inc_nodes_arr(ply);
-            stats.nodes += 1;
-            // trace!("adding node: {}, {:?}", k, g.zobrist);
-        } else {
-            // trace!("skipped node: {}, {:?}", k, g.zobrist);
-        }
+
+        /// XXX: stat padding by including nodes found in TT
+        stats!(stats.inc_nodes_arr(ply));
+        stats!(stats.nodes += 1);
+
+        // if !tt_r.contains_key(&g.zobrist) {
+        //     // /// XXX: stat padding by including nodes found in TT
+        //     stats!(stats.inc_nodes_arr(ply));
+        //     stats!(stats.nodes += 1);
+        //     // trace!("adding node: {}, {:?}", k, g.zobrist);
+        // } else {
+        //     // trace!("skipped node: {}, {:?}", k, g.zobrist);
+        // }
 
         match &val.0 {
             // Some((zb,mv,mv_seq)) => Some(((mv_seq.clone(),val.1),(alpha,beta))),
@@ -501,16 +510,16 @@ impl Explorer {
     ) -> Option<(SICanUse,SearchInfo)> {
         if let Some(si) = tt_r.get_one(&g.zobrist) {
             if si.depth_searched >= depth {
-                stats.tt_hits += 1;
+                stats!(stats.tt_hits += 1);
                 Some((SICanUse::UseScore,si.clone()))
             } else {
-                stats.tt_misses += 1;
+                stats!(stats.tt_misses += 1);
                 Some((SICanUse::UseOrdering,si.clone()))
             }
 
         } else {
             // if g.zobrist == Zobrist(0x1eebfbac03c62e9d) { println!("wat wat 3"); }
-            stats.tt_misses += 1;
+            stats!(stats.tt_misses += 1);
             // let score = self._ab_search(&ts, &g, depth - 1, k + 1, alpha, beta, !maximizing);
             // score
             None
@@ -561,8 +570,8 @@ impl Explorer {
                 let score = 100_000_000 - k as Score;
                 // if !self.tt_contains(&g.zobrist) {
                 if !tt_r.contains_key(&g.zobrist) {
-                    stats.leaves += 1;
-                    stats.checkmates += 1;
+                    stats!(stats.leaves += 1);
+                    stats!(stats.checkmates += 1);
                 }
                 if maximizing {
                     // return Some((vec![mv0],-score));
@@ -577,8 +586,8 @@ impl Explorer {
                 let score = -20_000_000 + k as Score;
                 // if !self.tt_contains(&g.zobrist) {
                 if !tt_r.contains_key(&g.zobrist) {
-                    stats.leaves += 1;
-                    stats.stalemates += 1;
+                    stats!(stats.leaves += 1);
+                    stats!(stats.stalemates += 1);
                 }
                 // return Some((vec![],score));
                 return Some(((vec![], score),(alpha,beta)));
@@ -588,13 +597,13 @@ impl Explorer {
 
         // if !tt_r.contains_key(&g.zobrist) {}
         /// XXX: stat padding by including nodes found in TT
-        stats.inc_nodes_arr(k);
-        stats.nodes += 1;
+        stats!(stats.inc_nodes_arr(k));
+        stats!(stats.nodes += 1);
 
         if depth == 0 {
 
             if !tt_r.contains_key(&g.zobrist) {
-                stats.leaves += 1;
+                stats!(stats.leaves += 1);
             }
 
             // let mv0 = prev_mvs.back().unwrap().1;
@@ -748,13 +757,13 @@ impl Explorer {
                             if maximizing {
                                 if score <= alpha {
                                     // trace!("Late move reduction success 1");
-                                    stats.lmrs.0 += 1;
+                                    stats!(stats.lmrs.0 += 1);
                                     break 'search (false,mv_seq,score);
                                 }
                             } else {
                                 if score >= beta {
                                     // trace!("Late move reduction success -1");
-                                    stats.lmrs.1 += 1;
+                                    stats!(stats.lmrs.1 += 1);
                                     break 'search (false,mv_seq,score);
                                 }
                             }
@@ -803,9 +812,9 @@ impl Explorer {
                 }
 
                 if moves_searched == 0 {
-                    stats.beta_cut_first.0 += 1;
+                    stats!(stats.beta_cut_first.0 += 1);
                 } else {
-                    stats.beta_cut_first.1 += 1;
+                    stats!(stats.beta_cut_first.1 += 1);
                 }
 
                 break;
@@ -822,8 +831,8 @@ impl Explorer {
                 *zb, SearchInfo::new(*mv, mv_seq, depth - 1, node_type, val.1));
         }
 
-        stats.alpha = stats.alpha.max(alpha);
-        stats.beta  = stats.beta.max(beta);
+        stats!(stats.alpha = stats.alpha.max(alpha));
+        stats!(stats.beta  = stats.beta.max(beta));
 
         match &val.0 {
             Some((zb,mv,mv_seq)) => Some(((mv_seq.clone(),val.1),(alpha,beta))),

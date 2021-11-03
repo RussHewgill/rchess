@@ -398,6 +398,12 @@ impl Explorer {
 
         self.stop.store(false, SeqCst);
 
+        // let stop3 = self.stop.clone();
+        // ctrlc::set_handler(move || {
+        //     debug!("Ctrl-C recieved, halting");
+        //     stop3.store(true, SeqCst);
+        // })
+
         crossbeam::scope(|s| {
 
             let (tx,rx): (Sender<(Depth,ABResults,SearchStats)>,
@@ -587,7 +593,10 @@ impl Explorer {
                     std::thread::sleep(sleep_time);
                 }
 
+                #[cfg(feature = "keep_stats")]
                 timer.update_times(self.side, stats.nodes);
+                #[cfg(not(feature = "keep_stats"))]
+                timer.update_times(self.side, 0);
             }
 
         }).unwrap();
@@ -596,7 +605,7 @@ impl Explorer {
             let r = out.read();
             r.clone()
         };
-        stats.max_depth = d;
+        stats!(stats.max_depth = d);
 
         match out {
             ABResults::ABList(best, ress) => {
@@ -795,7 +804,7 @@ impl Explorer {
         {
             let mut s = stats.write();
             *s = *s + ss;
-            s.max_depth = depth;
+            stats!(s.max_depth = depth);
         }
 
         if out.len() == 0 {
@@ -1081,7 +1090,10 @@ impl Explorer {
                     std::thread::sleep(sleep_time);
                 }
 
+                #[cfg(feature = "keep_stats")]
                 timer.update_times(self.side, stats.read().nodes);
+                #[cfg(not(feature = "keep_stats"))]
+                timer.update_times(self.side, 0);
             }
 
         }).unwrap();
@@ -1092,7 +1104,7 @@ impl Explorer {
         };
 
         let mut stats = stats.read().clone();
-        stats.max_depth = d;
+        stats!(stats.max_depth = d);
 
         // for (mv,_,score) in out.iter() {
         //     debug!("mv: {}: {:?}", score, mv);

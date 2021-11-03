@@ -48,7 +48,10 @@ pub mod timer;
 pub mod tuning;
 pub mod hashing;
 pub mod trans_table;
+
+// #[macro_use]
 pub mod searchstats;
+
 pub mod pruning;
 pub mod move_ordering;
 
@@ -60,4 +63,32 @@ pub mod util;
 // #[cfg(test)]
 // pub mod tests;
 
+#[macro_export]
+macro_rules! stats {
+    ($e:expr) => {
+        #[cfg(feature = "keep_stats")]
+        $e
+    }
+}
 
+#[macro_export]
+macro_rules! not_stats {
+    ($e:expr) => {
+        #[cfg(not(feature = "keep_stats"))]
+        $e
+    }
+}
+
+#[macro_export]
+macro_rules! stats_or {
+    ($e:expr,$or:expr) => {
+        #[cfg(feature = "keep_stats")]
+        if true {
+            $e
+        }
+        #[cfg(not(feature = "keep_stats"))]
+        if true {
+            $or
+        }
+    }
+}

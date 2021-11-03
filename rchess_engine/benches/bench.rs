@@ -54,11 +54,11 @@ pub fn crit_bench_1(c: &mut Criterion) {
     // group.sample_size(50);
     group.measurement_time(Duration::from_secs_f64(5.));
 
-    group.bench_function("search_all", |b| b.iter(|| {
-        for g in games.iter() {
-            let mvs = g.search_all(&ts, black_box(None));
-        }
-    }));
+    // group.bench_function("search_all", |b| b.iter(|| {
+    //     for g in games.iter() {
+    //         let mvs = g.search_all(&ts, black_box(None));
+    //     }
+    // }));
 
     // group.bench_function("_search_pawns", |b| b.iter(|| {
     //     for g in games.iter() {
@@ -104,10 +104,10 @@ pub fn crit_bench_1(c: &mut Criterion) {
     //     let (m,stats,_) = ex.lazy_smp(&ts, false, true);
     // }));
 
-    // group.bench_function("rank moves iter", |b| b.iter(|| {
-    //     // let (m,stats) = ex.explore(&ts, None);
-    //     let (m,stats) = ex.iterative_deepening(&ts, false, true);
-    // }));
+    group.bench_function("explore", |b| b.iter(|| {
+        let (m,stats) = ex.explore(&ts, None);
+        // let (m,stats) = ex.iterative_deepening(&ts, false, true);
+    }));
 
     // group.bench_function("search_all", |b| b.iter(|| {
     //     let mvs = g.search_all(&ts, black_box(None));

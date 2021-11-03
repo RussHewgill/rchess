@@ -36,9 +36,10 @@ impl Game {
 
         let mut attadef = attackers_own | attackers_other;
 
-        // gain[depth] = mv.victim().unwrap().score();
+        // eprintln!("attackers_own   = {:?}", attackers_own);
+        // eprintln!("attackers_other = {:?}", attackers_other);
+
         let mut pc = mv.piece().unwrap();
-        // let mut score = mv.victim().unwrap().score();
         let mut last_cap = mv.victim().unwrap();
         let mut score = 0;
 
@@ -52,10 +53,12 @@ impl Game {
             };
 
             if depth >= 32 {
-                panic!("see depth too great? {:?}\n{:?}\n{}", mv, self, self.to_fen());
+                panic!("see depth too great? {:?}, {:?},{:?}\n{:?}\n{}",
+                       mv, mv.piece(), mv.victim(), self, self.to_fen());
             }
             // gain[depth] = score0;
             score += score0;
+            // eprintln!("score = {:?}", score);
 
             // eprintln!("depth, side, pc = {:?}, {:?}, {:?}", depth, side, pc);
             // eprintln!("gain = {:?}", &gain[..8]);
@@ -70,9 +73,13 @@ impl Game {
 
             side = !side;
             if (from_set & may_xray).is_not_empty() {
-                attadef |= self.consider_xrays(ts, mv.sq_to(), side, occ);
+                let b0 = self.consider_xrays(ts, mv.sq_to(), side, occ);
+                attadef |= b0;
                 // eprintln!("attadef = {:?}", attadef);
             }
+
+            // trace!("side, depth = {:?}, {:>3?}", side, depth);
+            // trace!("attadef = {:?}", attadef);
 
             if let Some((pc2,fs)) = self.least_val_piece(attadef, side) {
                 last_cap = pc;
@@ -92,8 +99,8 @@ impl Game {
     }
 
     fn consider_xrays(&self, ts: &Tables, c0: Coord, side: Color, occ: BitBoard) -> BitBoard {
-        let moves_r = ts.attacks_rook(c0, occ);
-        let moves_b = ts.attacks_bishop(c0, occ);
+        let moves_r = ts.attacks_rook(c0, occ) & occ;
+        let moves_b = ts.attacks_bishop(c0, occ) & occ;
 
         let qs = self.get(Queen, side);
         let mut attackers = moves_r & (self.get(Rook, side) | qs);
