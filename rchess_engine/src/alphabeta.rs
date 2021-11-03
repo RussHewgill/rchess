@@ -169,22 +169,13 @@ impl Explorer {
                 stats!(stats.leaves += 1);
             }
 
-
-            trace!("beginning qsearch, {:?}, a/b: {:?},{:?}", prev_mvs.front().unwrap().1, alpha, beta);
             #[cfg(feature = "qsearch")]
-            let score = self.qsearch(&ts, &g, ply, alpha, beta, &mut stats);
-
-            trace!("returned from qsearch, score = {}", score);
-
-            // #[cfg(feature = "qsearch")]
-            // let score = if g.state.side_to_move == Black {
-            //     score
-            // } else {
-            //     -score
-            // };
-
-            // #[cfg(not(feature = "qsearch"))]
-            // let score = g.evaluate(&ts).sum();
+            let score = {
+                // trace!("beginning qsearch, {:?}, a/b: {:?},{:?}", prev_mvs.front().unwrap().1, alpha, beta);
+                let score = self.qsearch(&ts, &g, (ply,0), alpha, beta, &mut stats);
+                // trace!("returned from qsearch, score = {}", score);
+                score
+            };
 
             #[cfg(not(feature = "qsearch"))]
             let score = if g.state.side_to_move == Black {

@@ -80,6 +80,7 @@ impl BitBoard {
 
     // pub fn is_one_at<T: Into<Coord>>(&self, c0: T) -> bool {
         // (*self & BitBoard::single(c0.into())).is_not_empty()
+    #[inline(always)]
     pub fn is_one_at(&self, c0: Coord) -> bool {
         (*self & BitBoard::single(c0)).is_not_empty()
     }

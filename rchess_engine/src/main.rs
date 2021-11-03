@@ -121,9 +121,10 @@ fn main() {
 
     // // let s = std::mem::size_of::<Eval>();
     // // let s = std::mem::size_of::<rchess_engine_lib::types::Color>();
-    // let s = std::mem::size_of::<VecDeque<()>>();
-    // // let s = std::mem::size_of::<GHistory>();
-    // eprintln!("s = {:?}", s);
+    // let s = std::mem::size_of::<Game>();
+    // eprintln!("size  = {:?}", s);
+    // // let a = std::mem::align_of::<GameState>();
+    // // eprintln!("align = {:?}", a);
     // // let s = u16::MAX;
     // // eprintln!("s = {:#8x}", s);
 
@@ -195,29 +196,23 @@ fn main9() {
     // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
-    // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
     // let fen = "5rk1/pp3pp1/8/4q1N1/6b1/4r3/PP3QP1/5K1R w - - 0 2"; // R h1h8, #4
     // let fen = "r4r1k/2Q5/1p5p/2p2n2/2Pp2R1/PN1Pq3/6PP/R3N2K b - - 0 1"; // #4
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
 
-    // QS test,
-    // 1 ply: Cp Q d3b5 WRONG
-    //        Cp N e5c6 Right
-    let fen = "4r1k1/4nppp/2b5/1r2N3/5P2/3Q4/6PP/5RK1 w - - 0 1";
-
-    let fen = "4r1k1/4nppp/2N5/1r6/5P2/3Q4/6PP/5RK1 b - - 0 1"; // After N e5c6
-
+    // let fen = "4r1k1/4nppp/2b5/1r2N3/5P2/3Q4/6PP/5RK1 w - - 0 1"; // QS test,
+    // let fen = "4r1k1/4nppp/2N5/1r6/5P2/3Q4/6PP/5RK1 b - - 0 1"; // After N e5c6
     // let fen = "4r1k1/5ppp/2n5/1r6/5P2/3Q4/6PP/5RK1 w - - 0 2"; // After N e7c6, recapture, WRONG
     // let fen = "4r1k1/1r2nppp/2N5/8/5P2/3Q4/6PP/5RK1 w - - 1 2"; // After R b5b7, Correct
 
-    // base = +400
-    // after recapture with N = +80, should be +580
+    let fen = "5rk1/4npp1/1p4b1/1B2p3/1P1P2Q1/4P3/5PP1/r3K2R w K - 0 3"; // base
+    // let fen = "5rk1/4npp1/1p4b1/1B2p3/1P1P2Q1/4P3/4KPP1/r6R b - - 1 3"; // evade with K e1e2
+    // let fen = "5rk1/4npp1/1p4b1/1B2p3/1P1P4/4P3/5PP1/r2QK2R b K - 1 3"; // block with Q g4d1
 
     // let fen = &games(8); // Qt R e7f7, #7
-
-    // let fen = "4r1k1/1r2Nppp/8/8/5P2/3Q4/6PP/5RK1 b - - 0 2"; // SEE e7 ?
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();

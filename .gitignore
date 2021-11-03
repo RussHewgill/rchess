@@ -6,6 +6,7 @@ rchess_game/target/*
 *.pgn
 *.zip
 dhat.*
+cachegrind.*
 *.rar
 testpositions/*
 *.bin

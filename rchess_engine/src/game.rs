@@ -79,6 +79,8 @@ pub struct GameState {
 
     // pub score:              Score,
     pub phase:              u16,
+    pub last_capture:       Option<Coord>,
+    // pub last_capture:       CC,
 
     // pub checkers:           Option<BitBoard>,
     // pub king_blocks_w:      Option<BitBoard>,
@@ -236,8 +238,8 @@ impl Game {
         self.zobrist = self.zobrist.update_side_to_move(&ts);
     }
 
-    pub fn _make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Game> {
-        match m {
+    pub fn _make_move_unchecked(&self, ts: &Tables, mv: &Move) -> Option<Game> {
+        match mv {
             &Move::Quiet      { from, to, pc } => {
                 let (c,pc) = self.get_at(from)?;
                 let mut out = self.clone();
@@ -319,11 +321,11 @@ impl Game {
 
     #[must_use]
     // pub fn make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Self> {
-    pub fn make_move_unchecked(&self, ts: &Tables, m: Move) -> GameResult<Game> {
+    pub fn make_move_unchecked(&self, ts: &Tables, mv: Move) -> GameResult<Game> {
 
-        match self._make_move_unchecked(&ts, &m) {
+        match self._make_move_unchecked(&ts, &mv) {
             Some(mut x) => {
-                match m {
+                match mv {
                     Move::PawnDouble { .. }                   => {
                     },
                     _                                         => {
@@ -334,12 +336,20 @@ impl Game {
                     },
                 }
 
+                if let Move::EnPassant { capture, .. } = mv {
+                    x.state.last_capture = Some(capture);
+                } else if mv.filter_all_captures() {
+                    x.state.last_capture = Some(mv.sq_to());
+                } else {
+                    x.state.last_capture = None;
+                }
+
                 x.state.side_to_move = !x.state.side_to_move;
                 x.zobrist = x.zobrist.update_side_to_move(&ts);
                 // x.move_history.push(*m);
                 x.reset_gameinfo_mut();
 
-                self.update_castles(&ts, m, &mut x);
+                self.update_castles(&ts, mv, &mut x);
 
                 match x.recalc_gameinfo_mut(&ts) {
                     // Err(win) => panic!("wot"),
