@@ -177,10 +177,11 @@ impl Explorer {
                 stats.leaves += 1;
             }
 
-            let score = g.evaluate(&ts).sum();
 
-            // trace!("returning from ply {} score: {:?}", k, -score);
-            // trace!("{:?}", g);
+            #[cfg(feature = "qsearch")]
+            let score = self.qsearch(&ts, &g, ply, alpha, beta, &mut stats);
+            #[cfg(not(feature = "qsearch"))]
+            let score = g.evaluate(&ts).sum();
 
             let score = if g.state.side_to_move == Black {
                 -score
@@ -245,7 +246,9 @@ impl Explorer {
         order_searchinfo(false, &mut gs[..]);
 
         let mut node_type = Node::All;
+
         let mut search_pv = true;
+        let mut skip_pv   = false;
 
         let mut moves_searched = 0;
         let mut val = i32::MIN + 200;
@@ -254,6 +257,11 @@ impl Explorer {
 
         'outer: for (mv,g2,tt) in gs.iter() {
             let zb = g2.zobrist;
+
+            #[cfg(feature = "pvs_search")]
+            if depth < 3 {
+                skip_pv = true;
+            }
 
             let (can_use,res) = match tt {
                 Some((SICanUse::UseScore,si)) => {
@@ -323,7 +331,7 @@ impl Explorer {
                     }
 
                     #[cfg(feature = "pvs_search")]
-                    let (a2,b2) = if search_pv {
+                    let (a2,b2) = if skip_pv || search_pv {
                         (-beta, -alpha)
                     } else {
                         (-alpha - 1, -alpha)

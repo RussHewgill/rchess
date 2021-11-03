@@ -649,6 +649,15 @@ impl Game {
     }
 }
 
+/// Misc Queries
+impl Game {
+
+    pub fn in_check(&self) -> bool {
+        self.state.checkers.is_not_empty()
+    }
+
+}
+
 /// get bitboards
 impl Game {
 

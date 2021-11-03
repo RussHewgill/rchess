@@ -11,18 +11,91 @@ impl Explorer {
     /// beta  = the MAXimum score that the MINimizing player is assured of
     #[allow(unused_doc_comments)]
     // #[allow(unreachable_code)]
-    pub fn quiescence(
+    pub fn qsearch(
         &self,
         ts:             &Tables,
         g:              &Game,
-        // mut ms:         Vec<Move>,
-        k:              i16,
+        ply:            i16,
         mut alpha:      i32,
         mut beta:       i32,
-        maximizing:     bool,
         mut stats:      &mut SearchStats,
     ) -> Score {
-        unimplemented!()
+        trace!("qsearch, ply {}, a/b: {:?},{:?}", ply, alpha, beta);
+
+        let score = g.evaluate(&ts).sum();
+
+        let mut allow_stand_pat = true;
+
+        if score >= beta && allow_stand_pat {
+            trace!("qsearch returning beta 0: {:?}", beta);
+            return beta;
+        }
+
+        if score > alpha {
+            alpha = score;
+        }
+
+        // let mut moves = match g.search_only_captures(&ts) {
+        //     Outcome::Moves(ms) => ms,
+        // };
+
+        let mut moves = match g.search_only_captures(&ts) {
+            Outcome::Moves(ms) => ms,
+            _                  => {
+                // trace!("qsearch no legal capture moves:\n{:?}", g);
+                trace!("qsearch no legal capture moves");
+                if !g.in_check() {
+                    vec![]
+                } else {
+                    match g.search_all(&ts) {
+                        Outcome::Moves(ms) => {
+                            allow_stand_pat = false;
+                            ms
+                        },
+                        Outcome::Checkmate(c) => {
+                            trace!("qsearch checkmate");
+                            let score = 100_000_000 - ply as Score;
+                            return -score;
+                        },
+                        Outcome::Stalemate => {
+                            trace!("qsearch stalemate");
+                            let score = -200_000_000 + ply as Score;
+                            return -score;
+                        },
+                    }
+                }
+            }
+        };
+
+        order_mvv_lva(&mut moves);
+
+        let ms = moves.into_iter()
+            .flat_map(|m| g.make_move_unchecked(&ts, m).ok().map(|x| (m,x)));
+
+        for (mv,g) in ms {
+
+            trace!("qsearch: mv = {:?}", mv);
+
+            if g.static_exchange(&ts, mv).unwrap_or(0) < 0 {
+                trace!("qsearch: SEE negative");
+                continue;
+            }
+
+            let score = -self.qsearch(&ts, &g, ply + 1, -beta, -alpha, &mut stats);
+
+            if score >= beta && allow_stand_pat {
+                trace!("qsearch returning beta 1: {:?}", beta);
+                return beta;
+            }
+
+            if score > alpha {
+                alpha = score;
+            }
+
+        }
+
+        trace!("qsearch returning alpha 0: {:?}", alpha);
+        alpha
     }
 
     /// alpha = the MINimum score that the MAXimizing player is assured of

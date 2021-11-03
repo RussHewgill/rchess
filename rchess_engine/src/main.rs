@@ -199,6 +199,11 @@ fn main9() {
     let fen = "5rk1/pp3pp1/8/4q1N1/6b1/4r3/PP3QP1/5K1R w - - 0 2"; // R h1h8, #4
     // let fen = "r4r1k/2Q5/1p5p/2p2n2/2Pp2R1/PN1Pq3/6PP/R3N2K b - - 0 1"; // #4
 
+    let fen = "7k/8/8/r7/r7/8/p1RR4/7K w - - 0 1"; // Qsearch test, c2a2 WRONG
+    // let fen = "7k/8/8/r7/r7/8/R2R4/7K b - - 0 1"; // Qsearch test, after bad capture
+
+    // let fen = "6rk/8/8/8/r7/8/R1R5/7K b - -"; // ??? broken movegen, Cp R a1a2
+
     // let fen = &games(8); // Qt R e7f7, #7
 
     eprintln!("fen = {:?}", fen);
@@ -212,10 +217,29 @@ fn main9() {
 
     let t = 10.0;
 
-    // let mv = Move::Capture { from: "B3".into(), to: "B6".into(), pc: Queen, victim: Queen };
+    // // let mv = Move::Capture { from: "B3".into(), to: "B6".into(), pc: Queen, victim: Queen };
     // // let mv = Move::Capture { from: "D5".into(), to: "B3".into(), pc: Queen, victim: Queen };
+    // let mv = Move::Capture { from: "D5".into(), to: "B3".into(), pc: Queen, victim: Queen };
     // let see = g.static_exchange(&ts, mv);
     // eprintln!("see = {:?}", see);
+
+    // return;
+
+    // let stop = Arc::new(AtomicBool::new(false));
+    // let timesettings = TimeSettings::new_f64(0.0,t);
+    // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+    // let mut stats = SearchStats::default();
+
+    // let (alpha,beta) = (i32::MIN,i32::MAX);
+    // let (alpha,beta) = (alpha + 200,beta - 200);
+    // let s = -ex.qsearch(&ts, &g, 0, alpha, beta, &mut stats);
+    // eprintln!("s = {:?}", s);
+
+    // let moves = g.search_only_captures(&ts).get_moves_unsafe();
+    // for m in moves.iter() {
+    //     eprintln!("m = {:?}", m);
+    // }
+
     // return;
 
     // let e = g.evaluate(&ts).sum();

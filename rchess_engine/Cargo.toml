@@ -28,8 +28,9 @@ default = [
     "null_pruning",
     "late_move_reduction",
     "history_heuristic",
+    "qsearch",
 
-    # "pvs_search",
+    "pvs_search",
     # "negamax_only",
 
     ]
@@ -43,6 +44,7 @@ positional_scoring = []
 null_pruning = []
 late_move_reduction = []
 history_heuristic = []
+qsearch = []
 
 pvs_search = []
 negamax_only = []
