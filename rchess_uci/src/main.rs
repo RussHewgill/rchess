@@ -9,9 +9,11 @@ pub mod notation;
 
 use chrono::Datelike;
 use chrono::Timelike;
+use rchess_engine_lib::alphabeta::ABResult;
 use rchess_engine_lib::types::*;
 use rchess_engine_lib::tables::*;
 use rchess_engine_lib::explore::*;
+use rchess_engine_lib::evaluate::*;
 
 use std::io;
 use std::io::{BufRead,Stdout};
@@ -80,10 +82,11 @@ fn main() -> std::io::Result<()> {
     // let timesettings = TimeSettings::new_f64(10., 0.1);
     let timesettings = TimeSettings::new_f64(
         0.0,
-        1.0,
+        0.5,
         // 0.4,
         // 0.4,
     );
+    // let mut timeset = false;
 
     // let explorer = Arc::new(Mutex::new(
     //     Explorer::new(White,Game::empty(), depth, should_stop.clone(), timesettings)));
@@ -102,7 +105,7 @@ fn main() -> std::io::Result<()> {
             // if line != "" {
             if !line.is_empty() {
                 // writeln!(&mut logfile, "{}", line)?;
-                debug!("{}", line);
+                debug!("input line: {}", line);
                 let mut params = line.split_whitespace();
 
                 match params.next().unwrap() {
@@ -111,9 +114,9 @@ fn main() -> std::io::Result<()> {
                     "ucinewgame" => {
                         // let mut g = Game::new();
                         let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
-                        let _ = g.recalc_gameinfo_mut(&ts);
                         // explorer.lock().unwrap().side = Black;
                         // explorer.lock().unwrap().game = g;
+                        // timeset = false;
                         explorer.side = Black;
                         explorer.game = g;
                     },
@@ -179,29 +182,13 @@ fn main() -> std::io::Result<()> {
                         debug!("explorer going: ");
 
                         // let m = explorer.lock().unwrap().explore(&ts, depth).unwrap();
-                        let (m,_) = explorer.explore(&ts, None);
-                        let m = m.unwrap();
+                        let (m,stats) = explorer.explore(&ts, None);
+                        let (mv,score) = m.unwrap();
 
-                        match m {
-                            (m@Move::Promotion { new_piece, .. },_)
-                                | (m@Move::PromotionCapture { new_piece, .. },_) => {
-                                let c = match new_piece {
-                                    Queen  => 'q',
-                                    Knight => 'n',
-                                    Rook   => 'r',
-                                    Bishop => 'b',
-                                    _      => panic!("Bad promotion"),
-                                };
-                                let mm = format!("{:?}{:?}{}", m.sq_from(), m.sq_to(), c).to_ascii_lowercase();
-                                // let mm = format!("{:?}{:?}", m.sq_from(), m.sq_to(), c).to_ascii_lowercase();
-                                println!("bestmove {}", mm);
-                            },
-                            (m,_) => {
-                                let mm = format!("{:?}{:?}", m.sq_from(), m.sq_to()).to_ascii_lowercase();
-                                println!("bestmove {}", mm);
-                            },
-                        }
+                        let mm = format_move(mv);
+                        println!("bestmove {}", mm);
 
+                        print_info(&explorer, (mv,score), stats);
 
                     },
                     s            => unimplemented!("bad command: {:?}", s),
@@ -212,6 +199,61 @@ fn main() -> std::io::Result<()> {
 
     }
     Ok(())
+}
+
+// info depth 245
+//     seldepth 3
+//     multipv 1
+//     score mate -1
+//     nodes 12806
+//     nps 2561200
+//     tbhits 0
+//     time 5
+//     pv d5d4 e2e8
+
+fn print_info(ex: &Explorer, (mv,res): (Move, ABResult), stats: SearchStats) {
+
+    print!("info");
+
+    // print!(" depth {}", stats.max_depth);
+    // print!(" nodes {}", stats.nodes + stats.qt_nodes);
+
+    print!(" score ");
+    let score = res.score;
+    if score > CHECKMATE_VALUE - 200 {
+        let s = score - CHECKMATE_VALUE;
+        print!("mate {}", s.abs());
+    } else if score < -CHECKMATE_VALUE + 200 {
+        let s = score + CHECKMATE_VALUE;
+        print!("mate -{}", s.abs());
+    } else {
+        print!("cp {}", score);
+    }
+
+    // let ms = res.moves.iter().map(|m| format_move(*m)).collect::<Vec<_>>().join(" ");
+    // print!(" pv {}", ms);
+
+    println!();
+}
+
+fn format_move(mv: Move) -> String {
+    match mv {
+        m@Move::Promotion { new_piece, .. } | m@Move::PromotionCapture { new_piece, .. } => {
+            let c = match new_piece {
+                Queen  => 'q',
+                Knight => 'n',
+                Rook   => 'r',
+                Bishop => 'b',
+                _      => panic!("Bad promotion"),
+            };
+            let mm = format!("{:?}{:?}{}", m.sq_from(), m.sq_to(), c).to_ascii_lowercase();
+            mm
+        },
+        _ => {
+            let mm = format!("{:?}{:?}", mv.sq_from(), mv.sq_to()).to_ascii_lowercase();
+            mm
+        },
+    }
 }
 
 // fn handle_command(line: &str) -> std::io::Result<()> {

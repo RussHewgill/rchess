@@ -7,6 +7,12 @@
     {
         "name": "stockfish",
         "command": "/usr/bin/stockfish",
-        "protocol": "uci"
+        "protocol": "uci",
+        "options": [
+            {
+                "name": "Skill Level",
+                "value": 20
+            }
+        ]
     }
 ]

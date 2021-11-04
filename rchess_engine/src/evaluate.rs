@@ -6,6 +6,9 @@ use serde::{Serialize,Deserialize};
 
 pub type Score = i32;
 
+pub static CHECKMATE_VALUE: Score = 100_000_000;
+pub static STALEMATE_VALUE: Score = 20_000_000;
+
 #[derive(Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Eval {
     pub phase:            u16,

@@ -70,7 +70,9 @@ impl Explorer {
 /// Entry points
 impl Explorer {
 
-    pub fn explore(&self, ts: &Tables, depth: Option<Depth>) -> (Option<(Move,Score)>,SearchStats) {
+    pub fn explore(&self, ts: &Tables, depth: Option<Depth>)
+                   // -> (Option<(Move,Score)>,SearchStats) {
+                   -> (Option<(Move,ABResult)>,SearchStats) {
 
         // let (moves,stats) = self.iterative_deepening(&ts, false, false);
         // (moves.get(0).map(|x| x.0),stats)
@@ -85,7 +87,8 @@ impl Explorer {
         let score = best.score;
 
         debug!("explore: best move = {:?}", mv);
-        (Some((mv,score)),stats)
+        // (Some((mv,score)),stats)
+        (Some((mv,best)),stats)
 
         // unimplemented!()
 
@@ -252,100 +255,6 @@ impl Explorer {
 
 }
 
-/// XXX: Negamax testing
-impl Explorer {
-
-    // #[allow(unused_doc_comments)]
-    // pub fn lazy_smp_negamax_test(&self, ts: &Tables, print: bool, strict_depth: bool)
-    //                        -> ((ABResult, Vec<ABResult>), SearchStats,(TTRead,TTWrite)) {
-    // // -> (Vec<(Move,Vec<Move>,Score)>,SearchStats,(TTRead,TTWrite)) {
-    //     let mut timer = self.timer.clone();
-    //     timer.reset();
-    //     let mut depth = 1;
-    //     // let stats: Arc<RwLock<SearchStats>> =
-    //     //     Arc::new(RwLock::new(SearchStats::default()));
-
-    //     let mut stats = SearchStats::default();
-    //     let mut history = [[[0; 64]; 64]; 2];
-
-    //     // let moves = self.game.search_all(&ts).get_moves_unsafe();
-    //     // let mut gs = moves.par_iter().flat_map(|mv| {
-    //     //     if let Ok(g2) = self.game.make_move_unchecked(&ts, *mv) {
-    //     //         Some((*mv,g2))
-    //     //     } else { None }
-    //     // });
-    //     // let gs = gs.collect::<Vec<_>>();
-
-    //     let (tt_r, tt_w) = evmap::new();
-    //     let tt_w = Arc::new(Mutex::new(tt_w));
-
-    //     let (tx,rx): (Sender<(Depth,Vec<(Move,Vec<Move>,Score)>,Option<(Move,Score)>)>,
-    //                   Receiver<(Depth,Vec<(Move,Vec<Move>,Score)>,Option<(Move,Score)>)>) =
-    //         crossbeam::channel::bounded(12);
-
-    //     let (alpha,beta) = (i32::MIN,i32::MAX);
-    //     let (alpha,beta) = (alpha + 200,beta - 200);
-
-    //     let mut out = vec![];
-    //     let mut best: Option<ABResult> = None;
-
-    //     // if let Some(((mut mv_seq,score),_)) = self._ab_search_negamax(
-    //     if let ABResults::ABList(b, scores) = self._ab_search_negamax(
-    //         &ts, &self.game,
-    //         // depth,
-    //         self.max_depth,
-    //         self.max_depth,
-    //         0, alpha, beta,
-    //         &mut stats,
-    //         VecDeque::new(),
-    //         &mut history,
-    //         &tt_r, tt_w.clone(),true) {
-
-    //         // mv_seq.reverse();
-    //         // out = (mv_seq,score);
-    //         out = scores;
-    //         best = Some(b);
-    //     }
-
-    //     // for depth in 0..self.max_depth+1 {
-    //     //     debug!("starting depth {}", depth);
-    //     //     if let Some(((mut mv_seq,score),_)) = self._ab_search_negamax(
-    //     //         &ts, &self.game,
-    //     //         self.max_depth, depth, 0,
-    //     //         alpha, beta,
-    //     //         &mut stats,
-    //     //         VecDeque::new(),
-    //     //         &mut history,
-    //     //         &tt_r, tt_w.clone()) {
-    //     //         mv_seq.reverse();
-    //     //         out = (mv_seq,score);
-    //     //     }
-    //     //     // self._lazy_smp_single(
-    //     //     //     &ts, gs.clone(),
-    //     //     //     None,
-    //     //     //     depth,
-    //     //     //     tx.clone(),
-    //     //     //     stats.clone(),
-    //     //     //     tt_r.clone(), tt_w.clone());
-    //     // }
-
-    //     // for (d,mvs,mscore) in rx.into_iter() {
-    //     //     if let Some((mv,score)) = mscore {
-    //     //         eprintln!("depth {} = {:?}: {:?}", d, score, mv);
-    //     //     } else {
-    //     //         eprintln!("depth {} no score found?", d);
-    //     //     }
-    //     // }
-
-    //     // let mut stats = stats.read().clone();
-
-    //     // (out,stats,(tt_r,tt_w))
-    //     ((best.unwrap(),out),stats,(tt_r,tt_w))
-    //     // unimplemented!()
-    // }
-
-}
-
 /// Lazy SMP Negamax
 impl Explorer {
 
@@ -446,7 +355,7 @@ impl Explorer {
                 // + (self.timer.settings.safety / 2.0);
             let t_max = Duration::from_secs_f64(t_max);
 
-            s.spawn(move |_| loop {
+            let rx_thread = s.spawn(move |_| loop {
                 match rx.try_recv() {
                     Err(TryRecvError::Empty)    => {
                         // std::thread::sleep(sleep_time);
@@ -560,7 +469,7 @@ impl Explorer {
                 if t0.elapsed() > t_max {
                     let d = best_depth.load(SeqCst);
                     debug!("breaking loop (Time),  d: {}, t0: {:.3}", d, t0.elapsed().as_secs_f64());
-                    // Only force threads to stop if out of time
+                    // XXX: Only force threads to stop if out of time ?
                     stop.store(true, SeqCst);
                     drop(tx);
                     break;
@@ -602,6 +511,8 @@ impl Explorer {
                 #[cfg(not(feature = "keep_stats"))]
                 timer.update_times(self.side, 0);
             }
+
+            rx_thread.join().unwrap();
 
         }).unwrap();
 

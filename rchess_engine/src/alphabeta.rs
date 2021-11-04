@@ -120,7 +120,8 @@ impl Explorer {
 
         let mut moves: Vec<Move> = match moves {
             Outcome::Checkmate(c) => {
-                let score = 100_000_000 - ply as Score;
+                // let score = 100_000_000 - ply as Score;
+                let score = CHECKMATE_VALUE - ply as Score;
                 if !tt_r.contains_key(&g.zobrist) {
                     stats!(stats.leaves += 1);
                     stats!(stats.checkmates += 1);
@@ -137,7 +138,7 @@ impl Explorer {
 
             },
             Outcome::Stalemate    => {
-                let score = -200_000_000 + ply as Score;
+                let score = -STALEMATE_VALUE + ply as Score;
                 if !tt_r.contains_key(&g.zobrist) {
                     stats!(stats.leaves += 1);
                     stats!(stats.stalemates += 1);
