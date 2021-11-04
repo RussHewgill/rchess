@@ -191,6 +191,14 @@ impl Tables {
         file.write_all(&b)
     }
 
+    pub fn write_to_file_def(&self) -> std::io::Result<()> {
+        #[cfg(not(feature = "smallstack"))]
+        self.write_to_file("tables.bin").unwrap();
+        #[cfg(feature = "smallstack")]
+        self.write_to_file("tables-vec.bin").unwrap();
+        Ok(())
+    }
+
     pub fn read_from_file_def() -> std::io::Result<Self> {
         #[cfg(not(feature = "smallstack"))]
         let ts = Tables::read_from_file("tables.bin");
@@ -216,6 +224,7 @@ impl Tables {
     }
 
     pub fn _new(magics: bool) -> Self {
+        debug!("Generating Tables: magics: {}", magics);
         let rook_moves   = Self::gen_rooks();
         let bishop_moves = Self::gen_bishops();
 

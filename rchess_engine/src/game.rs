@@ -78,7 +78,7 @@ pub struct GameState {
     pub castling:           Castling,
 
     // pub score:              Score,
-    pub phase:              u16,
+    pub phase:              u8,
     pub last_capture:       Option<Coord>,
     // pub last_capture:       CC,
 

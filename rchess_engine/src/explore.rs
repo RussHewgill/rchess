@@ -13,7 +13,7 @@ pub use crate::searchstats::*;
 
 use std::collections::VecDeque;
 use std::sync::atomic::AtomicU8;
-use std::sync::atomic::Ordering::SeqCst;
+use std::sync::atomic::{Ordering,Ordering::SeqCst};
 use std::time::{Instant,Duration};
 use atom::Atom;
 
@@ -436,6 +436,7 @@ impl Explorer {
                                 debug!("breaking loop (Depth -> Mate),  d: {}, t0: {:.3}",
                                        d, t0.elapsed().as_secs_f64());
                                 stop.store(true, SeqCst);
+                                drop(tx);
                                 break 'outer;
                             }
                         }
@@ -445,6 +446,7 @@ impl Explorer {
                             debug!("breaking loop (Depth -> Threads),  d: {}, t0: {:.3}",
                                    d, t0.elapsed().as_secs_f64());
                             stop.store(true, SeqCst);
+                            drop(tx);
                             break 'outer;
                         }
                         if t0.elapsed() > t_max {
@@ -452,6 +454,7 @@ impl Explorer {
                             debug!("breaking loop (Depth -> Time),  d: {}, t0: {:.3}",
                                    d, t0.elapsed().as_secs_f64());
                             stop.store(true, SeqCst);
+                            drop(tx);
                             break 'outer;
                         } else {
                             // trace!("t0.elapsed(), t_max: {:?}, {:?}", t0.elapsed(), t_max);

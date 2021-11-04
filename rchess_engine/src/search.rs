@@ -916,7 +916,8 @@ impl Game {
         self._search_pawns(&ts, None, col, only_caps)
     }
 
-    pub fn _search_pawns(&self, ts: &Tables, single: Option<Coord>, col: Color, only_caps: bool) -> Vec<Move> {
+    pub fn _search_pawns(&self, ts: &Tables, single: Option<Coord>, col: Color, only_caps: bool)
+                         -> Vec<Move> {
         let mut out = vec![];
         let oc = self.all_occupied();
 

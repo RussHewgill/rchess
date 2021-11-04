@@ -129,13 +129,6 @@ impl Explorer {
 
                 return ABSingle(ABResult::new_empty(-score));
 
-                // // XXX: backwards, but gets negated 1 level above
-                // if self.side == g.state.side_to_move {
-                //     return ABSingle(ABResult::new_empty(score));
-                // } else {
-                //     return ABSingle(ABResult::new_empty(-score));
-                // }
-
             },
             Outcome::Stalemate    => {
                 let score = -STALEMATE_VALUE + ply as Score;
@@ -148,19 +141,6 @@ impl Explorer {
             },
             Outcome::Moves(ms)    => ms,
         };
-
-        // /// XXX: stat padding by including nodes found in TT
-        // stats!(stats.inc_nodes_arr(ply));
-        // stats!(stats.nodes += 1);
-
-        // if !tt_r.contains_key(&g.zobrist) {
-        //     // /// XXX: stat padding by including nodes found in TT
-        //     stats!(stats.inc_nodes_arr(k));
-        //     stats!(stats.nodes += 1);
-        //     trace!("adding node: {}, {:?}", k, g.zobrist);
-        // } else {
-        //     trace!("skipped node: {}, {:?}", k, g.zobrist);
-        // }
 
         // let mvs = self.move_history.clone();
 
@@ -176,7 +156,6 @@ impl Explorer {
                 let score = self.qsearch(&ts, &g, (ply,0), alpha, beta, &mut stats);
                 // trace!("    returned from qsearch, score = {}", score);
                 score
-                // if g.state.side_to_move == Black { score } else { -score }
             };
 
             #[cfg(not(feature = "qsearch"))]
@@ -286,14 +265,6 @@ impl Explorer {
 
                     let mut lmr = true;
                     let mut depth2 = depth - 1;
-
-                    // #[cfg(not(feature = "late_move_reduction"))]
-                    // {
-                    //     if g2.state.checkers.is_not_empty() || g.state.checkers.is_not_empty() {
-                    //         trace!("check extension: = {:?}, {:?}", mv, pms.front().unwrap().1);
-                    //         depth2 = depth;
-                    //     }
-                    // }
 
                     /// not reducing when in check replaces check extension
                     #[cfg(feature = "late_move_reduction")]

@@ -94,8 +94,8 @@ fn main() {
     //     .unwrap();
 
     // let ts = Tables::new();
-    // ts.write_to_file("tables.bin").unwrap();
-    // let ts = Tables::read_from_file("tables.bin").unwrap();
+    // ts.write_to_file_def().unwrap();
+    // // let ts = Tables::read_from_file("tables.bin").unwrap();
 
     // let from: Coord = "A1".into();
     // let to: Coord = "B2".into();
@@ -202,7 +202,7 @@ fn main9() {
         ex.lazy_smp(&ts, false, false)
     }
 
-    // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
+    let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
     // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
@@ -225,8 +225,10 @@ fn main9() {
 
     // let fen = "4r2k/3Q2pp/4p3/p3p3/P1P1N3/5P2/1P4P1/1KR5 b - -"; // Non legal move, e4f6
 
-    let fen = "r1b1k2r/5ppp/p4n2/1pbq4/8/3BBN2/PPP3PP/R2Q1RK1 w kq - 2 16"; // ??
+    // let fen = "r1b1k2r/5ppp/p4n2/1pbq4/8/3BBN2/PPP3PP/R2Q1RK1 w kq - 2 16"; // ??
     // let fen = "r1b1k2r/5ppp/p4n2/1Bbq4/8/4BN2/PPP3PP/R2Q1RK1 b kq - 0 16"; // ??
+
+    let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
 
     // let fen = &games(8); // Qt R e7f7, #7
 
@@ -237,10 +239,11 @@ fn main9() {
     eprintln!("g = {:?}", g);
 
     let n = 35;
-    // let n = 4;
+    // let n = 6;
 
-    // let t = 10.0;
-    let t = 5.0;
+    let t = 10.0;
+    // let t = 5.0;
+    // let t = 1.0;
     // let t = 0.5;
 
     // let mv = Move::Capture { from: "B7".into(), to: "E7".into(), pc: Rook, victim: Knight };

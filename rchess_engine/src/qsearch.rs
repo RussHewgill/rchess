@@ -4,6 +4,8 @@ use crate::tables::*;
 use crate::evaluate::*;
 use crate::explore::*;
 
+use std::sync::atomic::Ordering::SeqCst;
+
 /// Quiescence
 impl Explorer {
 
@@ -26,6 +28,10 @@ impl Explorer {
         let stand_pat = g.evaluate(&ts).sum();
         // let stand_pat = if self.side == Black { stand_pat } else { -stand_pat };
         let stand_pat = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
+
+        if self.stop.load(SeqCst) {
+            return stand_pat;
+        }
 
         // trace!("qsearch, stand_pat = {:?}", stand_pat);
 
