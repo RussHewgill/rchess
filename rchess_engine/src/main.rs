@@ -127,17 +127,17 @@ fn main() {
     //     Wat3
     // }
 
-    // let s = std::mem::size_of::<Eval>();
-    // let s = std::mem::size_of::<rchess_engine_lib::types::Color>();
-    let s = std::mem::size_of::<Game>();
-    // let s = std::mem::size_of::<GameState>();
-    eprintln!("size  = {:?}", s);
-    // let a = std::mem::align_of::<GameState>();
-    // eprintln!("align = {:?}", a);
-    // let s = u16::MAX;
-    // eprintln!("s = {:#8x}", s);
+    // // let s = std::mem::size_of::<Eval>();
+    // // let s = std::mem::size_of::<rchess_engine_lib::types::Color>();
+    // let s = std::mem::size_of::<Game>();
+    // // let s = std::mem::size_of::<GameState>();
+    // eprintln!("size  = {:?}", s);
+    // // let a = std::mem::align_of::<GameState>();
+    // // eprintln!("align = {:?}", a);
+    // // let s = u16::MAX;
+    // // eprintln!("s = {:#8x}", s);
 
-    return;
+    // return;
 
     let mut args: Vec<String> = std::env::args().collect();
     match args.get(1) {
@@ -229,7 +229,7 @@ fn main9() {
     // let fen = "r1b1k2r/5ppp/p4n2/1pbq4/8/3BBN2/PPP3PP/R2Q1RK1 w kq - 2 16"; // ??
     // let fen = "r1b1k2r/5ppp/p4n2/1Bbq4/8/4BN2/PPP3PP/R2Q1RK1 b kq - 0 16"; // ??
 
-    let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
+    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
 
     // let fen = &games(8); // Qt R e7f7, #7
 

@@ -86,7 +86,8 @@ impl Explorer {
         &self,
         ts:                      &Tables,
         g:                       &Game,
-        max_depth:               Depth,
+        // max_depth:               Depth,
+        mut cfg:                 ABConfig,
         depth:                   Depth,
         ply:                     Depth,
         mut stop_counter:        &mut u16,
@@ -96,8 +97,8 @@ impl Explorer {
         mut history:             &mut [[[Score; 64]; 64]; 2],
         tt_r:                    &TTRead,
         tt_w:                    TTWrite,
-        root:                    bool,
-        do_null:                 bool,
+        // root:                    bool,
+        // do_null:                 bool,
     ) -> ABResults {
 
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
@@ -110,8 +111,8 @@ impl Explorer {
                 let r = self.best_mate.read();
                 if let Some(best) = *r {
                     drop(r);
-                    if best <= max_depth {
-                        trace!("halting search of depth {}, faster mate found", max_depth);
+                    if best <= cfg.max_depth {
+                        trace!("halting search of depth {}, faster mate found", cfg.max_depth);
                         return ABNone;
                     }
                 }
@@ -191,9 +192,9 @@ impl Explorer {
             && depth >= 2
             && !is_pv_node
             && g.state.phase < 200
-            && do_null {
+            && cfg.do_null {
                 if self.prune_null_move_negamax(
-                    ts, g, max_depth, depth, ply, alpha, beta, &mut stats,
+                    ts, g, cfg, depth, ply, alpha, beta, &mut stats,
                     prev_mvs.clone(), &mut history, tt_r, tt_w.clone()) {
 
                     // return ABNone;
@@ -268,6 +269,10 @@ impl Explorer {
                     let mut pms = prev_mvs.clone();
                     pms.push_back((g.zobrist,*mv));
 
+                    let mut cfg2 = cfg;
+                    cfg2.do_null = true;
+                    cfg2.root    = false;
+
                     let mut lmr = true;
                     let mut depth2 = depth - 1;
 
@@ -286,12 +291,13 @@ impl Explorer {
                     {
                         let depth3 = depth - 3;
                         match self._ab_search_negamax(
-                            &ts, &g2, max_depth, depth3, ply + 1, &mut stop_counter,
+                            &ts, &g2, cfg2, depth3, ply + 1, &mut stop_counter,
                             (-beta, -alpha), &mut stats,
                             pms.clone(), &mut history, tt_r, tt_w.clone(),
-                            false,
-                            // XXX: No Null pruning inside reduced depth search ?
-                            true) {
+                            // false,
+                            // // XXX: No Null pruning inside reduced depth search ?
+                            // true
+                        ) {
                             ABSingle(mut res) => {
                                 res.neg_score();
                                 if res.score <= alpha {
@@ -316,9 +322,9 @@ impl Explorer {
                     let (a2,b2) = (-beta, -alpha);
 
                     match self._ab_search_negamax(
-                        &ts, &g2, max_depth, depth2, ply + 1, &mut stop_counter,
+                        &ts, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
                         (a2, b2), &mut stats,
-                        pms.clone(), &mut history, tt_r, tt_w.clone(), false, true) {
+                        pms.clone(), &mut history, tt_r, tt_w.clone()) {
                         ABSingle(mut res) => {
                             res.moves.push_front(*mv);
                             res.neg_score();
@@ -326,9 +332,9 @@ impl Explorer {
                             #[cfg(feature = "pvs_search")]
                             if !search_pv && res.score > alpha {
                                 match self._ab_search_negamax(
-                                    &ts, &g2, max_depth, depth2, ply + 1, &mut stop_counter,
+                                    &ts, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
                                     (-beta, -alpha), &mut stats,
-                                    pms, &mut history, tt_r, tt_w.clone(), false, true) {
+                                    pms, &mut history, tt_r, tt_w.clone()) {
                                     ABSingle(mut res2) => {
                                         res2.neg_score();
                                         res2.moves.push_front(*mv);
@@ -340,7 +346,7 @@ impl Explorer {
                                 }
                             }
 
-                            if root {
+                            if cfg.root {
                                 list.push(res.clone());
                             }
                             (false, res)
@@ -442,7 +448,7 @@ impl Explorer {
                 //     }
                 // }
 
-                if root {
+                if cfg.root {
                     ABList(res.clone(), list)
                 } else {
                     ABSingle(res.clone())

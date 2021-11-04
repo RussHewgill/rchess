@@ -15,7 +15,7 @@ impl Explorer {
         &self,
         ts:                 &Tables,
         mut g:              &Game,
-        max_depth:          Depth,
+        mut cfg:            ABConfig,
         depth:              Depth,
         ply:                Depth,
         alpha:              i32,
@@ -26,6 +26,9 @@ impl Explorer {
         tt_r:               &TTRead,
         tt_w:               TTWrite,
     ) -> bool {
+
+        cfg.root    = false;
+        cfg.do_null = false;
 
         let mv = Move::NullMove;
 
@@ -40,12 +43,12 @@ impl Explorer {
             pms.push_back((g.zobrist,mv));
 
             if let ABResults::ABSingle(mut res) = self._ab_search_negamax(
-                &ts, &g2, max_depth,
+                &ts, &g2, cfg,
                 depth - 1 - r, ply + 1, &mut stop_counter,
                 (-beta, -beta + 1),
                 // -beta, -alpha,
                 &mut stats, pms, &mut history,
-                tt_r, tt_w, false, false) {
+                tt_r, tt_w) {
 
                 res.moves.push_front(mv);
                 res.neg_score();

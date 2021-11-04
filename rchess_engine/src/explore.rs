@@ -47,14 +47,24 @@ pub struct Explorer {
     // pub prev_eval:     Arc<>
 }
 
-#[derive(Debug,Clone,Copy)]
-pub struct ABConfig<'a> {
+#[derive(Debug,Default,Clone,Copy)]
+pub struct ABConfig {
     pub max_depth:        Depth,
-    pub depth:            Depth,
-    pub ply:              Depth,
-    pub tt_r:             &'a TTRead,
+    // pub depth:            Depth,
+    // pub ply:              Depth,
+    // pub tt_r:             &'a TTRead,
     pub root:             bool,
     pub do_null:          bool,
+}
+
+impl ABConfig {
+    pub fn new_depth(max_depth: Depth) -> Self {
+        Self {
+            max_depth,
+            root: false,
+            do_null: true,
+        }
+    }
 }
 
 /// New
@@ -286,13 +296,17 @@ impl Explorer {
         let mut stats = SearchStats::default();
         let mut stop_counter = 0;
 
+        let mut cfg = ABConfig::new_depth(depth);
+        cfg.root = true;
+
         let res = self._ab_search_negamax(
-            &ts, &self.game, depth, depth,
+            &ts, &self.game, cfg, depth,
             0, &mut stop_counter, (alpha, beta),
             &mut stats,
             VecDeque::new(),
             &mut history,
-            &tt_r, tt_w.clone(),true,true);
+            // &tt_r, tt_w.clone(),true,true);
+            &tt_r, tt_w.clone());
 
         match tx.send((depth,res,stats)) {
             Ok(_) => {},
