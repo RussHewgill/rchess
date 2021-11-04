@@ -48,7 +48,7 @@ impl Explorer {
         let mut moves = if qply > RECAPS_ONLY && !g.in_check() && g.state.last_capture.is_some() {
             let cap = g.state.last_capture.unwrap();
 
-            match g.search_all_single_to(&ts, cap, None) {
+            match g.search_all_single_to(&ts, cap, None, true) {
                 Outcome::Moves(ms) => {
                     // stats.qt_hits += 1;
                     ms

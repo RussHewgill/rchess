@@ -12,8 +12,12 @@ const PERFTLENTH: usize = 20;
 /// Search All
 impl Game {
 
-    pub fn search_all_single_to(&self, ts: &Tables, c0: Coord, col: Option<Color>) -> Outcome {
-        let ms = self.search_all(&ts);
+    pub fn search_all_single_to(&self, ts: &Tables, c0: Coord, col: Option<Color>, captures: bool) -> Outcome {
+        let ms = if captures {
+            self.search_only_captures(&ts)
+        } else {
+            self.search_all(&ts)
+        };
         match ms {
             Outcome::Checkmate(win) => Outcome::Checkmate(win),
             Outcome::Stalemate      => Outcome::Stalemate,

@@ -230,7 +230,7 @@ fn main9() {
 
     // let t = 1.0;
     // let t = 5.0;
-    let t = 0.5;
+    let t = 0.3;
 
     // let mv = Move::Capture { from: "B7".into(), to: "E7".into(), pc: Rook, victim: Knight };
     // let s = g.static_exchange(&ts, mv);
