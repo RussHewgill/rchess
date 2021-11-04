@@ -177,6 +177,8 @@ fn main9() {
     let fen = STARTPOS;
     init_logger();
 
+    // let ts = Tables::new();
+    // ts.write_to_file_def().unwrap();
     // let ts = Tables::read_from_file_def().unwrap();
     let ts = &_TABLES;
 
@@ -226,10 +228,12 @@ fn main9() {
 
     // let fen = "4r2k/3Q2pp/4p3/p3p3/P1P1N3/5P2/1P4P1/1KR5 b - -"; // Non legal move, e4f6
 
-    // let fen = "r1b1k2r/5ppp/p4n2/1pbq4/8/3BBN2/PPP3PP/R2Q1RK1 w kq - 2 16"; // ??
-    // let fen = "r1b1k2r/5ppp/p4n2/1Bbq4/8/4BN2/PPP3PP/R2Q1RK1 b kq - 0 16"; // ??
+    // let fen = "8/1pk3bp/p2nbr2/4p1p1/1K1nP3/P2B3P/1RPR1PP1/8 b - -"; // ??
+    // let fen = "8/1pk3bp/p2nbr2/4p1p1/1K1nP3/P2B3P/1RPR1PP1/8 b - -"; // ??
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
+
+    let fen = "7k/8/8/8/8/8/4Q3/7K w - - 0 1"; // Queen endgame, #7
 
     // let fen = &games(8); // Qt R e7f7, #7
 
@@ -794,8 +798,8 @@ fn main7() {
 
     } else {
 
-        let fen0 = "rnb1kb1r/pppppNpp/8/8/8/3n4/P1PPPPPP/R1B1KB1R w KQkq - 0 1";
-        let g0 = Game::from_fen(&ts, fen0).unwrap();
+        // let fen0 = "rnb1kb1r/pppppNpp/8/8/8/3n4/P1PPPPPP/R1B1KB1R w KQkq - 0 1";
+        // let g0 = Game::from_fen(&ts, fen0).unwrap();
 
         let fen = STARTPOS;
         let mut g2 = Game::from_fen(&ts, fen).unwrap();
@@ -810,9 +814,15 @@ fn main7() {
 
         // e5d6 not legal
 
-        let ms = "e2e4 e7e5 b1a3 b8a6 f1b5 c7c6 b5e2 c6c5 e2b5 e8e7 d1h5 d7d6 h5g5 f7f6 g5e3 d6d5 d2d3 a6c7 b5a4";
+        let ms = "e2e4 g7g6 d2d4 f8g7 b1c3 c7c5 d4c5 d8a5 c1e3 a5b4 a1b1 g7c3 b2c3 b4c3 d1d2 c3d2 e1d2 e7e5 g1f3 b8c6 f1d3 g8f6 h2h3 e8e7 d2c3 d7d5 c5d6 e7d6 b1b2 d6c7 e3g5 f6e8 h1e1 e8d6 g5f6 h8e8 a2a3 e8e6 f6g7 e6e7 f3g5 f7f5 g7f6 e7d7 g5e6 c7b8 e6c5 a7a6 c5d7 c8d7 e1h1 d7e6 h1f1 g6g5 f1b1 b8c7 b1e1 a8f8 e1e2 c6d4 e2d2 f8f6 c3b4";
 
         let ms0 = ms.split(" ");
+        let mut ms0 = ms0.collect::<Vec<_>>();
+
+        // ms0.truncate(ms0.len() - 20);
+        let ms0 = &ms0[..42];
+
+        eprintln!("last move = {:?}", ms0.last().unwrap());
 
         let mut g2 = g2.clone();
         for m in ms0.into_iter() {
@@ -824,15 +834,15 @@ fn main7() {
         }
         // eprintln!("hash0 = {:?}", g2.zobrist);
 
-        // eprintln!("g2 = {:?}", g2);
-        // let g2fen = g2.to_fen();
-        // eprintln!("g2fen = {:?}", g2fen);
+        eprintln!("g2 = {:?}", g2);
+        let g2fen = g2.to_fen();
+        eprintln!("g2fen = {:?}", g2fen);
         // // eprintln!("g0 = {:?}", g0);
 
-        // let m0 = g2.convert_move("d7", "d5", "").unwrap();
+        let m0 = g2.convert_move("g7", "f6", "").unwrap();
         // let m0 = g2.convert_move("e5", "d6", "").unwrap();
 
-        // eprintln!("m0 = {:?}", m0);
+        eprintln!("m0 = {:?}", m0);
 
         // let m0 = Move::EnPassant { from: "E5".into(), to: "D6".into(), capture: "D5".into() };
         // let g3 = g2.make_move_unchecked(&ts, m0).unwrap();
@@ -853,7 +863,7 @@ fn main7() {
         let t = 2.0;
 
         timesettings.increment = [t, t];
-        let mut ex0 = Explorer::new(g0.state.side_to_move, g0.clone(), n, stop.clone(), timesettings);
+        // let mut ex0 = Explorer::new(g0.state.side_to_move, g0.clone(), n, stop.clone(), timesettings);
         let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);
 
         // let moves = vec![
@@ -865,11 +875,11 @@ fn main7() {
         // let moves = g2.search_all(&ts).get_moves_unsafe();
         // for m in moves.iter() { println!("m = {:?}", m); }
 
-        let t = std::time::Instant::now();
-        let (m,stats) = ex2.explore(&ts, None);
-        eprintln!("m = {:?}", m.unwrap());
-        // ex.rank_moves(&ts, true);
-        println!("explore done in {:.3} seconds.", t.elapsed().as_secs_f64());
+        // let t = std::time::Instant::now();
+        // let (m,stats) = ex2.explore(&ts, None);
+        // eprintln!("m = {:?}", m.unwrap());
+        // // ex.rank_moves(&ts, true);
+        // println!("explore done in {:.3} seconds.", t.elapsed().as_secs_f64());
 
     }
 

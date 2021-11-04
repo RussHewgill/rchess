@@ -626,7 +626,7 @@ impl Game {
                     let r = if col == White { 0 } else { 7 };
                     let (rook_from,rook_to) = (Coord(rook_from,r),Coord(rook_to,r));
                     Some(Move::Castle { from, to, rook_from, rook_to })
-                } else if Some(to) == self.state.en_passant {
+                } else if pc == Pawn && Some(to) == self.state.en_passant {
                     let capture = if col == White { S.shift_coord(to).unwrap() }
                         else { N.shift_coord(to).unwrap() };
                     Some(Move::EnPassant { from, to, capture })

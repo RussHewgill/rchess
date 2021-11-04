@@ -134,15 +134,7 @@ impl Game {
         unimplemented!()
     }
 
-    pub fn game_phase(&self) -> Phase {
-
-        // let (npm_w,npm_b) = self.non_pawn_material();
-
-        // unimplemented!()
-        0
-    }
-
-    pub fn game_phase2(&self) -> u16 {
+    pub fn game_phase(&self) -> u8 {
         const PAWN_PH: u16   = 0;
         const KNIGHT_PH: u16 = 1;
         const BISHOP_PH: u16 = 1;
@@ -155,25 +147,25 @@ impl Game {
         let ph_total = PAWN_PH * 16 + KNIGHT_PH * 4 + BISHOP_PH * 4 + ROOK_PH * 4 + QUEEN_PH * 2;
         let mut ph = ph_total;
 
-        // for &col in [White,Black].iter() {
-        //     for pc in PCS {
-        //         let ps = self.get(pc, col);
-        //         let pn = ps.popcount() as u16;
-        //         let x = pn * PHASES[pc.index()];
-        //         if ph < x {
-        //             ph = 0;
-        //             break;
-        //         }
-        //         ph -= x;
-        //     }
-        // }
+        for &col in [White,Black].iter() {
+            for pc in PCS {
+                let ps = self.get(pc, col);
+                let pn = ps.popcount() as u16;
+                let x = pn * PHASES[pc.index()];
+                if ph < x {
+                    ph = 0;
+                    break;
+                }
+                ph -= x;
+            }
+        }
 
         // eprintln!("ph_total = {:?}", ph_total);
         // eprintln!("ph = {:?}", ph);
 
         let phase = (ph * 256 + (ph_total / 2)) / ph_total;
 
-        phase
+        phase.min(255) as u8
     }
 
 }

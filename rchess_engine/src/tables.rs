@@ -104,7 +104,8 @@ pub struct Tables {
     #[serde(skip,default = "Tables::gen_rooks")]
     pub rook_moves:    [[MoveSetRook; 8]; 8],
     // #[serde(skip)]
-    #[serde(with = "BigArray")]
+    // #[serde(with = "BigArray")]
+    #[serde(skip,default = "Tables::gen_knights")]
     pub knight_moves:  [BitBoard; 64],
     #[serde(skip,default = "Tables::gen_bishops")]
     pub bishop_moves:  [[MoveSetBishop; 8]; 8],
@@ -693,7 +694,7 @@ mod eval {
 
     #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
     pub struct PcTables {
-        tables_mid:         [[Score; 64]; 6],
+        pub tables_mid:         [[Score; 64]; 6],
         tables_end:         [[Score; 64]; 6],
         pub ev_pawn:        EvPawn,
         pub ev_rook:        EvRook,
@@ -726,13 +727,15 @@ mod eval {
 
         pub fn get_mid<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
             let c1: Coord = c0.into();
-            let c1 = if col == White { c1 } else { Coord(7 - c1.0,7 - c1.1) };
+            // let c1 = if col == White { c1 } else { Coord(7 - c1.0,7 - c1.1) };
+            let c1 = if col == White { c1 } else { Coord(c1.0,7 - c1.1) };
             self.tables_mid[pc.index()][c1]
         }
 
         pub fn get_end<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
             let c1: Coord = c0.into();
-            let c1 = if col == White { c1 } else { Coord(7 -c1.0,7 - c1.1) };
+            // let c1 = if col == White { c1 } else { Coord(7 - c1.0,7 - c1.1) };
+            let c1 = if col == White { c1 } else { Coord(c1.0,7 - c1.1) };
             self.tables_end[pc.index()][c1]
         }
 
@@ -780,7 +783,7 @@ mod eval {
                              bishops,
                              rooks,
                              queens,
-                             kings,
+                             Self::gen_kings_endgame(),
                 ],
                 ev_pawn:   EvPawn::new(),
                 ev_knight: EvKnight::new(),
@@ -843,12 +846,12 @@ mod eval {
                 let sq: usize = c1.into();
                 out[sq] = s;
             }
-
+            // Self::transform_arr(out)
             out
         }
 
         fn gen_rooks() -> [Score; 64] {
-            [
+            Self::transform_arr([
                  0,  0,  0,  0,  0,  0,  0,  0,
                  5, 10, 10, 10, 10, 10, 10,  5,
                 -5,  0,  0,  0,  0,  0,  0, -5,
@@ -857,13 +860,13 @@ mod eval {
                 -5,  0,  0,  0,  0,  0,  0, -5,
                 -5,  0,  0,  0,  0,  0,  0, -5,
                  0,  0,  0,  5,  5,  0,  0,  0
-            ]
+            ])
         }
 
-        pub fn gen_knights() -> [Score; 64] {
+        fn gen_knights() -> [Score; 64] {
             let mut scores: Vec<(&str,Score)> = vec![];
 
-            let out = [
+            let out = Self::transform_arr([
                 -50,-40,-30,-30,-30,-30,-40,-50,
                 -40,-20,  0,  0,  0,  0,-20,-40,
                 -30,  0, 10, 15, 15, 10,  0,-30,
@@ -872,13 +875,13 @@ mod eval {
                 -30,  5, 10, 15, 15, 10,  5,-30,
                 -40,-20,  0,  5,  5,  0,-20,-40,
                 -50,-40,-30,-30,-30,-30,-40,-50,
-            ];
+            ]);
 
             out
         }
 
         fn gen_bishops() -> [Score; 64] {
-            [
+            Self::transform_arr([
                 -20,-10,-10,-10,-10,-10,-10,-20,
                 -10,  0,  0,  0,  0,  0,  0,-10,
                 -10,  0,  5, 10, 10,  5,  0,-10,
@@ -887,11 +890,11 @@ mod eval {
                 -10, 10, 10, 10, 10, 10, 10,-10,
                 -10,  5,  0,  0,  0,  0,  5,-10,
                 -20,-10,-10,-10,-10,-10,-10,-20,
-            ]
+            ])
         }
 
         fn gen_queens() -> [Score; 64] {
-            [
+            Self::transform_arr([
                 -20,-10,-10, -5, -5,-10,-10,-20,
                 -10,  0,  0,  0,  0,  0,  0,-10,
                 -10,  0,  5,  5,  5,  5,  0,-10,
@@ -900,11 +903,11 @@ mod eval {
                 -10,  5,  5,  5,  5,  5,  0,-10,
                 -10,  0,  5,  0,  0,  0,  0,-10,
                 -20,-10,-10, -5, -5,-10,-10,-20,
-            ]
+            ])
         }
 
         pub fn gen_kings_opening() -> [Score; 64] {
-            [
+            Self::transform_arr([
                 -30,-40,-40,-50,-50,-40,-40,-30,
                 -30,-40,-40,-50,-50,-40,-40,-30,
                 -30,-40,-40,-50,-50,-40,-40,-30,
@@ -912,8 +915,31 @@ mod eval {
                 -20,-30,-30,-40,-40,-30,-30,-20,
                 -10,-20,-20,-20,-20,-20,-20,-10,
                  20, 20,  0,  0,  0,  0, 20, 20,
-                 20, 30, 10,  0,  0, 10, 30, 20,
-            ]
+                 20, 30, 10, -5,  0, 10, 30, 20,
+            ])
+        }
+
+        pub fn gen_kings_endgame() -> [Score; 64] {
+            Self::transform_arr([
+                -50,-40,-30,-20,-20,-30,-40,-50,
+                -30,-20,-10,  0,  0,-10,-20,-30,
+                -30,-10, 20, 30, 30, 20,-10,-30,
+                -30,-10, 30, 40, 40, 30,-10,-30,
+                -30,-10, 30, 40, 40, 30,-10,-30,
+                -30,-10, 20, 30, 30, 20,-10,-30,
+                -30,-30,  0,  0,  0,  0,-30,-30,
+                -50,-30,-30,-30,-30,-30,-30,-50
+            ])
+        }
+
+        fn transform_arr(xs: [Score; 64]) -> [Score; 64] {
+            let mut out = [0; 64];
+            for y in 0..8 {
+                for x in 0..8 {
+                    out[Coord(x,7 - y)] = xs[Coord(x,y)];
+                }
+            }
+            out
         }
 
     }
