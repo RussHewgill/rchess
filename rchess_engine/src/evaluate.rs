@@ -11,7 +11,7 @@ pub static STALEMATE_VALUE: Score = 20_000_000;
 
 #[derive(Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Eval {
-    pub phase:            u16,
+    pub phase:            Phase,
     pub material:         [[Score; 6]; 2],
     pub piece_positions:  [[Score; 6]; 2],
 }
@@ -130,8 +130,16 @@ impl Game {
         out
     }
 
-    pub fn game_phase(&self) -> u8 {
+    pub fn non_pawn_material(&self) -> (Score,Score) {
         unimplemented!()
+    }
+
+    pub fn game_phase(&self) -> Phase {
+
+        // let (npm_w,npm_b) = self.non_pawn_material();
+
+        // unimplemented!()
+        0
     }
 
     pub fn game_phase2(&self) -> u16 {
@@ -368,7 +376,7 @@ mod tapered {
             }
         }
 
-        pub fn taper(&self, phase: u16) -> Score {
+        pub fn taper(&self, phase: Phase) -> Score {
             ((self.mid * (256 - phase as Score)) + (self.end * phase as Score)) / 256
         }
 

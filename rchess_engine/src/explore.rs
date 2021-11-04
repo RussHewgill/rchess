@@ -274,10 +274,11 @@ impl Explorer {
         let (alpha,beta) = (alpha + 200,beta - 200);
 
         let mut stats = SearchStats::default();
+        let mut stop_counter = 0;
 
         let res = self._ab_search_negamax(
             &ts, &self.game, depth, depth,
-            0, (alpha, beta),
+            0, &mut stop_counter, (alpha, beta),
             &mut stats,
             VecDeque::new(),
             &mut history,

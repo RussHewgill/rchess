@@ -78,7 +78,7 @@ pub struct GameState {
     pub castling:           Castling,
 
     // pub score:              Score,
-    pub phase:              u8,
+    pub phase:              Phase,
     pub last_capture:       Option<Coord>,
     // pub last_capture:       CC,
 
@@ -91,6 +91,8 @@ pub struct GameState {
     pub king_blocks_b:      BitBoard,
     pub check_block_mask:   BitBoard,
 }
+
+pub type Phase = u8;
 
 mod castling {
     use crate::types::*;

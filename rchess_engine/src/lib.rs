@@ -48,6 +48,7 @@ pub mod timer;
 pub mod tuning;
 pub mod hashing;
 pub mod trans_table;
+pub mod material_table;
 
 // #[macro_use]
 pub mod searchstats;

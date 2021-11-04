@@ -89,6 +89,7 @@ impl Explorer {
         max_depth:               Depth,
         depth:                   Depth,
         ply:                     i16,
+        mut stop_counter:        &mut u16,
         (mut alpha, mut beta):   (i32,i32),
         mut stats:               &mut SearchStats,
         prev_mvs:                VecDeque<(Zobrist,Move)>,
@@ -281,7 +282,7 @@ impl Explorer {
                     {
                         let depth3 = depth - 3;
                         match self._ab_search_negamax(
-                            &ts, &g2, max_depth, depth3, ply + 1,
+                            &ts, &g2, max_depth, depth3, ply + 1, &mut stop_counter,
                             (-beta, -alpha), &mut stats,
                             pms.clone(), &mut history, tt_r, tt_w.clone(),
                             false,
@@ -311,7 +312,7 @@ impl Explorer {
                     let (a2,b2) = (-beta, -alpha);
 
                     match self._ab_search_negamax(
-                        &ts, &g2, max_depth, depth2, ply + 1,
+                        &ts, &g2, max_depth, depth2, ply + 1, &mut stop_counter,
                         (a2, b2), &mut stats,
                         pms.clone(), &mut history, tt_r, tt_w.clone(), false, true) {
                         ABSingle(mut res) => {
@@ -321,7 +322,7 @@ impl Explorer {
                             #[cfg(feature = "pvs_search")]
                             if !search_pv && res.score > alpha {
                                 match self._ab_search_negamax(
-                                    &ts, &g2, max_depth, depth2, ply + 1,
+                                    &ts, &g2, max_depth, depth2, ply + 1, &mut stop_counter,
                                     (-beta, -alpha), &mut stats,
                                     pms, &mut history, tt_r, tt_w.clone(), false, true) {
                                     ABSingle(mut res2) => {

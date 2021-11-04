@@ -60,6 +60,8 @@ pub fn crit_bench_1(c: &mut Criterion) {
     //     let (m,stats) = ex.explore(&ts, None);
     // }));
 
+    // baseline = 6.69 us
+
     group.bench_function("game_phase", |b| b.iter(|| {
         let mut k = 0;
         for g in games.iter() {
