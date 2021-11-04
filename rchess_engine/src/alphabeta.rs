@@ -88,7 +88,7 @@ impl Explorer {
         g:                       &Game,
         max_depth:               Depth,
         depth:                   Depth,
-        ply:                     i16,
+        ply:                     Depth,
         mut stop_counter:        &mut u16,
         (mut alpha, mut beta):   (i32,i32),
         mut stats:               &mut SearchStats,
@@ -102,19 +102,23 @@ impl Explorer {
 
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
 
-        if self.stop.load(SeqCst) {
-            return ABNone;
-        }
-
-        {
-            let r = self.best_mate.read();
-            if let Some(best) = *r {
-                drop(r);
-                if best <= max_depth {
-                    trace!("halting search of depth {}, faster mate found", max_depth);
-                    return ABNone;
+        if *stop_counter > 2000 {
+            if self.stop.load(SeqCst) {
+                return ABNone;
+            }
+            {
+                let r = self.best_mate.read();
+                if let Some(best) = *r {
+                    drop(r);
+                    if best <= max_depth {
+                        trace!("halting search of depth {}, faster mate found", max_depth);
+                        return ABNone;
+                    }
                 }
             }
+            *stop_counter = 0;
+        } else {
+            *stop_counter += 1;
         }
 
         let moves = g.search_all(&ts);
@@ -271,8 +275,8 @@ impl Explorer {
                     #[cfg(feature = "late_move_reduction")]
                     if lmr
                         && !is_pv_node
-                        && moves_searched >= 4
-                        && ply >= 3
+                        && moves_searched >= LMR_MIN_MOVES
+                        && ply >= LMR_MIN_PLY
                         && depth > 2
                         // && depth > 3
                         && !mv.filter_all_captures()
@@ -565,7 +569,7 @@ impl Explorer {
 
         // if !tt_r.contains_key(&g.zobrist) {}
         /// XXX: stat padding by including nodes found in TT
-        stats!(stats.inc_nodes_arr(k));
+        stats!(stats.inc_nodes_arr(k as u8));
         stats!(stats.nodes += 1);
 
         if depth == 0 {

@@ -52,23 +52,23 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
     group.warm_up_time(Duration::from_secs_f64(1.0));
 
-    // group.sample_size(10);
-    // group.measurement_time(Duration::from_secs_f64(5.));
+    group.sample_size(10);
+    group.measurement_time(Duration::from_secs_f64(5.));
 
-    // group.bench_function("explore", |b| b.iter(|| {
-    //     let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
-    //     let (m,stats) = ex.explore(&ts, None);
-    // }));
+    group.bench_function("explore", |b| b.iter(|| {
+        let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+        let (m,stats) = ex.explore(&ts, None);
+    }));
 
     // baseline = 6.69 us
 
-    group.bench_function("game_phase", |b| b.iter(|| {
-        let mut k = 0;
-        for g in games.iter() {
-            let ph = g.game_phase();
-            k += ph;
-        }
-    }));
+    // group.bench_function("game_phase", |b| b.iter(|| {
+    //     let mut k = 0;
+    //     for g in games.iter() {
+    //         let ph = g.game_phase();
+    //         k += ph;
+    //     }
+    // }));
 
     // group.bench_function("search_all", |b| b.iter(|| {
     //     for g in games.iter() {

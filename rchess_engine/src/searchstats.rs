@@ -180,7 +180,7 @@ mod ss {
             (a.0 + b.0, a.1 + b.1)
         }
 
-        pub fn inc_nodes_arr(&mut self, ply: i16) {
+        pub fn inc_nodes_arr(&mut self, ply: Depth) {
             // self.nodes_arr.0[d as usize] += 1;
             self.nodes_arr.0[ply as usize] += 1;
         }

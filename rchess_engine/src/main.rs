@@ -127,16 +127,17 @@ fn main() {
     //     Wat3
     // }
 
-    // // let s = std::mem::size_of::<Eval>();
-    // // let s = std::mem::size_of::<rchess_engine_lib::types::Color>();
-    // let s = std::mem::size_of::<Game>();
-    // eprintln!("size  = {:?}", s);
-    // // let a = std::mem::align_of::<GameState>();
-    // // eprintln!("align = {:?}", a);
-    // // let s = u16::MAX;
-    // // eprintln!("s = {:#8x}", s);
+    // let s = std::mem::size_of::<Eval>();
+    // let s = std::mem::size_of::<rchess_engine_lib::types::Color>();
+    let s = std::mem::size_of::<Game>();
+    // let s = std::mem::size_of::<GameState>();
+    eprintln!("size  = {:?}", s);
+    // let a = std::mem::align_of::<GameState>();
+    // eprintln!("align = {:?}", a);
+    // let s = u16::MAX;
+    // eprintln!("s = {:#8x}", s);
 
-    // return;
+    return;
 
     let mut args: Vec<String> = std::env::args().collect();
     match args.get(1) {
@@ -241,8 +242,8 @@ fn main9() {
     let n = 35;
     // let n = 6;
 
-    let t = 10.0;
-    // let t = 5.0;
+    // let t = 10.0;
+    let t = 6.0;
     // let t = 1.0;
     // let t = 0.5;
 

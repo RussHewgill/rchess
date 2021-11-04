@@ -8,9 +8,13 @@ pub use self::piece_square_tables::*;
 
 use serde::{Serialize,Deserialize};
 
+pub static LMR_MIN_MOVES: Depth = 4;
+pub static LMR_MIN_PLY: Depth = 3;
+
+pub static QS_RECAPS_ONLY: Depth = 5;
+
 mod piece_square_tables {
 }
-
 
 /// Passed bonus = passed * ranks past 2nd
 // #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]

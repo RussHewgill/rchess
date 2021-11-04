@@ -77,7 +77,7 @@ pub struct GameState {
     pub en_passant:         Option<Coord>,
     pub castling:           Castling,
 
-    // pub score:              Score,
+    // pub mat_score:          Option<Score>,
     pub phase:              Phase,
     pub last_capture:       Option<Coord>,
     // pub last_capture:       CC,
@@ -434,16 +434,6 @@ impl Game {
         self.state.king_blocks_b = BitBoard::empty();
         // self.state.pinners       = None;
     }
-
-    // fn update_occupied_mut(&mut self) {
-    //     self.state.occupied =
-    //         self.state.pawns
-    //         | self.state.rooks
-    //         | self.state.knights
-    //         | self.state.bishops
-    //         | self.state.queens
-    //         | self.state.kings
-    // }
 
     fn update_pins_mut(&mut self, ts: &Tables) {
         // let pw = self.find_pins_absolute(&ts, White);

@@ -47,6 +47,16 @@ pub struct Explorer {
     // pub prev_eval:     Arc<>
 }
 
+#[derive(Debug,Clone,Copy)]
+pub struct ABConfig<'a> {
+    pub max_depth:        Depth,
+    pub depth:            Depth,
+    pub ply:              Depth,
+    pub tt_r:             &'a TTRead,
+    pub root:             bool,
+    pub do_null:          bool,
+}
+
 /// New
 impl Explorer {
     pub fn new(side:          Color,

@@ -3,6 +3,7 @@ use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
 use crate::explore::*;
+use crate::tuning::*;
 
 use std::sync::atomic::Ordering::SeqCst;
 
@@ -17,7 +18,7 @@ impl Explorer {
         &self,
         ts:             &Tables,
         g:              &Game,
-        (ply,qply):     (i16,i16),
+        (ply,qply):     (Depth,Depth),
         mut alpha:      i32,
         mut beta:       i32,
         mut stats:      &mut SearchStats,
@@ -51,8 +52,7 @@ impl Explorer {
             // trace!("qsearch new alpha: {:?}", alpha);
         }
 
-        const RECAPS_ONLY: i16 = 5;
-        let mut moves = if qply > RECAPS_ONLY && !g.in_check() && g.state.last_capture.is_some() {
+        let mut moves = if qply > QS_RECAPS_ONLY && !g.in_check() && g.state.last_capture.is_some() {
             let cap = g.state.last_capture.unwrap();
 
             match g.search_all_single_to(&ts, cap, None, true) {
@@ -62,7 +62,7 @@ impl Explorer {
                 },
                 _                  => vec![],
             }
-        } else if qply > RECAPS_ONLY && !g.in_check() {
+        } else if qply > QS_RECAPS_ONLY && !g.in_check() {
             // stats.qt_misses += 1;
             return stand_pat;
         } else {

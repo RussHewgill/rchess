@@ -17,7 +17,7 @@ impl Explorer {
         mut g:              &Game,
         max_depth:          Depth,
         depth:              Depth,
-        ply:                i16,
+        ply:                Depth,
         alpha:              i32,
         beta:               i32,
         mut stats:          &mut SearchStats,
@@ -33,6 +33,7 @@ impl Explorer {
 
         // if depth <= (1 + r) { return false; }
         if depth < (1 + r) { return false; }
+        let mut stop_counter = 0;
 
         if let Ok(g2) = g.make_move_unchecked(ts, mv) {
             let mut pms = prev_mvs.clone();
@@ -40,7 +41,7 @@ impl Explorer {
 
             if let ABResults::ABSingle(mut res) = self._ab_search_negamax(
                 &ts, &g2, max_depth,
-                depth - 1 - r, ply + 1,
+                depth - 1 - r, ply + 1, &mut stop_counter,
                 (-beta, -beta + 1),
                 // -beta, -alpha,
                 &mut stats, pms, &mut history,
