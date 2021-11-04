@@ -34,9 +34,10 @@ impl Explorer {
         stats.qt_nodes += 1;
         stats!(stats.q_max_depth = stats.q_max_depth.max(ply as u8));
 
-        if stand_pat >= beta && allow_stand_pat {
+        if allow_stand_pat && stand_pat >= beta {
             // trace!("qsearch returning beta 0: {:?}, sp = {}", beta, stand_pat);
             return beta;
+            // return stand_pat;
         }
 
         if stand_pat > alpha {
@@ -141,6 +142,7 @@ impl Explorer {
                 if score >= beta && allow_stand_pat {
                     // trace!("qsearch returning beta 1: {:?}", beta);
                     return beta;
+                    // return stand_pat;
                 }
 
                 if score > alpha {

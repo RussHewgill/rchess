@@ -453,8 +453,8 @@ impl Explorer {
                         // res.moves.len() as u8,
                         // res.moves.len() as u8 - 1,
                         // res.moves.len() as u8,
-                        // depth - 1,
-                        depth,
+                        depth - 1,
+                        // depth,
                         node_type,
                         res.score,
                     ));
