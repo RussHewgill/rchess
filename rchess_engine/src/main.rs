@@ -242,8 +242,8 @@ fn main9() {
     let n = 35;
     // let n = 6;
 
-    // let t = 10.0;
-    let t = 6.0;
+    let t = 10.0;
+    // let t = 6.0;
     // let t = 1.0;
     // let t = 0.5;
 

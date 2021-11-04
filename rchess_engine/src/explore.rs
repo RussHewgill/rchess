@@ -308,7 +308,9 @@ impl Explorer {
             // &tt_r, tt_w.clone(),true,true);
             &tt_r, tt_w.clone());
 
+        // XXX: ??
         match tx.send((depth,res,stats)) {
+        // match tx.try_send((depth,res,stats)) {
             Ok(_) => {},
             // Err(_) => panic!("tx send error: depth {}", depth),
             Err(_) => trace!("tx send error: depth {}", depth),
@@ -367,8 +369,9 @@ impl Explorer {
             #[cfg(feature = "one_thread")]
             let max_threads = 1;
             #[cfg(not(feature = "one_thread"))]
-            let max_threads = 6;
+            // let max_threads = 6;
             // let max_threads = np_cpus;
+            let max_threads = 6;
 
             let depths = vec![
                 0, 1, 0, 2, 0, 1,
@@ -380,57 +383,61 @@ impl Explorer {
                 // + (self.timer.settings.safety / 2.0);
             let t_max = Duration::from_secs_f64(t_max);
 
-            let rx_thread = s.spawn(move |_| loop {
-                match rx.try_recv() {
-                    Err(TryRecvError::Empty)    => {
-                        // std::thread::sleep(sleep_time);
-                        std::thread::sleep(Duration::from_millis(1));
-                    },
-                    Err(TryRecvError::Disconnected)    => {
-                        trace!("Breaking thread counter loop (Disconnect)");
-                        break;
-                    },
-                    Ok((depth,abres,stats0)) => {
-                        if stop2.load(SeqCst) {
-                            trace!("Breaking thread counter loop (Force Stop)");
-                            let mut w = out1.write();
-                            w.2 = w.2 + stats0;
+            let rx_thread = s.builder()
+                // .stack_size(4 * 1024 * 1024) // 4 MiB
+                .spawn(move |_| loop {
+
+                    match rx.try_recv() {
+                        Err(TryRecvError::Empty)    => {
+                            std::thread::sleep(sleep_time);
+                            // std::thread::sleep(Duration::from_millis(1));
+                        },
+                        Err(TryRecvError::Disconnected)    => {
+                            trace!("Breaking thread counter loop (Disconnect)");
                             break;
-                        }
-                        match abres.clone() {
-                            ABResults::ABList(bestres, ress) if depth > best_depth2.load(SeqCst) => {
-                                best_depth2.store(depth,SeqCst);
-
-                                debug!("new best move d({}): {:.3}s: {}: {:?}",
-                                       depth, t0.elapsed().as_secs_f64(),
-                                       bestres.score, bestres.moves.front());
-
-                                if bestres.score > 100_000_000 - 50 {
-                                    let k = 100_000_000 - bestres.score.abs();
-                                    debug!("Found mate in {}: d({}), {:?}", k, depth, bestres.moves.front());
-                                    let mut best = self.best_mate.write();
-                                    *best = Some(k as u8);
-                                    let mut w = out1.write();
-                                    *w = (depth, abres, w.2 + stats0);
-                                    // *w = (depth, scores, None);
-                                    break;
-                                } else {
-                                    let mut w = out1.write();
-                                    *w = (depth, abres, w.2 + stats0);
-                                }
-
-                            },
-                            _ => {
+                        },
+                        Ok((depth,abres,stats0)) => {
+                            if stop2.load(SeqCst) {
+                                trace!("Breaking thread counter loop (Force Stop)");
                                 let mut w = out1.write();
                                 w.2 = w.2 + stats0;
-                            },
+                                break;
+                            }
+                            match abres.clone() {
+                                ABResults::ABList(bestres, ress) if depth > best_depth2.load(SeqCst) => {
+                                    best_depth2.store(depth,SeqCst);
 
-                        }
-                        thread_counter2.fetch_sub(1, SeqCst);
-                        trace!("decrementing thread counter, new val = {}", thread_counter2.load(SeqCst));
-                    },
-                }
-            });
+                                    debug!("new best move d({}): {:.3}s: {}: {:?}",
+                                        depth, t0.elapsed().as_secs_f64(),
+                                        bestres.score, bestres.moves.front());
+
+                                    if bestres.score > 100_000_000 - 50 {
+                                        let k = 100_000_000 - bestres.score.abs();
+                                        debug!("Found mate in {}: d({}), {:?}",
+                                               k, depth, bestres.moves.front());
+                                        let mut best = self.best_mate.write();
+                                        *best = Some(k as u8);
+                                        let mut w = out1.write();
+                                        *w = (depth, abres, w.2 + stats0);
+                                        // *w = (depth, scores, None);
+                                        break;
+                                    } else {
+                                        let mut w = out1.write();
+                                        *w = (depth, abres, w.2 + stats0);
+                                    }
+
+                                },
+                                _ => {
+                                    let mut w = out1.write();
+                                    w.2 = w.2 + stats0;
+                                },
+
+                            }
+                            thread_counter2.fetch_sub(1, SeqCst);
+                            trace!("decrementing thread counter, new val = {}", thread_counter2.load(SeqCst));
+                        },
+                    }
+                }).unwrap();
 
             'outer: loop {
 
@@ -516,6 +523,8 @@ impl Explorer {
                     trace!("spawning thread: (sid: {}) = cur_depth {:?}", sid, cur_depth);
                     s.builder()
                         // .stack_size(4 * 1024 * 1024) // 4 MiB
+                        // .stack_size(1 * 512 * 1024) // 0.5 MiB
+                        // .stack_size(64 * 1024) // 64 KiB
                         .spawn(move |_| {
                             self._lazy_smp_single_negamax(
                                 // self._lazy_smp_single_aspiration(

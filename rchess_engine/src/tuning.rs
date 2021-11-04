@@ -12,6 +12,7 @@ pub static LMR_MIN_MOVES: Depth = 4;
 pub static LMR_MIN_PLY: Depth = 3;
 
 pub static QS_RECAPS_ONLY: Depth = 5;
+// pub static QS_RECAPS_ONLY: Depth = 100;
 
 mod piece_square_tables {
 }
