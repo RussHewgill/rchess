@@ -9,10 +9,9 @@
         "command": "/usr/bin/stockfish",
         "protocol": "uci",
         "options": [
-            {
-                "name": "Skill Level",
-                "value": 5
-            }
+            { "name": "Skill Level", "value": 20 },
+            { "name": "UCI_LimitStrength", "value": true },
+            { "name": "UCI_Elo", "value": 2000 }
         ]
     }
 ]

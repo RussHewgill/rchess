@@ -220,12 +220,11 @@ fn main9() {
 
     // let fen = "4r2k/3Q2pp/4p3/p3p3/P1P1N3/5P2/1P4P1/1KR5 b - -"; // Non legal move, e4f6
 
-    // let fen = "8/1pk3bp/p2nbr2/4p1p1/1K1nP3/P2B3P/1RPR1PP1/8 b - -"; // ??
-    // let fen = "8/1pk3bp/p2nbr2/4p1p1/1K1nP3/P2B3P/1RPR1PP1/8 b - -"; // ??
+    let fen = "2r2rk1/pp1q1ppp/2np1n2/3pp3/3P4/1Q1BPP2/PPPB1P1P/R4RK1 w - - 0 14"; // ??
+    // let fen = "2r2rk1/pp1q1ppp/2np1n2/3pp3/3P4/1QBBPP2/PPP2P1P/R4RK1 b - - 1 14"; // ??
 
-    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
-
-    let fen = "7k/8/8/8/8/8/4Q3/7K w - - 0 1"; // Queen endgame, #7
+    // let fen = "7k/8/8/8/8/8/4Q3/7K w - - 0 1"; // Queen endgame, #7
+    // let fen = "7k/8/8/8/8/8/4R3/7K w - - 0 1"; // Rook endgame,
 
     // let fen = &games(8); // Qt R e7f7, #7
 
@@ -236,7 +235,7 @@ fn main9() {
     eprintln!("g = {:?}", g);
 
     let n = 35;
-    // let n = 6;
+    // let n = 3;
 
     let t = 10.0;
     // let t = 6.0;
@@ -320,8 +319,8 @@ fn main9() {
     //     eprintln!("s, ms = {:>8}: {:?}", res.score, res.moves);
     // }
 
-    eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
     for m in best.moves.iter() { eprintln!("\t{:?}", m); }
+    eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
 
     // let k = best.score - CHECKMATE_VALUE;
     // eprintln!("k = {:?}", k);

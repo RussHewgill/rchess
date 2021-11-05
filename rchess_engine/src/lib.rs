@@ -51,6 +51,8 @@ pub mod trans_table;
 pub mod lockfree_hashmap;
 pub mod material_table;
 
+pub mod brain;
+
 // #[macro_use]
 pub mod searchstats;
 

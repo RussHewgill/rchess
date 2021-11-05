@@ -196,7 +196,6 @@ mod castling {
 
 }
 
-// Eq
 impl GameState {
     pub fn game_equal(&self, other: Self) -> bool {
         (self.side_to_move == other.side_to_move)

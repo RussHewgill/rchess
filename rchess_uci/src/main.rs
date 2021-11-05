@@ -82,8 +82,8 @@ fn main() -> std::io::Result<()> {
     // let timesettings = TimeSettings::new_f64(10., 0.1);
     let timesettings = TimeSettings::new_f64(
         0.0,
-        // 0.5,
-        1.0,
+        0.4,
+        // 1.0,
         // 0.4,
         // 0.4,
     );
