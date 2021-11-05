@@ -72,15 +72,11 @@ pub struct GameState {
     pub queens:             BitBoard,
     pub kings:              BitBoard,
 
-    // pub occupied:           BitBoard,
-
     pub en_passant:         Option<Coord>,
     pub castling:           Castling,
 
-    // pub mat_score:          Option<Score>,
     pub phase:              Phase,
     pub last_capture:       Option<Coord>,
-    // pub last_capture:       CC,
     pub material:           [[u8; 5]; 2],
 
     // pub checkers:           Option<BitBoard>,

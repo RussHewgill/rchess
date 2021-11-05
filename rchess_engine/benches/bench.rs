@@ -55,7 +55,7 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("group");
 
-    group.warm_up_time(Duration::from_secs_f64(1.0));
+    group.warm_up_time(Duration::from_secs_f64(3.0));
 
     group.sample_size(20);
     group.measurement_time(Duration::from_secs_f64(10.));

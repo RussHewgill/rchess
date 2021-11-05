@@ -187,10 +187,8 @@ fn main() -> std::io::Result<()> {
                         let (mv,score) = m.unwrap();
 
                         let mm = format_move(mv);
-                        println!("bestmove {}", mm);
-
                         print_info(&explorer, (mv,score), stats);
-
+                        println!("bestmove {}", mm);
                     },
                     s            => unimplemented!("bad command: {:?}", s),
                 }

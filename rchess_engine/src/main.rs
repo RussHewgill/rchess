@@ -197,7 +197,7 @@ fn main9() {
         ex.lazy_smp_negamax(&ts, false, false)
     }
 
-    // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
+    let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
     // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
@@ -218,16 +218,11 @@ fn main9() {
     // // let fen = "5rk1/4npp1/1p4b1/1B2p3/1P1P2Q1/4P3/4KPP1/7r w - - 0 4"; // after evade, -320
     // // let fen = "5rk1/4npp1/1p4b1/1B2p3/1P1P4/4P3/5PP1/3K3R b - - 0 4"; // after block, -220
 
-    // let fen = "4r2k/3Q2pp/4p3/p3p3/P1P1N3/5P2/1P4P1/1KR5 b - -"; // Non legal move, e4f6
-
-    // let fen = "2r2rk1/pp1q1ppp/2np1n2/3pp3/3P4/1Q1BPP2/PPPB1P1P/R4RK1 w - - 0 14"; // ??
-    // let fen = "2r2rk1/pp1q1ppp/2np1n2/3pp3/3P4/1QBBPP2/PPP2P1P/R4RK1 b - - 1 14"; // ??
-
-    // let fen = "7k/8/8/8/8/8/4Q3/7K w - - 0 1"; // Queen endgame, #7
-    // let fen = "7k/4Q3/8/8/8/8/8/7K w - - 4 3"; // Queen endgame, #6
-    let fen = "7k/4Q3/8/8/8/8/6K1/8 w - - 4 3"; // Queen endgame, #5
-    // let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
-    // let fen = "7k/8/8/8/8/8/4R3/7K w - - 0 1"; // Rook endgame,
+    // // let fen = "7k/8/8/8/8/8/4Q3/7K w - - 0 1"; // Queen endgame, #7
+    // // let fen = "7k/4Q3/8/8/8/8/8/7K w - - 4 3"; // Queen endgame, #6
+    // let fen = "7k/4Q3/8/8/8/8/6K1/8 w - - 4 3"; // Queen endgame, #5
+    // // let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
+    // // let fen = "7k/8/8/8/8/8/4R3/7K w - - 0 1"; // Rook endgame,
 
     // let fen = &games(8); // Qt R e7f7, #7
 
@@ -252,19 +247,6 @@ fn main9() {
         hook(panicinfo)
     }));
 
-    // let mv = Move::Capture { from: "B7".into(), to: "E7".into(), pc: Rook, victim: Knight };
-    // let s = g.static_exchange(&ts, mv);
-    // eprintln!("see = {:?}", s);
-    // return;
-
-    let e = g.evaluate(&ts);
-    eprintln!("base eval = {:?}", e.sum());
-
-    // let wm = e.material[White];
-    // let bm = e.material[Black];
-    // eprintln!("wm = {:?}", wm);
-    // eprintln!("bm = {:?}", bm);
-
     // let mv = Move::Quiet { from: "E4".into(), to: "F6".into(), pc: Knight };
     // let g2 = g.make_move_unchecked(&ts, mv).unwrap();
     // eprintln!("g2 = {:?}", g2);
@@ -274,16 +256,9 @@ fn main9() {
     // let timesettings = TimeSettings::new_f64(0.0,t);
     // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
     // let mut stats = SearchStats::default();
-
     // let (alpha,beta) = (i32::MIN,i32::MAX);
     // let (alpha,beta) = (alpha + 200,beta - 200);
     // // let (alpha,beta) = (-100,-99);
-
-    // let moves = g.search_only_captures(&ts).get_moves_unsafe();
-    // for m in moves.iter() {
-    //     eprintln!("m = {:?}", m);
-    // }
-
     // let s = ex.qsearch(&ts, &g, (0,0), alpha, beta, &mut stats);
     // eprintln!("qsearch result = {:?}", s);
     // return;
@@ -294,28 +269,24 @@ fn main9() {
 
     // return;
 
-    // let e = g.evaluate(&ts).sum();
-    // eprintln!("eval = {:?}", e);
+    let e = g.evaluate(&ts);
+    eprintln!("base eval = {:?}", e.sum());
 
-    let k = 10;
-    let mut xs = vec![];
-    for _ in 0..k {
-        let t0 = std::time::Instant::now();
-        let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), t);
-        let t1 = t0.elapsed();
-        let t2 = t1.as_secs_f64();
-        xs.push(t2);
-    }
-
-    let avg: f64 = xs.iter().sum();
-    let avg = avg / xs.len() as f64;
-    let min = xs.iter().min_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
-    let max = xs.iter().max_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
-
-
-    eprintln!("{} iterations, avg {:.3}s, [{:.3},{:.3}]", k, avg, min, max);
-
-    return;
+    // let k = 5;
+    // let mut xs = vec![];
+    // for _ in 0..k {
+    //     let t0 = std::time::Instant::now();
+    //     let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), t);
+    //     let t1 = t0.elapsed();
+    //     let t2 = t1.as_secs_f64();
+    //     xs.push(t2);
+    // }
+    // let avg: f64 = xs.iter().sum();
+    // let avg = avg / xs.len() as f64;
+    // let min = xs.iter().min_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
+    // let max = xs.iter().max_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
+    // eprintln!("{} iterations, avg {:.3}s, [{:.3},{:.3}]", k, avg, min, max);
+    // return;
 
     let t0 = std::time::Instant::now();
     // println!("g = {:?}", g);
