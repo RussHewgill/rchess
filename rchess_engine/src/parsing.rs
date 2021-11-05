@@ -27,6 +27,7 @@ impl Game {
         // g.recalc_gameinfo_mut();
 
         let _ = g.recalc_gameinfo_mut(&ts);
+        let _ = g.init_gameinfo_mut(&ts);
 
         g.zobrist = Zobrist::new(&ts, g.clone());
 

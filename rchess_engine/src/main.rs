@@ -205,7 +205,7 @@ fn main9() {
         ex.lazy_smp(&ts, false, false)
     }
 
-    let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
+    // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
     // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
@@ -233,7 +233,7 @@ fn main9() {
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
 
-    let fen = "7k/8/8/8/8/8/4Q3/7K w - - 0 1"; // Queen endgame, #7
+    // let fen = "7k/8/8/8/8/8/4Q3/7K w - - 0 1"; // Queen endgame, #7
 
     // let fen = &games(8); // Qt R e7f7, #7
 
@@ -287,10 +287,9 @@ fn main9() {
     // eprintln!("qsearch result = {:?}", s);
     // return;
 
-    // let ms = vec![ "g1e2", ];
+    // let ms = vec!["c2c4",];
     // let g2 = g.run_moves(&ts, ms);
-    // let e = g2.evaluate(&ts).sum();
-    // eprintln!("eval 2 = {:?}", e);
+    // eprintln!("g2 = {:?}", g2);
 
     // return;
 
@@ -1226,7 +1225,7 @@ fn main4(depth: Option<u64>) {
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
     // let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
-    let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  "; // Position 5
+    // let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  "; // Position 5
 
     // let fen = "r3k2r/p1p1qpb1/bn1ppnp1/3PN3/1p2P3/2N4Q/PPPBBPPP/R3K2R w KQkq - 0 2";
 
@@ -1249,12 +1248,29 @@ fn main4(depth: Option<u64>) {
     // println!("perft done in {} seconds.", t);
     // println!("stockfish took {} seconds.", t_sf);
 
-    let t0 = std::time::Instant::now();
-    let (tot,_) = g.perft(&ts, n);
-    // let (tot,vs) = g.perft2(&ts, n as Depth);
-    // eprintln!("n = {:?}", n);
-    let t1 = t0.elapsed().as_secs_f64();
-    println!("perft done in {} seconds.", t1);
+    // let t0 = std::time::Instant::now();
+    // let (tot,_) = g.perft(&ts, n);
+    // // let (tot,vs) = g.perft2(&ts, n as Depth);
+    // // eprintln!("n = {:?}", n);
+    // let t1 = t0.elapsed().as_secs_f64();
+    // println!("perft done in {} seconds.", t1);
+
+    let ds = vec![
+        20,
+        400,
+        8902,
+        197281,
+    ];
+
+    for d in 1..n+1 {
+        let t0 = std::time::Instant::now();
+        let (tot,_) = g.perft(&ts, d);
+        let t1 = t0.elapsed().as_secs_f64();
+        println!("depth {:>2}: {:>12} leaves, {} leaves/sec",
+                 d, tot, pretty_print_si((tot as f64 / t1) as i64));
+        // eprintln!("correct == tot = {:?}", ds[d as usize - 1] == tot);
+        assert!(ds[d as usize - 1] == tot);
+    }
 
     // for d in 1..n+1 {
     //     let t0 = std::time::Instant::now();
@@ -1269,7 +1285,7 @@ fn main4(depth: Option<u64>) {
     //     }
     // }
 
-    println!("total:    {:>12} leaves", pretty_print_si(tot as i64));
+    // println!("total:    {:>12} leaves", pretty_print_si(tot as i64));
 
     // println!("speed: {} leaves / second", _print((tot as f64 / t1) as i32));
 

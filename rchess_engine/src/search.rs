@@ -603,6 +603,16 @@ impl Game {
             attacks.into_iter().for_each(|sq2| {
                 let to = sq2.into();
                 let (_,victim) = self.get_at(to).unwrap();
+
+                // let (_,victim) = match self.get_at(to) {
+                //     Some(x) => x,
+                //     None    => {
+                //         let f: Coord = sq.into();
+                //         panic!("get_at: from: {:?} to: {:?}, g = {:?}",
+                //                f, to, &self);
+                //     },
+                // };
+
                 // out.push(Move::Capture { from: sq.into(), to, pc, victim });
                 let m = Move::Capture { from: sq.into(), to, pc, victim };
                 if self.move_is_legal(&ts, m) { out.push(m); }
