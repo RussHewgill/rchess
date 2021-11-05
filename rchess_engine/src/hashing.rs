@@ -1,4 +1,7 @@
 
+use std::hash::Hash;
+use std::hash::Hasher;
+
 use crate::types::*;
 use crate::tables::*;
 
@@ -16,6 +19,11 @@ impl Default for Zobrist {
         Self(0)
     }
 }
+
+// impl Hash for Zobrist {
+//     fn hash<H: Hasher>(&self, state: &mut H) {
+//     }
+// }
 
 impl Zobrist {
     pub fn new(ts: &Tables, g: Game) -> Self {

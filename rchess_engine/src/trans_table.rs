@@ -18,8 +18,13 @@ use evmap_derive::ShallowCopy;
 // use rustc_hash::Fx;
 use dashmap::{DashMap,DashSet};
 
-pub type TTRead  = ReadHandle<Zobrist, SearchInfo>;
-pub type TTWrite = Arc<Mutex<WriteHandle<Zobrist, SearchInfo>>>;
+
+pub type FxBuildHasher = core::hash::BuildHasherDefault<rustc_hash::FxHasher>;
+
+pub type TTRead  = ReadHandle<Zobrist, SearchInfo, (), FxBuildHasher>;
+pub type TTWrite = Arc<Mutex<WriteHandle<Zobrist, SearchInfo, (), FxBuildHasher>>>;
+// pub type TTRead  = ReadHandle<Zobrist, SearchInfo>;
+// pub type TTWrite = Arc<Mutex<WriteHandle<Zobrist, SearchInfo>>>;
 
 // pub type TransTable = FxHashMap<Zobrist, SearchInfo>;
 pub type TransTable = Arc<DashMap<Zobrist, SearchInfo>>;

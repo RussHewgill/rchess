@@ -220,10 +220,13 @@ fn main9() {
 
     // let fen = "4r2k/3Q2pp/4p3/p3p3/P1P1N3/5P2/1P4P1/1KR5 b - -"; // Non legal move, e4f6
 
-    let fen = "2r2rk1/pp1q1ppp/2np1n2/3pp3/3P4/1Q1BPP2/PPPB1P1P/R4RK1 w - - 0 14"; // ??
+    // let fen = "2r2rk1/pp1q1ppp/2np1n2/3pp3/3P4/1Q1BPP2/PPPB1P1P/R4RK1 w - - 0 14"; // ??
     // let fen = "2r2rk1/pp1q1ppp/2np1n2/3pp3/3P4/1QBBPP2/PPP2P1P/R4RK1 b - - 1 14"; // ??
 
     // let fen = "7k/8/8/8/8/8/4Q3/7K w - - 0 1"; // Queen endgame, #7
+    // let fen = "7k/4Q3/8/8/8/8/8/7K w - - 4 3"; // Queen endgame, #6
+    let fen = "7k/4Q3/8/8/8/8/6K1/8 w - - 4 3"; // Queen endgame, #5
+    // let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
     // let fen = "7k/8/8/8/8/8/4R3/7K w - - 0 1"; // Rook endgame,
 
     // let fen = &games(8); // Qt R e7f7, #7
@@ -237,23 +240,17 @@ fn main9() {
     let n = 35;
     // let n = 3;
 
-    // let t = 10.0;
-    let t = 5.0;
+    let t = 10.0;
+    // let t = 5.0;
     // let t = 1.0;
     // let t = 0.5;
 
     let hook = std::panic::take_hook();
-
     std::panic::set_hook(Box::new(move |panicinfo| {
-
         let loc = panicinfo.location();
-
         debug!("Panicking, Location: {:?}", loc);
-
         hook(panicinfo)
     }));
-
-    // panic!("wot");
 
     // let mv = Move::Capture { from: "B7".into(), to: "E7".into(), pc: Rook, victim: Knight };
     // let s = g.static_exchange(&ts, mv);
@@ -299,6 +296,26 @@ fn main9() {
 
     // let e = g.evaluate(&ts).sum();
     // eprintln!("eval = {:?}", e);
+
+    let k = 10;
+    let mut xs = vec![];
+    for _ in 0..k {
+        let t0 = std::time::Instant::now();
+        let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), t);
+        let t1 = t0.elapsed();
+        let t2 = t1.as_secs_f64();
+        xs.push(t2);
+    }
+
+    let avg: f64 = xs.iter().sum();
+    let avg = avg / xs.len() as f64;
+    let min = xs.iter().min_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
+    let max = xs.iter().max_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
+
+
+    eprintln!("{} iterations, avg {:.3}s, [{:.3},{:.3}]", k, avg, min, max);
+
+    return;
 
     let t0 = std::time::Instant::now();
     // println!("g = {:?}", g);

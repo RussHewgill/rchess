@@ -12,6 +12,7 @@ pub use crate::trans_table::*;
 pub use crate::searchstats::*;
 
 use std::collections::VecDeque;
+use std::hash::BuildHasher;
 use std::sync::atomic::{Ordering,Ordering::SeqCst,AtomicU8};
 use std::time::{Instant,Duration};
 
@@ -320,7 +321,10 @@ impl Explorer {
         let out: Arc<RwLock<(Depth,ABResults,SearchStats)>> =
             Arc::new(RwLock::new((0, ABResults::ABNone, SearchStats::default())));
 
-        let (tt_r, tt_w) = evmap::new();
+        let (tt_r, tt_w) = evmap::Options::default()
+            .with_hasher(FxBuildHasher::default())
+            .construct();
+
         let tt_w = Arc::new(Mutex::new(tt_w));
 
         let sleep_time = Duration::from_millis(1);

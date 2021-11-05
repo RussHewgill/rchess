@@ -16,12 +16,12 @@ pub struct Eval {
     pub piece_positions:  [[Score; 6]; 2],
 }
 
-// // #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
-// #[derive(Serialize,Deserialize,Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
-// pub struct TaperedScore {
-//     mid: Score,
-//     end: Score,
-// }
+// #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Serialize,Deserialize,Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+pub struct TaperedScore {
+    mid: Score,
+    end: Score,
+}
 
 impl Eval {
 
@@ -110,14 +110,14 @@ impl Game {
         for &col in [White,Black].iter() {
             for pc in Piece::iter_pieces() {
 
-                let mat = self.score_material(pc, col)
-                    .taper(phase);
+                let mat = self.score_material(pc, col);
+                    // .taper(phase);
                 out.set_piece_mat_mut(pc, col, mat);
 
                 #[cfg(feature = "positional_scoring")]
                 {
-                    let pos = self.score_positions(&ts, pc, col)
-                        .taper(phase);
+                    let pos = self.score_positions(&ts, pc, col);
+                        // .taper(phase);
                     out.set_piece_pos_mut(pc, col, pos);
                 }
 
@@ -223,12 +223,11 @@ impl Piece {
 /// Material Scoring
 impl Game {
 
-    pub fn score_material(&self, pc: Piece, side: Color) -> TaperedScore {
-
+    pub fn score_material(&self, pc: Piece, side: Color) -> Score {
         match pc {
             King   => {
                 let s = King.score();
-                TaperedScore::new(s, s)
+                s
             }
             Rook   => {
                 let rs = self.get(Rook, side);
@@ -236,7 +235,7 @@ impl Game {
                 // let n = rs.popcount() as i32;
                 let n = self.state.material[side][Rook.index()] as i32;
                 let s = Rook.score() * n;
-                TaperedScore::new(s,s)
+                s
             },
             // Knight => {},
             Bishop => {
@@ -248,23 +247,58 @@ impl Game {
                 } else {
                     Bishop.score() * n
                 };
-                TaperedScore::new(s,s)
+                s
             },
             _      => {
                 // let s = pc.score() * self.get(pc, side).popcount() as i32;
                 let n = self.state.material[side][pc.index()] as i32;
                 let s = pc.score() * n;
-                TaperedScore::new(s,s)
+                s
             },
         }
     }
+
+    // pub fn score_material(&self, pc: Piece, side: Color) -> TaperedScore {
+    //     match pc {
+    //         King   => {
+    //             let s = King.score();
+    //             TaperedScore::new(s, s)
+    //         }
+    //         Rook   => {
+    //             let rs = self.get(Rook, side);
+    //             // let n = rs.popcount() as i32;
+    //             let n = self.state.material[side][Rook.index()] as i32;
+    //             let s = Rook.score() * n;
+    //             TaperedScore::new(s,s)
+    //         },
+    //         // Knight => {},
+    //         Bishop => {
+    //             // let n = self.get(Bishop, side).popcount() as i32;
+    //             let n = self.state.material[side][Bishop.index()] as i32;
+    //             let s = if n > 1 {
+    //                 // 2 bishops = 0.5 pawn
+    //                 Bishop.score() * n + 50
+    //             } else {
+    //                 Bishop.score() * n
+    //             };
+    //             TaperedScore::new(s,s)
+    //         },
+    //         _      => {
+    //             // let s = pc.score() * self.get(pc, side).popcount() as i32;
+    //             let n = self.state.material[side][pc.index()] as i32;
+    //             let s = pc.score() * n;
+    //             TaperedScore::new(s,s)
+    //         },
+    //     }
+    // }
 
 }
 
 /// Positional Scoring
 impl Game {
 
-    pub fn score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> TaperedScore {
+    // pub fn score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> TaperedScore {
+    pub fn score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> Score {
         let mut pos = self._score_positions(&ts, pc, col);
         match pc {
             Pawn   => {
@@ -299,7 +333,8 @@ impl Game {
         }
     }
 
-    fn _score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> TaperedScore {
+    // fn _score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> TaperedScore {
+    fn _score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> Score {
         let pieces = self.get(pc, col);
         let mut score_mg = 0;
         let mut score_eg = 0;
@@ -307,7 +342,8 @@ impl Game {
             score_mg += ts.piece_tables.get_mid(pc, col, sq);
             score_eg += ts.piece_tables.get_end(pc, col, sq);
         });
-        TaperedScore::new(score_mg,score_eg)
+        self.taper_score(score_mg, score_eg)
+        // TaperedScore::new(score_mg,score_eg)
     }
 
 }
@@ -403,9 +439,9 @@ mod tapered {
             }
         }
 
-        pub fn taper(&self, phase: Phase) -> Score {
-            ((self.mid * (256 - phase as Score)) + (self.end * phase as Score)) / 256
-        }
+        // pub fn taper(&self, phase: Phase) -> Score {
+        //     ((self.mid * (256 - phase as Score)) + (self.end * phase as Score)) / 256
+        // }
 
     }
 

@@ -226,7 +226,7 @@ impl Explorer {
         };
 
         /// Move Ordering
-        order_searchinfo(false, &mut gs[..]);
+        order_searchinfo(&mut gs[..]);
 
         let mut node_type = Node::All;
 
@@ -274,26 +274,47 @@ impl Explorer {
                     let mut lmr = true;
                     let mut depth2 = depth - 1;
 
+                    if mv.filter_all_captures() {
+                        let see = g2.static_exchange(&ts, *mv).unwrap();
+                        /// Capture with good SEE: do not reduce
+                        if see > 0 {
+                            lmr = false;
+                        }
+                    }
+
                     /// not reducing when in check replaces check extension
                     #[cfg(feature = "late_move_reduction")]
                     if lmr
                         && !is_pv_node
                         && moves_searched >= LMR_MIN_MOVES
-                        && ply >= LMR_MIN_PLY
-                        && depth > 2
-                        // && depth > 3
-                        && !mv.filter_all_captures()
+                        // && ply >= LMR_MIN_PLY
+                        && depth >= 3
                         && !mv.filter_promotion()
                         && g.state.checkers.is_empty()
                         && g2.state.checkers.is_empty()
                     {
-                        // let depth3 = depth - LMR_REDUCTION;
-                        let depth3 = if ply < LMR_PLY_CONST {
-                            // depth - LMR_REDUCTION
-                            depth - 1
-                        } else {
-                            depth - (depth / 3)
-                        };
+
+                        // let depth3 = depth.checked_sub(LMR_REDUCTION).unwrap();
+                        let depth3 = depth.checked_sub(3).unwrap();
+
+                        // let depth3 = if moves_searched < 2 {
+                        //     depth.checked_sub(1).unwrap()
+                        // } else if moves_searched < 4 {
+                        //     depth.checked_sub(2).unwrap()
+                        // } else {
+                        //     // let k = Depth::max(1, depth)
+                        //     let k = 3;
+                        //     depth.checked_sub(k).unwrap()
+                        //     // depth.checked_sub(depth / 3).unwrap()
+                        // };
+
+                        // let depth3 = if ply < LMR_PLY_CONST {
+                        //     // depth - LMR_REDUCTION
+                        //     depth.checked_sub(1).unwrap()
+                        // } else {
+                        //     depth.checked_sub(depth / 3).unwrap()
+                        // };
+
                         match self._ab_search_negamax(
                             &ts, &g2, cfg2, depth3, ply + 1, &mut stop_counter,
                             (-beta, -alpha), &mut stats,

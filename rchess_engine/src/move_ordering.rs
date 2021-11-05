@@ -115,7 +115,7 @@ pub fn _order_mvv_lva(a: &Move, b: &Move) -> std::cmp::Ordering {
 
 }
 
-pub fn order_searchinfo(maximizing: bool, mut xs: &mut [(Move,Game,Option<(SICanUse,SearchInfo)>)]) {
+pub fn order_searchinfo(mut xs: &mut [(Move,Game,Option<(SICanUse,SearchInfo)>)]) {
 
     // #[cfg(feature = "par")]
     // xs.par_sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
@@ -125,80 +125,80 @@ pub fn order_searchinfo(maximizing: bool, mut xs: &mut [(Move,Game,Option<(SICan
     //     xs.reverse();
     // }
 
-    #[cfg(feature = "par")]
-    {
-        if maximizing {
-            // xs.par_sort_unstable_by(|a,b| {
-            xs.par_sort_by(|a,b| {
-                match (a.2.as_ref(),b.2.as_ref()) {
-                    (Some((_,a)),Some((_,b))) => a.score.cmp(&b.score),
-                    // (None,None)               => _order_mvv_lva(&a.0, &b.0),
-                    (None,None)               => a.0.cmp(&b.0),
-                    (a,b)                     => a.partial_cmp(&b).unwrap(),
-                    // _                         => std::cmp::Ordering::Equal,
-                }
-            });
-            xs.reverse();
-        } else {
-            // xs.par_sort_unstable_by(|a,b| {
-            xs.par_sort_by(|a,b| {
-                match (a.2.as_ref(),b.2.as_ref()) {
-                    (Some((_,a)),Some((_,b))) => a.score.cmp(&b.score).reverse(),
-                    // (None,None)               => _order_mvv_lva(&a.0, &b.0).reverse(),
-                    (None,None)               => a.0.cmp(&b.0).reverse(),
-                    (a,b)                     => a.partial_cmp(&b).unwrap(),
-                    // _                         => std::cmp::Ordering::Equal,
-                }
-            });
-            xs.reverse();
-        }
-    }
-
-    #[cfg(not(feature = "par"))]
-    {
-        if maximizing {
-            // xs.par_sort_unstable_by(|a,b| {
-            xs.sort_by(|a,b| {
-                match (a.2.as_ref(),b.2.as_ref()) {
-                    (Some((_,a)),Some((_,b))) => a.score.cmp(&b.score),
-                    // (None,None)               => _order_mvv_lva(&a.0, &b.0),
-                    (None,None)               => a.0.cmp(&b.0),
-                    (a,b)                     => a.partial_cmp(&b).unwrap(),
-                    // _                         => std::cmp::Ordering::Equal,
-                }
-            });
-            xs.reverse();
-        } else {
-            // xs.par_sort_unstable_by(|a,b| {
-            xs.sort_by(|a,b| {
-                match (a.2.as_ref(),b.2.as_ref()) {
-                    (Some((_,a)),Some((_,b))) => a.score.cmp(&b.score).reverse(),
-                    // (None,None)               => _order_mvv_lva(&a.0, &b.0).reverse(),
-                    (None,None)               => a.0.cmp(&b.0).reverse(),
-                    (a,b)                     => a.partial_cmp(&b).unwrap(),
-                    // _                         => std::cmp::Ordering::Equal,
-                }
-            });
-            xs.reverse();
-        }
-    }
-
-    // #[cfg(not(feature = "par"))]
+    // #[cfg(feature = "par")]
     // {
     //     if maximizing {
-    //         xs.sort_unstable_by(|a,b| {
+    //         // xs.par_sort_unstable_by(|a,b| {
+    //         xs.par_sort_by(|a,b| {
     //             match (a.2.as_ref(),b.2.as_ref()) {
-    //                 // (Some((_,a)),Some((_,b))) => a.partial_cmp(&b).unwrap(),
-    //                 (Some((_,a)),Some((_,b))) => a.score.partial_cmp(&b.score).unwrap(),
-    //                 _                         => a.partial_cmp(&b).unwrap(),
+    //                 (Some((_,a)),Some((_,b))) => a.score.cmp(&b.score),
+    //                 // (None,None)               => _order_mvv_lva(&a.0, &b.0),
+    //                 (None,None)               => a.0.cmp(&b.0),
+    //                 (a,b)                     => a.partial_cmp(&b).unwrap(),
+    //                 // _                         => std::cmp::Ordering::Equal,
     //             }
     //         });
     //         xs.reverse();
     //     } else {
-    //         xs.sort_unstable_by(|a,b| {
+    //         // xs.par_sort_unstable_by(|a,b| {
+    //         xs.par_sort_by(|a,b| {
     //             match (a.2.as_ref(),b.2.as_ref()) {
-    //                 (Some((_,a)),Some((_,b))) => a.score.partial_cmp(&b.score).unwrap().reverse(),
-    //                 _                         => a.partial_cmp(&b).unwrap(),
+    //                 (Some((_,a)),Some((_,b))) => a.score.cmp(&b.score).reverse(),
+    //                 // (None,None)               => _order_mvv_lva(&a.0, &b.0).reverse(),
+    //                 (None,None)               => a.0.cmp(&b.0).reverse(),
+    //                 (a,b)                     => a.partial_cmp(&b).unwrap(),
+    //                 // _                         => std::cmp::Ordering::Equal,
+    //             }
+    //         });
+    //         xs.reverse();
+    //     }
+    // }
+
+    #[cfg(not(feature = "par"))]
+    {
+        xs.sort_by(|a,b| {
+        // xs.sort_unstable_by(|a,b| {
+            match (a.2.as_ref(),b.2.as_ref()) {
+
+                (Some((_,a)),Some((_,b))) => a.score.cmp(&b.score).reverse(),
+
+                // TODO: 
+                // (Some((_,a)),Some((_,b))) => {
+                //     match (a.node_type,b.node_type) {
+                //         (Node::PV, Node::PV) => Ordering::Equal,
+                //         (Node::PV, _)        => Ordering::Less,
+                //         (_, Node::PV)        => Ordering::Greater,
+                //         _                    => a.score.cmp(&b.score).reverse()
+                //     }
+                // },
+
+                (None,None)               => a.0.cmp(&b.0).reverse(),
+                (a,b)                     => a.partial_cmp(&b).unwrap(),
+            }
+        });
+        xs.reverse();
+    }
+
+    // let maximizing = false;
+    // #[cfg(not(feature = "par"))]
+    // {
+    //     if maximizing {
+    //         // xs.par_sort_unstable_by(|a,b| {
+    //         xs.sort_by(|a,b| {
+    //             match (a.2.as_ref(),b.2.as_ref()) {
+    //                 (Some((_,a)),Some((_,b))) => a.score.cmp(&b.score),
+    //                 (None,None)               => a.0.cmp(&b.0),
+    //                 (a,b)                     => a.partial_cmp(&b).unwrap(),
+    //             }
+    //         });
+    //         xs.reverse();
+    //     } else {
+    //         // xs.par_sort_unstable_by(|a,b| {
+    //         xs.sort_by(|a,b| {
+    //             match (a.2.as_ref(),b.2.as_ref()) {
+    //                 (Some((_,a)),Some((_,b))) => a.score.cmp(&b.score).reverse(),
+    //                 (None,None)               => a.0.cmp(&b.0).reverse(),
+    //                 (a,b)                     => a.partial_cmp(&b).unwrap(),
     //             }
     //         });
     //         xs.reverse();
