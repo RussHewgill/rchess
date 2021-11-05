@@ -218,19 +218,25 @@ impl Piece {
 /// Material Scoring
 impl Game {
 
-    pub fn score_material(&self, pc: Piece, col: Color) -> TaperedScore {
+    pub fn score_material(&self, pc: Piece, side: Color) -> TaperedScore {
 
         match pc {
+            King   => {
+                let s = King.score();
+                TaperedScore::new(s, s)
+            }
             Rook   => {
-                let rs = self.get(Rook, col);
+                let rs = self.get(Rook, side);
 
-                let n = rs.popcount() as i32;
+                // let n = rs.popcount() as i32;
+                let n = self.state.material[side][Rook.index()] as i32;
                 let s = Rook.score() * n;
                 TaperedScore::new(s,s)
             },
             // Knight => {},
             Bishop => {
-                let n = self.get(Bishop, col).popcount() as i32;
+                // let n = self.get(Bishop, side).popcount() as i32;
+                let n = self.state.material[side][Bishop.index()] as i32;
                 let s = if n > 1 {
                     // 2 bishops = 0.5 pawn
                     Bishop.score() * n + 50
@@ -240,7 +246,9 @@ impl Game {
                 TaperedScore::new(s,s)
             },
             _      => {
-                let s = pc.score() * self.get(pc, col).popcount() as i32;
+                // let s = pc.score() * self.get(pc, side).popcount() as i32;
+                let n = self.state.material[side][pc.index()] as i32;
+                let s = pc.score() * n;
                 TaperedScore::new(s,s)
             },
         }

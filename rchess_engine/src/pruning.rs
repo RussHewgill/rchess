@@ -64,57 +64,6 @@ impl Explorer {
         false
     }
 
-    pub fn prune_null_move(
-        &self,
-        ts:                 &Tables,
-        mut g:              &Game,
-        max_depth:          Depth,
-        depth:              Depth,
-        k:                  i16,
-        alpha:              i32,
-        beta:               i32,
-        maximizing:         bool,
-        mut stats:          &mut SearchStats,
-        // prev_mvs:           Vec<Move>,
-        prev_mvs:           VecDeque<(Zobrist,Move)>,
-        mut history:        &mut [[[Score; 64]; 64]; 2],
-        tt_r:               &TTRead,
-        tt_w:               TTWrite,
-    ) -> bool {
-
-        let mv = Move::NullMove;
-
-        let r = 2;
-
-        // if depth <= (1 + r) { return false; }
-        if depth < (1 + r) { return false; }
-
-        if let Ok(g2) = g.make_move_unchecked(ts, mv) {
-            let mut pms = prev_mvs.clone();
-            pms.push_back((g.zobrist,mv));
-
-            if let Some(((_,score),_)) = self._ab_search(
-                &ts, &g2, max_depth,
-                depth - 1 - r, k + 1,
-                alpha, beta, !maximizing, &mut stats, pms,
-                &mut history,
-                tt_r, tt_w) {
-
-                if maximizing {
-                    if score >= beta { // Beta cutoff
-                        stats!(stats.null_prunes += 1);
-                        return true;
-                    }
-                } else {
-                    if score <= alpha {
-                        stats!(stats.null_prunes += 1);
-                        return true;
-                    }
-                }
-            }
-        }
-        false
-    }
 }
 
 /// Cycle prevention
