@@ -16,12 +16,12 @@ pub struct Eval {
     pub piece_positions:  [[Score; 6]; 2],
 }
 
-// #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
-#[derive(Serialize,Deserialize,Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
-pub struct TaperedScore {
-    mid: Score,
-    end: Score,
-}
+// // #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+// #[derive(Serialize,Deserialize,Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+// pub struct TaperedScore {
+//     mid: Score,
+//     end: Score,
+// }
 
 impl Eval {
 
@@ -132,6 +132,11 @@ impl Game {
 
     pub fn non_pawn_material(&self) -> (Score,Score) {
         unimplemented!()
+    }
+
+    pub fn taper_score(&self, mid: Score, end: Score) -> Score {
+        let phase = self.state.phase as Score;
+        ((mid * (256 - phase)) + (end * phase)) / 256
     }
 
     // pub fn update_phase(&self, new_piece: Option<Piece>, delete_piece: Option<>)

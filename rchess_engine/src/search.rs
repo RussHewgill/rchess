@@ -599,7 +599,6 @@ impl Game {
         for sq in pieces.into_iter() {
             let moves   = self._search_sliding_single(&ts, pc, sq.into(), col, None);
             let attacks = moves & self.get_color(!col);
-            let quiets  = moves & self.all_empty();
             attacks.into_iter().for_each(|sq2| {
                 let to = sq2.into();
                 let (_,victim) = self.get_at(to).unwrap();
@@ -619,6 +618,7 @@ impl Game {
                 // out.push(m);
             });
             if !only_caps {
+                let quiets  = moves & self.all_empty();
                 quiets.into_iter().for_each(|sq2| {
                     // out.push(Move::Quiet { from: sq.into(), to: sq2.into() });
                     let m = Move::Quiet { from: sq.into(), to: sq2.into(), pc };

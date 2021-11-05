@@ -237,10 +237,23 @@ fn main9() {
     let n = 35;
     // let n = 3;
 
-    let t = 10.0;
-    // let t = 6.0;
+    // let t = 10.0;
+    let t = 5.0;
     // let t = 1.0;
     // let t = 0.5;
+
+    let hook = std::panic::take_hook();
+
+    std::panic::set_hook(Box::new(move |panicinfo| {
+
+        let loc = panicinfo.location();
+
+        debug!("Panicking, Location: {:?}", loc);
+
+        hook(panicinfo)
+    }));
+
+    // panic!("wot");
 
     // let mv = Move::Capture { from: "B7".into(), to: "E7".into(), pc: Rook, victim: Knight };
     // let s = g.static_exchange(&ts, mv);

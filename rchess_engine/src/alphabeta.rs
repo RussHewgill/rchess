@@ -216,14 +216,12 @@ impl Explorer {
         let mut gs: Vec<(Move,Game,Option<(SICanUse,SearchInfo)>)> = {
             let mut gs0 = moves.into_iter()
                 .flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, m) {
-                    // let mut ss = SearchStats::default();
-                    let tt = self.check_tt_negamax(
-                        &ts, &g2, depth, &tt_r, &mut stats);
-                    // *stats = *stats + ss;
+                    let tt = self.check_tt_negamax(&ts, &g2, depth, &tt_r, &mut stats);
                     Some((m,g2,tt))
-            } else {
-                None
-            });
+                } else {
+                    trace!("game not ok? {:?} {:?}", m, g);
+                    None
+                });
             gs0.collect()
         };
 
@@ -289,7 +287,13 @@ impl Explorer {
                         && g.state.checkers.is_empty()
                         && g2.state.checkers.is_empty()
                     {
-                        let depth3 = depth - 3;
+                        // let depth3 = depth - LMR_REDUCTION;
+                        let depth3 = if ply < LMR_PLY_CONST {
+                            // depth - LMR_REDUCTION
+                            depth - 1
+                        } else {
+                            depth - (depth / 3)
+                        };
                         match self._ab_search_negamax(
                             &ts, &g2, cfg2, depth3, ply + 1, &mut stop_counter,
                             (-beta, -alpha), &mut stats,
