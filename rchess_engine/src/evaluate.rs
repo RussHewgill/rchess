@@ -139,6 +139,9 @@ impl Game {
     pub fn update_phase(&self, mv: Move) -> Phase {
         let mut ph = self.state.phase;
 
+        if let Some(victim) = mv.victim() {
+        }
+
         unimplemented!()
     }
 

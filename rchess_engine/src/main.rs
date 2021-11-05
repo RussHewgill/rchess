@@ -196,14 +196,6 @@ fn main9() {
         let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
         ex.lazy_smp_negamax(&ts, false, false)
     }
-    fn go2(ts: &Tables, n: Depth, g: Game, t: f64)
-           -> (Vec<(Move,Vec<Move>,Score)>,SearchStats,(TTRead,TTWrite)) {
-        let stop = Arc::new(AtomicBool::new(false));
-        let timesettings = TimeSettings::new_f64(0.0,t);
-        let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
-        // ex.lazy_smp_negamax(&ts, false, false)
-        ex.lazy_smp(&ts, false, false)
-    }
 
     // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
