@@ -134,6 +134,14 @@ impl Game {
         unimplemented!()
     }
 
+    // pub fn update_phase(&self, new_piece: Option<Piece>, delete_piece: Option<>)
+    #[must_use]
+    pub fn update_phase(&self, mv: Move) -> Phase {
+        let mut ph = self.state.phase;
+
+        unimplemented!()
+    }
+
     pub fn game_phase(&self) -> u8 {
         const PAWN_PH: u16   = 0;
         const KNIGHT_PH: u16 = 1;
@@ -149,9 +157,7 @@ impl Game {
 
         for &col in [White,Black].iter() {
             for pc in PCS {
-                let ps = self.get(pc, col);
-                let pn = ps.popcount() as u16;
-                let x = pn * PHASES[pc.index()];
+                let x = self.state.material[col][pc.index()] as u16 * PHASES[pc.index()];
                 if ph < x {
                     ph = 0;
                     break;
@@ -159,6 +165,19 @@ impl Game {
                 ph -= x;
             }
         }
+
+        // for &col in [White,Black].iter() {
+        //     for pc in PCS {
+        //         let ps = self.get(pc, col);
+        //         let pn = ps.popcount() as u16;
+        //         let x = pn * PHASES[pc.index()];
+        //         if ph < x {
+        //             ph = 0;
+        //             break;
+        //         }
+        //         ph -= x;
+        //     }
+        // }
 
         // eprintln!("ph_total = {:?}", ph_total);
         // eprintln!("ph = {:?}", ph);
