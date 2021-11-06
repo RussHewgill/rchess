@@ -8,7 +8,7 @@ pub use self::piece_square_tables::*;
 
 use serde::{Serialize,Deserialize};
 
-pub static LMR_MIN_MOVES: Depth = 4;
+pub static LMR_MIN_MOVES: Depth = 2;
 pub static LMR_MIN_PLY: Depth = 3;
 
 pub static LMR_REDUCTION: Depth = 3;

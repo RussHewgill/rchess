@@ -14,3 +14,4 @@ testpositions/*
 logs/*
 test.log
 gdb.log
+benchmark.txt

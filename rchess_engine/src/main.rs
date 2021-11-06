@@ -153,6 +153,7 @@ fn main() {
                 _       => main4(None),
             }
             "main7" => main7(),
+            "nn"    => main_nn(),
             _       => {},
         },
         // None    => main7(),
@@ -170,7 +171,75 @@ fn main() {
 
 }
 
-/// XXX: Could possibly get entire move sequence by simply looking up best Zobrist?
+#[allow(unreachable_code)]
+fn main_nn() {
+    use ndarray::prelude::*;
+
+    use rchess_engine_lib::brain::*;
+
+
+    let inputs = [
+        [0.0,0.0],
+        [1.0,0.0],
+        [0.0,1.0],
+        [1.0,1.0],
+    ];
+    let corrects = [ 0.0, 1.0, 1.0, 0.0 ];
+
+    // let xs = inputs.iter().zip(corrects.iter()).collect::<Vec<_>>();
+    let xs = inputs.iter().zip(corrects.iter());
+
+    let mut n0 = Network::new(2, 2, 1);
+
+    println!();
+    println!("X     Y     Cor    Ans  err");
+    for (input, c) in xs.clone() {
+        let i = ArrayView1::from(input).to_owned();
+        let (hidden_out,ans) = n0.run(i.clone());
+        let err = n0.backprop(*c, ans, i, hidden_out);
+        println!("{:.2}  {:.2}  {}      {:.2},  {:.2}", input[0], input[1], *c as u32, ans, err);
+    }
+
+    // return;
+
+    for _ in 0..10000 {
+        for (input, c) in xs.clone() {
+            let i = ArrayView1::from(input).to_owned();
+            let (hidden_out,ans) = n0.run(i.clone());
+            let err = n0.backprop(*c, ans, i, hidden_out);
+        }
+    }
+
+    println!();
+    println!("X     Y     Cor    Ans  err");
+    for (input, c) in xs.clone() {
+        let i = ArrayView1::from(input).to_owned();
+        let (hidden_out,ans) = n0.run(i.clone());
+        let err = n0.backprop(*c, ans, i, hidden_out);
+        println!("{:.2}  {:.2}  {}      {:.2},  {:.2}", input[0], input[1], *c as u32, ans, err);
+    }
+
+    // let x0 = array![0.0, 1.0];
+    // eprintln!("x0 = {:?}", x0);
+
+    // let input: [f32; 2] = [0.0, 0.0];
+
+    // // let i = ArrayView1::from(&input).to_owned();
+    // let i = ArrayView1::from(&input).to_owned().insert_axis(Axis(0)).reversed_axes();
+
+    // eprintln!("i = {:?}", i);
+
+    // let x = array![[1.0], [1.0]];
+    // let y = array![[2.0, 3.0]];
+    // let k = x.dot(&y);
+    // eprintln!("k = {:?}", k);
+
+    // eprintln!("n0 = {:?}", n0);
+    // println!();
+    // let k = n0.run(array![0.0,0.0]);
+    // eprintln!("\nk = {:?}", k);
+
+}
 
 #[allow(unreachable_code)]
 fn main9() {
@@ -197,7 +266,7 @@ fn main9() {
         ex.lazy_smp_negamax(&ts, false, false)
     }
 
-    let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
+    // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
     // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
@@ -219,10 +288,13 @@ fn main9() {
     // // let fen = "5rk1/4npp1/1p4b1/1B2p3/1P1P4/4P3/5PP1/3K3R b - - 0 4"; // after block, -220
 
     // // let fen = "7k/8/8/8/8/8/4Q3/7K w - - 0 1"; // Queen endgame, #7
-    // // let fen = "7k/4Q3/8/8/8/8/8/7K w - - 4 3"; // Queen endgame, #6
-    // let fen = "7k/4Q3/8/8/8/8/6K1/8 w - - 4 3"; // Queen endgame, #5
+    // let fen = "7k/4Q3/8/8/8/8/8/7K w - - 4 3"; // Queen endgame, #6
+    // // let fen = "7k/4Q3/8/8/8/8/6K1/8 w - - 4 3"; // Queen endgame, #5
     // // let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
     // // let fen = "7k/8/8/8/8/8/4R3/7K w - - 0 1"; // Rook endgame,
+
+    let fen = "r2n1rk1/1pp1qppp/p2p1n2/3Bp1B1/4P1b1/3P1N2/PPP2PPP/R2Q1RK1 w - - 4 11"; // ??
+    // let fen = "r2n1rk1/1pp1qppp/p2p1n2/3Bp1B1/4P1bP/3P1N2/PPP2PP1/R2Q1RK1 b - - 0 11"; // ??
 
     // let fen = &games(8); // Qt R e7f7, #7
 
@@ -233,11 +305,11 @@ fn main9() {
     eprintln!("g = {:?}", g);
 
     let n = 35;
-    // let n = 3;
+    // let n = 6;
 
-    let t = 10.0;
+    // let t = 10.0;
     // let t = 5.0;
-    // let t = 1.0;
+    let t = 2.0;
     // let t = 0.5;
 
     let hook = std::panic::take_hook();
@@ -272,7 +344,7 @@ fn main9() {
     let e = g.evaluate(&ts);
     eprintln!("base eval = {:?}", e.sum());
 
-    // let k = 5;
+    // let k = 4;
     // let mut xs = vec![];
     // for _ in 0..k {
     //     let t0 = std::time::Instant::now();
