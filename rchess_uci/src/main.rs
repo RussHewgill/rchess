@@ -121,6 +121,8 @@ fn main() -> std::io::Result<()> {
                         explorer.side = Black;
                         explorer.game = g;
                     },
+                    "setoption"   => {
+                    },
                     "position"   => {
                         match params.next().unwrap() {
                             "fen" => {

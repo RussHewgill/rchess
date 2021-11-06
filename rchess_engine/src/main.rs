@@ -22,6 +22,7 @@ use std::slice::SliceIndex;
 use std::str::FromStr;
 
 use itertools::Itertools;
+
 use rchess_engine_lib::explore::Explorer;
 // use crate::lib::*;
 use rchess_engine_lib::types::*;
@@ -153,6 +154,10 @@ fn main() {
                 _       => main4(None),
             }
             "main7" => main7(),
+            "sts"   => match args.get(2).map(|x| u64::from_str(x).ok()) {
+                Some(n) => main_sts(n),
+                _       => main_sts(None),
+            }
             "nn"    => main_nn(),
             _       => {},
         },
@@ -176,6 +181,45 @@ fn main_nn() {
     use ndarray::prelude::*;
 
     use rchess_engine_lib::brain::*;
+    use rchess_engine_lib::brain::filter::*;
+
+    // let b0 = BitBoard::new(&[
+    //     "A2",
+    // ]);
+    // let b1 = BitBoard::new(&[
+    //     "B3",
+    // ]);
+    // let bs = vec![b0,b1];
+
+    // let filt = ConvFilter::new(array![
+    //     [1,1,1],
+    //     [1,1,1],
+    //     [1,1,1],
+    // ]);
+
+    // let out = filt.scan_bitboard(bs);
+    // eprintln!("out = {:?}", out);
+
+    return;
+    // let x = array![
+    //     [1,1,1],
+    // ];
+
+    let mut bb: Array3<u16> = Array3::zeros((2,2,0));
+
+    let x = array![
+        [1,1],
+        [1,1],
+    ];
+
+    let x2 = x.insert_axis(Axis(2));
+
+    bb.append(Axis(2), x2.view()).unwrap();
+    bb.append(Axis(2), x2.view()).unwrap();
+    bb.append(Axis(2), x2.view()).unwrap();
+    eprintln!("bb = {:?}", bb);
+
+    return;
 
     let inputs = [
         [0.0, 0.0, 1.0],
@@ -196,7 +240,7 @@ fn main_nn() {
     // let xs = inputs.iter().zip(corrects.iter()).collect::<Vec<_>>();
     let xs = inputs.iter().zip(corrects.iter());
 
-    let mut n0 = Network::new(3, 4, 1);
+    let mut n0 = TestNetwork::new(3, 4, 1);
 
     println!();
     println!("X     Y     Cor    Ans  err");
@@ -259,8 +303,8 @@ fn main9() {
     // let ts = &_TABLES;
 
     fn games(i: usize) -> String {
-        let mut games = read_epd("testpositions/WAC.epd").unwrap();
-        // let mut games = read_epd("testpositions/STS6.epd").unwrap();
+        // let mut games = read_epd("testpositions/WAC.epd").unwrap();
+        let mut games = read_epd("testpositions/STS/STS15.epd").unwrap();
         let mut games = games.into_iter();
         let games = games.map(|x| x.0).collect::<Vec<_>>();
         games[i - 1].clone()
@@ -300,10 +344,13 @@ fn main9() {
     // // let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
     // // let fen = "7k/8/8/8/8/8/4R3/7K w - - 0 1"; // Rook endgame,
 
-    let fen = "r2n1rk1/1pp1qppp/p2p1n2/3Bp1B1/4P1b1/3P1N2/PPP2PPP/R2Q1RK1 w - - 4 11"; // ??
+    // let fen = "r2n1rk1/1pp1qppp/p2p1n2/3Bp1B1/4P1b1/3P1N2/PPP2PPP/R2Q1RK1 w - - 4 11"; // ??
     // let fen = "r2n1rk1/1pp1qppp/p2p1n2/3Bp1B1/4P1bP/3P1N2/PPP2PP1/R2Q1RK1 b - - 0 11"; // ??
 
     // let fen = &games(8); // Qt R e7f7, #7
+
+    // let fen = &games(2); // STS2 002, Qt R a7E7
+    let fen = &games(2); // STS15 001, Qt Q d3d1
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -314,9 +361,9 @@ fn main9() {
     let n = 35;
     // let n = 6;
 
-    // let t = 10.0;
+    let t = 10.0;
     // let t = 5.0;
-    let t = 2.0;
+    // let t = 2.0;
     // let t = 0.5;
 
     let hook = std::panic::take_hook();
@@ -444,77 +491,57 @@ fn main9() {
 
 }
 
-fn main8() {
-    let fen = STARTPOS;
-    let n = 4;
+#[allow(unreachable_code)]
+fn main_sts(sts: Option<u64>) {
+    let sts = sts.unwrap();
+    let mut games = read_epd(&format!("testpositions/STS/STS{}.epd", sts)).unwrap();
 
-    let mut fens = vec![
-        // "k7/8/8/8/8/8/8/7K b - - 0 1", // nothing
-        "k7/8/8/8/8/8/5N2/7K w - - 0 1", // single piece
-        "k7/8/8/8/8/8/PPPPPPPP/7K w - - 0 1", // none
-        "k7/8/8/8/8/2P5/P1PPPPPP/7K w - - 0 1", // one double
-        "k7/8/8/8/2P5/2P5/P1P1PPPP/7K w - - 0 1", // one triple
-        "k7/8/8/8/8/2P1P3/P1P1PPPP/7K w - - 0 1", // two double
-    ];
+    // let (fen,m) = &games[0];
+    // eprintln!("fen = {:?}", fen);
+    // eprintln!("m = {:?}", m);
+    // return;
 
-    // let fen = "r4q1k/5P1b/2p2n1P/p2p1P2/3P4/8/2PKN1Q1/6R1 w - - 1 34";
-    // let fen = "7k/2pq2p1/6rp/1P2p3/2Qp1n2/P2P3P/R1P2PPK/3N2R1 b - - 0 28";
+    let n = 35;
 
-    let ts = Tables::new();
+    // let ts = Tables::new();
+    // let ts = Tables::read_from_file("tables.bin").unwrap();
+    let ts = Tables::read_from_file_def().unwrap();
 
-    // let mut g = Game::from_fen(&ts, fen).unwrap();
-    // let _ = g.recalc_gameinfo_mut(&ts);
-    // eprintln!("g = {:?}", g);
+    let timesettings = TimeSettings::new_f64(
+        0.0,
+        1.0,
+    );
 
-    // let stop = Arc::new(AtomicBool::new(false));
-    // let timesettings = TimeSettings::new_f64(5.0, 0.1);
-    // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+    let mut total = (0,0);
+    let t0 = std::time::Instant::now();
 
-    fens.truncate(1);
+    println!("running STS {}", sts);
 
-    for (i,fen) in fens.iter().enumerate() {
+    for (i,(fen,m)) in games.into_iter().enumerate() {
+        let g = Game::from_fen(&ts, &fen).unwrap();
 
-        let fen = "k7/1r6/8/8/8/8/6R1/7K w - - 0 1"; // single piece
+        let stop = Arc::new(AtomicBool::new(false));
+        let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
 
-        let mut g = Game::from_fen(&ts, fen).unwrap();
-        let _ = g.recalc_gameinfo_mut(&ts);
-        // eprintln!("g = {:?}", g);
+        let (m0,stats) = ex.explore(&ts, None);
 
-        // let d_pawns = g.count_pawns_doubled(&ts, White);
-        // eprintln!("doubled pawns {} = {:?}", i, d_pawns);
-
-        // let ee = g.evaluate(&ts);
-        // eprintln!("ee.sum() = {:?}", ee.sum());
-
-        // let e = stockfish_eval(&fen, true).unwrap();
-        let (_,e) = stockfish_eval(&fen, false).unwrap();
-
-        let w_mg = e.material_mg[White];
-        let b_mg = e.material_mg[Black];
-        let w_eg = e.material_eg[White];
-        let b_eg = e.material_eg[Black];
-
-        // eprintln!("w_mg = {:?}", w_mg);
-        // eprintln!("w_eg = {:?}", w_eg);
-
-        let m_mg_w: f64 = w_mg.iter().sum();
-        let m_eg_w: f64 = w_eg.iter().sum();
-        let m_mg_b: f64 = b_mg.iter().sum();
-        let m_eg_b: f64 = b_eg.iter().sum();
-
-        eprintln!("m_mg_w = {:?}", m_mg_w);
-        eprintln!("m_eg_w = {:?}", m_eg_w);
-        eprintln!("m_mg_b = {:?}", m_mg_b);
-        eprintln!("m_eg_b = {:?}", m_eg_b);
-
-        let tc = e.total_classic;
-        let tn = e.total_nn;
-        eprintln!("tc = {:>4.2}", tc);
-        // eprintln!("tc, tn = {:>4.2}, {:>4.2}", tc, tn);
-        // eprintln!("stockfish = {:>4.2}", (tc + tn) / 2.);
-
-        print!("\n");
+        let mv = m0.clone().unwrap().0.to_algebraic(&g);
+        let mv0 = m[0].replace("+", "");
+        if mv0 == mv {
+            // println!("#{:>2}: Correct", i);
+            total.0 += 1;
+            total.1 += 1;
+        } else {
+            total.1 += 1;
+            let t = t0.elapsed().as_secs_f64() / total.1 as f64;
+            println!(
+                "#{:>2}: Wrong, Correct: {:>5}, engine: {:>5} ({:?}), ({}/{}), avg: {:.2}",
+                i, m[0], mv, m0.unwrap().0, total.0, total.1, total.0 as f64 / total.1 as f64);
+        }
     }
+
+    println!("Score = {} / {} ({:.2})", total.0, total.1, total.0 as f64 / total.1 as f64);
+    println!("Finished in {:.3} seconds.", t0.elapsed().as_secs_f64());
 
 }
 

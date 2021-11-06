@@ -1,8 +1,9 @@
 
-
 pub mod types;
+pub mod filter;
+pub mod nnue;
 
-
+use crate::types::*;
 
 use ndarray::prelude::*;
 
@@ -12,57 +13,8 @@ use ndarray_rand::rand_distr::Uniform;
 use rand::{Rng,SeedableRng};
 use rand::prelude::StdRng;
 
-use crate::types::*;
-
-
-const FILTER_MASKS: [[u64; 6]; 6] = {
-    [[
-        0x0000000000070707,
-        0x00000000000e0e0e,
-        0x00000000001c1c1c,
-        0x0000000000383838,
-        0x0000000000707070,
-        0x0000000000e0e0e0,
-        ],[
-        0x0000000007070700,
-        0x000000000e0e0e00,
-        0x000000001c1c1c00,
-        0x0000000038383800,
-        0x0000000070707000,
-        0x00000000e0e0e000,
-        ],[
-        0x0000000707070000,
-        0x0000000e0e0e0000,
-        0x0000001c1c1c0000,
-        0x0000003838380000,
-        0x0000007070700000,
-        0x000000e0e0e00000,
-        ],[
-        0x0000070707000000,
-        0x00000e0e0e000000,
-        0x00001c1c1c000000,
-        0x0000383838000000,
-        0x0000707070000000,
-        0x0000e0e0e0000000,
-        ],[
-        0x0007070700000000,
-        0x000e0e0e00000000,
-        0x001c1c1c00000000,
-        0x0038383800000000,
-        0x0070707000000000,
-        0x00e0e0e000000000,
-        ],[
-        0x0707070000000000,
-        0x0e0e0e0000000000,
-        0x1c1c1c0000000000,
-        0x3838380000000000,
-        0x7070700000000000,
-        0xe0e0e00000000000,
-    ]]
-};
-
 #[derive(Debug,Clone)]
-pub struct Network {
+pub struct TestNetwork {
     num_ns:          (usize,usize,usize),
     weights_in:      Array2<f32>,
     weights_out:     Array2<f32>,
@@ -70,7 +22,7 @@ pub struct Network {
     bias_out:        Array1<f32>,
 }
 
-impl Network {
+impl TestNetwork {
     pub fn new(input_ns: usize, hidden_ns: usize, output_ns: usize) -> Self {
         let mut rng: StdRng = SeedableRng::seed_from_u64(18105974836011991331);
 
@@ -94,7 +46,7 @@ impl Network {
     }
 }
 
-impl Network {
+impl TestNetwork {
 
     pub fn run(&self, input: Array1<f32>) -> (Array1<f32>,f32) {
 
@@ -162,57 +114,9 @@ fn sigmoid(x: f32) -> f32 {
 
 // pub struct InputPlane()
 
-pub type InputPlane = BitBoard;
+// pub type InputPlane = BitBoard;
 
-pub struct ConvLayer {
-    pub filter: [[u16; 3]; 3],
-}
-
-impl ConvLayer {
-
-    pub fn bitboard_section((x,y): (usize,usize), bb: BitBoard) -> [u16; 9] {
-        let mask = FILTER_MASKS[x][y];
-        let b = bb.0 & mask;
-
-        let mut out = [0; 9];
-        let mut mask = 1u64;
-        for x in 0..9 {
-            let m = mask << x;
-            // eprintln!("mask {} = {:#012b}, {:#012b}", x, m, b & m);
-            // out[x] = BitBoard(b & m).bitscan() as u16;
-        }
-
-        out
-        // unimplemented!()
-    }
-
-    pub fn scan_bitboard(&self, bb: BitBoard) -> [[u16; 6]; 6] {
-        let mut out = [[0; 6]; 6];
-
-        for x in 0..6 {
-            for y in 0..6 {
-                // out[x][y] = self.dot()
-            }
-        }
-
-        out
-    }
-
-    pub fn as_arr(&self) -> [u16; 9] {
-        [self.filter[0][0],
-          self.filter[1][0],
-          self.filter[2][0],
-          self.filter[0][1],
-          self.filter[1][1],
-          self.filter[2][1],
-          self.filter[0][2],
-          self.filter[1][2],
-          self.filter[2][2],
-        ]
-    }
-
-    pub fn dot(&self, other: [u16; 9]) -> u16 {
-        self.as_arr().iter().zip(other.iter()).map(|(a,b)| a * b).sum()
-    }
-}
+// pub struct ConvLayer {
+//     pub filter: [[u16; 3]; 3],
+// }
 
