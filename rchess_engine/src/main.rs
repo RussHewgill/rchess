@@ -177,19 +177,26 @@ fn main_nn() {
 
     use rchess_engine_lib::brain::*;
 
-
     let inputs = [
-        [0.0,0.0],
-        [1.0,0.0],
-        [0.0,1.0],
-        [1.0,1.0],
+        [0.0, 0.0, 1.0],
+        [0.0, 1.0, 1.0],
+        [1.0, 0.0, 1.0],
+        [1.0, 1.0, 1.0],
     ];
     let corrects = [ 0.0, 1.0, 1.0, 0.0 ];
+
+    // let inputs = [
+    //     [0.0,0.0],
+    //     [1.0,0.0],
+    //     [0.0,1.0],
+    //     [1.0,1.0],
+    // ];
+    // let corrects = [ 0.0, 1.0, 1.0, 0.0 ];
 
     // let xs = inputs.iter().zip(corrects.iter()).collect::<Vec<_>>();
     let xs = inputs.iter().zip(corrects.iter());
 
-    let mut n0 = Network::new(2, 2, 1);
+    let mut n0 = Network::new(3, 4, 1);
 
     println!();
     println!("X     Y     Cor    Ans  err");

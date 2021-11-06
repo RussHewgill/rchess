@@ -1,4 +1,9 @@
 
+
+pub mod types;
+
+
+
 use ndarray::prelude::*;
 
 use ndarray_rand::RandomExt;
@@ -91,12 +96,7 @@ impl Network {
 
 impl Network {
 
-    // [[0.57, 0.90],
-    //  [0.49, 0.64]]
-
     pub fn run(&self, input: Array1<f32>) -> (Array1<f32>,f32) {
-        // let x0: ArrayView1<f32> = self.weights_in.slice(s![0, ..]);
-        // let layer1: f32 = sigmoid(input.dot(&x0));
 
         let hidden_activation = input.dot(&self.weights_in);
         let hidden_activation = hidden_activation + &self.bias;
@@ -112,15 +112,6 @@ impl Network {
         (hidden_out,out[[0,0]])
         // unimplemented!()
     }
-
-    // pub fn run(&self, input: Array1<f32>) -> f32 {
-    //     let x0: ArrayView1<f32> = self.weights_in.slice(s![0, ..]);
-    //     let x1: ArrayView1<f32> = self.weights_in.slice(s![1, ..]);
-    //     let layer1: f32 = sigmoid(input.dot(&x0));
-    //     let out = &x1 * layer1;
-    //     let out = sigmoid(out[0]);
-    //     out
-    // }
 
     pub fn backprop(
         &mut self,
@@ -148,26 +139,12 @@ impl Network {
         let x2 = lr * input.t().dot(&d_hidden);
         self.weights_in = &self.weights_in + x2;
 
-        // eprintln!("d_hidden = {:?}", d_hidden);
-        // eprintln!("self.bias 0 = {:?}", self.bias);
         self.bias = &self.bias + d_hidden.sum();
-        // eprintln!("self.bias 1 = {:?}", self.bias);
 
         error
     }
 
 }
-
-// fn sum_of_squares(correct: Array1<f32>, result: Array1<f32>) -> f32 {
-//     let mut out = 0.0;
-//     ndarray::Zip::from(&correct)
-//         .and(&result)
-//         .for_each(|c,r| {
-//             out += 0.5 * (c - r).powi(2);
-//             // out += (c - r).powi(2);
-//         });
-//     out
-// }
 
 fn sigmoid_deriv(x: f32) -> f32 {
     x * (1.0 - x)
