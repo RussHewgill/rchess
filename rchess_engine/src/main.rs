@@ -182,6 +182,7 @@ fn main_nn() {
 
     use rchess_engine_lib::brain::*;
     use rchess_engine_lib::brain::filter::*;
+    use rchess_engine_lib::brain::nnue::*;
 
     // let b0 = BitBoard::new(&[
     //     "A2",
@@ -199,6 +200,43 @@ fn main_nn() {
 
     // let out = filt.scan_bitboard(bs);
     // eprintln!("out = {:?}", out);
+
+    let mut xs: std::collections::HashSet<u64> = std::collections::HashSet::default();
+
+    let mut k = 0;
+    for sq0 in 0u8..64 {
+        for sq1 in 0u8..64 {
+            for side in [White,Black] {
+                for pc in [Pawn,Knight,Bishop,Rook,Queen] {
+                    let c0: Coord = sq0.into();
+                    let c1: Coord = sq1.into();
+                    if c0 == c1 { continue; }
+                    let k = NNUE::index(c0, pc, c1, side) as u64;
+                    if xs.contains(&k) {
+                        panic!("wot: {:?}: king {:?}, {:?} {:?}, {:?}", k, c0, side, pc, c1);
+                    }
+                    xs.insert(k);
+                    // k += 1;
+                }
+            }
+        }
+    }
+    // eprintln!("k = {:?}", k);
+
+    let kk = xs.len();
+    eprintln!("kk = {:?}", kk);
+
+    // let k0 = NNUE::index("A1".into(), Pawn, "A2".into(), White);
+    // let k1 = NNUE::index("A1".into(), Knight, "A2".into(), White);
+    // eprintln!("k0 = {:?}", k0);
+    // eprintln!("k1 = {:?}", k1);
+
+    // for side in [White,Black] {
+    //     for pc in [Pawn,Knight,Bishop,Rook,Queen] {
+    //         eprintln!("(side,pc) = {:?}", (side,pc));
+    //         let k0 = NNUE::index("A1".into(), pc, "A2".into(), side);
+    //     }
+    // }
 
     return;
     // let x = array![

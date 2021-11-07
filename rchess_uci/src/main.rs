@@ -83,8 +83,8 @@ fn main() -> std::io::Result<()> {
     let timesettings = TimeSettings::new_f64(
         0.0,
         // 0.4,
-        1.0,
-        // 0.4,
+        // 1.0,
+        2.0,
         // 0.4,
     );
     // let mut timeset = false;
