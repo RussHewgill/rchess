@@ -78,6 +78,8 @@ ndarray = { version = "0.15.3", features = ["rayon"] }
 ndarray-rand = "0.14.0"
 # bitflags = "1.3.2"
 
+nalgebra = { version = "0.29.0", features = ["rand"] }
+
 rayon = "1.5.1"
 crossbeam = "0.8.1"
 crossbeam-channel = "0.5.1"

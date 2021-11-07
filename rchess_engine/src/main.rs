@@ -23,6 +23,7 @@ use std::str::FromStr;
 
 use itertools::Itertools;
 
+use nom::InputLength;
 use rchess_engine_lib::explore::Explorer;
 // use crate::lib::*;
 use rchess_engine_lib::types::*;
@@ -178,11 +179,14 @@ fn main() {
 
 #[allow(unreachable_code)]
 fn main_nn() {
-    use ndarray::prelude::*;
+    // use ndarray::prelude::*;
+
+    use nalgebra::{SMatrix,SVector,Matrix,Vector,matrix,vector};
 
     use rchess_engine_lib::brain::*;
     use rchess_engine_lib::brain::filter::*;
     use rchess_engine_lib::brain::nnue::*;
+    use rchess_engine_lib::brain::types::*;
 
     // let b0 = BitBoard::new(&[
     //     "A2",
@@ -201,71 +205,31 @@ fn main_nn() {
     // let out = filt.scan_bitboard(bs);
     // eprintln!("out = {:?}", out);
 
-    let mut xs: std::collections::HashSet<u64> = std::collections::HashSet::default();
-
-    let mut k = 0;
-    for sq0 in 0u8..64 {
-        for sq1 in 0u8..64 {
-            for side in [White,Black] {
-                for pc in [Pawn,Knight,Bishop,Rook,Queen] {
-                    let c0: Coord = sq0.into();
-                    let c1: Coord = sq1.into();
-                    if c0 == c1 { continue; }
-                    let k = NNUE::index(c0, pc, c1, side) as u64;
-                    if xs.contains(&k) {
-                        panic!("wot: {:?}: king {:?}, {:?} {:?}, {:?}", k, c0, side, pc, c1);
-                    }
-                    xs.insert(k);
-                    // k += 1;
-                }
-            }
-        }
-    }
-    // eprintln!("k = {:?}", k);
-
-    let kk = xs.len();
-    eprintln!("kk = {:?}", kk);
-
-    // let k0 = NNUE::index("A1".into(), Pawn, "A2".into(), White);
-    // let k1 = NNUE::index("A1".into(), Knight, "A2".into(), White);
-    // eprintln!("k0 = {:?}", k0);
-    // eprintln!("k1 = {:?}", k1);
-
-    // for side in [White,Black] {
-    //     for pc in [Pawn,Knight,Bishop,Rook,Queen] {
-    //         eprintln!("(side,pc) = {:?}", (side,pc));
-    //         let k0 = NNUE::index("A1".into(), pc, "A2".into(), side);
-    //     }
-    // }
-
-    return;
     // let x = array![
     //     [1,1,1],
     // ];
 
-    let mut bb: Array3<u16> = Array3::zeros((2,2,0));
+    // let mut bb: Array3<u16> = Array3::zeros((2,2,0));
+    // let x = array![
+    //     [1,1],
+    //     [1,1],
+    // ];
+    // let x2 = x.insert_axis(Axis(2));
 
-    let x = array![
-        [1,1],
-        [1,1],
-    ];
+    // bb.append(Axis(2), x2.view()).unwrap();
+    // bb.append(Axis(2), x2.view()).unwrap();
+    // bb.append(Axis(2), x2.view()).unwrap();
+    // eprintln!("bb = {:?}", bb);
 
-    let x2 = x.insert_axis(Axis(2));
+    // return;
 
-    bb.append(Axis(2), x2.view()).unwrap();
-    bb.append(Axis(2), x2.view()).unwrap();
-    bb.append(Axis(2), x2.view()).unwrap();
-    eprintln!("bb = {:?}", bb);
-
-    return;
-
-    let inputs = [
-        [0.0, 0.0, 1.0],
-        [0.0, 1.0, 1.0],
-        [1.0, 0.0, 1.0],
-        [1.0, 1.0, 1.0],
-    ];
-    let corrects = [ 0.0, 1.0, 1.0, 0.0 ];
+    // let inputs = [
+    //     [0.0, 0.0, 1.0],
+    //     [0.0, 1.0, 1.0],
+    //     [1.0, 0.0, 1.0],
+    //     [1.0, 1.0, 1.0],
+    // ];
+    // let corrects = [ 0.0, 1.0, 1.0, 0.0 ];
 
     // let inputs = [
     //     [0.0,0.0],
@@ -275,38 +239,163 @@ fn main_nn() {
     // ];
     // let corrects = [ 0.0, 1.0, 1.0, 0.0 ];
 
+    let inputs = vec![
+        vector![0.0,0.0],
+        vector![1.0,0.0],
+        vector![0.0,1.0],
+        vector![1.0,1.0],
+    ];
+    let corrects = vec![
+        vector![0.0],
+        vector![1.0],
+        vector![1.0],
+        vector![0.0],
+    ];
+    // let corrects = inputs.clone();
+
     // let xs = inputs.iter().zip(corrects.iter()).collect::<Vec<_>>();
     let xs = inputs.iter().zip(corrects.iter());
 
-    let mut n0 = TestNetwork::new(3, 4, 1);
+    // na:   (Rows, Cols)
+    // Multiply:
+    // LHS:   M x N
+    // RHS:   N x K
 
-    println!();
-    println!("X     Y     Cor    Ans  err");
-    for (input, c) in xs.clone() {
-        let i = ArrayView1::from(input).to_owned();
-        let (hidden_out,ans) = n0.run(i.clone());
-        let err = n0.backprop(*c, ans, i, hidden_out);
-        println!("{:.2}  {:.2}  {}      {:.2},  {:.2}", input[0], input[1], *c as u32, ans, err);
-    }
+    // let mut n0 = TestNetwork::new(3, 4, 1);
+
+    // let m = matrix![
+    //     1i16, -1, 2;
+    //     0, -3, 1;
+    // ];
+    // let v = vector![
+    //     2i16, 1, 0
+    // ];
+    // let k = m * v;
+
+    // eprintln!("m.shape() = {:?}", m.shape());
+    // eprintln!("v.shape() = {:?}", v.shape());
+    // eprintln!("k = {:?}", k);
+    // eprintln!("k.shape() = {:?}", k.shape());
 
     // return;
 
+    let mut n0 = Network::new(1);
+
+    // n0._run(inputs[0]);
+
+    // let inputs   = vec![vector![0.0]];
+    // let corrects = vec![vector![0.0]];
+
+    n0.backprop_mut(inputs.clone(), corrects.clone());
+
     for _ in 0..10000 {
-        for (input, c) in xs.clone() {
-            let i = ArrayView1::from(input).to_owned();
-            let (hidden_out,ans) = n0.run(i.clone());
-            let err = n0.backprop(*c, ans, i, hidden_out);
-        }
+        n0.backprop_mut(inputs.clone(), corrects.clone());
     }
 
     println!();
-    println!("X     Y     Cor    Ans  err");
+    println!("X     Y     Cor    Ans   err");
     for (input, c) in xs.clone() {
-        let i = ArrayView1::from(input).to_owned();
-        let (hidden_out,ans) = n0.run(i.clone());
-        let err = n0.backprop(*c, ans, i, hidden_out);
-        println!("{:.2}  {:.2}  {}      {:.2},  {:.2}", input[0], input[1], *c as u32, ans, err);
+        let pred = n0.run(input);
+        // let (pred, acts) = n0._run(i);
+        println!("{:.2}  {:.2}  {}      {:.2}", input[0], input[1], c[0], pred[0]);
+        // eprintln!("acts = {:?}", acts);
     }
+
+    let a0 = matrix![
+        1, 5;
+        3, 7;
+    ];
+    let a1 = matrix![
+        2, 6;
+        4, 8;
+    ];
+
+    // // let k = a0 * a1;
+    // let k0 = a1.transpose() * a0;
+    // let k1 = a1 * a0.transpose();
+    // // let k = a0.component_mul(&a1);
+
+    // eprintln!("k0 = {:?}", k0);
+    // eprintln!("k1 = {:?}", k1);
+
+    // let mut n0 = Network2::<f32>::new(
+    //     // 3,4,1,1
+    //     2,3,1,1
+    // );
+
+    // let i = ArrayView1::from(&inputs[0]).to_owned();
+    // n0._run(i);
+    // return;
+
+    // println!();
+    // println!("X     Y     Cor    Ans   err");
+    // for (input, c) in xs.clone() {
+    //     let i = ArrayView1::from(input);
+    //     // let ans = n0.run(i);
+    //     let (pred, acts) = n0._run(i);
+    //     println!("{:.2}  {:.2}  {}      {:.2}", input[0], input[1], *c as u32, pred[0]);
+    //     eprintln!("acts = {:?}", acts);
+    // }
+
+
+    // let inputs = vec![
+    //     array![0.0, 0.0],
+    //     array![1.0, 0.0],
+    //     array![0.0, 1.0],
+    //     array![1.0, 1.0],
+    // ];
+    // let corrects = vec![
+    //     array![0.0],
+    //     array![1.0],
+    //     array![1.0],
+    //     array![1.0],
+    // ];
+    // let errs = n0.backprop(inputs, corrects);
+
+
+    // for _ in 0..10000 {
+    //     for (input, c) in xs.clone() {
+    //         let i = ArrayView1::from(input).to_owned();
+    //         let (ans,acts) = n0._run(i);
+    //     }
+    // }
+
+    // let a0 = array![
+    //     [1,1,1],
+    //     [1,1,1],
+    //     [1,1,1],
+    //     [1,1,1],
+    // ];
+    // let a1: Array1<u16> = array![
+    //     2,2,2
+    // ];
+    // let a2 = array![
+    //     1,1,1,1
+    // ];
+    // eprintln!("a0.shape() = {:?}", a0.shape());
+    // eprintln!("a1.shape() = {:?}", a1.shape());
+    // let k = a0.dot(&a1);
+    // let k2 = &k + a2;
+    // eprintln!("k = {:?}", k);
+    // eprintln!("k2 = {:?}", k2);
+
+
+    // for _ in 0..10000 {
+    //     for (input, c) in xs.clone() {
+    //         let i = ArrayView1::from(input).to_owned();
+    //         let (hidden_out,ans) = n0.run(i.clone());
+    //         let err = n0.backprop(*c, ans, i, hidden_out);
+    //     }
+    // }
+
+    // println!();
+    // println!("X     Y     Cor    Ans  err");
+    // for (input, c) in xs.clone() {
+    //     let i = ArrayView1::from(input).to_owned();
+    //     let (hidden_out,ans) = n0.run(i.clone());
+    //     let err = n0.backprop(*c, ans, i, hidden_out);
+    //     println!("{:.2}  {:.2}  {}      {:.2},  {:.2}", input[0], input[1], *c as u32, ans, err);
+    // }
 
     // let x0 = array![0.0, 1.0];
     // eprintln!("x0 = {:?}", x0);

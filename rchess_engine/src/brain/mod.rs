@@ -74,6 +74,7 @@ impl TestNetwork {
     ) -> f32 {
 
         let error = correct - predicted_out;
+        // let error = (predicted_out - correct).powi(2);
         let d_predicted = error * sigmoid_deriv(predicted_out);
 
         let error_hidden = &self.weights_out.t() * d_predicted;
