@@ -260,37 +260,27 @@ fn main_nn() {
     // let mut nn = Network::new(2);
     let mut nn = Network::new_range(1, (0.,1.));
 
-    // let x = inputs[0];
-    // nn._run(inputs[0]);
-
-    // let inputs   = vec![vector![0.0]];
-    // let corrects = vec![vector![0.0]];
-
-    // let k = nn.weights.len();
-    // eprintln!("k = {:?}", k);
-
-    // let pred = nn.run(&inputs[0]);
-    // eprintln!("pred = {:?}", pred);
-
     // nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
-    // let pred = nn.run(&inputs[0]);
-    // eprintln!("pred = {:?}", pred);
-
     // return;
 
     for k in 0..10000 {
         nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
-
-        // eprintln!("k = {:?}", k);
-        // println!("X     Y     Cor    Ans   err");
-        // for (input, c) in xs.clone() {
-        //     let pred = nn.run(input);
-        //     // let (pred, acts) = nn._run(i);
-        //     println!("{:.2}  {:.2}  {}      {:.2}", input[0], input[1], c[0], pred[0]);
-        //     // eprintln!("acts = {:?}", acts);
-        // }
-
     }
+
+    // nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
+    // nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
+    // nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
+
+    // let (pred,pred_a,acts) = nn._run(&inputs[0]);
+    // eprintln!("pred = {:?}", pred);
+    // eprintln!("pred_a = {:?}", pred_a);
+    // for (a,z) in acts.iter() {
+    //     eprintln!("a = {:?}", a);
+    //     eprintln!("z = {:?}", z);
+    // }
+
+    // eprintln!("nn.weights_in = {:?}", nn.weights_in);
+    // eprintln!("nn.weights_out = {:?}", nn.weights_out);
 
     println!();
     println!("X     Y     Cor    Ans   err");
