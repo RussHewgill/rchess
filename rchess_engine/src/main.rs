@@ -241,17 +241,17 @@ fn main_nn() {
 
     let inputs = vec![
         vector![0.0,0.0],
-        vector![1.0,0.0],
-        vector![0.0,1.0],
-        vector![1.0,1.0],
+        // vector![1.0,0.0],
+        // vector![0.0,1.0],
+        // vector![1.0,1.0],
     ];
     let corrects = vec![
         vector![0.0],
-        vector![1.0],
-        vector![1.0],
-        vector![0.0],
+        // vector![1.0],
+        // vector![1.0],
+        // vector![0.0],
     ];
-    // let corrects = inputs.clone();
+    let corrects = inputs.clone();
 
     // let xs = inputs.iter().zip(corrects.iter()).collect::<Vec<_>>();
     let xs = inputs.iter().zip(corrects.iter());
@@ -261,35 +261,24 @@ fn main_nn() {
     // LHS:   M x N
     // RHS:   N x K
 
-    // let mut n0 = TestNetwork::new(3, 4, 1);
-
-    // let m = matrix![
-    //     1i16, -1, 2;
-    //     0, -3, 1;
-    // ];
-    // let v = vector![
-    //     2i16, 1, 0
-    // ];
-    // let k = m * v;
-
-    // eprintln!("m.shape() = {:?}", m.shape());
-    // eprintln!("v.shape() = {:?}", v.shape());
-    // eprintln!("k = {:?}", k);
-    // eprintln!("k.shape() = {:?}", k.shape());
-
-    // return;
-
     let mut n0 = Network::new(1);
+
+    let x = inputs[0];
 
     // n0._run(inputs[0]);
 
     // let inputs   = vec![vector![0.0]];
     // let corrects = vec![vector![0.0]];
 
-    n0.backprop_mut(inputs.clone(), corrects.clone());
+    let k = n0.weights.len();
+    eprintln!("k = {:?}", k);
+
+    n0.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
+
+    return;
 
     for _ in 0..10000 {
-        n0.backprop_mut(inputs.clone(), corrects.clone());
+        n0.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
     }
 
     println!();

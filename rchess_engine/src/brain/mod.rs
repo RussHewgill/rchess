@@ -4,6 +4,7 @@ pub mod filter;
 pub mod nnue;
 
 use crate::types::*;
+use crate::brain::types::{sigmoid,sigmoid_deriv};
 
 use ndarray::prelude::*;
 
@@ -99,13 +100,13 @@ impl TestNetwork {
 
 }
 
-fn sigmoid_deriv(x: f32) -> f32 {
-    x * (1.0 - x)
-}
+// fn sigmoid_deriv(x: f32) -> f32 {
+//     x * (1.0 - x)
+// }
 
-fn sigmoid(x: f32) -> f32 {
-    1.0 / (1.0 + f32::exp(-x))
-}
+// fn sigmoid(x: f32) -> f32 {
+//     1.0 / (1.0 + f32::exp(-x))
+// }
 
 // pub struct Network<const I: usize, const O: usize> {
 //     pub input:     [f32; I],
