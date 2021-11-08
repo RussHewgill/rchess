@@ -188,104 +188,115 @@ fn main_nn() {
     use rchess_engine_lib::brain::nnue::*;
     use rchess_engine_lib::brain::types::*;
 
-    // let b0 = BitBoard::new(&[
-    //     "A2",
-    // ]);
-    // let b1 = BitBoard::new(&[
-    //     "B3",
-    // ]);
-    // let bs = vec![b0,b1];
+    use mnist::*;
 
-    // let filt = ConvFilter::new(array![
-    //     [1,1,1],
-    //     [1,1,1],
-    //     [1,1,1],
-    // ]);
 
-    // let out = filt.scan_bitboard(bs);
-    // eprintln!("out = {:?}", out);
+    // let data = MnistBuilder::new()
+    //     .base_path("mnist")
+    //     .label_format_digit()
+    //     // .training_set_length(50_000)
+    //     // .validation_set_length(10_000)
+    //     // .test_set_length(10_000)
+    //     .finalize()
+    //     .normalize();
+    // let mut trn_imgs: Vec<SVector<f32,784>> = data.trn_img
+    //     .chunks_exact(28 * 28)
+    //     .map(|x| SVector::<f32,784>::from_column_slice(x))
+    //     .collect::<Vec<_>>();
+    // let mut test_imgs: Vec<SVector<f32,784>> = data.tst_img
+    //     .chunks_exact(28 * 28)
+    //     .map(|x| SVector::<f32,784>::from_column_slice(x))
+    //     .collect::<Vec<_>>();
 
-    // let x = array![
-    //     [1,1,1],
-    // ];
+    // test_imgs.truncate(10);
 
-    // let mut bb: Array3<u16> = Array3::zeros((2,2,0));
-    // let x = array![
-    //     [1,1],
-    //     [1,1],
-    // ];
-    // let x2 = x.insert_axis(Axis(2));
+    // eprintln!("imgs.len() = {:?}", imgs.len());
+    // eprintln!("lbls.len() = {:?}", lbls.len());
 
-    // bb.append(Axis(2), x2.view()).unwrap();
-    // bb.append(Axis(2), x2.view()).unwrap();
-    // bb.append(Axis(2), x2.view()).unwrap();
-    // eprintln!("bb = {:?}", bb);
+    let nn = Network::new(2);
+
+    let lr = 0.1;
+
+    // let corrects = data.test_lbl.iter()
+    //     .map(|x| {
+    //         let mut v = SVector::<f32,10>::zeros();
+    //         v[x] = 1.0;
+    //     }).collect();
+
+    for k in 0..1000 {
+
+        // nn.backprop_mut(test_imgs, corrects, lr);
+
+    }
+
+
+    // test_mnist(&nn, test_imgs.clone(), data.tst_lbl.clone());
 
     // return;
 
-    // let inputs = [
-    //     [0.0, 0.0, 1.0],
-    //     [0.0, 1.0, 1.0],
-    //     [1.0, 0.0, 1.0],
-    //     [1.0, 1.0, 1.0],
-    // ];
-    // let corrects = [ 0.0, 1.0, 1.0, 0.0 ];
-
-    // let inputs = [
-    //     [0.0,0.0],
-    //     [1.0,0.0],
-    //     [0.0,1.0],
-    //     [1.0,1.0],
-    // ];
-    // let corrects = [ 0.0, 1.0, 1.0, 0.0 ];
-
     let inputs = vec![
         vector![0.0,0.0],
-        // vector![1.0,0.0],
-        // vector![0.0,1.0],
-        // vector![1.0,1.0],
+        vector![1.0,0.0],
+        vector![0.0,1.0],
+        vector![1.0,1.0],
     ];
     let corrects = vec![
         vector![0.0],
-        // vector![1.0],
-        // vector![1.0],
-        // vector![0.0],
+        vector![1.0],
+        vector![1.0],
+        vector![0.0],
     ];
-    let corrects = inputs.clone();
+    // let corrects = inputs.clone();
 
     // let xs = inputs.iter().zip(corrects.iter()).collect::<Vec<_>>();
     let xs = inputs.iter().zip(corrects.iter());
 
     // na:   (Rows, Cols)
     // Multiply:
-    // LHS:   M x N
-    // RHS:   N x K
+    // LHS:     M x N
+    // RHS:     N x K
+    // Result:  M x K
 
-    let mut n0 = Network::new(1);
+    // let mut nn = Network::new(2);
+    let mut nn = Network::new_range(1, (0.,1.));
 
-    let x = inputs[0];
-
-    // n0._run(inputs[0]);
+    // let x = inputs[0];
+    // nn._run(inputs[0]);
 
     // let inputs   = vec![vector![0.0]];
     // let corrects = vec![vector![0.0]];
 
-    let k = n0.weights.len();
-    eprintln!("k = {:?}", k);
+    // let k = nn.weights.len();
+    // eprintln!("k = {:?}", k);
 
-    n0.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
+    // let pred = nn.run(&inputs[0]);
+    // eprintln!("pred = {:?}", pred);
 
-    return;
+    // nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
+    // let pred = nn.run(&inputs[0]);
+    // eprintln!("pred = {:?}", pred);
 
-    for _ in 0..10000 {
-        n0.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
+    // return;
+
+    for k in 0..10000 {
+        nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
+
+        // eprintln!("k = {:?}", k);
+        // println!("X     Y     Cor    Ans   err");
+        // for (input, c) in xs.clone() {
+        //     let pred = nn.run(input);
+        //     // let (pred, acts) = nn._run(i);
+        //     println!("{:.2}  {:.2}  {}      {:.2}", input[0], input[1], c[0], pred[0]);
+        //     // eprintln!("acts = {:?}", acts);
+        // }
+
     }
 
     println!();
     println!("X     Y     Cor    Ans   err");
     for (input, c) in xs.clone() {
-        let pred = n0.run(input);
-        // let (pred, acts) = n0._run(i);
+        let (pred,pred_a,acts) = nn._run(input);
+        // eprintln!("pred_a = {:?}", pred_a);
         println!("{:.2}  {:.2}  {}      {:.2}", input[0], input[1], c[0], pred[0]);
         // eprintln!("acts = {:?}", acts);
     }
@@ -307,21 +318,21 @@ fn main_nn() {
     // eprintln!("k0 = {:?}", k0);
     // eprintln!("k1 = {:?}", k1);
 
-    // let mut n0 = Network2::<f32>::new(
+    // let mut nn = Network2::<f32>::new(
     //     // 3,4,1,1
     //     2,3,1,1
     // );
 
     // let i = ArrayView1::from(&inputs[0]).to_owned();
-    // n0._run(i);
+    // nn._run(i);
     // return;
 
     // println!();
     // println!("X     Y     Cor    Ans   err");
     // for (input, c) in xs.clone() {
     //     let i = ArrayView1::from(input);
-    //     // let ans = n0.run(i);
-    //     let (pred, acts) = n0._run(i);
+    //     // let ans = nn.run(i);
+    //     let (pred, acts) = nn._run(i);
     //     println!("{:.2}  {:.2}  {}      {:.2}", input[0], input[1], *c as u32, pred[0]);
     //     eprintln!("acts = {:?}", acts);
     // }
@@ -339,13 +350,13 @@ fn main_nn() {
     //     array![1.0],
     //     array![1.0],
     // ];
-    // let errs = n0.backprop(inputs, corrects);
+    // let errs = nn.backprop(inputs, corrects);
 
 
     // for _ in 0..10000 {
     //     for (input, c) in xs.clone() {
     //         let i = ArrayView1::from(input).to_owned();
-    //         let (ans,acts) = n0._run(i);
+    //         let (ans,acts) = nn._run(i);
     //     }
     // }
 
@@ -372,8 +383,8 @@ fn main_nn() {
     // for _ in 0..10000 {
     //     for (input, c) in xs.clone() {
     //         let i = ArrayView1::from(input).to_owned();
-    //         let (hidden_out,ans) = n0.run(i.clone());
-    //         let err = n0.backprop(*c, ans, i, hidden_out);
+    //         let (hidden_out,ans) = nn.run(i.clone());
+    //         let err = nn.backprop(*c, ans, i, hidden_out);
     //     }
     // }
 
@@ -381,8 +392,8 @@ fn main_nn() {
     // println!("X     Y     Cor    Ans  err");
     // for (input, c) in xs.clone() {
     //     let i = ArrayView1::from(input).to_owned();
-    //     let (hidden_out,ans) = n0.run(i.clone());
-    //     let err = n0.backprop(*c, ans, i, hidden_out);
+    //     let (hidden_out,ans) = nn.run(i.clone());
+    //     let err = nn.backprop(*c, ans, i, hidden_out);
     //     println!("{:.2}  {:.2}  {}      {:.2},  {:.2}", input[0], input[1], *c as u32, ans, err);
     // }
 
@@ -401,9 +412,9 @@ fn main_nn() {
     // let k = x.dot(&y);
     // eprintln!("k = {:?}", k);
 
-    // eprintln!("n0 = {:?}", n0);
+    // eprintln!("nn = {:?}", nn);
     // println!();
-    // let k = n0.run(array![0.0,0.0]);
+    // let k = nn.run(array![0.0,0.0]);
     // eprintln!("\nk = {:?}", k);
 
 }
@@ -879,8 +890,8 @@ fn main7() {
 
     // return;
 
-    // let fen0 = "rnb1kb1r/pppppNpp/8/8/8/3n4/P1PPPPPP/R1B1KB1R w KQkq - 0 1";
-    // let g0 = Game::from_fen(&ts, fen0).unwrap();
+    // let fenn = "rnb1kb1r/pppppNpp/8/8/8/3n4/P1PPPPPP/R1B1KB1R w KQkq - 0 1";
+    // let g0 = Game::from_fen(&ts, fenn).unwrap();
 
     let fen = STARTPOS;
     let mut g2 = Game::from_fen(&ts, fen).unwrap();

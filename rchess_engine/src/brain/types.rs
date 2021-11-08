@@ -25,27 +25,47 @@ pub struct GNetwork<T, const IS: usize, const HS: usize, const OS: usize> {
 }
 
 // pub type Network = GNetwork<f32, 1, 1, 1>;
-// pub type Network = GNetwork<f32, 2, 3, 1>;
-pub type Network = GNetwork<f32, 2, 3, 2>;
+// pub type Network = GNetwork<f32, 2, 4, 1>;
+pub type Network = GNetwork<f32, 2, 3, 1>;
+// pub type Network = GNetwork<f32, 2, 3, 2>;
 // pub type Network = GNetwork<f32, 3, 4, 1>;
+
+// pub type Network = GNetwork<f32, 784, 16, 10>;
+
+// pub fn test_mnist(n0: &Network, test_imgs: Vec<SVector<f32,784>>, tst_lbl: Vec<u8>) {
+//     let mut out: Vec<(u8,(usize, f32))> = vec![];
+//     for (img,lbl) in test_imgs.iter().zip(tst_lbl.iter()) {
+//         // let input = SVector::<f32,784>::from_column_slice(img);
+//         let pred = n0.run(&img);
+//         let (k0,k1) = pred.iter().enumerate()
+//             .max_by(|a,b| a.1.partial_cmp(&b.1).unwrap())
+//             .unwrap();
+//         out.push((*lbl,(k0,*k1)));
+//     }
+//     let score = out.iter().filter(|(lbl,(k,_))| *lbl as usize == *k)
+//         .collect::<Vec<_>>().len();
+//     eprintln!("score = {} / {}: {:.2}",
+//             score, out.len(), score as f32 / out.len() as f32);
+// }
 
 impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
 
     pub fn run(&self, input: &SVector<f32,IS>) -> SVector<f32,OS> {
-        let (out,_) = self._run(input);
+        let (out,_,_) = self._run(input);
         out
     }
 
-    pub fn _run(&self, input: &SVector<f32,IS>) -> (SVector<f32,OS>,Vec<SVector<f32,HS>>) {
+    pub fn _run(&self, input: &SVector<f32,IS>) -> (SVector<f32,OS>,SVector<f32,OS>,Vec<SVector<f32,HS>>) {
 
         // let mut last = input.to_owned();
         let mut activations = vec![];
 
         let act = self.weights_in * input;
         let act = act + self.biases_in;
-        let act = act.map(sigmoid);
 
         activations.push(act);
+
+        let act = act.map(sigmoid);
         let mut last: SVector<f32, HS> = act;
 
         let mut k = 0;
@@ -54,17 +74,18 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
 
             let act = ws * last;
             let act = act + bs;
-            let act = act.map(sigmoid);
 
             activations.push(act.clone());
+
+            let act = act.map(sigmoid);
             last = act;
         }
 
-        let pred: SVector<f32, OS> = self.weights_out * last;
-        let pred = pred + self.biases_out;
-        let pred = pred.map(sigmoid);
+        let pred_a: SVector<f32, OS> = self.weights_out * last;
+        let pred_a = pred_a + self.biases_out;
+        let pred = pred_a.map(sigmoid);
 
-        (pred,activations)
+        (pred,pred_a,activations)
         // unimplemented!()
     }
 
@@ -81,174 +102,185 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
         let mut activations = vec![];
 
         for (input,correct) in ins.clone() {
-            let (pred, acts) = self._run(input);
-            predictions.push(pred);
+            let (pred,pred_a, acts) = self._run(input);
+            predictions.push((pred,pred_a));
             activations.push(acts);
         }
 
         let outs = ins.zip(predictions.iter().zip(activations.iter()));
 
-        let cost: f32 = predictions.iter().zip(corrects.iter())
-            .map(|(p,c)| (p - c).map(|x| x * x).sum())
-            .sum();
-        let cost = cost / (predictions.len() as f32);
+        // let cost: f32 = predictions.iter().zip(corrects.iter())
+        //     .map(|(p,c)| (p - c).map(|x| x * x).sum())
+        //     .sum();
+        // let cost = cost / (predictions.len() as f32);
 
-        for ((input,correct),(pred,acts)) in outs {
+        // eprintln!("cost = {:?}", cost);
 
-            let correct: &SVector<f32,OS> = correct;
-            let pred:    &SVector<f32,OS> = pred;
+        for ((input,correct),((pred,pred_a),acts)) in outs {
 
-            // let mut acts = acts.iter().rev();
-            // let act1: &SVector<f32,HS> = acts.next().unwrap();
-            let act1: SVector<f32,HS> = acts[acts.len()-1];
+            // let correct: &SVector<f32,OS> = correct;
+            // let pred:    &SVector<f32,OS> = pred;
 
-            // let error = pred - correct;           // OS,1
-            // let dyh_dv = pred.map(sigmoid_deriv); // OS,1
-            // let dc_dv = error.component_mul(&dyh_dv); // OS,1
+            // let act1: SVector<f32,HS> = acts[acts.len()-1];
 
-            let dz_dw = act1;                    // HS,1
+            // let dz_dw = act1;                    // HS,1
             let da_dz = pred.map(sigmoid_deriv); // OS,1
             let dc_da = 2.0 * (pred - correct);  // OS,1
 
-            // let dc_dz = dc_da * da_dz.transpose();
-
-            // da_dw
-            let x0 = dz_dw * da_dz.transpose(); // HS,OS
-            let dc_dw = x0 * dc_da;             // HS,1
-
-            // eprintln!("dc_dz.shape() = {:?}", dc_dz.shape());
-
-            // let error_pred = pred - correct; // OS,1
+            // // da_dw
+            // let x0 = dz_dw * da_dz.transpose(); // HS,OS
+            // let dc_dw = x0 * dc_da;             // HS,1
 
             let error_pred = dc_da.component_mul(&da_dz); // OS,1
 
-            // let error_l = ws.t() * error_lplus1 (*) sig' z_l
+            if self.n_hidden <= 1 {
 
-            for layer in 0..self.weights.len()+2 {
-                eprintln!("layer = {:?}", layer);
+                let z   = acts[acts.len()-1];
+                let act = z.map(sigmoid);
 
-                if layer == 0 {
-                    // input
+                let x1 = error_pred * act.transpose(); // OS,HS
+                // let x2 = act * error_pred.transpose(); // HS,OS, == x1.transpose()
 
-                } else if layer == self.weights.len()+1 {
-                    // output
+                self.weights_out = self.weights_out - lr * x1; // OS,HS
+                self.biases_out  = self.biases_out - error_pred;
 
-                    // let error = self.weights_out.transpose() * error_pred;      // HS,1
-                    // let error = error.component_mul(&act1.map(sigmoid_deriv));  // HS,1
+                let error = self.weights_out.transpose() * error_pred; // HS,1 // error_hidden
+                let error = error.component_mul(&z.map(sigmoid_deriv)); // HS,1
 
-                    let act_lminus1 = acts[acts.len()-1]; // HS,1
+                let x2 = input * error.transpose(); // IS,HS
+                // HS,IS
+                self.weights_in = self.weights_in - lr * x2.transpose();
+                self.biases_in = self.biases_in - error;
 
-                    // eprintln!("error_pred.shape() = {:?}", error_pred.shape());
-                    // eprintln!("error.act_lminus1() = {:?}", act_lminus1.shape());
+            } else {
 
-                    let x1 = act_lminus1 * error_pred.transpose();
-                    eprintln!("x1.shape() = {:?}", x1.shape());
+                let mut prev_error  = SVector::<f32,HS>::zeros();
+                // let mut first_error = SVector::<f32,OS>::zeros();
+                // let mut prev_error: Option<SVector<f32,HS>> = None;
 
-                    // OS,HS
-                    self.weights_out = self.weights_out - lr * x1.transpose();
-                    self.biases_out = self.biases_out - error_pred;
+                // eprintln!("acts.len() = {:?}", acts.len());
 
-                } else {
-                    // hidden
+                for k in 0..self.n_hidden+1 {
+                    let layer = self.n_hidden - k;
+                    // eprintln!("k, layer = {:?}, {:?}", k, layer);
 
+                    if layer == 0 {
+                        // println!("wat input: {}", layer);
+
+                        let act = acts[0];
+
+                        let error = self.weights[0].transpose() * prev_error; // HS,1
+                        let error = error.component_mul(&act.map(sigmoid_deriv)); // HS,1
+
+                        // eprintln!("error.shape() = {:?}", error.shape());
+
+                        let x2 = input * error.transpose(); // IS,HS
+                        // HS,IS
+                        self.weights_in = self.weights_in - lr * x2.transpose();
+                        self.biases_in = self.biases_in - error;
+
+                    } else if layer == self.n_hidden {
+                        // println!("wat output: {}", layer);
+
+                        let act = acts[acts.len()-1];
+                        let x1 = error_pred * act.transpose(); // OS,HS
+
+                        self.weights_out = self.weights_out - lr * x1; // OS,HS
+                        self.biases_out  = self.biases_out - error_pred;
+
+
+
+                        let error = self.weights_out.transpose() * error_pred;    // HS,1
+                        let error = error.component_mul(&act.map(sigmoid_deriv)); // HS,1
+                        prev_error = error;
+
+                    } else {
+                        // println!("wat hidden: {}", layer);
+
+                        let act = acts[layer-1];
+
+                        let error = self.weights[layer-1].transpose() * prev_error; // HS,1
+                        let error = error.component_mul(&act.map(sigmoid_deriv)); // HS,1
+                        prev_error = error;
+
+                        let x1 = error * act.transpose();
+
+                        self.weights[layer-1] = self.weights[layer-1] - lr * x1;
+                        self.biases[layer-1]  = self.biases[layer-1] - error;
+
+                    }
                 }
+
             }
-
-            // let error = self.weights_out.transpose() * error_pred;      // HS,1
-            // let error = error.component_mul(&act1.map(sigmoid_deriv));  // HS,1
-
-            // eprintln!("error.shape() = {:?}", error.shape());
-
-            // let error = ( self.weights_out * error_pred ).component_mul(act1.map(sigmoid_deriv))
-
-            // let grad_l = act_lminus1 * error_l;
-
-            // let x1 = 
-
-            // // OS,HS
-            // self.weights_out = self.weights_out - lr * x1;
-
-            // // w_new = w_old - lr * dc_dv;
-            // self.weights_out = self.weights_out - lr * 
 
         }
 
     }
 
-    // fn train_layer(
-    //     input:      SVector<f32,IS>,
-    //     pred:       SVector<f32,OS>,
-    //     correct:    SVector<f32,OS>,
-    //     mut ws: &mut SMatrix<f32,HS,HS>,
-    //     mut bs: &mut SVector<f32,HS>,
+    // pub fn backprop_mut2(
+    //     &mut self,
+    //     inputs:         Vec<SVector<f32,IS>>,
+    //     corrects:       Vec<SVector<f32,OS>>,
+    // // ) -> SVector<f32,OS> {
     // ) {
-    //     unimplemented!()
+    //     let ins = inputs.iter().zip(corrects.iter());
+
+    //     let mut predictions = vec![];
+    //     let mut activations = vec![];
+
+    //     for (input,correct) in ins.clone() {
+    //         let (pred, acts) = self._run(input);
+    //         predictions.push(pred);
+    //         activations.push(acts);
+    //     }
+
+    //     let outs = ins.zip(predictions.iter().zip(activations.iter()));
+
+    //     for ((input,correct),(pred,acts)) in outs {
+    //         // println!("wat 0");
+
+    //         let mut acts = acts.iter().rev();
+    //         let correct: &SVector<f32,OS> = correct;
+    //         let pred: &SVector<f32,OS> = pred;
+
+    //         let act1: &SVector<f32,HS> = acts.next().unwrap();
+
+    //         let error = correct - pred; // OS,1
+    //         let d_predicted: SVector<f32,OS> = error.component_mul(&pred.map(sigmoid_deriv)); // OS,1
+
+    //         let loss: f32 = error.map(|x| x * x).sum();
+
+    //         let lr = 0.1;
+
+    //         let x0: SMatrix<f32,OS,HS> = (d_predicted * lr) * act1.transpose(); // OS,HS
+    //         self.weights_out = self.weights_out + x0;
+    //         self.biases_out = self.biases_out + d_predicted;
+
+    //         let mut last_act = act1;
+    //         for (mut ws,mut bs) in self.weights.iter_mut().zip(self.biases.iter_mut()) {
+
+    //             let act = acts.next().unwrap();
+    //             let d_act = act.map(sigmoid_deriv);
+
+    //             let e_layer: SMatrix<f32,HS,HS> = ws.transpose() * loss;
+    //             let d_layer = e_layer * d_act;
+
+    //             // let x0 = (loss * lr) * act.transpose();
+    //             // ws = ws + x0;
+
+    //         }
+
+    //         let e_input = self.weights_out.transpose() * d_predicted; // HS,1
+    //         let d_input = e_input.component_mul(&act1.map(sigmoid_deriv)); // HS,1
+
+    //         let x1 = input * d_input.transpose(); // IS,HS XXX: ??
+    //         self.weights_in = self.weights_in + x1.transpose() * lr;
+    //         self.biases_in = self.biases_in.map(|x| x + d_input.sum());
+
+    //     }
+
+    //     // unimplemented!()
     // }
-
-    pub fn backprop_mut2(
-        &mut self,
-        inputs:         Vec<SVector<f32,IS>>,
-        corrects:       Vec<SVector<f32,OS>>,
-    // ) -> SVector<f32,OS> {
-    ) {
-        let ins = inputs.iter().zip(corrects.iter());
-
-        let mut predictions = vec![];
-        let mut activations = vec![];
-
-        for (input,correct) in ins.clone() {
-            let (pred, acts) = self._run(input);
-            predictions.push(pred);
-            activations.push(acts);
-        }
-
-        let outs = ins.zip(predictions.iter().zip(activations.iter()));
-
-        for ((input,correct),(pred,acts)) in outs {
-            // println!("wat 0");
-
-            let mut acts = acts.iter().rev();
-            let correct: &SVector<f32,OS> = correct;
-            let pred: &SVector<f32,OS> = pred;
-
-            let act1: &SVector<f32,HS> = acts.next().unwrap();
-
-            let error = correct - pred; // OS,1
-            let d_predicted: SVector<f32,OS> = error.component_mul(&pred.map(sigmoid_deriv)); // OS,1
-
-            let loss: f32 = error.map(|x| x * x).sum();
-
-            let lr = 0.1;
-
-            let x0: SMatrix<f32,OS,HS> = (d_predicted * lr) * act1.transpose(); // OS,HS
-            self.weights_out = self.weights_out + x0;
-            self.biases_out = self.biases_out + d_predicted;
-
-            let mut last_act = act1;
-            for (mut ws,mut bs) in self.weights.iter_mut().zip(self.biases.iter_mut()) {
-
-                let act = acts.next().unwrap();
-                let d_act = act.map(sigmoid_deriv);
-
-                let e_layer: SMatrix<f32,HS,HS> = ws.transpose() * loss;
-                let d_layer = e_layer * d_act;
-
-                // let x0 = (loss * lr) * act.transpose();
-                // ws = ws + x0;
-
-            }
-
-            let e_input = self.weights_out.transpose() * d_predicted; // HS,1
-            let d_input = e_input.component_mul(&act1.map(sigmoid_deriv)); // HS,1
-
-            let x1 = input * d_input.transpose(); // IS,HS XXX: ??
-            self.weights_in = self.weights_in + x1.transpose() * lr;
-            self.biases_in = self.biases_in.map(|x| x + d_input.sum());
-
-        }
-
-        // unimplemented!()
-    }
 
 }
 
@@ -261,9 +293,29 @@ pub fn sigmoid(x: f32) -> f32 {
 }
 
 impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
+
     pub fn new(n_hidden: usize) -> Self {
-        let mut rng: StdRng = SeedableRng::seed_from_u64(18105974836011991331);
-        let dist = Uniform::new(0.0f32,1.0);
+        Self::_new(n_hidden, (0.0, 1.0), Some(18105974836011991331))
+    }
+
+    pub fn new_range(n_hidden: usize, mm: (f32,f32)) -> Self {
+        Self::_new(n_hidden, mm, Some(18105974836011991331))
+    }
+
+    pub fn _new(n_hidden: usize, mm: (f32,f32), seed: Option<u64>) -> Self {
+        assert!(n_hidden > 0);
+
+        let mut rng: StdRng = if let Some(seed) = seed {
+            // SeedableRng::seed_from_u64(18105974836011991331)
+            SeedableRng::seed_from_u64(seed)
+        } else {
+            // SeedableRng::seed_from_u64(18105974836011991331)
+            let mut r = rand::thread_rng();
+            SeedableRng::from_rng(r).unwrap()
+        };
+
+        // let dist = Uniform::new(0.0f32,1.0);
+        let dist = Uniform::new(mm.0,mm.1);
 
         let weights_in = SMatrix::<f32,HS,IS>::from_distribution(&dist, &mut rng);
         let mut weights = vec![];
@@ -294,52 +346,6 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
         }
     }
 }
-
-// impl Network<f32> {
-//     pub fn new(
-//         size_inputs:      usize,
-//         size_hidden:      usize,
-//         n_hidden:         usize,
-//         size_output:      usize,
-//     ) -> Self {
-//         let mut rng: StdRng = SeedableRng::seed_from_u64(18105974836011991331);
-
-//         let mut weights = vec![
-//             Array2::random_using(
-//                 (size_hidden,size_inputs), Uniform::new(0.0,1.0), &mut rng)
-//         ];
-
-//         (0..n_hidden+1).for_each(|x| {
-//             let a = Array2::random_using(
-//                 (size_hidden, size_hidden), Uniform::new(0.0,1.0), &mut rng);
-//             weights.push(a);
-//         });
-
-//         let weights_out = Array2::random_using(
-//             (size_output,size_hidden), Uniform::new(0.0,1.0), &mut rng);
-
-//         let mut biases: Vec<Array1<f32>> = vec![];
-//         (0..n_hidden).for_each(|x| {
-//             let a = Array1::random_using(
-//                 size_hidden, Uniform::new(0.0,1.0), &mut rng);
-//             biases.push(a);
-//         });
-//         let biases_out = Array1::random_using(
-//             size_output, Uniform::new(0.0,1.0), &mut rng);
-
-//         Self {
-//             size_inputs,
-//             size_hidden,
-//             n_hidden,
-//             size_output,
-//             weights,
-//             weights_out,
-//             biases,
-//             biases_out,
-//         }
-//     }
-// }
-
 
 mod network2 {
 
