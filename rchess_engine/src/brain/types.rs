@@ -178,7 +178,7 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
                 let mut w_in: Option<SMatrix<f32,HS,IS>>  = None;
 
                 let mut prev_delta = SVector::<f32,HS>::zeros();
-                let mut delta2: Option<SVector<f32,HS>> = None;
+                // let mut delta2: Option<SVector<f32,HS>> = None;
 
                 for k in 0..self.n_hidden+1 {
                     let layer = self.n_hidden - k;
@@ -190,7 +190,16 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
                         // let d = self.weights[layer-1].transpose() * prev_delta;
                         // let d = d.component_mul(&sp);
 
+                        // let (_,z) = acts[0];
+                        // let sp = z.map(sigmoid_deriv); // HS,1
+
+                        // let d = self.weights_in.transpose() * prev_delta; // IS,1
+                        // let d = d.component_mul(&sp);                     // IS,1
+
+                        // eprintln!("sp.shape() = {:?}", sp.shape());
+
                         w_in = Some(prev_delta * input.transpose());
+                        // w_in = Some(d * input.transpose());
 
                     } else if layer == self.n_hidden {
                         // println!("wat output: {}", layer);
@@ -244,10 +253,6 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
             let nw: SMatrix<f32,HS,HS> = nws.iter().sum();
             *ws = *ws - nw * eta;
         }
-
-        // for (i,b) in bs_new.iter().map(|x| x.0).enumerate() {
-        //     self.biases_in  = self.biases_in - b;
-        // }
 
         let blen = 2.0 + bs_new.len() as f32;
 
