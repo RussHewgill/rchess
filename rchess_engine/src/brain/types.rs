@@ -26,27 +26,27 @@ pub struct GNetwork<T, const IS: usize, const HS: usize, const OS: usize> {
 
 // pub type Network = GNetwork<f32, 1, 1, 1>;
 // pub type Network = GNetwork<f32, 2, 4, 1>;
-pub type Network = GNetwork<f32, 2, 3, 1>;
+// pub type Network = GNetwork<f32, 2, 3, 1>;
 // pub type Network = GNetwork<f32, 2, 3, 2>;
 // pub type Network = GNetwork<f32, 3, 4, 1>;
 
-// pub type Network = GNetwork<f32, 784, 16, 10>;
+pub type Network = GNetwork<f32, 784, 16, 10>;
 
-// pub fn test_mnist(n0: &Network, test_imgs: Vec<SVector<f32,784>>, tst_lbl: Vec<u8>) {
-//     let mut out: Vec<(u8,(usize, f32))> = vec![];
-//     for (img,lbl) in test_imgs.iter().zip(tst_lbl.iter()) {
-//         // let input = SVector::<f32,784>::from_column_slice(img);
-//         let pred = n0.run(&img);
-//         let (k0,k1) = pred.iter().enumerate()
-//             .max_by(|a,b| a.1.partial_cmp(&b.1).unwrap())
-//             .unwrap();
-//         out.push((*lbl,(k0,*k1)));
-//     }
-//     let score = out.iter().filter(|(lbl,(k,_))| *lbl as usize == *k)
-//         .collect::<Vec<_>>().len();
-//     eprintln!("score = {} / {}: {:.2}",
-//             score, out.len(), score as f32 / out.len() as f32);
-// }
+pub fn test_mnist(n0: &Network, test_imgs: Vec<SVector<f32,784>>, tst_lbl: Vec<u8>) {
+    let mut out: Vec<(u8,(usize, f32))> = vec![];
+    for (img,lbl) in test_imgs.iter().zip(tst_lbl.iter()) {
+        // let input = SVector::<f32,784>::from_column_slice(img);
+        let pred = n0.run(&img);
+        let (k0,k1) = pred.iter().enumerate()
+            .max_by(|a,b| a.1.partial_cmp(&b.1).unwrap())
+            .unwrap();
+        out.push((*lbl,(k0,*k1)));
+    }
+    let score = out.iter().filter(|(lbl,(k,_))| *lbl as usize == *k)
+        .collect::<Vec<_>>().len();
+    eprintln!("score = {} / {}: {:.2}",
+            score, out.len(), score as f32 / out.len() as f32);
+}
 
 impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
 
@@ -128,7 +128,6 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
 
             // let dz_dw = act1;                    // HS,1
             let da_dz = pred.map(sigmoid_deriv); // OS,1
-            // let da_dz = pred_z.map(sigmoid_deriv); // OS,1
             let dc_da = 2.0 * (pred - correct);  // OS,1
             // let dc_da = (pred - correct).map(|x| x * x);  // OS,1
 
@@ -144,36 +143,33 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
             // eprintln!("error_pred = {:?}", error_pred);
             // eprintln!("delta = {:?}", delta);
 
-            if self.n_hidden <= 1 {
+            // if self.n_hidden <= 1 {
+            if false {
 
                 let (act,z) = acts[acts.len()-1];
+                let w_out: SMatrix<f32,OS,HS> = delta * act.transpose();
+                let sp = z.map(sigmoid_deriv);
+                let delta2 = self.weights_out.transpose() * delta; // HS,1
+                let delta2 = delta2.component_mul(&sp);
+                let w_in: SMatrix<f32,HS,IS> = delta2 * input.transpose();
 
-                // let x1 = error_pred * act.transpose(); // OS,HS
-                let x1 = error_pred * act.transpose(); // OS,HS
-                // let x2 = act * error_pred.transpose(); // HS,OS, == x1.transpose()
+                ws_new.push((w_in,vec![],w_out));
+                bs_new.push((delta2,vec![],delta));
 
-                self.weights_out = self.weights_out - lr * x1; // OS,HS
-                // self.biases_out  = self.biases_out - error_pred;
-
-                let error = self.weights_out.transpose() * error_pred; // HS,1 // error_hidden
-                let error = error.component_mul(&act.map(sigmoid_deriv)); // HS,1
-
-                let x2 = input * error.transpose(); // IS,HS
-
-                // // HS,IS
-                self.weights_in = self.weights_in - lr * x2.transpose();
-                // self.biases_in = self.biases_in - error;
-
-                ws_new.push((x2.transpose(),vec![],x1));
-                bs_new.push((error,vec![],error_pred));
+                panic!();
 
             } else {
 
                 let mut prev_error  = SVector::<f32,HS>::zeros();
-                // let mut first_error = SVector::<f32,OS>::zeros();
-                // let mut prev_error: Option<SVector<f32,HS>> = None;
 
-                // eprintln!("acts.len() = {:?}", acts.len());
+                let mut ws = vec![];
+                let mut bs = vec![];
+
+                let mut w_out: Option<SMatrix<f32,OS,HS>> = None;
+                let mut w_in: Option<SMatrix<f32,HS,IS>>  = None;
+
+                let mut prev_delta = SVector::<f32,HS>::zeros();
+                let mut delta2: Option<SVector<f32,HS>> = None;
 
                 for k in 0..self.n_hidden+1 {
                     let layer = self.n_hidden - k;
@@ -182,72 +178,69 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
                     if layer == 0 {
                         // println!("wat input: {}", layer);
 
-                        let (act,z) = acts[0];
+                        // let d = self.weights[layer-1].transpose() * prev_delta;
+                        // let d = d.component_mul(&sp);
 
-                        let error = self.weights[0].transpose() * prev_error; // HS,1
-                        let error = error.component_mul(&act.map(sigmoid_deriv)); // HS,1
-
-                        // eprintln!("error.shape() = {:?}", error.shape());
-
-                        let x2 = input * error.transpose(); // IS,HS
-                        // HS,IS
-                        self.weights_in = self.weights_in - lr * x2.transpose();
-                        self.biases_in = self.biases_in - error;
+                        w_in = Some(prev_delta * input.transpose());
 
                     } else if layer == self.n_hidden {
                         // println!("wat output: {}", layer);
-
                         let (act,z) = acts[acts.len()-1];
-                        let x1 = error_pred * act.transpose(); // OS,HS
 
-                        self.weights_out = self.weights_out - lr * x1; // OS,HS
-                        self.biases_out  = self.biases_out - error_pred;
+                        let sp = z.map(sigmoid_deriv);
+                        let d = self.weights_out.transpose() * delta; // HS,1
+                        let d = d.component_mul(&sp);
+                        prev_delta = d;
 
-
-
-                        let error = self.weights_out.transpose() * error_pred;    // HS,1
-                        let error = error.component_mul(&act.map(sigmoid_deriv)); // HS,1
-                        prev_error = error;
-
+                        w_out = Some(delta * act.transpose());
                     } else {
                         // println!("wat hidden: {}", layer);
 
-                        let (act,z) = acts[layer-1];
+                        let (_,z) = acts[layer];
+                        let sp = z.map(sigmoid_deriv);
 
-                        let error = self.weights[layer-1].transpose() * prev_error; // HS,1
-                        let error = error.component_mul(&act.map(sigmoid_deriv)); // HS,1
-                        prev_error = error;
+                        let d = self.weights[layer-1].transpose() * prev_delta;
+                        let d = d.component_mul(&sp);
+                        prev_delta = d;
 
-                        let x1 = error * act.transpose();
+                        let (act,_) = acts[layer-1];
 
-                        self.weights[layer-1] = self.weights[layer-1] - lr * x1;
-                        self.biases[layer-1]  = self.biases[layer-1] - error;
+                        let w = d * act.transpose();
+
+                        ws.push(w);
+                        bs.push(d);
+
+                        // self.weights[layer-1] = self.weights[layer-1] - lr * x1;
+                        // self.biases[layer-1]  = self.biases[layer-1] - error;
 
                     }
                 }
+
+                ws_new.push((w_in.unwrap(),ws,w_out.unwrap()));
+                bs_new.push((prev_delta,bs,delta));
 
             }
 
         }
 
-        let eta = lr / ws_new.len() as f32;
+        let eta = lr / (ws_new.len() as f32 + 2.0);
 
-        // let nw0: SMatrix<f32,HS,IS> = ws_new.iter().map(|x| x.0).sum();
-        // self.weights_in  = self.weights_in - nw0 * eta;
+        let nw0: SMatrix<f32,HS,IS> = ws_new.iter().map(|x| x.0).sum();
+        self.weights_in  = self.weights_in - nw0 * eta;
 
-        // let nw2: SMatrix<f32,OS,HS> = ws_new.iter().map(|x| x.2).sum();
-        // self.weights_out = self.weights_out - nw2 * eta;
+        let nw2: SMatrix<f32,OS,HS> = ws_new.iter().map(|x| x.2).sum();
+        self.weights_out = self.weights_out - nw2 * eta;
 
-        // for (mut ws, nws) in self.weights.iter_mut().zip(ws_new.into_iter().map(|x| x.1)) {
-        //     let nw: SMatrix<f32,HS,HS> = nws.iter().sum();
-        //     *ws = *ws - nw * eta;
-        // }
+        for (mut ws, nws) in self.weights.iter_mut().zip(ws_new.into_iter().map(|x| x.1)) {
+            let nw: SMatrix<f32,HS,HS> = nws.iter().sum();
+            *ws = *ws - nw * eta;
+        }
 
         // for (i,b) in bs_new.iter().map(|x| x.0).enumerate() {
         //     self.biases_in  = self.biases_in - b;
         // }
 
-        let blen = bs_new.len() as f32;
+        let blen = 2.0 + bs_new.len() as f32;
 
         let nb0: SVector<f32,HS> = bs_new.iter().map(|x| x.0).sum();
         self.biases_in  = self.biases_in - nb0 / blen;
@@ -329,7 +322,8 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
 }
 
 pub fn sigmoid_deriv(x: f32) -> f32 {
-    x * (1.0 - x)
+    // x * (1.0 - x)
+    sigmoid(x) * (1.0 - sigmoid(x))
 }
 
 pub fn sigmoid(x: f32) -> f32 {

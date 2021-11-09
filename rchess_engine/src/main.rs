@@ -191,48 +191,58 @@ fn main_nn() {
     use mnist::*;
 
 
-    // let data = MnistBuilder::new()
-    //     .base_path("mnist")
-    //     .label_format_digit()
-    //     // .training_set_length(50_000)
-    //     // .validation_set_length(10_000)
-    //     // .test_set_length(10_000)
-    //     .finalize()
-    //     .normalize();
-    // let mut trn_imgs: Vec<SVector<f32,784>> = data.trn_img
-    //     .chunks_exact(28 * 28)
-    //     .map(|x| SVector::<f32,784>::from_column_slice(x))
-    //     .collect::<Vec<_>>();
-    // let mut test_imgs: Vec<SVector<f32,784>> = data.tst_img
-    //     .chunks_exact(28 * 28)
-    //     .map(|x| SVector::<f32,784>::from_column_slice(x))
-    //     .collect::<Vec<_>>();
+    let data = MnistBuilder::new()
+        .base_path("mnist")
+        .label_format_digit()
+        // .training_set_length(50_000)
+        // .validation_set_length(10_000)
+        // .test_set_length(10_000)
+        .finalize()
+        .normalize();
+    let mut trn_imgs: Vec<SVector<f32,784>> = data.trn_img
+        .chunks_exact(28 * 28)
+        .map(|x| SVector::<f32,784>::from_column_slice(x))
+        .collect::<Vec<_>>();
+    let mut test_imgs: Vec<SVector<f32,784>> = data.tst_img
+        .chunks_exact(28 * 28)
+        .map(|x| SVector::<f32,784>::from_column_slice(x))
+        .collect::<Vec<_>>();
 
-    // test_imgs.truncate(10);
+    test_imgs.truncate(100);
 
     // eprintln!("imgs.len() = {:?}", imgs.len());
     // eprintln!("lbls.len() = {:?}", lbls.len());
 
-    let nn = Network::new(2);
+    let mut nn = Network::new(2);
 
     let lr = 0.1;
 
-    // let corrects = data.test_lbl.iter()
-    //     .map(|x| {
-    //         let mut v = SVector::<f32,10>::zeros();
-    //         v[x] = 1.0;
-    //     }).collect();
+    let mut corrects = data.trn_lbl.iter()
+    // let mut corrects = data.tst_lbl.iter()
+        .map(|x| {
+            let mut v = SVector::<f32,10>::zeros();
+            v[*x as usize] = 1.0;
+            v
+        }).collect::<Vec<_>>();
+
+    trn_imgs.truncate(100);
+    corrects.truncate(100);
+    let mut trn_lbl = data.trn_lbl;
+    trn_lbl.truncate(100);
+
+    test_mnist(&nn, trn_imgs.clone(), trn_lbl.clone());
 
     for k in 0..1000 {
+        eprintln!("k = {:?}", k);
 
-        // nn.backprop_mut(test_imgs, corrects, lr);
+        nn.backprop_mut(trn_imgs.clone(), corrects.clone(), lr);
 
     }
 
-
     // test_mnist(&nn, test_imgs.clone(), data.tst_lbl.clone());
+    test_mnist(&nn, trn_imgs.clone(), trn_lbl.clone());
 
-    // return;
+    return;
 
     let inputs = vec![
         vector![0.0,0.0],
@@ -263,9 +273,12 @@ fn main_nn() {
     // nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
     // return;
 
-    for k in 0..10000 {
-        nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
-    }
+    // for k in 0..50000 {
+    //     for (i,c) in inputs.iter().zip(corrects.iter()) {
+    //         nn.backprop_mut(vec![*i], vec![*c], 0.1);
+    //     }
+    //     // nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
+    // }
 
     // nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
     // nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
@@ -282,14 +295,14 @@ fn main_nn() {
     // eprintln!("nn.weights_in = {:?}", nn.weights_in);
     // eprintln!("nn.weights_out = {:?}", nn.weights_out);
 
-    println!();
-    println!("X     Y     Cor    Ans   err");
-    for (input, c) in xs.clone() {
-        let (pred,pred_a,acts) = nn._run(input);
-        // eprintln!("pred_a = {:?}", pred_a);
-        println!("{:.2}  {:.2}  {}      {:.2}", input[0], input[1], c[0], pred[0]);
-        // eprintln!("acts = {:?}", acts);
-    }
+    // println!();
+    // println!("X     Y     Cor    Ans   err");
+    // for (input, c) in xs.clone() {
+    //     let (pred,pred_a,acts) = nn._run(input);
+    //     // eprintln!("pred_a = {:?}", pred_a);
+    //     println!("{:.2}  {:.2}  {}      {:.2}", input[0], input[1], c[0], pred[0]);
+    //     // eprintln!("acts = {:?}", acts);
+    // }
 
     let a0 = matrix![
         1, 5;
