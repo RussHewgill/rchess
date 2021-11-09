@@ -26,13 +26,22 @@ pub struct GNetwork<T, const IS: usize, const HS: usize, const OS: usize> {
 
 // pub type Network = GNetwork<f32, 1, 1, 1>;
 // pub type Network = GNetwork<f32, 2, 4, 1>;
-// pub type Network = GNetwork<f32, 2, 3, 1>;
+pub type Network = GNetwork<f32, 2, 3, 1>;
 // pub type Network = GNetwork<f32, 2, 3, 2>;
 // pub type Network = GNetwork<f32, 3, 4, 1>;
 
-pub type Network = GNetwork<f32, 784, 16, 10>;
+pub type MNNetwork = GNetwork<f32, 784, 16, 10>;
 
-pub fn test_mnist(n0: &Network, test_imgs: Vec<SVector<f32,784>>, tst_lbl: Vec<u8>) {
+pub fn test_mnist(
+    n0:               &MNNetwork,
+    mut test_imgs:    Vec<SVector<f32,784>>,
+    mut tst_lbl:      Vec<u8>,
+    n:                Option<usize>,
+) {
+    if let Some(n) = n {
+        test_imgs.truncate(n);
+        tst_lbl.truncate(n);
+    }
     let mut out: Vec<(u8,(usize, f32))> = vec![];
     for (img,lbl) in test_imgs.iter().zip(tst_lbl.iter()) {
         // let input = SVector::<f32,784>::from_column_slice(img);

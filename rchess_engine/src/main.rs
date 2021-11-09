@@ -24,6 +24,7 @@ use std::str::FromStr;
 use itertools::Itertools;
 
 use nom::InputLength;
+use rand::prelude::SliceRandom;
 use rchess_engine_lib::explore::Explorer;
 // use crate::lib::*;
 use rchess_engine_lib::types::*;
@@ -177,9 +178,7 @@ fn main() {
 
 }
 
-#[allow(unreachable_code)]
-fn main_nn() {
-    // use ndarray::prelude::*;
+fn main_mnist() {
 
     use nalgebra::{SMatrix,SVector,Matrix,Vector,matrix,vector};
 
@@ -189,7 +188,6 @@ fn main_nn() {
     use rchess_engine_lib::brain::types::*;
 
     use mnist::*;
-
 
     let data = MnistBuilder::new()
         .base_path("mnist")
@@ -208,15 +206,6 @@ fn main_nn() {
         .map(|x| SVector::<f32,784>::from_column_slice(x))
         .collect::<Vec<_>>();
 
-    test_imgs.truncate(100);
-
-    // eprintln!("imgs.len() = {:?}", imgs.len());
-    // eprintln!("lbls.len() = {:?}", lbls.len());
-
-    let mut nn = Network::new(2);
-
-    let lr = 0.1;
-
     let mut corrects = data.trn_lbl.iter()
     // let mut corrects = data.tst_lbl.iter()
         .map(|x| {
@@ -225,24 +214,54 @@ fn main_nn() {
             v
         }).collect::<Vec<_>>();
 
-    trn_imgs.truncate(100);
-    corrects.truncate(100);
+    // trn_imgs.truncate(1000);
+    // corrects.truncate(100);
     let mut trn_lbl = data.trn_lbl;
     trn_lbl.truncate(100);
 
-    test_mnist(&nn, trn_imgs.clone(), trn_lbl.clone());
+    let lr = 0.1;
+    let mut nn = MNNetwork::new_range(2, (-1.0, 1.0));
 
-    for k in 0..1000 {
+    // test_mnist(&nn, trn_imgs.clone(), trn_lbl.clone(), Some(1000));
+    test_mnist(&nn, test_imgs.clone(), data.tst_lbl.clone(), Some(1000));
+
+    let mut rng = rand::thread_rng();
+
+    // let mut ins = trn_imgs.iter().zip(trn_lbl.clone()).collect::<Vec<_>>();
+    let mut ins = trn_imgs.iter().zip(corrects.clone()).collect::<Vec<_>>();
+
+    for k in 0..500 {
         eprintln!("k = {:?}", k);
 
-        nn.backprop_mut(trn_imgs.clone(), corrects.clone(), lr);
+        ins.shuffle(&mut rng);
 
+        let xs: &[(&SVector<f32,784>,SVector<f32,10>)] = &ins[0..100];
+        let xs = xs.to_vec();
+        let (imgs,lbls): (Vec<SVector<f32,784>>,Vec<SVector<f32,10>>) = xs.into_iter().unzip();
+
+        nn.backprop_mut(imgs, lbls, lr);
+        // nn.backprop_mut(trn_imgs.clone(), corrects.clone(), lr);
     }
 
-    // test_mnist(&nn, test_imgs.clone(), data.tst_lbl.clone());
-    test_mnist(&nn, trn_imgs.clone(), trn_lbl.clone());
+    test_mnist(&nn, test_imgs.clone(), data.tst_lbl.clone(), Some(1000));
+    // test_mnist(&nn, trn_imgs.clone(), trn_lbl.clone(), Some(1000));
 
     return;
+}
+
+#[allow(unreachable_code)]
+fn main_nn() {
+    // use ndarray::prelude::*;
+
+    use nalgebra::{SMatrix,SVector,Matrix,Vector,matrix,vector};
+
+    use rchess_engine_lib::brain::*;
+    use rchess_engine_lib::brain::filter::*;
+    use rchess_engine_lib::brain::nnue::*;
+    use rchess_engine_lib::brain::types::*;
+
+    // main_mnist();
+    // return;
 
     let inputs = vec![
         vector![0.0,0.0],
@@ -270,15 +289,26 @@ fn main_nn() {
     // let mut nn = Network::new(2);
     let mut nn = Network::new_range(1, (0.,1.));
 
+    // for (input,correct) in xs.clone() {
+    //     let (pred,pred_z,acts) = nn._run(input);
+    //     let delta = pred - correct; // OS,1
+    //     let delta = delta.component_mul(&pred_z.map(sigmoid_deriv));
+    //     let error = 2.0 * (pred - correct);
+    //     let error = error.component_mul(&pred.map(sigmoid_deriv));
+    //     eprintln!("{:?} = {:?}, {:?}", correct, error, delta);
+    //     // predictions.push((pred,pred_z));
+    //     // activations.push(acts);
+    // }
+
     // nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
     // return;
 
-    // for k in 0..50000 {
-    //     for (i,c) in inputs.iter().zip(corrects.iter()) {
-    //         nn.backprop_mut(vec![*i], vec![*c], 0.1);
-    //     }
-    //     // nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
-    // }
+    for k in 0..50000 {
+        for (i,c) in inputs.iter().zip(corrects.iter()) {
+            nn.backprop_mut(vec![*i], vec![*c], 0.1);
+        }
+        // nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
+    }
 
     // nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
     // nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
@@ -295,14 +325,14 @@ fn main_nn() {
     // eprintln!("nn.weights_in = {:?}", nn.weights_in);
     // eprintln!("nn.weights_out = {:?}", nn.weights_out);
 
-    // println!();
-    // println!("X     Y     Cor    Ans   err");
-    // for (input, c) in xs.clone() {
-    //     let (pred,pred_a,acts) = nn._run(input);
-    //     // eprintln!("pred_a = {:?}", pred_a);
-    //     println!("{:.2}  {:.2}  {}      {:.2}", input[0], input[1], c[0], pred[0]);
-    //     // eprintln!("acts = {:?}", acts);
-    // }
+    println!();
+    println!("X     Y     Cor    Ans   err");
+    for (input, c) in xs.clone() {
+        let (pred,pred_a,acts) = nn._run(input);
+        // eprintln!("pred_a = {:?}", pred_a);
+        println!("{:.2}  {:.2}  {}      {:.2}", input[0], input[1], c[0], pred[0]);
+        // eprintln!("acts = {:?}", acts);
+    }
 
     let a0 = matrix![
         1, 5;
