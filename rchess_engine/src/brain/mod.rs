@@ -2,6 +2,7 @@
 pub mod types;
 pub mod filter;
 pub mod nnue;
+pub mod matrix;
 
 use crate::types::*;
 use crate::brain::types::*;

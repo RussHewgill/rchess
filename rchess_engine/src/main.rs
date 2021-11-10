@@ -361,18 +361,18 @@ fn main_mnist() {
     println!("finished in {:.3} seconds", t1);
     eprintln!("k = {:?}", k);
 
-    // let (imgs,lbls): (Vec<&SVector<f32,784>>,Vec<SVector<f32,10>>) = ins.clone().into_iter().unzip();
-    // let mut t0 = Instant::now();
-    // let mut k = 0;
-    // for _ in 0..epochs {
-    //     for i in imgs.iter() {
-    //         k += 1;
-    //         nn0.run(i);
-    //     }
-    // }
-    // let t1 = t0.elapsed().as_secs_f64();
-    // println!("finished in {:.3} seconds", t1);
-    // eprintln!("k = {:?}", k);
+    let (imgs,lbls): (Vec<&SVector<f32,784>>,Vec<SVector<f32,10>>) = ins.clone().into_iter().unzip();
+    let mut t0 = Instant::now();
+    let mut k = 0;
+    for _ in 0..epochs {
+        for i in imgs.iter() {
+            k += 1;
+            nn0.run(i);
+        }
+    }
+    let t1 = t0.elapsed().as_secs_f64();
+    println!("finished in {:.3} seconds", t1);
+    eprintln!("k = {:?}", k);
 
     return;
 
@@ -441,6 +441,7 @@ fn main_mnist() {
 fn wat_nalgebra<const NN: usize>() {
     use nalgebra::{SMatrix,SVector,Matrix,Vector,matrix,vector,Dynamic,VecStorage};
 
+    use rchess_engine_lib::brain::matrix::*;
 
     let n = 1.0;
     // let n = 1;
@@ -455,27 +456,14 @@ fn wat_nalgebra<const NN: usize>() {
     let x = Matrix1000::from_vec(NN, NN, vec![n; NN * NN]);
     let y = Matrix1000::from_vec(NN, NN, vec![n; NN * NN]);
 
-    // use nshare::{ToNalgebra,ToNdarray2,RefNdarray2};
-    // use nshare::RefNdarray1;
-    // use nalgebra::Matrix4;
+    // let result: Matrix1000 = x * y;
 
-    // let m = Matrix4::new(
-    //     0.1, 0.2, 0.3, 0.4,
-    //     0.5, 0.6, 0.7, 0.8,
-    //     1.1, 1.2, 1.3, 1.4,
-    //     1.5, 1.6, 1.7, 1.8,
-    // );
+    let x1 = x.ref_ndarray2();
+    let y1 = y.ref_ndarray2();
 
-    // let m2 = &m;
+    let result1 = x1.dot(&y1);
 
-    // let arr = m.ref_ndarray2();
-    // assert!(arr.slice(s![1, ..]).iter().eq(&[0.5, 0.6, 0.7, 0.8]));
-    // assert_eq!(arr.dim(), (4, 4));
-
-    // let x1: ndarray::Array2<f32> = x.into_ndarray2;
-    // let x1 = &x.ref_ndarray2();
-
-    let result = x * y;
+    let result: Matrix1000 = result1.into_nalgebra();
 
 }
 
@@ -504,23 +492,21 @@ fn main_nn() {
     use rchess_engine_lib::brain::types::*;
 
 
-    let n = 1000;
-    const K: usize = 200;
+    // let n = 1000;
+    // const K: usize = 200;
+    // println!("Starting...");
+    // let t0 = Instant::now();
+    // for _ in 0..n {
+    //     wat_nalgebra::<K>();
+    // }
+    // println!("nalgebra: finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+    // let t0 = Instant::now();
+    // for _ in 0..n {
+    //     wat_ndarray::<K>();
+    // }
+    // println!("ndarray:  finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
-    println!("Starting...");
-    let t0 = Instant::now();
-    for _ in 0..n {
-        wat_nalgebra::<K>();
-    }
-    println!("nalgebra: finished in {:.3} seconds", t0.elapsed().as_secs_f64());
-
-    let t0 = Instant::now();
-    for _ in 0..n {
-        wat_ndarray::<K>();
-    }
-    println!("ndarray:  finished in {:.3} seconds", t0.elapsed().as_secs_f64());
-
-    // main_mnist();
+    main_mnist();
 
     // let h = std::thread::Builder::new()
     //     .stack_size(24 * 1024 * 1024)
