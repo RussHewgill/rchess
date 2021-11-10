@@ -122,7 +122,8 @@ pub fn test_mnist(
 impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
 
     pub fn fill_input_matrix<const ISS: usize>(
-        ins: Vec<(SVector<f32,IS>,SVector<f32,OS>)>,
+        // ins: Vec<(SVector<f32,IS>,SVector<f32,OS>)>,
+        ins: Vec<(&SVector<f32,IS>,SVector<f32,OS>)>,
     ) -> (SMatrix<f32,IS,ISS>,SMatrix<f32,OS,ISS>) {
         let mut inputs: SMatrix<f32,IS,ISS> = SMatrix::zeros();
         let mut cors: SMatrix<f32,OS,ISS>   = SMatrix::zeros();
@@ -138,7 +139,7 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
         &mut self,
         // inputs:         SMatrix<f32,IS,ISS>,
         // corrects:       SMatrix<f32,OS,ISS>,
-        ins:            Vec<(SVector<f32,IS>,SVector<f32,OS>)>,
+        ins:            Vec<(&SVector<f32,IS>,SVector<f32,OS>)>,
         lr:             f32,
     ) {
 
@@ -173,6 +174,7 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
         let delta = pred - corrects; // OS,ISS
         let delta = delta.component_mul(&pred_z.map(sigmoid_deriv));
 
+        // XXX: Backprop
 
         let mut ws = vec![];
         let mut bs = vec![];
@@ -198,9 +200,11 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
                 let d = d.component_mul(&sp);
                 prev_delta = d;
 
-                let k = delta * act.transpose(); // OS,HS
+                // let k = delta * act.transpose(); // OS,HS
 
                 w_out = Some(delta * act.transpose());
+                // w_out = Some(act * delta.transpose());
+
             } else {
 
                 let z = zs[layer];
@@ -301,7 +305,7 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
     #[allow(unused_doc_comments)]
     pub fn backprop_mut(
         &mut self,
-        inputs:         Vec<SVector<f32,IS>>,
+        inputs:         Vec<&SVector<f32,IS>>,
         corrects:       Vec<SVector<f32,OS>>,
         lr:             f32,
     ) {

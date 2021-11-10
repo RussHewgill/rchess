@@ -298,14 +298,17 @@ fn main_mnist() {
     trn_lbl.truncate(100);
 
     let lr = 0.1;
-    let mut nn = MNNetwork::new_range(2, (-1.0, 1.0));
+    let mut nn0 = MNNetwork::new_range(2, (-1.0, 1.0));
+    let mut nn1 = MNNetwork::new_range(2, (-1.0, 1.0));
 
     // nn.write_to_file("mnist.bin").unwrap();
 
     let test_data = test_imgs.into_iter().zip(data.tst_lbl.into_iter()).collect::<Vec<_>>();
 
     // let mut ins = trn_imgs.iter().zip(trn_lbl.clone()).collect::<Vec<_>>();
-    let mut ins: Vec<_> = trn_imgs.clone().into_iter().zip(corrects.clone()).collect();
+    // let mut ins: Vec<_> = trn_imgs.clone().into_iter().zip(corrects.clone()).collect();
+    let ti = trn_imgs.clone();
+    let mut ins: Vec<_> = ti.iter().zip(corrects.clone()).collect();
 
     // let (inputs,cors): (SMatrix<f32,784,10>,SMatrix<f32,10,10>) = {
     //     let mut inputs: SMatrix<f32,784,10> = SMatrix::zeros();
@@ -334,43 +337,59 @@ fn main_mnist() {
 
     let mut rng = rand::thread_rng();
 
-    println!("Starting...");
     let mut t0 = Instant::now();
 
-    const BATCH_SIZE: usize = 100;
+    // const BATCH_SIZE: usize = 100;
+    const BATCH_SIZE: usize = 10;
+    const EPOCHS: usize = 2000;
 
-    for k in 0..10000 {
+    // println!("Starting old...");
+    // for k in 0..EPOCHS {
+    //     ins.shuffle(&mut rng);
+    //     let xs: &[(&SVector<f32,784>,SVector<f32,10>)] = &ins[0..BATCH_SIZE];
+    //     let xs = xs.to_vec();
+    //     let (imgs,lbls): (Vec<&SVector<f32,784>>,Vec<SVector<f32,10>>) = xs.into_iter().unzip();
+    //     nn0.backprop_mut(imgs, lbls, lr);
+    //     if k % 100 == 0 {
+    //         // let t1 = t0.elapsed().as_secs_f64();
+    //         // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", k, t1, t1 / k as f64);
+    //         // t0 = Instant::now();
+    //         eprint!("old:    ");
+    //         test_mnist(&nn0, test_data.clone(), Some(1000));
+    //         // nn.write_to_file("mnist.bin",Some("mnist-2.bin")).unwrap();
+    //         // nn.write_to_file("mnist.bin",None).unwrap();
+    //     }
+    // }
+    // let t1 = t0.elapsed().as_secs_f64();
+    // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", EPOCHS, t1, t1 / EPOCHS as f64);
 
-        // ins.shuffle(&mut rng);
+    let mut t0 = Instant::now();
+    println!("Starting matrix...");
+    for k in 0..EPOCHS {
+        ins.shuffle(&mut rng);
 
-        // let xs: &[(SVector<f32,784>,SVector<f32,10>)] = &ins[0..BATCH_SIZE];
-        // let xs = xs.to_vec();
-        // let (imgs,lbls): (Vec<SVector<f32,784>>,Vec<SVector<f32,10>>) = xs.into_iter().unzip();
+        let mut ins2 = ins.clone();
+        ins2.truncate(BATCH_SIZE);
+        nn1.backprop_mut_matrix::<BATCH_SIZE>(ins2, lr);
 
-        // nn.backprop_mut(imgs, lbls, lr);
+        if k % 100 == 0 {
+            // let t1 = t0.elapsed().as_secs_f64();
+            // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", k, t1, t1 / k as f64);
+            // t0 = Instant::now();
 
-        // let mut ins2 = ins.clone();
-        // ins2.truncate(BATCH_SIZE);
-        // nn.backprop_mut_matrix::<BATCH_SIZE>(ins2, lr);
-
-        if k % 50 == 0 {
-            let t1 = t0.elapsed().as_secs_f64();
-            println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", k, t1, t1 / k as f64);
-            t0 = Instant::now();
-
-            test_mnist(&nn, test_data.clone(), Some(1000));
-            // nn.write_to_file("mnist.bin",Some("mnist-2.bin")).unwrap();
-            // nn.write_to_file("mnist.bin",None).unwrap();
+            eprint!("matrix: ");
+            test_mnist(&nn1, test_data.clone(), Some(1000));
         }
-
     }
+    let t1 = t0.elapsed().as_secs_f64();
+    println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", EPOCHS, t1, t1 / EPOCHS as f64);
 
     // nn.write_to_file("mnist.bin").unwrap();
 
-    // test_mnist(&nn, test_data.clone(), Some(1000));
-    test_mnist(&nn, test_data.clone(), None);
-    // test_mnist(&nn, test_imgs.clone(), data.tst_lbl.clone(), Some(1000));
-    // test_mnist(&nn, trn_imgs.clone(), trn_lbl.clone(), Some(1000));
+    // // test_mnist(&nn, test_data.clone(), Some(1000));
+    // test_mnist(&nn, test_data.clone(), None);
+    // // test_mnist(&nn, test_imgs.clone(), data.tst_lbl.clone(), Some(1000));
+    // // test_mnist(&nn, trn_imgs.clone(), trn_lbl.clone(), Some(1000));
 
     return;
 }
@@ -457,8 +476,8 @@ fn main_nn() {
         //     nn.backprop_mut(vec![*i], vec![*c], 0.1);
         // }
 
-        let (inputs,corrects): (Vec<SVector<f32,2>>,Vec<SVector<f32,1>>) = xs3.into_iter().unzip();
-        nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
+        // let (inputs,corrects): (Vec<&SVector<f32,2>>,Vec<SVector<f32,1>>) = xs3.into_iter().unzip();
+        // nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
 
     }
     println!("finished in {:.3} seconds.", t0.elapsed().as_secs_f64());
