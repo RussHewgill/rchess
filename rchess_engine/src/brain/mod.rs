@@ -123,7 +123,7 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
 
     pub fn fill_input_matrix<const ISS: usize>(
         // ins: Vec<(SVector<f32,IS>,SVector<f32,OS>)>,
-        ins: Vec<(&SVector<f32,IS>,SVector<f32,OS>)>,
+        ins: &Vec<(&SVector<f32,IS>,SVector<f32,OS>)>,
     ) -> (SMatrix<f32,IS,ISS>,SMatrix<f32,OS,ISS>) {
         let mut inputs: SMatrix<f32,IS,ISS> = SMatrix::zeros();
         let mut cors: SMatrix<f32,OS,ISS>   = SMatrix::zeros();
@@ -134,16 +134,67 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
         (inputs,cors)
     }
 
+    fn repeat<const NN: usize, const ISS: usize>(v: &SVector<f32,NN>) -> SMatrix<f32,NN,ISS> {
+        SMatrix::<f32,NN,ISS>::from_columns(&[*v; ISS])
+        // let mut out = SMatrix::<f32,NN,ISS>::zeros();
+        // for i in 0..ISS {
+            // out.set_column(i, &v);
+        // }
+        // out
+    }
+
+    pub fn run_matrix<const ISS: usize>(
+        &mut self,
+        inputs:         &SMatrix<f32,IS,ISS>,
+        corrects:       &SMatrix<f32,OS,ISS>,
+        // ins:            &Vec<(&SVector<f32,IS>,SVector<f32,OS>)>,
+    ) -> SMatrix<f32,OS,ISS> {
+        // let (inputs,corrects) = Self::fill_input_matrix::<ISS>(&ins);
+
+        let mut activations: Vec<SMatrix<f32,HS,ISS>> = vec![];
+        let mut zs: Vec<SMatrix<f32,HS,ISS>>          = vec![];
+
+        let b0 = [self.biases_in; ISS];
+
+        // let z0 = self.weights_in * inputs; // HS,ISS
+        // let z0 = z0 + Self::repeat(&self.biases_in);
+        let z0 = self.weights_in * inputs + Self::repeat(&self.biases_in); // HS,ISS
+        zs.push(z0);
+
+        let act0 = z0.map(sigmoid);
+        activations.push(act0);
+
+        let mut last = act0;
+
+        for (ws,bs) in self.weights.iter().zip(self.biases.iter()) {
+            // let z = ws * last;
+            // let z = z + Self::repeat(bs);
+            let z = ws * last + Self::repeat(bs);
+            zs.push(z);
+
+            let act = z.map(sigmoid);
+            activations.push(act);
+
+            last = act;
+            // eprintln!("z.shape() = {:?}", z.shape());
+        }
+
+        // let pred_z = self.weights_out * last;
+        // let pred_z = pred_z + Self::repeat(&self.biases_out);
+        let pred_z = self.weights_out * last + Self::repeat(&self.biases_out);
+        let pred = pred_z.map(sigmoid); // OS,ISS
+
+        pred
+    }
+
     #[allow(unused_doc_comments)]
     pub fn backprop_mut_matrix<const ISS: usize>(
         &mut self,
-        // inputs:         SMatrix<f32,IS,ISS>,
-        // corrects:       SMatrix<f32,OS,ISS>,
-        ins:            Vec<(&SVector<f32,IS>,SVector<f32,OS>)>,
+        ins:            &Vec<(&SVector<f32,IS>,SVector<f32,OS>)>,
         lr:             f32,
     ) {
 
-        let (inputs,corrects) = Self::fill_input_matrix::<ISS>(ins);
+        let (inputs,corrects) = Self::fill_input_matrix::<ISS>(&ins);
 
         let mut activations: Vec<SMatrix<f32,HS,ISS>> = vec![];
         let mut zs: Vec<SMatrix<f32,HS,ISS>>          = vec![];
@@ -151,7 +202,7 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
         let b0 = [self.biases_in; ISS];
 
         let z0 = self.weights_in * inputs; // HS,ISS
-        let z0 = z0 + Self::repeat(self.biases_in);
+        let z0 = z0 + Self::repeat(&self.biases_in);
         zs.push(z0.clone());
 
         let mut act = z0.map(sigmoid);
@@ -159,7 +210,7 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
 
         for (ws,bs) in self.weights.iter().zip(self.biases.iter()) {
             let z = ws * act;
-            let z = z + Self::repeat(*bs);
+            let z = z + Self::repeat(bs);
             zs.push(z.clone());
 
             let act = z.map(sigmoid);
@@ -168,7 +219,7 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
         }
 
         let pred_z = self.weights_out * act;
-        let pred_z = pred_z + Self::repeat(self.biases_out);
+        let pred_z = pred_z + Self::repeat(&self.biases_out);
         let pred = pred_z.map(sigmoid); // OS,ISS
 
         let delta = pred - corrects; // OS,ISS
@@ -200,10 +251,7 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
                 let d = d.component_mul(&sp);
                 prev_delta = d;
 
-                // let k = delta * act.transpose(); // OS,HS
-
                 w_out = Some(delta * act.transpose());
-                // w_out = Some(act * delta.transpose());
 
             } else {
 
@@ -222,9 +270,6 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
                 bs.push(d);
 
             }
-
-            // ws_new.push((w_in.unwrap(),ws,w_out.unwrap()));
-            // bs_new.push((prev_delta,bs,delta));
         }
 
         // let eta  = lr / (ws_new.len() as f32 + 2.0);
@@ -233,7 +278,8 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
         self.weights_in  = self.weights_in - lr * w_in.unwrap();
         for (mut ws, nw) in self.weights.iter_mut().zip(ws.into_iter()) {
             // *ws = *ws - lr * nw / ws.len() as f32;
-            *ws = *ws - lr * nw;
+            // *ws = *ws - lr * nw;
+            *ws = *ws - (lr / ISS as f32) * nw;
         }
         self.weights_out = self.weights_out - lr * w_out.unwrap();
 
@@ -252,10 +298,6 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
         // self.biases_out  = self.biases_out - k * delta.column_sum();
 
         // unimplemented!()
-    }
-
-    fn repeat<const NN: usize, const ISS: usize>(v: SVector<f32,NN>) -> SMatrix<f32,NN,ISS> {
-        SMatrix::<f32,NN,ISS>::from_columns(&[v; ISS])
     }
 
 }
@@ -353,91 +395,62 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
             let delta = pred - correct; // OS,1
             let delta = delta.component_mul(&pred_z.map(sigmoid_deriv));
 
-            if false {
 
-                let (act,z) = acts[acts.len()-1];
-                let w_out: SMatrix<f32,OS,HS> = delta * act.transpose();
-                let sp = z.map(sigmoid_deriv);
-                let delta2 = self.weights_out.transpose() * delta; // HS,1
-                let delta2 = delta2.component_mul(&sp);
-                let w_in: SMatrix<f32,HS,IS> = delta2 * input.transpose();
+            let mut prev_error  = SVector::<f32,HS>::zeros();
 
-                ws_new.push((w_in,vec![],w_out));
-                bs_new.push((delta2,vec![],delta));
+            let mut ws = vec![];
+            let mut bs = vec![];
 
-                panic!();
+            let mut w_out: Option<SMatrix<f32,OS,HS>> = None;
+            let mut w_in: Option<SMatrix<f32,HS,IS>>  = None;
 
-            } else {
+            let mut prev_delta = SVector::<f32,HS>::zeros();
+            // let mut delta2: Option<SVector<f32,HS>> = None;
 
-                let mut prev_error  = SVector::<f32,HS>::zeros();
+            for k in 0..self.n_hidden+1 {
+                let layer = self.n_hidden - k;
+                // eprintln!("k, layer = {:?}, {:?}", k, layer);
 
-                let mut ws = vec![];
-                let mut bs = vec![];
+                if layer == 0 {
 
-                let mut w_out: Option<SMatrix<f32,OS,HS>> = None;
-                let mut w_in: Option<SMatrix<f32,HS,IS>>  = None;
+                    w_in = Some(prev_delta * input.transpose());
 
-                let mut prev_delta = SVector::<f32,HS>::zeros();
-                // let mut delta2: Option<SVector<f32,HS>> = None;
+                } else if layer == self.n_hidden {
+                    // println!("wat output: {}", layer);
+                    let (act,z) = acts[acts.len()-1];
 
-                for k in 0..self.n_hidden+1 {
-                    let layer = self.n_hidden - k;
-                    // eprintln!("k, layer = {:?}, {:?}", k, layer);
+                    let sp = z.map(sigmoid_deriv);
+                    let d = self.weights_out.transpose() * delta; // HS,1
+                    let d = d.component_mul(&sp);
+                    prev_delta = d;
 
-                    if layer == 0 {
-                        // println!("wat input: {}", layer);
+                    w_out = Some(delta * act.transpose());
+                } else {
+                    // println!("wat hidden: {}", layer);
 
-                        // let d = self.weights[layer-1].transpose() * prev_delta;
-                        // let d = d.component_mul(&sp);
+                    let (_,z) = acts[layer];
+                    let sp = z.map(sigmoid_deriv);
 
-                        // let (_,z) = acts[0];
-                        // let sp = z.map(sigmoid_deriv); // HS,1
+                    let d = self.weights[layer-1].transpose() * prev_delta;
+                    let d = d.component_mul(&sp);
+                    prev_delta = d;
 
-                        // let d = self.weights_in.transpose() * prev_delta; // IS,1
-                        // let d = d.component_mul(&sp);                     // IS,1
+                    let (act,_) = acts[layer-1];
 
-                        // eprintln!("d.shape() = {:?}", d.shape());
+                    let w = d * act.transpose();
 
-                        w_in = Some(prev_delta * input.transpose());
-                        // w_in = Some(d * input.transpose());
+                    ws.push(w);
+                    bs.push(d);
 
-                    } else if layer == self.n_hidden {
-                        // println!("wat output: {}", layer);
-                        let (act,z) = acts[acts.len()-1];
+                    // self.weights[layer-1] = self.weights[layer-1] - lr * x1;
+                    // self.biases[layer-1]  = self.biases[layer-1] - error;
 
-                        let sp = z.map(sigmoid_deriv);
-                        let d = self.weights_out.transpose() * delta; // HS,1
-                        let d = d.component_mul(&sp);
-                        prev_delta = d;
-
-                        w_out = Some(delta * act.transpose());
-                    } else {
-                        // println!("wat hidden: {}", layer);
-
-                        let (_,z) = acts[layer];
-                        let sp = z.map(sigmoid_deriv);
-
-                        let d = self.weights[layer-1].transpose() * prev_delta;
-                        let d = d.component_mul(&sp);
-                        prev_delta = d;
-
-                        let (act,_) = acts[layer-1];
-
-                        let w = d * act.transpose();
-
-                        ws.push(w);
-                        bs.push(d);
-
-                        // self.weights[layer-1] = self.weights[layer-1] - lr * x1;
-                        // self.biases[layer-1]  = self.biases[layer-1] - error;
-
-                    }
                 }
-
-                ws_new.push((w_in.unwrap(),ws,w_out.unwrap()));
-                bs_new.push((prev_delta,bs,delta));
-
             }
+
+            ws_new.push((w_in.unwrap(),ws,w_out.unwrap()));
+            bs_new.push((prev_delta,bs,delta));
+
 
         }
 

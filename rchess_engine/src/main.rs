@@ -16,6 +16,9 @@
 //     clippy::cargo,
 // )]
 
+// extern crate blas_src;
+// extern crate openblas_src;
+
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::slice::SliceIndex;
@@ -258,7 +261,8 @@ fn main_mnist2() {
 fn main_mnist() {
 
     use nalgebra::{SMatrix,SVector,Matrix,Vector,matrix,vector};
-    use rand::prelude::SliceRandom;
+    use rand::prelude::{StdRng,SliceRandom};
+    use rand::{Rng,SeedableRng};
 
     use rchess_engine_lib::brain::*;
     use rchess_engine_lib::brain::filter::*;
@@ -335,33 +339,73 @@ fn main_mnist() {
 
     // return;
 
-    let mut rng = rand::thread_rng();
+    // let mut rng = rand::thread_rng();
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
+
+    ins.shuffle(&mut rng);
+
+    let epochs = 500;
+    const BATCH: usize = 100;
+    ins.truncate(BATCH);
+
+    // let ins2 = ins.clone();
+    let (ins2,cs2) = MNNetwork::fill_input_matrix::<BATCH>(&ins);
 
     let mut t0 = Instant::now();
+    let mut k = 0;
+    for _ in 0..epochs {
+        let out = nn0.run_matrix::<BATCH>(&ins2,&cs2);
+        k += out.shape().1;
+    }
+    let t1 = t0.elapsed().as_secs_f64();
+    println!("finished in {:.3} seconds", t1);
+    eprintln!("k = {:?}", k);
 
-    // const BATCH_SIZE: usize = 100;
-    const BATCH_SIZE: usize = 10;
-    const EPOCHS: usize = 2000;
-
-    // println!("Starting old...");
-    // for k in 0..EPOCHS {
-    //     ins.shuffle(&mut rng);
-    //     let xs: &[(&SVector<f32,784>,SVector<f32,10>)] = &ins[0..BATCH_SIZE];
-    //     let xs = xs.to_vec();
-    //     let (imgs,lbls): (Vec<&SVector<f32,784>>,Vec<SVector<f32,10>>) = xs.into_iter().unzip();
-    //     nn0.backprop_mut(imgs, lbls, lr);
-    //     if k % 100 == 0 {
-    //         // let t1 = t0.elapsed().as_secs_f64();
-    //         // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", k, t1, t1 / k as f64);
-    //         // t0 = Instant::now();
-    //         eprint!("old:    ");
-    //         test_mnist(&nn0, test_data.clone(), Some(1000));
-    //         // nn.write_to_file("mnist.bin",Some("mnist-2.bin")).unwrap();
-    //         // nn.write_to_file("mnist.bin",None).unwrap();
+    // let (imgs,lbls): (Vec<&SVector<f32,784>>,Vec<SVector<f32,10>>) = ins.clone().into_iter().unzip();
+    // let mut t0 = Instant::now();
+    // let mut k = 0;
+    // for _ in 0..epochs {
+    //     for i in imgs.iter() {
+    //         k += 1;
+    //         nn0.run(i);
     //     }
     // }
     // let t1 = t0.elapsed().as_secs_f64();
-    // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", EPOCHS, t1, t1 / EPOCHS as f64);
+    // println!("finished in {:.3} seconds", t1);
+    // eprintln!("k = {:?}", k);
+
+    return;
+
+    let mut t0 = Instant::now();
+
+    const BATCH_SIZE: usize = 100;
+    const EPOCHS: usize = 1000;
+    let ksize = 100;
+
+    println!("Starting old...");
+    for k in 0..EPOCHS {
+        ins.shuffle(&mut rng);
+        let xs: &[(&SVector<f32,784>,SVector<f32,10>)] = &ins[0..BATCH_SIZE];
+        let xs = xs.to_vec();
+        let (imgs,lbls): (Vec<&SVector<f32,784>>,Vec<SVector<f32,10>>) = xs.into_iter().unzip();
+        nn0.backprop_mut(imgs, lbls, lr);
+        if k % ksize == 0 {
+            // let t1 = t0.elapsed().as_secs_f64();
+            // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", k, t1, t1 / k as f64);
+            // t0 = Instant::now();
+            eprint!("old:    ");
+            test_mnist(&nn0, test_data.clone(), Some(1000));
+            // nn.write_to_file("mnist.bin",Some("mnist-2.bin")).unwrap();
+            // nn.write_to_file("mnist.bin",None).unwrap();
+        }
+    }
+    let t1 = t0.elapsed().as_secs_f64();
+    println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", EPOCHS, t1, t1 / EPOCHS as f64);
+
+    // let mut ins2 = ins.clone();
+    // ins2.truncate(BATCH_SIZE);
+    // nn1.backprop_mut_matrix::<BATCH_SIZE>(ins2, lr);
+    // return;
 
     let mut t0 = Instant::now();
     println!("Starting matrix...");
@@ -370,9 +414,9 @@ fn main_mnist() {
 
         let mut ins2 = ins.clone();
         ins2.truncate(BATCH_SIZE);
-        nn1.backprop_mut_matrix::<BATCH_SIZE>(ins2, lr);
+        nn1.backprop_mut_matrix::<BATCH_SIZE>(&ins2, lr);
 
-        if k % 100 == 0 {
+        if k % ksize == 0 {
             // let t1 = t0.elapsed().as_secs_f64();
             // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", k, t1, t1 / k as f64);
             // t0 = Instant::now();
@@ -394,6 +438,57 @@ fn main_mnist() {
     return;
 }
 
+fn wat_nalgebra<const NN: usize>() {
+    use nalgebra::{SMatrix,SVector,Matrix,Vector,matrix,vector,Dynamic,VecStorage};
+
+
+    let n = 1.0;
+    // let n = 1;
+
+    // let x = SMatrix::<f32,NN,NN>::from_vec(vec![n; NN * NN]);
+    // let y = SMatrix::<f32,NN,NN>::from_vec(vec![n; NN * NN]);
+
+    // let x = SMatrix::<u32,NN,NN>::from_element(n);
+    // let y = SMatrix::<u32,NN,NN>::from_element(n);
+
+    type Matrix1000 = Matrix<f32, Dynamic, Dynamic, VecStorage<f32, Dynamic, Dynamic>>;
+    let x = Matrix1000::from_vec(NN, NN, vec![n; NN * NN]);
+    let y = Matrix1000::from_vec(NN, NN, vec![n; NN * NN]);
+
+    // use nshare::{ToNalgebra,ToNdarray2,RefNdarray2};
+    // use nshare::RefNdarray1;
+    // use nalgebra::Matrix4;
+
+    // let m = Matrix4::new(
+    //     0.1, 0.2, 0.3, 0.4,
+    //     0.5, 0.6, 0.7, 0.8,
+    //     1.1, 1.2, 1.3, 1.4,
+    //     1.5, 1.6, 1.7, 1.8,
+    // );
+
+    // let m2 = &m;
+
+    // let arr = m.ref_ndarray2();
+    // assert!(arr.slice(s![1, ..]).iter().eq(&[0.5, 0.6, 0.7, 0.8]));
+    // assert_eq!(arr.dim(), (4, 4));
+
+    // let x1: ndarray::Array2<f32> = x.into_ndarray2;
+    // let x1 = &x.ref_ndarray2();
+
+    let result = x * y;
+
+}
+
+fn wat_ndarray<const NN: usize>() {
+    use ndarray::*;
+
+    let x: Array2<f32> = Array2::ones((NN,NN));
+    let y: Array2<f32> = Array2::ones((NN,NN));
+
+    let result = x.dot(&y);
+
+}
+
 #[allow(unreachable_code)]
 fn main_nn() {
     // use ndarray::prelude::*;
@@ -408,7 +503,32 @@ fn main_nn() {
     use rchess_engine_lib::brain::nnue::*;
     use rchess_engine_lib::brain::types::*;
 
-    main_mnist();
+
+    let n = 1000;
+    const K: usize = 200;
+
+    println!("Starting...");
+    let t0 = Instant::now();
+    for _ in 0..n {
+        wat_nalgebra::<K>();
+    }
+    println!("nalgebra: finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+
+    let t0 = Instant::now();
+    for _ in 0..n {
+        wat_ndarray::<K>();
+    }
+    println!("ndarray:  finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+
+    // main_mnist();
+
+    // let h = std::thread::Builder::new()
+    //     .stack_size(24 * 1024 * 1024)
+    //     .spawn(move || {
+    //     main_mnist();
+    // }).unwrap();
+    // h.join().unwrap();
+
     // main_mnist2();
     return;
 
