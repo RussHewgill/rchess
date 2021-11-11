@@ -366,11 +366,7 @@ fn main_mnist() {
     // eprintln!("k = {:?}", k);
 
 
-    const BATCH_SIZE: usize = 100;
-    const EPOCHS: usize = 1000;
-    let ksize = 200;
-
-    let ins2: Vec<(&DVector<f32>,DVector<f32>)> = trn_imgs2.iter().zip(corrects2.clone()).collect();
+    let ins2: Vec<(DVector<f32>,DVector<f32>)> = trn_imgs2.into_iter().zip(corrects2.clone()).collect();
 
     // let mut xs: Vec<(DVector<f32>,DVector<f32>)> = trn_imgs2.into_iter().zip(corrects2).collect();
     // xs.truncate(1000);
@@ -379,6 +375,10 @@ fn main_mnist() {
     // let mut f = std::fs::File::create("temp-mnist.bin").unwrap();
     // f.write_all(&b).unwrap();
     // return;
+
+    const BATCH_SIZE: usize = 100;
+    const EPOCHS: usize = 1000;
+    let ksize = 200;
 
     let t0 = Instant::now();
     println!("Starting dyn...");
@@ -390,7 +390,8 @@ fn main_mnist() {
 
         let ins3 = ins2.choose_multiple(&mut rng, BATCH_SIZE).cloned().collect::<Vec<_>>();
 
-        // nn2.backprop_mut_matrix(&ins3, lr);
+        nn2.backprop_mut_matrix(&ins3, lr);
+        // break;
 
         // if k % ksize == 0 {
         //     // let t1 = t0.elapsed().as_secs_f64();

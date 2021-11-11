@@ -6,7 +6,7 @@ pub mod matrix;
 
 use crate::types::*;
 use crate::brain::types::*;
-// use self::nd::*;
+use crate::brain::matrix::*;
 
 use ndarray::prelude::*;
 
@@ -358,6 +358,12 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
         let mut prev_delta = delta.clone();
 
         let d = &delta * acts[acts.len() - 2].transpose();
+
+        // let d2 = (acts[acts.len() - 2]).ref_ndarray2();
+        // let d2 = d2.t();
+        // let d = delta.ref_ndarray2().dot(&d2);
+        // let d = d.into_nalgebra();
+
         let mut new_ws: Vec<DMatrix<f32>> = vec![d];
         let mut new_bs: Vec<DMatrix<f32>> = vec![delta];
 
@@ -369,9 +375,20 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
             let sp = z.map(sigmoid_deriv);
 
             let d = self.weights[layer].transpose() * prev_delta;
-
             let d = d.component_mul(&sp);
             prev_delta = d.clone();
+
+            // let d1 = self.weights[layer].ref_ndarray2();
+            // let d1 = d1.t();
+            // let d = d1.dot(&prev_delta.ref_ndarray2());
+            // let d2 = sp.ref_ndarray2();
+            // let d = d * d2;
+            // let d = d.into_nalgebra();
+            // prev_delta = d.clone();
+
+            // let act = &acts[layer - 1].ref_ndarray2();
+            // let w   = &d.dot(&act.t());
+            // let w = w.clone().into_nalgebra();
 
             let act = &acts[layer - 1];
             let w = &d * act.transpose();

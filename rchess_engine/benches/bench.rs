@@ -26,20 +26,21 @@ pub fn crit_bench_2(c: &mut Criterion) {
     use rchess_engine_lib::brain::types::*;
 
     let mut ins: Vec<(DVector<f32>,DVector<f32>)> = {
-        let f = std::fs::read("temp-mnist.bin").unwrap();
+        let f = std::fs::read("/home/me/code/rust/rchess/temp-mnist.bin").unwrap();
         bincode::deserialize(&f).unwrap()
     };
+    // let mut ins = ins.iter().map(|(a,b)| (a,b.clone())).collect::<Vec<_>>();
 
     let mut nn2: DNetwork<f32,784,10> = DNetwork::new_range(vec![784,16,16,10], (-1.0, 1.0));
 
     let mut group = c.benchmark_group("group");
 
-    group.warm_up_time(Duration::from_secs_f64(3.0));
+    group.warm_up_time(Duration::from_secs_f64(1.0));
 
     // group.sample_size(20);
     group.measurement_time(Duration::from_secs_f64(5.));
 
-    ins.truncate(100);
+    ins.truncate(200);
 
     group.bench_function("backprop 1", |b| b.iter(|| {
         nn2.backprop_mut_matrix(black_box(&ins), 0.1);
