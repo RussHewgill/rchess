@@ -1,18 +1,19 @@
 
-use crate::tables::*;
-use crate::types::*;
-use crate::evaluate::*;
+// use crate::tables::*;
+// use crate::types::*;
+// use crate::evaluate::*;
 
 use crate::brain::filter::*;
 
 // pub use self::nd::*;
 
 use rand::{Rng,SeedableRng};
-use rand::prelude::StdRng;
+use rand::prelude::{StdRng,Distribution};
 use rand::distributions::Uniform;
 
 use nalgebra::{SMatrix,SVector,Matrix,Vector,DVector,DMatrix};
 use nalgebra::{VecStorage,ArrayStorage,Dynamic,Const};
+use nalgebra as na;
 
 use serde::ser::{Serializer,SerializeStruct};
 use serde::de::{Deserializer,DeserializeOwned};
@@ -91,89 +92,92 @@ pub mod nd {
 
 }
 
-// #[derive(Debug,Clone,PartialEq,Serialize,Deserialize)]
-// pub struct DNetwork<T>
-// where T: nalgebra::Scalar + PartialEq + Serialize,
-// {
-//     pub sizes:   Vec<usize>,
-
-//     pub weights: Vec<DMatrix<T>>,
-//     pub biases:  Vec<DVector<T>>,
-// }
-
-// impl DNetwork<f32> {
-//     pub fn new(n_hidden: usize) -> Self {
-//         Self::_new(n_hidden, (0.0, 1.0), Some(18105974836011991331))
-//     }
-
-//     pub fn new_range(n_hidden: usize, mm: (f32,f32)) -> Self {
-//         Self::_new(n_hidden, mm, Some(18105974836011991331))
-//     }
-
-//     pub fn _new(n_hidden: usize, mm: (f32,f32), seed: Option<u64>) -> Self {
-//         assert!(n_hidden > 0);
-//         let mut rng: StdRng = if let Some(seed) = seed {
-//             SeedableRng::seed_from_u64(seed)
-//         } else {
-//             // SeedableRng::seed_from_u64(18105974836011991331)
-//             let mut r = rand::thread_rng();
-//             SeedableRng::from_rng(r).unwrap()
-//         };
-
-//         let dist = Uniform::new(mm.0,mm.1);
-
-//         let mut sizes = vec![];
-
-//         let mut weights = vec![];
-//         let mut biases = vec![];
-
-//         // let weights_in = DMatrix::<f32>::from_distribution(&dist, &mut rng);
-//         // (0..n_hidden-1).for_each(|x| {
-//         //     let a = DMatrix::<f32>::from_distribution(&dist, &mut rng);
-//         //     weights.push(a);
-//         // });
-//         // let weights_out = DMatrix::<f32>::from_distribution(&dist, &mut rng);
-
-//         // let biases_in = DVector::<f32>::from_distribution(&dist, &mut rng);
-//         // biases.push(biases_in);
-//         // (0..n_hidden-1).for_each(|x| {
-//         //     let a = DVector::<f32>::from_distribution(&dist, &mut rng);
-//         //     biases.push(a);
-//         // });
-//         // let biases_out = DVector::<f32>::from_distribution(&dist, &mut rng);
-//         // biases.push(biases_out);
-
-//         Self {
-//             sizes,
-
-//             weights,
-//             biases,
-//         }
-//     }
-
-// }
-
-// #[derive(Debug,Clone,PartialEq,Serialize,Deserialize)]
-#[derive(Debug,Clone,Serialize,Deserialize)]
-pub struct DNetwork<T, const IS: usize, const HS: usize, const OS: usize>
+#[derive(Debug,Clone,PartialEq,Serialize,Deserialize)]
+// pub struct DNetwork<T, const IS: usize, const HS: usize, const OS: usize>
+pub struct DNetwork<T, const IS: usize, const OS: usize>
 where T: nalgebra::Scalar + PartialEq + Serialize,
 {
-    pub n_hidden:         usize,
+    pub sizes:         Vec<usize>,
 
-    pub weights_in:       Matrix<T, Const<HS>, Const<IS>, VecStorage<T, Const<HS>, Const<IS>>>,
-    pub weights_out:      SMatrix<T, OS, HS>,
-
-    // pub weights_in:       SMatrix<T, HS, IS>,
-    // pub weights:          Vec<SMatrix<T, HS, HS>>,
-    // pub weights_out:      SMatrix<T, OS, HS>,
-
-    // pub biases_in:        SVector<T, HS>,
-    // pub biases:           Vec<SVector<T, HS>>,
-    // pub biases_out:       SVector<T, OS>,
+    pub weights:       Vec<DMatrix<T>>,
+    pub biases:        Vec<DVector<T>>,
 }
 
-pub type GMatrix<T,const R: usize,const C: usize> = Matrix<T,Const<R>,Const<C>,VecStorage<T,Const<R>,Const<C>>>;
-pub type GVector<T,const D: usize> = Matrix<T,D,nalgebra::U1,VecStorage<T,D,nalgebra::U1>>;
+
+// impl<const IS: usize, const HS: usize, const OS: usize> DNetwork<f32,IS,HS,OS> {
+impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
+    pub fn new(sizes: Vec<usize>) -> Self {
+        Self::_new(sizes, (0.0, 1.0), Some(18105974836011991331))
+    }
+
+    pub fn new_range(sizes: Vec<usize>, mm: (f32,f32)) -> Self {
+        Self::_new(sizes, mm, Some(18105974836011991331))
+    }
+
+    pub fn _new(sizes: Vec<usize>, mm: (f32,f32), seed: Option<u64>) -> Self {
+        assert!(sizes.len() > 2);
+
+        assert!(sizes[0] == IS);
+        assert!(sizes[sizes.len() - 1] == OS);
+
+        let mut rng: StdRng = if let Some(seed) = seed {
+            SeedableRng::seed_from_u64(seed)
+        } else {
+            // SeedableRng::seed_from_u64(18105974836011991331)
+            let mut r = rand::thread_rng();
+            SeedableRng::from_rng(r).unwrap()
+        };
+
+        let dist = Uniform::new(mm.0,mm.1);
+
+        let mut weights = vec![];
+        let mut biases = vec![];
+
+
+        for n in 1..sizes.len() {
+            let s0 = sizes[n-1];
+            let s1 = sizes[n];
+            let ws = DMatrix::from_vec(s1,s0,Self::gen_vec(s0*s1,dist,&mut rng));
+            weights.push(ws);
+            let bs = DVector::from_vec(Self::gen_vec(s1, dist, &mut rng));
+            biases.push(bs);
+        }
+
+
+        // let ws_in = DMatrix::from_vec(HS,IS,Self::gen_vec(HS*IS,dist,&mut rng));
+        // weights.push(ws_in);
+        // (0..sizes.len() - 3).for_each(|x| {
+        //     let a = DMatrix::from_vec(HS,HS,Self::gen_vec(HS*HS,dist,&mut rng));
+        //     weights.push(a);
+        // });
+        // let ws_out = DMatrix::from_vec(OS,HS,Self::gen_vec(OS*HS,dist,&mut rng));
+        // weights.push(ws_out);
+
+        // let bs_in = DVector::from_vec(Self::gen_vec(HS, dist, &mut rng));
+        // biases.push(bs_in);
+        // (0..sizes.len() - 3).for_each(|x| {
+        //     let a = DVector::from_vec(Self::gen_vec(HS, dist, &mut rng));
+        //     biases.push(a);
+        // });
+        // let bs_out = DVector::from_vec(Self::gen_vec(OS, dist, &mut rng));
+        // biases.push(bs_out);
+
+        Self {
+            sizes,
+
+            weights,
+            biases,
+        }
+    }
+
+    fn gen_vec(n: usize, dist: Uniform<f32>, mut rng: &mut StdRng) -> Vec<f32> {
+        (0..n).map(|_| dist.sample(&mut rng)).collect()
+    }
+
+}
+
+// pub type GMatrix<T,const R: usize,const C: usize> = na::OMatrix<T,Const<R>,Const<C>>;
+// pub type GVector<T,const D: usize> = na::OMatrix<T,Const<D>,na::U1>;
 
 // #[derive(Debug,Clone,PartialEq,Serialize,Deserialize)]
 #[derive(Debug,Clone,Serialize,Deserialize)]
@@ -181,7 +185,6 @@ pub struct GNetwork<T, const IS: usize, const HS: usize, const OS: usize>
 where T: nalgebra::Scalar + PartialEq + Serialize,
 {
     pub n_hidden:         usize,
-
 
     pub weights_in:       SMatrix<T, HS, IS>,
     pub weights:          Vec<SMatrix<T, HS, HS>>,

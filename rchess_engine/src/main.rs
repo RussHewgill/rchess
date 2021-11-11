@@ -260,7 +260,8 @@ fn main_mnist2() {
 #[allow(unreachable_code)]
 fn main_mnist() {
 
-    use nalgebra::{SMatrix,SVector,Matrix,Vector,matrix,vector};
+    use nalgebra::{SMatrix,SVector,Matrix,Vector,matrix,vector,DMatrix,DVector};
+    use nalgebra as na;
     use rand::prelude::{StdRng,SliceRandom};
     use rand::{Rng,SeedableRng};
 
@@ -298,44 +299,34 @@ fn main_mnist() {
 
     // trn_imgs.truncate(1000);
     // corrects.truncate(100);
-    let mut trn_lbl = data.trn_lbl;
+    let mut trn_lbl = data.trn_lbl.clone();
     trn_lbl.truncate(100);
 
     let lr = 0.1;
     let mut nn0 = MNNetwork::new_range(2, (-1.0, 1.0));
     let mut nn1 = MNNetwork::new_range(2, (-1.0, 1.0));
 
+    let mut nn2: DNetwork<f32,784,10> = DNetwork::new_range(vec![784,16,16,10], (-1.0, 1.0));
+
     // nn.write_to_file("mnist.bin").unwrap();
 
     let test_data = test_imgs.into_iter().zip(data.tst_lbl.into_iter()).collect::<Vec<_>>();
+
+    let mut trn_imgs2: Vec<DVector<f32>> = data.trn_img
+        .chunks_exact(28 * 28)
+        .map(|x| DVector::<f32>::from_vec(x.to_vec()))
+        .collect::<Vec<_>>();
+    let mut corrects2 = data.trn_lbl.iter()
+        .map(|x| {
+            let mut v = DVector::<f32>::zeros(10);
+            v[*x as usize] = 1.0;
+            v
+        }).collect::<Vec<_>>();
 
     // let mut ins = trn_imgs.iter().zip(trn_lbl.clone()).collect::<Vec<_>>();
     // let mut ins: Vec<_> = trn_imgs.clone().into_iter().zip(corrects.clone()).collect();
     let ti = trn_imgs.clone();
     let mut ins: Vec<_> = ti.iter().zip(corrects.clone()).collect();
-
-    // let (inputs,cors): (SMatrix<f32,784,10>,SMatrix<f32,10,10>) = {
-    //     let mut inputs: SMatrix<f32,784,10> = SMatrix::zeros();
-    //     let mut cors: SMatrix<f32,10,10>    = SMatrix::zeros();
-    //     for (k,(i,c)) in ins.iter().take(10).enumerate() {
-    //         inputs.set_column(k, i);
-    //         cors.set_column(k, column)
-    //     }
-    //     (inputs,cors)
-    // };
-
-    // let (inputs,cors) = MNNetwork::fill_input_matrix(ins.clone());
-    // nn.backprop_mut_matrix::<20>(inputs, cors, lr);
-
-    // return;
-
-    // test_mnist(&nn, test_data.clone(), Some(1000));
-    // test_mnist(&nn, test_data.clone(), None);
-    // test_mnist(&nn, test_data.clone(), Some(1000));
-
-    // let mut t0 = Instant::now();
-    // test_mnist(&nn, test_data.clone(), Some(1000));
-    // println!("finished test in {:.3} seconds", t0.elapsed().as_secs_f64());
 
     // return;
 
@@ -380,19 +371,21 @@ fn main_mnist() {
     const EPOCHS: usize = 100;
     let ksize = 50;
 
-    println!("Starting old...");
+    let ins2: Vec<(&DVector<f32>,DVector<f32>)> = trn_imgs2.iter().zip(corrects2).collect();
+
+    println!("Starting dyn...");
     for k in 0..EPOCHS {
         ins.shuffle(&mut rng);
-        let xs: &[(&SVector<f32,784>,SVector<f32,10>)] = &ins[0..BATCH_SIZE];
+        let xs: &[(&DVector<f32>,DVector<f32>)] = &ins2[0..BATCH_SIZE];
         let xs = xs.to_vec();
-        let (imgs,lbls): (Vec<&SVector<f32,784>>,Vec<SVector<f32,10>>) = xs.into_iter().unzip();
-        nn0.backprop_mut(imgs, lbls, lr);
+        let (imgs,lbls): (Vec<&DVector<f32>>,Vec<DVector<f32>>) = xs.into_iter().unzip();
+        nn2.backprop_mut(imgs, lbls, lr);
         if k % ksize == 0 {
             // let t1 = t0.elapsed().as_secs_f64();
             // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", k, t1, t1 / k as f64);
             // t0 = Instant::now();
             eprint!("old:    ");
-            test_mnist(&nn0, test_data.clone(), Some(1000));
+            test_mnist2(&nn2, test_data.clone(), Some(1000));
             // nn.write_to_file("mnist.bin",Some("mnist-2.bin")).unwrap();
             // nn.write_to_file("mnist.bin",None).unwrap();
         }
@@ -400,9 +393,33 @@ fn main_mnist() {
     let t1 = t0.elapsed().as_secs_f64();
     println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", EPOCHS, t1, t1 / EPOCHS as f64);
 
+    return;
+
+    // println!("Starting old...");
+    // for k in 0..EPOCHS {
+    //     ins.shuffle(&mut rng);
+    //     let xs: &[(&SVector<f32,784>,SVector<f32,10>)] = &ins[0..BATCH_SIZE];
+    //     let xs = xs.to_vec();
+    //     let (imgs,lbls): (Vec<&SVector<f32,784>>,Vec<SVector<f32,10>>) = xs.into_iter().unzip();
+    //     nn0.backprop_mut(imgs, lbls, lr);
+    //     if k % ksize == 0 {
+    //         // let t1 = t0.elapsed().as_secs_f64();
+    //         // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", k, t1, t1 / k as f64);
+    //         // t0 = Instant::now();
+    //         eprint!("old:    ");
+    //         test_mnist(&nn0, test_data.clone(), Some(1000));
+    //         // nn.write_to_file("mnist.bin",Some("mnist-2.bin")).unwrap();
+    //         // nn.write_to_file("mnist.bin",None).unwrap();
+    //     }
+    // }
+    // let t1 = t0.elapsed().as_secs_f64();
+    // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", EPOCHS, t1, t1 / EPOCHS as f64);
+
     // let mut ins2 = ins.clone();
     // ins2.truncate(BATCH_SIZE);
     // nn1.backprop_mut_matrix::<BATCH_SIZE>(ins2, lr);
+
+    // return;
 
     let mut t0 = Instant::now();
     println!("Starting matrix...");
@@ -435,13 +452,15 @@ fn main_mnist() {
     return;
 }
 
-fn wat_nalgebra<const NN: usize>() {
+fn wat_nalgebra_0<const NN: usize>() {
     use nalgebra::{
         SMatrix,SVector,Matrix,Vector,matrix,vector,Dynamic,VecStorage,
         ArrayStorage,Const,
     };
+    use nalgebra as na;
 
     use rchess_engine_lib::brain::matrix::*;
+    use rchess_engine_lib::brain::types::*;
 
     let n = 1.0;
     // let n = 1;
@@ -449,16 +468,13 @@ fn wat_nalgebra<const NN: usize>() {
     // let x = SMatrix::<f32,NN,NN>::from_vec(vec![n; NN * NN]);
     // let y = SMatrix::<f32,NN,NN>::from_vec(vec![n; NN * NN]);
 
-    // type Mat = Matrix<f32,NN,NN,ArrayStorage<f32,NN,NN>>;
-
     // let x = SMatrix::<f32,NN,NN>::from_element(n);
     // let y = SMatrix::<f32,NN,NN>::from_element(n);
 
-    // let x = Matrix::<f32,Const<NN>,Const<NN>,VecStorage<f32,Dynamic,Dynamic>>::from_element(n);
+    let x = na::OMatrix::<f32,Const<NN>,Const<NN>>::from_element(n);
+    let y = na::OMatrix::<f32,Const<NN>,Const<NN>>::from_element(n);
 
-    // let x = Matrix::<f32,Const<NN>,Const<NN>,VecStorage<f32,Dynamic,Dynamic>>::from_element_generic(n);
-
-    // let result = x * y;
+    let result = x * y;
 
     // type Matrix1000 = Matrix<f32, Dynamic, Dynamic, VecStorage<f32, Dynamic, Dynamic>>;
     // let x = Matrix1000::from_vec(NN, NN, vec![n; NN * NN]);
@@ -471,6 +487,27 @@ fn wat_nalgebra<const NN: usize>() {
     // let result1 = x1.dot(&y1);
     // // let result: Matrix1000 = result1.into_nalgebra();
     // let result: SMatrix<f32,NN,NN> = result1.into_nalgebra();
+
+}
+
+fn wat_nalgebra_1<const NN: usize>() {
+    use nalgebra::{
+        SMatrix,SVector,Matrix,Vector,matrix,vector,Dynamic,VecStorage,
+        ArrayStorage,Const,
+    };
+    use nalgebra as na;
+    let n = 1.0;
+
+    // let x = Matrix::<f32,Const<NN>,Const<NN>,na::ArrayStorage<f32,NN,NN>>::from_element(n);
+    // let y = Matrix::<f32,Const<NN>,Const<NN>,na::ArrayStorage<f32,NN,NN>>::from_element(n);
+
+    // let x = Matrix::<f32,Const<NN>,Const<NN>,na::VecStorage<f32,Dynamic,Dynamic>>::from_element(NN,NN,n);
+    // let y = Matrix::<f32,Dynamic,Dynamic,na::VecStorage<f32,Dynamic,Dynamic>>::from_element(NN,NN,n);
+
+    // use na::{U1,U2,U3};
+    // let x = Matrix::<f32,Dynamic,Dynamic,na::VecStorage<f32,Dynamic,Dynamic>>::from_element(NN,NN,n);
+    // let y = Matrix::<f32,Dynamic,Dynamic,na::VecStorage<f32,Dynamic,Dynamic>>::from_element(NN,NN,n);
+    // let result = x * y;
 
 }
 
@@ -488,32 +525,39 @@ fn wat_ndarray<const NN: usize>() {
 fn main_nn() {
     // use ndarray::prelude::*;
 
-    use nalgebra::{SMatrix,SVector,Matrix,Vector,matrix,vector};
+    use nalgebra::{SMatrix,SVector,Matrix,Vector,matrix,vector,dmatrix,dvector,DVector,DMatrix};
 
-    use rand::prelude::SliceRandom;
     use rand::thread_rng;
+    use rand::prelude::{StdRng,SliceRandom};
+    use rand::{Rng,SeedableRng};
 
     use rchess_engine_lib::brain::*;
     use rchess_engine_lib::brain::filter::*;
     use rchess_engine_lib::brain::nnue::*;
     use rchess_engine_lib::brain::types::*;
 
-
-    // let n = 1000;
+    // let n = 500;
     // const K: usize = 200;
     // println!("Starting...");
     // let t0 = Instant::now();
     // for _ in 0..n {
-    //     wat_nalgebra::<K>();
+    //     wat_nalgebra_0::<K>();
     // }
-    // println!("nalgebra: finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+    // println!("nalgebra_0: finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+    // let t0 = Instant::now();
+    // for _ in 0..n {
+    //     wat_nalgebra_1::<K>();
+    // }
+    // println!("nalgebra_1: finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+
     // let t0 = Instant::now();
     // for _ in 0..n {
     //     wat_ndarray::<K>();
     // }
     // println!("ndarray:  finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
-    main_mnist();
+    // main_mnist();
+    // return;
 
     // let h = std::thread::Builder::new()
     //     .stack_size(24 * 1024 * 1024)
@@ -522,16 +566,30 @@ fn main_nn() {
     // }).unwrap();
     // h.join().unwrap();
 
-    // main_mnist2();
-    return;
+    // // main_mnist2();
+    // return;
 
     let inputs = vec![
+        dvector![0.0,0.0],
+        dvector![1.0,0.0],
+        dvector![0.0,1.0],
+        dvector![1.0,1.0],
+    ];
+    let corrects = vec![
+        dvector![0.0],
+        dvector![1.0],
+        dvector![1.0],
+        dvector![0.0],
+    ];
+    // let corrects = inputs.clone();
+
+    let inputs0 = vec![
         vector![0.0,0.0],
         vector![1.0,0.0],
         vector![0.0,1.0],
         vector![1.0,1.0],
     ];
-    let corrects = vec![
+    let corrects0 = vec![
         vector![0.0],
         vector![1.0],
         vector![1.0],
@@ -540,8 +598,10 @@ fn main_nn() {
     // let corrects = inputs.clone();
 
     // let xs = inputs.iter().zip(corrects.iter()).collect::<Vec<_>>();
-    // let xs = inputs.iter().zip(corrects.iter());
-    let xs = inputs.into_iter().zip(corrects.into_iter());
+    let xs = inputs.iter().zip(corrects.into_iter());
+    // let xs = inputs.into_iter().zip(corrects.into_iter());
+
+    let xs0 = inputs0.iter().zip(corrects0.clone().into_iter());
 
     // na:   (Rows, Cols)
     // Multiply:
@@ -551,7 +611,9 @@ fn main_nn() {
 
     let lr = 0.1;
     // let mut nn = Network::new(2);
-    let mut nn = Network::new_range(1, (0.,1.));
+    let mut nn0 = Network::new_range(1, (0.,1.));
+
+    let mut nn = DNetwork::<f32,2,1>::new_range(vec![2,3,1], (0.,1.));
 
     // for (input,correct) in xs.clone() {
     //     let (pred,pred_z,acts) = nn._run(input);
@@ -571,34 +633,82 @@ fn main_nn() {
     // nn.backprop_mut_matrix::<4>(ins, cors, lr);
     // return;
 
-    let mut xs2: Vec<_> = xs.clone().collect();
+    let mut m = matrix![
+        1,2,3;
+        4,5,6;
+    ];
 
-    let mut rng = thread_rng();
+    // for i in 0..m.shape().1 {
+    //     let mut c = m.column_mut(i);
+    //     println!("c = {}", c);
+    // }
+
+    // for (i,bs) in nn.biases.iter().enumerate() {
+    //     println!("{} = {}", i, bs);
+    // }
+
+    // for (k,ws) in nn.weights.iter().enumerate() {
+    //     eprintln!("{} = {}", k, ws);
+    // }
+
+    // eprintln!("nn.weights[0].shape() = {:?}", nn.weights[0].shape());
+
+    // println!("===");
+    // eprintln!("{} = {}", 0, nn0.weights_in);
+    // for (k,ws) in nn0.weights.iter().enumerate() {
+    //     let k = k + 1;
+    //     eprintln!("{} = {}", k, ws);
+    // }
+    // eprintln!("{} = {}", 0, nn0.weights_out);
+    // return;
+
+    // return;
+
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
+
+    // let mut nn = DNetwork::<f32,2,1>::new_range(vec![2,3,3,1], (0.,1.));
+    let mut nn = DNetwork::<f32,2,1>::new_range(vec![2,3,1], (0.,1.));
+
+    // let mut xs2: Vec<_> = xs.clone().collect();
+    let mut xs2: Vec<_> = xs0.clone().collect();
 
     let t0 = Instant::now();
-    for k in 0..100000 {
-
+    for k in 0..10000 {
+        // eprintln!("k = {:?}", k);
         xs2.shuffle(&mut rng);
 
-        let mut xs3 = xs2.clone();
-        xs3.truncate(2);
+        // let mut xs3 = xs2.clone();
+        // xs3.truncate(2);
 
-        // nn.backprop_mut_matrix::<4>(xs3, lr);
+        // nn0.backprop_mut_matrix::<4>(&xs3, lr);
+        // nn.backprop_mut_matrix(&xs3, 0.1);
 
-        // for (i,c) in inputs.iter().zip(corrects.iter()) {
-        //     nn.backprop_mut(vec![*i], vec![*c], 0.1);
+        for (i,c) in inputs0.iter().zip(corrects0.iter()) {
+            nn0.backprop_mut(vec![i], vec![*c], 0.1);
+        }
+
+        // for (input, c) in xs.clone().into_iter().take(1) {
+        //     nn.backprop_mut(vec![input], vec![c.clone()], 0.1);
         // }
 
+        // break;
+
         // let (inputs,corrects): (Vec<&SVector<f32,2>>,Vec<SVector<f32,1>>) = xs3.into_iter().unzip();
-        // nn.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
+        // nn0.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
+
+        // let (inputs,corrects): (Vec<&DVector<f32>>,Vec<DVector<f32>>) = xs3.into_iter().unzip();
+        // nn0.backprop_mut(inputs.clone(), corrects.clone(), 0.1);
 
     }
     println!("finished in {:.3} seconds.", t0.elapsed().as_secs_f64());
 
     println!();
     println!("X     Y     Cor    Ans   err");
+    // for (input, c) in xs0.clone() {
     for (input, c) in xs.clone() {
-        let (pred,pred_a,acts) = nn._run(&input);
+        let pred = nn.run(&input);
+        // let pred = nn0.run(&input);
+        // let (pred,pred_a,acts) = nn._run(&input);
         // eprintln!("pred_a = {:?}", pred_a);
         println!("{:.2}  {:.2}  {}      {:.3}", input[0], input[1], c[0], pred[0]);
         // eprintln!("acts = {:?}", acts);

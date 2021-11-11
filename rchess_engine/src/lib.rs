@@ -32,6 +32,8 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 extern crate blas_src;
 // extern crate openblas_src;
 
+// extern crate nalgebra as na;
+
 pub mod types;
 pub mod bitboard;
 pub mod coords;
