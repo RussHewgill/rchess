@@ -11,7 +11,8 @@ use rand::{Rng,SeedableRng};
 use rand::prelude::StdRng;
 use rand::distributions::Uniform;
 
-use nalgebra::{SMatrix,SVector,Matrix,Vector};
+use nalgebra::{SMatrix,SVector,Matrix,Vector,DVector,DMatrix};
+use nalgebra::{VecStorage,ArrayStorage,Dynamic,Const};
 
 use serde::ser::{Serializer,SerializeStruct};
 use serde::de::{Deserializer,DeserializeOwned};
@@ -90,12 +91,97 @@ pub mod nd {
 
 }
 
+// #[derive(Debug,Clone,PartialEq,Serialize,Deserialize)]
+// pub struct DNetwork<T>
+// where T: nalgebra::Scalar + PartialEq + Serialize,
+// {
+//     pub sizes:   Vec<usize>,
 
-#[derive(Debug,Clone,PartialEq,Serialize,Deserialize)]
+//     pub weights: Vec<DMatrix<T>>,
+//     pub biases:  Vec<DVector<T>>,
+// }
+
+// impl DNetwork<f32> {
+//     pub fn new(n_hidden: usize) -> Self {
+//         Self::_new(n_hidden, (0.0, 1.0), Some(18105974836011991331))
+//     }
+
+//     pub fn new_range(n_hidden: usize, mm: (f32,f32)) -> Self {
+//         Self::_new(n_hidden, mm, Some(18105974836011991331))
+//     }
+
+//     pub fn _new(n_hidden: usize, mm: (f32,f32), seed: Option<u64>) -> Self {
+//         assert!(n_hidden > 0);
+//         let mut rng: StdRng = if let Some(seed) = seed {
+//             SeedableRng::seed_from_u64(seed)
+//         } else {
+//             // SeedableRng::seed_from_u64(18105974836011991331)
+//             let mut r = rand::thread_rng();
+//             SeedableRng::from_rng(r).unwrap()
+//         };
+
+//         let dist = Uniform::new(mm.0,mm.1);
+
+//         let mut sizes = vec![];
+
+//         let mut weights = vec![];
+//         let mut biases = vec![];
+
+//         // let weights_in = DMatrix::<f32>::from_distribution(&dist, &mut rng);
+//         // (0..n_hidden-1).for_each(|x| {
+//         //     let a = DMatrix::<f32>::from_distribution(&dist, &mut rng);
+//         //     weights.push(a);
+//         // });
+//         // let weights_out = DMatrix::<f32>::from_distribution(&dist, &mut rng);
+
+//         // let biases_in = DVector::<f32>::from_distribution(&dist, &mut rng);
+//         // biases.push(biases_in);
+//         // (0..n_hidden-1).for_each(|x| {
+//         //     let a = DVector::<f32>::from_distribution(&dist, &mut rng);
+//         //     biases.push(a);
+//         // });
+//         // let biases_out = DVector::<f32>::from_distribution(&dist, &mut rng);
+//         // biases.push(biases_out);
+
+//         Self {
+//             sizes,
+
+//             weights,
+//             biases,
+//         }
+//     }
+
+// }
+
+// #[derive(Debug,Clone,PartialEq,Serialize,Deserialize)]
+#[derive(Debug,Clone,Serialize,Deserialize)]
+pub struct DNetwork<T, const IS: usize, const HS: usize, const OS: usize>
+where T: nalgebra::Scalar + PartialEq + Serialize,
+{
+    pub n_hidden:         usize,
+
+    pub weights_in:       Matrix<T, Const<HS>, Const<IS>, VecStorage<T, Const<HS>, Const<IS>>>,
+    pub weights_out:      SMatrix<T, OS, HS>,
+
+    // pub weights_in:       SMatrix<T, HS, IS>,
+    // pub weights:          Vec<SMatrix<T, HS, HS>>,
+    // pub weights_out:      SMatrix<T, OS, HS>,
+
+    // pub biases_in:        SVector<T, HS>,
+    // pub biases:           Vec<SVector<T, HS>>,
+    // pub biases_out:       SVector<T, OS>,
+}
+
+pub type GMatrix<T,const R: usize,const C: usize> = Matrix<T,Const<R>,Const<C>,VecStorage<T,Const<R>,Const<C>>>;
+pub type GVector<T,const D: usize> = Matrix<T,D,nalgebra::U1,VecStorage<T,D,nalgebra::U1>>;
+
+// #[derive(Debug,Clone,PartialEq,Serialize,Deserialize)]
+#[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct GNetwork<T, const IS: usize, const HS: usize, const OS: usize>
 where T: nalgebra::Scalar + PartialEq + Serialize,
 {
     pub n_hidden:         usize,
+
 
     pub weights_in:       SMatrix<T, HS, IS>,
     pub weights:          Vec<SMatrix<T, HS, HS>>,
@@ -104,8 +190,8 @@ where T: nalgebra::Scalar + PartialEq + Serialize,
     pub biases_in:        SVector<T, HS>,
     pub biases:           Vec<SVector<T, HS>>,
     pub biases_out:       SVector<T, OS>,
-}
 
+}
 
 impl<T, const IS: usize, const HS: usize, const OS: usize> GNetwork<T,IS,HS,OS>
 where T: nalgebra::Scalar + PartialEq + Serialize + DeserializeOwned

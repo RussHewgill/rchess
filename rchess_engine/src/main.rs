@@ -342,45 +342,43 @@ fn main_mnist() {
     // let mut rng = rand::thread_rng();
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
-    ins.shuffle(&mut rng);
+    // ins.shuffle(&mut rng);
 
-    let epochs = 500;
-    const BATCH: usize = 100;
-    ins.truncate(BATCH);
+    // let epochs = 500;
+    // const BATCH: usize = 100;
+    // ins.truncate(BATCH);
 
-    // let ins2 = ins.clone();
-    let (ins2,cs2) = MNNetwork::fill_input_matrix::<BATCH>(&ins);
+    // // let ins2 = ins.clone();
+    // let (ins2,cs2) = MNNetwork::fill_input_matrix::<BATCH>(&ins);
 
-    let mut t0 = Instant::now();
-    let mut k = 0;
-    for _ in 0..epochs {
-        let out = nn0.run_matrix::<BATCH>(&ins2,&cs2);
-        k += out.shape().1;
-    }
-    let t1 = t0.elapsed().as_secs_f64();
-    println!("finished in {:.3} seconds", t1);
-    eprintln!("k = {:?}", k);
+    // let mut t0 = Instant::now();
+    // let mut k = 0;
+    // for _ in 0..epochs {
+    //     let out = nn0.run_matrix::<BATCH>(&ins2,&cs2);
+    //     k += out.shape().1;
+    // }
+    // let t1 = t0.elapsed().as_secs_f64();
+    // println!("finished in {:.3} seconds", t1);
+    // eprintln!("k = {:?}", k);
 
-    let (imgs,lbls): (Vec<&SVector<f32,784>>,Vec<SVector<f32,10>>) = ins.clone().into_iter().unzip();
-    let mut t0 = Instant::now();
-    let mut k = 0;
-    for _ in 0..epochs {
-        for i in imgs.iter() {
-            k += 1;
-            nn0.run(i);
-        }
-    }
-    let t1 = t0.elapsed().as_secs_f64();
-    println!("finished in {:.3} seconds", t1);
-    eprintln!("k = {:?}", k);
-
-    return;
+    // let (imgs,lbls): (Vec<&SVector<f32,784>>,Vec<SVector<f32,10>>) = ins.clone().into_iter().unzip();
+    // let mut t0 = Instant::now();
+    // let mut k = 0;
+    // for _ in 0..epochs {
+    //     for i in imgs.iter() {
+    //         k += 1;
+    //         nn0.run(i);
+    //     }
+    // }
+    // let t1 = t0.elapsed().as_secs_f64();
+    // println!("finished in {:.3} seconds", t1);
+    // eprintln!("k = {:?}", k);
 
     let mut t0 = Instant::now();
 
     const BATCH_SIZE: usize = 100;
-    const EPOCHS: usize = 1000;
-    let ksize = 100;
+    const EPOCHS: usize = 100;
+    let ksize = 50;
 
     println!("Starting old...");
     for k in 0..EPOCHS {
@@ -405,7 +403,6 @@ fn main_mnist() {
     // let mut ins2 = ins.clone();
     // ins2.truncate(BATCH_SIZE);
     // nn1.backprop_mut_matrix::<BATCH_SIZE>(ins2, lr);
-    // return;
 
     let mut t0 = Instant::now();
     println!("Starting matrix...");
@@ -439,7 +436,10 @@ fn main_mnist() {
 }
 
 fn wat_nalgebra<const NN: usize>() {
-    use nalgebra::{SMatrix,SVector,Matrix,Vector,matrix,vector,Dynamic,VecStorage};
+    use nalgebra::{
+        SMatrix,SVector,Matrix,Vector,matrix,vector,Dynamic,VecStorage,
+        ArrayStorage,Const,
+    };
 
     use rchess_engine_lib::brain::matrix::*;
 
@@ -449,8 +449,14 @@ fn wat_nalgebra<const NN: usize>() {
     // let x = SMatrix::<f32,NN,NN>::from_vec(vec![n; NN * NN]);
     // let y = SMatrix::<f32,NN,NN>::from_vec(vec![n; NN * NN]);
 
-    let x = SMatrix::<f32,NN,NN>::from_element(n);
-    let y = SMatrix::<f32,NN,NN>::from_element(n);
+    // type Mat = Matrix<f32,NN,NN,ArrayStorage<f32,NN,NN>>;
+
+    // let x = SMatrix::<f32,NN,NN>::from_element(n);
+    // let y = SMatrix::<f32,NN,NN>::from_element(n);
+
+    // let x = Matrix::<f32,Const<NN>,Const<NN>,VecStorage<f32,Dynamic,Dynamic>>::from_element(n);
+
+    // let x = Matrix::<f32,Const<NN>,Const<NN>,VecStorage<f32,Dynamic,Dynamic>>::from_element_generic(n);
 
     // let result = x * y;
 
@@ -493,21 +499,21 @@ fn main_nn() {
     use rchess_engine_lib::brain::types::*;
 
 
-    let n = 1000;
-    const K: usize = 200;
-    println!("Starting...");
-    let t0 = Instant::now();
-    for _ in 0..n {
-        wat_nalgebra::<K>();
-    }
-    println!("nalgebra: finished in {:.3} seconds", t0.elapsed().as_secs_f64());
-    let t0 = Instant::now();
-    for _ in 0..n {
-        wat_ndarray::<K>();
-    }
-    println!("ndarray:  finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+    // let n = 1000;
+    // const K: usize = 200;
+    // println!("Starting...");
+    // let t0 = Instant::now();
+    // for _ in 0..n {
+    //     wat_nalgebra::<K>();
+    // }
+    // println!("nalgebra: finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+    // let t0 = Instant::now();
+    // for _ in 0..n {
+    //     wat_ndarray::<K>();
+    // }
+    // println!("ndarray:  finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
-    // main_mnist();
+    main_mnist();
 
     // let h = std::thread::Builder::new()
     //     .stack_size(24 * 1024 * 1024)
