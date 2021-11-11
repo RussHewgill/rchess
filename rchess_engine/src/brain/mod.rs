@@ -159,6 +159,7 @@ impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
 
         // let z0 = self.weights_in * inputs; // HS,ISS
         // let z0 = z0 + Self::repeat(&self.biases_in);
+
         let z0 = self.weights_in * inputs + Self::repeat(&self.biases_in); // HS,ISS
         zs.push(z0);
 

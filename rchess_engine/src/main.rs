@@ -449,21 +449,22 @@ fn wat_nalgebra<const NN: usize>() {
     // let x = SMatrix::<f32,NN,NN>::from_vec(vec![n; NN * NN]);
     // let y = SMatrix::<f32,NN,NN>::from_vec(vec![n; NN * NN]);
 
-    // let x = SMatrix::<u32,NN,NN>::from_element(n);
-    // let y = SMatrix::<u32,NN,NN>::from_element(n);
+    let x = SMatrix::<f32,NN,NN>::from_element(n);
+    let y = SMatrix::<f32,NN,NN>::from_element(n);
 
-    type Matrix1000 = Matrix<f32, Dynamic, Dynamic, VecStorage<f32, Dynamic, Dynamic>>;
-    let x = Matrix1000::from_vec(NN, NN, vec![n; NN * NN]);
-    let y = Matrix1000::from_vec(NN, NN, vec![n; NN * NN]);
+    // let result = x * y;
+
+    // type Matrix1000 = Matrix<f32, Dynamic, Dynamic, VecStorage<f32, Dynamic, Dynamic>>;
+    // let x = Matrix1000::from_vec(NN, NN, vec![n; NN * NN]);
+    // let y = Matrix1000::from_vec(NN, NN, vec![n; NN * NN]);
 
     // let result: Matrix1000 = x * y;
 
-    let x1 = x.ref_ndarray2();
-    let y1 = y.ref_ndarray2();
-
-    let result1 = x1.dot(&y1);
-
-    let result: Matrix1000 = result1.into_nalgebra();
+    // let x1 = x.ref_ndarray2();
+    // let y1 = y.ref_ndarray2();
+    // let result1 = x1.dot(&y1);
+    // // let result: Matrix1000 = result1.into_nalgebra();
+    // let result: SMatrix<f32,NN,NN> = result1.into_nalgebra();
 
 }
 
@@ -492,21 +493,21 @@ fn main_nn() {
     use rchess_engine_lib::brain::types::*;
 
 
-    // let n = 1000;
-    // const K: usize = 200;
-    // println!("Starting...");
-    // let t0 = Instant::now();
-    // for _ in 0..n {
-    //     wat_nalgebra::<K>();
-    // }
-    // println!("nalgebra: finished in {:.3} seconds", t0.elapsed().as_secs_f64());
-    // let t0 = Instant::now();
-    // for _ in 0..n {
-    //     wat_ndarray::<K>();
-    // }
-    // println!("ndarray:  finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+    let n = 1000;
+    const K: usize = 200;
+    println!("Starting...");
+    let t0 = Instant::now();
+    for _ in 0..n {
+        wat_nalgebra::<K>();
+    }
+    println!("nalgebra: finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+    let t0 = Instant::now();
+    for _ in 0..n {
+        wat_ndarray::<K>();
+    }
+    println!("ndarray:  finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
-    main_mnist();
+    // main_mnist();
 
     // let h = std::thread::Builder::new()
     //     .stack_size(24 * 1024 * 1024)
