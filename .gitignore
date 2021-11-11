@@ -17,3 +17,4 @@ gdb.log
 benchmark.txt
 mnist/*
 test*.py
+*.png

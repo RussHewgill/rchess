@@ -144,14 +144,12 @@ pub fn test_mnist2(
               score, out.len(), score as f32 / out.len() as f32);
 }
 
-// impl<const IS: usize, const HS: usize, const OS: usize> DNetwork<f32,IS,HS,OS> {
 impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
     pub fn run(&self, input: &DVector<f32>) -> DVector<f32> {
         let (out,_,_) = self._run(input);
         out
     }
 
-    // pub fn _run(&self, input: &DVector<f32>) -> (DVector<f32>,Vec<(DVector<f32>,DVector<f32>)>) {
     pub fn _run(&self, input: &DVector<f32>) -> (DVector<f32>,Vec<DVector<f32>>,Vec<DVector<f32>>) {
         let mut activations: Vec<DVector<f32>> = vec![];
         let mut zs: Vec<DVector<f32>>          = vec![];
@@ -174,7 +172,7 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
         (pred,activations,zs)
     }
 
-    pub fn backprop_mut(
+    fn backprop_mut(
         &mut self,
         inputs:         Vec<&DVector<f32>>,
         corrects:       Vec<DVector<f32>>,
@@ -307,7 +305,9 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
 
     pub fn fill_input_matrix(
         size:  usize,
-        ins:   &Vec<(&DVector<f32>,DVector<f32>)>,
+        // ins:   &Vec<(&DVector<f32>,DVector<f32>)>,
+        // ins:   &[(&DVector<f32>,DVector<f32>)],
+        ins:   &[(DVector<f32>,DVector<f32>)],
     ) -> (DMatrix<f32>,DMatrix<f32>) {
         let mut inputs = DMatrix::zeros(IS,size);
         let mut cors   = DMatrix::zeros(OS,size);
@@ -320,7 +320,9 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
 
     pub fn backprop_mut_matrix(
         &mut self,
-        ins:            &Vec<(&DVector<f32>,DVector<f32>)>,
+        // ins:            &Vec<(&DVector<f32>,DVector<f32>)>,
+        // ins:            &[(&DVector<f32>,DVector<f32>)],
+        ins:            &[(DVector<f32>,DVector<f32>)],
         lr:             f32,
     ) {
         let input_size = ins.len();
@@ -359,24 +361,14 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
         let mut new_ws: Vec<DMatrix<f32>> = vec![d];
         let mut new_bs: Vec<DMatrix<f32>> = vec![delta];
 
-        // eprintln!("self.weights.len() = {:?}", self.weights.len());
-        // eprintln!("self.sizes = {:?}", self.sizes);
-        // eprintln!("zs.len()   = {:?}", zs.len());
-        // eprintln!("acts.len() = {:?}", acts.len());
-
         for k in 1..self.sizes.len()-1 {
-            // let layer = self.sizes.len() - k;
             let layer = self.sizes.len() - 1 - k;
-
             // eprintln!("k {} = layer {:?}", k, layer);
 
             let z = &zs[layer-1];
             let sp = z.map(sigmoid_deriv);
 
-            // eprintln!("sp.shape() = {:?}", sp.shape());
-
             let d = self.weights[layer].transpose() * prev_delta;
-            // eprintln!("d.shape() = {:?}", d.shape());
 
             let d = d.component_mul(&sp);
             prev_delta = d.clone();
@@ -389,15 +381,14 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
 
         }
 
-        // println!("wat 3");
-        // for nw in new_ws.iter() {
-        //     eprintln!("nw.shape() = {:?}", nw.shape());
-        // }
-
         for (mut ws, nw) in self.weights.iter_mut().zip(new_ws.into_iter().rev()) {
-            // *ws -= (lr / input_size as f32) * nw;
             *ws -= lr * nw;
         }
+
+        // for (mut bs, nb) in self.biases.iter_mut().zip(new_bs.into_iter().rev()) {
+        //     let m = nb.column_sum().map(|x| x / input_size as f32);
+        //     *bs -= m;
+        // }
 
     }
 

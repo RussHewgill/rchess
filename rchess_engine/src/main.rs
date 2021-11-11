@@ -365,27 +365,91 @@ fn main_mnist() {
     // println!("finished in {:.3} seconds", t1);
     // eprintln!("k = {:?}", k);
 
-    let mut t0 = Instant::now();
 
     const BATCH_SIZE: usize = 100;
-    const EPOCHS: usize = 100;
-    let ksize = 50;
+    const EPOCHS: usize = 1000;
+    let ksize = 200;
 
-    let ins2: Vec<(&DVector<f32>,DVector<f32>)> = trn_imgs2.iter().zip(corrects2).collect();
+    let ins2: Vec<(&DVector<f32>,DVector<f32>)> = trn_imgs2.iter().zip(corrects2.clone()).collect();
 
+    // let mut xs: Vec<(DVector<f32>,DVector<f32>)> = trn_imgs2.into_iter().zip(corrects2).collect();
+    // xs.truncate(1000);
+    // let b = bincode::serialize(&xs).unwrap();
+    // use std::io::Write;
+    // let mut f = std::fs::File::create("temp-mnist.bin").unwrap();
+    // f.write_all(&b).unwrap();
+    // return;
+
+    let t0 = Instant::now();
     println!("Starting dyn...");
     for k in 0..EPOCHS {
-        ins.shuffle(&mut rng);
-        let xs: &[(&DVector<f32>,DVector<f32>)] = &ins2[0..BATCH_SIZE];
-        let xs = xs.to_vec();
-        let (imgs,lbls): (Vec<&DVector<f32>>,Vec<DVector<f32>>) = xs.into_iter().unzip();
-        nn2.backprop_mut(imgs, lbls, lr);
+
+        // ins.shuffle(&mut rng);
+        // let mut ins3 = ins2.clone();
+        // ins3.truncate(BATCH_SIZE);
+
+        let ins3 = ins2.choose_multiple(&mut rng, BATCH_SIZE).cloned().collect::<Vec<_>>();
+
+        // nn2.backprop_mut_matrix(&ins3, lr);
+
+        // if k % ksize == 0 {
+        //     // let t1 = t0.elapsed().as_secs_f64();
+        //     // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", k, t1, t1 / k as f64);
+        //     // t0 = Instant::now();
+        //     eprint!("dyn:    ");
+        //     test_mnist2(&nn2, test_data.clone(), Some(1000));
+        //     // nn.write_to_file("mnist.bin",Some("mnist-2.bin")).unwrap();
+        //     // nn.write_to_file("mnist.bin",None).unwrap();
+        // }
+
+    }
+    let t1 = t0.elapsed().as_secs_f64();
+    println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", EPOCHS, t1, t1 / EPOCHS as f64);
+
+    test_mnist2(&nn2, test_data.clone(), None);
+
+
+    // let (img,lbl) = &ins2[4];
+    // let pred = nn2.run(&img);
+    // let (c0,c1) = lbl.iter().enumerate()
+    //     .max_by(|a,b| a.1.partial_cmp(&b.1).unwrap())
+    //     .unwrap();
+    // let (k0,k1) = pred.iter().enumerate()
+    //     .max_by(|a,b| a.1.partial_cmp(&b.1).unwrap())
+    //     .unwrap();
+    // eprintln!("correct = {:?}", c0);
+    // eprintln!("pred    = {:?}", k0);
+
+    // eprintln!("pred[4] = {:?}", pred[4]);
+    // eprintln!("pred[7] = {:?}", pred[7]);
+
+    // use image::{DynamicImage,Luma};
+    // let img = img.iter()
+    //     .map(|x| (x * 255.0).clamp(0.0, 255.0) as u8)
+    //     .collect::<Vec<u8>>();
+    // let i: image::ImageBuffer<image::Luma<u8>,Vec<u8>> = image::ImageBuffer::from_vec(28, 28, img).unwrap();
+    // i.save("char.png").unwrap();
+
+    return;
+
+    let t0 = Instant::now();
+    println!("Starting old...");
+    for k in 0..EPOCHS {
+        // ins.shuffle(&mut rng);
+        // let xs: &[(&SVector<f32,784>,SVector<f32,10>)] = &ins[0..BATCH_SIZE];
+        // let xs = xs.to_vec();
+        // let (imgs,lbls): (Vec<&SVector<f32,784>>,Vec<SVector<f32,10>>) = xs.into_iter().unzip();
+
+        let xs = ins.choose_multiple(&mut rng, BATCH_SIZE).cloned();
+
+        let (imgs,lbls): (Vec<&SVector<f32,784>>,Vec<SVector<f32,10>>) = xs.unzip();
+        nn0.backprop_mut(imgs, lbls, lr);
         if k % ksize == 0 {
             // let t1 = t0.elapsed().as_secs_f64();
             // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", k, t1, t1 / k as f64);
             // t0 = Instant::now();
             eprint!("old:    ");
-            test_mnist2(&nn2, test_data.clone(), Some(1000));
+            test_mnist(&nn0, test_data.clone(), Some(1000));
             // nn.write_to_file("mnist.bin",Some("mnist-2.bin")).unwrap();
             // nn.write_to_file("mnist.bin",None).unwrap();
         }
@@ -393,33 +457,11 @@ fn main_mnist() {
     let t1 = t0.elapsed().as_secs_f64();
     println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", EPOCHS, t1, t1 / EPOCHS as f64);
 
-    return;
-
-    // println!("Starting old...");
-    // for k in 0..EPOCHS {
-    //     ins.shuffle(&mut rng);
-    //     let xs: &[(&SVector<f32,784>,SVector<f32,10>)] = &ins[0..BATCH_SIZE];
-    //     let xs = xs.to_vec();
-    //     let (imgs,lbls): (Vec<&SVector<f32,784>>,Vec<SVector<f32,10>>) = xs.into_iter().unzip();
-    //     nn0.backprop_mut(imgs, lbls, lr);
-    //     if k % ksize == 0 {
-    //         // let t1 = t0.elapsed().as_secs_f64();
-    //         // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", k, t1, t1 / k as f64);
-    //         // t0 = Instant::now();
-    //         eprint!("old:    ");
-    //         test_mnist(&nn0, test_data.clone(), Some(1000));
-    //         // nn.write_to_file("mnist.bin",Some("mnist-2.bin")).unwrap();
-    //         // nn.write_to_file("mnist.bin",None).unwrap();
-    //     }
-    // }
-    // let t1 = t0.elapsed().as_secs_f64();
-    // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", EPOCHS, t1, t1 / EPOCHS as f64);
-
     // let mut ins2 = ins.clone();
     // ins2.truncate(BATCH_SIZE);
     // nn1.backprop_mut_matrix::<BATCH_SIZE>(ins2, lr);
 
-    // return;
+    return;
 
     let mut t0 = Instant::now();
     println!("Starting matrix...");
@@ -556,8 +598,8 @@ fn main_nn() {
     // }
     // println!("ndarray:  finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
-    // main_mnist();
-    // return;
+    main_mnist();
+    return;
 
     // let h = std::thread::Builder::new()
     //     .stack_size(24 * 1024 * 1024)
@@ -633,26 +675,6 @@ fn main_nn() {
     // nn.backprop_mut_matrix::<4>(ins, cors, lr);
     // return;
 
-    let mut m = matrix![
-        1,2,3;
-        4,5,6;
-    ];
-
-    // for i in 0..m.shape().1 {
-    //     let mut c = m.column_mut(i);
-    //     println!("c = {}", c);
-    // }
-
-    // for (i,bs) in nn.biases.iter().enumerate() {
-    //     println!("{} = {}", i, bs);
-    // }
-
-    // for (k,ws) in nn.weights.iter().enumerate() {
-    //     eprintln!("{} = {}", k, ws);
-    // }
-
-    // eprintln!("nn.weights[0].shape() = {:?}", nn.weights[0].shape());
-
     // println!("===");
     // eprintln!("{} = {}", 0, nn0.weights_in);
     // for (k,ws) in nn0.weights.iter().enumerate() {
@@ -669,23 +691,23 @@ fn main_nn() {
     // let mut nn = DNetwork::<f32,2,1>::new_range(vec![2,3,3,1], (0.,1.));
     let mut nn = DNetwork::<f32,2,1>::new_range(vec![2,3,1], (0.,1.));
 
-    // let mut xs2: Vec<_> = xs.clone().collect();
-    let mut xs2: Vec<_> = xs0.clone().collect();
+    let mut xs2: Vec<_> = xs.clone().collect();
+    // let mut xs2: Vec<_> = xs0.clone().collect();
 
     let t0 = Instant::now();
-    for k in 0..10000 {
+    for k in 0..100000 {
         // eprintln!("k = {:?}", k);
         xs2.shuffle(&mut rng);
 
-        // let mut xs3 = xs2.clone();
-        // xs3.truncate(2);
+        let mut xs3 = xs2.clone();
+        xs3.truncate(2);
 
-        // nn0.backprop_mut_matrix::<4>(&xs3, lr);
+        // // nn0.backprop_mut_matrix::<4>(&xs3, lr);
         // nn.backprop_mut_matrix(&xs3, 0.1);
 
-        for (i,c) in inputs0.iter().zip(corrects0.iter()) {
-            nn0.backprop_mut(vec![i], vec![*c], 0.1);
-        }
+        // for (i,c) in inputs0.iter().zip(corrects0.iter()) {
+        //     nn0.backprop_mut(vec![i], vec![*c], 0.1);
+        // }
 
         // for (input, c) in xs.clone().into_iter().take(1) {
         //     nn.backprop_mut(vec![input], vec![c.clone()], 0.1);
@@ -704,10 +726,11 @@ fn main_nn() {
 
     println!();
     println!("X     Y     Cor    Ans   err");
-    // for (input, c) in xs0.clone() {
     for (input, c) in xs.clone() {
+    // for (input, c) in xs0.clone() {
         let pred = nn.run(&input);
         // let pred = nn0.run(&input);
+
         // let (pred,pred_a,acts) = nn._run(&input);
         // eprintln!("pred_a = {:?}", pred_a);
         println!("{:.2}  {:.2}  {}      {:.3}", input[0], input[1], c[0], pred[0]);

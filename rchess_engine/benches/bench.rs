@@ -18,6 +18,37 @@ use criterion::BenchmarkId;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 
+pub fn crit_bench_2(c: &mut Criterion) {
+    use nalgebra as na;
+    use na::{DVector,DMatrix};
+
+    use rchess_engine_lib::brain::*;
+    use rchess_engine_lib::brain::types::*;
+
+    let mut ins: Vec<(DVector<f32>,DVector<f32>)> = {
+        let f = std::fs::read("temp-mnist.bin").unwrap();
+        bincode::deserialize(&f).unwrap()
+    };
+
+    let mut nn2: DNetwork<f32,784,10> = DNetwork::new_range(vec![784,16,16,10], (-1.0, 1.0));
+
+    let mut group = c.benchmark_group("group");
+
+    group.warm_up_time(Duration::from_secs_f64(3.0));
+
+    // group.sample_size(20);
+    group.measurement_time(Duration::from_secs_f64(5.));
+
+    ins.truncate(100);
+
+    group.bench_function("backprop 1", |b| b.iter(|| {
+        nn2.backprop_mut_matrix(black_box(&ins), 0.1);
+    }));
+
+    group.finish();
+
+}
+
 pub fn crit_bench_1(c: &mut Criterion) {
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
@@ -159,6 +190,7 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
 }
 
-criterion_group!(benches, crit_bench_1);
+// criterion_group!(benches, crit_bench_1);
+criterion_group!(benches, crit_bench_2);
 criterion_main!(benches);
 
