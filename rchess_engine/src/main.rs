@@ -181,83 +181,6 @@ fn main() {
 }
 
 #[allow(unreachable_code)]
-fn main_mnist2() {
-    use mnist::*;
-
-    use ndarray::*;
-
-    use rchess_engine_lib::brain::types::nd::*;
-    use rchess_engine_lib::brain::nd::*;
-
-    // let data = MnistBuilder::new()
-    //     .base_path("mnist")
-    //     .label_format_digit()
-    //     .finalize()
-    //     .normalize();
-
-    // let mut trn_imgs: Vec<Array1<f32>> = data.trn_img
-    //     .chunks_exact(28 * 28)
-    //     .map(|x| SVector::<f32,784>::from_column_slice(x))
-    //     .collect::<Vec<_>>();
-    // let mut test_imgs: Vec<SVector<f32,784>> = data.tst_img
-    //     .chunks_exact(28 * 28)
-    //     .map(|x| SVector::<f32,784>::from_column_slice(x))
-    //     .collect::<Vec<_>>();
-
-    // let mut corrects = data.trn_lbl.iter()
-    // // let mut corrects = data.tst_lbl.iter()
-    //     .map(|x| {
-    //         let mut v = SVector::<f32,10>::zeros();
-    //         v[*x as usize] = 1.0;
-    //         v
-    //     }).collect::<Vec<_>>();
-
-
-
-    // let inputs = array![
-    //     [0.0, 0.0],
-    //     [1.0, 0.0],
-    //     [0.0, 1.0],
-    //     [1.0, 1.0],
-    // ];
-    // let corrects = array![
-    //     [0.0],
-    //     [1.0],
-    //     [1.0],
-    //     [0.0],
-    // ];
-
-    let inputs = vec![
-        array![0.0,0.0],
-        array![1.0,0.0],
-        array![0.0,1.0],
-        array![1.0,1.0],
-    ];
-    let corrects = vec![
-        array![0.0],
-        array![1.0],
-        array![1.0],
-        array![0.0],
-    ];
-
-    let mut nn = NDNetwork::new(2,3,1,1);
-
-    let xs = inputs.clone().into_iter().zip(corrects.clone().into_iter()).collect::<Vec<_>>();
-
-    for _ in 0..10000 {
-        nn.backprop(inputs.clone(), corrects.clone());
-    }
-
-    println!();
-    println!("X     Y     Cor    Ans   err");
-    for (input, c) in xs.iter() {
-        let pred = nn.run(input.clone());
-        println!("{:.2}  {:.2}  {}      {:.2}", input[0], input[1], c[0], pred[0]);
-    }
-
-}
-
-#[allow(unreachable_code)]
 fn main_mnist() {
 
     use nalgebra::{SMatrix,SVector,Matrix,Vector,matrix,vector,DMatrix,DVector};
@@ -495,22 +418,82 @@ fn main_mnist() {
     return;
 }
 
-fn wat_nalgebra_0<const NN: usize>() {
-    use nalgebra::{
-        SMatrix,SVector,Matrix,Vector,matrix,vector,Dynamic,VecStorage,
-        ArrayStorage,Const,
-    };
+#[allow(unreachable_code)]
+fn main_nnue() {
     use nalgebra as na;
+    use na::{SMatrix,SVector,Matrix,Vector,matrix,vector,dmatrix,dvector,DVector,DMatrix};
 
-    use rchess_engine_lib::brain::matrix::*;
+    use ndarray as nd;
+
+    use rand::thread_rng;
+    use rand::prelude::{StdRng,SliceRandom};
+    use rand::{Rng,SeedableRng};
+
+    use rchess_engine_lib::brain::*;
+    use rchess_engine_lib::brain::filter::*;
     use rchess_engine_lib::brain::types::*;
+    use rchess_engine_lib::brain::types::nnue::*;
+    use rchess_engine_lib::brain::nnue::*;
+    use rchess_engine_lib::brain::matrix::*;
 
-    let n = 1.0;
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
-    let x = na::OMatrix::<f32,Const<NN>,Const<NN>>::from_element(n);
-    let y = na::OMatrix::<f32,Const<NN>,Const<NN>>::from_element(n);
+    let fen = STARTPOS;
 
-    let result = x * y;
+    let mut nn = NNUE::new(&mut rng);
+    // nn.write_to_file("nnue.bin", None).unwrap();
+    // let mut nn = NNUE::read_from_file("nnue.bin").unwrap();
+
+    // let mut nn = NNUE::empty();
+
+    // let mut nn = DNetwork::<f32,{NNUE_L2*2},1>::_new(
+    //     vec![NNUE_L2*2,NNUE_L3,NNUE_OUTPUT,1], (0.0,1.0), Some(1234u64));
+    // let inputs_own   = nd::Array2::<f32>::zeros((NNUE_INPUT, 1));
+    // let inputs_other = nd::Array2::<f32>::zeros((NNUE_INPUT, 1));
+    // let weights_in_own   = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
+    // let weights_in_other = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
+
+    let ts = Tables::read_from_file_def().unwrap();
+    let mut g = Game::from_fen(&ts, fen).unwrap();
+
+    println!("starting...");
+    let t0 = Instant::now();
+    for _ in 0..100 {
+
+        nn.run_fresh(&g);
+
+        // let z0_own   = weights_in_own.dot(&inputs_own);
+        // let z0_other = weights_in_other.dot(&inputs_other);
+        // let act1 = nd::concatenate![nd::Axis(0), z0_own, z0_other];
+        // let act1 = act1.index_axis(nd::Axis(1), 0).to_owned();
+        // let act1: DVector<f32> = act1.into_nalgebra();
+        // let pred = nn.run(&act1);
+
+        // break;
+
+    }
+    println!("ndarray:  finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+
+    // let k = nn.weights_out;
+    // println!("k = {}", k);
+
+    // let mut xs = std::collections::HashSet::<usize>::default();
+    // for ks0 in 0u8..64 {
+    //     let ks0: Coord = ks0.into();
+    //     for c0 in 0u8..63 {
+    //         let c0: Coord = c0.into();
+    //         for friendly in [true,false] {
+    //             for pc in [Pawn,Knight,Bishop,Rook,Queen] {
+    //                 let idx = NNUE::index(ks0, pc, c0, friendly);
+    //                 if xs.contains(&idx) {
+    //                     panic!()
+    //                 } else {
+    //                     xs.insert(idx);
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
 }
 
@@ -529,20 +512,6 @@ fn main_nn() {
     use rchess_engine_lib::brain::nnue::*;
     use rchess_engine_lib::brain::types::*;
 
-    // let n = 500;
-    // const K: usize = 200;
-    // println!("Starting...");
-    // let t0 = Instant::now();
-    // for _ in 0..n {
-    //     wat_nalgebra_0::<K>();
-    // }
-    // println!("nalgebra_0: finished in {:.3} seconds", t0.elapsed().as_secs_f64());
-    // let t0 = Instant::now();
-    // for _ in 0..n {
-    //     wat_nalgebra_1::<K>();
-    // }
-    // println!("nalgebra_1: finished in {:.3} seconds", t0.elapsed().as_secs_f64());
-
     // let t0 = Instant::now();
     // for _ in 0..n {
     //     wat_ndarray::<K>();
@@ -550,6 +519,8 @@ fn main_nn() {
     // println!("ndarray:  finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
     // main_mnist();
+
+    main_nnue();
     return;
 
     // let h = std::thread::Builder::new()
@@ -1716,13 +1687,12 @@ fn main4(depth: Option<u64>) {
     // let ts = &_TABLES;
     let ts = Tables::read_from_file_def().unwrap();
     let mut g = Game::from_fen(&ts, fen).unwrap();
-    let _ = g.recalc_gameinfo_mut(&ts);
     // eprintln!("g = {:?}", g);
 
-    // let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, n, true).unwrap();
-    // // let (t,(_,_)) = test_stockfish(fen, n, false).unwrap();
-    // println!("perft done in {} seconds.", t);
-    // println!("stockfish took {} seconds.", t_sf);
+    let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, n, true).unwrap();
+    // let (t,(_,_)) = test_stockfish(fen, n, false).unwrap();
+    println!("perft done in {} seconds.", t);
+    println!("stockfish took {} seconds.", t_sf);
 
     // let t0 = std::time::Instant::now();
     // let (tot,_) = g.perft(&ts, n);
@@ -1738,15 +1708,15 @@ fn main4(depth: Option<u64>) {
         197281,
     ];
 
-    for d in 1..n+1 {
-        let t0 = std::time::Instant::now();
-        let (tot,_) = g.perft(&ts, d);
-        let t1 = t0.elapsed().as_secs_f64();
-        println!("depth {:>2}: {:>12} leaves, {} leaves/sec",
-                 d, tot, pretty_print_si((tot as f64 / t1) as i64));
-        // eprintln!("correct == tot = {:?}", ds[d as usize - 1] == tot);
-        assert!(ds[d as usize - 1] == tot);
-    }
+    // for d in 1..n+1 {
+    //     let t0 = std::time::Instant::now();
+    //     let (tot,_) = g.perft(&ts, d);
+    //     let t1 = t0.elapsed().as_secs_f64();
+    //     println!("depth {:>2}: {:>12} leaves, {} leaves/sec",
+    //              d, tot, pretty_print_si((tot as f64 / t1) as i64));
+    //     // eprintln!("correct == tot = {:?}", ds[d as usize - 1] == tot);
+    //     assert!(ds[d as usize - 1] == tot);
+    // }
 
     // for d in 1..n+1 {
     //     let t0 = std::time::Instant::now();

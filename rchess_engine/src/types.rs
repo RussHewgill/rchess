@@ -253,12 +253,16 @@ impl Move {
         match self {
             &Move::Capture { pc, .. }              => Some(pc),
             &Move::EnPassant { .. }                => Some(Pawn),
+
+            // XXX: pawn or new_piece ???
             &Move::PromotionCapture { victim, .. } => Some(Pawn),
-            // &Move::PawnDouble { .. }               => Some(Pawn),
-            // &Move::Quiet { pc, .. }                => Some(pc),
-            // &Move::Castle { to, .. }           => to,
-            // &Move::Promotion { new_piece, .. }     => None,
-            _                                   => None,
+            &Move::Promotion { new_piece, .. }     => Some(Pawn),
+
+            &Move::PawnDouble { .. }               => Some(Pawn),
+            &Move::Quiet { pc, .. }                => Some(pc),
+            &Move::Castle { to, .. }               => Some(King),
+            // _                                   => None,
+            &Move::NullMove                        => None,
         }
     }
 

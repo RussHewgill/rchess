@@ -12,18 +12,21 @@ use rchess_engine_lib::explore::*;
 use rchess_engine_lib::util::*;
 use rchess_engine_lib::search::*;
 
+use rchess_engine_lib::brain::*;
+use rchess_engine_lib::brain::types::*;
+
 use std::time::{Duration};
+
+use nalgebra as na;
+use na::{DVector,DMatrix};
+
+use ndarray as nd;
 
 use criterion::BenchmarkId;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 
 pub fn crit_bench_2(c: &mut Criterion) {
-    use nalgebra as na;
-    use na::{DVector,DMatrix};
-
-    use rchess_engine_lib::brain::*;
-    use rchess_engine_lib::brain::types::*;
 
     let mut ins: Vec<(DVector<f32>,DVector<f32>)> = {
         let f = std::fs::read("/home/me/code/rust/rchess/temp-mnist.bin").unwrap();
@@ -42,18 +45,35 @@ pub fn crit_bench_2(c: &mut Criterion) {
 
     ins.truncate(200);
 
-    group.bench_function("backprop 1", |b| b.iter(|| {
-        nn2.backprop_mut_matrix(black_box(&ins), 0.1);
-    }));
+    // group.bench_function("backprop 1", |b| b.iter(|| {
+    //     nn2.backprop_mut_matrix(black_box(&ins), 0.1);
+    // }));
 
     // let k = 1000;
+    const K: usize = 200;
+    let n = 1.0;
     // let n = 1;
-    // let x = na::DMatrix::<u32>::from_element(k,k,n);
-    // let y = na::DMatrix::<u32>::from_element(k,k,n);
-    // let mut result = &x * &y;
-    // group.bench_function("mat mul 1", |b| b.iter(|| {
-    //     result = &x * black_box(&y);
-    // }));
+
+    let x = na::DMatrix::<f32>::from_element(K,K,n);
+    let y = na::DMatrix::<f32>::from_element(K,K,n);
+    // let x = na::SMatrix::<i32,K,K>::from_element(n);
+    // let y = na::SMatrix::<i32,K,K>::from_element(n);
+    let mut result = &x * &y;
+
+    group.warm_up_time(Duration::from_secs_f64(0.5));
+    group.measurement_time(Duration::from_secs_f64(2.));
+
+    group.bench_function("mat mul 1", |b| b.iter(|| {
+        result = &x * black_box(&y);
+    }));
+
+    let x = nd::Array2::<f32>::from_elem((K,K), n);
+    let y = nd::Array2::<f32>::from_elem((K,K), n);
+    let mut result = x.dot(&y);
+
+    group.bench_function("mat mul 2", |b| b.iter(|| {
+        result = x.dot(&y);
+    }));
 
     group.finish();
 

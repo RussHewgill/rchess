@@ -5,95 +5,186 @@
 
 use crate::brain::filter::*;
 
-// pub use self::nd::*;
-
 use rand::{Rng,SeedableRng};
 use rand::prelude::{StdRng,Distribution};
 use rand::distributions::Uniform;
 
-use nalgebra::{SMatrix,SVector,Matrix,Vector,DVector,DMatrix};
-use nalgebra::{VecStorage,ArrayStorage,Dynamic,Const};
+use nalgebra::{SMatrix,SVector,Matrix,Vector,DVector,DMatrix,Dynamic,Const};
 use nalgebra as na;
 
 use serde::ser::{Serializer,SerializeStruct};
 use serde::de::{Deserializer,DeserializeOwned};
 use serde::{Serialize,Deserialize};
 
-pub mod nd {
-    use serde::{Serialize,Deserialize};
+pub mod nnue {
+
+    use crate::tables::*;
+    use crate::types::*;
+    use crate::evaluate::*;
+    use crate::brain::types::*;
+    use crate::brain::matrix::*;
+
+    use nalgebra::{SMatrix,SVector,Matrix,Vector,DVector,DMatrix,Dynamic,Const};
+    use nalgebra as na;
+
+    use ndarray as nd;
+    use nd::{Array1,Array2};
 
     use rand::{Rng,SeedableRng};
-    use rand::prelude::StdRng;
+    use rand::prelude::{StdRng,Distribution};
     use rand::distributions::Uniform;
 
-    use ndarray::*;
-    use ndarray_rand::RandomExt;
+    use serde::{Serialize,Deserialize};
+
+    // pub const NNUE_INPUT: usize  = 64 * 63 * 10; // 40320
+    pub const NNUE_INPUT: usize  = 64 * 63 * 10 + 32 + 4; // 40320 + EP + Castling = 40356
+    pub const NNUE_L2: usize     = 256;
+    // pub const NNUE_L2: usize     = 512;
+    pub const NNUE_L3: usize     = 32;
+    pub const NNUE_OUTPUT: usize = 32;
 
     #[derive(Debug,Clone,PartialEq,Serialize,Deserialize)]
-    pub struct NDNetwork {
-        // pub n_hidden:   usize,
-        pub sizes:       Vec<usize>,
+    pub struct NNUE {
+        pub dirty:              bool,
 
-        pub weights:     Vec<Array2<f32>>,
-        pub biases:      Vec<Array1<f32>>,
+        // pub weights_in_own:     DMatrix<f32>, // 256 x 40320
+        // pub weights_in_other:   DMatrix<f32>, // 256 x 40320
+        // pub weights_l2_own:     DMatrix<f32>, // 256 x 32
+        // pub weights_l2_other:   DMatrix<f32>, // 256 x 32
+        // pub weights_l3:         DMatrix<f32>, // 32 x 32
+        // pub weights_out:        DVector<f32>, // 32 x 1
+
+        // TODO: biases
+
+        #[serde(skip)]
+        pub inputs_own:         Array2<f32>,
+        #[serde(skip)]
+        pub inputs_other:       Array2<f32>,
+
+        pub weights_in_own:     Array2<f32>, // 256 x 40320
+        pub weights_in_other:   Array2<f32>, // 256 x 40320
+        // pub weights_l2_own:     Array2<f32>, // 256 x 32
+        // pub weights_l2_other:   Array2<f32>, // 256 x 32
+        pub weights_l2:         Array2<f32>, // 512 x 32
+        pub weights_l3:         Array2<f32>, // 32 x 32
+        pub weights_out:        Array2<f32>, // 32 x 1
+
     }
 
-    impl NDNetwork {
-        pub fn new(
-            size_inputs:      usize,
-            size_hidden:      usize,
-            n_hidden:         usize,
-            size_output:      usize,
-        ) -> Self {
-            let mut rng: StdRng = SeedableRng::seed_from_u64(18105974836011991331);
-            let dist = Uniform::new(0.0,1.0);
-
-            let mut weights = vec![
-                Array2::random_using(
-                    (size_hidden,size_inputs), dist, &mut rng)
-            ];
-
-            (0..n_hidden+1).for_each(|x| {
-                let a = Array2::random_using(
-                    (size_hidden, size_hidden), dist, &mut rng);
-                weights.push(a);
-            });
-
-            let weights_out = Array2::random_using(
-                (size_output,size_hidden), dist, &mut rng);
-            weights.push(weights_out);
-
-            let mut biases: Vec<Array1<f32>> = vec![];
-
-            (0..n_hidden).for_each(|x| {
-                let a = Array1::random_using(
-                    size_hidden, dist, &mut rng);
-                biases.push(a);
-            });
-            let biases_out = Array1::random_using(
-                size_output, dist, &mut rng);
-            biases.push(biases_out);
-
-            let mut sizes = vec![size_inputs];
-            for _ in 0..n_hidden {
-                sizes.push(size_hidden);
+    impl NNUE {
+        pub fn write_to_file(&self, path: &str, backup: Option<&str>) -> std::io::Result<()> {
+            use std::io::Write;
+            let b: Vec<u8> = bincode::serialize(&self).unwrap();
+            if let Some(backup) = backup {
+                std::fs::rename(path, backup)?;
             }
-            sizes.push(size_output);
+            let mut f = std::fs::File::create(&path)?;
+            f.write_all(&b)
+        }
+
+        pub fn read_from_file(path: &str) -> std::io::Result<Self> {
+            let f = std::fs::read(&path)?;
+            let nn: Self = bincode::deserialize(&f).unwrap();
+            Ok(nn)
+        }
+    }
+
+    impl NNUE {
+
+        pub fn empty() -> Self {
+
+            let inputs_own   = nd::Array2::zeros((NNUE_INPUT, 1));
+            let inputs_other = nd::Array2::zeros((NNUE_INPUT, 1));
+
+            let weights_in_own   = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
+            let weights_in_other = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
+            let weights_l2       = nd::Array2::zeros((NNUE_L3,NNUE_L2 * 2));
+            // let weights_l2_own   = nd::Array2::zeros((NNUE_L3,NNUE_L2));
+            // let weights_l2_other = nd::Array2::zeros((NNUE_L3,NNUE_L2));
+            let weights_l3       = nd::Array2::zeros((NNUE_OUTPUT,NNUE_L3));
+            let weights_out      = nd::Array2::zeros((1,NNUE_OUTPUT));
 
             Self {
-                sizes,
+                dirty: true,
 
-                weights,
-                biases,
+                inputs_own,
+                inputs_other,
+
+                weights_in_own,
+                weights_in_other,
+                // weights_l2_own,
+                // weights_l2_other,
+                weights_l2,
+                weights_l3,
+                weights_out,
             }
+        }
 
+        pub fn new(mut rng: &mut StdRng) -> Self {
+
+            let dist0 = Uniform::new(-1.0,1.0);
+
+            let inputs_own   = DVector::zeros(NNUE_INPUT);
+            let inputs_other = DVector::zeros(NNUE_INPUT);
+
+            let weights_in_own = DMatrix::from_vec(
+                NNUE_L2,NNUE_INPUT,Self::gen_vec(NNUE_L2 * NNUE_INPUT,dist0,&mut rng));
+            let weights_in_other = DMatrix::from_vec(
+                NNUE_L2,NNUE_INPUT,Self::gen_vec(NNUE_L2 * NNUE_INPUT,dist0,&mut rng));
+
+            // let weights_l2_own = DMatrix::from_vec(
+            //     NNUE_L3,NNUE_L2,Self::gen_vec(NNUE_L3 * NNUE_L2,dist0,&mut rng));
+            // let weights_l2_other = DMatrix::from_vec(
+            //     NNUE_L3,NNUE_L2,Self::gen_vec(NNUE_L3 * NNUE_L2,dist0,&mut rng));
+            let weights_l2 = DMatrix::from_vec(
+                NNUE_L3,NNUE_L2 * 2,Self::gen_vec(NNUE_L3 * NNUE_L2 * 2,dist0,&mut rng));
+
+            let weights_l3 = DMatrix::from_vec(
+                NNUE_OUTPUT,NNUE_L3,Self::gen_vec(NNUE_OUTPUT * NNUE_L3,dist0,&mut rng));
+
+            // let weights_out = DVector::from_vec(
+            //     Self::gen_vec(NNUE_OUTPUT,dist0,&mut rng));
+
+            let weights_out = DMatrix::from_vec(
+                1,NNUE_OUTPUT,Self::gen_vec(NNUE_OUTPUT,dist0,&mut rng));
+
+            let inputs_own   = inputs_own.ref_ndarray2().to_owned();
+            let inputs_other = inputs_other.ref_ndarray2().to_owned();
+
+            let weights_in_own   = weights_in_own.ref_ndarray2().to_owned();
+            let weights_in_other = weights_in_other.ref_ndarray2().to_owned();
+            // let weights_l2_own   = weights_l2_own.ref_ndarray2().to_owned();
+            // let weights_l2_other = weights_l2_other.ref_ndarray2().to_owned();
+            let weights_l2       = weights_l2.ref_ndarray2().to_owned();
+            let weights_l3       = weights_l3.ref_ndarray2().to_owned();
+            let weights_out      = weights_out.ref_ndarray2().to_owned();
+
+            Self {
+                dirty: true,
+
+                inputs_own,
+                inputs_other,
+
+                weights_in_own,
+                weights_in_other,
+                // weights_l2_own,
+                // weights_l2_other,
+                weights_l2,
+                weights_l3,
+                weights_out,
+            }
+        }
+
+        fn gen_vec<T>(n: usize, dist: Uniform<T>, mut rng: &mut StdRng) -> Vec<T>
+            where T: rand::distributions::uniform::SampleUniform,
+        {
+            (0..n).map(|_| dist.sample(&mut rng)).collect()
         }
     }
 
 }
 
 #[derive(Debug,Clone,PartialEq,Serialize,Deserialize)]
-// pub struct DNetwork<T, const IS: usize, const HS: usize, const OS: usize>
 pub struct DNetwork<T, const IS: usize, const OS: usize>
 where T: nalgebra::Scalar + PartialEq + Serialize,
 {

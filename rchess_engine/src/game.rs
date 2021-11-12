@@ -700,6 +700,11 @@ impl Game {
 /// Misc Queries
 impl Game {
 
+    // pub fn iter_all_pieces(&self, side: Color) -> impl Iterator<Item = Piece> {
+    //     let mut out = vec![];
+    //     for pc in 
+    // }
+
     pub fn in_check(&self) -> bool {
         self.state.checkers.is_not_empty()
     }

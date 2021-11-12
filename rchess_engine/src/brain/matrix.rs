@@ -1,10 +1,15 @@
 
 use std::convert::TryFrom;
 
-use nalgebra::{DMatrix, DVector, Dim, Dynamic, Matrix,
-               SMatrix, SVector, Scalar, VecStorage, Vector, matrix, vector};
+use nalgebra::{
+    DMatrix, DVector, Dim, Dynamic, Matrix,
+    SMatrix, SVector, Scalar, VecStorage, Vector, matrix, vector,
+    U1,U2,
+};
 use nalgebra::Dynamic as Dy;
+use nalgebra as na;
 
+use ndarray as nd;
 use ndarray::ShapeBuilder;
 
 // use nshare::{RefNdarray1,RefNdarray2,ToNdarray1,ToNdarray2,ToNalgebra};
@@ -17,6 +22,20 @@ pub fn mul_blas(a: DMatrix<f32>, b: DMatrix<f32>) -> DMatrix<f32> {
     out.into_nalgebra()
 }
 
+pub trait ToNdarray1 {
+    type Out;
+    fn into_ndarray1(self) -> Self::Out;
+}
+
+pub trait ToNdarray2 {
+    type Out;
+    fn into_ndarray2(self) -> Self::Out;
+}
+
+pub trait RefNdarray1 {
+    type Out;
+    fn ref_ndarray1(self) -> Self::Out;
+}
 
 pub trait RefNdarray2 {
     type Out;
@@ -28,6 +47,22 @@ pub trait ToNalgebra {
     fn into_nalgebra(self) -> Self::Out;
 }
 
+impl<'a, N: Scalar, R: Dim, S> RefNdarray1 for &'a Vector<N, R, S>
+where
+    S: na::Storage<N, R, na::U1>,
+{
+    type Out = nd::ArrayView1<'a, N>;
+
+    fn ref_ndarray1(self) -> Self::Out {
+        unsafe {
+            nd::ArrayView1::from_shape_ptr(
+                (self.shape().0,).strides((self.strides().0,)),
+                self.as_ptr(),
+            )
+        }
+    }
+}
+
 impl<'a, N: Scalar, R: Dim, C: Dim, S> RefNdarray2 for &'a Matrix<N, R, C, S>
 where
     S: nalgebra::Storage<N, R, C>,
@@ -37,6 +72,36 @@ where
     fn ref_ndarray2(self) -> Self::Out {
         unsafe {
             ndarray::ArrayView2::from_shape_ptr(self.shape().strides(self.strides()), self.as_ptr())
+        }
+    }
+}
+
+impl<'a, N: Scalar, R: Dim, RStride: Dim, CStride: Dim> ToNdarray1
+    for Vector<N, R, na::SliceStorage<'a, N, R, U1, RStride, CStride>>
+{
+    type Out = nd::ArrayView1<'a, N>;
+
+    fn into_ndarray1(self) -> Self::Out {
+        unsafe {
+            nd::ArrayView1::from_shape_ptr(
+                (self.shape().0,).strides((self.strides().0,)),
+                self.as_ptr(),
+            )
+        }
+    }
+}
+
+impl<'a, N: Scalar, R: Dim, RStride: Dim, CStride: Dim> ToNdarray1
+    for Matrix<N, R, U1, na::SliceStorageMut<'a, N, R, U1, RStride, CStride>>
+{
+    type Out = nd::ArrayViewMut1<'a, N>;
+
+    fn into_ndarray1(self) -> Self::Out {
+        unsafe {
+            nd::ArrayViewMut1::from_shape_ptr(
+                (self.shape().0,).strides((self.strides().0,)),
+                self.as_ptr() as *mut N,
+            )
         }
     }
 }

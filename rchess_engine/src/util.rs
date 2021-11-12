@@ -311,9 +311,6 @@ pub fn test_stockfish(
     // let done_sf = 0.;
 
     let mut g = Game::from_fen(ts, fen).unwrap();
-    let ts = Tables::new();
-    let _ = g.recalc_gameinfo_mut(&ts);
-    // eprintln!("g = {:?}", g);
 
     let now = std::time::Instant::now();
     let (ns0, ms) = g.perft(&ts, n);
