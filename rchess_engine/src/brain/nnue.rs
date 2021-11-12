@@ -11,6 +11,11 @@ use ndarray_rand::rand_distr::Uniform;
 use rand::{Rng,SeedableRng};
 use rand::prelude::StdRng;
 
+#[derive(Debug,Clone)]
+pub struct NNUE {
+}
+
+
 // #[derive(Debug,Clone)]
 // pub struct NNUE {
 //     layer1_own:     Network<u16>,

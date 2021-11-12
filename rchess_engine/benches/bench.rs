@@ -46,6 +46,15 @@ pub fn crit_bench_2(c: &mut Criterion) {
         nn2.backprop_mut_matrix(black_box(&ins), 0.1);
     }));
 
+    // let k = 1000;
+    // let n = 1;
+    // let x = na::DMatrix::<u32>::from_element(k,k,n);
+    // let y = na::DMatrix::<u32>::from_element(k,k,n);
+    // let mut result = &x * &y;
+    // group.bench_function("mat mul 1", |b| b.iter(|| {
+    //     result = &x * black_box(&y);
+    // }));
+
     group.finish();
 
 }

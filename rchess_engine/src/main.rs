@@ -376,8 +376,8 @@ fn main_mnist() {
     // f.write_all(&b).unwrap();
     // return;
 
-    const BATCH_SIZE: usize = 100;
-    const EPOCHS: usize = 1000;
+    const BATCH_SIZE: usize = 200;
+    const EPOCHS: usize = 2000;
     let ksize = 200;
 
     let t0 = Instant::now();
@@ -506,61 +506,11 @@ fn wat_nalgebra_0<const NN: usize>() {
     use rchess_engine_lib::brain::types::*;
 
     let n = 1.0;
-    // let n = 1;
-
-    // let x = SMatrix::<f32,NN,NN>::from_vec(vec![n; NN * NN]);
-    // let y = SMatrix::<f32,NN,NN>::from_vec(vec![n; NN * NN]);
-
-    // let x = SMatrix::<f32,NN,NN>::from_element(n);
-    // let y = SMatrix::<f32,NN,NN>::from_element(n);
 
     let x = na::OMatrix::<f32,Const<NN>,Const<NN>>::from_element(n);
     let y = na::OMatrix::<f32,Const<NN>,Const<NN>>::from_element(n);
 
     let result = x * y;
-
-    // type Matrix1000 = Matrix<f32, Dynamic, Dynamic, VecStorage<f32, Dynamic, Dynamic>>;
-    // let x = Matrix1000::from_vec(NN, NN, vec![n; NN * NN]);
-    // let y = Matrix1000::from_vec(NN, NN, vec![n; NN * NN]);
-
-    // let result: Matrix1000 = x * y;
-
-    // let x1 = x.ref_ndarray2();
-    // let y1 = y.ref_ndarray2();
-    // let result1 = x1.dot(&y1);
-    // // let result: Matrix1000 = result1.into_nalgebra();
-    // let result: SMatrix<f32,NN,NN> = result1.into_nalgebra();
-
-}
-
-fn wat_nalgebra_1<const NN: usize>() {
-    use nalgebra::{
-        SMatrix,SVector,Matrix,Vector,matrix,vector,Dynamic,VecStorage,
-        ArrayStorage,Const,
-    };
-    use nalgebra as na;
-    let n = 1.0;
-
-    // let x = Matrix::<f32,Const<NN>,Const<NN>,na::ArrayStorage<f32,NN,NN>>::from_element(n);
-    // let y = Matrix::<f32,Const<NN>,Const<NN>,na::ArrayStorage<f32,NN,NN>>::from_element(n);
-
-    // let x = Matrix::<f32,Const<NN>,Const<NN>,na::VecStorage<f32,Dynamic,Dynamic>>::from_element(NN,NN,n);
-    // let y = Matrix::<f32,Dynamic,Dynamic,na::VecStorage<f32,Dynamic,Dynamic>>::from_element(NN,NN,n);
-
-    // use na::{U1,U2,U3};
-    // let x = Matrix::<f32,Dynamic,Dynamic,na::VecStorage<f32,Dynamic,Dynamic>>::from_element(NN,NN,n);
-    // let y = Matrix::<f32,Dynamic,Dynamic,na::VecStorage<f32,Dynamic,Dynamic>>::from_element(NN,NN,n);
-    // let result = x * y;
-
-}
-
-fn wat_ndarray<const NN: usize>() {
-    use ndarray::*;
-
-    let x: Array2<f32> = Array2::ones((NN,NN));
-    let y: Array2<f32> = Array2::ones((NN,NN));
-
-    let result = x.dot(&y);
 
 }
 
@@ -599,7 +549,7 @@ fn main_nn() {
     // }
     // println!("ndarray:  finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
-    main_mnist();
+    // main_mnist();
     return;
 
     // let h = std::thread::Builder::new()

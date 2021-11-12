@@ -103,7 +103,6 @@ where T: nalgebra::Scalar + PartialEq + Serialize,
     pub biases:        Vec<DVector<T>>,
 }
 
-
 // impl<const IS: usize, const HS: usize, const OS: usize> DNetwork<f32,IS,HS,OS> {
 impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
     pub fn new(sizes: Vec<usize>) -> Self {
