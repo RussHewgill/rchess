@@ -565,49 +565,62 @@ fn main_nnue() {
     let mut inputs = nd::array![[1],[0]];
     let ws         = nd::Array2::<i16>::random_using((2,2), dist, &mut rng);
 
-    let mut m0 = nd::array![
-        [1],
-        [1],
-    ];
-    let v = nd::array![
-        [1,2],
-        [3,4],
-    ];
-    println!("inputs = \n{}", inputs);
-    println!("ws = \n{}", ws);
-    let act0 = ws.dot(&inputs);
-    eprintln!("act0 = \n{}", act0);
-    inputs[(1,0)] = 1;
-    println!("inputs = \n{}", inputs);
-    let act1 = ws.dot(&inputs);
-    eprintln!("act1 = \n{}", act1);
-    let d = ws.slice(nd::s![.., 1]);
-    println!("d = {}", d);
-    let mut act2 = act0.clone();
-    eprintln!("act2 = {}", act2);
-    let mut c = act2.slice_mut(nd::s![.., 0]);
-    c += &d;
-    eprintln!("act2 = {}", act2);
-
-    // let act3 = act2 + d;
-    // eprintln!("act3 = {}", act3);
-
-    // let v0: Vec<i16> = (0..3).map(|_| dist0.sample(&mut rng)).collect();
-    // let mut inputs = na::DMatrix::<i16>::from_vec(3,1,v0);
-    // let v1: Vec<i16> = (0..3*3).map(|_| dist.sample(&mut rng)).collect();
-    // let ws = na::DMatrix::<i16>::from_vec(3,3,v1);
-    // let act0 = ws * &inputs;
-    // eprintln!("act0.shape() = {:?}", act0.shape());
-    // println!("act0 = {}", act0);
-
-    return;
+    // let mut m0 = nd::array![
+    //     [1],
+    //     [1],
+    // ];
+    // let v = nd::array![
+    //     [1,2],
+    //     [3,4],
+    // ];
+    // println!("inputs = \n{}", inputs);
+    // println!("ws = \n{}", ws);
+    // let act0 = ws.dot(&inputs);
+    // eprintln!("act0 = \n{}", act0);
+    // inputs[(1,0)] = 1;
+    // println!("inputs = \n{}", inputs);
+    // let act1 = ws.dot(&inputs);
+    // eprintln!("act1 = \n{}", act1);
+    // let d = ws.slice(nd::s![.., 1]);
+    // println!("d = {}", d);
+    // let mut act2 = act0.clone();
+    // eprintln!("act2 = {}", act2);
+    // let mut c = act2.slice_mut(nd::s![.., 0]);
+    // c += &d;
+    // eprintln!("act2 = {}", act2);
 
     let ts = Tables::read_from_file_def().unwrap();
     let mut g = Game::from_fen(&ts, fen).unwrap();
     let mut nn = NNUE::new(&mut rng);
-    nn.init_inputs(&g);
+    // nn.init_inputs(&g);
 
-    nn.run_fresh(&g);
+    nn.run_fresh(&g, White);
+
+    let mut nn2 = nn.clone();
+
+    // let moves = g.search_all(&ts).get_moves_unsafe();
+    let mv = Move::Quiet { from: "E2".into(), to: "E3".into(), pc: Pawn };
+    let g2 = g.make_move_unchecked(&ts, mv).unwrap();
+
+    nn2.update_move(&g2, White);
+
+    nn.run_fresh(&g2, White);
+
+    // for i in 0..nn.inputs_own.shape()[0] {
+    //     // eprintln!("i = {:?}", i);
+    //     let a = nn.inputs_own[(i,0)];
+    //     let b = nn2.inputs_own[(i,0)];
+    //     if a != b {
+    //         eprintln!("i: (a,b) = {}, {:?}", i, (a,b));
+    //     }
+    // }
+
+    // assert_eq!(nn.inputs_own, nn2.inputs_own);
+    // println!("inputs eq = {:?}", nn.inputs_own == nn2.inputs_own);
+
+    // assert_eq!(nn.activations1_own, nn2.activations1_own);
+
+    // return;
 
     println!("starting...");
     let t0 = Instant::now();
@@ -617,7 +630,7 @@ fn main_nnue() {
         let moves = g.search_all(&ts).get_moves_unsafe();
         g = g.make_move_unchecked(&ts, moves[0]).unwrap();
 
-        nn.update_move(&g);
+        // nn.update_move(&g);
 
         // let z0_own: nd::Array2<i16>   = weights_in_own.dot(&inputs_own);
         // let z0_other: nd::Array2<i16> = weights_in_other.dot(&inputs_other);

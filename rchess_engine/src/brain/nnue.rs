@@ -35,6 +35,18 @@ impl NNUE {
         let idx1 = Self::index(king_sq, pc, c0, !friendly);
         self.inputs_own[(idx0,0)]   = 1;
         self.inputs_other[(idx1,0)] = 1;
+
+        let mut c: nd::ArrayViewMut1<i8> = self.activations1_own.slice_mut(nd::s![.., 0]);
+        let d: nd::ArrayView1<i16>       = self.weights_in_own.slice(nd::s![.., idx0]);
+        c += &d.map(|x| *x as i8);
+
+        let mut c: nd::ArrayViewMut1<i8> = self.activations1_other.slice_mut(nd::s![.., 0]);
+        let d: nd::ArrayView1<i16>       = self.weights_in_other.slice(nd::s![.., idx1]);
+        c += &d.map(|x| *x as i8);
+
+        println!("Setting own king at {:?} with f({}) {:?} at {:?} to 1",
+                 Coord::from(king_sq), friendly, pc, Coord::from(c0));
+
     }
 
     fn update_delete_piece<T: Into<u8> + Copy>(&mut self, king_sq: u8, pc: Piece, c0: T, friendly: bool) {
@@ -43,6 +55,18 @@ impl NNUE {
         let idx1 = Self::index(king_sq, pc, c0, !friendly);
         self.inputs_own[(idx0,0)]   = 0;
         self.inputs_other[(idx1,0)] = 0;
+
+        let mut c: nd::ArrayViewMut1<i8> = self.activations1_own.slice_mut(nd::s![.., 0]);
+        let d: nd::ArrayView1<i16>       = self.weights_in_own.slice(nd::s![.., idx0]);
+        c -= &d.map(|x| *x as i8);
+
+        let mut c: nd::ArrayViewMut1<i8> = self.activations1_other.slice_mut(nd::s![.., 0]);
+        let d: nd::ArrayView1<i16>       = self.weights_in_other.slice(nd::s![.., idx1]);
+        c -= &d.map(|x| *x as i8);
+
+        println!("Setting own king at {:?} with f({}) {:?} at {:?} to 0",
+                 Coord::from(king_sq), friendly, pc, Coord::from(c0));
+
     }
 
     fn update_move_piece<T: Into<u8> + Copy>(
@@ -52,10 +76,10 @@ impl NNUE {
     }
 
     /// Called AFTER game has had move applied
-    pub fn update_move(&mut self, g: &Game) {
+    pub fn update_move(&mut self, g: &Game, side: Color) {
         let mv = match g.last_move {
             None => {
-                self.run_fresh(&g);
+                self.run_fresh(&g, side);
                 return;
             },
             Some(mv) => mv,
@@ -72,11 +96,10 @@ impl NNUE {
         match mv {
             Move::Quiet { from, to, pc } => {
                 // XXX: friendly = false?
-                self.update_move_piece(king_sq_own, pc, from, to, false);
+                self.update_move_piece(king_sq_own, pc, from, to, true);
             },
             Move::PawnDouble { from, to } => {
-                let from = BitBoard::index_square(from);
-                let to = BitBoard::index_square(to);
+                self.update_move_piece(king_sq_own, Pawn, from, to, true);
             }
             _ => unimplemented!()
         }
@@ -94,9 +117,9 @@ impl NNUE {
 
     }
 
-    pub fn run_fresh(&mut self, g: &Game) -> i8 {
+    pub fn run_fresh(&mut self, g: &Game, side: Color) -> i8 {
 
-        self.init_inputs(g);
+        self.init_inputs(g, side);
 
         let z0_own: Array2<i16>   = self.weights_in_own.dot(&self.inputs_own);
         let z0_other: Array2<i16> = self.weights_in_other.dot(&self.inputs_other);
@@ -105,7 +128,7 @@ impl NNUE {
         let z0_other = z0_other.map(|x| *x as i8);
 
         self.activations1_own   = z0_own.clone();
-        self.activations1_other = z0_other.clone().map(|x| *x as i8);
+        self.activations1_other = z0_other.clone();
 
         let act1 = nd::concatenate![nd::Axis(0), z0_own, z0_other];
 
@@ -142,7 +165,7 @@ impl NNUE {
 
 impl NNUE {
 
-    pub fn init_inputs(&mut self, g: &Game) {
+    pub fn init_inputs(&mut self, g: &Game, side0: Color) {
         const COLORS: [Color; 2] = [White,Black];
         const PCS: [Piece; 5] = [Pawn,Knight,Bishop,Rook,Queen];
 
@@ -155,10 +178,17 @@ impl NNUE {
             // let king_sq: Coord   = g.get(King, side).bitscan().into();
             let king_sq = g.get(King, side).bitscan();
 
-            let friendly = side == g.state.side_to_move;
+            // let friendly = side == g.state.side_to_move;
+            let friendly = side == side0;
 
             for pc in PCS {
                 g.get(pc, side).into_iter().for_each(|sq| {
+
+                    // if side0 == White && side == side0 {
+                    //     println!("Setting {:?} king at {:?} with f({}) {:?} at {:?}",
+                    //              side, Coord::from(king_sq), friendly, pc, Coord::from(sq));
+                    // }
+
                     let idx = Self::index(king_sq, pc, sq, friendly);
                     indices.push(idx);
                 });
@@ -176,7 +206,7 @@ impl NNUE {
             }
 
             for i in indices.into_iter() {
-                if side == g.state.side_to_move {
+                if friendly {
                     self.inputs_own[(i,0)] = 1;
                 } else {
                     self.inputs_other[(i,0)] = 1;

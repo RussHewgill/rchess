@@ -41,7 +41,6 @@ pub mod nnue {
     // pub const NNUE_INPUT: usize  = 64 * 63 * 10; // 40320
     pub const NNUE_INPUT: usize  = 64 * 63 * 10 + 32 + 4; // 40320 + EP + Castling = 40356
     pub const NNUE_L2: usize     = 256;
-    // pub const NNUE_L2: usize     = 512;
     pub const NNUE_L3: usize     = 32;
     pub const NNUE_OUTPUT: usize = 32;
 
