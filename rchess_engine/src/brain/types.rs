@@ -48,6 +48,10 @@ pub mod nnue {
     pub struct GNNUE<I,H> {
         pub dirty:              bool,
 
+        pub side:               Color,
+
+        pub en_passant:         Option<Coord>,
+
         // pub weights_in_own:     DMatrix<f32>, // 256 x 40320
         // pub weights_in_other:   DMatrix<f32>, // 256 x 40320
         // pub weights_l2_own:     DMatrix<f32>, // 256 x 32
@@ -69,6 +73,7 @@ pub mod nnue {
 
         pub weights_in_own:     Array2<I>, // 256 x 40320
         pub weights_in_other:   Array2<I>, // 256 x 40320
+
         pub weights_l2:         Array2<H>, // 512 x 32
         pub weights_l3:         Array2<H>, // 32 x 32
         pub weights_out:        Array2<H>, // 32 x 1
@@ -103,13 +108,13 @@ pub mod nnue {
     where I: Serialize + DeserializeOwned + Default + Clone + Zero,
           T: Serialize + DeserializeOwned + Default + Clone + Zero,
     {
-        pub fn empty() -> Self {
+        pub fn empty(side: Color) -> Self {
 
             let inputs_own   = nd::Array2::zeros((NNUE_INPUT, 1));
             let inputs_other = nd::Array2::zeros((NNUE_INPUT, 1));
 
-            let activations1_own   = nd::Array2::zeros((NNUE_INPUT, 1));
-            let activations1_other = nd::Array2::zeros((NNUE_INPUT, 1));
+            let activations1_own   = nd::Array2::zeros((NNUE_L2, 1));
+            let activations1_other = nd::Array2::zeros((NNUE_L2, 1));
 
             let weights_in_own   = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
             let weights_in_other = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
@@ -119,6 +124,9 @@ pub mod nnue {
 
             Self {
                 dirty: true,
+                side,
+
+                en_passant: None,
 
                 inputs_own,
                 inputs_other,
@@ -137,7 +145,7 @@ pub mod nnue {
 
     impl GNNUE<i16,i8> {
 
-        pub fn new(mut rng: &mut StdRng) -> Self {
+        pub fn new(side: Color, mut rng: &mut StdRng) -> Self {
 
             let dist0 = Uniform::new(i16::MIN,i16::MAX);
             let dist1 = Uniform::new(i8::MIN,i8::MAX);
@@ -173,6 +181,9 @@ pub mod nnue {
 
             Self {
                 dirty: true,
+                side,
+
+                en_passant: None,
 
                 inputs_own,
                 inputs_other,
@@ -198,7 +209,7 @@ pub mod nnue {
 
     impl GNNUE<f32,f32> {
 
-        pub fn new(mut rng: &mut StdRng) -> Self {
+        pub fn new(side: Color, mut rng: &mut StdRng) -> Self {
 
             let dist0 = Uniform::new(-1.0,1.0);
 
@@ -245,6 +256,9 @@ pub mod nnue {
 
             Self {
                 dirty: true,
+                side,
+
+                en_passant: None,
 
                 inputs_own,
                 inputs_other,
