@@ -13,8 +13,8 @@ use std::hash::{Hash,Hasher};
 // use arrayvec::ArrayVec;
 use ringbuffer::ConstGenericRingBuffer;
 
-// #[derive(PartialEq,PartialOrd,Clone,Copy)]
-#[derive(Default,PartialEq,Clone)]
+// #[derive(Default,PartialEq,Clone)]
+#[derive(Default,PartialEq,Clone,Copy)]
 pub struct Game {
     // pub move_history: Vec<Move>,
     pub state:        GameState,
@@ -22,6 +22,7 @@ pub struct Game {
     // pub history:      ArrayVec<Zobrist, 5>,
     // pub history:      VecDeque<Zobrist>,
     // pub history:      GHistory,
+    pub last_move:    Option<Move>,
 }
 
 mod ghistory {
@@ -329,41 +330,43 @@ impl Game {
         }
 
         match self._make_move_unchecked(&ts, &mv) {
-            Some(mut x) => {
+            Some(mut next) => {
                 match mv {
                     Move::PawnDouble { .. }                   => {
                     },
                     _                                         => {
-                        if let Some(ep) = x.state.en_passant {
-                            x.zobrist = x.zobrist.update_ep(&ts, ep);
+                        if let Some(ep) = next.state.en_passant {
+                            next.zobrist = next.zobrist.update_ep(&ts, ep);
                         }
-                        x.state.en_passant = None;
+                        next.state.en_passant = None;
                     },
                 }
 
                 if let Move::EnPassant { capture, .. } = mv {
-                    x.state.last_capture = Some(capture);
+                    next.state.last_capture = Some(capture);
                 } else if mv.filter_all_captures() {
-                    x.state.last_capture = Some(mv.sq_to());
+                    next.state.last_capture = Some(mv.sq_to());
                 } else {
-                    x.state.last_capture = None;
+                    next.state.last_capture = None;
                 }
 
-                x.state.side_to_move = !x.state.side_to_move;
-                x.zobrist = x.zobrist.update_side_to_move(&ts);
+                next.state.side_to_move = !next.state.side_to_move;
+                next.zobrist = next.zobrist.update_side_to_move(&ts);
                 // x.move_history.push(*m);
-                x.reset_gameinfo_mut();
+                next.reset_gameinfo_mut();
 
-                self.update_castles(&ts, mv, &mut x);
+                self.update_castles(&ts, mv, &mut next);
 
-                match x.recalc_gameinfo_mut(&ts) {
+                next.last_move = Some(mv);
+
+                match next.recalc_gameinfo_mut(&ts) {
                     // Err(win) => panic!("wot"),
                     Err(win) => Err(win),
                     Ok(_)    => {
                         if self._check_history() {
                             Err(GameEnd::DrawRepetition)
                         } else {
-                            Ok(x)
+                            Ok(next)
                         }
                     },
                 }

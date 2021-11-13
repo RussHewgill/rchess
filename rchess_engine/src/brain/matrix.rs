@@ -127,11 +127,13 @@ where
         let nrows = Dy::new(self.nrows());
         let ncols = Dy::new(self.ncols());
         let mut res = Self::Out::from_vec_generic(nrows, ncols, self.into_raw_vec());
-        if !std_layout {
+        if std_layout {
             // This can be expensive, but we have no choice since nalgebra VecStorage is always
             // column-based.
             // res.transpose_mut();
-            res = res.transpose();
+            // res = res.transpose();
+            // panic!("non std_layout: {:?}", res.shape());
+            // panic!("non std_layout: {:?}", res);
         }
         res
     }

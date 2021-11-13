@@ -4,6 +4,7 @@ use crate::types::*;
 use crate::evaluate::*;
 use crate::brain::types::*;
 use crate::brain::types::nnue::*;
+use crate::brain::sigmoid;
 
 // use ndarray::prelude::*;
 // use ndarray_rand::RandomExt;
@@ -27,24 +28,49 @@ impl NNUE {
         unimplemented!()
     }
 
+    fn update_insert_piece(&mut self, king_sq: u8, pc: Piece, c0: u8, friendly: bool) {
+        let idx0 = Self::index(king_sq, pc, c0, friendly);
+        let idx1 = Self::index(king_sq, pc, c0, !friendly);
+        self.inputs_own[(idx0,0)]   = 1.0;
+        self.inputs_other[(idx1,0)] = 1.0;
+    }
+
+    fn update_delete_piece(&mut self, king_sq: u8, pc: Piece, c0: u8, friendly: bool) {
+        let idx0 = Self::index(king_sq, pc, c0, friendly);
+        let idx1 = Self::index(king_sq, pc, c0, !friendly);
+        self.inputs_own[(idx0,0)]   = 0.0;
+        self.inputs_other[(idx1,0)] = 0.0;
+    }
+
+    fn update_move_piece(&mut self, king_sq: u8, pc: Piece, c0: u8, c1: u8, friendly: bool) {
+        self.update_delete_piece(king_sq, pc, c0, friendly);
+        self.update_insert_piece(king_sq, pc, c1, friendly);
+    }
+
+    /// Called AFTER game has had move applied?
     pub fn update_move(&mut self, g: &Game, mv: Move) {
 
         let king_sq_own: Coord   = g.get(King, g.state.side_to_move).bitscan().into();
         let king_sq_other: Coord = g.get(King, !g.state.side_to_move).bitscan().into();
 
-        match mv.piece() {
-            Some(King) => {
-                unimplemented!()
-            },
-            Some(pc) => {
-
-                // let idx = Self::index(king_sq, pc, c0, side)
-
-                unimplemented!()
-            },
-            None => {
-            },
+        if mv.piece() == Some(King) {
+            unimplemented!()
         }
+
+        match mv {
+            _ => unimplemented!()
+        }
+
+        // match mv.piece() {
+        //     Some(King) => {
+        //         unimplemented!()
+        //     },
+        //     Some(pc) => {
+        //         // let idx = Self::index(king_sq, pc, c0, side);
+        //     },
+        //     None => {
+        //     },
+        // }
 
     }
 
@@ -58,28 +84,28 @@ impl NNUE {
         let z0_own = self.weights_in_own.dot(&self.inputs_own);
         let z0_other = self.weights_in_other.dot(&self.inputs_other);
 
+        self.activations1_own = z0_own.clone();
+        self.activations1_other = z0_other.clone();
+
         let act1 = nd::concatenate![nd::Axis(0), z0_own, z0_other];
 
         let z2 = self.weights_l2.dot(&act1);
-        let act2 = z2.map(Self::relu);
+        // let act2 = z2.map(Self::relu);
+        let act2 = z2.map(|x| sigmoid(*x));
 
         let z3 = self.weights_l3.dot(&act2);
-        let act3 = z3.map(Self::relu);
+        // let act3 = z3.map(Self::relu);
+        let act3 = z3.map(|x| sigmoid(*x));
 
         let z_out = self.weights_out.dot(&act3);
-        let act_out = z_out.map(Self::relu);
+        // let act_out = z_out.map(Self::relu);
+        let act_out = z_out.map(|x| sigmoid(*x));
 
         let s0 = z0_own.shape();
         let s1 = act1.shape();
         let s2 = z2.shape();
         let s3 = z3.shape();
         let s4 = z_out.shape();
-
-        // eprintln!("s0 = {:?}", s0);
-        // eprintln!("s1 = {:?}", s1);
-        // eprintln!("s2 = {:?}", s2);
-        // eprintln!("s3 = {:?}", s3);
-        // eprintln!("s4 = {:?}", s4);
 
         act_out[(0,0)]
         // unimplemented!()
@@ -150,7 +176,9 @@ impl NNUE {
     fn index_castling(c: &Castling) -> Vec<usize> {
         const K: usize = 63 * 64 + 10 + 32;
 
-        unimplemented!()
+        eprintln!("TODO: castling");
+        // unimplemented!()
+        vec![]
     }
 
     // pub fn index(king_sq: Coord, pc: Piece, c0: Coord, friendly: bool) -> usize {

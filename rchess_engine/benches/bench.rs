@@ -13,9 +13,13 @@ use rchess_engine_lib::util::*;
 use rchess_engine_lib::search::*;
 
 use rchess_engine_lib::brain::*;
+use rchess_engine_lib::brain::matrix::*;
 use rchess_engine_lib::brain::types::*;
+use rchess_engine_lib::brain::types::nnue::*;
 
 use std::time::{Duration};
+
+use rand::{prelude::{StdRng,SliceRandom},Rng,SeedableRng};
 
 use nalgebra as na;
 use na::{DVector,DMatrix};
@@ -41,39 +45,82 @@ pub fn crit_bench_2(c: &mut Criterion) {
     group.warm_up_time(Duration::from_secs_f64(1.0));
 
     // group.sample_size(20);
-    group.measurement_time(Duration::from_secs_f64(5.));
+    group.measurement_time(Duration::from_secs_f64(4.));
 
     ins.truncate(200);
+
+    let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
+    let ts = &_TABLES;
+    let mut g = Game::from_fen(&ts, fen).unwrap();
+
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
+    let mut nn = NNUE::new(&mut rng);
+
+    nn.init_inputs(&g);
+
+    let ws0: nd::Array2<f32> = nn.weights_in_own.clone();
+    let xs0: nd::Array2<f32> = nn.inputs_own.clone();
 
     // group.bench_function("backprop 1", |b| b.iter(|| {
     //     nn2.backprop_mut_matrix(black_box(&ins), 0.1);
     // }));
 
-    // let k = 1000;
-    const K: usize = 200;
-    let n = 1.0;
-    // let n = 1;
-
-    let x = na::DMatrix::<f32>::from_element(K,K,n);
-    let y = na::DMatrix::<f32>::from_element(K,K,n);
-    // let x = na::SMatrix::<i32,K,K>::from_element(n);
-    // let y = na::SMatrix::<i32,K,K>::from_element(n);
-    let mut result = &x * &y;
-
-    group.warm_up_time(Duration::from_secs_f64(0.5));
-    group.measurement_time(Duration::from_secs_f64(2.));
-
-    group.bench_function("mat mul 1", |b| b.iter(|| {
-        result = &x * black_box(&y);
+    group.bench_function("mat mul 1: ndarray f32", |b| b.iter(|| {
+        let result = ws0.dot(&xs0);
     }));
 
-    let x = nd::Array2::<f32>::from_elem((K,K), n);
-    let y = nd::Array2::<f32>::from_elem((K,K), n);
-    let mut result = x.dot(&y);
+    let ws1: nd::Array2<i8> = ws0.clone().map(|x| *x as i8);
+    let xs1: nd::Array2<i8> = xs0.clone().map(|x| *x as i8);
 
-    group.bench_function("mat mul 2", |b| b.iter(|| {
-        result = x.dot(&y);
+    group.bench_function("mat mul 1: ndarray i8", |b| b.iter(|| {
+        let result: nd::Array2<i8> = ws1.dot(&xs1);
     }));
+
+    let ws2: na::DMatrix<f32> = ws0.clone().into_nalgebra(); // N,1
+    let xs2: na::DMatrix<f32> = xs0.clone().into_nalgebra(); // N,1
+
+    group.bench_function("mat mul 1: nalgebra f32 Dynamic", |b| b.iter(|| {
+        let result: na::DMatrix<f32> = &ws2 * &xs2;
+    }));
+
+    let ws3: na::DMatrix<i8> = ws2.map(|x| x as i8); // N,1
+    let xs3: na::DMatrix<i8> = xs2.map(|x| x as i8); // N,1
+
+    group.bench_function("mat mul 1: nalgebra i8 Dynamic", |b| b.iter(|| {
+        let result: na::DMatrix<i8> = &ws3 * &xs3;
+    }));
+
+    // let ws4 = ws4.rows(0, ws4.shape().0);
+    // let ws4: na::SMatrix<i8,40356,256> = ws4.fixed_slice::<40356,256>(0, 0).into();
+    // let xs4 = xs4.rows(0, xs4.shape().0);
+    // let xs4: na::SMatrix<i8,40356,1> = ws4.fixed_slice::<40356,1>(0, 0).into();
+
+    // group.bench_function("mat mul 1: nalgebra i8 Static", |b| b.iter(|| {
+    //     // let result: na::SMatrix<i8,> = &ws3 * &xs3;
+    // }));
+
+    // // let k = 1000;
+    // const K: usize = 200;
+    // let n = 1.0;
+    // // let n = 1;
+
+    // // let x = na::DMatrix::<f32>::from_element(K,K,n);
+    // // let y = na::DMatrix::<f32>::from_element(K,K,n);
+    // // let x = na::SMatrix::<i32,K,K>::from_element(n);
+    // // let y = na::SMatrix::<i32,K,K>::from_element(n);
+    // let mut result = &x * &y;
+
+    // group.bench_function("mat mul 1", |b| b.iter(|| {
+    //     result = &x * black_box(&y);
+    // }));
+
+    // let x = nd::Array2::<f32>::from_elem((K,K), n);
+    // let y = nd::Array2::<f32>::from_elem((K,K), n);
+    // let mut result = x.dot(&y);
+
+    // group.bench_function("mat mul 2", |b| b.iter(|| {
+    //     result = x.dot(&y);
+    // }));
 
     group.finish();
 

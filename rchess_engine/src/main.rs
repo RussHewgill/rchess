@@ -425,9 +425,7 @@ fn main_nnue() {
 
     use ndarray as nd;
 
-    use rand::thread_rng;
-    use rand::prelude::{StdRng,SliceRandom};
-    use rand::{Rng,SeedableRng};
+    use rand::{prelude::{StdRng,SliceRandom},Rng,SeedableRng};
 
     use rchess_engine_lib::brain::*;
     use rchess_engine_lib::brain::filter::*;
@@ -440,18 +438,75 @@ fn main_nnue() {
 
     let fen = STARTPOS;
 
-    let mut nn = NNUE::new(&mut rng);
+    // let mut nn = NNUE::new(&mut rng);
     // nn.write_to_file("nnue.bin", None).unwrap();
     // let mut nn = NNUE::read_from_file("nnue.bin").unwrap();
 
     // let mut nn = NNUE::empty();
 
-    // let mut nn = DNetwork::<f32,{NNUE_L2*2},1>::_new(
-    //     vec![NNUE_L2*2,NNUE_L3,NNUE_OUTPUT,1], (0.0,1.0), Some(1234u64));
-    // let inputs_own   = nd::Array2::<f32>::zeros((NNUE_INPUT, 1));
-    // let inputs_other = nd::Array2::<f32>::zeros((NNUE_INPUT, 1));
-    // let weights_in_own   = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
-    // let weights_in_other = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
+    // // let v0 = DVector::from_vec(vec![0,1,2,3,4,5]);
+    // let v0 = matrix![
+    //     0i16,1,2;
+    //     3,4,5;
+    // ];
+    // eprintln!("v0.shape() = {:?}", v0.shape());
+    // let vv = v0.as_slice();
+    // eprintln!("vv = {:?}", vv);
+    // let v1 = v0.ref_ndarray2().to_owned();
+    // eprintln!("v1.shape() = {:?}", v1.shape());
+    // let k = v1.is_standard_layout();
+    // eprintln!("k = {:?}", k);
+    // let vv = v1.clone().into_raw_vec();
+    // eprintln!("vv = {:?}", vv);
+    // let v2: na::DMatrix<i16> = v1.clone().into_nalgebra(); // N,1
+    // eprintln!("v2.shape() = {:?}", v2.shape());
+    // return;
+
+    {
+        let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
+        let ts = &_TABLES;
+        let mut g = Game::from_fen(&ts, fen).unwrap();
+
+        let mut nn = NNUE::new(&mut rng);
+
+        nn.init_inputs(&g);
+
+        let ws0: nd::Array2<f32> = nn.weights_in_own.clone();
+        let xs0: nd::Array2<f32> = nn.inputs_own.clone();
+
+        let ws1: nd::Array2<i8> = ws0.clone().map(|x| *x as i8);
+        let xs1: nd::Array2<i8> = xs0.clone().map(|x| *x as i8);
+
+        let result0: nd::Array2<i8> = ws1.dot(&xs1);
+        eprintln!("result0 = {:?}", result0.shape());
+
+        eprintln!("ws1.shape() = {:?}", ws1.shape());
+        eprintln!("xs1.shape() = {:?}", xs1.shape());
+
+        let ws2: na::DMatrix<f32> = ws0.clone().into_nalgebra(); // N,1
+        let xs2: na::DMatrix<f32> = xs0.clone().into_nalgebra(); // N,1
+
+        eprintln!("ws2.shape() = {:?}", ws2.shape());
+        eprintln!("xs2.shape() = {:?}", xs2.shape());
+
+        let result1: na::DMatrix<f32> = &ws2 * &xs2;
+        eprintln!("result1 = {:?}", result1.shape());
+
+        let ws3: na::DMatrix<i8> = ws2.map(|x| x as i8); // N,1
+        let xs3: na::DMatrix<i8> = xs2.map(|x| x as i8); // N,1
+
+        let result2: na::DMatrix<i8> = &ws3 * &xs3;
+        eprintln!("result2 = {:?}", result2.shape());
+
+    }
+    return;
+
+    let mut nn = DNetwork::<f32,{NNUE_L2*2},1>::_new(
+        vec![NNUE_L2*2,NNUE_L3,NNUE_OUTPUT,1], (0.0,1.0), Some(1234u64));
+    let inputs_own   = nd::Array2::<f32>::zeros((NNUE_INPUT, 1));
+    let inputs_other = nd::Array2::<f32>::zeros((NNUE_INPUT, 1));
+    let weights_in_own   = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
+    let weights_in_other = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
 
     let ts = Tables::read_from_file_def().unwrap();
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -460,19 +515,19 @@ fn main_nnue() {
     let t0 = Instant::now();
     for _ in 0..100 {
 
-        nn.run_fresh(&g);
+        // nn.run_fresh(&g);
 
-        // let z0_own   = weights_in_own.dot(&inputs_own);
-        // let z0_other = weights_in_other.dot(&inputs_other);
-        // let act1 = nd::concatenate![nd::Axis(0), z0_own, z0_other];
-        // let act1 = act1.index_axis(nd::Axis(1), 0).to_owned();
-        // let act1: DVector<f32> = act1.into_nalgebra();
-        // let pred = nn.run(&act1);
+        let z0_own   = weights_in_own.dot(&inputs_own);
+        let z0_other = weights_in_other.dot(&inputs_other);
+        let act1 = nd::concatenate![nd::Axis(0), z0_own, z0_other];
+        let act1 = act1.index_axis(nd::Axis(1), 0).to_owned();
+        let act1: DVector<f32> = act1.into_nalgebra();
+        let pred = nn.run(&act1);
 
         // break;
 
     }
-    println!("ndarray:  finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+    println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
     // let k = nn.weights_out;
     // println!("k = {}", k);
@@ -823,11 +878,11 @@ fn main9() {
     // // let fen = "5rk1/4npp1/1p4b1/1B2p3/1P1P2Q1/4P3/4KPP1/7r w - - 0 4"; // after evade, -320
     // // let fen = "5rk1/4npp1/1p4b1/1B2p3/1P1P4/4P3/5PP1/3K3R b - - 0 4"; // after block, -220
 
-    // // let fen = "7k/8/8/8/8/8/4Q3/7K w - - 0 1"; // Queen endgame, #7
-    // let fen = "7k/4Q3/8/8/8/8/8/7K w - - 4 3"; // Queen endgame, #6
-    // // let fen = "7k/4Q3/8/8/8/8/6K1/8 w - - 4 3"; // Queen endgame, #5
-    // // let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
-    // // let fen = "7k/8/8/8/8/8/4R3/7K w - - 0 1"; // Rook endgame,
+    // let fen = "7k/8/8/8/8/8/4Q3/7K w - - 0 1"; // Queen endgame, #7
+    let fen = "7k/4Q3/8/8/8/8/8/7K w - - 4 3"; // Queen endgame, #6
+    // let fen = "7k/4Q3/8/8/8/8/6K1/8 w - - 4 3"; // Queen endgame, #5
+    // let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
+    // let fen = "7k/8/8/8/8/8/4R3/7K w - - 0 1"; // Rook endgame,
 
     // let fen = "r2n1rk1/1pp1qppp/p2p1n2/3Bp1B1/4P1b1/3P1N2/PPP2PPP/R2Q1RK1 w - - 4 11"; // ??
     // let fen = "r2n1rk1/1pp1qppp/p2p1n2/3Bp1B1/4P1bP/3P1N2/PPP2PP1/R2Q1RK1 b - - 0 11"; // ??
@@ -835,7 +890,7 @@ fn main9() {
     // let fen = &games(8); // Qt R e7f7, #7
 
     // let fen = &games(2); // STS2 002, Qt R a7E7
-    let fen = &games(2); // STS15 001, Qt Q d3d1
+    // let fen = &games(2); // STS15 001, Qt Q d3d1
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -917,9 +972,6 @@ fn main9() {
     //     }
     // };
 
-    println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
-             stats0.max_depth, t2);
-
     // println!("correct = Cp N d4b3");
     // eprintln!("\nBest move = {:>8} {:?}: {:?}", best.score, best.moves[0], best.moves);
 
@@ -933,6 +985,8 @@ fn main9() {
 
     for m in best.moves.iter() { eprintln!("\t{:?}", m); }
     eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
+    println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
+             stats0.max_depth, t2);
 
     // let k = best.score - CHECKMATE_VALUE;
     // eprintln!("k = {:?}", k);

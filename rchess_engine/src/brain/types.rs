@@ -61,6 +61,11 @@ pub mod nnue {
         #[serde(skip)]
         pub inputs_other:       Array2<f32>,
 
+        #[serde(skip)]
+        pub activations1_own:   Array2<f32>,
+        #[serde(skip)]
+        pub activations1_other: Array2<f32>,
+
         pub weights_in_own:     Array2<f32>, // 256 x 40320
         pub weights_in_other:   Array2<f32>, // 256 x 40320
         // pub weights_l2_own:     Array2<f32>, // 256 x 32
@@ -96,6 +101,9 @@ pub mod nnue {
             let inputs_own   = nd::Array2::zeros((NNUE_INPUT, 1));
             let inputs_other = nd::Array2::zeros((NNUE_INPUT, 1));
 
+            let activations1_own   = nd::Array2::zeros((NNUE_INPUT, 1));
+            let activations1_other = nd::Array2::zeros((NNUE_INPUT, 1));
+
             let weights_in_own   = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
             let weights_in_other = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
             let weights_l2       = nd::Array2::zeros((NNUE_L3,NNUE_L2 * 2));
@@ -109,6 +117,9 @@ pub mod nnue {
 
                 inputs_own,
                 inputs_other,
+
+                activations1_own,
+                activations1_other,
 
                 weights_in_own,
                 weights_in_other,
@@ -126,6 +137,9 @@ pub mod nnue {
 
             let inputs_own   = DVector::zeros(NNUE_INPUT);
             let inputs_other = DVector::zeros(NNUE_INPUT);
+
+            let activations1_own   = DVector::zeros(NNUE_L2);
+            let activations1_other = DVector::zeros(NNUE_L2);
 
             let weights_in_own = DMatrix::from_vec(
                 NNUE_L2,NNUE_INPUT,Self::gen_vec(NNUE_L2 * NNUE_INPUT,dist0,&mut rng));
@@ -151,6 +165,9 @@ pub mod nnue {
             let inputs_own   = inputs_own.ref_ndarray2().to_owned();
             let inputs_other = inputs_other.ref_ndarray2().to_owned();
 
+            let activations1_own   = activations1_own.ref_ndarray2().to_owned();
+            let activations1_other = activations1_other.ref_ndarray2().to_owned();
+
             let weights_in_own   = weights_in_own.ref_ndarray2().to_owned();
             let weights_in_other = weights_in_other.ref_ndarray2().to_owned();
             // let weights_l2_own   = weights_l2_own.ref_ndarray2().to_owned();
@@ -164,6 +181,9 @@ pub mod nnue {
 
                 inputs_own,
                 inputs_other,
+
+                activations1_own,
+                activations1_other,
 
                 weights_in_own,
                 weights_in_other,
