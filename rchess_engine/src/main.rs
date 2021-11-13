@@ -142,7 +142,8 @@ fn main() {
     // // let s = u16::MAX;
     // // eprintln!("s = {:#8x}", s);
 
-    // return;
+    main_nnue();
+    return;
 
     let mut args: Vec<String> = std::env::args().collect();
     match args.get(1) {
@@ -162,7 +163,8 @@ fn main() {
                 Some(n) => main_sts(n),
                 _       => main_sts(None),
             }
-            "nn"    => main_nn(),
+            // "nn"    => main_nn(),
+            "nn"    => main_nnue(),
             "simd"  => main_simd(),
             _       => {},
         },
@@ -475,8 +477,10 @@ fn main_nnue() {
 
     use ndarray as nd;
     use ndarray_rand::RandomExt;
+    use ndarray_rand::rand_distr::Distribution;
 
     use rand::{prelude::{StdRng,SliceRandom},Rng,SeedableRng};
+    use rand::distributions::{Uniform,uniform::SampleUniform};
 
     use rchess_engine_lib::brain::*;
     use rchess_engine_lib::brain::filter::*;
@@ -547,42 +551,87 @@ fn main_nnue() {
     // let weights_in_own   = nd::Array2::<i16>::zeros((NNUE_L2,NNUE_INPUT));
     // let weights_in_other = nd::Array2::<i16>::zeros((NNUE_L2,NNUE_INPUT));
 
+    // let dist = Uniform::new(i16::MIN,i16::MAX);
+    let dist = Uniform::new(-10,10);
 
-    let dist = ndarray_rand::rand_distr::Uniform::new(i16::MIN,i16::MAX);
+    // let inputs_own       = nd::Array2::<i16>::random((NNUE_INPUT, 1), dist);
+    // let inputs_other     = nd::Array2::<i16>::random((NNUE_INPUT, 1), dist);
+    // let weights_in_own   = nd::Array2::<i16>::random((NNUE_L2,NNUE_INPUT), dist);
+    // let weights_in_other = nd::Array2::<i16>::random((NNUE_L2,NNUE_INPUT), dist);
 
-    let inputs_own       = nd::Array2::<i16>::random((NNUE_INPUT, 1), dist);
-    let inputs_other     = nd::Array2::<i16>::random((NNUE_INPUT, 1), dist);
-    let weights_in_own   = nd::Array2::<i16>::random((NNUE_L2,NNUE_INPUT), dist);
-    let weights_in_other = nd::Array2::<i16>::random((NNUE_L2,NNUE_INPUT), dist);
+    let dist0 = Uniform::new(0i16,2);
+
+    // let mut inputs = nd::Array2::<i16>::random_using((3,1), dist0, &mut rng);
+    let mut inputs = nd::array![[1],[0]];
+    let ws         = nd::Array2::<i16>::random_using((2,2), dist, &mut rng);
+
+    let mut m0 = nd::array![
+        [1],
+        [1],
+    ];
+    let v = nd::array![
+        [1,2],
+        [3,4],
+    ];
+    println!("inputs = \n{}", inputs);
+    println!("ws = \n{}", ws);
+    let act0 = ws.dot(&inputs);
+    eprintln!("act0 = \n{}", act0);
+    inputs[(1,0)] = 1;
+    println!("inputs = \n{}", inputs);
+    let act1 = ws.dot(&inputs);
+    eprintln!("act1 = \n{}", act1);
+    let d = ws.slice(nd::s![.., 1]);
+    println!("d = {}", d);
+    let mut act2 = act0.clone();
+    eprintln!("act2 = {}", act2);
+    let mut c = act2.slice_mut(nd::s![.., 0]);
+    c += &d;
+    eprintln!("act2 = {}", act2);
+
+    // let act3 = act2 + d;
+    // eprintln!("act3 = {}", act3);
+
+    // let v0: Vec<i16> = (0..3).map(|_| dist0.sample(&mut rng)).collect();
+    // let mut inputs = na::DMatrix::<i16>::from_vec(3,1,v0);
+    // let v1: Vec<i16> = (0..3*3).map(|_| dist.sample(&mut rng)).collect();
+    // let ws = na::DMatrix::<i16>::from_vec(3,3,v1);
+    // let act0 = ws * &inputs;
+    // eprintln!("act0.shape() = {:?}", act0.shape());
+    // println!("act0 = {}", act0);
+
+    return;
 
     let ts = Tables::read_from_file_def().unwrap();
     let mut g = Game::from_fen(&ts, fen).unwrap();
     let mut nn = NNUE::new(&mut rng);
     nn.init_inputs(&g);
 
-    // nn.run_fresh(&g);
-
-    // base: 1.273, 1.281
+    nn.run_fresh(&g);
 
     println!("starting...");
     let t0 = Instant::now();
     for _ in 0..500 {
 
         // nn.run_fresh(&g);
+        let moves = g.search_all(&ts).get_moves_unsafe();
+        g = g.make_move_unchecked(&ts, moves[0]).unwrap();
 
-        let z0_own: nd::Array2<i16>   = weights_in_own.dot(&inputs_own);
-        let z0_other: nd::Array2<i16> = weights_in_other.dot(&inputs_other);
+        nn.update_move(&g);
 
-        let z0_own   = z0_own.map(|x| *x as i8);
-        let z0_other = z0_other.map(|x| *x as i8);
+        // let z0_own: nd::Array2<i16>   = weights_in_own.dot(&inputs_own);
+        // let z0_other: nd::Array2<i16> = weights_in_other.dot(&inputs_other);
 
-        let act1 = nd::concatenate![nd::Axis(0), z0_own, z0_other];
+        // let z0_own   = z0_own.map(|x| *x as i8);
+        // let z0_other = z0_other.map(|x| *x as i8);
 
-        let z2 = nn.weights_l2.dot(&act1);
-        let act2 = z2.map(NNUE::relu);
+        // let act1 = nd::concatenate![nd::Axis(0), z0_own, z0_other];
 
-        let z3 = nn.weights_l3.dot(&act2);
-        let act3 = z3.map(NNUE::relu);
+        // let z2 = nn.weights_l2.dot(&act1);
+        // let act2 = z2.map(NNUE::relu);
+
+        // let z3 = nn.weights_l3.dot(&act2);
+        // let act3 = z3.map(NNUE::relu);
 
         // let z_out = nn.weights_out.dot(&act3);
         // let act_out = z_out.map(NNUE::relu);

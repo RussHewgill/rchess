@@ -29,32 +29,40 @@ impl NNUE {
         unimplemented!()
     }
 
-    fn update_insert_piece(&mut self, king_sq: u8, pc: Piece, c0: u8, friendly: bool) {
+    fn update_insert_piece<T: Into<u8> + Copy>(&mut self, king_sq: u8, pc: Piece, c0: T, friendly: bool) {
+        let c0 = c0.into();
         let idx0 = Self::index(king_sq, pc, c0, friendly);
         let idx1 = Self::index(king_sq, pc, c0, !friendly);
         self.inputs_own[(idx0,0)]   = 1;
         self.inputs_other[(idx1,0)] = 1;
     }
 
-    fn update_delete_piece(&mut self, king_sq: u8, pc: Piece, c0: u8, friendly: bool) {
+    fn update_delete_piece<T: Into<u8> + Copy>(&mut self, king_sq: u8, pc: Piece, c0: T, friendly: bool) {
+        let c0 = c0.into();
         let idx0 = Self::index(king_sq, pc, c0, friendly);
         let idx1 = Self::index(king_sq, pc, c0, !friendly);
         self.inputs_own[(idx0,0)]   = 0;
         self.inputs_other[(idx1,0)] = 0;
     }
 
-    fn update_move_piece(&mut self, king_sq: u8, pc: Piece, from: u8, to: u8, friendly: bool) {
-        self.update_delete_piece(king_sq, pc, from, friendly);
-        self.update_insert_piece(king_sq, pc, to, friendly);
+    fn update_move_piece<T: Into<u8> + Copy>(
+        &mut self, king_sq: u8, pc: Piece, from: T, to: T, friendly: bool) {
+        self.update_delete_piece(king_sq.into(), pc, from.into(), friendly);
+        self.update_insert_piece(king_sq.into(), pc, to.into(), friendly);
     }
 
     /// Called AFTER game has had move applied
-    pub fn update_move(&mut self, g: &Game, mv: Move) {
+    pub fn update_move(&mut self, g: &Game) {
+        let mv = match g.last_move {
+            None => {
+                self.run_fresh(&g);
+                return;
+            },
+            Some(mv) => mv,
+        };
 
         // XXX: reversed, because g already had move applied
-        // let king_sq_own: Coord   = g.get(King, !g.state.side_to_move).bitscan().into();
-        // let king_sq_other: Coord = g.get(King, g.state.side_to_move).bitscan().into();
-        let king_sq_own = g.get(King, !g.state.side_to_move).bitscan();
+        let king_sq_own   = g.get(King, !g.state.side_to_move).bitscan();
         let king_sq_other = g.get(King, g.state.side_to_move).bitscan();
 
         if mv.piece() == Some(King) {
@@ -63,11 +71,13 @@ impl NNUE {
 
         match mv {
             Move::Quiet { from, to, pc } => {
-                let from = BitBoard::index_square(from);
-                let to = BitBoard::index_square(to);
                 // XXX: friendly = false?
                 self.update_move_piece(king_sq_own, pc, from, to, false);
             },
+            Move::PawnDouble { from, to } => {
+                let from = BitBoard::index_square(from);
+                let to = BitBoard::index_square(to);
+            }
             _ => unimplemented!()
         }
 
@@ -86,10 +96,7 @@ impl NNUE {
 
     pub fn run_fresh(&mut self, g: &Game) -> i8 {
 
-        // XXX: 
-        // self.init_inputs(g);
-
-        // let mut last = &self.inputs_own;
+        self.init_inputs(g);
 
         let z0_own: Array2<i16>   = self.weights_in_own.dot(&self.inputs_own);
         let z0_other: Array2<i16> = self.weights_in_other.dot(&self.inputs_other);
