@@ -163,6 +163,7 @@ fn main() {
                 _       => main_sts(None),
             }
             "nn"    => main_nn(),
+            "simd"  => main_simd(),
             _       => {},
         },
         // None    => main7(),
@@ -177,6 +178,55 @@ fn main() {
     // // main8(); // eval testing
     // main7();
     // // main3(); // read from file and test
+
+}
+
+#[allow(unreachable_code)]
+fn main_simd() {
+    use nalgebra as na;
+    use ndarray as nd;
+    use rand::{prelude::{StdRng,SliceRandom},Rng,SeedableRng};
+    use ndarray_rand::RandomExt;
+    use rand::distributions::{Uniform,uniform::SampleUniform};
+
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
+    let dist0 = Uniform::new(0,1);
+    let dist1 = Uniform::new(i16::MIN,i16::MAX);
+
+    // let mut x = nd::Array2::<i16>::zeros((R,C));
+    // let mut y = nd::Array2::<i16>::zeros((R,C));
+    // for _ in 0..1024*256/10 {
+    //     let a = rng.gen_range(0..R);
+    //     let b = rng.gen_range(0..C);
+    //     x[(a,b)] = rng.gen_range(i16::MIN..i16::MAX);
+    //     let a = rng.gen_range(0..R);
+    //     let b = rng.gen_range(0..C);
+    //     y[(a,b)] = rng.gen_range(i16::MIN..i16::MAX);
+    // }
+
+    // const R: usize = 1024;
+    // const C: usize = 256;
+    const R: usize = 1024;
+    const C: usize = 16;
+
+    eprintln!("size = {:?}", R * C);
+
+    let x = nd::Array2::<i16>::random_using((R,C), dist1, &mut rng);
+    let y = nd::Array2::<i16>::random_using((C,R), dist1, &mut rng);
+
+    let result: nd::Array2<i16> = x.dot(&y); // 0.127, 1024, 1024
+    eprintln!("result.shape() = {:?}", result.shape());
+
+    let result: nd::Array2<i16> = y.dot(&x); // 0.849, 16, 16
+    eprintln!("result.shape() = {:?}", result.shape());
+
+    // println!("starting...");
+    // let t0 = Instant::now();
+    // for _ in 0..10 {
+    //     // let result: nd::Array2<i16> = x.dot(&y); // 0.127
+    //     let result: nd::Array2<i16> = y.dot(&x); // 0.849
+    // }
+    // println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
 }
 
@@ -424,6 +474,7 @@ fn main_nnue() {
     use na::{SMatrix,SVector,Matrix,Vector,matrix,vector,dmatrix,dvector,DVector,DMatrix};
 
     use ndarray as nd;
+    use ndarray_rand::RandomExt;
 
     use rand::{prelude::{StdRng,SliceRandom},Rng,SeedableRng};
 
@@ -444,85 +495,97 @@ fn main_nnue() {
 
     // let mut nn = NNUE::empty();
 
-    // // let v0 = DVector::from_vec(vec![0,1,2,3,4,5]);
-    // let v0 = matrix![
-    //     0i16,1,2;
-    //     3,4,5;
-    // ];
-    // eprintln!("v0.shape() = {:?}", v0.shape());
-    // let vv = v0.as_slice();
-    // eprintln!("vv = {:?}", vv);
-    // let v1 = v0.ref_ndarray2().to_owned();
-    // eprintln!("v1.shape() = {:?}", v1.shape());
-    // let k = v1.is_standard_layout();
-    // eprintln!("k = {:?}", k);
-    // let vv = v1.clone().into_raw_vec();
-    // eprintln!("vv = {:?}", vv);
-    // let v2: na::DMatrix<i16> = v1.clone().into_nalgebra(); // N,1
-    // eprintln!("v2.shape() = {:?}", v2.shape());
+    // {
+    //     let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
+    //     let ts = &_TABLES;
+    //     let mut g = Game::from_fen(&ts, fen).unwrap();
+
+    //     let mut nn = NNUE::new(&mut rng);
+
+    //     nn.init_inputs(&g);
+
+    //     let ws0: nd::Array2<f32> = nn.weights_in_own.clone();
+    //     let xs0: nd::Array2<f32> = nn.inputs_own.clone();
+
+    //     let ws1: nd::Array2<i8> = ws0.clone().map(|x| *x as i8);
+    //     let xs1: nd::Array2<i8> = xs0.clone().map(|x| *x as i8);
+
+    //     let result0: nd::Array2<i8> = ws1.dot(&xs1);
+    //     eprintln!("result0 = {:?}", result0.shape());
+
+    //     eprintln!("ws1.shape() = {:?}", ws1.shape());
+    //     eprintln!("xs1.shape() = {:?}", xs1.shape());
+
+    //     let ws2: na::DMatrix<f32> = ws0.clone().into_nalgebra(); // N,1
+    //     let xs2: na::DMatrix<f32> = xs0.clone().into_nalgebra(); // N,1
+
+    //     eprintln!("ws2.shape() = {:?}", ws2.shape());
+    //     eprintln!("xs2.shape() = {:?}", xs2.shape());
+
+    //     let result1: na::DMatrix<f32> = &ws2 * &xs2;
+    //     eprintln!("result1 = {:?}", result1.shape());
+
+    //     let ws3: na::DMatrix<i8> = ws2.map(|x| x as i8); // N,1
+    //     let xs3: na::DMatrix<i8> = xs2.map(|x| x as i8); // N,1
+
+    //     let result2: na::DMatrix<i8> = &ws3 * &xs3;
+    //     eprintln!("result2 = {:?}", result2.shape());
+
+    // }
     // return;
 
-    {
-        let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
-        let ts = &_TABLES;
-        let mut g = Game::from_fen(&ts, fen).unwrap();
+    // let mut nn = DNetwork::<f32,{NNUE_L2*2},1>::_new(
+    //     vec![NNUE_L2*2,NNUE_L3,NNUE_OUTPUT,1], (0.0,1.0), Some(1234u64));
 
-        let mut nn = NNUE::new(&mut rng);
+    // let inputs_own   = nd::Array2::<f32>::zeros((NNUE_INPUT, 1));
+    // let inputs_other = nd::Array2::<f32>::zeros((NNUE_INPUT, 1));
+    // let weights_in_own   = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
+    // let weights_in_other = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
 
-        nn.init_inputs(&g);
+    // let inputs_own   = nd::Array2::<i16>::zeros((NNUE_INPUT, 1));
+    // let inputs_other = nd::Array2::<i16>::zeros((NNUE_INPUT, 1));
+    // let weights_in_own   = nd::Array2::<i16>::zeros((NNUE_L2,NNUE_INPUT));
+    // let weights_in_other = nd::Array2::<i16>::zeros((NNUE_L2,NNUE_INPUT));
 
-        let ws0: nd::Array2<f32> = nn.weights_in_own.clone();
-        let xs0: nd::Array2<f32> = nn.inputs_own.clone();
 
-        let ws1: nd::Array2<i8> = ws0.clone().map(|x| *x as i8);
-        let xs1: nd::Array2<i8> = xs0.clone().map(|x| *x as i8);
+    let dist = ndarray_rand::rand_distr::Uniform::new(i16::MIN,i16::MAX);
 
-        let result0: nd::Array2<i8> = ws1.dot(&xs1);
-        eprintln!("result0 = {:?}", result0.shape());
-
-        eprintln!("ws1.shape() = {:?}", ws1.shape());
-        eprintln!("xs1.shape() = {:?}", xs1.shape());
-
-        let ws2: na::DMatrix<f32> = ws0.clone().into_nalgebra(); // N,1
-        let xs2: na::DMatrix<f32> = xs0.clone().into_nalgebra(); // N,1
-
-        eprintln!("ws2.shape() = {:?}", ws2.shape());
-        eprintln!("xs2.shape() = {:?}", xs2.shape());
-
-        let result1: na::DMatrix<f32> = &ws2 * &xs2;
-        eprintln!("result1 = {:?}", result1.shape());
-
-        let ws3: na::DMatrix<i8> = ws2.map(|x| x as i8); // N,1
-        let xs3: na::DMatrix<i8> = xs2.map(|x| x as i8); // N,1
-
-        let result2: na::DMatrix<i8> = &ws3 * &xs3;
-        eprintln!("result2 = {:?}", result2.shape());
-
-    }
-    return;
-
-    let mut nn = DNetwork::<f32,{NNUE_L2*2},1>::_new(
-        vec![NNUE_L2*2,NNUE_L3,NNUE_OUTPUT,1], (0.0,1.0), Some(1234u64));
-    let inputs_own   = nd::Array2::<f32>::zeros((NNUE_INPUT, 1));
-    let inputs_other = nd::Array2::<f32>::zeros((NNUE_INPUT, 1));
-    let weights_in_own   = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
-    let weights_in_other = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
+    let inputs_own       = nd::Array2::<i16>::random((NNUE_INPUT, 1), dist);
+    let inputs_other     = nd::Array2::<i16>::random((NNUE_INPUT, 1), dist);
+    let weights_in_own   = nd::Array2::<i16>::random((NNUE_L2,NNUE_INPUT), dist);
+    let weights_in_other = nd::Array2::<i16>::random((NNUE_L2,NNUE_INPUT), dist);
 
     let ts = Tables::read_from_file_def().unwrap();
     let mut g = Game::from_fen(&ts, fen).unwrap();
+    let mut nn = NNUE::new(&mut rng);
+    nn.init_inputs(&g);
+
+    // nn.run_fresh(&g);
+
+    // base: 1.273, 1.281
 
     println!("starting...");
     let t0 = Instant::now();
-    for _ in 0..100 {
+    for _ in 0..500 {
 
         // nn.run_fresh(&g);
 
-        let z0_own   = weights_in_own.dot(&inputs_own);
-        let z0_other = weights_in_other.dot(&inputs_other);
+        let z0_own: nd::Array2<i16>   = weights_in_own.dot(&inputs_own);
+        let z0_other: nd::Array2<i16> = weights_in_other.dot(&inputs_other);
+
+        let z0_own   = z0_own.map(|x| *x as i8);
+        let z0_other = z0_other.map(|x| *x as i8);
+
         let act1 = nd::concatenate![nd::Axis(0), z0_own, z0_other];
-        let act1 = act1.index_axis(nd::Axis(1), 0).to_owned();
-        let act1: DVector<f32> = act1.into_nalgebra();
-        let pred = nn.run(&act1);
+
+        let z2 = nn.weights_l2.dot(&act1);
+        let act2 = z2.map(NNUE::relu);
+
+        let z3 = nn.weights_l3.dot(&act2);
+        let act3 = z3.map(NNUE::relu);
+
+        // let z_out = nn.weights_out.dot(&act3);
+        // let act_out = z_out.map(NNUE::relu);
 
         // break;
 

@@ -12,6 +12,7 @@ use crate::brain::sigmoid;
 
 // use ndarray::prelude::*;
 use ndarray as nd;
+use nd::{Array2};
 
 use nalgebra::{SMatrix,SVector,Matrix,Vector,DVector,DMatrix,Dynamic,Const};
 use nalgebra as na;
@@ -31,33 +32,42 @@ impl NNUE {
     fn update_insert_piece(&mut self, king_sq: u8, pc: Piece, c0: u8, friendly: bool) {
         let idx0 = Self::index(king_sq, pc, c0, friendly);
         let idx1 = Self::index(king_sq, pc, c0, !friendly);
-        self.inputs_own[(idx0,0)]   = 1.0;
-        self.inputs_other[(idx1,0)] = 1.0;
+        self.inputs_own[(idx0,0)]   = 1;
+        self.inputs_other[(idx1,0)] = 1;
     }
 
     fn update_delete_piece(&mut self, king_sq: u8, pc: Piece, c0: u8, friendly: bool) {
         let idx0 = Self::index(king_sq, pc, c0, friendly);
         let idx1 = Self::index(king_sq, pc, c0, !friendly);
-        self.inputs_own[(idx0,0)]   = 0.0;
-        self.inputs_other[(idx1,0)] = 0.0;
+        self.inputs_own[(idx0,0)]   = 0;
+        self.inputs_other[(idx1,0)] = 0;
     }
 
-    fn update_move_piece(&mut self, king_sq: u8, pc: Piece, c0: u8, c1: u8, friendly: bool) {
-        self.update_delete_piece(king_sq, pc, c0, friendly);
-        self.update_insert_piece(king_sq, pc, c1, friendly);
+    fn update_move_piece(&mut self, king_sq: u8, pc: Piece, from: u8, to: u8, friendly: bool) {
+        self.update_delete_piece(king_sq, pc, from, friendly);
+        self.update_insert_piece(king_sq, pc, to, friendly);
     }
 
-    /// Called AFTER game has had move applied?
+    /// Called AFTER game has had move applied
     pub fn update_move(&mut self, g: &Game, mv: Move) {
 
-        let king_sq_own: Coord   = g.get(King, g.state.side_to_move).bitscan().into();
-        let king_sq_other: Coord = g.get(King, !g.state.side_to_move).bitscan().into();
+        // XXX: reversed, because g already had move applied
+        // let king_sq_own: Coord   = g.get(King, !g.state.side_to_move).bitscan().into();
+        // let king_sq_other: Coord = g.get(King, g.state.side_to_move).bitscan().into();
+        let king_sq_own = g.get(King, !g.state.side_to_move).bitscan();
+        let king_sq_other = g.get(King, g.state.side_to_move).bitscan();
 
         if mv.piece() == Some(King) {
             unimplemented!()
         }
 
         match mv {
+            Move::Quiet { from, to, pc } => {
+                let from = BitBoard::index_square(from);
+                let to = BitBoard::index_square(to);
+                // XXX: friendly = false?
+                self.update_move_piece(king_sq_own, pc, from, to, false);
+            },
             _ => unimplemented!()
         }
 
@@ -74,45 +84,51 @@ impl NNUE {
 
     }
 
-    pub fn run_fresh(&mut self, g: &Game) -> f32 {
+    pub fn run_fresh(&mut self, g: &Game) -> i8 {
 
         // XXX: 
         // self.init_inputs(g);
 
         // let mut last = &self.inputs_own;
 
-        let z0_own = self.weights_in_own.dot(&self.inputs_own);
-        let z0_other = self.weights_in_other.dot(&self.inputs_other);
+        let z0_own: Array2<i16>   = self.weights_in_own.dot(&self.inputs_own);
+        let z0_other: Array2<i16> = self.weights_in_other.dot(&self.inputs_other);
 
-        self.activations1_own = z0_own.clone();
-        self.activations1_other = z0_other.clone();
+        let z0_own   = z0_own.map(|x| *x as i8);
+        let z0_other = z0_other.map(|x| *x as i8);
+
+        self.activations1_own   = z0_own.clone();
+        self.activations1_other = z0_other.clone().map(|x| *x as i8);
 
         let act1 = nd::concatenate![nd::Axis(0), z0_own, z0_other];
 
+        // eprintln!("z0_own.shape() = {:?}", z0_own.shape());
+        // eprintln!("act1.shape() = {:?}", act1.shape());
+
         let z2 = self.weights_l2.dot(&act1);
-        // let act2 = z2.map(Self::relu);
-        let act2 = z2.map(|x| sigmoid(*x));
+        let act2 = z2.map(Self::relu);
+        // let act2 = z2.map(|x| sigmoid(*x));
 
         let z3 = self.weights_l3.dot(&act2);
-        // let act3 = z3.map(Self::relu);
-        let act3 = z3.map(|x| sigmoid(*x));
+        let act3 = z3.map(Self::relu);
+        // let act3 = z3.map(|x| sigmoid(*x));
 
         let z_out = self.weights_out.dot(&act3);
-        // let act_out = z_out.map(Self::relu);
-        let act_out = z_out.map(|x| sigmoid(*x));
+        let act_out = z_out.map(Self::relu);
+        // let act_out = z_out.map(|x| sigmoid(*x));
 
-        let s0 = z0_own.shape();
-        let s1 = act1.shape();
-        let s2 = z2.shape();
-        let s3 = z3.shape();
-        let s4 = z_out.shape();
+        // let s0 = z0_own.shape();
+        // let s1 = act1.shape();
+        // let s2 = z2.shape();
+        // let s3 = z3.shape();
+        // let s4 = z_out.shape();
 
         act_out[(0,0)]
         // unimplemented!()
     }
 
-    fn relu(x: &f32) -> f32 {
-        x.max(0.0)
+    pub fn relu(x: &i8) -> i8 {
+        *x.max(&0)
     }
 
 }
@@ -123,8 +139,8 @@ impl NNUE {
         const COLORS: [Color; 2] = [White,Black];
         const PCS: [Piece; 5] = [Pawn,Knight,Bishop,Rook,Queen];
 
-        self.inputs_own.fill(0.0);
-        self.inputs_other.fill(0.0);
+        self.inputs_own.fill(0);
+        self.inputs_other.fill(0);
 
         for side in COLORS {
             let mut indices = vec![];
@@ -154,9 +170,9 @@ impl NNUE {
 
             for i in indices.into_iter() {
                 if side == g.state.side_to_move {
-                    self.inputs_own[(i,0)] = 1.0;
+                    self.inputs_own[(i,0)] = 1;
                 } else {
-                    self.inputs_other[(i,0)] = 1.0;
+                    self.inputs_other[(i,0)] = 1;
                 }
             }
         }

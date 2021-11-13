@@ -7,7 +7,9 @@ use crate::brain::filter::*;
 
 use rand::{Rng,SeedableRng};
 use rand::prelude::{StdRng,Distribution};
-use rand::distributions::Uniform;
+use rand::distributions::{Uniform,uniform::SampleUniform};
+use ndarray_rand::rand_distr::num_traits::Zero;
+use ndarray_rand::RandomExt;
 
 use nalgebra::{SMatrix,SVector,Matrix,Vector,DVector,DMatrix,Dynamic,Const};
 use nalgebra as na;
@@ -44,7 +46,7 @@ pub mod nnue {
     pub const NNUE_OUTPUT: usize = 32;
 
     #[derive(Debug,Clone,PartialEq,Serialize,Deserialize)]
-    pub struct NNUE {
+    pub struct GNNUE<I,H> {
         pub dirty:              bool,
 
         // pub weights_in_own:     DMatrix<f32>, // 256 x 40320
@@ -57,26 +59,30 @@ pub mod nnue {
         // TODO: biases
 
         #[serde(skip)]
-        pub inputs_own:         Array2<f32>,
+        pub inputs_own:         Array2<I>,
         #[serde(skip)]
-        pub inputs_other:       Array2<f32>,
+        pub inputs_other:       Array2<I>,
 
         #[serde(skip)]
-        pub activations1_own:   Array2<f32>,
+        pub activations1_own:   Array2<H>,
         #[serde(skip)]
-        pub activations1_other: Array2<f32>,
+        pub activations1_other: Array2<H>,
 
-        pub weights_in_own:     Array2<f32>, // 256 x 40320
-        pub weights_in_other:   Array2<f32>, // 256 x 40320
-        // pub weights_l2_own:     Array2<f32>, // 256 x 32
-        // pub weights_l2_other:   Array2<f32>, // 256 x 32
-        pub weights_l2:         Array2<f32>, // 512 x 32
-        pub weights_l3:         Array2<f32>, // 32 x 32
-        pub weights_out:        Array2<f32>, // 32 x 1
+        pub weights_in_own:     Array2<I>, // 256 x 40320
+        pub weights_in_other:   Array2<I>, // 256 x 40320
+        pub weights_l2:         Array2<H>, // 512 x 32
+        pub weights_l3:         Array2<H>, // 32 x 32
+        pub weights_out:        Array2<H>, // 32 x 1
 
     }
 
-    impl NNUE {
+    // pub type NNUE = GNNUE<f32,f32>;
+    pub type NNUE = GNNUE<i16,i8>;
+
+    impl<I,T> GNNUE<I,T>
+        where I: PartialEq + Serialize + DeserializeOwned + Default,
+              T: PartialEq + Serialize + DeserializeOwned + Default,
+    {
         pub fn write_to_file(&self, path: &str, backup: Option<&str>) -> std::io::Result<()> {
             use std::io::Write;
             let b: Vec<u8> = bincode::serialize(&self).unwrap();
@@ -94,8 +100,10 @@ pub mod nnue {
         }
     }
 
-    impl NNUE {
-
+    impl<I,T> GNNUE<I,T>
+    where I: Serialize + DeserializeOwned + Default + Clone + Zero,
+          T: Serialize + DeserializeOwned + Default + Clone + Zero,
+    {
         pub fn empty() -> Self {
 
             let inputs_own   = nd::Array2::zeros((NNUE_INPUT, 1));
@@ -107,8 +115,6 @@ pub mod nnue {
             let weights_in_own   = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
             let weights_in_other = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
             let weights_l2       = nd::Array2::zeros((NNUE_L3,NNUE_L2 * 2));
-            // let weights_l2_own   = nd::Array2::zeros((NNUE_L3,NNUE_L2));
-            // let weights_l2_other = nd::Array2::zeros((NNUE_L3,NNUE_L2));
             let weights_l3       = nd::Array2::zeros((NNUE_OUTPUT,NNUE_L3));
             let weights_out      = nd::Array2::zeros((1,NNUE_OUTPUT));
 
@@ -123,13 +129,75 @@ pub mod nnue {
 
                 weights_in_own,
                 weights_in_other,
-                // weights_l2_own,
-                // weights_l2_other,
                 weights_l2,
                 weights_l3,
                 weights_out,
             }
         }
+    }
+
+    impl GNNUE<i16,i8> {
+
+        pub fn new(mut rng: &mut StdRng) -> Self {
+
+            let dist0 = Uniform::new(i16::MIN,i16::MAX);
+            let dist1 = Uniform::new(i8::MIN,i8::MAX);
+
+            // let inputs_own         = DVector::zeros(NNUE_INPUT);
+            // let inputs_other       = DVector::zeros(NNUE_INPUT);
+            // let activations1_own   = DVector::zeros(NNUE_L2);
+            // let activations1_other = DVector::zeros(NNUE_L2);
+
+            // let weights_in_own = DMatrix::from_vec(
+            //     NNUE_L2,NNUE_INPUT,Self::gen_vec(NNUE_L2 * NNUE_INPUT,dist0,&mut rng));
+            // let weights_in_other = DMatrix::from_vec(
+            //     NNUE_L2,NNUE_INPUT,Self::gen_vec(NNUE_L2 * NNUE_INPUT,dist0,&mut rng));
+
+            // let weights_l2 = DMatrix::from_vec(
+            //     NNUE_L3,NNUE_L2 * 2,Self::gen_vec(NNUE_L3 * NNUE_L2 * 2,dist1,&mut rng));
+            // let weights_l3 = DMatrix::from_vec(
+            //     NNUE_OUTPUT,NNUE_L3,Self::gen_vec(NNUE_OUTPUT * NNUE_L3,dist1,&mut rng));
+            // let weights_out = DMatrix::from_vec(
+            //     1,NNUE_OUTPUT,Self::gen_vec(NNUE_OUTPUT,dist1,&mut rng));
+
+            let inputs_own         = Array2::zeros((NNUE_INPUT, 1));
+            let inputs_other       = Array2::zeros((NNUE_INPUT, 1));
+            let activations1_own   = Array2::zeros((NNUE_L2, 1));
+            let activations1_other = Array2::zeros((NNUE_L2, 1));
+
+            let weights_in_own   = Array2::<i16>::random_using((NNUE_L2,NNUE_INPUT), dist0, &mut rng);
+            let weights_in_other = Array2::<i16>::random_using((NNUE_L2,NNUE_INPUT), dist0, &mut rng);
+
+            let weights_l2  = Array2::random_using((NNUE_L3,NNUE_L2 * 2), dist1, &mut rng);
+            let weights_l3  = Array2::random_using((NNUE_OUTPUT,NNUE_L3), dist1, &mut rng);
+            let weights_out = Array2::random_using((1,NNUE_OUTPUT), dist1, &mut rng);
+
+            Self {
+                dirty: true,
+
+                inputs_own,
+                inputs_other,
+
+                activations1_own,
+                activations1_other,
+
+                weights_in_own,
+                weights_in_other,
+                weights_l2,
+                weights_l3,
+                weights_out,
+            }
+        }
+
+        fn gen_vec<T>(n: usize, dist: Uniform<T>, mut rng: &mut StdRng) -> Vec<T>
+        where T: rand::distributions::uniform::SampleUniform,
+        {
+            (0..n).map(|_| dist.sample(&mut rng)).collect()
+        }
+
+    }
+
+    impl GNNUE<f32,f32> {
 
         pub fn new(mut rng: &mut StdRng) -> Self {
 

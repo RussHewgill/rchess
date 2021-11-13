@@ -132,7 +132,7 @@ where
             // column-based.
             // res.transpose_mut();
             // res = res.transpose();
-            // panic!("non std_layout: {:?}", res.shape());
+            panic!("non std_layout: {:?}", res.shape());
             // panic!("non std_layout: {:?}", res);
         }
         res
