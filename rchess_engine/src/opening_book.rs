@@ -1,10 +1,12 @@
 
+use std::collections::HashMap;
+
 use crate::tables::*;
 use crate::types::*;
 // use crate::evaluate::*;
 
 
-pub const OP_RNG: [u64; 781] = [
+const OP_RNG: [u64; 781] = [
    0x9D39247E33776D41, 0x2AF7398005AAA5C7, 0x44DB015024623547, 0x9C15F73E62A76AE2,
    0x75834465489C0C89, 0x3290AC3A203001BF, 0x0FBBAD1F61042279, 0xE83A908FF2FB60CA,
    0x0D7E765D58755C10, 0x1A083822CEAFE02D, 0x9605D5F0E25EC3B0, 0xD021FF5CD13A2ED5,
@@ -203,29 +205,198 @@ pub const OP_RNG: [u64; 781] = [
    0xF8D626AAAF278509,
 ];
 
-
-
-pub fn gen_key(g: &Game) -> u64 {
-    const KIND_OF_PIECE: [[u64; 2]; 6] = [
-        [0,1],
-        [2,3],
-        [4,5],
-        [6,7],
-        [8,9],
-        [10,11],
-    ];
-
-    let side = White;
-    let pc = King;
-
-
-    let k = KIND_OF_PIECE[pc][side];
-
-    eprintln!("k = {:?}", k);
-
-    unimplemented!()
+#[derive(Debug,Eq,PartialEq,Clone)]
+pub struct OpeningBook {
+    pub map: HashMap<u64, HashMap<(Coord,Coord),u16>>,
 }
 
+#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+pub struct OBEntry {
+    pub mv:      (Coord,Coord,Option<Piece>),
+    pub weight:  u16,
+}
+
+impl OBEntry {
+    fn convert_move(mv: u16) -> Option<(Coord,Coord,Option<Piece>)> {
+        use bitvec::prelude::*;
+
+        let bs = mv.view_bits::<Lsb0>();
+
+        let mut from_f = 0u8;
+        let mut ff = from_f.view_bits_mut::<Lsb0>();
+
+        let mut from_r = 0u8;
+        let mut fr = from_r.view_bits_mut::<Lsb0>();
+
+        let mut to_f = 0u8;
+        let mut tf = to_f.view_bits_mut::<Lsb0>();
+
+        let mut to_r = 0u8;
+        let mut tr = to_r.view_bits_mut::<Lsb0>();
+
+        tf.set(0, bs[0]);
+        tf.set(1, bs[1]);
+        tf.set(2, bs[2]);
+        tr.set(0, bs[3]);
+        tr.set(1, bs[4]);
+        tr.set(2, bs[5]);
+        ff.set(0, bs[6]);
+        ff.set(1, bs[7]);
+        ff.set(2, bs[8]);
+        fr.set(0, bs[9]);
+        fr.set(1, bs[10]);
+        fr.set(2, bs[11]);
+
+        if from_f >= 8 { panic!() }
+        if from_r >= 8 { panic!() }
+        if to_f >= 8 { panic!() }
+        if to_r >= 8 { panic!() }
+
+        let mut prom = 0u8;
+        let mut p = to_r.view_bits_mut::<Lsb0>();
+
+        p.set(0, bs[12]);
+        p.set(1, bs[13]);
+        p.set(2, bs[14]);
+
+        let p = match prom {
+            1 => Some(Knight),
+            2 => Some(Bishop),
+            3 => Some(Rook),
+            4 => Some(Queen),
+            _ => None,
+        };
+
+        Some((Coord(from_f,from_r),Coord(to_f,to_r),p))
+    }
+}
+
+impl OpeningBook {
+
+    pub fn read_from_file(path: &str) -> std::io::Result<Self> {
+        use std::io::{BufRead,Read};
+        use std::io::BufReader;
+        use byteorder::{BigEndian,ReadBytesExt};
+
+        let mut f = std::fs::File::open(&path)?;
+        let mut f = BufReader::new(f);
+
+        let mut xs: HashMap<u64, HashMap<(Coord,Coord),u16>> = HashMap::default();
+
+        loop {
+
+            let b = f.fill_buf()?;
+            if b.len() < 4 { break; }
+
+            let key    = f.read_u64::<BigEndian>()?;
+            let mv     = f.read_u16::<BigEndian>()?;
+            let weight = f.read_u16::<BigEndian>()?;
+            let learn  = f.read_u32::<BigEndian>()?;
+
+            let mv = OBEntry::convert_move(mv).unwrap();
+
+            if xs.contains_key(&key) {
+                let mut x = xs.get_mut(&key).unwrap();
+                x.insert((mv.0,mv.1), weight);
+            } else {
+                let mut x = HashMap::default();
+                x.insert((mv.0,mv.1), weight);
+                xs.insert(key, x);
+            }
+
+        }
+
+        Ok(Self {
+            map: xs,
+        })
+    }
+
+}
+
+impl OpeningBook {
+
+    pub fn gen_key(g: &Game) -> u64 {
+        const KIND_OF_PIECE: [[usize; 2]; 6] = [
+            [0,1],
+            [2,3],
+            [4,5],
+            [6,7],
+            [8,9],
+            [10,11],
+        ];
+
+        // let xs = vec![
+        //     ("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 0x463b96181691fc9c),
+        //     ("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1", 0x823c9b50fd114196),
+        //     ("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2", 0x0756b94461c50fb0),
+        //     ("rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 2", 0x662fafb965db29d4),
+        //     ("rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3", 0x22a48b5a8e47ff78),
+        //     ("rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR b kq - 0 3", 0x652a607ca3f242c1),
+        //     ("rnbq1bnr/ppp1pkpp/8/3pPp2/8/8/PPPPKPPP/RNBQ1BNR w - - 0 4", 0x00fdd303c946bdd9),
+        //     ("rnbqkbnr/p1pppppp/8/8/PpP4P/8/1P1PPPP1/RNBQKBNR b KQkq c3 0 3", 0x3c8123ea7b067637),
+        //     ("rnbqkbnr/p1pppppp/8/8/P6P/R1p5/1P1PPPP1/1NBQKBNR b Kkq - 0 4", 0x5c3f9b829b279560),
+        // ];
+        // for (n,(fen, kk)) in xs.into_iter().enumerate() {
+        //     let g = Game::from_fen(&ts, &fen).unwrap();
+        //     let k = gen_key(&g);
+        //     if k != kk {
+        //         eprintln!("bad key {} = {:#8x}", n, k);
+        //         eprintln!("g = {:?}", g);
+        //     } else {
+        //         println!("good");
+        //     }
+        // }
+
+        let mut out = 0u64;
+
+        for side in [White,Black] {
+            for pc in Piece::iter_pieces() {
+                g.get(pc, side).into_iter().for_each(|sq| {
+                    let c0: Coord = sq.into();
+                    let k0 = KIND_OF_PIECE[pc][!side];
+                    let k = 64 * k0 + 8 * c0.1 as usize + c0.0 as usize;
+                    let k = OP_RNG[k];
+                    out ^= k;
+                });
+            }
+        }
+
+        let c = g.state.castling;
+        let (wk,wq) = c.get_color(White);
+        let (bk,bq) = c.get_color(Black);
+
+        if wk { out ^= OP_RNG[768 + 0]; }
+        if wq { out ^= OP_RNG[768 + 1]; }
+        if bk { out ^= OP_RNG[768 + 2]; }
+        if bq { out ^= OP_RNG[768 + 3]; }
+
+        if let Some(ep) = g.state.en_passant {
+
+            let (dw,de) = if g.state.side_to_move == Black { (NW,NE) } else { (SW,SE) };
+
+            let b = BitBoard::new(&[
+                dw.shift_coord(ep).unwrap(), de.shift_coord(ep).unwrap()
+            ]);
+
+            let ps = g.get(Pawn, g.state.side_to_move);
+
+            let b = b & ps;
+
+            if b.is_not_empty() {
+                let k = 772 + ep.0 as usize;
+                out ^= OP_RNG[k];
+            }
+        }
+
+        if g.state.side_to_move == White {
+            out ^= OP_RNG[780];
+        }
+
+        out
+        // unimplemented!()
+    }
+
+}
 
 
 

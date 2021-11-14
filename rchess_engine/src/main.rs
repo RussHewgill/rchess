@@ -148,8 +148,8 @@ fn main() {
     // // eprintln!("s = {:#8x}", s);
     // return;
 
-    main_nnue();
-    return;
+    // main_nnue();
+    // return;
 
     let mut args: Vec<String> = std::env::args().collect();
     match args.get(1) {
@@ -1031,7 +1031,7 @@ fn main9() {
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
 
-    eprintln!("g = {:?}", g);
+    // eprintln!("g = {:?}", g);
 
     let n = 35;
     // let n = 6;
@@ -1070,9 +1070,32 @@ fn main9() {
 
     use rchess_engine_lib::opening_book::*;
 
-    let k = gen_key(&g);
+    // let g = Game::from_fen(&ts, "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1").unwrap();
+    // let g = Game::from_fen(&ts, STARTPOS).unwrap();
 
-    eprintln!("s = {:#8x}", k);
+    // eprintln!("g = {:?}", g);
+
+    let ob = OpeningBook::read_from_file("tables/Perfect_2021/BIN/Perfect2021.bin").unwrap();
+
+    let fen = STARTPOS;
+    let g = Game::from_fen(&ts, &fen).unwrap();
+
+    let k = OpeningBook::gen_key(&g);
+
+    let ms = ob.map.get(&k).unwrap();
+
+    for ((from,to),wt) in ms.iter() {
+
+        // let w = *wt as f64 / i16::MAX as f64;
+        let w = *wt;
+
+        eprintln!("(from,to) = ({:?},{:?}) = {:?}", from, to, w);
+
+
+    }
+
+    // eprintln!("mv = {:?}", m.mv);
+    // eprintln!("wt = {:?} / {}: {:.2}", m.weight, i16::MAX, m.weight as f64 / i16::MAX as f64);
 
     return;
 

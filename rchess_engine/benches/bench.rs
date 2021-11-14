@@ -58,7 +58,7 @@ pub fn crit_bench_2(c: &mut Criterion) {
 
     nn.init_inputs(&g);
 
-    let ws0: nd::Array2<f32> = nn.weights_in_own.clone();
+    let ws0: nd::Array2<f32> = nn.weights_1.clone();
     let xs0: nd::Array2<f32> = nn.inputs_own.clone();
 
     // group.bench_function("backprop 1", |b| b.iter(|| {
