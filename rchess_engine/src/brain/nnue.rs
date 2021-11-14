@@ -92,13 +92,6 @@ impl NNUE {
         }
     }
 
-    // fn reset_en_passant(&mut self) {
-    //     const K: usize = 63 * 64 * 10;
-    //     for idx in K..K+32 {
-    //         set_act_own()
-    //     }
-    // }
-
     /// Called AFTER game has had move applied
     pub fn update_move(&mut self, g: &Game) {
         let mv = match g.last_move {
