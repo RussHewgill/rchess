@@ -18,3 +18,4 @@ benchmark.txt
 mnist/*
 test*.py
 *.png
+tables/*

@@ -557,7 +557,7 @@ fn main_nnue() {
     trace!("wat -1");
 
     let mut nn2 = nn.clone();
-    // let mut g2 = g.clone();
+    let mut g2 = g.clone();
 
     // let mv = Move::Quiet { from: "E2".into(), to: "E3".into(), pc: Pawn };
     // let g2 = g.make_move_unchecked(&ts, mv).unwrap();
@@ -575,87 +575,55 @@ fn main_nnue() {
     // println!("acts eq = {:?}", nn.activations_own == nn2.activations_own);
     // return;
 
-    let mv = Move::Quiet { from: "E2".into(), to: "E3".into(), pc: Pawn };
-    let g2 = g.make_move_unchecked(&ts, mv).unwrap();
+    // let mv = Move::Quiet { from: "E2".into(), to: "E3".into(), pc: Pawn };
+    // let g2 = g.make_move_unchecked(&ts, mv).unwrap();
+    // trace!("wat 0");
+    // let s0 = nn.run_fresh(&g2);
+    // trace!("wat 1");
+    // let s1 = nn2.update_move(&g2);
+    // trace!("wat 2");
+    // let moves = g2.search_all(&ts).get_moves_unsafe();
+    // let mut moves = moves.into_iter().filter(|m| m.piece() != Some(King));
+    // let mv = moves.next().unwrap();
+    // let g3 = g2.make_move_unchecked(&ts, mv).unwrap();
 
-    trace!("wat 0");
-    let s0 = nn.run_fresh(&g2);
-    trace!("wat 1");
-    let s1 = nn2.update_move(&g2);
-    trace!("wat 2");
+    // trace!("wat 3");
+    // let s0 = nn.run_fresh(&g3);
+    // trace!("wat 4");
+    // let s1 = nn2.update_move(&g3);
+    // trace!("wat 5");
 
-    let moves = g2.search_all(&ts).get_moves_unsafe();
-    let mut moves = moves.into_iter().filter(|m| m.piece() != Some(King));
-    let mv = moves.next().unwrap();
-    let g3 = g2.make_move_unchecked(&ts, mv).unwrap();
+    // let king_sq_own   = g.get(King, White).bitscan();
+    // let king_sq_other = g.get(King, Black).bitscan();
+    // let c0: u8        = Coord::from("E3").into();
+    // let (idx0,idx1) = NNUE::index2(king_sq_own, king_sq_other, Pawn, c0);
+    // eprintln!("idx0, idx1 = {:?}, {:?}", idx0, idx1);
 
-    trace!("wat 3");
-    let s0 = nn.run_fresh(&g3);
-    trace!("wat 4");
-    let s1 = nn2.update_move(&g3);
-    trace!("wat 5");
-
-    let king_sq_own   = g.get(King, White).bitscan();
-    let king_sq_other = g.get(King, Black).bitscan();
-    let c0: u8        = Coord::from("E3").into();
-    let (idx0,idx1) = NNUE::index2(king_sq_own, king_sq_other, Pawn, c0);
-    eprintln!("idx0, idx1 = {:?}, {:?}", idx0, idx1);
-
-    // for side in [White,Black] {
-    //     for pc in Piece::iter_nonking_pieces() {
-    //         g.get(pc, side).into_iter().for_each(|sq| {
-    //             let (idx0,idx1) = NNUE::index2(king_sq_own, king_sq_other, pc, sq);
-    //             let k0 = nn.inputs_own[(idx0,0)];
-    //             let k1 = nn.inputs_other[(idx1,0)];
-    //             let q0 = nn2.inputs_own[(idx0,0)];
-    //             let q1 = nn2.inputs_other[(idx1,0)];
-    //             if k0 != q0 || k1 != q1 {
-    //                 eprintln!("wot = {:?}, {:?}, {:?}", side, pc, Coord::from(sq));
-    //             }
-    //         });
+    // for (n,(a,b)) in nn.inputs_own.iter().zip(nn2.inputs_own.iter()).enumerate() {
+    //     if a != b {
+    //         let xs = NNUE::rev_index(n);
+    //         eprintln!("wot own {:>8?} = {:?},{:?}: {:?}", n, a, b, xs);
+    //     }
+    // }
+    // println!();
+    // for (n,(a,b)) in nn.inputs_other.iter().zip(nn2.inputs_other.iter()).enumerate() {
+    //     if a != b {
+    //         let xs = NNUE::rev_index(n);
+    //         eprintln!("wot other {:>8?} = {:?},{:?}: {:?}", n, a, b, xs);
     //     }
     // }
 
-    // 38029 = e8 K a6
-    // 38046 = e8 K b8
+    // eprintln!("\ns0 = {:?}", s0);
+    // eprintln!("s1 = {:?}", s1);
 
-    for f in [true,false] {
-        for king_sq in 0..64u8 {
-            for c0 in 0..63u8 {
-                for pc in Piece::iter_nonking_pieces() {
-                    let idx = NNUE::index(king_sq, pc, c0, f);
-                    if idx == 38046 {
-                        eprintln!("wot = {:?}, {:?}, {:?}", Coord::from(king_sq), pc, Coord::from(c0));
-                    }
-                }
-            }
-        }
-    }
+    // eprintln!("inputs_own Eq        = {:?}", nn.inputs_own == nn2.inputs_own);
+    // eprintln!("inputs_other Eq      = {:?}", nn.inputs_other == nn2.inputs_other);
+    // eprintln!();
+    // eprintln!("activations_own Eq   = {:?}", nn.activations_own == nn2.activations_own);
+    // eprintln!("activations_other Eq = {:?}", nn.activations_other == nn2.activations_other);
+    // eprintln!();
 
-    for (n,(a,b)) in nn.inputs_own.iter().zip(nn2.inputs_own.iter()).enumerate() {
-        if a != b {
-            eprintln!("wot own {:?} = {:?},{:?}", n, a, b);
-        }
-    }
-
-    println!();
-    for (n,(a,b)) in nn.inputs_other.iter().zip(nn2.inputs_other.iter()).enumerate() {
-        if a != b {
-            eprintln!("wot other {:?} = {:?},{:?}", n, a, b);
-        }
-    }
-
-    eprintln!("\ns0 = {:?}", s0);
-    eprintln!("s1 = {:?}", s1);
-
-    eprintln!("inputs_own Eq        = {:?}", nn.inputs_own == nn2.inputs_own);
-    eprintln!("inputs_other Eq      = {:?}", nn.inputs_other == nn2.inputs_other);
-    eprintln!();
-    eprintln!("activations_own Eq   = {:?}", nn.activations_own == nn2.activations_own);
-    eprintln!("activations_other Eq = {:?}", nn.activations_other == nn2.activations_other);
-    eprintln!();
-
-    return;
+    // return;
 
     let mut vs0 = vec![];
     let mut vs1 = vec![];
@@ -689,7 +657,8 @@ fn main_nnue() {
 
     // eprintln!("vs0 == vs1 = {:?}", vs0 == vs1);
 
-    for (n,(a,b)) in vs0.iter().zip(vs1.iter()).enumerate().take(10) {
+    for (n,(a,b)) in vs0.iter().zip(vs1.iter()).enumerate() {
+        // eprintln!("(a,b) = {:?}", (a,b));
         if a != b {
             eprintln!("(a,b)[{:?}] = ({:?},{:?})", n, a,b);
         }
@@ -1099,10 +1068,16 @@ fn main9() {
     // let g2 = g.run_moves(&ts, ms);
     // eprintln!("g2 = {:?}", g2);
 
-    // return;
+    use rchess_engine_lib::opening_book::*;
 
-    let e = g.evaluate(&ts);
-    eprintln!("base eval = {:?}", e.sum());
+    let k = gen_key(&g);
+
+    eprintln!("s = {:#8x}", k);
+
+    return;
+
+    // let e = g.evaluate(&ts);
+    // eprintln!("base eval = {:?}", e.sum());
 
     // let k = 4;
     // let mut xs = vec![];

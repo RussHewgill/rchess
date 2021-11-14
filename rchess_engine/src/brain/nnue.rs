@@ -4,7 +4,7 @@ use crate::types::*;
 use crate::evaluate::*;
 use crate::brain::types::*;
 use crate::brain::types::nnue::*;
-use crate::brain::sigmoid;
+// use crate::brain::sigmoid;
 
 // use ndarray::prelude::*;
 // use ndarray_rand::RandomExt;
@@ -149,12 +149,10 @@ impl NNUE {
 
     pub fn _update_move(&mut self, g: &Game, mv: Move) {
 
-        // // XXX: reversed, because g already had move applied
-        // let king_sq_own   = g.get(King, !g.state.side_to_move).bitscan();
-        // let king_sq_other = g.get(King, g.state.side_to_move).bitscan();
+        let s = if g.state.side_to_move != self.side { self.side } else { !self.side };
 
-        let king_sq_own   = g.get(King, self.side).bitscan();
-        let king_sq_other = g.get(King, !self.side).bitscan();
+        let king_sq_own   = g.get(King, s).bitscan();
+        let king_sq_other = g.get(King, !s).bitscan();
 
         match mv {
             Move::Quiet { from, to, pc } => {
@@ -195,20 +193,36 @@ impl NNUE {
 
     pub fn run_partial(&self) -> i8 {
 
-        let act1: Array2<i8> = nd::concatenate![
+        let mut z1: Array2<i8> = nd::concatenate![
             nd::Axis(0), self.activations_own.clone(), self.activations_other.clone()
         ];
+        z1 += &self.biases_1;
+        let act1 = z1.map(Self::relu);
 
-        let z2 = self.weights_2.dot(&act1);
+        let mut z2 = self.weights_2.dot(&act1);
+        z2 += &self.biases_2;
+
         let act2 = z2.map(Self::relu);
 
-        let z3 = self.weights_3.dot(&act2);
+        let mut z3 = self.weights_3.dot(&act2);
+        z3 += &self.biases_3;
+
         let act3 = z3.map(Self::relu);
 
         let z_out = self.weights_4.dot(&act3);
+        // z_out += &self.biases_4;
+
         let act_out = z_out.map(Self::relu);
 
-        act_out[(0,0)]
+        // eprintln!("z1.shape() = {:?}", z1.shape());
+        // eprintln!("z2.shape() = {:?}", z2.shape());
+        // eprintln!("z3.shape() = {:?}", z3.shape());
+
+        // let z2 = self.weights_2.dot(&act1);
+        // let z3 = self.weights_3.dot(&z2);
+        // let z_out = self.weights_4.dot(&z3);
+
+        z_out[(0,0)]
     }
 
     pub fn run_fresh(&mut self, g: &Game) -> i8 {
@@ -383,10 +397,33 @@ impl NNUE {
         vec![]
     }
 
+    pub fn _index<T: Into<Coord>>(king_sq: T, pc: Piece, c0: T, friendly: bool) -> usize {
+        let king_sq: Coord = king_sq.into();
+        let c0: Coord = c0.into();
+        Self::index(king_sq.into(), pc, c0.into(), friendly)
+    }
+
     pub fn index2(king_sq_own: u8, king_sq_other: u8, pc: Piece, c0: u8) -> (usize,usize) {
         let i0 = Self::index(king_sq_own, pc, c0, true);
         let i1 = Self::index(king_sq_other, pc, c0, false);
         (i0,i1)
+    }
+
+    pub fn rev_index(idx0: usize) -> Option<(Coord, Piece, Coord, bool)> {
+        for f in [true,false] {
+            for king_sq in 0..64u8 {
+                for c0 in 0..63u8 {
+                    for pc in Piece::iter_nonking_pieces() {
+                        let idx = NNUE::index(king_sq, pc, c0, f);
+                        if idx == idx0 {
+                            // eprintln!("wot = {:?}, {:?}, {:?}", Coord::from(king_sq), pc, Coord::from(c0));
+                            return Some((Coord::from(king_sq), pc, Coord::from(c0), f));
+                        }
+                    }
+                }
+            }
+        }
+        None
     }
 
     /// https://github.com/glinscott/nnue-pytorch/blob/master/docs/nnue.md
