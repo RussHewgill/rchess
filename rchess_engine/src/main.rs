@@ -20,6 +20,7 @@
 // extern crate openblas_src;
 
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::collections::VecDeque;
 use std::slice::SliceIndex;
 use std::str::FromStr;
@@ -481,6 +482,7 @@ fn main_nnue() {
     use na::{SMatrix,SVector,Matrix,Vector,matrix,vector,dmatrix,dvector,DVector,DMatrix};
 
     use ndarray as nd;
+    use nd::Array2;
     use ndarray_rand::RandomExt;
     use ndarray_rand::rand_distr::Distribution;
 
@@ -494,67 +496,12 @@ fn main_nnue() {
     use rchess_engine_lib::brain::nnue::*;
     use rchess_engine_lib::brain::matrix::*;
 
+    init_logger();
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
     let fen = STARTPOS;
-
-    // let mut nn = NNUE::new(&mut rng);
-    // nn.write_to_file("nnue.bin", None).unwrap();
-    // let mut nn = NNUE::read_from_file("nnue.bin").unwrap();
-
-    // let mut nn = NNUE::empty();
-
-    // {
-    //     let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
-    //     let ts = &_TABLES;
-    //     let mut g = Game::from_fen(&ts, fen).unwrap();
-
-    //     let mut nn = NNUE::new(&mut rng);
-
-    //     nn.init_inputs(&g);
-
-    //     let ws0: nd::Array2<f32> = nn.weights_in_own.clone();
-    //     let xs0: nd::Array2<f32> = nn.inputs_own.clone();
-
-    //     let ws1: nd::Array2<i8> = ws0.clone().map(|x| *x as i8);
-    //     let xs1: nd::Array2<i8> = xs0.clone().map(|x| *x as i8);
-
-    //     let result0: nd::Array2<i8> = ws1.dot(&xs1);
-    //     eprintln!("result0 = {:?}", result0.shape());
-
-    //     eprintln!("ws1.shape() = {:?}", ws1.shape());
-    //     eprintln!("xs1.shape() = {:?}", xs1.shape());
-
-    //     let ws2: na::DMatrix<f32> = ws0.clone().into_nalgebra(); // N,1
-    //     let xs2: na::DMatrix<f32> = xs0.clone().into_nalgebra(); // N,1
-
-    //     eprintln!("ws2.shape() = {:?}", ws2.shape());
-    //     eprintln!("xs2.shape() = {:?}", xs2.shape());
-
-    //     let result1: na::DMatrix<f32> = &ws2 * &xs2;
-    //     eprintln!("result1 = {:?}", result1.shape());
-
-    //     let ws3: na::DMatrix<i8> = ws2.map(|x| x as i8); // N,1
-    //     let xs3: na::DMatrix<i8> = xs2.map(|x| x as i8); // N,1
-
-    //     let result2: na::DMatrix<i8> = &ws3 * &xs3;
-    //     eprintln!("result2 = {:?}", result2.shape());
-
-    // }
-    // return;
-
-    // let mut nn = DNetwork::<f32,{NNUE_L2*2},1>::_new(
-    //     vec![NNUE_L2*2,NNUE_L3,NNUE_OUTPUT,1], (0.0,1.0), Some(1234u64));
-
-    // let inputs_own   = nd::Array2::<f32>::zeros((NNUE_INPUT, 1));
-    // let inputs_other = nd::Array2::<f32>::zeros((NNUE_INPUT, 1));
-    // let weights_in_own   = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
-    // let weights_in_other = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
-
-    // let inputs_own   = nd::Array2::<i16>::zeros((NNUE_INPUT, 1));
-    // let inputs_other = nd::Array2::<i16>::zeros((NNUE_INPUT, 1));
-    // let weights_in_own   = nd::Array2::<i16>::zeros((NNUE_L2,NNUE_INPUT));
-    // let weights_in_other = nd::Array2::<i16>::zeros((NNUE_L2,NNUE_INPUT));
+    // let fen = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1";
+    // let fen = "4k3/4p3/8/8/8/8/4P3/3QK3 w - - 0 1";
 
     // let dist = Uniform::new(i16::MIN,i16::MAX);
     let dist = Uniform::new(-10,10);
@@ -568,79 +515,172 @@ fn main_nnue() {
 
     // let mut inputs = nd::Array2::<i16>::random_using((3,1), dist0, &mut rng);
     let mut inputs = nd::array![[1],[0]];
-    let ws         = nd::Array2::<i16>::random_using((2,2), dist, &mut rng);
+    let ws         = Array2::<i16>::random_using((2,2), dist, &mut rng);
 
     // let pc          = Pawn;
     // let king_sq: u8 = Coord::from("A1").into();
     // let c0: u8      = Coord::from("A2").into();
-    // let friendly    = true;
+    // let idx0 = NNUE::index(king_sq, pc, c0, true);
     // let king_sq: u8 = Coord::from("H1").into();
     // let c0: u8      = Coord::from("H2").into();
-    // let friendly    = false;
-    // let idx0 = NNUE::index(king_sq, pc, c0, friendly);
+    // let idx1 = NNUE::index(king_sq, pc, c0, false);
+    // eprintln!("idx0 = {:?}", idx0);
+    // eprintln!("idx1 = {:?}", idx1);
     // return;
 
     let ts = Tables::read_from_file_def().unwrap();
     let mut g = Game::from_fen(&ts, fen).unwrap();
     let mut nn = NNUE::new(White, &mut rng);
     // nn.init_inputs(&g);
-    nn.dirty = false;
+    // nn.dirty = false;
 
-    nn.run_fresh(&g);
+    // nn.run_fresh(&g);
+    // let mut nn2 = nn.clone();
+
+    // // let moves = g.search_all(&ts).get_moves_unsafe();
+    // let mv = Move::Quiet { from: "E2".into(), to: "E3".into(), pc: Pawn };
+    // let g2 = g.make_move_unchecked(&ts, mv).unwrap();
+
+    // nn.run_fresh(&g2);
+    // nn2.update_move(&g2);
+
+    // // assert_eq!(nn.inputs_own, nn2.inputs_own);
+    // println!("inputs eq = {:?}", nn.inputs_own == nn2.inputs_own);
+    // // assert_eq!(nn.activations1_own, nn2.activations1_own);
+    // println!("acts eq = {:?}", nn.activations_own == nn2.activations_own);
+    // return;
+
+    let score = nn.run_fresh(&g);
+    // nn.init_inputs(&g);
+
     let mut nn2 = nn.clone();
-    // let moves = g.search_all(&ts).get_moves_unsafe();
+    // let mut g2 = g.clone();
+
     let mv = Move::Quiet { from: "E2".into(), to: "E3".into(), pc: Pawn };
     let g2 = g.make_move_unchecked(&ts, mv).unwrap();
-    nn2.update_move(&g2);
-    nn.run_fresh(&g2);
+    drop(g);
 
-    // for i in 0..nn.inputs_own.shape()[0] {
-    //     // eprintln!("i = {:?}", i);
-    //     let a = nn.inputs_own[(i,0)];
-    //     let b = nn2.inputs_own[(i,0)];
+    // nn.init_inputs(&g2);
+    // nn2.init_inputs(&g2);
+
+    trace!("=== 0");
+    let s0 = nn.run_fresh(&g2);
+
+    trace!("=== 1");
+    let s1 = nn2.update_move(&g2);
+
+    eprintln!("s0 = {:?}", s0);
+    eprintln!("s1 = {:?}", s1);
+
+    // let z0_own: Array2<i16>   = nn.weights_1.dot(&nn.inputs_own);
+    // let z0_other: Array2<i16> = nn.weights_1.dot(&nn.inputs_other);
+    // let z0_own   = z0_own.map(|x| *x as i8);
+    // let z0_other = z0_other.map(|x| *x as i8);
+    // nn.activations_own   = z0_own;
+    // nn.activations_other = z0_other;
+
+    // nn2._update_move(&g2, mv);
+
+    // let king_sq_own   = g2.get(King, !g2.state.side_to_move).bitscan();
+    // let king_sq_other = g2.get(King, g2.state.side_to_move).bitscan();
+    // nn2.update_move_piece(king_sq_own, king_sq_other, Pawn, mv.sq_from(), mv.sq_to(), true);
+
+    let act1: Array2<i8> = nd::concatenate![
+        nd::Axis(0), nn.activations_own.clone(), nn.activations_other.clone()
+    ];
+
+    let act2: Array2<i8> = nd::concatenate![
+        nd::Axis(0), nn2.activations_own.clone(), nn2.activations_other.clone()
+    ];
+
+    eprintln!("inputs_own Eq        = {:?}", nn.inputs_own == nn2.inputs_own);
+    eprintln!("inputs_other Eq      = {:?}", nn.inputs_other == nn2.inputs_other);
+    eprintln!();
+    eprintln!("activations_own Eq   = {:?}", nn.activations_own == nn2.activations_own);
+    eprintln!("activations_other Eq = {:?}", nn.activations_other == nn2.activations_other);
+    eprintln!();
+
+    // for n in 0..nn.inputs_own.shape()[1] {
+    //     let a = nn.inputs_other[(n,0)];
+    //     let b = nn2.inputs_other[(n,0)];
     //     if a != b {
-    //         eprintln!("i: (a,b) = {}, {:?}", i, (a,b));
+    //         eprintln!("n is wrong: = {:?}, ({:?},{:?})", n, a, b);
     //     }
     // }
 
-    assert_eq!(nn.inputs_own, nn2.inputs_own);
+    // 37820, other king at e8, enemy pawn at e3
+    for (n,(a,b)) in nn.inputs_other.iter().zip(nn2.inputs_other.iter()).enumerate() {
+        if a != b {
+            eprintln!("n is wrong: = {:?}, ({:?},{:?})", n, a, b);
+        }
+    }
+
+    // let vv = &nn.activations_other - &nn2.activations_other;
+    // eprintln!("vv[(0,0)] = {:?}", vv[(0,0)]);
+
+    // for n in 0..nn.weights_1.shape()[1] {
+    //     let a = vv[(0,0)];
+    //     let b = nn.weights_1[(0,0)];
+    //     if a as i16 == b {
+    //         eprintln!("vv, ws = {:?}, {:?}", a, b);
+    //     }
+    // }
+
+    // eprintln!("vv = {}", vv);
+
+    // let mut k = 0;
+    // // for (a,b) in act1.iter().zip(act2.iter()).take(10) {
+    // for (a,b) in act1.iter().zip(act2.iter()) {
+    //     if a != b {
+    //         k += 1;
+    //         eprintln!("(a,b) = ({:?},{:?})", a,b);
+    //     }
+    // }
+    // eprintln!("k = {:?}", k);
+
+    // assert_eq!(nn.inputs_own, nn2.inputs_own);
     println!("inputs eq = {:?}", nn.inputs_own == nn2.inputs_own);
-    assert_eq!(nn.activations1_own, nn2.activations1_own);
+    // assert_eq!(nn.activations1_own, nn2.activations1_own);
+    println!("acts eq = {:?}", nn.activations_own == nn2.activations_own);
     return;
 
-    nn.init_inputs(&g);
+    let mut vs0 = vec![];
+    let mut vs1 = vec![];
 
     println!("starting...");
     let t0 = Instant::now();
     for _ in 0..100 {
-
         let moves = g.search_all(&ts).get_moves_unsafe();
-        g = g.make_move_unchecked(&ts, moves[0]).unwrap();
+        let mut moves = moves.into_iter().filter(|m| m.piece() != Some(King));
+        let mv = moves.next().unwrap();
+        g = g.make_move_unchecked(&ts, mv).unwrap();
 
-        // nn.run_fresh(&g);
-        nn.update_move(&g);
-
-        // let z0_own: nd::Array2<i16>   = weights_in_own.dot(&inputs_own);
-        // let z0_other: nd::Array2<i16> = weights_in_other.dot(&inputs_other);
-
-        // let z0_own   = z0_own.map(|x| *x as i8);
-        // let z0_other = z0_other.map(|x| *x as i8);
-
-        // let act1 = nd::concatenate![nd::Axis(0), z0_own, z0_other];
-
-        // let z2 = nn.weights_l2.dot(&act1);
-        // let act2 = z2.map(NNUE::relu);
-
-        // let z3 = nn.weights_l3.dot(&act2);
-        // let act3 = z3.map(NNUE::relu);
-
-        // let z_out = nn.weights_out.dot(&act3);
-        // let act_out = z_out.map(NNUE::relu);
-
-        // break;
-
+        let score = nn.update_move(&g);
+        vs0.push(score);
     }
     println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+    drop(g);
+    drop(nn);
+
+    println!("starting...");
+    let t0 = Instant::now();
+    for _ in 0..100 {
+        let moves = g2.search_all(&ts).get_moves_unsafe();
+        let mut moves = moves.into_iter().filter(|m| m.piece() != Some(King));
+        let mv = moves.next().unwrap();
+        g2 = g2.make_move_unchecked(&ts, mv).unwrap();
+        let score = nn2.run_fresh(&g2);
+        vs1.push(score);
+    }
+    println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+
+    // eprintln!("vs0 == vs1 = {:?}", vs0 == vs1);
+
+    // for (a,b) in vs0.iter().zip(vs1.iter()).take(10) {
+    //     if a != b {
+    //         eprintln!("(a,b) = ({:?},{:?})", a,b);
+    //     }
+    // }
 
     // let k = nn.weights_out;
     // println!("k = {}", k);

@@ -424,7 +424,7 @@ impl<T> std::ops::IndexMut<Piece> for [T; 6] {
 //     }
 // }
 
-struct PcIter(Option<Piece>);
+struct PcIter(Option<Piece>, bool);
 
 impl Iterator for PcIter {
     type Item = Piece;
@@ -433,6 +433,10 @@ impl Iterator for PcIter {
             Some(King) => {
                 self.0 = None;
                 Some(King)
+            },
+            Some(Queen) if self.1 => {
+                self.0 = None;
+                Some(Queen)
             },
             Some(pc) => {
                 self.0 = Some(PIECES[pc.index() + 1]);
@@ -457,7 +461,11 @@ impl Piece {
     }
 
     pub fn iter_pieces() -> impl Iterator<Item = Piece> {
-        PcIter(Some(Pawn))
+        PcIter(Some(Pawn), false)
+    }
+
+    pub fn iter_nonking_pieces() -> impl Iterator<Item = Piece> {
+        PcIter(Some(Pawn), true)
     }
 
     pub fn print(&self, c: Color) -> char {

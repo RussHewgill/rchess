@@ -52,13 +52,6 @@ pub mod nnue {
 
         pub en_passant:         Option<Coord>,
 
-        // pub weights_in_own:     DMatrix<f32>, // 256 x 40320
-        // pub weights_in_other:   DMatrix<f32>, // 256 x 40320
-        // pub weights_l2_own:     DMatrix<f32>, // 256 x 32
-        // pub weights_l2_other:   DMatrix<f32>, // 256 x 32
-        // pub weights_l3:         DMatrix<f32>, // 32 x 32
-        // pub weights_out:        DVector<f32>, // 32 x 1
-
         // TODO: biases
 
         #[serde(skip)]
@@ -67,16 +60,19 @@ pub mod nnue {
         pub inputs_other:       Array2<I>,
 
         #[serde(skip)]
-        pub activations1_own:   Array2<H>,
+        pub activations_own:    Array2<H>,
         #[serde(skip)]
-        pub activations1_other: Array2<H>,
+        pub activations_other:  Array2<H>,
 
-        pub weights_in_own:     Array2<I>, // 256 x 40320
-        pub weights_in_other:   Array2<I>, // 256 x 40320
+        pub weights_1:          Array2<I>, // 256 x 40320
+        pub weights_2:          Array2<H>, // 512 x 32
+        pub weights_3:          Array2<H>, // 32 x 32
+        pub weights_4:          Array2<H>, // 32 x 1
 
-        pub weights_l2:         Array2<H>, // 512 x 32
-        pub weights_l3:         Array2<H>, // 32 x 32
-        pub weights_out:        Array2<H>, // 32 x 1
+        pub biases_1:           Array2<I>, // 256
+        pub biases_2:           Array2<H>, // 32
+        pub biases_3:           Array2<H>, // 32
+        pub biases_4:           Array2<H>, // 1 ??
 
     }
 
@@ -104,44 +100,38 @@ pub mod nnue {
         }
     }
 
-    impl<I,T> GNNUE<I,T>
-    where I: Serialize + DeserializeOwned + Default + Clone + Zero,
-          T: Serialize + DeserializeOwned + Default + Clone + Zero,
-    {
-        pub fn empty(side: Color) -> Self {
-
-            let inputs_own   = nd::Array2::zeros((NNUE_INPUT, 1));
-            let inputs_other = nd::Array2::zeros((NNUE_INPUT, 1));
-
-            let activations1_own   = nd::Array2::zeros((NNUE_L2, 1));
-            let activations1_other = nd::Array2::zeros((NNUE_L2, 1));
-
-            let weights_in_own   = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
-            let weights_in_other = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
-            let weights_l2       = nd::Array2::zeros((NNUE_L3,NNUE_L2 * 2));
-            let weights_l3       = nd::Array2::zeros((NNUE_OUTPUT,NNUE_L3));
-            let weights_out      = nd::Array2::zeros((1,NNUE_OUTPUT));
-
-            Self {
-                dirty: true,
-                side,
-
-                en_passant: None,
-
-                inputs_own,
-                inputs_other,
-
-                activations1_own,
-                activations1_other,
-
-                weights_in_own,
-                weights_in_other,
-                weights_l2,
-                weights_l3,
-                weights_out,
-            }
-        }
-    }
+    // impl<I,T> GNNUE<I,T>
+    // where I: Serialize + DeserializeOwned + Default + Clone + Zero,
+    //       T: Serialize + DeserializeOwned + Default + Clone + Zero,
+    // {
+    //     pub fn empty(side: Color) -> Self {
+    //         let inputs_own   = nd::Array2::zeros((NNUE_INPUT, 1));
+    //         let inputs_other = nd::Array2::zeros((NNUE_INPUT, 1));
+    //         let activations1_own   = nd::Array2::zeros((NNUE_L2, 1));
+    //         let activations1_other = nd::Array2::zeros((NNUE_L2, 1));
+    //         let weights_1 = nd::Array2::zeros((NNUE_L2,NNUE_INPUT));
+    //         let weights_2 = nd::Array2::zeros((NNUE_L3,NNUE_L2 * 2));
+    //         let weights_3 = nd::Array2::zeros((NNUE_OUTPUT,NNUE_L3));
+    //         let weights_4 = nd::Array2::zeros((1,NNUE_OUTPUT));
+    //         Self {
+    //             dirty: true,
+    //             side,
+    //             en_passant: None,
+    //             inputs_own,
+    //             inputs_other,
+    //             activations_own: activations1_own,
+    //             activations_other: activations1_other,
+    //             weights_1,
+    //             weights_2,
+    //             weights_3,
+    //             weights_4,
+    //             weights_1,
+    //             weights_2,
+    //             weights_3,
+    //             weights_4,
+    //         }
+    //     }
+    // }
 
     impl GNNUE<i16,i8> {
 
@@ -150,34 +140,22 @@ pub mod nnue {
             let dist0 = Uniform::new(i16::MIN,i16::MAX);
             let dist1 = Uniform::new(i8::MIN,i8::MAX);
 
-            // let inputs_own         = DVector::zeros(NNUE_INPUT);
-            // let inputs_other       = DVector::zeros(NNUE_INPUT);
-            // let activations1_own   = DVector::zeros(NNUE_L2);
-            // let activations1_other = DVector::zeros(NNUE_L2);
-
-            // let weights_in_own = DMatrix::from_vec(
-            //     NNUE_L2,NNUE_INPUT,Self::gen_vec(NNUE_L2 * NNUE_INPUT,dist0,&mut rng));
-            // let weights_in_other = DMatrix::from_vec(
-            //     NNUE_L2,NNUE_INPUT,Self::gen_vec(NNUE_L2 * NNUE_INPUT,dist0,&mut rng));
-
-            // let weights_l2 = DMatrix::from_vec(
-            //     NNUE_L3,NNUE_L2 * 2,Self::gen_vec(NNUE_L3 * NNUE_L2 * 2,dist1,&mut rng));
-            // let weights_l3 = DMatrix::from_vec(
-            //     NNUE_OUTPUT,NNUE_L3,Self::gen_vec(NNUE_OUTPUT * NNUE_L3,dist1,&mut rng));
-            // let weights_out = DMatrix::from_vec(
-            //     1,NNUE_OUTPUT,Self::gen_vec(NNUE_OUTPUT,dist1,&mut rng));
-
             let inputs_own         = Array2::zeros((NNUE_INPUT, 1));
             let inputs_other       = Array2::zeros((NNUE_INPUT, 1));
             let activations1_own   = Array2::zeros((NNUE_L2, 1));
             let activations1_other = Array2::zeros((NNUE_L2, 1));
 
-            let weights_in_own   = Array2::<i16>::random_using((NNUE_L2,NNUE_INPUT), dist0, &mut rng);
-            let weights_in_other = Array2::<i16>::random_using((NNUE_L2,NNUE_INPUT), dist0, &mut rng);
+            // let weights_in_other = Array2::<i16>::random_using((NNUE_L2,NNUE_INPUT), dist0, &mut rng);
 
-            let weights_l2  = Array2::random_using((NNUE_L3,NNUE_L2 * 2), dist1, &mut rng);
-            let weights_l3  = Array2::random_using((NNUE_OUTPUT,NNUE_L3), dist1, &mut rng);
-            let weights_out = Array2::random_using((1,NNUE_OUTPUT), dist1, &mut rng);
+            let weights_1 = Array2::random_using((NNUE_L2,NNUE_INPUT), dist0, &mut rng);
+            let weights_2 = Array2::random_using((NNUE_L3,NNUE_L2 * 2), dist1, &mut rng);
+            let weights_3 = Array2::random_using((NNUE_OUTPUT,NNUE_L3), dist1, &mut rng);
+            let weights_4 = Array2::random_using((1,NNUE_OUTPUT), dist1, &mut rng);
+
+            let biases_1 = Array2::random_using((NNUE_L2,1), dist0, &mut rng);
+            let biases_2 = Array2::random_using((NNUE_L3,1), dist1, &mut rng);
+            let biases_3 = Array2::random_using((NNUE_OUTPUT,1), dist1, &mut rng);
+            let biases_4 = Array2::random_using((1,1), dist1, &mut rng);
 
             Self {
                 dirty: true,
@@ -188,14 +166,19 @@ pub mod nnue {
                 inputs_own,
                 inputs_other,
 
-                activations1_own,
-                activations1_other,
+                activations_own: activations1_own,
+                activations_other: activations1_other,
 
-                weights_in_own,
-                weights_in_other,
-                weights_l2,
-                weights_l3,
-                weights_out,
+                weights_1,
+                weights_2,
+                weights_3,
+                weights_4,
+
+                biases_1,
+                biases_2,
+                biases_3,
+                biases_4,
+
             }
         }
 
@@ -207,81 +190,76 @@ pub mod nnue {
 
     }
 
-    impl GNNUE<f32,f32> {
+    // impl GNNUE<f32,f32> {
 
-        pub fn new(side: Color, mut rng: &mut StdRng) -> Self {
+    //     pub fn new(side: Color, mut rng: &mut StdRng) -> Self {
 
-            let dist0 = Uniform::new(-1.0,1.0);
+    //         let dist0 = Uniform::new(-1.0,1.0);
 
-            let inputs_own   = DVector::zeros(NNUE_INPUT);
-            let inputs_other = DVector::zeros(NNUE_INPUT);
+    //         let inputs_own   = DVector::zeros(NNUE_INPUT);
+    //         let inputs_other = DVector::zeros(NNUE_INPUT);
 
-            let activations1_own   = DVector::zeros(NNUE_L2);
-            let activations1_other = DVector::zeros(NNUE_L2);
+    //         let activations1_own   = DVector::zeros(NNUE_L2);
+    //         let activations1_other = DVector::zeros(NNUE_L2);
 
-            let weights_in_own = DMatrix::from_vec(
-                NNUE_L2,NNUE_INPUT,Self::gen_vec(NNUE_L2 * NNUE_INPUT,dist0,&mut rng));
-            let weights_in_other = DMatrix::from_vec(
-                NNUE_L2,NNUE_INPUT,Self::gen_vec(NNUE_L2 * NNUE_INPUT,dist0,&mut rng));
+    //         let weights_in_own = DMatrix::from_vec(
+    //             NNUE_L2,NNUE_INPUT,Self::gen_vec(NNUE_L2 * NNUE_INPUT,dist0,&mut rng));
+    //         let weights_in_other = DMatrix::from_vec(
+    //             NNUE_L2,NNUE_INPUT,Self::gen_vec(NNUE_L2 * NNUE_INPUT,dist0,&mut rng));
 
-            // let weights_l2_own = DMatrix::from_vec(
-            //     NNUE_L3,NNUE_L2,Self::gen_vec(NNUE_L3 * NNUE_L2,dist0,&mut rng));
-            // let weights_l2_other = DMatrix::from_vec(
-            //     NNUE_L3,NNUE_L2,Self::gen_vec(NNUE_L3 * NNUE_L2,dist0,&mut rng));
-            let weights_l2 = DMatrix::from_vec(
-                NNUE_L3,NNUE_L2 * 2,Self::gen_vec(NNUE_L3 * NNUE_L2 * 2,dist0,&mut rng));
+    //         let weights_l2 = DMatrix::from_vec(
+    //             NNUE_L3,NNUE_L2 * 2,Self::gen_vec(NNUE_L3 * NNUE_L2 * 2,dist0,&mut rng));
 
-            let weights_l3 = DMatrix::from_vec(
-                NNUE_OUTPUT,NNUE_L3,Self::gen_vec(NNUE_OUTPUT * NNUE_L3,dist0,&mut rng));
+    //         let weights_l3 = DMatrix::from_vec(
+    //             NNUE_OUTPUT,NNUE_L3,Self::gen_vec(NNUE_OUTPUT * NNUE_L3,dist0,&mut rng));
 
-            // let weights_out = DVector::from_vec(
-            //     Self::gen_vec(NNUE_OUTPUT,dist0,&mut rng));
+    //         let weights_out = DMatrix::from_vec(
+    //             1,NNUE_OUTPUT,Self::gen_vec(NNUE_OUTPUT,dist0,&mut rng));
 
-            let weights_out = DMatrix::from_vec(
-                1,NNUE_OUTPUT,Self::gen_vec(NNUE_OUTPUT,dist0,&mut rng));
+    //         let inputs_own   = inputs_own.ref_ndarray2().to_owned();
+    //         let inputs_other = inputs_other.ref_ndarray2().to_owned();
 
-            let inputs_own   = inputs_own.ref_ndarray2().to_owned();
-            let inputs_other = inputs_other.ref_ndarray2().to_owned();
+    //         let activations1_own   = activations1_own.ref_ndarray2().to_owned();
+    //         let activations1_other = activations1_other.ref_ndarray2().to_owned();
 
-            let activations1_own   = activations1_own.ref_ndarray2().to_owned();
-            let activations1_other = activations1_other.ref_ndarray2().to_owned();
+    //         let weights_1 = weights_in_own.ref_ndarray2().to_owned();
+    //         let weights_2 = weights_l2.ref_ndarray2().to_owned();
+    //         let weights_3 = weights_l3.ref_ndarray2().to_owned();
+    //         let weights_4 = weights_out.ref_ndarray2().to_owned();
 
-            let weights_in_own   = weights_in_own.ref_ndarray2().to_owned();
-            let weights_in_other = weights_in_other.ref_ndarray2().to_owned();
-            // let weights_l2_own   = weights_l2_own.ref_ndarray2().to_owned();
-            // let weights_l2_other = weights_l2_other.ref_ndarray2().to_owned();
-            let weights_l2       = weights_l2.ref_ndarray2().to_owned();
-            let weights_l3       = weights_l3.ref_ndarray2().to_owned();
-            let weights_out      = weights_out.ref_ndarray2().to_owned();
+    //         let biases_1 = Array2::random_using((NNUE_L2,1), dist0, &mut rng);
+    //         let biases_2 = Array2::random_using((NNUE_L3,1), dist1, &mut rng);
+    //         let biases_3 = Array2::random_using((NNUE_OUTPUT,1), dist1, &mut rng);
+    //         let biases_4 = Array2::random_using((1,1), dist1, &mut rng);
 
-            Self {
-                dirty: true,
-                side,
+    //         Self {
+    //             dirty: true,
+    //             side,
 
-                en_passant: None,
+    //             en_passant: None,
 
-                inputs_own,
-                inputs_other,
+    //             inputs_own,
+    //             inputs_other,
 
-                activations1_own,
-                activations1_other,
+    //             activations_own: activations1_own,
+    //             activations_other: activations1_other,
 
-                weights_in_own,
-                weights_in_other,
-                // weights_l2_own,
-                // weights_l2_other,
-                weights_l2,
-                weights_l3,
-                weights_out,
-            }
-        }
+    //             weights_1: weights_in,
+    //             // weights_in_other,
+    //             // weights_l2_own,
+    //             // weights_l2_other,
+    //             weights_2: weights_l2,
+    //             weights_3: weights_l3,
+    //             weights_4: weights_out,
+    //         }
+    //     }
 
-        fn gen_vec<T>(n: usize, dist: Uniform<T>, mut rng: &mut StdRng) -> Vec<T>
-            where T: rand::distributions::uniform::SampleUniform,
-        {
-            (0..n).map(|_| dist.sample(&mut rng)).collect()
-        }
-    }
+    //     fn gen_vec<T>(n: usize, dist: Uniform<T>, mut rng: &mut StdRng) -> Vec<T>
+    //         where T: rand::distributions::uniform::SampleUniform,
+    //     {
+    //         (0..n).map(|_| dist.sample(&mut rng)).collect()
+    //     }
+    // }
 
 }
 
