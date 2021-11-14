@@ -497,6 +497,7 @@ fn main_nnue() {
     use rchess_engine_lib::brain::matrix::*;
 
     init_logger();
+
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
     let fen = STARTPOS;
@@ -550,48 +551,102 @@ fn main_nnue() {
     // println!("acts eq = {:?}", nn.activations_own == nn2.activations_own);
     // return;
 
+    trace!("wat -2");
     let score = nn.run_fresh(&g);
     // nn.init_inputs(&g);
+    trace!("wat -1");
 
     let mut nn2 = nn.clone();
     // let mut g2 = g.clone();
 
+    // let mv = Move::Quiet { from: "E2".into(), to: "E3".into(), pc: Pawn };
+    // let g2 = g.make_move_unchecked(&ts, mv).unwrap();
+    // drop(g);
+
+    // trace!("=== 0");
+    // let s0 = nn.run_fresh(&g2);
+    // trace!("=== 1");
+    // let s1 = nn2.update_move(&g2);
+    // eprintln!("s0 = {:?}", s0);
+    // eprintln!("s1 = {:?}", s1);
+    // // assert_eq!(nn.inputs_own, nn2.inputs_own);
+    // println!("inputs eq = {:?}", nn.inputs_own == nn2.inputs_own);
+    // // assert_eq!(nn.activations1_own, nn2.activations1_own);
+    // println!("acts eq = {:?}", nn.activations_own == nn2.activations_own);
+    // return;
+
     let mv = Move::Quiet { from: "E2".into(), to: "E3".into(), pc: Pawn };
     let g2 = g.make_move_unchecked(&ts, mv).unwrap();
-    drop(g);
 
-    // nn.init_inputs(&g2);
-    // nn2.init_inputs(&g2);
-
-    trace!("=== 0");
+    trace!("wat 0");
     let s0 = nn.run_fresh(&g2);
-
-    trace!("=== 1");
+    trace!("wat 1");
     let s1 = nn2.update_move(&g2);
+    trace!("wat 2");
 
-    eprintln!("s0 = {:?}", s0);
+    let moves = g2.search_all(&ts).get_moves_unsafe();
+    let mut moves = moves.into_iter().filter(|m| m.piece() != Some(King));
+    let mv = moves.next().unwrap();
+    let g3 = g2.make_move_unchecked(&ts, mv).unwrap();
+
+    trace!("wat 3");
+    let s0 = nn.run_fresh(&g3);
+    trace!("wat 4");
+    let s1 = nn2.update_move(&g3);
+    trace!("wat 5");
+
+    let king_sq_own   = g.get(King, White).bitscan();
+    let king_sq_other = g.get(King, Black).bitscan();
+    let c0: u8        = Coord::from("E3").into();
+    let (idx0,idx1) = NNUE::index2(king_sq_own, king_sq_other, Pawn, c0);
+    eprintln!("idx0, idx1 = {:?}, {:?}", idx0, idx1);
+
+    // for side in [White,Black] {
+    //     for pc in Piece::iter_nonking_pieces() {
+    //         g.get(pc, side).into_iter().for_each(|sq| {
+    //             let (idx0,idx1) = NNUE::index2(king_sq_own, king_sq_other, pc, sq);
+    //             let k0 = nn.inputs_own[(idx0,0)];
+    //             let k1 = nn.inputs_other[(idx1,0)];
+    //             let q0 = nn2.inputs_own[(idx0,0)];
+    //             let q1 = nn2.inputs_other[(idx1,0)];
+    //             if k0 != q0 || k1 != q1 {
+    //                 eprintln!("wot = {:?}, {:?}, {:?}", side, pc, Coord::from(sq));
+    //             }
+    //         });
+    //     }
+    // }
+
+    // 38029 = e8 K a6
+    // 38046 = e8 K b8
+
+    for f in [true,false] {
+        for king_sq in 0..64u8 {
+            for c0 in 0..63u8 {
+                for pc in Piece::iter_nonking_pieces() {
+                    let idx = NNUE::index(king_sq, pc, c0, f);
+                    if idx == 38046 {
+                        eprintln!("wot = {:?}, {:?}, {:?}", Coord::from(king_sq), pc, Coord::from(c0));
+                    }
+                }
+            }
+        }
+    }
+
+    for (n,(a,b)) in nn.inputs_own.iter().zip(nn2.inputs_own.iter()).enumerate() {
+        if a != b {
+            eprintln!("wot own {:?} = {:?},{:?}", n, a, b);
+        }
+    }
+
+    println!();
+    for (n,(a,b)) in nn.inputs_other.iter().zip(nn2.inputs_other.iter()).enumerate() {
+        if a != b {
+            eprintln!("wot other {:?} = {:?},{:?}", n, a, b);
+        }
+    }
+
+    eprintln!("\ns0 = {:?}", s0);
     eprintln!("s1 = {:?}", s1);
-
-    // let z0_own: Array2<i16>   = nn.weights_1.dot(&nn.inputs_own);
-    // let z0_other: Array2<i16> = nn.weights_1.dot(&nn.inputs_other);
-    // let z0_own   = z0_own.map(|x| *x as i8);
-    // let z0_other = z0_other.map(|x| *x as i8);
-    // nn.activations_own   = z0_own;
-    // nn.activations_other = z0_other;
-
-    // nn2._update_move(&g2, mv);
-
-    // let king_sq_own   = g2.get(King, !g2.state.side_to_move).bitscan();
-    // let king_sq_other = g2.get(King, g2.state.side_to_move).bitscan();
-    // nn2.update_move_piece(king_sq_own, king_sq_other, Pawn, mv.sq_from(), mv.sq_to(), true);
-
-    let act1: Array2<i8> = nd::concatenate![
-        nd::Axis(0), nn.activations_own.clone(), nn.activations_other.clone()
-    ];
-
-    let act2: Array2<i8> = nd::concatenate![
-        nd::Axis(0), nn2.activations_own.clone(), nn2.activations_other.clone()
-    ];
 
     eprintln!("inputs_own Eq        = {:?}", nn.inputs_own == nn2.inputs_own);
     eprintln!("inputs_other Eq      = {:?}", nn.inputs_other == nn2.inputs_other);
@@ -600,48 +655,6 @@ fn main_nnue() {
     eprintln!("activations_other Eq = {:?}", nn.activations_other == nn2.activations_other);
     eprintln!();
 
-    // for n in 0..nn.inputs_own.shape()[1] {
-    //     let a = nn.inputs_other[(n,0)];
-    //     let b = nn2.inputs_other[(n,0)];
-    //     if a != b {
-    //         eprintln!("n is wrong: = {:?}, ({:?},{:?})", n, a, b);
-    //     }
-    // }
-
-    // 37820, other king at e8, enemy pawn at e3
-    for (n,(a,b)) in nn.inputs_other.iter().zip(nn2.inputs_other.iter()).enumerate() {
-        if a != b {
-            eprintln!("n is wrong: = {:?}, ({:?},{:?})", n, a, b);
-        }
-    }
-
-    // let vv = &nn.activations_other - &nn2.activations_other;
-    // eprintln!("vv[(0,0)] = {:?}", vv[(0,0)]);
-
-    // for n in 0..nn.weights_1.shape()[1] {
-    //     let a = vv[(0,0)];
-    //     let b = nn.weights_1[(0,0)];
-    //     if a as i16 == b {
-    //         eprintln!("vv, ws = {:?}, {:?}", a, b);
-    //     }
-    // }
-
-    // eprintln!("vv = {}", vv);
-
-    // let mut k = 0;
-    // // for (a,b) in act1.iter().zip(act2.iter()).take(10) {
-    // for (a,b) in act1.iter().zip(act2.iter()) {
-    //     if a != b {
-    //         k += 1;
-    //         eprintln!("(a,b) = ({:?},{:?})", a,b);
-    //     }
-    // }
-    // eprintln!("k = {:?}", k);
-
-    // assert_eq!(nn.inputs_own, nn2.inputs_own);
-    println!("inputs eq = {:?}", nn.inputs_own == nn2.inputs_own);
-    // assert_eq!(nn.activations1_own, nn2.activations1_own);
-    println!("acts eq = {:?}", nn.activations_own == nn2.activations_own);
     return;
 
     let mut vs0 = vec![];
@@ -676,11 +689,11 @@ fn main_nnue() {
 
     // eprintln!("vs0 == vs1 = {:?}", vs0 == vs1);
 
-    // for (a,b) in vs0.iter().zip(vs1.iter()).take(10) {
-    //     if a != b {
-    //         eprintln!("(a,b) = ({:?},{:?})", a,b);
-    //     }
-    // }
+    for (n,(a,b)) in vs0.iter().zip(vs1.iter()).enumerate().take(10) {
+        if a != b {
+            eprintln!("(a,b)[{:?}] = ({:?},{:?})", n, a,b);
+        }
+    }
 
     // let k = nn.weights_out;
     // println!("k = {}", k);

@@ -64,6 +64,9 @@ pub mod nnue {
         #[serde(skip)]
         pub activations_other:  Array2<H>,
 
+        // pub weights_1_white:    Array2<I>, // 256 x 40320
+        // pub weights_1_black:    Array2<I>, // 256 x 40320
+
         pub weights_1:          Array2<I>, // 256 x 40320
         pub weights_2:          Array2<H>, // 512 x 32
         pub weights_3:          Array2<H>, // 32 x 32

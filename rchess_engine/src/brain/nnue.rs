@@ -48,53 +48,63 @@ impl NNUE {
 impl NNUE {
 
     pub fn update_insert_piece<T: Into<u8> + Copy>(
-        &mut self, king_sq_own: u8, king_sq_other: u8, pc: Piece, c0: T, friendly: bool) {
+        // &mut self, king_sq_own: u8, king_sq_other: u8, pc: Piece, c0: T, friendly: bool) {
+        &mut self, king_sq_own: u8, king_sq_other: u8, pc: Piece, c0: T, trace: bool) {
         let c0 = c0.into();
         let (idx0,idx1) = Self::index2(king_sq_own, king_sq_other, pc, c0);
 
         self.inputs_own[(idx0,0)]   = 1;
-        self.inputs_other[(idx1,0)] = 1;
-
         self.increment_act_own(idx0, true);
+
+        self.inputs_other[(idx1,0)] = 1;
         self.increment_act_other(idx1, true);
 
-        trace!("idx0, idx1 = {:?}, {:?}", idx0, idx1);
-
-        trace!("Updating own king at   {:?} with {} {:?} at {:?} to 1",
-               Coord::from(king_sq_own),
-               if friendly { "friendly" } else { "enemy" }, pc, Coord::from(c0));
-        trace!("Updating other king at {:?} with {} {:?} at {:?} to 1",
-               Coord::from(king_sq_other),
-               if !friendly { "friendly" } else { "enemy" }, pc, Coord::from(c0));
+        if trace {
+            trace!("idx0, idx1 = {:?}, {:?}", idx0, idx1);
+            trace!("Updating own king at   {:?} with {:?} at {:?} to 1",
+                Coord::from(king_sq_own),
+                // if friendly { "friendly" } else { "enemy" }, pc, Coord::from(c0));
+                pc, Coord::from(c0));
+            trace!("Updating other king at {:?} with {:?} at {:?} to 1",
+                Coord::from(king_sq_other),
+                pc, Coord::from(c0));
+        }
 
     }
 
     pub fn update_delete_piece<T: Into<u8> + Copy>(
-        &mut self, king_sq_own: u8, king_sq_other: u8, pc: Piece, c0: T, friendly: bool) {
+        // &mut self, king_sq_own: u8, king_sq_other: u8, pc: Piece, c0: T, friendly: bool) {
+        &mut self, king_sq_own: u8, king_sq_other: u8, pc: Piece, c0: T, trace: bool) {
         let c0 = c0.into();
         let (idx0,idx1) = Self::index2(king_sq_own, king_sq_other, pc, c0);
 
         self.inputs_own[(idx0,0)]   = 0;
-        self.inputs_other[(idx1,0)] = 0;
-
         self.increment_act_own(idx0, false);
+
+        self.inputs_other[(idx1,0)] = 0;
         self.increment_act_other(idx1, false);
 
-        trace!("idx0, idx1 = {:?}, {:?}", idx0, idx1);
-
-        trace!("Updating own king at   {:?} with {} {:?} at {:?} to 0",
-               Coord::from(king_sq_own),
-               if friendly { "friendly" } else { "enemy" }, pc, Coord::from(c0));
-        trace!("Updating other king at {:?} with {} {:?} at {:?} to 0",
-               Coord::from(king_sq_other),
-               if !friendly { "friendly" } else { "enemy" }, pc, Coord::from(c0));
+        if trace {
+            trace!("idx0, idx1 = {:?}, {:?}", idx0, idx1);
+            trace!("Updating own king at   {:?} with {:?} at {:?} to 0",
+                Coord::from(king_sq_own),
+                // if friendly { "friendly" } else { "enemy" }, pc, Coord::from(c0));
+                pc, Coord::from(c0));
+            trace!("Updating other king at {:?} with {:?} at {:?} to 0",
+                Coord::from(king_sq_other),
+                // if !friendly { "friendly" } else { "enemy" }, pc, Coord::from(c0));
+                pc, Coord::from(c0));
+        }
 
     }
 
     pub fn update_move_piece<T: Into<u8> + Copy>(
-        &mut self, king_sq_own: u8, king_sq_other: u8, pc: Piece, from: T, to: T, friendly: bool) {
-        self.update_delete_piece(king_sq_own, king_sq_other, pc, from.into(), friendly);
-        self.update_insert_piece(king_sq_own, king_sq_other, pc, to.into(), friendly);
+        // &mut self, king_sq_own: u8, king_sq_other: u8, pc: Piece, from: T, to: T, friendly: bool) {
+        &mut self, king_sq_own: u8, king_sq_other: u8, pc: Piece, from: T, to: T) {
+        // self.update_delete_piece(king_sq_own, king_sq_other, pc, from.into(), friendly);
+        // self.update_insert_piece(king_sq_own, king_sq_other, pc, to.into(), friendly);
+        self.update_delete_piece(king_sq_own, king_sq_other, pc, from.into(), true);
+        self.update_insert_piece(king_sq_own, king_sq_other, pc, to.into(), true);
     }
 
     fn update_en_passant<T: Into<Coord> + Copy>(&mut self, c0: Option<T>) {
@@ -109,27 +119,26 @@ impl NNUE {
     }
 
     /// Called AFTER game has had move applied
-    // pub fn update_move(&mut self, g: &Game) -> i8 {
-    pub fn update_move(&mut self, g: &Game) -> f64 {
+    pub fn update_move(&mut self, g: &Game) -> i8 {
         let mv = match g.last_move {
             None => {
                 debug!("No previous move, running fresh");
-                // return self.run_fresh(&g);
-                unimplemented!()
+                return self.run_fresh(&g);
+                // unimplemented!()
             },
             Some(mv) => mv,
         };
 
         if self.dirty {
             debug!("dirty, running fresh");
-            // return self.run_fresh(&g);
-            unimplemented!()
+            return self.run_fresh(&g);
+            // unimplemented!()
         }
 
         if mv.piece() == Some(King) {
             trace!("king move, running fresh");
-            // return self.run_fresh(&g);
-            unimplemented!()
+            return self.run_fresh(&g);
+            // unimplemented!()
         }
 
         self._update_move(&g, mv);
@@ -149,17 +158,17 @@ impl NNUE {
 
         match mv {
             Move::Quiet { from, to, pc } => {
-                self.update_move_piece(king_sq_own,king_sq_other, pc, from, to, true);
+                self.update_move_piece(king_sq_own,king_sq_other, pc, from, to);
             },
             Move::PawnDouble { from, to } => {
-                self.update_move_piece(king_sq_own,king_sq_other, Pawn, from, to, true);
+                self.update_move_piece(king_sq_own,king_sq_other, Pawn, from, to);
             },
             Move::Capture { from, to, pc, victim } => {
-                self.update_move_piece(king_sq_own,king_sq_other, pc, from, to, true);
+                self.update_move_piece(king_sq_own,king_sq_other, pc, from, to);
                 self.update_delete_piece(king_sq_own,king_sq_other, pc, to, true);
             },
             Move::EnPassant { from, to, capture } => {
-                self.update_move_piece(king_sq_own,king_sq_other, Pawn, from, to, true);
+                self.update_move_piece(king_sq_own,king_sq_other, Pawn, from, to);
                 self.update_delete_piece(king_sq_own,king_sq_other, Pawn, capture, true);
             },
             Move::Castle { from, to, rook_from, rook_to } => {
@@ -184,8 +193,7 @@ impl NNUE {
 /// Run
 impl NNUE {
 
-    // pub fn run_partial(&self) -> i8 {
-    pub fn run_partial(&self) -> f64 {
+    pub fn run_partial(&self) -> i8 {
 
         let act1: Array2<i8> = nd::concatenate![
             nd::Axis(0), self.activations_own.clone(), self.activations_other.clone()
@@ -200,14 +208,10 @@ impl NNUE {
         let z_out = self.weights_4.dot(&act3);
         let act_out = z_out.map(Self::relu);
 
-        // act_out[(0,0)]
-
-        let xs = act1.map(|x| *x as i64);
-        xs.sum() as f64 / xs.len() as f64
+        act_out[(0,0)]
     }
 
-    // pub fn run_fresh(&mut self, g: &Game) -> i8 {
-    pub fn run_fresh(&mut self, g: &Game) -> f64 {
+    pub fn run_fresh(&mut self, g: &Game) -> i8 {
 
         self.init_inputs(g);
 
@@ -217,32 +221,28 @@ impl NNUE {
         let z0_own   = z0_own.map(|x| *x as i8);
         let z0_other = z0_other.map(|x| *x as i8);
 
-        // self.activations_own   = z0_own;
-        // self.activations_other = z0_other;
-        self.activations_own   = z0_own.clone();
-        self.activations_other = z0_other.clone();
+        self.activations_own   = z0_own;
+        self.activations_other = z0_other;
+        // self.activations_own   = z0_own.clone();
+        // self.activations_other = z0_other.clone();
 
-        // self.run_partial()
+        self.run_partial()
 
-        let act1 = nd::concatenate![nd::Axis(0), z0_own, z0_other];
+        // let act1 = nd::concatenate![nd::Axis(0), z0_own, z0_other];
 
-        let z2 = self.weights_2.dot(&act1);
-        let act2 = z2.map(Self::relu);
-        // let act2 = z2.map(|x| sigmoid(*x));
+        // let z2 = self.weights_2.dot(&act1);
+        // let act2 = z2.map(Self::relu);
+        // // let act2 = z2.map(|x| sigmoid(*x));
 
-        let z3 = self.weights_3.dot(&act2);
-        let act3 = z3.map(Self::relu);
-        // let act3 = z3.map(|x| sigmoid(*x));
+        // let z3 = self.weights_3.dot(&act2);
+        // let act3 = z3.map(Self::relu);
+        // // let act3 = z3.map(|x| sigmoid(*x));
 
-        let z_out = self.weights_4.dot(&act3);
-        let act_out = z_out.map(Self::relu);
-        // let act_out = z_out.map(|x| sigmoid(*x));
+        // let z_out = self.weights_4.dot(&act3);
+        // let act_out = z_out.map(Self::relu);
+        // // let act_out = z_out.map(|x| sigmoid(*x));
 
         // act_out[(0,0)]
-
-
-        let xs = act1.map(|x| *x as i64);
-        xs.sum() as f64 / xs.len() as f64
     }
 
     pub fn relu(x: &i8) -> i8 {
@@ -251,6 +251,7 @@ impl NNUE {
 
 }
 
+/// Init, Indexing
 impl NNUE {
 
     /// Reset inputs and activations, and refill from board
@@ -269,7 +270,22 @@ impl NNUE {
         let king_sq_own   = g.get(King, self.side).bitscan();
         let king_sq_other = g.get(King, !self.side).bitscan();
 
-        // self.update_insert_piece(king_sq_own, king_sq_other, pc, c0, friendly);
+        for pc in PCS {
+            g.get(pc, self.side).into_iter().for_each(|sq| {
+
+                trace!("Setting own king at {:?} with {:?} at {:?}",
+                       Coord::from(king_sq_own), pc, Coord::from(sq));
+
+                self.update_insert_piece(king_sq_own, king_sq_other, pc, sq, false);
+            });
+            g.get(pc, !self.side).into_iter().for_each(|sq| {
+
+                trace!("Setting other king at {:?} with {:?} at {:?}",
+                       Coord::from(king_sq_other), pc, Coord::from(sq));
+
+                self.update_insert_piece(king_sq_other, king_sq_own, pc, sq, false);
+            });
+        }
 
     }
 
@@ -288,7 +304,7 @@ impl NNUE {
 
         for side in COLORS {
             let mut indices_f = vec![];
-            let mut indices_e = vec![];
+            // let mut indices_e = vec![];
 
             // let king_sq: Coord   = g.get(King, side).bitscan().into();
             let king_sq_own   = g.get(King, side).bitscan();
