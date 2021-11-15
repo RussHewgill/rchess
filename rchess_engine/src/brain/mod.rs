@@ -248,7 +248,7 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
         // println!("inputs = {}", inputs);
 
         let mut acts: Vec<DMatrix<f32>> = vec![];
-        let mut zs: Vec<DMatrix<f32>>          = vec![];
+        let mut zs: Vec<DMatrix<f32>>   = vec![];
 
         acts.push(inputs.clone());
 
@@ -281,6 +281,10 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
         // let d = delta.ref_ndarray2().dot(&d2);
         // let d = d.into_nalgebra();
 
+        // eprintln!("zs.len()   = {:?}", zs.len());
+        // eprintln!("acts.len() = {:?}", acts.len());
+        // eprintln!("d.shape() = {:?}", d.shape());
+
         let mut new_ws: Vec<DMatrix<f32>> = vec![d];
         let mut new_bs: Vec<DMatrix<f32>> = vec![delta];
 
@@ -290,6 +294,8 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
 
             let z = &zs[layer-1];
             let sp = z.map(sigmoid_deriv);
+
+            // eprintln!("self.weights[layer].shape() = {:?}", self.weights[layer].shape());
 
             let d = self.weights[layer].transpose() * prev_delta;
             let d = d.component_mul(&sp);
@@ -309,6 +315,9 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
 
             let act = &acts[layer - 1];
             let w = &d * act.transpose();
+
+            // eprintln!("d.shape() {} = {:?}", k, d.shape());
+            // eprintln!("w.shape() {} = {:?}", k, w.shape());
 
             new_ws.push(w);
             new_bs.push(d);

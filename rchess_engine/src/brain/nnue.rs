@@ -4,7 +4,7 @@ use crate::types::*;
 use crate::evaluate::*;
 use crate::brain::types::*;
 use crate::brain::types::nnue::*;
-// use crate::brain::sigmoid;
+use crate::brain::matrix::*;
 
 // use ndarray::prelude::*;
 // use ndarray_rand::RandomExt;
@@ -25,7 +25,7 @@ use rand::distributions::Uniform;
 impl NNUE {
     fn increment_act_own(&mut self, idx: usize, add: bool) {
         let mut c: nd::ArrayViewMut1<i8> = self.activations_own.slice_mut(nd::s![.., 0]);
-        let d: nd::ArrayView1<i16>       = self.weights_1.slice(nd::s![.., idx]);
+        let d: nd::ArrayView1<i16>       = self.weights_1_own.slice(nd::s![.., idx]);
         if add {
             c += &d.map(|x| *x as i8);
         } else {
@@ -35,7 +35,7 @@ impl NNUE {
 
     fn increment_act_other(&mut self, idx: usize, add: bool) {
         let mut c: nd::ArrayViewMut1<i8> = self.activations_other.slice_mut(nd::s![.., 0]);
-        let d: nd::ArrayView1<i16>       = self.weights_1.slice(nd::s![.., idx]);
+        let d: nd::ArrayView1<i16>       = self.weights_1_other.slice(nd::s![.., idx]);
         if add {
             c += &d.map(|x| *x as i8);
         } else {
@@ -196,7 +196,11 @@ impl NNUE {
         let mut z1: Array2<i8> = nd::concatenate![
             nd::Axis(0), self.activations_own.clone(), self.activations_other.clone()
         ];
-        z1 += &self.biases_1;
+        let bs = nd::concatenate![
+            nd::Axis(0), self.biases_1_own, self.biases_1_other
+        ];
+        // z1 += &self.biases_1;
+        z1 += &bs;
         let act1 = z1.map(Self::relu);
 
         let mut z2 = self.weights_2.dot(&act1);
@@ -229,8 +233,8 @@ impl NNUE {
 
         self.init_inputs(g);
 
-        let z0_own: Array2<i16>   = self.weights_1.dot(&self.inputs_own);
-        let z0_other: Array2<i16> = self.weights_1.dot(&self.inputs_other);
+        let z0_own: Array2<i16>   = self.weights_1_own.dot(&self.inputs_own);
+        let z0_other: Array2<i16> = self.weights_1_other.dot(&self.inputs_other);
 
         let z0_own   = z0_own.map(|x| *x as i8);
         let z0_other = z0_other.map(|x| *x as i8);
@@ -261,6 +265,221 @@ impl NNUE {
 
     pub fn relu(x: &i8) -> i8 {
         *x.max(&0)
+    }
+
+    pub fn relu_d(x: &i8) -> i8 {
+        if *x < 0 {
+            0
+        } else if *x > 0 {
+            1
+        } else {
+            0
+        }
+    }
+
+}
+
+/// Backprop
+impl NNUE {
+
+    pub fn run_fresh2(&mut self, g: &Game) -> f32 {
+
+        self.init_inputs(g);
+
+        let z0_own: Array2<i16>   = self.weights_1_own.dot(&self.inputs_own);
+        let z0_other: Array2<i16> = self.weights_1_other.dot(&self.inputs_other);
+
+        let z0_own   = z0_own.map(|x| *x as i8);
+        let z0_other = z0_other.map(|x| *x as i8);
+
+        self.activations_own   = z0_own;
+        self.activations_other = z0_other;
+
+        let mut z1: Array2<i8> = nd::concatenate![
+            nd::Axis(0), self.activations_own.clone(), self.activations_other.clone()
+        ];
+        let bs = nd::concatenate![
+            nd::Axis(0), self.biases_1_own, self.biases_1_other
+        ];
+        z1 += &bs;
+        // z1 += &self.biases_1;
+        let act1 = z1.map(Self::relu);
+
+        let act1: nd::Array1<i8> = act1.slice(nd::s![.., 0]).to_owned();
+        // let act1: DVector<f32> = act1.into_nalgebra().map(|x| (x as f32) / 127.0);
+        let act1: DVector<f32> = act1.into_nalgebra().map(|x| (x as f32) / 127.0);
+
+        // println!("act1 = {}", act1);
+
+        let out = self.test_nn.run(&act1)[0];
+
+        out
+    }
+
+    pub fn backprop2(&mut self, correct: i8, eta: i8) {
+
+        let mut z1: Array2<i8> = nd::concatenate![
+            nd::Axis(0), self.activations_own.clone(), self.activations_other.clone()
+        ];
+        let bs = nd::concatenate![
+            nd::Axis(0), self.biases_1_own, self.biases_1_other
+        ];
+        z1 += &bs;
+        // z1 += &self.biases_1;
+        let act1 = z1.map(Self::relu);
+
+        let act1: nd::Array1<i8> = act1.slice(nd::s![.., 0]).to_owned();
+        let act1: DVector<f32> = act1.into_nalgebra().map(|x| (x as f32) / 127.0);
+
+        let ins: Vec<(DVector<f32>, DVector<f32>)> = vec![
+            (act1,na::dvector![(correct as f32) / 127.0]),
+        ];
+
+        self.test_nn.backprop_mut_matrix(&ins, 0.1);
+
+        // let mut z2 = self.weights_2.dot(&act1);
+        // z2 += &self.biases_2;
+        // let act2 = z2.map(Self::relu);
+
+        // let mut z3 = self.weights_3.dot(&act2);
+        // z3 += &self.biases_3;
+        // let act3 = z3.map(Self::relu);
+
+        // let z_out = self.weights_4.dot(&act3);
+        // let act_out = z_out.map(Self::relu);
+        // let pred = act_out[(0,0)];
+
+    }
+
+    #[allow(unused_doc_comments)]
+    pub fn backprop(&mut self, correct: i8, eta: i8) {
+
+        let mut z1: Array2<i8> = nd::concatenate![
+            nd::Axis(0), self.activations_own.clone(), self.activations_other.clone()
+        ];
+        let bs = nd::concatenate![
+            nd::Axis(0), self.biases_1_own, self.biases_1_other
+        ];
+        z1 += &bs;
+        // z1 += &self.biases_1;
+        let act1 = z1.map(Self::relu);
+
+        let mut z2 = self.weights_2.dot(&act1);
+        z2 += &self.biases_2;
+        let act2 = z2.map(Self::relu);
+
+        let mut z3 = self.weights_3.dot(&act2);
+        z3 += &self.biases_3;
+        let act3 = z3.map(Self::relu);
+
+        let z_out = self.weights_4.dot(&act3);
+        let act_out = z_out.map(Self::relu);
+        let pred = act_out[(0,0)];
+
+        /// d shapes:
+        /// L3, 1
+        /// L2, 1
+        /// L1, 1
+
+        /// w shapes:
+        /// L3,L2
+        /// L2,L1
+        /// L1,IN
+
+        /// z shapes:
+        /// 1:   512,1
+        /// 2:   32,1
+        /// 3:   32,1
+        /// out: 1,1
+
+        /// act1    = 512,1
+        /// act2    = 32,1
+        /// act3    = 32,1
+        /// act_out = 1,1
+
+        /// Layer     Z[4]  Act[5]    Weights[4]
+        /// 4         3     3         -
+        /// 3         2     2         3
+        /// 2         1     1         2
+        /// 1         0     0         1
+
+        /// L4
+        // let delta = pred - correct;
+        let delta = pred.checked_sub(correct).unwrap();
+        eprintln!("pred  = {:?}", pred);
+        eprintln!("delta = {:?}", delta);
+        let delta: Array2<i8> = delta * z_out.map(Self::relu_d); // 1,1
+
+        let ws4_n = &delta.dot(&act3.t()); // 1,32
+        let bs4_n = delta.clone();
+        // eprintln!("ws4_n.shape() = {:?}", ws4_n.shape());
+
+        /// L3
+        let sp3 = z3.map(Self::relu_d); // 32,1
+
+        let mut d3: Array2<i8> = self.weights_4.t().dot(&delta); // 32,1
+        d3 *= &sp3;
+
+        let ws3_n = d3.dot(&act2.t()); // 32,32
+        let bs3_n = d3.clone();        // 1,1
+        // eprintln!("ws3_n.shape() = {:?}", ws3_n.shape());
+
+        /// L2
+        let sp2 = z2.map(Self::relu_d); // 32,1
+
+        let mut d2 = self.weights_3.t().dot(&d3); // 32,1
+        d2 *= &sp2;
+
+        let ws2_n = d2.dot(&act1.t()); // 32,512
+        let bs2_n = d2.clone();        // 32,1
+        // eprintln!("ws2_n.shape() = {:?}", ws2_n.shape());
+
+        // /// L1
+
+        let sp: Array2<i8> = z1.map(Self::relu_d); // 512,1
+        let sp_own   = sp.slice(nd::s![..256, ..]);
+        let sp_other = sp.slice(nd::s![256.., ..]);
+
+        let d1: Array2<i8> = self.weights_2.t().dot(&d2); // 512,1
+        let mut d1_own   = d1.slice(nd::s![..256, ..]).to_owned();
+        let mut d1_other = d1.slice(nd::s![256.., ..]).to_owned();
+        d1_own   *= &sp_own;
+        d1_other *= &sp_own;
+
+        // let ws1_n_own   = d1_own.map(|x| *x as i16).dot(&self.inputs_own.t());
+        // let ws1_n_other = d1_other.map(|x| *x as i16).dot(&self.inputs_other.t());
+        let ws1_n_own: Array2<i8>   = d1_own.dot(&self.inputs_own.t().map(|x| *x as i8));
+        let ws1_n_other: Array2<i8> = d1_other.dot(&self.inputs_other.t().map(|x| *x as i8));
+
+        let bs1_n_own   = d1_own;
+        let bs1_n_other = d1_other;
+
+        // println!("ws 1");
+        self.weights_1_own   += &ws1_n_own.map(|x| (*x as i16) / eta as i16);
+        self.weights_1_other += &ws1_n_other.map(|x| (*x as i16) / eta as i16);
+        // self.weights_1_own   += &(ws1_n_own / eta as i16);
+        // self.weights_1_other += &(ws1_n_other / eta as i16);
+        self.biases_1_own    += &bs1_n_own;
+        self.biases_1_other  += &bs1_n_other;
+
+        // println!("ws 2");
+        // self.weights_2 -= &(eta * ws2_n);
+        self.weights_2 -= &(ws2_n / eta);
+        // self.weights_2 -= &ws2_n;
+        self.biases_2  -= &bs2_n;
+
+        // println!("ws 3");
+        // self.weights_3 -= &(eta * ws3_n);
+        self.weights_3 -= &(ws3_n / eta);
+        // self.weights_3 -= &ws3_n;
+        self.biases_3  -= &bs3_n;
+
+        // println!("ws 4");
+        // self.weights_4 -= &(eta * ws4_n);
+        self.weights_4 -= &(ws4_n / eta);
+        // self.weights_4 -= ws4_n;
+        self.biases_4  -= &bs4_n;
+
     }
 
 }

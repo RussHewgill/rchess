@@ -170,7 +170,8 @@ fn main() {
                 _       => main_sts(None),
             }
             // "nn"    => main_nn(),
-            "nn"    => main_nnue(),
+            "nnue"  => main_nnue(),
+            "nn"    => main_nn(),
             "simd"  => main_simd(),
             _       => {},
         },
@@ -529,11 +530,57 @@ fn main_nnue() {
     // eprintln!("idx1 = {:?}", idx1);
     // return;
 
+    // let fen     = "rnbqkb1r/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    let fen = "4k3/3pp3/8/8/8/8/3PP3/4K3 w - - 0 1";
+    let correct = 100;
+
+    let dnn = DNetwork::<f32,512,1>::_new_rng(vec![512,32,32,1], (-1.,1.), &mut rng);
+
     let ts = Tables::read_from_file_def().unwrap();
     let mut g = Game::from_fen(&ts, fen).unwrap();
-    let mut nn = NNUE::new(White, &mut rng);
+    let mut nn = NNUE::new(White, &mut rng, dnn);
     // nn.init_inputs(&g);
     // nn.dirty = false;
+
+    // let mut dnn = DNetwork::<f32,2,1>::new_range(vec![2,512,32,32,1], (0.0,1.0));
+    // let ins0 = vec![dvector![0.0,0.0]];
+    // let cs0 = vec![dvector![0.0]];
+    // let ins: Vec<(DVector<f32>,DVector<f32>)> = ins0.into_iter().zip(cs0.into_iter()).collect::<Vec<_>>();
+    // dnn.backprop_mut_matrix(&ins, 0.1);
+    // // eprintln!("dnn.weights.len() = {:?}", dnn.weights.len());
+    // return;
+
+    let s0 = nn.run_fresh(&g);
+    // let s0 = nn.run_fresh2(&g);
+
+    // // let n0 = nn.weights_1_own[(0,0)];
+    // let n0 = nn.weights_3[(0,0)];
+    // eprintln!("n0 = {:?}", n0);
+
+    nn.backprop(correct, 10);
+
+    // // let n1 = nn.weights_1_own[(0,0)];
+    // let n1 = nn.weights_3[(0,0)];
+    // eprintln!("n1 = {:?}", n1);
+
+    println!("starting...");
+    let t0 = Instant::now();
+    for k in 0..3 {
+        eprintln!("k = {:?}", k);
+        nn.backprop(correct, 10);
+        // nn.backprop2(correct, 10);
+        break;
+    }
+    println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+
+    let s1 = nn.run_fresh(&g);
+    // let s1 = nn.run_fresh2(&g);
+
+    // eprintln!("correct = {:?}", correct);
+    eprintln!("s0 = {:.3}", s0);
+    eprintln!("s1 = {:.3}", s1);
+
+    return;
 
     // nn.run_fresh(&g);
     // let mut nn2 = nn.clone();
@@ -710,8 +757,8 @@ fn main_nn() {
 
     // main_mnist();
 
-    main_nnue();
-    return;
+    // main_nnue();
+    // return;
 
     // let h = std::thread::Builder::new()
     //     .stack_size(24 * 1024 * 1024)
@@ -737,6 +784,28 @@ fn main_nn() {
     ];
     // let corrects = inputs.clone();
 
+    let inputs = vec![
+        dvector![0.0,0.0,0.0],
+        dvector![1.0,0.0,0.0],
+        dvector![0.0,1.0,0.0],
+        dvector![1.0,1.0,0.0],
+        dvector![0.0,0.0,1.0],
+        dvector![1.0,0.0,1.0],
+        dvector![0.0,1.0,1.0],
+        dvector![1.0,1.0,1.0],
+    ];
+    let corrects = vec![
+        dvector![0.0, 0.0],
+        dvector![1.0, 1.0],
+        dvector![1.0, 1.0],
+        dvector![0.0, 0.0],
+        dvector![0.0, 1.0],
+        dvector![1.0, 0.0],
+        dvector![1.0, 0.0],
+        dvector![0.0, 1.0],
+    ];
+    // let corrects = inputs.clone();
+
     let inputs0 = vec![
         vector![0.0,0.0],
         vector![1.0,0.0],
@@ -752,10 +821,10 @@ fn main_nn() {
     // let corrects = inputs.clone();
 
     // let xs = inputs.iter().zip(corrects.iter()).collect::<Vec<_>>();
-    let xs = inputs.iter().zip(corrects.into_iter());
+    let xs = inputs.into_iter().zip(corrects.into_iter());
     // let xs = inputs.into_iter().zip(corrects.into_iter());
 
-    let xs0 = inputs0.iter().zip(corrects0.clone().into_iter());
+    let xs0 = inputs0.into_iter().zip(corrects0.clone().into_iter());
 
     // na:   (Rows, Cols)
     // Multiply:
@@ -767,7 +836,7 @@ fn main_nn() {
     // let mut nn = Network::new(2);
     let mut nn0 = Network::new_range(1, (0.,1.));
 
-    let mut nn = DNetwork::<f32,2,1>::new_range(vec![2,3,1], (0.,1.));
+    // let mut nn = DNetwork::<f32,2,1>::new_range(vec![2,3,1], (0.,1.));
 
     // for (input,correct) in xs.clone() {
     //     let (pred,pred_z,acts) = nn._run(input);
@@ -801,21 +870,35 @@ fn main_nn() {
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
     // let mut nn = DNetwork::<f32,2,1>::new_range(vec![2,3,3,1], (0.,1.));
-    let mut nn = DNetwork::<f32,2,1>::new_range(vec![2,3,1], (0.,1.));
+    // let mut nn = DNetwork::<f32,2,1>::new_range(vec![2,3,1], (0.,1.));
+
+    // let mut nn = DNetwork::<f32,3,2>::new_range(vec![3,3,3,2], (0.,1.));
+
+    let mut nn = DNetwork::<f32,3,2>::new_range(vec![3,512,32,32,2], (0.0,1.0));
+
+    let ins = vec![
+        (dvector![0.0,0.0,0.0],dvector![0.0,0.0]),
+    ];
+
+    // eprintln!("nn.weights.len() = {:?}", nn.weights.len());
+
+    nn.backprop_mut_matrix(&ins, 0.1);
+    return;
 
     let mut xs2: Vec<_> = xs.clone().collect();
     // let mut xs2: Vec<_> = xs0.clone().collect();
 
     let t0 = Instant::now();
-    for k in 0..100000 {
+    for k in 0..10000 {
         // eprintln!("k = {:?}", k);
         xs2.shuffle(&mut rng);
 
         let mut xs3 = xs2.clone();
-        xs3.truncate(2);
+        // xs3.truncate(2);
+        xs3.truncate(4);
 
-        // // nn0.backprop_mut_matrix::<4>(&xs3, lr);
-        // nn.backprop_mut_matrix(&xs3, 0.1);
+        // nn0.backprop_mut_matrix::<4>(&xs3, lr);
+        nn.backprop_mut_matrix(&xs3, 0.1);
 
         // for (i,c) in inputs0.iter().zip(corrects0.iter()) {
         //     nn0.backprop_mut(vec![i], vec![*c], 0.1);
@@ -1085,13 +1168,9 @@ fn main9() {
     let ms = ob.map.get(&k).unwrap();
 
     for ((from,to),wt) in ms.iter() {
-
         // let w = *wt as f64 / i16::MAX as f64;
         let w = *wt;
-
         eprintln!("(from,to) = ({:?},{:?}) = {:?}", from, to, w);
-
-
     }
 
     // eprintln!("mv = {:?}", m.mv);

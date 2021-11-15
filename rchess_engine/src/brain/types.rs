@@ -64,18 +64,26 @@ pub mod nnue {
         #[serde(skip)]
         pub activations_other:  Array2<H>,
 
-        // pub weights_1_white:    Array2<I>, // 256 x 40320
-        // pub weights_1_black:    Array2<I>, // 256 x 40320
+        // pub weights_1_white:    Array2<I>, // 256 x 40356
+        // pub weights_1_black:    Array2<I>, // 256 x 40356
 
-        pub weights_1:          Array2<I>, // 256 x 40320
-        pub weights_2:          Array2<H>, // 512 x 32
+        pub weights_1_own:      Array2<I>, // 256 x 40356
+        pub weights_1_other:    Array2<I>, // 256 x 40356
+
+        pub weights_2:          Array2<H>, // 32 x 512
         pub weights_3:          Array2<H>, // 32 x 32
-        pub weights_4:          Array2<H>, // 32 x 1
+        pub weights_4:          Array2<H>, // 1 x 32
 
-        pub biases_1:           Array2<H>, // 256 * 2
+        // pub biases_1:           Array2<H>, // 256 * 2
+
+        pub biases_1_own:       Array2<H>, // 256
+        pub biases_1_other:     Array2<H>, // 256
+
         pub biases_2:           Array2<H>, // 32
         pub biases_3:           Array2<H>, // 32
         pub biases_4:           Array2<H>, // 1 ??
+
+        pub test_nn:            DNetwork<f32,512,1>,
 
     }
 
@@ -138,24 +146,33 @@ pub mod nnue {
 
     impl GNNUE<i16,i8> {
 
-        pub fn new(side: Color, mut rng: &mut StdRng) -> Self {
+        // pub fn new(side: Color, mut rng: &mut StdRng) -> Self {
+        pub fn new(side: Color, mut rng: &mut StdRng, nn: DNetwork<f32,512,1>) -> Self {
 
             let dist0 = Uniform::new(i16::MIN,i16::MAX);
             let dist1 = Uniform::new(i8::MIN,i8::MAX);
 
-            let inputs_own         = Array2::zeros((NNUE_INPUT, 1));
-            let inputs_other       = Array2::zeros((NNUE_INPUT, 1));
-            let activations1_own   = Array2::zeros((NNUE_L2, 1));
-            let activations1_other = Array2::zeros((NNUE_L2, 1));
+            let inputs_own        = Array2::zeros((NNUE_INPUT, 1));
+            let inputs_other      = Array2::zeros((NNUE_INPUT, 1));
+            let activations_own   = Array2::zeros((NNUE_L2, 1));
+            let activations_other = Array2::zeros((NNUE_L2, 1));
 
             // let weights_in_other = Array2::<i16>::random_using((NNUE_L2,NNUE_INPUT), dist0, &mut rng);
 
-            let weights_1 = Array2::random_using((NNUE_L2,NNUE_INPUT), dist0, &mut rng);
+            // let weights_1 = Array2::random_using((NNUE_L2,NNUE_INPUT), dist0, &mut rng);
+
+            let weights_1_own   = Array2::random_using((NNUE_L2,NNUE_INPUT), dist0, &mut rng);
+            let weights_1_other = Array2::random_using((NNUE_L2,NNUE_INPUT), dist0, &mut rng);
+
             let weights_2 = Array2::random_using((NNUE_L3,NNUE_L2 * 2), dist1, &mut rng);
             let weights_3 = Array2::random_using((NNUE_OUTPUT,NNUE_L3), dist1, &mut rng);
             let weights_4 = Array2::random_using((1,NNUE_OUTPUT), dist1, &mut rng);
 
-            let biases_1 = Array2::random_using((NNUE_L2 * 2,1), dist1, &mut rng);
+            // let biases_1 = Array2::random_using((NNUE_L2 * 2,1), dist1, &mut rng);
+
+            let biases_1_own = Array2::random_using((NNUE_L2,1), dist1, &mut rng);
+            let biases_1_other = Array2::random_using((NNUE_L2,1), dist1, &mut rng);
+
             let biases_2 = Array2::random_using((NNUE_L3,1), dist1, &mut rng);
             let biases_3 = Array2::random_using((NNUE_OUTPUT,1), dist1, &mut rng);
             let biases_4 = Array2::random_using((1,1), dist1, &mut rng);
@@ -169,19 +186,22 @@ pub mod nnue {
                 inputs_own,
                 inputs_other,
 
-                activations_own: activations1_own,
-                activations_other: activations1_other,
+                activations_own,
+                activations_other,
 
-                weights_1,
+                weights_1_own,
+                weights_1_other,
                 weights_2,
                 weights_3,
                 weights_4,
 
-                biases_1,
+                biases_1_own,
+                biases_1_other,
                 biases_2,
                 biases_3,
                 biases_4,
 
+                test_nn: nn,
             }
         }
 
@@ -286,6 +306,29 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
         Self::_new(sizes, mm, Some(18105974836011991331))
     }
 
+    pub fn _new_rng(sizes: Vec<usize>, mm: (f32,f32), mut rng: &mut StdRng) -> Self {
+
+        let dist = Uniform::new(mm.0,mm.1);
+
+        let mut weights = vec![];
+        let mut biases = vec![];
+
+        for n in 1..sizes.len() {
+            let s0 = sizes[n-1];
+            let s1 = sizes[n];
+            let ws = DMatrix::from_vec(s1,s0,Self::gen_vec(s0*s1,dist,&mut rng));
+            weights.push(ws);
+            let bs = DVector::from_vec(Self::gen_vec(s1, dist, &mut rng));
+            biases.push(bs);
+        }
+
+        Self {
+            sizes,
+            weights,
+            biases,
+        }
+    }
+
     pub fn _new(sizes: Vec<usize>, mm: (f32,f32), seed: Option<u64>) -> Self {
         assert!(sizes.len() > 2);
 
@@ -300,20 +343,7 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
             SeedableRng::from_rng(r).unwrap()
         };
 
-        let dist = Uniform::new(mm.0,mm.1);
-
-        let mut weights = vec![];
-        let mut biases = vec![];
-
-
-        for n in 1..sizes.len() {
-            let s0 = sizes[n-1];
-            let s1 = sizes[n];
-            let ws = DMatrix::from_vec(s1,s0,Self::gen_vec(s0*s1,dist,&mut rng));
-            weights.push(ws);
-            let bs = DVector::from_vec(Self::gen_vec(s1, dist, &mut rng));
-            biases.push(bs);
-        }
+        Self::_new_rng(sizes, mm, &mut rng)
 
 
         // let ws_in = DMatrix::from_vec(HS,IS,Self::gen_vec(HS*IS,dist,&mut rng));
@@ -334,12 +364,12 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
         // let bs_out = DVector::from_vec(Self::gen_vec(OS, dist, &mut rng));
         // biases.push(bs_out);
 
-        Self {
-            sizes,
+        // Self {
+        //     sizes,
+        //     weights,
+        //     biases,
+        // }
 
-            weights,
-            biases,
-        }
     }
 
     fn gen_vec(n: usize, dist: Uniform<f32>, mut rng: &mut StdRng) -> Vec<f32> {
