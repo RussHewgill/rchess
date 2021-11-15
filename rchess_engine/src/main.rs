@@ -532,7 +532,7 @@ fn main_nnue() {
 
     // let fen     = "rnbqkb1r/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     let fen = "4k3/3pp3/8/8/8/8/3PP3/4K3 w - - 0 1";
-    let correct = 100;
+    let correct = 10;
 
     let dnn = DNetwork::<f32,512,1>::_new_rng(vec![512,32,32,1], (-1.,1.), &mut rng);
 
@@ -552,24 +552,36 @@ fn main_nnue() {
 
     let s0 = nn.run_fresh(&g);
     // let s0 = nn.run_fresh2(&g);
+    eprintln!("s0 = {:.3}", s0);
 
     // // let n0 = nn.weights_1_own[(0,0)];
     // let n0 = nn.weights_3[(0,0)];
     // eprintln!("n0 = {:?}", n0);
 
-    nn.backprop(correct, 10);
-
     // // let n1 = nn.weights_1_own[(0,0)];
     // let n1 = nn.weights_3[(0,0)];
     // eprintln!("n1 = {:?}", n1);
 
+    let eta = 100;
+
+    // nn.backprop(Some(&g), correct, 10);
+    // let s0 = nn.run_fresh(&g);
+    // // let s0 = nn.run_fresh2(&g);
+    // eprintln!("s0 = {:.3}", s0);
+    // return;
+
+
+    // let x0 = NNUE::cost_fn(10, 5);
+    // eprintln!("x0 = {:?}", x0);
+    // return;
+
     println!("starting...");
     let t0 = Instant::now();
-    for k in 0..3 {
+    for k in 0..10 {
         eprintln!("k = {:?}", k);
-        nn.backprop(correct, 10);
-        // nn.backprop2(correct, 10);
-        break;
+        nn.backprop(Some(&g), correct, eta);
+        // nn.backprop2(correct, eta);
+        // break;
     }
     println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
@@ -784,27 +796,27 @@ fn main_nn() {
     ];
     // let corrects = inputs.clone();
 
-    let inputs = vec![
-        dvector![0.0,0.0,0.0],
-        dvector![1.0,0.0,0.0],
-        dvector![0.0,1.0,0.0],
-        dvector![1.0,1.0,0.0],
-        dvector![0.0,0.0,1.0],
-        dvector![1.0,0.0,1.0],
-        dvector![0.0,1.0,1.0],
-        dvector![1.0,1.0,1.0],
-    ];
-    let corrects = vec![
-        dvector![0.0, 0.0],
-        dvector![1.0, 1.0],
-        dvector![1.0, 1.0],
-        dvector![0.0, 0.0],
-        dvector![0.0, 1.0],
-        dvector![1.0, 0.0],
-        dvector![1.0, 0.0],
-        dvector![0.0, 1.0],
-    ];
-    // let corrects = inputs.clone();
+    // let inputs = vec![
+    //     dvector![0.0,0.0,0.0],
+    //     dvector![1.0,0.0,0.0],
+    //     dvector![0.0,1.0,0.0],
+    //     dvector![1.0,1.0,0.0],
+    //     dvector![0.0,0.0,1.0],
+    //     dvector![1.0,0.0,1.0],
+    //     dvector![0.0,1.0,1.0],
+    //     dvector![1.0,1.0,1.0],
+    // ];
+    // let corrects = vec![
+    //     dvector![0.0, 0.0],
+    //     dvector![1.0, 1.0],
+    //     dvector![1.0, 1.0],
+    //     dvector![0.0, 0.0],
+    //     dvector![0.0, 1.0],
+    //     dvector![1.0, 0.0],
+    //     dvector![1.0, 0.0],
+    //     dvector![0.0, 1.0],
+    // ];
+    // // let corrects = inputs.clone();
 
     let inputs0 = vec![
         vector![0.0,0.0],
@@ -870,20 +882,21 @@ fn main_nn() {
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
     // let mut nn = DNetwork::<f32,2,1>::new_range(vec![2,3,3,1], (0.,1.));
+    let mut nn = DNetwork::<f32,2,1>::new_range(vec![2,3,3,1], (-1.,1.));
     // let mut nn = DNetwork::<f32,2,1>::new_range(vec![2,3,1], (0.,1.));
 
     // let mut nn = DNetwork::<f32,3,2>::new_range(vec![3,3,3,2], (0.,1.));
 
-    let mut nn = DNetwork::<f32,3,2>::new_range(vec![3,512,32,32,2], (0.0,1.0));
+    // let mut nn = DNetwork::<f32,3,2>::new_range(vec![3,512,32,32,2], (0.0,1.0));
 
-    let ins = vec![
-        (dvector![0.0,0.0,0.0],dvector![0.0,0.0]),
-    ];
+    // let ins = vec![
+    //     (dvector![0.0,0.0,0.0],dvector![0.0,0.0]),
+    // ];
 
     // eprintln!("nn.weights.len() = {:?}", nn.weights.len());
 
-    nn.backprop_mut_matrix(&ins, 0.1);
-    return;
+    // nn.backprop_mut_matrix(&ins, 0.1);
+    // return;
 
     let mut xs2: Vec<_> = xs.clone().collect();
     // let mut xs2: Vec<_> = xs0.clone().collect();
@@ -895,7 +908,7 @@ fn main_nn() {
 
         let mut xs3 = xs2.clone();
         // xs3.truncate(2);
-        xs3.truncate(4);
+        xs3.truncate(2);
 
         // nn0.backprop_mut_matrix::<4>(&xs3, lr);
         nn.backprop_mut_matrix(&xs3, 0.1);

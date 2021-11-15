@@ -79,9 +79,9 @@ pub mod nnue {
         pub biases_1_own:       Array2<H>, // 256
         pub biases_1_other:     Array2<H>, // 256
 
-        pub biases_2:           Array2<H>, // 32
-        pub biases_3:           Array2<H>, // 32
-        pub biases_4:           Array2<H>, // 1 ??
+        pub biases_2:           Array2<i32>, // 32
+        pub biases_3:           Array2<i32>, // 32
+        pub biases_4:           Array2<i32>, // 1 ??
 
         pub test_nn:            DNetwork<f32,512,1>,
 
@@ -149,8 +149,10 @@ pub mod nnue {
         // pub fn new(side: Color, mut rng: &mut StdRng) -> Self {
         pub fn new(side: Color, mut rng: &mut StdRng, nn: DNetwork<f32,512,1>) -> Self {
 
-            let dist0 = Uniform::new(i16::MIN,i16::MAX);
+            // let dist0 = Uniform::new(i16::MIN,i16::MAX);
+            let dist0 = Uniform::new(i8::MIN as i16,i8::MAX as i16);
             let dist1 = Uniform::new(i8::MIN,i8::MAX);
+            let dist2 = Uniform::new(i8::MIN as i32,i8::MAX as i32);
 
             let inputs_own        = Array2::zeros((NNUE_INPUT, 1));
             let inputs_other      = Array2::zeros((NNUE_INPUT, 1));
@@ -173,9 +175,9 @@ pub mod nnue {
             let biases_1_own = Array2::random_using((NNUE_L2,1), dist1, &mut rng);
             let biases_1_other = Array2::random_using((NNUE_L2,1), dist1, &mut rng);
 
-            let biases_2 = Array2::random_using((NNUE_L3,1), dist1, &mut rng);
-            let biases_3 = Array2::random_using((NNUE_OUTPUT,1), dist1, &mut rng);
-            let biases_4 = Array2::random_using((1,1), dist1, &mut rng);
+            let biases_2 = Array2::random_using((NNUE_L3,1), dist2, &mut rng);
+            let biases_3 = Array2::random_using((NNUE_OUTPUT,1), dist2, &mut rng);
+            let biases_4 = Array2::random_using((1,1), dist2, &mut rng);
 
             Self {
                 dirty: true,

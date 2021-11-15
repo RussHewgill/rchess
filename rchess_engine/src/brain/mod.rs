@@ -78,7 +78,8 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
         for (ws,bs) in self.weights.iter().zip(self.biases.iter()) {
             let z = ws * last;
             let z = z + bs;
-            let act = z.map(sigmoid);
+            // let act = z.map(sigmoid);
+            let act = z.map(Self::act_fn);
 
             activations.push(act.clone());
             zs.push(z);
@@ -110,7 +111,8 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
         for ((input,correct),(pred,acts,zs)) in outs {
 
             let delta = pred - correct; // OS,1
-            let delta = delta.component_mul(&zs[zs.len() - 1].map(sigmoid_deriv));
+            // let delta = delta.component_mul(&zs[zs.len() - 1].map(sigmoid_deriv));
+            let delta = delta.component_mul(&zs[zs.len() - 1].map(Self::act_fn_d));
 
             let mut prev_delta = delta.clone();
 
@@ -124,7 +126,8 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
                 // eprintln!("k, layer = {:?}, {:?}", k, layer);
 
                 let z  = &zs[layer-1];
-                let sp = z.map(sigmoid_deriv);
+                // let sp = z.map(sigmoid_deriv);
+                let sp = z.map(Self::act_fn_d);
 
                 let d = self.weights[layer].transpose() * prev_delta;
 
@@ -235,6 +238,7 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
         (inputs,cors)
     }
 
+    #[allow(unused_doc_comments)]
     pub fn backprop_mut_matrix(
         &mut self,
         // ins:            &Vec<(&DVector<f32>,DVector<f32>)>,
@@ -262,15 +266,18 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
             }
             zs.push(z.clone());
 
-            let act = z.map(sigmoid);
+            // let act = z.map(sigmoid);
+            let act = z.map(Self::act_fn);
             acts.push(act.clone());
 
             last = act;
         }
         let pred = last;
 
+        /// XXX: when using ReLu, delta is not multiplied by last z
         let delta = pred - corrects; // OS,ISS
-        let delta = delta.component_mul(&zs[zs.len() - 1].map(sigmoid_deriv));
+        // let delta = delta.component_mul(&zs[zs.len() - 1].map(sigmoid_deriv));
+        // let delta = delta.component_mul(&zs[zs.len() - 1].map(Self::act_fn_d));
 
         let mut prev_delta = delta.clone();
 
@@ -293,7 +300,8 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
             // eprintln!("k {} = layer {:?}", k, layer);
 
             let z = &zs[layer-1];
-            let sp = z.map(sigmoid_deriv);
+            // let sp = z.map(sigmoid_deriv);
+            let sp = z.map(Self::act_fn_d);
 
             // eprintln!("self.weights[layer].shape() = {:?}", self.weights[layer].shape());
 
@@ -333,6 +341,32 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
         //     *bs -= m;
         // }
 
+    }
+
+    fn act_fn(x: f32) -> f32 {
+        // sigmoid(x)
+        Self::relu(x)
+    }
+
+    fn act_fn_d(x: f32) -> f32 {
+        // sigmoid_deriv(x)
+        Self::relu_d(x)
+    }
+
+    // fn cost_fn_delta(z: f32, a: f32, y: f32)
+
+    pub fn relu(x: f32) -> f32 {
+        x.max(0.0)
+    }
+
+    pub fn relu_d(x: f32) -> f32 {
+        if x < 0.0 {
+            0.0
+        } else if x > 0.0 {
+            1.0
+        } else {
+            0.0
+        }
     }
 
 }

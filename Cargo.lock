@@ -1088,6 +1088,7 @@ dependencies = [
  "ndarray",
  "ndarray-rand",
  "nom",
+ "num-traits",
  "num_cpus",
  "open",
  "openblas-src",
