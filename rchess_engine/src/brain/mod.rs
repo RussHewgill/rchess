@@ -40,10 +40,11 @@ pub fn test_mnist(
 
 pub fn test_mnist2(
     n0:               &DNetwork<f32,784,10>,
-    mut data:         Vec<(SVector<f32,784>,u8)>,
-    n:                Option<usize>,
-) {
-    if let Some(n) = n { data.truncate(n); }
+    data:             &[(SVector<f32,784>,u8)],
+    // n:                Option<usize>,
+    print:            bool,
+) -> f32 {
+    // if let Some(n) = n { data.truncate(n); }
     let mut out: Vec<(u8,(usize, f32))> = vec![];
     for (img,lbl) in data.iter() {
 
@@ -51,6 +52,16 @@ pub fn test_mnist2(
         let img: DVector<f32> = DVector::from_vec(img);
 
         let pred = n0.run(&img);
+
+        for x in pred.iter() {
+            if x.is_nan() {
+                panic!("nan");
+            }
+            if x.is_infinite() {
+                panic!("infinite");
+            }
+        }
+
         let (k0,k1) = pred.iter().enumerate()
             .max_by(|a,b| a.1.partial_cmp(&b.1).unwrap())
             .unwrap();
@@ -58,8 +69,11 @@ pub fn test_mnist2(
     }
     let score = out.iter().filter(|(lbl,(k,_))| *lbl as usize == *k)
         .collect::<Vec<_>>().len();
-    eprintln!("score = {} / {}: {:.2}",
-              score, out.len(), score as f32 / out.len() as f32);
+    if print {
+        println!("score = {} / {}: {:.2}",
+                  score, out.len(), score as f32 / out.len() as f32);
+    }
+    score as f32 / out.len() as f32
 }
 
 impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
@@ -278,7 +292,7 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
         /// XXX: when using ReLu, delta is not multiplied by last z
         let delta = pred - corrects; // OS,ISS
         // let delta = delta.component_mul(&zs[zs.len() - 1].map(sigmoid_deriv));
-        // let delta = delta.component_mul(&zs[zs.len() - 1].map(Self::act_fn_d));
+        let delta = delta.component_mul(&zs[zs.len() - 1].map(Self::act_fn_d));
 
         let mut prev_delta = delta.clone();
 
@@ -337,6 +351,7 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
             *ws -= lr * nw;
         }
 
+        // // XXX: biases?
         // for (mut bs, nb) in self.biases.iter_mut().zip(new_bs.into_iter().rev()) {
         //     let m = nb.column_sum().map(|x| x / input_size as f32);
         //     *bs -= m;
@@ -345,27 +360,39 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
     }
 
     fn act_fn(x: f32) -> f32 {
+        x.tanh()
         // sigmoid(x)
-        Self::relu(x)
+        // Self::relu(x)
     }
 
     fn act_fn_d(x: f32) -> f32 {
+        1.0 - x.tanh().powi(2)
         // sigmoid_deriv(x)
-        Self::relu_d(x)
+        // Self::relu_d(x)
     }
 
     // fn cost_fn_delta(z: f32, a: f32, y: f32)
 
     pub fn relu(x: f32) -> f32 {
-        x.max(0.0)
+        // x.max(0.0)
+
+        if x > 0.0 {
+            x
+        } else {
+            // 0.01 * x
+            0.0
+        }
+
     }
 
     pub fn relu_d(x: f32) -> f32 {
         if x < 0.0 {
+            // 0.01
             0.0
         } else if x > 0.0 {
             1.0
         } else {
+            // 0.01
             0.0
         }
     }

@@ -1094,6 +1094,7 @@ dependencies = [
  "openblas-src",
  "parking_lot",
  "rand",
+ "rand_distr",
  "rayon",
  "regex",
  "ringbuffer",

@@ -42,7 +42,10 @@ use rchess_engine_lib::{stats,not_stats,stats_or};
 
 use log::{debug, error, log_enabled, info, Level};
 use gag::Redirect;
-use simplelog::*;
+// use simplelog::*;
+use simplelog::{
+    CombinedLogger,TermLogger,WriteLogger,ConfigBuilder,ColorChoice,TerminalMode,LevelFilter,
+};
 use chrono::Timelike;
 use std::time::{Instant,Duration};
 
@@ -149,7 +152,9 @@ fn main() {
     // return;
 
     // main_nnue();
-    // return;
+    // main_nn();
+    main_mnist();
+    return;
 
     let mut args: Vec<String> = std::env::args().collect();
     match args.get(1) {
@@ -270,6 +275,10 @@ fn main_mnist() {
         .chunks_exact(28 * 28)
         .map(|x| SVector::<f32,784>::from_column_slice(x))
         .collect::<Vec<_>>();
+    let mut val_imgs: Vec<SVector<f32,784>> = data.val_img
+        .chunks_exact(28 * 28)
+        .map(|x| SVector::<f32,784>::from_column_slice(x))
+        .collect::<Vec<_>>();
 
     let mut corrects = data.trn_lbl.iter()
     // let mut corrects = data.tst_lbl.iter()
@@ -284,15 +293,15 @@ fn main_mnist() {
     let mut trn_lbl = data.trn_lbl.clone();
     trn_lbl.truncate(100);
 
-    let lr = 0.1;
-    let mut nn0 = MNNetwork::new_range(2, (-1.0, 1.0));
-    let mut nn1 = MNNetwork::new_range(2, (-1.0, 1.0));
-
-    let mut nn2: DNetwork<f32,784,10> = DNetwork::new_range(vec![784,16,16,10], (-1.0, 1.0));
+    // let mut nn0 = MNNetwork::new_range(2, (-1.0, 1.0));
+    // let mut nn1 = MNNetwork::new_range(2, (-1.0, 1.0));
 
     // nn.write_to_file("mnist.bin").unwrap();
 
     let test_data = test_imgs.into_iter().zip(data.tst_lbl.into_iter()).collect::<Vec<_>>();
+
+    // let val_data  = &test_data[..test_data.len() / 2].to_vec();
+    // let test_data = &test_data[test_data.len() / 2..].to_vec();
 
     let mut trn_imgs2: Vec<DVector<f32>> = data.trn_img
         .chunks_exact(28 * 28)
@@ -315,52 +324,23 @@ fn main_mnist() {
     // let mut rng = rand::thread_rng();
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
-    // ins.shuffle(&mut rng);
-
-    // let epochs = 500;
-    // const BATCH: usize = 100;
-    // ins.truncate(BATCH);
-
-    // // let ins2 = ins.clone();
-    // let (ins2,cs2) = MNNetwork::fill_input_matrix::<BATCH>(&ins);
-
-    // let mut t0 = Instant::now();
-    // let mut k = 0;
-    // for _ in 0..epochs {
-    //     let out = nn0.run_matrix::<BATCH>(&ins2,&cs2);
-    //     k += out.shape().1;
-    // }
-    // let t1 = t0.elapsed().as_secs_f64();
-    // println!("finished in {:.3} seconds", t1);
-    // eprintln!("k = {:?}", k);
-
-    // let (imgs,lbls): (Vec<&SVector<f32,784>>,Vec<SVector<f32,10>>) = ins.clone().into_iter().unzip();
-    // let mut t0 = Instant::now();
-    // let mut k = 0;
-    // for _ in 0..epochs {
-    //     for i in imgs.iter() {
-    //         k += 1;
-    //         nn0.run(i);
-    //     }
-    // }
-    // let t1 = t0.elapsed().as_secs_f64();
-    // println!("finished in {:.3} seconds", t1);
-    // eprintln!("k = {:?}", k);
-
-
     let ins2: Vec<(DVector<f32>,DVector<f32>)> = trn_imgs2.into_iter().zip(corrects2.clone()).collect();
 
-    // let mut xs: Vec<(DVector<f32>,DVector<f32>)> = trn_imgs2.into_iter().zip(corrects2).collect();
-    // xs.truncate(1000);
-    // let b = bincode::serialize(&xs).unwrap();
-    // use std::io::Write;
-    // let mut f = std::fs::File::create("temp-mnist.bin").unwrap();
-    // f.write_all(&b).unwrap();
-    // return;
+    let mm = (-1.0, 1.0);
+    // let mm = (0.0, 1.0);
 
-    const BATCH_SIZE: usize = 200;
-    const EPOCHS: usize = 2000;
-    let ksize = 200;
+    let mut nn2: DNetwork<f32,784,10> = DNetwork::new_range(vec![784,16,16,10], mm);
+    // let mut nn2: DNetwork<f32,784,10> = DNetwork::new_range(vec![784,30,10], mm);
+
+    let lr = 0.1;
+    // let lr = 0.5;
+    // let lr = 10.0;
+
+    const BATCH_SIZE: usize = 100;
+    const EPOCHS: usize = 200;
+    let ksize = 50;
+
+    // test_mnist2(&nn2, &test_data, true);
 
     let t0 = Instant::now();
     println!("Starting dyn...");
@@ -375,21 +355,18 @@ fn main_mnist() {
         nn2.backprop_mut_matrix(&ins3, lr);
         // break;
 
-        // if k % ksize == 0 {
-        //     // let t1 = t0.elapsed().as_secs_f64();
-        //     // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", k, t1, t1 / k as f64);
-        //     // t0 = Instant::now();
-        //     eprint!("dyn:    ");
-        //     test_mnist2(&nn2, test_data.clone(), Some(1000));
-        //     // nn.write_to_file("mnist.bin",Some("mnist-2.bin")).unwrap();
-        //     // nn.write_to_file("mnist.bin",None).unwrap();
-        // }
+        // let acc = test_mnist2(&nn2, &val_data, false);
+        // eprintln!("acc = {:.2}", acc);
+
+        if k % ksize == 0 {
+            test_mnist2(&nn2, &test_data, true);
+        }
 
     }
     let t1 = t0.elapsed().as_secs_f64();
     println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", EPOCHS, t1, t1 / EPOCHS as f64);
 
-    test_mnist2(&nn2, test_data.clone(), None);
+    test_mnist2(&nn2, &test_data, true);
 
 
     // let (img,lbl) = &ins2[4];
@@ -415,30 +392,28 @@ fn main_mnist() {
 
     return;
 
-    let t0 = Instant::now();
-    println!("Starting old...");
-    for k in 0..EPOCHS {
-        // ins.shuffle(&mut rng);
-        // let xs: &[(&SVector<f32,784>,SVector<f32,10>)] = &ins[0..BATCH_SIZE];
-        // let xs = xs.to_vec();
-        // let (imgs,lbls): (Vec<&SVector<f32,784>>,Vec<SVector<f32,10>>) = xs.into_iter().unzip();
-
-        let xs = ins.choose_multiple(&mut rng, BATCH_SIZE).cloned();
-
-        let (imgs,lbls): (Vec<&SVector<f32,784>>,Vec<SVector<f32,10>>) = xs.unzip();
-        nn0.backprop_mut(imgs, lbls, lr);
-        if k % ksize == 0 {
-            // let t1 = t0.elapsed().as_secs_f64();
-            // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", k, t1, t1 / k as f64);
-            // t0 = Instant::now();
-            eprint!("old:    ");
-            test_mnist(&nn0, test_data.clone(), Some(1000));
-            // nn.write_to_file("mnist.bin",Some("mnist-2.bin")).unwrap();
-            // nn.write_to_file("mnist.bin",None).unwrap();
-        }
-    }
-    let t1 = t0.elapsed().as_secs_f64();
-    println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", EPOCHS, t1, t1 / EPOCHS as f64);
+    // let t0 = Instant::now();
+    // println!("Starting old...");
+    // for k in 0..EPOCHS {
+    //     // ins.shuffle(&mut rng);
+    //     // let xs: &[(&SVector<f32,784>,SVector<f32,10>)] = &ins[0..BATCH_SIZE];
+    //     // let xs = xs.to_vec();
+    //     // let (imgs,lbls): (Vec<&SVector<f32,784>>,Vec<SVector<f32,10>>) = xs.into_iter().unzip();
+    //     let xs = ins.choose_multiple(&mut rng, BATCH_SIZE).cloned();
+    //     let (imgs,lbls): (Vec<&SVector<f32,784>>,Vec<SVector<f32,10>>) = xs.unzip();
+    //     nn0.backprop_mut(imgs, lbls, lr);
+    //     if k % ksize == 0 {
+    //         // let t1 = t0.elapsed().as_secs_f64();
+    //         // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", k, t1, t1 / k as f64);
+    //         // t0 = Instant::now();
+    //         eprint!("old:    ");
+    //         test_mnist(&nn0, test_data.clone(), Some(1000));
+    //         // nn.write_to_file("mnist.bin",Some("mnist-2.bin")).unwrap();
+    //         // nn.write_to_file("mnist.bin",None).unwrap();
+    //     }
+    // }
+    // let t1 = t0.elapsed().as_secs_f64();
+    // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", EPOCHS, t1, t1 / EPOCHS as f64);
 
     // let mut ins2 = ins.clone();
     // ins2.truncate(BATCH_SIZE);
@@ -446,26 +421,23 @@ fn main_mnist() {
 
     return;
 
-    let mut t0 = Instant::now();
-    println!("Starting matrix...");
-    for k in 0..EPOCHS {
-        ins.shuffle(&mut rng);
-
-        let mut ins2 = ins.clone();
-        ins2.truncate(BATCH_SIZE);
-        nn1.backprop_mut_matrix::<BATCH_SIZE>(&ins2, lr);
-
-        if k % ksize == 0 {
-            // let t1 = t0.elapsed().as_secs_f64();
-            // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", k, t1, t1 / k as f64);
-            // t0 = Instant::now();
-
-            eprint!("matrix: ");
-            test_mnist(&nn1, test_data.clone(), Some(1000));
-        }
-    }
-    let t1 = t0.elapsed().as_secs_f64();
-    println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", EPOCHS, t1, t1 / EPOCHS as f64);
+    // let mut t0 = Instant::now();
+    // println!("Starting matrix...");
+    // for k in 0..EPOCHS {
+    //     ins.shuffle(&mut rng);
+    //     let mut ins2 = ins.clone();
+    //     ins2.truncate(BATCH_SIZE);
+    //     nn1.backprop_mut_matrix::<BATCH_SIZE>(&ins2, lr);
+    //     if k % ksize == 0 {
+    //         // let t1 = t0.elapsed().as_secs_f64();
+    //         // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", k, t1, t1 / k as f64);
+    //         // t0 = Instant::now();
+    //         eprint!("matrix: ");
+    //         test_mnist(&nn1, test_data.clone(), Some(1000));
+    //     }
+    // }
+    // let t1 = t0.elapsed().as_secs_f64();
+    // println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", EPOCHS, t1, t1 / EPOCHS as f64);
 
     // nn.write_to_file("mnist.bin").unwrap();
 
@@ -496,6 +468,7 @@ fn main_nnue() {
     use rchess_engine_lib::brain::types::nnue::*;
     use rchess_engine_lib::brain::nnue::*;
     use rchess_engine_lib::brain::matrix::*;
+    // use rchess_engine_lib::brain::accumulator::*;
 
     init_logger();
 
@@ -539,9 +512,39 @@ fn main_nnue() {
     let ts = Tables::read_from_file_def().unwrap();
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let mut nn = NNUE::new(White, &mut rng, dnn);
+
     let mut nn = NNUE::new(White, &mut rng);
     // nn.init_inputs(&g);
     // nn.dirty = false;
+
+    nn.init_inputs(&g);
+
+    let mut nn2 = nn.clone();
+
+    let mv = Move::Quiet { from: "E2".into(), to: "E3".into(), pc: Pawn };
+    let g2 = g.make_move_unchecked(&ts, mv).unwrap();
+
+    let s0 = nn.run_fresh(&g2);
+
+    nn2.update_move(&g2);
+    let s1 = nn2.run_partial();
+
+    eprintln!("s0 = {:?}", s0);
+    eprintln!("s1 = {:?}", s1);
+
+    // nn.init_inputs(&g2);
+    // nn2._update_move(&g2, mv);
+
+    // eprintln!("nn.activations_own == nn2.activations_own = {:?}",
+    //             nn.activations_own == nn2.activations_own);
+    // eprintln!("nn.activations_other == nn2.activations_other = {:?}",
+    //           nn.activations_other == nn2.activations_other);
+
+    // let king_sq_own   = g.get(King, White).bitscan();
+    // let king_sq_other = g.get(King, Black).bitscan();
+
+    // let s = std::mem::size_of::<[[i8; NNUE_INPUT]; 256]>();
+    // eprintln!("s = {:?}", s / 1024 / 1024);
 
     // let mut dnn = DNetwork::<f32,2,1>::new_range(vec![2,512,32,32,1], (0.0,1.0));
     // let ins0 = vec![dvector![0.0,0.0]];
@@ -552,38 +555,51 @@ fn main_nnue() {
     // return;
 
 
+    // println!("starting...");
+    // let t0 = Instant::now();
+    // let mut nn = NNUE::new(White, &mut rng);
+    // println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+    // return;
 
     // let acc: Accum<5> = Accum::<5>::new(White);
-    // let mut xs: HashSet<usize> = HashSet::default();
+    // let mut xs: HashMap<usize, (u8,Piece,u8,Color)> = HashMap::default();
     // let mut k = 0;
+    // let mut d = 0;
     // for side in [White,Black] {
-    //     for king_sq_x in 0..4 {
+    //     for king_sq_x in 0..8 {
     //         for king_sq_y in 0..8 {
     //             let king_sq = Coord(king_sq_x,king_sq_y);
-    //             let king_sq = BitBoard::relative_square(side, king_sq);
-    //             for sq in 0..64 {
-    //                 for pc in Piece::iter_nonking_pieces() {
-    //                     let idx = acc.index_halfka(king_sq.into(), pc, side, sq);
+    //             let king_sq: u8 = king_sq.into();
+    //             // let king_sq = BitBoard::relative_square(side, king_sq);
+    //             for sq in 0..64u8 {
+    //                 for pc in Piece::iter_pieces() {
+    //                     if pc == King && side == White { continue; }
+    //                     if king_sq == sq { continue; }
+    //                     let idx: usize = acc.index_halfkp(king_sq, pc, side, sq);
     //                     k += 1;
-    //                     if xs.contains(&idx) {
+    //                     if xs.contains_key(&idx) {
     //                         eprintln!("k = {:?}", k);
-    //                         panic!("{:?}, {:?} {:?} at {:?}", king_sq, side, pc, Coord::from(sq));
+    //                         let (ks1,pc1,sq1,s1) = xs.get(&idx).unwrap();
+    //                         eprintln!("{:?}, {:?} {:?} at {:?}", Coord::from(*ks1), s1, pc1, Coord::from(*sq1));
+    //                         panic!("{:?}, {:?} {:?} at {:?}", Coord::from(king_sq), side, pc, Coord::from(sq));
+    //                         d += 1;
     //                     }
-    //                     xs.insert(idx);
+    //                     xs.insert(idx, (king_sq,pc,sq,side));
     //                 }
     //             }
     //         }
     //     }
     // }
     // eprintln!("k = {:?}", k);
+    // eprintln!("d = {:?}", d);
     // eprintln!("xs.len() = {:?}", xs.len());
-    // let (m0,m1) = (xs.iter().min(),xs.iter().max());
+    // let (m0,m1) = (xs.iter().min_by_key(|x| x.0),xs.iter().max_by_key(|x| x.0));
     // eprintln!("(m0,m1) = {:?}", (m0,m1));
     // return;
 
-    let s0 = nn.run_fresh(&g);
-    // let s0 = nn.run_fresh2(&g);
-    eprintln!("s0 = {:.3}", s0);
+    // let s0 = nn.run_fresh(&g);
+    // // let s0 = nn.run_fresh2(&g);
+    // eprintln!("s0 = {:.3}", s0);
 
     // // let n0 = nn.weights_1_own[(0,0)];
     // let n0 = nn.weights_3[(0,0)];
@@ -605,24 +621,24 @@ fn main_nnue() {
     // eprintln!("x0 = {:?}", x0);
     // return;
 
-    println!("starting...");
-    let t0 = Instant::now();
-    for k in 0..10 {
-        eprintln!("k = {:?}", k);
-        // nn.backprop(Some(&g), correct, eta);
-        // nn.backprop2(correct, eta);
-        // break;
-    }
-    println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+    // println!("starting...");
+    // let t0 = Instant::now();
+    // for k in 0..10 {
+    //     eprintln!("k = {:?}", k);
+    //     // nn.backprop(Some(&g), correct, eta);
+    //     // nn.backprop2(correct, eta);
+    //     // break;
+    // }
+    // println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
-    let s1 = nn.run_fresh(&g);
-    // let s1 = nn.run_fresh2(&g);
+    // let s1 = nn.run_fresh(&g);
+    // // let s1 = nn.run_fresh2(&g);
 
-    // eprintln!("correct = {:?}", correct);
-    eprintln!("s0 = {:.3}", s0);
-    eprintln!("s1 = {:.3}", s1);
+    // // eprintln!("correct = {:?}", correct);
+    // eprintln!("s0 = {:.3}", s0);
+    // eprintln!("s1 = {:.3}", s1);
 
-    return;
+    // return;
 
     // nn.run_fresh(&g);
     // let mut nn2 = nn.clone();
@@ -640,13 +656,13 @@ fn main_nnue() {
     // println!("acts eq = {:?}", nn.activations_own == nn2.activations_own);
     // return;
 
-    trace!("wat -2");
-    let score = nn.run_fresh(&g);
-    // nn.init_inputs(&g);
-    trace!("wat -1");
+    // trace!("wat -2");
+    // let score = nn.run_fresh(&g);
+    // // nn.init_inputs(&g);
+    // trace!("wat -1");
 
-    let mut nn2 = nn.clone();
-    let mut g2 = g.clone();
+    // let mut nn2 = nn.clone();
+    // let mut g2 = g.clone();
 
     // let mv = Move::Quiet { from: "E2".into(), to: "E3".into(), pc: Pawn };
     // let g2 = g.make_move_unchecked(&ts, mv).unwrap();
@@ -714,44 +730,43 @@ fn main_nnue() {
 
     // return;
 
-    let mut vs0 = vec![];
-    let mut vs1 = vec![];
+    // let mut vs0 = vec![];
+    // let mut vs1 = vec![];
 
-    println!("starting...");
-    let t0 = Instant::now();
-    for _ in 0..100 {
-        let moves = g.search_all(&ts).get_moves_unsafe();
-        let mut moves = moves.into_iter().filter(|m| m.piece() != Some(King));
-        let mv = moves.next().unwrap();
-        g = g.make_move_unchecked(&ts, mv).unwrap();
+    // println!("starting...");
+    // let t0 = Instant::now();
+    // for _ in 0..100 {
+    //     let moves = g.search_all(&ts).get_moves_unsafe();
+    //     let mut moves = moves.into_iter().filter(|m| m.piece() != Some(King));
+    //     let mv = moves.next().unwrap();
+    //     g = g.make_move_unchecked(&ts, mv).unwrap();
+    //     let score = nn.update_move(&g);
+    //     vs0.push(score);
+    // }
+    // println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+    // drop(g);
+    // drop(nn);
 
-        let score = nn.update_move(&g);
-        vs0.push(score);
-    }
-    println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
-    drop(g);
-    drop(nn);
-
-    println!("starting...");
-    let t0 = Instant::now();
-    for _ in 0..100 {
-        let moves = g2.search_all(&ts).get_moves_unsafe();
-        let mut moves = moves.into_iter().filter(|m| m.piece() != Some(King));
-        let mv = moves.next().unwrap();
-        g2 = g2.make_move_unchecked(&ts, mv).unwrap();
-        let score = nn2.run_fresh(&g2);
-        vs1.push(score);
-    }
-    println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+    // println!("starting...");
+    // let t0 = Instant::now();
+    // for _ in 0..100 {
+    //     let moves = g2.search_all(&ts).get_moves_unsafe();
+    //     let mut moves = moves.into_iter().filter(|m| m.piece() != Some(King));
+    //     let mv = moves.next().unwrap();
+    //     g2 = g2.make_move_unchecked(&ts, mv).unwrap();
+    //     let score = nn2.run_fresh(&g2);
+    //     vs1.push(score);
+    // }
+    // println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
     // eprintln!("vs0 == vs1 = {:?}", vs0 == vs1);
 
-    for (n,(a,b)) in vs0.iter().zip(vs1.iter()).enumerate() {
-        // eprintln!("(a,b) = {:?}", (a,b));
-        if a != b {
-            eprintln!("(a,b)[{:?}] = ({:?},{:?})", n, a,b);
-        }
-    }
+    // for (n,(a,b)) in vs0.iter().zip(vs1.iter()).enumerate() {
+    //     // eprintln!("(a,b) = {:?}", (a,b));
+    //     if a != b {
+    //         eprintln!("(a,b)[{:?}] = ({:?},{:?})", n, a,b);
+    //     }
+    // }
 
     // let k = nn.weights_out;
     // println!("k = {}", k);
@@ -798,8 +813,7 @@ fn main_nn() {
     // println!("ndarray:  finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
     // main_mnist();
-
-    // main_nnue();
+    // // main_nnue();
     // return;
 
     // let h = std::thread::Builder::new()
@@ -931,6 +945,7 @@ fn main_nn() {
     let mut xs2: Vec<_> = xs.clone().collect();
     // let mut xs2: Vec<_> = xs0.clone().collect();
 
+    println!("Starting...");
     let t0 = Instant::now();
     for k in 0..10000 {
         // eprintln!("k = {:?}", k);
