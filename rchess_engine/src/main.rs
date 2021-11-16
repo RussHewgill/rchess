@@ -534,11 +534,12 @@ fn main_nnue() {
     let fen = "4k3/3pp3/8/8/8/8/3PP3/4K3 w - - 0 1";
     let correct = 10;
 
-    let dnn = DNetwork::<f32,512,1>::_new_rng(vec![512,32,32,1], (-1.,1.), &mut rng);
+    // let dnn = DNetwork::<f32,512,1>::_new_rng(vec![512,32,32,1], (-1.,1.), &mut rng);
 
     let ts = Tables::read_from_file_def().unwrap();
     let mut g = Game::from_fen(&ts, fen).unwrap();
-    let mut nn = NNUE::new(White, &mut rng, dnn);
+    // let mut nn = NNUE::new(White, &mut rng, dnn);
+    let mut nn = NNUE::new(White, &mut rng);
     // nn.init_inputs(&g);
     // nn.dirty = false;
 
@@ -551,42 +552,34 @@ fn main_nnue() {
     // return;
 
 
-    use rchess_engine_lib::brain::accumulator::*;
 
-    let acc: Accum<5> = Accum::<5>::new(White);
-
-    let mut xs: HashSet<usize> = HashSet::default();
-
-    let mut k = 0;
-    for side in [White,Black] {
-        for king_sq_x in 0..4 {
-            for king_sq_y in 0..8 {
-                let king_sq = Coord(king_sq_x,king_sq_y);
-                let king_sq = BitBoard::relative_square(side, king_sq);
-                for sq in 0..64 {
-                    for pc in Piece::iter_nonking_pieces() {
-                        let idx = acc.index_halfka(king_sq.into(), pc, side, sq);
-                        k += 1;
-                        if xs.contains(&idx) {
-                            eprintln!("k = {:?}", k);
-                            panic!("{:?}, {:?} {:?} at {:?}", king_sq, side, pc, Coord::from(sq));
-                        }
-                        xs.insert(idx);
-                    }
-                }
-            }
-        }
-    }
-
-    eprintln!("k = {:?}", k);
-
-    eprintln!("xs.len() = {:?}", xs.len());
-
-    let (m0,m1) = (xs.iter().min(),xs.iter().max());
-
-    eprintln!("(m0,m1) = {:?}", (m0,m1));
-
-    return;
+    // let acc: Accum<5> = Accum::<5>::new(White);
+    // let mut xs: HashSet<usize> = HashSet::default();
+    // let mut k = 0;
+    // for side in [White,Black] {
+    //     for king_sq_x in 0..4 {
+    //         for king_sq_y in 0..8 {
+    //             let king_sq = Coord(king_sq_x,king_sq_y);
+    //             let king_sq = BitBoard::relative_square(side, king_sq);
+    //             for sq in 0..64 {
+    //                 for pc in Piece::iter_nonking_pieces() {
+    //                     let idx = acc.index_halfka(king_sq.into(), pc, side, sq);
+    //                     k += 1;
+    //                     if xs.contains(&idx) {
+    //                         eprintln!("k = {:?}", k);
+    //                         panic!("{:?}, {:?} {:?} at {:?}", king_sq, side, pc, Coord::from(sq));
+    //                     }
+    //                     xs.insert(idx);
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
+    // eprintln!("k = {:?}", k);
+    // eprintln!("xs.len() = {:?}", xs.len());
+    // let (m0,m1) = (xs.iter().min(),xs.iter().max());
+    // eprintln!("(m0,m1) = {:?}", (m0,m1));
+    // return;
 
     let s0 = nn.run_fresh(&g);
     // let s0 = nn.run_fresh2(&g);
@@ -616,7 +609,7 @@ fn main_nnue() {
     let t0 = Instant::now();
     for k in 0..10 {
         eprintln!("k = {:?}", k);
-        nn.backprop(Some(&g), correct, eta);
+        // nn.backprop(Some(&g), correct, eta);
         // nn.backprop2(correct, eta);
         // break;
     }
