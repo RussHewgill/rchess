@@ -63,7 +63,7 @@ pub static CENTERDIST: [u8; 64] = [
     3, 3, 3, 3, 3, 3, 3, 3
 ];
 
-pub static MASK_FILES: [BitBoard; 8] = [
+pub const MASK_FILES: [BitBoard; 8] = [
     BitBoard(0x0101010101010101),
     BitBoard(0x0202020202020202),
     BitBoard(0x0404040404040404),
@@ -74,7 +74,7 @@ pub static MASK_FILES: [BitBoard; 8] = [
     BitBoard(0x8080808080808080),
 ];
 
-pub static MASK_RANKS: [BitBoard; 8] = [
+pub const MASK_RANKS: [BitBoard; 8] = [
     BitBoard(0x00000000000000ff),
     BitBoard(0x000000000000ff00),
     BitBoard(0x0000000000ff0000),
@@ -84,6 +84,14 @@ pub static MASK_RANKS: [BitBoard; 8] = [
     BitBoard(0x00ff000000000000),
     BitBoard(0xff00000000000000),
 ];
+
+pub const WHITE_SQUARES: BitBoard = BitBoard(0x55AA55AA55AA55AA);
+pub const BLACK_SQUARES: BitBoard = BitBoard(0xAA55AA55AA55AA55);
+
+lazy_static! {
+    pub static ref FLANK_LEFT: BitBoard  = MASK_FILES[0] | MASK_FILES[1] | MASK_FILES[2] | MASK_FILES[3];
+    pub static ref FLANK_RIGHT: BitBoard = MASK_FILES[4] | MASK_FILES[5] | MASK_FILES[6] | MASK_FILES[7];
+}
 
 fn def_line_bb()    -> [[BitBoard; 64]; 64] {
     let bishops = Tables::gen_bishops();

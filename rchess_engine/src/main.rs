@@ -515,9 +515,9 @@ fn main_nnue() {
 
     let dist0 = Uniform::new(0i16,2);
 
-    // let mut inputs = nd::Array2::<i16>::random_using((3,1), dist0, &mut rng);
-    let mut inputs = nd::array![[1],[0]];
-    let ws         = Array2::<i16>::random_using((2,2), dist, &mut rng);
+    // // let mut inputs = nd::Array2::<i16>::random_using((3,1), dist0, &mut rng);
+    // let mut inputs = nd::array![[1],[0]];
+    // let ws         = Array2::<i16>::random_using((2,2), dist, &mut rng);
 
     // let pc          = Pawn;
     // let king_sq: u8 = Coord::from("A1").into();
@@ -533,6 +533,17 @@ fn main_nnue() {
     // let fen     = "rnbqkb1r/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     let fen = "4k3/3pp3/8/8/8/8/3PP3/4K3 w - - 0 1";
     let correct = 10;
+
+    // let k = BitBoard::relative_rank(Black, c0);
+    // let k = BitBoard::_index_square(1, 0);
+
+    // let c0: Coord = k.into();
+
+    // let k0: Coord = k.into();
+    // eprintln!("k0 = {:?}", k0);
+    // let k1 = k ^ 0x7;
+    // let k1: Coord = k1.into();
+    // eprintln!("k1 = {:?}", k1);
 
     let dnn = DNetwork::<f32,512,1>::_new_rng(vec![512,32,32,1], (-1.,1.), &mut rng);
 
@@ -569,7 +580,6 @@ fn main_nnue() {
     // // let s0 = nn.run_fresh2(&g);
     // eprintln!("s0 = {:.3}", s0);
     // return;
-
 
     // let x0 = NNUE::cost_fn(10, 5);
     // eprintln!("x0 = {:?}", x0);

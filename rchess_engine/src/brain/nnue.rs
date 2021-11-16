@@ -194,7 +194,7 @@ impl NNUE {
     // pub fn _run_partial(&self) -> i32 {
     pub fn _run_partial(&self)
                         -> (i32,(Array2<i8>,Array2<i8>,Array2<i8>),(Array2<i8>,Array2<i32>,Array2<i32>)) {
-        println!("_run_partial");
+        // println!("_run_partial");
 
         let mut z1: Array2<i8> = nd::concatenate![
             nd::Axis(0), self.activations_own.clone(), self.activations_other.clone()
@@ -465,6 +465,29 @@ impl NNUE {
 
 }
 
+/// HalfKA
+impl NNUE {
+
+    fn sq64_to_sq32(sq: u8) -> usize {
+        const MIRROR: [u8; 8] = [ 3, 2, 1, 0, 0, 1, 2, 3 ];
+        ((sq as usize >> 1) & !0x3) + MIRROR[(sq & 0x7) as usize] as usize
+    }
+
+    pub fn index_halfka(&self, king_sq: u8, pc: Piece, side: Color, sq: u8) -> usize {
+        let rel_k  = BitBoard::relative_square(side, king_sq);
+        let rel_sq = BitBoard::relative_square(side, sq);
+
+        let mksq = if FLANK_LEFT.is_one_at(rel_k.into()) {
+            rel_k ^ 0x7 } else { rel_k };
+        let mpsq = if FLANK_LEFT.is_one_at(rel_k.into()) {
+            rel_sq ^ 0x7 } else { rel_sq };
+        let cc = if self.side == side { 1 } else { 0 };
+
+        640 * Self::sq64_to_sq32(mksq) + (64 * (5 * cc + pc.index())) + mpsq as usize
+    }
+
+}
+
 /// Init, Indexing
 impl NNUE {
 
@@ -597,27 +620,22 @@ impl NNUE {
         vec![]
     }
 
-    pub fn _index<T: Into<Coord>>(king_sq: T, pc: Piece, c0: T, friendly: bool) -> usize {
-        let king_sq: Coord = king_sq.into();
-        let c0: Coord = c0.into();
-        Self::index(king_sq.into(), pc, c0.into(), friendly)
-    }
+    // pub fn index2(king_sq_own: u8, king_sq_other: u8, pc: Piece, c0: u8) -> (usize,usize) {
+    //     let i0 = Self::index(king_sq_own, pc, c0, true);
+    //     let i1 = Self::index(king_sq_other, pc, c0, false);
+    //     (i0,i1)
+    // }
 
-    pub fn index2(king_sq_own: u8, king_sq_other: u8, pc: Piece, c0: u8) -> (usize,usize) {
-        let i0 = Self::index(king_sq_own, pc, c0, true);
-        let i1 = Self::index(king_sq_other, pc, c0, false);
-        (i0,i1)
-    }
-
-    pub fn rev_index(idx0: usize) -> Option<(Coord, Piece, Coord, bool)> {
-        for f in [true,false] {
+    pub fn rev_index(&self, idx0: usize) -> Option<(Coord, Piece, Coord, Color)> {
+        for side in [White,Black] {
             for king_sq in 0..64u8 {
                 for c0 in 0..63u8 {
                     for pc in Piece::iter_nonking_pieces() {
-                        let idx = NNUE::index(king_sq, pc, c0, f);
+                        // let idx = NNUE::index(king_sq, pc, c0, f);
+                        let idx = self.index_halfka(king_sq, pc, side, c0);
                         if idx == idx0 {
                             // eprintln!("wot = {:?}, {:?}, {:?}", Coord::from(king_sq), pc, Coord::from(c0));
-                            return Some((Coord::from(king_sq), pc, Coord::from(c0), f));
+                            return Some((Coord::from(king_sq), pc, Coord::from(c0), side));
                         }
                     }
                 }
@@ -628,7 +646,7 @@ impl NNUE {
 
     /// https://github.com/glinscott/nnue-pytorch/blob/master/docs/nnue.md
     /// https://github.com/AndyGrant/EtherealDev/blob/openbench_nnue/src/nnue/accumulator.c
-    pub fn index(king_sq: u8, pc: Piece, c0: u8, friendly: bool) -> usize {
+    fn _index(king_sq: u8, pc: Piece, c0: u8, friendly: bool) -> usize {
         assert_ne!(pc, King);
         let f = if friendly { 1 } else { 0 };
 

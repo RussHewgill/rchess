@@ -363,6 +363,20 @@ impl BitBoard {
 /// Indexing
 impl BitBoard {
 
+    // pub fn rank<T: Into<Coord>>(sq: T) -> u8 {
+    // }
+
+    pub fn relative_rank<T: Into<u8>>(side: Color, sq: T) -> u8 {
+        match side {
+            White => Self::index_rank(sq.into()),
+            Black => 7 - Self::index_rank(sq.into()),
+        }
+    }
+
+    pub fn relative_square<T: Into<u8> + Copy>(side: Color, sq: T) -> u8 {
+        Self::_index_square(Self::relative_rank(side, sq), Self::index_file(sq.into()))
+    }
+
     pub fn index_square(c: Coord) -> u8 {
         // Little Endian Rank File Mapping
         // Least Significant File Mapping
@@ -370,16 +384,20 @@ impl BitBoard {
         p
     }
 
-    pub fn index_bit<T: Into<u64> + Copy>(s: T) -> Coord {
+    pub fn _index_square(rank: u8, file: u8) -> u8 {
+        rank * 8 + file
+    }
+
+    pub fn index_bit<T: Into<u8> + Copy>(s: T) -> Coord {
         Coord(Self::index_file(s.into()) as u8,Self::index_rank(s.into()) as u8)
         // Coord
     }
 
-    pub fn index_rank(s: u64) -> u64 {
+    pub fn index_rank(s: u8) -> u8 {
         s >> 3
     }
 
-    pub fn index_file(s: u64) -> u64 {
+    pub fn index_file(s: u8) -> u8 {
         s & 7
     }
 

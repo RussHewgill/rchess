@@ -704,9 +704,16 @@ impl Game {
 impl Game {
 
     // pub fn iter_all_pieces(&self, side: Color) -> impl Iterator<Item = Piece> {
-    //     let mut out = vec![];
-    //     for pc in 
-    // }
+    pub fn iter_all_pieces(&self, side: Color) -> Vec<(Piece,Coord)> {
+        let mut out = vec![];
+        for pc in Piece::iter_pieces() {
+            self.get(pc, side).into_iter().for_each(|sq| {
+                let c0: Coord = sq.into();
+                out.push((pc,c0));
+            });
+        }
+        out
+    }
 
     pub fn in_check(&self) -> bool {
         self.state.checkers.is_not_empty()
