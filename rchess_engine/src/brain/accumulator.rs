@@ -1,6 +1,7 @@
 
 use crate::types::*;
 use crate::tables::*;
+use crate::brain::types::nnue::{NNUE_INPUT,NNUE_L2,NNUE_L3,NNUE_OUTPUT};
 
 use arrayvec::ArrayVec;
 use itertools::Itertools;
@@ -28,9 +29,9 @@ pub struct Accum<const MAXPLY: usize> {
     pub deltas:       ArrayVec<AccDelta, MAXPLY>,
 
     #[serde(with = "BigArray")]
-    pub values_own:   [i16; 192],
+    pub values_own:   [i16; NNUE_L2],
     #[serde(with = "BigArray")]
-    pub values_other: [i16; 192],
+    pub values_other: [i16; NNUE_L2],
 
     // pub inputs_own:   
 
@@ -44,8 +45,8 @@ impl<const MAXPLY: usize> Accum<MAXPLY> {
             accurate:     true,
             changes:      0,
             deltas:       ArrayVec::default(),
-            values_own:   [0; 192],
-            values_other: [0; 192],
+            values_own:   [0; NNUE_L2],
+            values_other: [0; NNUE_L2],
         }
     }
 
@@ -71,8 +72,8 @@ impl<const MAXPLY: usize> Accum<MAXPLY> {
 
     pub fn init_inputs(&mut self, g: &Game) {
 
-        self.values_own   = [0; 192];
-        self.values_other = [0; 192];
+        self.values_own   = [0; NNUE_L2];
+        self.values_other = [0; NNUE_L2];
         self.accurate     = true;
 
         let c_own   = g.get_color(self.side);
@@ -84,11 +85,6 @@ impl<const MAXPLY: usize> Accum<MAXPLY> {
         let king_sq_own   = g.get(King, self.side).bitscan();
         let king_sq_other = g.get(King, !self.side).bitscan();
 
-        // pcs.into_iter().for_each(|sq| {
-        //     // let idx0 = Self::index(king_sq_own, pc, c0, friendly)
-        // });
-
-        // const COLORS: [Color; 2] = [White,Black];
         const PCS: [Piece; 5] = [Pawn,Knight,Bishop,Rook,Queen];
 
         for pc in PCS {
@@ -97,9 +93,11 @@ impl<const MAXPLY: usize> Accum<MAXPLY> {
                        Coord::from(king_sq_own), pc, Coord::from(sq));
                 // self.update_insert_piece(king_sq_own, king_sq_other, pc, sq, false);
 
-                let idx = Self::index(king_sq_own, pc, sq, true);
+                // let idx = self.index_halfka(king_sq_own, pc, self.side, sq);
+                let idx0 = Self::index_halfkp(king_sq_own, pc, sq, true);
+                let idx1 = Self::index_halfkp(king_sq_other, pc, sq, false);
 
-                // let inputs = 
+                // self.values_own[]
 
             });
             g.get(pc, !self.side).into_iter().for_each(|sq| {
@@ -107,7 +105,12 @@ impl<const MAXPLY: usize> Accum<MAXPLY> {
                        Coord::from(king_sq_other), pc, Coord::from(sq));
                 // self.update_insert_piece(king_sq_other, king_sq_own, pc, sq, false);
 
-                let idx = Self::index(king_sq_own, pc, sq, false);
+                // let idx = self.index_halfka(king_sq_own, pc, !self.side, sq);
+
+                let idx0 = Self::index_halfkp(king_sq_own, pc, sq, false);
+                let idx1 = Self::index_halfkp(king_sq_other, pc, sq, true);
+
+
             });
         }
 
@@ -117,43 +120,47 @@ impl<const MAXPLY: usize> Accum<MAXPLY> {
 
 impl<const MAXPLY: usize> Accum<MAXPLY> {
 
-    pub fn sq64_to_sq32(sq: u8) -> u8 {
+    pub fn sq64_to_sq32(sq: u8) -> usize {
         const MIRROR: [u8; 8] = [ 3, 2, 1, 0, 0, 1, 2, 3 ];
-        ((sq >> 1) & !0x3) + MIRROR[(sq & 0x7) as usize]
+        ((sq as usize >> 1) & !0x3) + MIRROR[(sq & 0x7) as usize] as usize
     }
 
-    // pub fn index_delta(king_sq: u8, pc: Piece, sq: u8, side: Color) -> usize {
-    //     let rel_k  = BitBoard::relative_square(side, king_sq);
-    //     let rel_sq = BitBoard::relative_square(side, sq);
-    //     let mksq = if FLANK_LEFT.is_one_at(rel_k.into()) {
-    //         rel_k ^ 0x7 } else { rel_k };
-    //     let mpsq = if FLANK_LEFT.is_one_at(rel_k.into()) {
-    //         rel_sq ^ 0x7 } else { rel_sq };
-    //     // 640 * sq64_to_sq32(mksq) + (64 * (5 * (colour == pcolour) + ptype)) + mpsq
-    //     unimplemented!()
-    // }
+    /// Mirrored so king is always on (a..d) or (e..h) ??
+    pub fn index_halfka(&self, king_sq: u8, pc: Piece, side: Color, sq: u8) -> usize {
+        let rel_k  = BitBoard::relative_square(side, king_sq);
+        let rel_sq = BitBoard::relative_square(side, sq);
 
-    fn index_en_passant(c0: Coord) -> Option<usize> {
+        let mksq = if FLANK_LEFT.is_one_at(rel_k.into()) {
+            rel_k ^ 0x7 } else { rel_k };
+        let mpsq = if FLANK_LEFT.is_one_at(rel_k.into()) {
+            rel_sq ^ 0x7 } else { rel_sq };
+
+        let cc = if self.side == side { 1 } else { 0 };
+
+        640 * Self::sq64_to_sq32(mksq) + (64 * (5 * cc + pc.index())) + mpsq as usize
+    }
+
+    fn index_en_passant_halfkp(c0: Coord) -> Option<usize> {
         const K: usize = 63 * 64 * 10;
         if c0.1 == 0 || c0.1 == 1 || c0.1 == 6 || c0.1 == 7 {
             return None;
         }
         let c0 = BitBoard::index_square(c0) as usize - 16;
-        Some(K + c0)
+        // Some(K + c0)
+        unimplemented!()
     }
 
     /// https://github.com/glinscott/nnue-pytorch/blob/master/docs/nnue.md
     /// https://github.com/AndyGrant/EtherealDev/blob/openbench_nnue/src/nnue/accumulator.c
-    pub fn index(king_sq: u8, pc: Piece, c0: u8, friendly: bool) -> usize {
+    pub fn index_halfkp(king_sq: u8, pc: Piece, c0: u8, friendly: bool) -> usize {
         assert_ne!(pc, King);
         let f = if friendly { 1 } else { 0 };
-
         let pi = pc.index() * 2 + f;
+
         c0 as usize + (pi + king_sq as usize * 10) * 63
 
         // (640 * king_sq as usize)
         //     + (63 * (5 * f + pc.index())) + c0 as usize
-
     }
 
 }

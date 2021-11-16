@@ -506,14 +506,14 @@ fn main_nnue() {
     // let fen = "4k3/4p3/8/8/8/8/4P3/3QK3 w - - 0 1";
 
     // let dist = Uniform::new(i16::MIN,i16::MAX);
-    let dist = Uniform::new(-10,10);
+    // let dist = Uniform::new(-10,10);
 
     // let inputs_own       = nd::Array2::<i16>::random((NNUE_INPUT, 1), dist);
     // let inputs_other     = nd::Array2::<i16>::random((NNUE_INPUT, 1), dist);
     // let weights_in_own   = nd::Array2::<i16>::random((NNUE_L2,NNUE_INPUT), dist);
     // let weights_in_other = nd::Array2::<i16>::random((NNUE_L2,NNUE_INPUT), dist);
 
-    let dist0 = Uniform::new(0i16,2);
+    // let dist0 = Uniform::new(0i16,2);
 
     // // let mut inputs = nd::Array2::<i16>::random_using((3,1), dist0, &mut rng);
     // let mut inputs = nd::array![[1],[0]];
@@ -534,17 +534,6 @@ fn main_nnue() {
     let fen = "4k3/3pp3/8/8/8/8/3PP3/4K3 w - - 0 1";
     let correct = 10;
 
-    // let k = BitBoard::relative_rank(Black, c0);
-    // let k = BitBoard::_index_square(1, 0);
-
-    // let c0: Coord = k.into();
-
-    // let k0: Coord = k.into();
-    // eprintln!("k0 = {:?}", k0);
-    // let k1 = k ^ 0x7;
-    // let k1: Coord = k1.into();
-    // eprintln!("k1 = {:?}", k1);
-
     let dnn = DNetwork::<f32,512,1>::_new_rng(vec![512,32,32,1], (-1.,1.), &mut rng);
 
     let ts = Tables::read_from_file_def().unwrap();
@@ -560,6 +549,44 @@ fn main_nnue() {
     // dnn.backprop_mut_matrix(&ins, 0.1);
     // // eprintln!("dnn.weights.len() = {:?}", dnn.weights.len());
     // return;
+
+
+    use rchess_engine_lib::brain::accumulator::*;
+
+    let acc: Accum<5> = Accum::<5>::new(White);
+
+    let mut xs: HashSet<usize> = HashSet::default();
+
+    let mut k = 0;
+    for side in [White,Black] {
+        for king_sq_x in 0..4 {
+            for king_sq_y in 0..8 {
+                let king_sq = Coord(king_sq_x,king_sq_y);
+                let king_sq = BitBoard::relative_square(side, king_sq);
+                for sq in 0..64 {
+                    for pc in Piece::iter_nonking_pieces() {
+                        let idx = acc.index_halfka(king_sq.into(), pc, side, sq);
+                        k += 1;
+                        if xs.contains(&idx) {
+                            eprintln!("k = {:?}", k);
+                            panic!("{:?}, {:?} {:?} at {:?}", king_sq, side, pc, Coord::from(sq));
+                        }
+                        xs.insert(idx);
+                    }
+                }
+            }
+        }
+    }
+
+    eprintln!("k = {:?}", k);
+
+    eprintln!("xs.len() = {:?}", xs.len());
+
+    let (m0,m1) = (xs.iter().min(),xs.iter().max());
+
+    eprintln!("(m0,m1) = {:?}", (m0,m1));
+
+    return;
 
     let s0 = nn.run_fresh(&g);
     // let s0 = nn.run_fresh2(&g);

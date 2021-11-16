@@ -25,6 +25,136 @@ pub mod nnue {
     use crate::evaluate::*;
     use crate::brain::types::*;
     use crate::brain::matrix::*;
+    use crate::brain::accumulator::*;
+
+    use nalgebra::{SMatrix,SVector,Matrix,Vector,DVector,DMatrix,Dynamic,Const};
+    use nalgebra as na;
+
+    use ndarray as nd;
+    use nd::{Array1,Array2};
+
+    use rand::{Rng,SeedableRng};
+    use rand::prelude::{StdRng,Distribution};
+    use rand::distributions::Uniform;
+
+    use serde::{Serialize,Deserialize};
+
+    // pub const NNUE_INPUT: usize  = 64 * 63 * 10; // 40320
+    pub const NNUE_INPUT: usize  = 64 * 63 * 10 + 32 + 4; // 40320 + EP + Castling = 40356
+    pub const NNUE_L2: usize     = 256;
+    pub const NNUE_L3: usize     = 32;
+    pub const NNUE_OUTPUT: usize = 32;
+
+    #[derive(Debug,Clone,PartialEq,Serialize,Deserialize)]
+    pub struct NNUE {
+
+        pub side:               Color,
+
+        pub en_passant:         Option<Coord>,
+
+        pub accum:              Accum<10>,
+
+        pub weights_1_own:      Array2<i8>, // 256 x 40356
+        pub weights_1_other:    Array2<i8>, // 256 x 40356
+        pub weights_2:          Array2<i8>, // 32 x 512
+        pub weights_3:          Array2<i8>, // 32 x 32
+        pub weights_4:          Array2<i8>, // 1 x 32
+
+        pub biases_1_own:       Array2<i8>, // 256
+        pub biases_1_other:     Array2<i8>, // 256
+        pub biases_2:           Array2<i32>, // 32
+        pub biases_3:           Array2<i32>, // 32
+        pub biases_4:           Array2<i32>, // 1 ??
+    }
+
+    impl NNUE {
+        pub fn write_to_file(&self, path: &str, backup: Option<&str>) -> std::io::Result<()> {
+            use std::io::Write;
+            let b: Vec<u8> = bincode::serialize(&self).unwrap();
+            if let Some(backup) = backup {
+                std::fs::rename(path, backup)?;
+            }
+            let mut f = std::fs::File::create(&path)?;
+            f.write_all(&b)
+        }
+
+        pub fn read_from_file(path: &str) -> std::io::Result<Self> {
+            let f = std::fs::read(&path)?;
+            let nn: Self = bincode::deserialize(&f).unwrap();
+            Ok(nn)
+        }
+    }
+
+    impl NNUE {
+        pub fn new(side: Color, mut rng: &mut StdRng) -> Self {
+
+            // let dist0 = Uniform::new(i16::MIN,i16::MAX);
+            let dist0 = Uniform::new(i8::MIN as i16,i8::MAX as i16);
+            let dist1 = Uniform::new(i8::MIN,i8::MAX);
+            let dist2 = Uniform::new(i8::MIN as i32,i8::MAX as i32);
+
+            // let inputs_own        = Array2::zeros((NNUE_INPUT, 1));
+            // let inputs_other      = Array2::zeros((NNUE_INPUT, 1));
+            // let activations_own   = Array2::zeros((NNUE_L2, 1));
+            // let activations_other = Array2::zeros((NNUE_L2, 1));
+
+            // let weights_in_other = Array2::<i16>::random_using((NNUE_L2,NNUE_INPUT), dist0, &mut rng);
+
+            // let weights_1 = Array2::random_using((NNUE_L2,NNUE_INPUT), dist0, &mut rng);
+
+            let weights_1_own   = Array2::random_using((NNUE_L2,NNUE_INPUT), dist1, &mut rng);
+            let weights_1_other = Array2::random_using((NNUE_L2,NNUE_INPUT), dist1, &mut rng);
+
+            let weights_2 = Array2::random_using((NNUE_L3,NNUE_L2 * 2), dist1, &mut rng);
+            let weights_3 = Array2::random_using((NNUE_OUTPUT,NNUE_L3), dist1, &mut rng);
+            let weights_4 = Array2::random_using((1,NNUE_OUTPUT), dist1, &mut rng);
+
+            // let biases_1 = Array2::random_using((NNUE_L2 * 2,1), dist1, &mut rng);
+
+            let biases_1_own = Array2::random_using((NNUE_L2,1), dist1, &mut rng);
+            let biases_1_other = Array2::random_using((NNUE_L2,1), dist1, &mut rng);
+
+            let biases_2 = Array2::random_using((NNUE_L3,1), dist2, &mut rng);
+            let biases_3 = Array2::random_using((NNUE_OUTPUT,1), dist2, &mut rng);
+            let biases_4 = Array2::random_using((1,1), dist2, &mut rng);
+
+            Self {
+                side,
+
+                en_passant: None,
+
+                accum: Accum::<10>::new(side),
+
+                weights_1_own,
+                weights_1_other,
+                weights_2,
+                weights_3,
+                weights_4,
+
+                biases_1_own,
+                biases_1_other,
+                biases_2,
+                biases_3,
+                biases_4,
+            }
+        }
+    }
+
+        fn gen_vec<T>(n: usize, dist: Uniform<T>, mut rng: &mut StdRng) -> Vec<T>
+        where T: rand::distributions::uniform::SampleUniform,
+        {
+            (0..n).map(|_| dist.sample(&mut rng)).collect()
+        }
+
+}
+
+pub mod nnue2 {
+
+    use crate::tables::*;
+    use crate::types::*;
+    use crate::evaluate::*;
+    use crate::brain::types::*;
+    use crate::brain::matrix::*;
 
     use nalgebra::{SMatrix,SVector,Matrix,Vector,DVector,DMatrix,Dynamic,Const};
     use nalgebra as na;
