@@ -9,23 +9,27 @@ use ndarray as nd;
 use nd::{Array2};
 use ndarray::linalg::Dot;
 
+
 pub fn generate_training_data(ts: &Tables) -> () {
     unimplemented!()
+}
+
+impl NNUE {
+    pub fn train(&mut self) {
+    }
+    pub fn train_single(&mut self, g: &Game) {
+    }
 }
 
 /// Backprop
 impl NNUE {
 
     #[allow(unused_doc_comments)]
-    pub fn backprop(&mut self, g: &Game, correct: i32, eta: i8) -> i32 {
+    pub fn backprop(&mut self, g: Option<&Game>, correct: i32, eta: i8) -> i32 {
 
-        // let mut ins_own   = Array2::zeros((NNUE_INPUT,1));
-        // let mut ins_other = Array2::zeros((NNUE_INPUT,1));
-        // let mut ins_own = sprs::CsMat::empty(sprs::CSC, NNUE_INPUT);
-        // let mut ins_other = sprs::CsMat::empty(sprs::CSC, NNUE_INPUT);
-
-        // let xs = Some((ins_own.view_mut(),ins_other.view_mut()));
-        self.init_inputs(g);
+        if let Some(g) = g {
+            self.init_inputs(g);
+        }
 
         let (pred, ((act1,act2,act3),(z1,z2,z3,z_out))) = self._run_partial();
 
@@ -62,36 +66,33 @@ impl NNUE {
         let sp1_other = sp1_other.map(|x| (*x).clamp(-127, 127) as i8);       // 256,1
 
         let d1 = self.weights_2.t().dot(&d2); // 512,1
-        let d1_own: nd::ArrayView2<i8> = d1.slice(nd::s![..256, ..]); // 256, 1
-        let d1_own = &d1_own * &sp1_own;
+        let d1_own0: nd::ArrayView2<i8> = d1.slice(nd::s![..256, ..]); // 256, 1
+        let d1_own0 = &d1_own0 * &sp1_own;
 
-        let d1_other: nd::ArrayView2<i8> = d1.slice(nd::s![256.., ..]); // 256, 1
-        let d1_other = &d1_other * &sp1_other;
+        let d1_other0: nd::ArrayView2<i8> = d1.slice(nd::s![256.., ..]); // 256, 1
+        let d1_other0 = &d1_other0 * &sp1_other;
 
-        let d1_own  = sprs::CsMat::csc_from_dense(d1_own.view(), 0);
-        let d1_other = sprs::CsMat::csc_from_dense(d1_other.view(), 0);
+        let d1_own  = sprs::CsMat::csc_from_dense(d1_own0.view(), 0);
+        let d1_other = sprs::CsMat::csc_from_dense(d1_other0.view(), 0);
 
         let ws1_own = &d1_own * &self.inputs_own.transpose_view();
-        // println!("wat 5 in {:.3} seconds", t0.elapsed().as_secs_f64());
-
         let ws1_other = &d1_other * &self.inputs_other.transpose_view();
-        // println!("wat 6 in {:.3} seconds", t0.elapsed().as_secs_f64());
 
-        // eprintln!("self.weights_1.shape() = {:?}", self.weights_1.shape());
-        // eprintln!("ws1_own.shape() = {:?}", ws1_own.shape());
-        // eprintln!("ws1_other.shape() = {:?}", ws1_other.shape());
+        self.biases_1_own   -= &d1_own0.map(|x| *x as i16);
+        self.biases_1_other -= &d1_other0.map(|x| *x as i16);
 
         // self.weights_1_own   -= &(ws1_own / eta);
         // self.weights_1_other -= &(ws1_other / eta);
 
         // println!("wat 0 in {:.3} seconds", t0.elapsed().as_secs_f64());
         // let t0 = std::time::Instant::now();
+        // println!("wat 0 in {:.3} seconds", t0.elapsed().as_secs_f64());
+
         for (c,cv) in ws1_own.outer_iterator().enumerate() {
             for (r,rv) in cv.iter() {
                 self.weights_1_own[(r,c)] -= rv / eta;
             }
         }
-        // println!("wat 0 in {:.3} seconds", t0.elapsed().as_secs_f64());
         for (c,cv) in ws1_other.outer_iterator().enumerate() {
             for (r,rv) in cv.iter() {
                 self.weights_1_other[(r,c)] -= rv / eta;
@@ -109,20 +110,9 @@ impl NNUE {
         pred
     }
 
-
-
 }
 
 
-
-impl NNUE {
-    pub fn train(&mut self) {
-    }
-
-    pub fn train_single(&mut self, g: &Game) {
-    }
-
-}
 
 
 

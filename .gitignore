@@ -19,3 +19,4 @@ mnist/*
 test*.py
 *.png
 tables/*
+training_data/*

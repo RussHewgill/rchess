@@ -82,7 +82,9 @@ pub mod nnue {
         pub weights_3:          Array2<i8>, // 32 x 32
         pub weights_4:          Array2<i8>, // 1 x 32
 
-        pub biases_1:           Array2<i16>, // 256
+        pub biases_1_own:       Array2<i16>, // 256
+        pub biases_1_other:     Array2<i16>, // 256
+
         pub biases_2:           Array2<i32>, // 32
         pub biases_3:           Array2<i32>, // 32
         pub biases_4:           Array2<i32>, // 1 ??
@@ -142,10 +144,10 @@ pub mod nnue {
 
             // let biases_1 = Array2::random_using((NNUE_L2 * 2,1), dist1, &mut rng);
 
-            // let biases_1_own = Array2::random_using((NNUE_L2,1), dist1, &mut rng);
-            // let biases_1_other = Array2::random_using((NNUE_L2,1), dist1, &mut rng);
+            let biases_1_own = Array2::random_using((NNUE_L2,1), dist0, &mut rng);
+            let biases_1_other = Array2::random_using((NNUE_L2,1), dist0, &mut rng);
 
-            let biases_1 = Array2::random_using((NNUE_L2,1), dist0, &mut rng);
+            // let biases_1 = Array2::random_using((NNUE_L2,1), dist0, &mut rng);
             let biases_2 = Array2::random_using((NNUE_L3,1), dist2, &mut rng);
             let biases_3 = Array2::random_using((NNUE_OUTPUT,1), dist2, &mut rng);
             let biases_4 = Array2::random_using((1,1), dist2, &mut rng);
@@ -169,9 +171,9 @@ pub mod nnue {
                 weights_3,
                 weights_4,
 
-                // biases_1_own,
-                // biases_1_other,
-                biases_1,
+                biases_1_own,
+                biases_1_other,
+                // biases_1,
                 biases_2,
                 biases_3,
                 biases_4,

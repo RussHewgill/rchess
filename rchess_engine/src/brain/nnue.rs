@@ -253,8 +253,8 @@ impl NNUE {
 
         // self.activations_own.fill(0);
         // self.activations_other.fill(0);
-        self.activations_own   = self.biases_1.clone();
-        self.activations_other = self.biases_1.clone();
+        self.activations_own   = self.biases_1_own.clone();
+        self.activations_other = self.biases_1_other.clone();
 
         let king_sq_own   = g.get(King, self.side).bitscan();
         let king_sq_other = g.get(King, !self.side).bitscan();
@@ -288,11 +288,6 @@ impl NNUE {
 
                 self.increment_act_own(idx0, true);
                 self.increment_act_other(idx1, true);
-
-                // if ix {
-                //     is0.push(idx0);
-                //     is1.push(idx1);
-                // }
 
                 self.inputs_own.insert(idx0,0, 1);
                 self.inputs_other.insert(idx1,0, 1);

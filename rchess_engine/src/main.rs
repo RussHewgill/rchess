@@ -53,9 +53,9 @@ const STARTPOS: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
 
 #[allow(unreachable_code)]
 fn main() {
-    // main_nnue();
+    main_nnue();
     // main_nn();
-    main_mnist();
+    // main_mnist();
 }
 
 #[allow(unreachable_code)]
@@ -587,7 +587,7 @@ fn main_nnue() {
 
         if k % 50 == 0 {
             let delta = pred - correct;
-            eprintln!("delta {:>5} = {:?}", k, delta);
+            eprintln!("{:>8}, delta {:>8} = {:?}", pred, k, delta);
         }
         // nn.run_partial();
     }
