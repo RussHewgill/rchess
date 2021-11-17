@@ -240,8 +240,6 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
 
     pub fn fill_input_matrix(
         size:  usize,
-        // ins:   &Vec<(&DVector<f32>,DVector<f32>)>,
-        // ins:   &[(&DVector<f32>,DVector<f32>)],
         ins:   &[(DVector<f32>,DVector<f32>)],
     ) -> (DMatrix<f32>,DMatrix<f32>) {
         let mut inputs = DMatrix::zeros(IS,size);
@@ -256,8 +254,6 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
     #[allow(unused_doc_comments)]
     pub fn backprop_mut_matrix(
         &mut self,
-        // ins:            &Vec<(&DVector<f32>,DVector<f32>)>,
-        // ins:            &[(&DVector<f32>,DVector<f32>)],
         ins:            &[(DVector<f32>,DVector<f32>)],
         lr:             f32,
     ) {
@@ -339,13 +335,21 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
             let act = &acts[layer - 1];
             let w = &d * act.transpose();
 
-            // eprintln!("d.shape() {} = {:?}", k, d.shape());
+            // eprintln!("k {} = layer {:?}", k, layer);
+            // eprintln!("zs[layer-1].shape()         = {:?}", zs[layer-1].shape());
+            // eprintln!("acts[layer-1].shape()       = {:?}", acts[layer-1].shape());
+            // eprintln!("self.weights[layer].shape() = {:?}", self.weights[layer].shape());
             // eprintln!("w.shape() {} = {:?}", k, w.shape());
+            // eprintln!("d.shape() {} = {:?}", k, d.shape());
+            // eprintln!();
 
             new_ws.push(w);
             new_bs.push(d);
 
         }
+
+        eprintln!("self.weights.len() = {:?}", self.weights.len());
+        eprintln!("new_ws.len()       = {:?}", new_ws.len());
 
         for (mut ws, nw) in self.weights.iter_mut().zip(new_ws.into_iter().rev()) {
             *ws -= lr * nw;
@@ -360,14 +364,14 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
     }
 
     fn act_fn(x: f32) -> f32 {
-        x.tanh()
-        // sigmoid(x)
+        // x.tanh()
+        sigmoid(x)
         // Self::relu(x)
     }
 
     fn act_fn_d(x: f32) -> f32 {
-        1.0 - x.tanh().powi(2)
-        // sigmoid_deriv(x)
+        // 1.0 - x.tanh().powi(2)
+        sigmoid_deriv(x)
         // Self::relu_d(x)
     }
 

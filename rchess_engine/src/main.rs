@@ -53,6 +53,13 @@ const STARTPOS: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
 
 #[allow(unreachable_code)]
 fn main() {
+    main_nnue();
+    // main_nn();
+    // main_mnist();
+}
+
+#[allow(unreachable_code)]
+fn _main() {
 
     // let logpath = "./log.log";
     // use std::fs::OpenOptions;
@@ -151,10 +158,19 @@ fn main() {
     // // eprintln!("s = {:#8x}", s);
     // return;
 
-    // main_nnue();
-    // main_nn();
-    main_mnist();
-    return;
+    // // main_nnue();
+    // // main_nn();
+    // main_mnist();
+    // return;
+
+    // let mut args: Vec<String> = std::env::args().collect();
+    // match args.len() {
+    //     1 => main9(),
+    //     2 => match args[2].as_str() {
+    //         "nn" => main_nn(),
+    //         _    => unimplemented!(),
+    //     }
+    // }
 
     let mut args: Vec<String> = std::env::args().collect();
     match args.get(1) {
@@ -342,6 +358,8 @@ fn main_mnist() {
 
     // test_mnist2(&nn2, &test_data, true);
 
+    let ws0 = nn2.weights[0].clone();
+
     let t0 = Instant::now();
     println!("Starting dyn...");
     for k in 0..EPOCHS {
@@ -365,6 +383,10 @@ fn main_mnist() {
     }
     let t1 = t0.elapsed().as_secs_f64();
     println!("finished {} runs in {:.3} seconds, avg {:.3} s/run", EPOCHS, t1, t1 / EPOCHS as f64);
+
+    let ws1 = nn2.weights[0].clone();
+
+    eprintln!("ws0 == ws1 = {:?}", ws0 == ws1);
 
     test_mnist2(&nn2, &test_data, true);
 
@@ -517,236 +539,53 @@ fn main_nnue() {
     // nn.init_inputs(&g);
     // nn.dirty = false;
 
-    nn.init_inputs(&g);
-
-    let mut nn2 = nn.clone();
-
-    let mv = Move::Quiet { from: "E2".into(), to: "E3".into(), pc: Pawn };
-    let g2 = g.make_move_unchecked(&ts, mv).unwrap();
-
-    let s0 = nn.run_fresh(&g2);
-
-    nn2.update_move(&g2);
-    let s1 = nn2.run_partial();
-
-    eprintln!("s0 = {:?}", s0);
-    eprintln!("s1 = {:?}", s1);
-
-    // nn.init_inputs(&g2);
-    // nn2._update_move(&g2, mv);
-
-    // eprintln!("nn.activations_own == nn2.activations_own = {:?}",
-    //             nn.activations_own == nn2.activations_own);
-    // eprintln!("nn.activations_other == nn2.activations_other = {:?}",
-    //           nn.activations_other == nn2.activations_other);
-
-    // let king_sq_own   = g.get(King, White).bitscan();
-    // let king_sq_other = g.get(King, Black).bitscan();
-
-    // let s = std::mem::size_of::<[[i8; NNUE_INPUT]; 256]>();
-    // eprintln!("s = {:?}", s / 1024 / 1024);
-
-    // let mut dnn = DNetwork::<f32,2,1>::new_range(vec![2,512,32,32,1], (0.0,1.0));
-    // let ins0 = vec![dvector![0.0,0.0]];
-    // let cs0 = vec![dvector![0.0]];
-    // let ins: Vec<(DVector<f32>,DVector<f32>)> = ins0.into_iter().zip(cs0.into_iter()).collect::<Vec<_>>();
-    // dnn.backprop_mut_matrix(&ins, 0.1);
-    // // eprintln!("dnn.weights.len() = {:?}", dnn.weights.len());
-    // return;
+    // let mut nn2 = nn.clone();
+    // let mv = Move::Quiet { from: "E2".into(), to: "E3".into(), pc: Pawn };
+    // let g2 = g.make_move_unchecked(&ts, mv).unwrap();
+    // nn2.update_move(&g2);
+    // let s1 = nn2.run_partial();
+    // eprintln!("s0 = {:?}", s0);
+    // eprintln!("s1 = {:?}", s1);
 
 
-    // println!("starting...");
-    // let t0 = Instant::now();
-    // let mut nn = NNUE::new(White, &mut rng);
-    // println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
-    // return;
+    // nn._init_inputs(&g, xs);
 
-    // let acc: Accum<5> = Accum::<5>::new(White);
-    // let mut xs: HashMap<usize, (u8,Piece,u8,Color)> = HashMap::default();
-    // let mut k = 0;
-    // let mut d = 0;
-    // for side in [White,Black] {
-    //     for king_sq_x in 0..8 {
-    //         for king_sq_y in 0..8 {
-    //             let king_sq = Coord(king_sq_x,king_sq_y);
-    //             let king_sq: u8 = king_sq.into();
-    //             // let king_sq = BitBoard::relative_square(side, king_sq);
-    //             for sq in 0..64u8 {
-    //                 for pc in Piece::iter_pieces() {
-    //                     if pc == King && side == White { continue; }
-    //                     if king_sq == sq { continue; }
-    //                     let idx: usize = acc.index_halfkp(king_sq, pc, side, sq);
-    //                     k += 1;
-    //                     if xs.contains_key(&idx) {
-    //                         eprintln!("k = {:?}", k);
-    //                         let (ks1,pc1,sq1,s1) = xs.get(&idx).unwrap();
-    //                         eprintln!("{:?}, {:?} {:?} at {:?}", Coord::from(*ks1), s1, pc1, Coord::from(*sq1));
-    //                         panic!("{:?}, {:?} {:?} at {:?}", Coord::from(king_sq), side, pc, Coord::from(sq));
-    //                         d += 1;
-    //                     }
-    //                     xs.insert(idx, (king_sq,pc,sq,side));
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-    // eprintln!("k = {:?}", k);
-    // eprintln!("d = {:?}", d);
-    // eprintln!("xs.len() = {:?}", xs.len());
-    // let (m0,m1) = (xs.iter().min_by_key(|x| x.0),xs.iter().max_by_key(|x| x.0));
-    // eprintln!("(m0,m1) = {:?}", (m0,m1));
-    // return;
+    // let k0 = is0.sum();
+    // let k1 = is1.sum();
+    // eprintln!("k0 = {:?}", k0);
+    // eprintln!("k1 = {:?}", k1);
 
     // let s0 = nn.run_fresh(&g);
-    // // let s0 = nn.run_fresh2(&g);
-    // eprintln!("s0 = {:.3}", s0);
-
-    // // let n0 = nn.weights_1_own[(0,0)];
-    // let n0 = nn.weights_3[(0,0)];
-    // eprintln!("n0 = {:?}", n0);
-
-    // // let n1 = nn.weights_1_own[(0,0)];
-    // let n1 = nn.weights_3[(0,0)];
-    // eprintln!("n1 = {:?}", n1);
 
     let eta = 100;
 
-    // nn.backprop(Some(&g), correct, 10);
-    // let s0 = nn.run_fresh(&g);
-    // // let s0 = nn.run_fresh2(&g);
-    // eprintln!("s0 = {:.3}", s0);
-    // return;
+    let correct = 10;
 
-    // let x0 = NNUE::cost_fn(10, 5);
-    // eprintln!("x0 = {:?}", x0);
-    // return;
+    nn.run_fresh(&g);
 
-    // println!("starting...");
-    // let t0 = Instant::now();
-    // for k in 0..10 {
-    //     eprintln!("k = {:?}", k);
-    //     // nn.backprop(Some(&g), correct, eta);
-    //     // nn.backprop2(correct, eta);
-    //     // break;
-    // }
-    // println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+    // let mut ins_own   = Array2::<i8>::zeros((NNUE_INPUT,1));
+    // let mut ins_other = Array2::zeros((NNUE_INPUT,1));
+    // let xs = Some((ins_own.view_mut(),ins_other.view_mut()));
+    // nn._init_inputs(&g, xs);
 
-    // let s1 = nn.run_fresh(&g);
-    // // let s1 = nn.run_fresh2(&g);
+    // let m1 = sprs::CsMat::csr_from_dense(ins_own.view(), 0);
 
-    // // eprintln!("correct = {:?}", correct);
-    // eprintln!("s0 = {:.3}", s0);
-    // eprintln!("s1 = {:.3}", s1);
+    nn.backprop(&g, correct, eta);
+    return;
 
-    // return;
-
-    // nn.run_fresh(&g);
-    // let mut nn2 = nn.clone();
-
-    // // let moves = g.search_all(&ts).get_moves_unsafe();
-    // let mv = Move::Quiet { from: "E2".into(), to: "E3".into(), pc: Pawn };
-    // let g2 = g.make_move_unchecked(&ts, mv).unwrap();
-
-    // nn.run_fresh(&g2);
-    // nn2.update_move(&g2);
-
-    // // assert_eq!(nn.inputs_own, nn2.inputs_own);
-    // println!("inputs eq = {:?}", nn.inputs_own == nn2.inputs_own);
-    // // assert_eq!(nn.activations1_own, nn2.activations1_own);
-    // println!("acts eq = {:?}", nn.activations_own == nn2.activations_own);
-    // return;
-
-    // trace!("wat -2");
-    // let score = nn.run_fresh(&g);
-    // // nn.init_inputs(&g);
-    // trace!("wat -1");
-
-    // let mut nn2 = nn.clone();
-    // let mut g2 = g.clone();
-
-    // let mv = Move::Quiet { from: "E2".into(), to: "E3".into(), pc: Pawn };
-    // let g2 = g.make_move_unchecked(&ts, mv).unwrap();
-    // drop(g);
-
-    // trace!("=== 0");
-    // let s0 = nn.run_fresh(&g2);
-    // trace!("=== 1");
-    // let s1 = nn2.update_move(&g2);
+    // let s0 = nn.run_partial();
     // eprintln!("s0 = {:?}", s0);
-    // eprintln!("s1 = {:?}", s1);
-    // // assert_eq!(nn.inputs_own, nn2.inputs_own);
-    // println!("inputs eq = {:?}", nn.inputs_own == nn2.inputs_own);
-    // // assert_eq!(nn.activations1_own, nn2.activations1_own);
-    // println!("acts eq = {:?}", nn.activations_own == nn2.activations_own);
     // return;
 
-    // let mv = Move::Quiet { from: "E2".into(), to: "E3".into(), pc: Pawn };
-    // let g2 = g.make_move_unchecked(&ts, mv).unwrap();
-    // trace!("wat 0");
-    // let s0 = nn.run_fresh(&g2);
-    // trace!("wat 1");
-    // let s1 = nn2.update_move(&g2);
-    // trace!("wat 2");
-    // let moves = g2.search_all(&ts).get_moves_unsafe();
-    // let mut moves = moves.into_iter().filter(|m| m.piece() != Some(King));
-    // let mv = moves.next().unwrap();
-    // let g3 = g2.make_move_unchecked(&ts, mv).unwrap();
-
-    // trace!("wat 3");
-    // let s0 = nn.run_fresh(&g3);
-    // trace!("wat 4");
-    // let s1 = nn2.update_move(&g3);
-    // trace!("wat 5");
-
-    // let king_sq_own   = g.get(King, White).bitscan();
-    // let king_sq_other = g.get(King, Black).bitscan();
-    // let c0: u8        = Coord::from("E3").into();
-    // let (idx0,idx1) = NNUE::index2(king_sq_own, king_sq_other, Pawn, c0);
-    // eprintln!("idx0, idx1 = {:?}, {:?}", idx0, idx1);
-
-    // for (n,(a,b)) in nn.inputs_own.iter().zip(nn2.inputs_own.iter()).enumerate() {
-    //     if a != b {
-    //         let xs = NNUE::rev_index(n);
-    //         eprintln!("wot own {:>8?} = {:?},{:?}: {:?}", n, a, b, xs);
-    //     }
-    // }
-    // println!();
-    // for (n,(a,b)) in nn.inputs_other.iter().zip(nn2.inputs_other.iter()).enumerate() {
-    //     if a != b {
-    //         let xs = NNUE::rev_index(n);
-    //         eprintln!("wot other {:>8?} = {:?},{:?}: {:?}", n, a, b, xs);
-    //     }
-    // }
-
-    // eprintln!("\ns0 = {:?}", s0);
-    // eprintln!("s1 = {:?}", s1);
-
-    // eprintln!("inputs_own Eq        = {:?}", nn.inputs_own == nn2.inputs_own);
-    // eprintln!("inputs_other Eq      = {:?}", nn.inputs_other == nn2.inputs_other);
-    // eprintln!();
-    // eprintln!("activations_own Eq   = {:?}", nn.activations_own == nn2.activations_own);
-    // eprintln!("activations_other Eq = {:?}", nn.activations_other == nn2.activations_other);
-    // eprintln!();
-
-    // return;
+    println!("starting...");
+    let t0 = Instant::now();
+    for _ in 0..1000 {
+        nn.backprop(&g, correct, eta);
+        // nn.run_partial();
+    }
+    println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
     // let mut vs0 = vec![];
-    // let mut vs1 = vec![];
-
-    // println!("starting...");
-    // let t0 = Instant::now();
-    // for _ in 0..100 {
-    //     let moves = g.search_all(&ts).get_moves_unsafe();
-    //     let mut moves = moves.into_iter().filter(|m| m.piece() != Some(King));
-    //     let mv = moves.next().unwrap();
-    //     g = g.make_move_unchecked(&ts, mv).unwrap();
-    //     let score = nn.update_move(&g);
-    //     vs0.push(score);
-    // }
-    // println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
-    // drop(g);
-    // drop(nn);
-
     // println!("starting...");
     // let t0 = Instant::now();
     // for _ in 0..100 {
@@ -755,39 +594,9 @@ fn main_nnue() {
     //     let mv = moves.next().unwrap();
     //     g2 = g2.make_move_unchecked(&ts, mv).unwrap();
     //     let score = nn2.run_fresh(&g2);
-    //     vs1.push(score);
+    //     vs0.push(score);
     // }
     // println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
-
-    // eprintln!("vs0 == vs1 = {:?}", vs0 == vs1);
-
-    // for (n,(a,b)) in vs0.iter().zip(vs1.iter()).enumerate() {
-    //     // eprintln!("(a,b) = {:?}", (a,b));
-    //     if a != b {
-    //         eprintln!("(a,b)[{:?}] = ({:?},{:?})", n, a,b);
-    //     }
-    // }
-
-    // let k = nn.weights_out;
-    // println!("k = {}", k);
-
-    // let mut xs = std::collections::HashSet::<usize>::default();
-    // for ks0 in 0u8..64 {
-    //     let ks0: Coord = ks0.into();
-    //     for c0 in 0u8..63 {
-    //         let c0: Coord = c0.into();
-    //         for friendly in [true,false] {
-    //             for pc in [Pawn,Knight,Bishop,Rook,Queen] {
-    //                 let idx = NNUE::index(ks0, pc, c0, friendly);
-    //                 if xs.contains(&idx) {
-    //                     panic!()
-    //                 } else {
-    //                     xs.insert(idx);
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
 
 }
 
@@ -926,21 +735,33 @@ fn main_nn() {
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
     // let mut nn = DNetwork::<f32,2,1>::new_range(vec![2,3,3,1], (0.,1.));
-    let mut nn = DNetwork::<f32,2,1>::new_range(vec![2,3,3,1], (-1.,1.));
+    // let mut nn = DNetwork::<f32,2,1>::new_range(vec![2,3,3,1], (-1.,1.));
     // let mut nn = DNetwork::<f32,2,1>::new_range(vec![2,3,1], (0.,1.));
 
     // let mut nn = DNetwork::<f32,3,2>::new_range(vec![3,3,3,2], (0.,1.));
 
     // let mut nn = DNetwork::<f32,3,2>::new_range(vec![3,512,32,32,2], (0.0,1.0));
+    let mut nn = DNetwork::<f32,3,1>::new_range(vec![3,512,32,32,1], (0.0,1.0));
 
-    // let ins = vec![
-    //     (dvector![0.0,0.0,0.0],dvector![0.0,0.0]),
-    // ];
+    let ins = vec![
+        (dvector![0.0, 0.0, 1.0],dvector![0.0]),
+        // (dvector![1.0, 0.0, 1.0],dvector![1.0]),
+        // (dvector![0.0, 1.0, 1.0],dvector![1.0]),
+        // (dvector![1.0, 1.0, 1.0],dvector![0.0]),
+    ];
 
     // eprintln!("nn.weights.len() = {:?}", nn.weights.len());
 
-    // nn.backprop_mut_matrix(&ins, 0.1);
-    // return;
+    // let ws0 = nn.weights[0].clone();
+    // eprintln!("ws0.shape() = {:?}", ws0.shape());
+    // for _ in 0..100 {
+    //     nn.backprop_mut_matrix(&ins, 0.1);
+    // }
+    // let ws1 = nn.weights[0].clone();
+    // eprintln!("ws0 == ws1 = {:?}", ws0 == ws1);
+
+    nn.backprop_mut_matrix(&ins, 0.1);
+    return;
 
     let mut xs2: Vec<_> = xs.clone().collect();
     // let mut xs2: Vec<_> = xs0.clone().collect();

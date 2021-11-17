@@ -33,6 +33,8 @@ pub mod nnue {
     use ndarray as nd;
     use nd::{Array1,Array2};
 
+    use sprs::CsMat;
+
     use rand::{Rng,SeedableRng};
     use rand::prelude::{StdRng,Distribution};
     use rand::distributions::Uniform;
@@ -63,21 +65,20 @@ pub mod nnue {
 
         // pub accum:              Accum<10>,
 
+        #[serde(skip,default = "NNUE::def_inputs")]
+        pub inputs_own:         CsMat<i16>, // INPUT, 1
+        #[serde(skip,default = "NNUE::def_inputs")]
+        pub inputs_other:       CsMat<i16>, // INPUT, 1
+
         #[serde(skip)]
         pub activations_own:    Array2<i16>, // 256 x 1
         #[serde(skip)]
         pub activations_other:  Array2<i16>, // 256 x 1
 
-        // pub weights_1_own:      Array2<i8>, // 256 x 40356
-        // pub weights_1_other:    Array2<i8>, // 256 x 40356
-
         pub weights_1:          Array2<i8>, // 256 x INPUT
         pub weights_2:          Array2<i8>, // 32 x 512
         pub weights_3:          Array2<i8>, // 32 x 32
         pub weights_4:          Array2<i8>, // 1 x 32
-
-        // pub biases_1_own:       Array2<i8>, // 256
-        // pub biases_1_other:     Array2<i8>, // 256
 
         pub biases_1:           Array2<i16>, // 256
         pub biases_2:           Array2<i32>, // 32
@@ -86,6 +87,11 @@ pub mod nnue {
     }
 
     impl NNUE {
+
+        fn def_inputs() -> CsMat<i16> {
+            sprs::CsMat::empty(sprs::CSC, NNUE_INPUT)
+        }
+
         pub fn write_to_file(&self, path: &str, backup: Option<&str>) -> std::io::Result<()> {
             use std::io::Write;
             let b: Vec<u8> = bincode::serialize(&self).unwrap();
@@ -110,6 +116,9 @@ pub mod nnue {
             let dist0 = Uniform::new(i8::MIN as i16,i8::MAX as i16);
             let dist1 = Uniform::new(i8::MIN,i8::MAX);
             let dist2 = Uniform::new(i8::MIN as i32,i8::MAX as i32);
+
+            let inputs_own = sprs::CsMat::empty(sprs::CSC, NNUE_INPUT);
+            let inputs_other = sprs::CsMat::empty(sprs::CSC, NNUE_INPUT);
 
             // let inputs_own        = Array2::zeros((NNUE_INPUT, 1));
             // let inputs_other      = Array2::zeros((NNUE_INPUT, 1));
@@ -142,6 +151,9 @@ pub mod nnue {
                 side,
 
                 en_passant: None,
+
+                inputs_own,
+                inputs_other,
 
                 // accum: Accum::<10>::new(side),
                 activations_own,

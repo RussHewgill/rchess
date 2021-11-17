@@ -7,10 +7,12 @@ use crate::brain::types::nnue::*;
 use crate::brain::accumulator::*;
 use crate::brain::matrix::*;
 
+use nd::ArrayViewMut2;
 use ndarray as nd;
 use nd::{Array2};
 
 use num_traits::PrimInt;
+use sprs::{CsMat,CsMatViewMut};
 
 /// Increment
 impl NNUE {
@@ -21,7 +23,6 @@ impl NNUE {
             self.activations_other.slice_mut(nd::s![.., 0])
         };
         let dw: nd::ArrayView1<i8> = self.weights_1.slice(nd::s![.., idx]);
-        // let db: nd::ArrayView1<i8> = self.biases_1.slice(nd::s![.., idx]);
 
         let own = if own { "own" } else { "other" };
         if add {
@@ -45,14 +46,6 @@ impl NNUE {
 
 /// Apply Move
 impl NNUE {
-
-    // pub fn update_move(&mut self, g: &Game) -> i32 {
-    //     unimplemented!()
-    // }
-
-    // pub fn _update_move(&mut self, g: &Game, mv: Move) {
-    //     unimplemented!()
-    // }
 
     pub fn update_insert_piece<T: Into<u8> + Copy>(
         &mut self, king_sq_own: u8, king_sq_other: u8, pc: Piece, sq: T, side: Color,
@@ -151,26 +144,30 @@ impl NNUE {
 
 }
 
+pub type LayerArrays = ((Array2<i8>,Array2<i8>,Array2<i8>),(Array2<i16>,Array2<i32>,Array2<i32>,Array2<i32>));
+
 /// Run
 impl NNUE {
 
-    pub fn _run_partial(&self)
-                        -> (i32,(Array2<i8>,Array2<i8>,Array2<i8>),(Array2<i16>,Array2<i32>,Array2<i32>)) {
+    pub fn _run_partial(&self) -> (i32,LayerArrays) {
         let mut z1: Array2<i16> = nd::concatenate![
             nd::Axis(0), self.activations_own.clone(), self.activations_other.clone()
         ];
         // let bs = nd::concatenate![nd::Axis(0), self.biases_1_own, self.biases_1_other];
         // z1 += &bs;
         // let act1 = z1.map(Self::relu); // 512,1
-        let act1 = z1.map(|x| (*x).clamp(0, 127) as i8); // 512,1
+        // let act1 = z1.map(|x| (*x).clamp(0, 127) as i8); // 512,1
+        let act1 = z1.map(Self::act_fn); // 512,1
 
         let mut z2 = self.weights_2.map(|x| *x as i32).dot(&act1.map(|x| *x as i32)); // 32,1
         z2 += &self.biases_2;
-        let act2 = z2.map(|x| (*x / 64).clamp(0, 127) as i8);
+        // let act2 = z2.map(|x| (*x / 64).clamp(0, 127) as i8);
+        let act2 = z2.map(|x| Self::act_fn(&(x / 64)));
 
         let mut z3 = self.weights_3.map(|x| *x as i32).dot(&act2.map(|x| *x as i32)); // 32,1
         z3 += &self.biases_3;
-        let act3 = z3.map(|x| (*x / 64).clamp(0, 127) as i8);
+        // let act3 = z3.map(|x| (*x / 64).clamp(0, 127) as i8);
+        let act3 = z3.map(|x| Self::act_fn(&(x / 64)));
 
         let mut z_out = self.weights_4.map(|x| *x as i32).dot(&act3.map(|x| *x as i32)); // 
         z_out += &self.biases_4;
@@ -178,11 +175,11 @@ impl NNUE {
 
         let pred = z_out[(0,0)];
 
-        (pred, (act1,act2,act3), (z1, z2, z3))
+        (pred, ((act1,act2,act3), (z1, z2, z3, z_out)))
     }
 
     pub fn run_partial(&self) -> i32 {
-        let (out,_,_) = self._run_partial();
+        let (out,_) = self._run_partial();
         out
     }
 
@@ -192,35 +189,40 @@ impl NNUE {
     }
 }
 
-/// Backprop
-impl NNUE {
-
-    #[allow(unused_doc_comments)]
-    pub fn backprop(&mut self, correct: i32, eta: i8) {
-
-        let (pred, (act1,act2,act3), (z1, z2, z3)) = self._run_partial();
-
-    }
-
-}
-
 /// Utils
 impl NNUE {
 
-    fn cost_fn(pred: i32, correct: i32) -> i8 {
+    pub fn cost_fn(pred: i32, correct: i32) -> i8 {
         unimplemented!()
     }
 
-    fn cost_delta(z: i32, pred: i32, correct: i32) -> i8 {
+    pub fn cost_delta(z: i32, pred: i32, correct: i32) -> i8 {
         unimplemented!()
     }
 
-    fn act_fn<T: PrimInt, V: PrimInt>(x: &T) -> V {
-        unimplemented!()
+    pub fn act_fn<T: PrimInt, V: PrimInt>(x: &T) -> V {
+        Self::relu(x)
     }
 
-    fn act_d<T: PrimInt, V: PrimInt>(x: &T) -> V {
-        unimplemented!()
+    pub fn act_d<T: PrimInt, V: PrimInt>(x: &T) -> V {
+    // pub fn act_d<T: PrimInt, V: PrimInt>(x: &T, e: V) -> V {
+        Self::relu_d(x)
+    }
+
+    fn relu<T: num_traits::PrimInt, V: num_traits::PrimInt>(x: &T) -> V {
+        V::from((*x).clamp(T::from(0).unwrap(), T::from(127).unwrap())).unwrap()
+    }
+
+    // fn relu_d<T: num_traits::PrimInt, V: num_traits::PrimInt>(x: &T, e: V) -> V {
+    fn relu_d<T: num_traits::PrimInt, V: num_traits::PrimInt>(x: &T) -> V {
+        if *x < T::zero() {
+            V::zero()
+        } else if *x > T::zero() {
+            V::from(1).unwrap()
+            // e
+        } else {
+            V::zero()
+        }
     }
 
 }
@@ -228,10 +230,23 @@ impl NNUE {
 /// Init
 impl NNUE {
 
+    // pub fn init_inputs(&mut self, g: &Game) {
+    //     self._init_inputs(g, None)
+    // }
+
     // TODO: En Passant
     // TODO: Castling
     /// Reset inputs and activations, and refill from board
-    pub fn init_inputs(&mut self, g: &Game) {
+    pub fn init_inputs(
+        &mut self,
+        g: &Game,
+        // inputs: Option<(ArrayViewMut2<i8>,ArrayViewMut2<i8>)>
+        // inputs: Option<(CsMatViewMut<i8>,CsMatViewMut<i8>)>
+    ) {
+        const PCS: [Piece; 6] = [Pawn,Knight,Bishop,Rook,Queen,King];
+
+        self.inputs_own.map_inplace(|_| 0);
+        self.inputs_other.map_inplace(|_| 0);
 
         // self.activations_own.fill(0);
         // self.activations_other.fill(0);
@@ -241,8 +256,8 @@ impl NNUE {
         let king_sq_own   = g.get(King, self.side).bitscan();
         let king_sq_other = g.get(King, !self.side).bitscan();
 
-        // const PCS: [Piece; 5] = [Pawn,Knight,Bishop,Rook,Queen];
-        const PCS: [Piece; 6] = [Pawn,Knight,Bishop,Rook,Queen,King];
+        // let (mut is0,mut is1) = (vec![],vec![]);
+        // let ix = inputs.is_some();
 
         for pc in PCS {
             let side = self.side;
@@ -255,6 +270,10 @@ impl NNUE {
 
                     self.increment_act_own(idx0, true);
                     self.increment_act_other(idx1, true);
+
+                    self.inputs_own.set(idx0,0, 1);
+                    self.inputs_other.set(idx1,0, 1);
+
                 });
             }
             let side = !self.side;
@@ -266,12 +285,34 @@ impl NNUE {
 
                 self.increment_act_own(idx0, true);
                 self.increment_act_other(idx1, true);
+
+                // if ix {
+                //     is0.push(idx0);
+                //     is1.push(idx1);
+                // }
+
             });
+
         }
 
         // TODO: En Passant
 
         // TODO: Castling
+
+        // if let Some((mut in_own,mut in_other)) = inputs {
+        //     // in_own.map_inplace(|_| 0);
+        //     // in_other.map_inplace(|_| 0);
+        //     in_own.fill(0);
+        //     in_other.fill(0);
+        //     for idx0 in is0.into_iter() {
+        //         in_own[(idx0,0)]   = 1;
+        //         // in_own.set(idx0,0, 1);
+        //     }
+        //     for idx1 in is1.into_iter() {
+        //         in_other[(idx1,0)] = 1;
+        //         // in_other.set(idx1,0, 1);
+        //     }
+        // }
 
     }
 

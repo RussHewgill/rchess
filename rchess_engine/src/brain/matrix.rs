@@ -14,6 +14,33 @@ use ndarray::ShapeBuilder;
 
 // use nshare::{RefNdarray1,RefNdarray2,ToNdarray1,ToNdarray2,ToNalgebra};
 
+pub fn ndarray2_to_sprs<T>(arr: nd::Array2<T>) -> sprs::CsMat<T>
+    where T: num_traits::Num + Clone + PartialOrd + num_traits::Signed + num_traits::Zero,
+{
+
+    // let std_layout = arr.is_standard_layout();
+    // let nrows = Dy::new(arr.nrows());
+    // let ncols = Dy::new(arr.ncols());
+
+    // let out: sprs::CsMat<T> = sprs::CsMat::new(
+    //     (nrows,ncols), , indices, data);
+
+    let out: sprs::CsMat<T> = sprs::CsMat::csr_from_dense(arr.view(), T::zero());
+    let out: sprs::CsMat<T> = sprs::CsMat::csc_from_dense(arr.view(), T::zero());
+
+    // let mut res = Self::Out::from_vec_generic(nrows, ncols, arr.into_raw_vec());
+    // if std_layout {
+    //     // This can be expensive, but we have no choice since nalgebra VecStorage is always
+    //     // column-based.
+    //     // res.transpose_mut();
+    //     // res = res.transpose();
+    //     panic!("non std_layout: {:?}", res.shape());
+    //     // panic!("non std_layout: {:?}", res);
+    // }
+    // res
+
+    unimplemented!()
+}
 
 pub fn mul_blas(a: DMatrix<f32>, b: DMatrix<f32>) -> DMatrix<f32> {
     let aa = a.ref_ndarray2();
