@@ -53,9 +53,10 @@ const STARTPOS: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
 
 #[allow(unreachable_code)]
 fn main() {
-    main_nnue();
+    // main_nnue();
     // main_nn();
     // main_mnist();
+    main_syzygy();
 }
 
 #[allow(unreachable_code)]
@@ -208,6 +209,20 @@ fn _main() {
     // // main8(); // eval testing
     // main7();
     // // main3(); // read from file and test
+
+}
+
+#[allow(unreachable_code)]
+fn main_syzygy() {
+    use rchess_engine_lib::syzygy::*;
+
+    // let ts = Tables::read_from_file_def().unwrap();
+
+    let dir = "/home/me/code/rust/rchess/tables/syzygy/";
+
+    // Syzygy::load_dir(&ts, &dir).unwrap();
+    SyzygyBase::load_dir(&dir).unwrap();
+
 
 }
 
@@ -583,7 +598,7 @@ fn main_nnue() {
     println!("starting...");
     let t0 = Instant::now();
     for k in 0..1000 {
-        let pred = nn.backprop(&g, correct, eta);
+        let pred = nn.backprop(Some(&g), correct, eta);
 
         if k % 50 == 0 {
             let delta = pred - correct;
