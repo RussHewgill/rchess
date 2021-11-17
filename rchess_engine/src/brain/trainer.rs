@@ -7,6 +7,7 @@ use crate::brain::types::nnue::*;
 
 use ndarray as nd;
 use nd::{Array2};
+use ndarray::linalg::Dot;
 
 pub fn generate_training_data(ts: &Tables) -> () {
     unimplemented!()
@@ -16,7 +17,7 @@ pub fn generate_training_data(ts: &Tables) -> () {
 impl NNUE {
 
     #[allow(unused_doc_comments)]
-    pub fn backprop(&mut self, g: &Game, correct: i32, eta: i8) {
+    pub fn backprop(&mut self, g: &Game, correct: i32, eta: i8) -> i32 {
 
         // let mut ins_own   = Array2::zeros((NNUE_INPUT,1));
         // let mut ins_other = Array2::zeros((NNUE_INPUT,1));
@@ -25,8 +26,6 @@ impl NNUE {
 
         // let xs = Some((ins_own.view_mut(),ins_other.view_mut()));
         self.init_inputs(g);
-
-        let t0 = std::time::Instant::now();
 
         let (pred, ((act1,act2,act3),(z1,z2,z3,z_out))) = self._run_partial();
 
@@ -66,67 +65,48 @@ impl NNUE {
         let d1_own: nd::ArrayView2<i8> = d1.slice(nd::s![..256, ..]); // 256, 1
         let d1_own = &d1_own * &sp1_own;
 
-        // let d1_other = d1.slice(nd::s![256.., ..]); // 256, 1
-        // let d1_other = &d1_other * &sp1_other;
+        let d1_other: nd::ArrayView2<i8> = d1.slice(nd::s![256.., ..]); // 256, 1
+        let d1_other = &d1_other * &sp1_other;
 
-        eprintln!("d1_own.shape() = {:?}", d1_own.shape());
-        eprintln!("ins_own.shape() = {:?}", ins_own.shape());
-
-        // let mut k0 = 0;
-        // let mut v0 = 0;
-        // for x in ins_own.iter() {
-        //     if *x != 0 {
-        //         k0 += 1;
-        //     } else {
-        //         v0 += 1;
-        //     }
-        // }
-        // eprintln!("k0 = {:?}", k0);
-        // eprintln!("v0 = {:?}", v0);
-
-        let t0 = std::time::Instant::now();
-        let ws1_own0 = d1_own.dot(&ins_own.t()); // 256, INPUT
-        println!("wat 0 in {:.3} seconds", t0.elapsed().as_secs_f64());
-
-        let t0 = std::time::Instant::now();
-        let mut ins_own = sprs::CsMat::csc_from_dense(ins_own.view(), 0);
-        ins_own.transpose_mut();
         let d1_own  = sprs::CsMat::csc_from_dense(d1_own.view(), 0);
-        use ndarray::linalg::Dot;
-        let ws1_own1 = &d1_own * &ins_own;
-        println!("wat 0 in {:.3} seconds", t0.elapsed().as_secs_f64());
+        let d1_other = sprs::CsMat::csc_from_dense(d1_other.view(), 0);
 
-        let ws1_own1 = ws1_own1.to_dense();
-
-        eprintln!("ws1_own0 == ws1_own1 = {:?}", ws1_own0 == ws1_own1);
-
-        // println!("starting");
-        // let t0 = std::time::Instant::now();
-        // for _ in 0..10 {
-        //     let mut ins_own = sprs::CsMat::csc_from_dense(ins_own.view(), 0);
-        //     ins_own.transpose_mut();
-        //     let d1_own  = sprs::CsMat::csc_from_dense(d1_own.view(), 0);
-        //     use ndarray::linalg::Dot;
-        //     let ws1_own = &d1_own * &ins_own;
-        // }
-        // println!("wat 0 in {:.3} seconds", t0.elapsed().as_secs_f64());
-
-        // println!("starting");
-        // let t0 = std::time::Instant::now();
-        // for _ in 0..10 {
-        //     let ws1_own = d1_own.dot(&ins_own.t()); // 256, INPUT
-        // }
-        // println!("wat 0 in {:.3} seconds", t0.elapsed().as_secs_f64());
-
-
-        // let ws1_own = d1_own.dot(&ins_own.t()); // 256, INPUT
+        let ws1_own = &d1_own * &self.inputs_own.transpose_view();
         // println!("wat 5 in {:.3} seconds", t0.elapsed().as_secs_f64());
 
-        // let ws1_other = d1_other.dot(&ins_other.t()); // 256, INPUT
+        let ws1_other = &d1_other * &self.inputs_other.transpose_view();
         // println!("wat 6 in {:.3} seconds", t0.elapsed().as_secs_f64());
 
+        // eprintln!("self.weights_1.shape() = {:?}", self.weights_1.shape());
         // eprintln!("ws1_own.shape() = {:?}", ws1_own.shape());
+        // eprintln!("ws1_other.shape() = {:?}", ws1_other.shape());
 
+        // self.weights_1_own   -= &(ws1_own / eta);
+        // self.weights_1_other -= &(ws1_other / eta);
+
+        // println!("wat 0 in {:.3} seconds", t0.elapsed().as_secs_f64());
+        // let t0 = std::time::Instant::now();
+        for (c,cv) in ws1_own.outer_iterator().enumerate() {
+            for (r,rv) in cv.iter() {
+                self.weights_1_own[(r,c)] -= rv / eta;
+            }
+        }
+        // println!("wat 0 in {:.3} seconds", t0.elapsed().as_secs_f64());
+        for (c,cv) in ws1_other.outer_iterator().enumerate() {
+            for (r,rv) in cv.iter() {
+                self.weights_1_other[(r,c)] -= rv / eta;
+            }
+        }
+
+        self.weights_2 -= &(ws2 / eta);
+        self.weights_3 -= &(ws3 / eta);
+        self.weights_4 -= &(ws4 / eta);
+
+        self.biases_2 -= &bs2.map(|x| *x as i32);
+        self.biases_3 -= &bs3.map(|x| *x as i32);
+        self.biases_4 -= &bs4.map(|x| *x as i32);
+
+        pred
     }
 
 

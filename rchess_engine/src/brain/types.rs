@@ -66,16 +66,18 @@ pub mod nnue {
         // pub accum:              Accum<10>,
 
         #[serde(skip,default = "NNUE::def_inputs")]
-        pub inputs_own:         CsMat<i16>, // INPUT, 1
+        pub inputs_own:         CsMat<i8>, // INPUT, 1
         #[serde(skip,default = "NNUE::def_inputs")]
-        pub inputs_other:       CsMat<i16>, // INPUT, 1
+        pub inputs_other:       CsMat<i8>, // INPUT, 1
 
         #[serde(skip)]
         pub activations_own:    Array2<i16>, // 256 x 1
         #[serde(skip)]
         pub activations_other:  Array2<i16>, // 256 x 1
 
-        pub weights_1:          Array2<i8>, // 256 x INPUT
+        pub weights_1_own:      Array2<i8>, // 256 x INPUT
+        pub weights_1_other:    Array2<i8>, // 256 x INPUT
+
         pub weights_2:          Array2<i8>, // 32 x 512
         pub weights_3:          Array2<i8>, // 32 x 32
         pub weights_4:          Array2<i8>, // 1 x 32
@@ -88,8 +90,9 @@ pub mod nnue {
 
     impl NNUE {
 
-        fn def_inputs() -> CsMat<i16> {
-            sprs::CsMat::empty(sprs::CSC, NNUE_INPUT)
+        fn def_inputs() -> CsMat<i8> {
+            // sprs::CsMat::empty(sprs::CSC, NNUE_INPUT)
+            sprs::CsMat::zero((NNUE_INPUT,1)).into_csc()
         }
 
         pub fn write_to_file(&self, path: &str, backup: Option<&str>) -> std::io::Result<()> {
@@ -129,10 +132,10 @@ pub mod nnue {
 
             // let weights_1 = Array2::random_using((NNUE_L2,NNUE_INPUT), dist0, &mut rng);
 
-            // let weights_1_own   = Array2::random_using((NNUE_L2,NNUE_INPUT), dist1, &mut rng);
-            // let weights_1_other = Array2::random_using((NNUE_L2,NNUE_INPUT), dist1, &mut rng);
+            let weights_1_own   = Array2::random_using((NNUE_L2,NNUE_INPUT), dist1, &mut rng);
+            let weights_1_other = Array2::random_using((NNUE_L2,NNUE_INPUT), dist1, &mut rng);
 
-            let weights_1 = Array2::random_using((NNUE_L2,NNUE_INPUT), dist1, &mut rng);
+            // let weights_1 = Array2::random_using((NNUE_L2,NNUE_INPUT), dist1, &mut rng);
             let weights_2 = Array2::random_using((NNUE_L3,NNUE_L2 * 2), dist1, &mut rng);
             let weights_3 = Array2::random_using((NNUE_OUTPUT,NNUE_L3), dist1, &mut rng);
             let weights_4 = Array2::random_using((1,NNUE_OUTPUT), dist1, &mut rng);
@@ -159,9 +162,9 @@ pub mod nnue {
                 activations_own,
                 activations_other,
 
-                // weights_1_own,
-                // weights_1_other,
-                weights_1,
+                weights_1_own,
+                weights_1_other,
+                // weights_1,
                 weights_2,
                 weights_3,
                 weights_4,

@@ -53,9 +53,9 @@ const STARTPOS: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ
 
 #[allow(unreachable_code)]
 fn main() {
-    main_nnue();
+    // main_nnue();
     // main_nn();
-    // main_mnist();
+    main_mnist();
 }
 
 #[allow(unreachable_code)]
@@ -348,15 +348,19 @@ fn main_mnist() {
     let mut nn2: DNetwork<f32,784,10> = DNetwork::new_range(vec![784,16,16,10], mm);
     // let mut nn2: DNetwork<f32,784,10> = DNetwork::new_range(vec![784,30,10], mm);
 
-    let lr = 0.1;
+    let lr = 0.001;
     // let lr = 0.5;
     // let lr = 10.0;
 
     const BATCH_SIZE: usize = 100;
-    const EPOCHS: usize = 200;
+    const EPOCHS: usize = 400;
     let ksize = 50;
 
     // test_mnist2(&nn2, &test_data, true);
+
+    // let s0 = nn2.run(&ins2[0].0);
+    // eprintln!("s0 = {:?}", s0);
+    // return;
 
     let ws0 = nn2.weights[0].clone();
 
@@ -526,7 +530,8 @@ fn main_nnue() {
     // return;
 
     // let fen     = "rnbqkb1r/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    let fen = "4k3/3pp3/8/8/8/8/3PP3/4K3 w - - 0 1";
+    // let fen = "4k3/3pp3/8/8/8/8/3PP3/4K3 w - - 0 1";
+    let fen = "4k3/3pp3/8/8/8/8/3P1P2/4K3 w - - 0 1";
     let correct = 10;
 
     // let dnn = DNetwork::<f32,512,1>::_new_rng(vec![512,32,32,1], (-1.,1.), &mut rng);
@@ -547,43 +552,49 @@ fn main_nnue() {
     // eprintln!("s0 = {:?}", s0);
     // eprintln!("s1 = {:?}", s1);
 
-
     // nn._init_inputs(&g, xs);
 
-    // let k0 = is0.sum();
-    // let k1 = is1.sum();
-    // eprintln!("k0 = {:?}", k0);
-    // eprintln!("k1 = {:?}", k1);
+    // let g2 = g.flip_sides(&ts);
+    // eprintln!("g = {:?}", g);
+    // eprintln!("g2 = {:?}", g2);
 
+    // trace!("wat 0");
     // let s0 = nn.run_fresh(&g);
+    // eprintln!("s0 = {:?}", s0);
+    // trace!("wat 1");
+    // nn.side = Black;
+    // let s1 = nn.run_fresh(&g2);
+    // eprintln!("s1 = {:?}", s1);
 
     let eta = 100;
 
     let correct = 10;
 
-    nn.run_fresh(&g);
+    let s0 = nn.run_fresh(&g);
+    eprintln!("s0 = {:?}", s0);
 
-    // let mut ins_own   = Array2::<i8>::zeros((NNUE_INPUT,1));
-    // let mut ins_other = Array2::zeros((NNUE_INPUT,1));
-    // let xs = Some((ins_own.view_mut(),ins_other.view_mut()));
-    // nn._init_inputs(&g, xs);
+    // nn.backprop(&g, correct, eta);
 
-    // let m1 = sprs::CsMat::csr_from_dense(ins_own.view(), 0);
+    // let s1 = nn.run_fresh(&g);
+    // eprintln!("s1 = {:?}", s1);
 
-    nn.backprop(&g, correct, eta);
-    return;
-
-    // let s0 = nn.run_partial();
-    // eprintln!("s0 = {:?}", s0);
     // return;
 
     println!("starting...");
     let t0 = Instant::now();
-    for _ in 0..1000 {
-        nn.backprop(&g, correct, eta);
+    for k in 0..1000 {
+        let pred = nn.backprop(&g, correct, eta);
+
+        if k % 50 == 0 {
+            let delta = pred - correct;
+            eprintln!("delta {:>5} = {:?}", k, delta);
+        }
         // nn.run_partial();
     }
     println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+
+    let s1 = nn.run_fresh(&g);
+    eprintln!("s1 = {:?}", s1);
 
     // let mut vs0 = vec![];
     // println!("starting...");

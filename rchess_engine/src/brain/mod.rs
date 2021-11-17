@@ -86,6 +86,7 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
         let mut activations: Vec<DVector<f32>> = vec![];
         let mut zs: Vec<DVector<f32>>          = vec![];
 
+        let input = input.map(|x| sigmoid(x) - 0.5);
         let mut last = input.clone();
 
         activations.push(input.clone());
@@ -262,6 +263,8 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
 
         // println!("inputs = {}", inputs);
 
+        let inputs = inputs.map(|x| sigmoid(x) - 0.5);
+
         let mut acts: Vec<DMatrix<f32>> = vec![];
         let mut zs: Vec<DMatrix<f32>>   = vec![];
 
@@ -269,7 +272,7 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
 
         let mut last = inputs;
 
-        for (ws,bs) in self.weights.iter().zip(self.biases.iter()) {
+        for (k,(ws,bs)) in self.weights.iter().zip(self.biases.iter()).enumerate() {
             let mut z = ws * last;
             for i in 0..z.shape().1 {
                 let mut c = z.column_mut(i);
@@ -277,18 +280,23 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
             }
             zs.push(z.clone());
 
-            // let act = z.map(sigmoid);
-            let act = z.map(Self::act_fn);
-            acts.push(act.clone());
-
-            last = act;
+            if k == self.weights.len() - 1 {
+                let act = z.map(sigmoid);
+                acts.push(act.clone());
+                last = act;
+            } else {
+                let act = z.map(Self::act_fn);
+                acts.push(act.clone());
+                last = act;
+            }
         }
         let pred = last;
+        // let pred = zs[zs.len() - 1].clone().map(sigm);
 
         /// XXX: when using ReLu, delta is not multiplied by last z
         let delta = pred - corrects; // OS,ISS
         // let delta = delta.component_mul(&zs[zs.len() - 1].map(sigmoid_deriv));
-        let delta = delta.component_mul(&zs[zs.len() - 1].map(Self::act_fn_d));
+        // let delta = delta.component_mul(&zs[zs.len() - 1].map(Self::act_fn_d));
 
         let mut prev_delta = delta.clone();
 
@@ -348,8 +356,8 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
 
         }
 
-        eprintln!("self.weights.len() = {:?}", self.weights.len());
-        eprintln!("new_ws.len()       = {:?}", new_ws.len());
+        // eprintln!("self.weights.len() = {:?}", self.weights.len());
+        // eprintln!("new_ws.len()       = {:?}", new_ws.len());
 
         for (mut ws, nw) in self.weights.iter_mut().zip(new_ws.into_iter().rev()) {
             *ws -= lr * nw;
@@ -365,27 +373,27 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
 
     fn act_fn(x: f32) -> f32 {
         // x.tanh()
-        sigmoid(x)
-        // Self::relu(x)
+        // sigmoid(x)
+        Self::relu(x)
     }
 
     fn act_fn_d(x: f32) -> f32 {
         // 1.0 - x.tanh().powi(2)
-        sigmoid_deriv(x)
-        // Self::relu_d(x)
+        // sigmoid_deriv(x)
+        Self::relu_d(x)
     }
 
     // fn cost_fn_delta(z: f32, a: f32, y: f32)
 
     pub fn relu(x: f32) -> f32 {
-        // x.max(0.0)
+        x.max(0.0)
 
-        if x > 0.0 {
-            x
-        } else {
-            // 0.01 * x
-            0.0
-        }
+        // if x > 0.0 {
+        //     x
+        // } else {
+        //     // 0.01 * x
+        //     0.0
+        // }
 
     }
 

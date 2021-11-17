@@ -22,14 +22,17 @@ impl NNUE {
         } else {
             self.activations_other.slice_mut(nd::s![.., 0])
         };
-        let dw: nd::ArrayView1<i8> = self.weights_1.slice(nd::s![.., idx]);
+        let dw: nd::ArrayView1<i8> = if own {
+            self.weights_1_own.slice(nd::s![.., idx])
+        } else {
+            self.weights_1_other.slice(nd::s![.., idx])
+        };
 
-        let own = if own { "own" } else { "other" };
         if add {
-            trace!("increment: adding {} idx {:?}", own, idx);
+            trace!("increment: adding {} idx {:?}", if own { "own" } else { "other" }, idx);
             c += &dw.map(|x| *x as i16);
         } else {
-            trace!("increment: removing {} idx {:?}", own, idx);
+            trace!("increment: removing {} idx {:?}", if own { "own" } else { "other" }, idx);
             c -= &dw.map(|x| *x as i16);
         }
     }
@@ -271,8 +274,8 @@ impl NNUE {
                     self.increment_act_own(idx0, true);
                     self.increment_act_other(idx1, true);
 
-                    self.inputs_own.set(idx0,0, 1);
-                    self.inputs_other.set(idx1,0, 1);
+                    self.inputs_own.insert(idx0,0, 1);
+                    self.inputs_other.insert(idx1,0, 1);
 
                 });
             }
@@ -291,6 +294,8 @@ impl NNUE {
                 //     is1.push(idx1);
                 // }
 
+                self.inputs_own.insert(idx0,0, 1);
+                self.inputs_other.insert(idx1,0, 1);
             });
 
         }
