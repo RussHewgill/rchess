@@ -1,8 +1,13 @@
 
-use itertools::Itertools;
+mod sz_format;
+
+use self::sz_format::*;
 
 use crate::tables::*;
 use crate::types::*;
+
+use itertools::Itertools;
+
 
 /// WDL, .rtbw: win / draw / loss
 /// DTZ, .rtbz: distance to zero
