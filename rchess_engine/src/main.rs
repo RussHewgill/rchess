@@ -215,13 +215,63 @@ fn _main() {
 #[allow(unreachable_code)]
 fn main_syzygy() {
     use rchess_engine_lib::syzygy::*;
+    use rchess_engine_lib::syzygy::sz_format::*;
 
-    // let ts = Tables::read_from_file_def().unwrap();
+    // init_logger();
 
     let dir = "/home/me/code/rust/rchess/tables/syzygy/";
 
     // SyzygyBase::load_dir(&ts, &dir).unwrap();
     // SyzygyBase::load_dir(&dir).unwrap();
+
+    // let m = Material::from_str("KBNvK");
+    // eprintln!("m = {:?}", m);
+
+    let mut tb = SyzygyTB::new();
+    tb.add_directory(&dir).unwrap();
+    // tb.add_file("/home/me/code/rust/rchess/tables/syzygy/KBNvK.rtbw").unwrap();
+    // tb.add_file("/home/me/code/rust/rchess/tables/syzygy/KBNvK.rtbz").unwrap();
+
+    // let fen = "8/8/8/8/B7/N7/K2k4/8 b - - 0 1";
+    // let fen = "5BrN/8/8/8/8/2k5/8/2K5 b - -";
+    let fen = "5B2/8/6N1/8/8/2k5/8/2K5 b - - 0 2";
+
+    let ts = Tables::read_from_file_def().unwrap();
+    let g = Game::from_fen(&ts, &fen).unwrap();
+
+    // let mut g = g.flip_sides(&ts);
+    // let _ = g.init_gameinfo_mut(&ts).unwrap();
+    // let _ = g.recalc_gameinfo_mut(&ts).unwrap();
+
+    // eprintln!("g = {:?}", g);
+
+    let k0 = tb.probe_wdl(&ts, &g);
+    eprintln!("k0 = {:?}", k0);
+
+    let k1 = tb.probe_dtz(&ts, &g);
+    eprintln!("k1 = {:?}", k1);
+
+    let k2 = tb.best_move(&ts, &g).unwrap();
+    eprintln!("k2 = {:?}", k2.map(|x| x.0));
+
+    // let wdl = tb.probe(&ts, &g).unwrap();
+    // // eprintln!("wdl = {:?}", wdl.wdl);
+    // // eprintln!("wdl = {:?}", wdl.state);
+
+    // let k2 = tb.probe_dtz_table(&g, wd);
+    // eprintln!("k2 = {:?}", k2);
+
+    // // let c0 = Coord(1,2);
+    // let c0 = Coord::from("F1");
+    // let c1 = c0.flip_diagonal();
+    // // let c2 = Coord::from(usize::from(c0) ^ 0b000_111);
+    // let c2: u8 = c0.into();
+    // // let c2: u8 = Coord::flip_horiz_int(c2);
+    // let c2: u8 = Coord::flip_diagonal_int(c2);
+    // let c2: Coord = c2.into();
+    // eprintln!("c0 = {:?}", c0);
+    // eprintln!("c1 = {:?}", c1);
+    // // eprintln!("c2 = {:?}", c2);
 
 }
 

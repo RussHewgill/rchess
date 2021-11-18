@@ -6,6 +6,7 @@
 #![feature(destructuring_assignment)]
 #![feature(core_intrinsics)]
 #![feature(label_break_value)]
+#![feature(backtrace)]
 
 #![allow(
     // clippy::all,

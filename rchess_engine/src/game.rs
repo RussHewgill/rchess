@@ -91,24 +91,74 @@ pub struct GameState {
     pub check_block_mask:   BitBoard,
 }
 
-#[derive(Debug,Default,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Debug,Default,Hash,Eq,Ord,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Material {
-    pub buf:  [[u8; 5]; 2],
+    pub buf:  [[u8; 6]; 2],
 }
 
 /// Construction
 impl Material {
+
+    pub fn from_str(s: &str) -> Option<Self> {
+        Self::from_ascii(s.as_bytes())
+    }
+
+    pub fn from_ascii(s: &[u8]) -> Option<Self> {
+
+        const fn f(c: Color, ch: char) -> (Color,Piece) {
+            match ch {
+                'P' | 'p' => (c,Pawn),
+                'N' | 'n' => (c,Knight),
+                'B' | 'b' => (c,Bishop),
+                'R' | 'r' => (c,Rook),
+                'Q' | 'q' => (c,Queen),
+                'K' | 'k' => (c,King),
+                _         => unimplemented!(),
+            }
+        }
+
+        let mut parts = s.splitn(2, |ch| *ch == b'v');
+        // let white = parts.next().expect(&format!("wat white {:?}", std::str::from_utf8(&s)));
+        // let black = parts.next().expect(&format!("wat white {:?}", std::str::from_utf8(&s)));
+        let white = parts.next()?;
+        let black = parts.next()?;
+
+        let white = white.iter().map(|&ch| f(White,char::from(ch)));
+        let black = black.iter().map(|&ch| f(Black,char::from(ch)));
+
+        Some(Self::from_iter(white.chain(black)))
+
+        // unimplemented!()
+    }
+
     pub fn from_iter<T>(iter: T) -> Self where T: IntoIterator<Item = (Color,Piece)> {
         let mut out = Self::default();
         for (side,pc) in iter {
-            out.buf[side][pc.index()] += 1;
+            out.buf[side][pc] += 1;
         }
         out
     }
+
+    pub fn into_flipped(self) -> Self {
+        Self {
+            buf: [self.buf[Black], self.buf[White]],
+        }
+    }
+
 }
 
 /// Queries
 impl Material {
+
+    pub fn into_normalized(self) -> Self {
+        if self.buf[White] < self.buf[Black] {
+            Self {
+                buf: [self.buf[Black], self.buf[White]],
+            }
+        } else {
+            self
+        }
+    }
 
     pub fn count(&self) -> u8 {
         self.buf[White].iter().sum::<u8>() + self.buf[Black].iter().sum::<u8>()
@@ -174,6 +224,10 @@ mod castling {
         const WQ: u8 = 0b0010;
         const BK: u8 = 0b0100;
         const BQ: u8 = 0b1000;
+
+        pub fn any(&self) -> bool {
+            self.0 != 0
+        }
 
         pub fn get(&self) -> u8 {
             self.0
@@ -477,11 +531,12 @@ impl Game {
     // pub fn count_material(&self) -> [[u8; 5]; 2] {
     pub fn count_material(&self) -> Material {
         const COLS: [Color; 2] = [White,Black];
-        const PCS:  [Piece; 5] = [Pawn,Knight,Bishop,Rook,Queen];
+        // const PCS:  [Piece; 5] = [Pawn,Knight,Bishop,Rook,Queen,];
 
-        let mut out = [[0; 5]; 2];
+        // let mut out = [[0; 5]; 2];
+        let mut out = [[0; 6]; 2];
         for side in COLS {
-            for pc in PCS {
+            for pc in Piece::iter_pieces() {
                 out[side][pc.index()] = self.get(pc, side).popcount() as u8;
             }
         }

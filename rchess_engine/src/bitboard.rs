@@ -101,6 +101,12 @@ impl BitBoard {
 /// Modification
 impl BitBoard {
 
+    pub fn extend_mut<T: IntoIterator<Item = C>, C: Into<Coord>>(&mut self, iter: T) {
+        for c0 in iter {
+            self.set_one_mut(c0.into());
+        }
+    }
+
     #[must_use]
     pub fn set_one(&self, c: Coord) -> Self {
         let b = Self::single(c);
@@ -222,6 +228,14 @@ impl BitBoard {
             // println!("wat 2");
             // unimplemented!()
             BitBoard::empty()
+        }
+    }
+
+    pub fn bitscan_safe(&self) -> Option<u8> {
+        if self.is_empty() {
+            None
+        } else {
+            Some(self.bitscan())
         }
     }
 

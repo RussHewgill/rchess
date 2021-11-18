@@ -23,6 +23,8 @@ default = [
     # "one_thread",
     # "smallstack",
 
+    "backtrace",
+
     "keep_stats",
 
     "positional_scoring",
@@ -40,6 +42,8 @@ default = [
 par = []
 one_thread = []
 smallstack = []
+
+backtrace = []
 
 keep_stats = []
 
@@ -142,4 +146,5 @@ byteorder = "1.4.3"
 bitvec = "0.22.3"
 
 positioned-io = { package = "positioned-io-preview", version = "0.3.3" }
+once_cell = "1.8.0"
 

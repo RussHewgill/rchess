@@ -4,10 +4,11 @@ use crate::syzygy::sz_errors::*;
 
 use crate::tables::*;
 use crate::types::{
-    BitBoard,Coord,Color::{self,*},Piece,Piece::*,Material,
+    BitBoard,Coord,Color::{self,*},Piece,Piece::*,Material,Game,
 };
 
 use std::io;
+use std::path::Path;
 use std::marker::PhantomData;
 
 use byteorder::{BE, LE, ByteOrder as _, ReadBytesExt as _};
@@ -58,6 +59,23 @@ mod types {
         }
     }
 
+    /// WDL<sub>50</sub>. 5-valued evaluation of a position in the context of the
+    /// 50-move drawing rule.
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+    #[repr(i8)]
+    pub enum Wdl {
+        /// Unconditional loss for the side to move.
+        Loss = -2,
+        /// Loss that can be saved by the 50-move rule.
+        BlessedLoss = -1,
+        /// Unconditional draw.
+        Draw = 0,
+        /// Win that can be frustrated by the 50-move rule.
+        CursedWin = 1,
+        /// Unconditional win.
+        Win = 2,
+    }
+
     /// 4-valued evaluation of a decisive (not drawn) position in the context of
     /// the 50-move rule.
     #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -70,6 +88,167 @@ mod types {
         CursedWin = 1,
         /// Unconditional win.
         Win = 2,
+    }
+
+    impl Wdl {
+
+        // /// Converts `outcome` to a `Wdl` from the given point of view.
+        // pub fn from_outcome(outcome: Outcome, pov: Color) -> Wdl {
+        //     match outcome {
+        //         Outcome::Draw => Wdl::Draw,
+        //         Outcome::Decisive { winner } if winner == pov => Wdl::Win,
+        //         _ => Wdl::Loss,
+        //     }
+        // }
+
+        /// Converts `dtz` to a `Wdl`.
+        ///
+        /// Typically the result would be ambiguous for absolute DTZ values 100.
+        /// This conversion assumes that such values were given immediately after
+        /// a capture or pawn move, in which case the outcome is an unconditional
+        /// win or loss.
+        pub fn from_dtz_after_zeroing(dtz: Dtz) -> Wdl {
+            match dtz.0 {
+                n if n < -100 => Wdl::BlessedLoss,
+                n if n < 0 => Wdl::Loss,
+                0 => Wdl::Draw,
+                n if n <= 100 => Wdl::Win,
+                _ => Wdl::CursedWin,
+            }
+        }
+
+        pub fn decisive(self) -> Option<DecisiveWdl> {
+            Some(match self {
+                Wdl::Loss => DecisiveWdl::Loss,
+                Wdl::BlessedLoss => DecisiveWdl::BlessedLoss,
+                Wdl::Draw => return None,
+                Wdl::CursedWin => DecisiveWdl::CursedWin,
+                Wdl::Win => DecisiveWdl::Win,
+            })
+        }
+    }
+
+    impl std::ops::Neg for Wdl {
+        type Output = Wdl;
+
+        fn neg(self) -> Wdl {
+            match self {
+                Wdl::Loss => Wdl::Win,
+                Wdl::BlessedLoss => Wdl::CursedWin,
+                Wdl::Draw => Wdl::Draw,
+                Wdl::CursedWin => Wdl::BlessedLoss,
+                Wdl::Win => Wdl::Loss,
+            }
+        }
+    }
+
+    impl From<DecisiveWdl> for Wdl {
+        fn from(wdl: DecisiveWdl) -> Wdl {
+            match wdl {
+                DecisiveWdl::Loss => Wdl::Loss,
+                DecisiveWdl::BlessedLoss => Wdl::BlessedLoss,
+                DecisiveWdl::CursedWin => Wdl::CursedWin,
+                DecisiveWdl::Win => Wdl::Win,
+            }
+        }
+    }
+
+    /// DTZ<sub>50</sub>′′ with rounding. Based on the distance to zeroing of the
+    /// half-move clock.
+    ///
+    /// Zeroing the half-move clock while keeping the game theoretical result in
+    /// hand guarantees making progress.
+    ///
+    /// Can be off by one due to
+    /// [rounding](http://www.talkchess.com/forum3/viewtopic.php?f=7&t=58488#p651293):
+    /// `Dtz(-n)` can mean a loss in `n + 1` plies and
+    /// `Dtz(n)` can mean a win in `n + 1` plies.
+    /// This implies some primary tablebase lines may waste up to 1 ply.
+    /// Rounding is never used for endgame phases where it would change the game
+    /// theoretical outcome.
+    ///
+    /// This means users need to be careful in positions that are nearly drawn
+    /// under the 50-move rule! Carelessly wasting 1 more ply by not following the
+    /// tablebase recommendation, for a total of 2 wasted plies, may change the
+    /// outcome of the game.
+    ///
+    /// | DTZ | WDL | |
+    /// | --- | --- | --- |
+    /// | `-100 <= n <= -1` | Loss | Unconditional loss (assuming the 50-move counter is zero). Zeroing move can be forced in `-n` plies. |
+    /// | `n < -100` | Blessed loss | Loss, but draw under the 50-move rule. A zeroing move can be forced in `-n` plies or `-n - 100` plies (if a later phase is responsible for the blessing). |
+    /// | 0 | Draw | |
+    /// | `100 < n` | Cursed win | Win, but draw under the 50-move rule. A zeroing move can be forced in `n` or `n - 100` plies (if a later phase is responsible for the curse). |
+    /// | `1 <= n <= 100` | Win | Unconditional win (assuming the 50-move counter is zero). Zeroing move can be forced in `n` plies. |
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+    pub struct Dtz(pub i32);
+
+    impl Dtz {
+        /// Converts `wdl` to a DTZ, given that the best move is zeroing.
+        ///
+        /// | WDL | DTZ |
+        /// | --- | --- |
+        /// | Loss | -1 |
+        /// | Blessed loss | -101 |
+        /// | Draw | 0 |
+        /// | Cursed win | 101 |
+        /// | Win | 1 |
+        pub fn before_zeroing<T: Into<Wdl>>(wdl: T) -> Dtz {
+            match wdl.into() {
+                Wdl::Loss => Dtz(-1),
+                Wdl::BlessedLoss => Dtz(-101),
+                Wdl::Draw => Dtz(0),
+                Wdl::CursedWin => Dtz(101),
+                Wdl::Win => Dtz(1),
+            }
+        }
+
+        /// Increases the absolute value by `plies`.
+        pub fn add_plies(self, plies: i32) -> Dtz {
+            let new_dtz = self.0.signum() * (self.0.abs() + plies);
+            debug_assert!(self.0.signum() == new_dtz.signum());
+            Dtz(new_dtz)
+        }
+    }
+
+    impl std::ops::Neg for Dtz {
+        type Output = Dtz;
+
+        #[inline]
+        fn neg(self) -> Dtz {
+            Dtz(-self.0)
+        }
+    }
+
+    impl std::ops::Add for Dtz {
+        type Output = Dtz;
+
+        #[inline]
+        fn add(self, other: Dtz) -> Dtz {
+            Dtz(self.0 + other.0)
+        }
+    }
+
+    impl std::ops::AddAssign for Dtz {
+        #[inline]
+        fn add_assign(&mut self, other: Dtz) {
+            self.0 += other.0;
+        }
+    }
+
+    impl std::ops::Sub for Dtz {
+        type Output = Dtz;
+
+        #[inline]
+        fn sub(self, other: Dtz) -> Dtz {
+            Dtz(self.0 - other.0)
+        }
+    }
+
+    impl std::ops::SubAssign for Dtz {
+        #[inline]
+        fn sub_assign(&mut self, other: Dtz) {
+            self.0 -= other.0;
+        }
     }
 
     impl std::ops::Neg for DecisiveWdl {
@@ -89,6 +268,20 @@ mod types {
 
 trait TableTag {
     const METRIC: Metric;
+}
+
+#[derive(Debug)]
+enum WdlTag {}
+
+impl TableTag for WdlTag {
+    const METRIC: Metric = Metric::Wdl;
+}
+
+#[derive(Debug)]
+enum DtzTag {}
+
+impl TableTag for DtzTag {
+    const METRIC: Metric = Metric::Dtz;
 }
 
 bitflags! {
@@ -515,9 +708,9 @@ fn group_pieces(pieces: &Pieces) -> ArrayVec<usize, MAX_PIECES> {
 /// Description of the encoding used for a piece configuration.
 #[derive(Debug, Clone)]
 struct GroupData {
-    pieces: Pieces,
-    lens: ArrayVec<usize, MAX_PIECES>,
-    factors: ArrayVec<u64, { MAX_PIECES + 1 }>,
+    pieces:   Pieces,
+    lens:     ArrayVec<usize, MAX_PIECES>,
+    factors:  ArrayVec<u64, { MAX_PIECES + 1 }>,
 }
 
 impl GroupData {
@@ -829,7 +1022,7 @@ struct Table<T: TableTag, F: ReadAt> {
 }
 
 // impl<T: TableTag, S: Position + Syzygy, F: ReadAt> Table<T, S, F> {
-impl<T: TableTag, F: ReadAt> Table<T, F> {
+impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
 
     /// Open a table, parse the header, the headers of the subtables and
     /// prepare meta data required for decompression.
@@ -883,8 +1076,12 @@ impl<T: TableTag, F: ReadAt> Table<T, F> {
             let sides = [Color::White, Color::Black].iter().take(num_sides).map(|side| {
                 let pieces = parse_pieces(&raf, ptr, material.count() as usize, *side)?;
                 let key = Material::from_iter(pieces.clone());
-                ensure!(key == material || key.into_flipped() == material);
-                GroupData::new::<S>(pieces, order[side.fold(0, 1)], file)
+
+                // ensure!(key == material || key.into_flipped() == material);
+
+                GroupData::new(pieces, order[side.fold(0, 1)], file)
+                // unimplemented!()
+
             }).collect::<ProbeResult<ArrayVec<_, 2>>>()?;
 
             ptr += material.count() as u64;
@@ -895,7 +1092,7 @@ impl<T: TableTag, F: ReadAt> Table<T, F> {
         ptr += ptr & 1;
 
         // Ensure reference pawn goes first.
-        ensure!((files[0][0].pieces[0].role == Role::Pawn) == has_pawns);
+        ensure!((files[0][0].pieces[0].1 == Pawn) == has_pawns);
 
         // Ensure material is consistent with first file.
         for file in files.iter() {
@@ -908,7 +1105,7 @@ impl<T: TableTag, F: ReadAt> Table<T, F> {
         // Setup pairs.
         let mut files = files.into_iter().map(|file| {
             let sides = file.into_iter().map(|side| {
-                let (mut pairs, next_ptr) = PairsData::parse::<S, T, _>(&raf, ptr, side)?;
+                let (mut pairs, next_ptr) = PairsData::parse::<T, _>(&raf, ptr, side)?;
 
                 // if T::METRIC == Metric::Dtz && S::CAPTURES_COMPULSORY
                 //     && pairs.flags.contains(Flag::SINGLE_VALUE) {
@@ -983,5 +1180,482 @@ impl<T: TableTag, F: ReadAt> Table<T, F> {
         })
     }
 
+    /// Retrieves the value stored for `idx` by decompressing Huffman coded
+    /// symbols stored in the corresponding block of the table.
+    fn decompress_pairs(&self, g: &Game, d: &PairsData, idx: u64) -> ProbeResult<u16> {
+        // Special case: The table stores only a single value.
+        if d.flags.contains(Flag::SINGLE_VALUE) {
+            return Ok(u16::from(d.min_symlen));
+        }
+
+        // Use the sparse index to jump very close to the correct block.
+        let main_idx = idx / u64::from(d.span);
+        ensure!(main_idx <= u64::from(u32::max_value()));
+
+        let mut block = self.raf.read_u32_at::<LE>(d.sparse_index + 6 * main_idx)?;
+        let offset = i64::from(self.raf.read_u16_at::<LE>(d.sparse_index + 6 * main_idx + 4)?);
+
+        let mut lit_idx = idx as i64 % i64::from(d.span) - i64::from(d.span) / 2;
+        lit_idx += offset;
+
+        // Now move forwards/backwards to find the correct block.
+        while lit_idx < 0 {
+            block = u!(block.checked_sub(1));
+            lit_idx += i64::from(self.raf.read_u16_at::<LE>(d.block_lengths + u64::from(block) * 2)?) + 1;
+        }
+        loop {
+            let block_length = i64::from(self.raf.read_u16_at::<LE>(d.block_lengths + u64::from(block) * 2)?) + 1;
+            if lit_idx >= block_length {
+                lit_idx -= block_length;
+                block = u!(block.checked_add(1));
+            } else {
+                break;
+            }
+        }
+
+        // Read block (and 4 bytes to prevent out of bounds read) into memory.
+        let mut block_buffer = [0; MAX_BLOCK_SIZE + 4];
+        let block_buffer = &mut block_buffer[..(d.block_size as usize + 4)];
+
+        self.raf.read_exact_at(u!(d.data.checked_add(u64::from(block) * u64::from(d.block_size))), block_buffer)?;
+
+        let mut cursor = io::Cursor::new(block_buffer);
+
+        // Find sym, the Huffman symbol that encodes the value for idx.
+        let mut buf = cursor.read_u64::<BE>()?;
+        let mut buf_size = 64;
+
+        let mut sym;
+
+        // let mut k = 0;
+        loop {
+            // eprintln!("wot k = {}", k);
+            // k += 1;
+
+            let mut len = 0;
+
+            while buf < *u!(d.base.get(len)) {
+                len += 1;
+            }
+
+            sym = ((buf - d.base[len]) >> (64 - len - usize::from(d.min_symlen))) as u16;
+            sym += self.raf.read_u16_at::<LE>(d.lowest_sym + 2 * len as u64)?;
+
+            if lit_idx < i64::from(*u!(d.symlen.get(usize::from(sym)))) + 1 {
+                break;
+            }
+
+            lit_idx -= i64::from(*u!(d.symlen.get(usize::from(sym)))) + 1;
+            len += usize::from(d.min_symlen);
+            buf <<= len;
+            buf_size -= len;
+
+            // Refill the buffer.
+            if buf_size <= 32 {
+                buf_size += 32;
+
+                // buf |= u64::from(cursor.read_u32::<BE>()?) << (64 - buf_size);
+
+                let c = match cursor.read_u32::<BE>() {
+                    Ok(c) => c,
+                    Err(e) => {
+                        eprintln!("nope 0: {:?}\n{:?}", e, g);
+                        panic!()
+                    },
+                };
+
+                buf |= u64::from(c) << (64 - buf_size);
+            }
+        }
+
+        // Decompress Huffman symbol.
+        while *u!(d.symlen.get(usize::from(sym))) != 0 {
+            let (left, right) = read_lr(&self.raf, d.btree + 3 * u64::from(sym))?;
+
+            if lit_idx < i64::from(*u!(d.symlen.get(usize::from(left)))) + 1 {
+                sym = left;
+            } else {
+                lit_idx -= i64::from(*u!(d.symlen.get(usize::from(left)))) + 1;
+                sym = right;
+            }
+        }
+
+        let w = d.btree + 3 * u64::from(sym);
+        match T::METRIC {
+            Metric::Wdl => {
+                let c = match self.raf.read_u8_at(w) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        eprintln!("nope 0: {:?}\n{:?}", e, g);
+                        panic!()
+                    }
+                };
+                Ok(u16::from(c))
+            },
+            Metric::Dtz => {
+                let c = match self.raf.read_u16_at::<LE>(w) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        eprintln!("nope 0: {:?}\n{:?}", e, g);
+                        panic!()
+                    }
+                };
+                Ok(c & 0xfff)
+            },
+        }
+    }
+
+    /// Given a position, determine the unique (modulo symmetries) index into
+    /// the corresponding subtable.
+    fn encode(&self, g: &Game) -> ProbeResult<Option<(&PairsData, u64)>> {
+        let key = g.state.material;
+        let material = Material::from_iter(self.files[0].sides[0].groups.pieces.clone());
+        assert!(key == material || key == material.clone().into_flipped());
+
+        let symmetric_btm = material.is_symmetric() && g.state.side_to_move == Black;
+        let black_stronger = key != material;
+        let flip = symmetric_btm || black_stronger;
+        // let bside = pos.turn().is_black() ^ flip;
+        let bside = (g.state.side_to_move == Black) ^ flip;
+
+        let mut squares: ArrayVec<Coord, MAX_PIECES> = ArrayVec::new();
+        let mut used = BitBoard(0);
+
+        // For pawns there are subtables for each file (a, b, c, d) the
+        // leading pawn can be placed on.
+        let file = &self.files[if material.has_pawns() {
+            let reference_pawn = self.files[0].sides[0].groups.pieces[0];
+            assert_eq!(reference_pawn.1, Pawn);
+            let color = reference_pawn.0 ^ flip;
+
+            // let lead_pawns = pos.board().pawns() & pos.board().by_color(color);
+            let lead_pawns = g.get(Pawn, color);
+            used.extend_mut(lead_pawns);
+            squares.extend(lead_pawns.into_iter()
+                           .map(|sq| if flip { Coord::from(sq).flip_vertical() } else { Coord::from(sq) }));
+
+            // Ensure squares[0] is the maximum with regard to map_pawns.
+            for i in 1..squares.len() {
+                if CONSTS.map_pawns[usize::from(squares[0])] < CONSTS.map_pawns[usize::from(squares[i])] {
+                    squares.swap(0, i);
+                }
+            }
+            if squares[0].file() >= 4 {
+                squares[0].flip_horizontal().file() as usize
+            } else {
+                squares[0].file() as usize
+            }
+        } else {
+            0
+        }];
+
+        // WDL tables have subtables for each side to move.
+        let side = &file.sides[if bside { file.sides.len() - 1 } else { 0 }];
+
+        // DTZ tables store only one side to move. It is possible that we have
+        // to check the other side (by doing a 1-ply search).
+        if T::METRIC == Metric::Dtz
+            && side.flags.contains(Flag::STM) != bside && (!material.is_symmetric() || material.has_pawns()) {
+            return Ok(None);
+        }
+
+        // The subtable has been determined.
+        //
+        // So far squares has been initialized with the leading pawns.
+        // Also add the other pieces.
+        let lead_pawns_count = squares.len();
+
+        for piece in side.groups.pieces.iter().skip(lead_pawns_count) {
+            let color = piece.0 ^ flip;
+
+            // let square = u!((pos.board().by_piece(piece.role.of(color)) & !used).first());
+            let square = u!((g.get(piece.1, color) & !used).bitscan_safe());
+
+            // squares.push(if flip { square.flip_vertical() } else { square });
+            squares.push(if flip { Coord::from(square).flip_vertical() } else { Coord::from(square) });
+            used.set_one_mut(Coord::from(square));
+        }
+
+        assert!(squares.len() >= 2);
+
+        // Now we can compute the index according to the piece positions.
+        if squares[0].file() >= 4 {
+            for square in &mut squares {
+                *square = square.flip_horizontal();
+            }
+        }
+
+        let mut idx = if material.has_pawns() {
+            let mut idx = CONSTS.lead_pawn_idx[lead_pawns_count][usize::from(squares[0])];
+
+            squares[1..lead_pawns_count].sort_unstable_by_key(|sq| CONSTS.map_pawns[usize::from(*sq)]);
+
+            for (i, &square) in squares.iter().enumerate().take(lead_pawns_count).skip(1) {
+                idx += binomial(CONSTS.map_pawns[usize::from(square)], i as u64);
+            }
+
+            idx
+        } else {
+            if squares[0].rank() >= 4 {
+                for square in &mut squares {
+                    *square = square.flip_vertical();
+                }
+            }
+
+            for i in 0..side.groups.lens[0] {
+                // if squares[i].file().flip_diagonal() == squares[i].rank() {
+                if squares[i].flip_diagonal().rank() == squares[i].rank() {
+                    continue;
+                }
+
+                // if squares[i].rank().flip_diagonal() > squares[i].file() {
+                if squares[i].flip_diagonal().file() > squares[i].file() {
+                    for square in &mut squares[i..] {
+                        *square = square.flip_diagonal();
+                    }
+                }
+
+                break;
+            }
+
+            if self.num_unique_pieces > 2 {
+                let adjust1 = if squares[1] > squares[0] { 1 } else { 0 };
+                let adjust2 = if squares[2] > squares[0] { 1 } else { 0 } +
+                              if squares[2] > squares[1] { 1 } else { 0 };
+
+                if offdiag(squares[0]) {
+                    TRIANGLE[usize::from(squares[0])] * 63 * 62 +
+                    (sq_to_u64(squares[1]) - adjust1) * 62 +
+                    (sq_to_u64(squares[2]) - adjust2)
+                } else if offdiag(squares[1]) {
+                    6 * 63 * 62 +
+                    squares[0].rank() as u64 * 28 * 62 +
+                    LOWER[usize::from(squares[1])] * 62 +
+                    sq_to_u64(squares[2]) - adjust2
+                } else if offdiag(squares[2]) {
+                    6 * 63 * 62 + 4 * 28 * 62 +
+                    squares[0].rank() as u64 * 7 * 28 +
+                    (squares[1].rank() as u64 - adjust1) * 28 +
+                    LOWER[usize::from(squares[2])]
+                } else {
+                    6 * 63 * 62 + 4 * 28 * 62 + 4 * 7 * 28 +
+                    squares[0].rank() as u64 * 7 * 6 +
+                    (squares[1].rank() as u64 - adjust1) * 6 +
+                    (squares[2].rank() as u64 - adjust2)
+                }
+            } else if self.num_unique_pieces == 2 {
+                KK_IDX[TRIANGLE[usize::from(squares[0])] as usize][usize::from(squares[1])]
+            } else if self.min_like_man == 2 {
+                if TRIANGLE[usize::from(squares[0])] > TRIANGLE[usize::from(squares[1])] {
+                    squares.swap(0, 1);
+                }
+
+                if squares[0].file() >= 4 {
+                    for square in &mut squares {
+                        *square = square.flip_horizontal();
+                    }
+                }
+
+                if squares[0].rank() >= 4 {
+                    for square in &mut squares {
+                        *square = square.flip_vertical();
+                    }
+                }
+
+                // if squares[0].rank().flip_diagonal() > squares[0].file() ||
+                if squares[0].flip_diagonal().file() > squares[0].file() ||
+                   // (!offdiag(squares[0]) && squares[1].rank().flip_diagonal() > squares[1].file()) {
+                   (!offdiag(squares[0]) && squares[1].flip_diagonal().file() > squares[1].file()) {
+                    for square in &mut squares {
+                        *square = square.flip_diagonal();
+                    }
+                }
+
+                if TEST45.is_one_at(squares[1])
+                    && TRIANGLE[usize::from(squares[0])] == TRIANGLE[usize::from(squares[1])] {
+                    squares.swap(0, 1);
+
+                    for square in &mut squares {
+                        *square = square.flip_vertical().flip_diagonal();
+                    }
+                }
+
+                PP_IDX[TRIANGLE[usize::from(squares[0])] as usize][usize::from(squares[1])]
+            } else {
+                for i in 1..side.groups.lens[0] {
+                    if TRIANGLE[usize::from(squares[0])] > TRIANGLE[usize::from(squares[i])] {
+                        squares.swap(0, i);
+                    }
+                }
+
+                if squares[0].file() >= 4 {
+                    for square in &mut squares {
+                        *square = square.flip_horizontal();
+                    }
+                }
+
+                if squares[0].rank() >= 4 {
+                    for square in &mut squares {
+                        *square = square.flip_vertical();
+                    }
+                }
+
+                // if squares[0].rank().flip_diagonal() > squares[0].file() {
+                if squares[0].flip_diagonal().file() > squares[0].file() {
+                    for square in &mut squares {
+                        *square = square.flip_diagonal();
+                    }
+                }
+
+                for i in 1..side.groups.lens[0] {
+                    for j in (i + 1)..side.groups.lens[0] {
+                        if MULT_TWIST[usize::from(squares[i])] > MULT_TWIST[usize::from(squares[j])] {
+                            squares.swap(i, j);
+                        }
+                    }
+                }
+
+                let mut idx = CONSTS.mult_idx[side.groups.lens[0] - 1][TRIANGLE[usize::from(squares[0])] as usize];
+                for i in 1..side.groups.lens[0] {
+                    idx += binomial(MULT_TWIST[usize::from(squares[i])], i as u64);
+                }
+
+                idx
+            }
+        };
+
+        idx *= side.groups.factors[0];
+
+        // Encode remaining pawns.
+        // let mut remaining_pawns = material.white.has_pawns() && material.black.has_pawns();
+        let mut remaining_pawns = material.has_piece_side(Pawn, White) && material.has_piece_side(Pawn, Black);
+        let mut next = 1;
+        let mut group_sq = side.groups.lens[0];
+        for lens in side.groups.lens.iter().cloned().skip(1) {
+            let (prev_squares, group_squares) = squares.split_at_mut(group_sq);
+            let group_squares = &mut group_squares[..lens];
+            group_squares.sort_unstable();
+
+            let mut n = 0;
+
+            for (i, &group_square) in group_squares.iter().enumerate().take(lens) {
+                let adjust = prev_squares[..group_sq].iter().filter(|sq| group_square > **sq).count() as u64;
+                n += binomial(sq_to_u64(group_square) - adjust - if remaining_pawns { 8 } else { 0 }, i as u64 + 1);
+            }
+
+            remaining_pawns = false;
+            idx += n * side.groups.factors[next];
+            group_sq += side.groups.lens[next];
+            next += 1;
+        }
+
+        Ok(Some((side, idx)))
+    }
+
+    pub fn probe_wdl(&self, g: &Game) -> ProbeResult<Wdl> {
+        assert_eq!(T::METRIC, Metric::Wdl);
+
+        let (side, idx) = self.encode(g)?.expect("wdl tables are two sided");
+        // let decompressed = self.decompress_pairs(g, side, idx)?;
+        let decompressed = match self.decompress_pairs(g, side, idx) {
+            Ok(d) => d,
+            Err(e) => {
+                // let k: RandomAccessFile = self.raf;
+                eprintln!("self.raf = {:?}", self.raf);
+                eprintln!("nope probe_wdl = {:?}\n{:?}", e, g);
+                panic!();
+            }
+        };
+
+        Ok(match decompressed {
+            0 => Wdl::Loss,
+            1 => Wdl::BlessedLoss,
+            2 => Wdl::Draw,
+            3 => Wdl::CursedWin,
+            4 => Wdl::Win,
+            _ => throw!(),
+        })
+    }
+
+    pub fn probe_dtz(&self, g: &Game, wdl: DecisiveWdl) -> ProbeResult<Option<Dtz>> {
+        assert_eq!(T::METRIC, Metric::Dtz);
+
+        let (side, idx) = match self.encode(g)? {
+            Some(found) => found,
+            None        => return Ok(None), // check other side
+        };
+
+        let res = self.decompress_pairs(g, side, idx)?;
+
+        let res = i32::from(match side.dtz_map {
+            None          => res,
+            Some(ref map) => map.read(&self.raf, wdl, res)?,
+        });
+
+        let stores_plies = match wdl {
+            DecisiveWdl::Win  => side.flags.contains(Flag::WIN_PLIES),
+            DecisiveWdl::Loss => side.flags.contains(Flag::LOSS_PLIES),
+            DecisiveWdl::CursedWin | DecisiveWdl::BlessedLoss => false,
+        };
+
+        Ok(Some(Dtz(if stores_plies { res } else { 2 * res })))
+    }
+
+}
+
+fn sq_to_u64(c0: Coord) -> u64 {
+    let k: u8 = c0.into();
+    k as u64
+}
+
+fn open_table_file<P: AsRef<Path>>(path: P) -> ProbeResult<RandomAccessFile> {
+    let file = std::fs::File::open(path)?;
+    ensure!(file.metadata()?.len() % 64 == 16);
+    Ok(RandomAccessFile::try_new(file)?)
+}
+
+/// A WDL Table.
+#[derive(Debug)]
+pub struct WdlTable<F: ReadAt> {
+    table: Table<WdlTag, F>,
+}
+
+impl<F: ReadAt + std::fmt::Debug> WdlTable<F> {
+    pub fn new(raf: F, material: &Material) -> ProbeResult<WdlTable<F>> {
+        Table::new(raf, material).map(|table| WdlTable { table })
+    }
+
+    pub fn probe_wdl(&self, g: &Game) -> ProbeResult<Wdl> {
+        self.table.probe_wdl(g)
+    }
+}
+
+impl WdlTable<RandomAccessFile> {
+    pub fn open<P: AsRef<Path>>(path: P, material: &Material)
+                                           -> ProbeResult<WdlTable<RandomAccessFile>> {
+        WdlTable::new(open_table_file(path)?, material)
+    }
+}
+
+/// A DTZ Table.
+#[derive(Debug)]
+pub struct DtzTable<F: ReadAt> {
+    table: Table<DtzTag, F>,
+}
+
+impl<F: ReadAt + std::fmt::Debug> DtzTable<F> {
+    pub fn new(raf: F, material: &Material) -> ProbeResult<DtzTable<F>> {
+        Table::new(raf, material).map(|table| DtzTable { table })
+    }
+
+    pub fn probe_dtz(&self, g: &Game, wdl: DecisiveWdl) -> ProbeResult<Option<Dtz>> {
+        self.table.probe_dtz(g, wdl)
+    }
+}
+
+impl DtzTable<RandomAccessFile> {
+    pub fn open<P: AsRef<Path>>(path: P, material: &Material) -> ProbeResult<DtzTable<RandomAccessFile>> {
+        DtzTable::new(open_table_file(path)?, material)
+    }
 }
 

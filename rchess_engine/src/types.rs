@@ -181,6 +181,19 @@ impl IntoIterator for Outcome {
 
 impl Move {
 
+    pub fn is_zeroing(&self) -> bool {
+        match self {
+            Move::Quiet { pc, .. }        => *pc == Pawn,
+            Move::PawnDouble { .. }       => true,
+            Move::Capture { .. }          => true,
+            Move::EnPassant { .. }        => true,
+            Move::Castle { .. }           => true,
+            Move::Promotion { .. }        => true,
+            Move::PromotionCapture { .. } => true,
+            _                             => false,
+        }
+    }
+
     pub fn filter_quiet(&self) -> bool {
         match self {
             &Move::Quiet { .. }      => true,
@@ -377,6 +390,14 @@ impl Move {
 }
 
 impl Color {
+
+    pub fn fold<T>(self, white: T, black: T) -> T {
+        match self {
+            White => white,
+            Black => black,
+        }
+    }
+
     // dark mode needs reversed
     pub fn print(&self) -> char {
         match self {
@@ -385,6 +406,17 @@ impl Color {
             Black => char::from_u32(0x25A1).unwrap(),
             White => char::from_u32(0x25A0).unwrap(),
         }
+    }
+}
+
+impl std::ops::BitXor<bool> for Color {
+    type Output = Color;
+
+    #[inline]
+    fn bitxor(self, flip: bool) -> Color {
+        // Color::from_white(self.is_white() ^ flip)
+        let b = (self == White) ^ flip;
+        if b { White } else { Black }
     }
 }
 

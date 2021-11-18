@@ -65,6 +65,42 @@ impl<T> std::ops::IndexMut<Coord> for [T; 64] {
 
 impl Coord {
 
+    pub fn file(self) -> u8 {
+        self.0
+    }
+    pub fn rank(self) -> u8 {
+        self.1
+    }
+
+    pub fn flip_diagonal_int<T>(x: T) -> T where
+        T: num_traits::PrimInt + num_traits::WrappingMul,
+    {
+        x.wrapping_mul(&T::from(0x2080_0000).unwrap()) >> 26
+    }
+
+    pub fn flip_horizontal_int<T: num_traits::PrimInt>(x: T) -> T {
+        x ^ T::from(0b000_111).unwrap()
+    }
+
+    pub fn flip_vertical_int<T: num_traits::PrimInt>(x: T) -> T {
+        x ^ T::from(0b111_000).unwrap()
+    }
+
+    pub fn flip_diagonal(self) -> Self {
+        let x = u32::from(self).wrapping_mul(0x2080_0000) >> 26;
+        Coord::from(x)
+    }
+
+    pub fn flip_vertical(self) -> Self {
+        Coord(self.0, 7 - self.1)
+    }
+    pub fn flip_horizontal(self) -> Self {
+        Coord(7 - self.0, self.1)
+    }
+}
+
+impl Coord {
+
     pub fn center_distance(&self) -> u8 {
         CENTERDIST[*self]
     }

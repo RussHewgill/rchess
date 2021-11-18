@@ -1,5 +1,7 @@
 
 pub use crate::syzygy::sz_format::*;
+use crate::types::Color;
+pub use crate::types::Material;
 
 use std::fmt;
 use std::io;
@@ -11,6 +13,8 @@ pub type ProbeResult<T> = Result<T, ProbeError>;
 /// Error when probing tablebase.
 #[derive(Debug)]
 pub enum SyzygyError {
+    Checkmate(Color),
+    Stalemate,
     /// Position has castling rights, but Syzygy tables do not contain
     /// positions with castling rights.
     Castling,
@@ -20,12 +24,12 @@ pub enum SyzygyError {
     /// Missing table.
     MissingTable {
         metric:   Metric,
-        // material: Material
+        material: Material
     },
     /// Probe failed.
     ProbeFailed {
         metric:   Metric,
-        // material: Material,
+        material: Material,
         error:    ProbeError,
     },
 }
@@ -33,14 +37,16 @@ pub enum SyzygyError {
 impl fmt::Display for SyzygyError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            SyzygyError::Checkmate(win) => write!(f, "Checkmate {:?}", win),
+            SyzygyError::Stalemate      => write!(f, "Stalemate"),
             SyzygyError::Castling =>
                 write!(f, "syzygy tables do not contain position with castling rights"),
             SyzygyError::TooManyPieces =>
                 write!(f, "too many pieces"),
-            SyzygyError::MissingTable { metric } =>
-                write!(f, "required {} table not found: (mat)", metric),
-            SyzygyError::ProbeFailed { metric, error } =>
-                write!(f, "failed to probe {} table (mat): {}", metric, error),
+            SyzygyError::MissingTable { metric, material } =>
+                write!(f, "required {} table not found: {:?}", metric, material),
+            SyzygyError::ProbeFailed { metric, material, error } =>
+                write!(f, "failed to probe {} table {:?}: {}", metric, material, error),
         }
     }
 }
@@ -107,6 +113,20 @@ impl From<io::Error> for ProbeError {
             },
             _ => ProbeError::Read { error },
         }
+    }
+}
+
+pub trait ProbeResultExt<T> {
+    fn ctx(self, metric: Metric, material: &Material) -> SyzygyResult<T>;
+}
+
+impl<T> ProbeResultExt<T> for ProbeResult<T> {
+    fn ctx(self, metric: Metric, material: &Material) -> SyzygyResult<T> {
+        self.map_err(|error| SyzygyError::ProbeFailed {
+            metric,
+            material: material.clone().into_normalized(),
+            error,
+        })
     }
 }
 

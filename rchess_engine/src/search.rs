@@ -458,6 +458,14 @@ impl Game {
 /// Helpers
 impl Game {
 
+    pub fn is_checkmate(&self, ts: &Tables) -> bool {
+        let mvs = self.search_all(ts);
+        match mvs {
+            Outcome::Checkmate(_) => true,
+            _                     => false,
+        }
+    }
+
     pub fn find_checkers(&self, ts: &Tables, col: Color) -> BitBoard {
         let p0: Coord = self.get(King, col).bitscan().into();
 
