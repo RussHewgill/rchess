@@ -78,7 +78,8 @@ pub struct GameState {
 
     pub phase:              Phase,
     pub last_capture:       Option<Coord>,
-    pub material:           [[u8; 5]; 2],
+    // pub material:           [[u8; 5]; 2],
+    pub material:           Material,
 
     // pub checkers:           Option<BitBoard>,
     // pub king_blocks_w:      Option<BitBoard>,
@@ -88,6 +89,74 @@ pub struct GameState {
     pub king_blocks_w:      BitBoard,
     pub king_blocks_b:      BitBoard,
     pub check_block_mask:   BitBoard,
+}
+
+#[derive(Debug,Default,PartialEq,PartialOrd,Clone,Copy)]
+pub struct Material {
+    pub buf:  [[u8; 5]; 2],
+}
+
+/// Construction
+impl Material {
+    pub fn from_iter<T>(iter: T) -> Self where T: IntoIterator<Item = (Color,Piece)> {
+        let mut out = Self::default();
+        for (side,pc) in iter {
+            out.buf[side][pc.index()] += 1;
+        }
+        out
+    }
+}
+
+/// Queries
+impl Material {
+
+    pub fn count(&self) -> u8 {
+        self.buf[White].iter().sum::<u8>() + self.buf[Black].iter().sum::<u8>()
+    }
+
+    pub fn count_side(&self, side: Color) -> u8 {
+        self.buf[side].iter().sum::<u8>()
+    }
+
+    pub fn min_like_man(&self) -> u8 {
+        let c0 = Piece::iter_pieces()
+            .map(|pc| self.buf[Black][pc.index()]);
+        Piece::iter_pieces()
+            .map(|pc| self.buf[Black][pc.index()])
+            .chain(c0)
+            .filter(|&c| 2 <= c)
+            .min()
+            .unwrap_or(0)
+    }
+
+    pub fn is_symmetric(&self) -> bool {
+        self.buf[White] == self.buf[Black]
+    }
+
+    pub fn unique_pieces(&self) -> u8 {
+        self.unique_pieces_side(White) + self.unique_pieces_side(Black)
+    }
+
+    pub fn unique_pieces_side(&self, side: Color) -> u8 {
+        // self.buf[side].iter().map(|&pc| )
+        let mut out = 0;
+        for &x in self.buf[side].iter() {
+            if x == 1 { out += 1; }
+        }
+        out
+    }
+
+    pub fn has_pawns(&self) -> bool {
+        self.has_piece(Pawn)
+    }
+
+    pub fn has_piece_side(&self, pc: Piece, side: Color) -> bool {
+        self.buf[side][pc.index()] != 0
+    }
+
+    pub fn has_piece(&self, pc: Piece) -> bool {
+        self.buf[White][pc.index()] != 0 || self.buf[Black][pc.index()] != 0
+    }
 }
 
 pub type Phase = u8;
@@ -405,7 +474,8 @@ impl Game {
         Ok(())
     }
 
-    pub fn count_material(&self) -> [[u8; 5]; 2] {
+    // pub fn count_material(&self) -> [[u8; 5]; 2] {
+    pub fn count_material(&self) -> Material {
         const COLS: [Color; 2] = [White,Black];
         const PCS:  [Piece; 5] = [Pawn,Knight,Bishop,Rook,Queen];
 
@@ -415,7 +485,8 @@ impl Game {
                 out[side][pc.index()] = self.get(pc, side).popcount() as u8;
             }
         }
-        out
+        Material { buf: out }
+        // out
     }
 
     pub fn recalc_gameinfo_mut(&mut self, ts: &Tables) -> GameResult<()> {
@@ -584,8 +655,8 @@ impl Game {
         *bp = bp.set_zero(at);
 
         if mat && pc != King {
-            assert!(self.state.material[side][pc.index()] > 0);
-            self.state.material[side][pc.index()] -= 1;
+            assert!(self.state.material.buf[side][pc.index()] > 0);
+            self.state.material.buf[side][pc.index()] -= 1;
         }
 
         self.zobrist = self.zobrist.update_piece(&ts, pc, side, at.into());
@@ -607,7 +678,7 @@ impl Game {
         *bp = bp.set_one(at);
 
         if mat && pc != King {
-            self.state.material[side][pc.index()] += 1;
+            self.state.material.buf[side][pc.index()] += 1;
         }
 
         self.zobrist = self.zobrist.update_piece(&ts, pc, side, at.into());

@@ -1,4 +1,6 @@
 
+#[macro_use]
+mod sz_errors;
 mod sz_format;
 
 use self::sz_format::*;

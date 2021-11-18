@@ -165,7 +165,7 @@ impl Game {
 
         for &col in [White,Black].iter() {
             for pc in PCS {
-                let x = self.state.material[col][pc.index()] as u16 * PHASES[pc.index()];
+                let x = self.state.material.buf[col][pc.index()] as u16 * PHASES[pc.index()];
                 if ph < x {
                     ph = 0;
                     break;
@@ -233,14 +233,14 @@ impl Game {
                 let rs = self.get(Rook, side);
 
                 // let n = rs.popcount() as i32;
-                let n = self.state.material[side][Rook.index()] as i32;
+                let n = self.state.material.buf[side][Rook.index()] as i32;
                 let s = Rook.score() * n;
                 s
             },
             // Knight => {},
             Bishop => {
                 // let n = self.get(Bishop, side).popcount() as i32;
-                let n = self.state.material[side][Bishop.index()] as i32;
+                let n = self.state.material.buf[side][Bishop.index()] as i32;
                 let s = if n > 1 {
                     // 2 bishops = 0.5 pawn
                     Bishop.score() * n + 50
@@ -251,7 +251,7 @@ impl Game {
             },
             _      => {
                 // let s = pc.score() * self.get(pc, side).popcount() as i32;
-                let n = self.state.material[side][pc.index()] as i32;
+                let n = self.state.material.buf[side][pc.index()] as i32;
                 let s = pc.score() * n;
                 s
             },

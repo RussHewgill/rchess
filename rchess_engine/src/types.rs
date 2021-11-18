@@ -449,6 +449,18 @@ impl Iterator for PcIter {
 
 impl Piece {
 
+    pub fn from_index(x: u8) -> Self {
+        match x {
+            0 => Pawn,
+            1 => Knight,
+            2 => Bishop,
+            3 => Rook,
+            4 => Queen,
+            5 => King,
+            _ => panic!("Piece::from_index bad {:?}", x),
+        }
+    }
+
     pub fn index(self) -> usize {
         match self {
             Pawn   => 0,

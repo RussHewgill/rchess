@@ -88,6 +88,9 @@ pub const MASK_RANKS: [BitBoard; 8] = [
 pub const WHITE_SQUARES: BitBoard = BitBoard(0x55AA55AA55AA55AA);
 pub const BLACK_SQUARES: BitBoard = BitBoard(0xAA55AA55AA55AA55);
 
+pub const DIAG_A1_H8: BitBoard = BitBoard(0x8040201008040201);
+pub const DIAG_A8_H1: BitBoard = BitBoard(0x0102040810204080);
+
 lazy_static! {
     pub static ref FLANK_LEFT: BitBoard  = MASK_FILES[0] | MASK_FILES[1] | MASK_FILES[2] | MASK_FILES[3];
     pub static ref FLANK_RIGHT: BitBoard = MASK_FILES[4] | MASK_FILES[5] | MASK_FILES[6] | MASK_FILES[7];

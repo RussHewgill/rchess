@@ -220,9 +220,8 @@ fn main_syzygy() {
 
     let dir = "/home/me/code/rust/rchess/tables/syzygy/";
 
-    // Syzygy::load_dir(&ts, &dir).unwrap();
-    SyzygyBase::load_dir(&dir).unwrap();
-
+    // SyzygyBase::load_dir(&ts, &dir).unwrap();
+    // SyzygyBase::load_dir(&dir).unwrap();
 
 }
 
