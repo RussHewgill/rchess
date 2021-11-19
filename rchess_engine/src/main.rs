@@ -5,6 +5,7 @@
 #![allow(unused_doc_comments)]
 
 #![feature(core_intrinsics)]
+#![feature(backtrace,backtrace_frames)]
 
 #![allow(clippy::all)]
 
@@ -234,7 +235,13 @@ fn main_syzygy() {
 
     // let fen = "8/8/8/8/B7/N7/K2k4/8 b - - 0 1";
     // let fen = "5BrN/8/8/8/8/2k5/8/2K5 b - -";
-    let fen = "5B2/8/6N1/8/8/2k5/8/2K5 b - - 0 2";
+    // let fen = "5B2/8/6N1/8/8/2k5/8/2K5 b - - 0 2";
+    // let fen = "5B1N/8/8/8/8/2k5/8/2K3r1 w - - 1 2";
+
+    let fen = "3qk3/8/8/8/8/8/8/4K3 w - - 0 1";
+
+    // let fen = "8/6B1/8/8/B7/8/K1pk4/8 b - - 0 1";
+    // let fen = "8/6B1/8/8/B7/8/3k4/K1n5 b - - 1 2";
 
     let ts = Tables::read_from_file_def().unwrap();
     let g = Game::from_fen(&ts, &fen).unwrap();
@@ -245,12 +252,21 @@ fn main_syzygy() {
 
     // eprintln!("g = {:?}", g);
 
+    // let k0 = tb.probe_ab_no_ep(&ts, &g, Wdl::Loss, Wdl::Loss);
+    // eprintln!("k0 = {:?}", k0);
+
+    // tb.fathom(&ts, &g).unwrap();
+
+    // let mv = Move::Promotion { from: "C2".into(), to: "C1".into(), new_piece: Knight };
+    // // let mv = Move::Promotion { from: "C2".into(), to: "C1".into(), new_piece: Queen };
+    // let g2 = g.make_move_unchecked(&ts, mv).unwrap();
+    // eprintln!("g2 = {:?}", g2);
+    // let g = g2;
+
     let k0 = tb.probe_wdl(&ts, &g);
     eprintln!("k0 = {:?}", k0);
-
     let k1 = tb.probe_dtz(&ts, &g);
     eprintln!("k1 = {:?}", k1);
-
     let k2 = tb.best_move(&ts, &g).unwrap();
     eprintln!("k2 = {:?}", k2.map(|x| x.0));
 

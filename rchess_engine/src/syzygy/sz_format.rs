@@ -2,7 +2,7 @@
 pub use self::types::*;
 use crate::syzygy::sz_errors::*;
 
-use crate::tables::*;
+use crate::{eprint_self, tables::*};
 use crate::types::{
     BitBoard,Coord,Color::{self,*},Piece,Piece::*,Material,Game,
 };
@@ -266,19 +266,19 @@ mod types {
 
 }
 
-trait TableTag {
+pub trait TableTag {
     const METRIC: Metric;
 }
 
 #[derive(Debug)]
-enum WdlTag {}
+pub enum WdlTag {}
 
 impl TableTag for WdlTag {
     const METRIC: Metric = Metric::Wdl;
 }
 
 #[derive(Debug)]
-enum DtzTag {}
+pub enum DtzTag {}
 
 impl TableTag for DtzTag {
     const METRIC: Metric = Metric::Dtz;
@@ -286,7 +286,7 @@ impl TableTag for DtzTag {
 
 bitflags! {
     /// Table layout flags.
-    struct Layout: u8 {
+    pub struct Layout: u8 {
         /// Two sided table for non-symmetrical material configuration.
         const SPLIT = 1;
         /// Table with pawns. Has subtables for each leading pawn file (a-d).
@@ -296,7 +296,7 @@ bitflags! {
 
 bitflags! {
     /// Subtable format flags.
-    struct Flag: u8 {
+    pub struct Flag: u8 {
         /// DTZ table stores black to move.
         const STM = 1;
         /// Use `DtzMap`.
@@ -654,7 +654,9 @@ fn nibble_to_piece(p: u8) -> Option<(Color,Piece)> {
 
 /// Checks if a square is on the a1-h8 diagonal.
 fn offdiag(c0: Coord) -> bool {
-    DIAG_A1_H8.is_one_at(c0)
+    let out = DIAG_A1_H8.is_zero_at(c0);
+    // eprintln!("offdiag: {:?} = {:?}", c0, out);
+    out
 }
 
 /// Parse a piece list.
@@ -707,7 +709,7 @@ fn group_pieces(pieces: &Pieces) -> ArrayVec<usize, MAX_PIECES> {
 
 /// Description of the encoding used for a piece configuration.
 #[derive(Debug, Clone)]
-struct GroupData {
+pub struct GroupData {
     pieces:   Pieces,
     lens:     ArrayVec<usize, MAX_PIECES>,
     factors:  ArrayVec<u64, { MAX_PIECES + 1 }>,
@@ -745,7 +747,8 @@ impl GroupData {
                     idx *= 31_332;
                 } else if material.unique_pieces() == 2 {
                     // idx *= if S::CONNECTED_KINGS { 518 } else { 462 };
-                    unimplemented!()
+                    // unimplemented!()
+                    idx *= 462;
                 } else if material.min_like_man() == 2 {
                     idx *= 278;
                 } else {
@@ -777,7 +780,7 @@ impl GroupData {
 
 /// Indexes into table of remapped DTZ values.
 #[derive(Debug)]
-enum DtzMap {
+pub enum DtzMap {
     /// Normal 8-bit DTZ map.
     Normal {
         map_ptr: u64,
@@ -812,47 +815,86 @@ impl DtzMap {
     }
 }
 
+impl PairsData {
+    pub fn print_debug(&self) {
+
+        eprintln!("PairsData Debug: ");
+
+        let gd = &self.groups;
+
+        // eprint_self!(gd.pieces);
+
+        for (side,pc) in gd.pieces.iter() {
+            eprintln!("(side,pc) = {:?}", (side,pc));
+        }
+
+        eprint_self!(gd.lens);
+        eprint_self!(gd.factors);
+
+        // eprint_self!(self.base);
+        // eprint_self!(self.symlen);
+        // eprint_self!(self.flags);
+        // eprint_self!(self.block_size);
+        // eprint_self!(self.span);
+        // eprint_self!(self.blocks_num);
+        // eprint_self!(self.btree);
+        // eprint_self!(self.min_symlen);
+        // eprint_self!(self.lowest_sym);
+        // // eprint_self!(self.base);
+        // // eprint_self!(self.symlen);
+        // eprint_self!(self.sparse_index);
+        // eprint_self!(self.sparse_index_size);
+        // eprint_self!(self.block_lengths);
+        // eprint_self!(self.block_length_size);
+        // eprint_self!(self.data);
+        // eprint_self!(self.dtz_map);
+
+        eprintln!();
+
+    }
+}
+
 /// Description of encoding and compression.
 #[derive(Debug)]
-struct PairsData {
+pub struct PairsData {
     /// Encoding flags.
-    flags: Flag,
+    pub flags: Flag,
     /// Piece configuration encoding info.
-    groups: GroupData,
+    pub groups: GroupData,
 
     /// Block size in bytes.
-    block_size: u32,
+    pub block_size: u32,
     /// About every span values there is a sparse index entry.
-    span: u32,
+    pub span: u32,
     /// Number of blocks in the table.
-    blocks_num: u32,
+    pub blocks_num: u32,
 
     /// Offset of the symbol table.
-    btree: u64,
+    pub btree: u64,
     /// Minimum length in bits of the Huffman symbols.
-    min_symlen: u8,
+    pub min_symlen: u8,
     /// Offset of the lowest symbols for each length.
-    lowest_sym: u64,
+    pub lowest_sym: u64,
     /// 64-bit padded lowest symbols for each length.
-    base: Vec<u64>,
+    pub base: Vec<u64>,
     /// Number of values represented by a given Huffman symbol.
-    symlen: Vec<u8>,
+    pub symlen: Vec<u8>,
 
     /// Offset of the sparse index.
-    sparse_index: u64,
+    pub sparse_index: u64,
     /// Size of the sparse index.
-    sparse_index_size: u32,
+    pub sparse_index_size: u32,
 
     /// Offset of the block length table.
-    block_lengths: u64,
+    pub block_lengths: u64,
     /// Size of the block length table, padded to be bigger than `blocks_num`.
-    block_length_size: u32,
+    pub block_length_size: u32,
 
     /// Start of compressed data.
-    data: u64,
+    pub data: u64,
 
     /// DTZ mapping.
-    dtz_map: Option<DtzMap>,
+    pub dtz_map: Option<DtzMap>,
 }
 
 impl PairsData {
@@ -1004,21 +1046,21 @@ fn read_symlen<F: ReadAt>(
 
 /// Descripton of encoding and compression for both sides of a table.
 #[derive(Debug)]
-struct FileData {
-    sides: ArrayVec<PairsData, 2>,
+pub struct FileData {
+    pub sides: ArrayVec<PairsData, 2>,
 }
 
 /// A Syzygy table.
 #[derive(Debug)]
 // struct Table<T: TableTag, P: Position + Syzygy, F: ReadAt> {
-struct Table<T: TableTag, F: ReadAt> {
-    is_wdl: PhantomData<T>,
+pub struct Table<T: TableTag, F: ReadAt> {
+    pub is_wdl: PhantomData<T>,
     // syzygy: PhantomData<P>,
 
-    raf:                   F,
-    num_unique_pieces:     u8,
-    min_like_man:          u8,
-    files:                 ArrayVec<FileData, 4>,
+    pub raf:                   F,
+    pub num_unique_pieces:     u8,
+    pub min_like_man:          u8,
+    pub files:                 ArrayVec<FileData, 4>,
 }
 
 // impl<T: TableTag, S: Position + Syzygy, F: ReadAt> Table<T, S, F> {
@@ -1059,11 +1101,15 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
         ensure!(split != material.is_symmetric());
 
         // Read group data.
-        let pp = material.has_piece_side(Pawn,Black) && material.has_piece_side(Pawn,Black);
+        let pp = material.has_piece_side(Pawn,White) && material.has_piece_side(Pawn,Black);
         let num_files = if has_pawns { 4 } else { 1 };
         let num_sides = if T::METRIC == Metric::Wdl && !material.is_symmetric() { 2 } else { 1 };
 
         let mut ptr = 5;
+
+        // eprintln!("pp = {:?}", pp);
+        // eprintln!("num_files = {:?}", num_files);
+        // eprintln!("num_sides = {:?}", num_sides);
 
         let files = (0..num_files).map(|file| {
             let order = [
@@ -1077,17 +1123,34 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
                 let pieces = parse_pieces(&raf, ptr, material.count() as usize, *side)?;
                 let key = Material::from_iter(pieces.clone());
 
-                // ensure!(key == material || key.into_flipped() == material);
+                // if !(key == material || key.into_flipped() == material) {
+                //     panic!("nop 0");
+                // }
 
-                GroupData::new(pieces, order[side.fold(0, 1)], file)
+                ensure!(key == material || key.into_flipped() == material);
+                // println!("wat -2c");
+                let gd = GroupData::new(pieces, order[side.fold(0, 1)], file);
+                // eprintln!("gd = {:?}", gd);
+                gd
                 // unimplemented!()
+            }).collect::<ProbeResult<ArrayVec<_, 4>>>()?;
+            // println!("wat -3");
 
-            }).collect::<ProbeResult<ArrayVec<_, 2>>>()?;
+            // let mut sides: ArrayVec<GroupData, 2> = ArrayVec::default();
+            // for side in [White,Black].iter().take(num_sides) {
+            //     println!("wat -1");
+            //     let pieces = parse_pieces(&raf, ptr, material.count() as usize, *side)?;
+            //     for (c,p) in pieces.iter() {
+            //         eprintln!("{:?}", (c,p));
+            //     }
+            //     let key = Material::from_iter(pieces.clone());
+            // }
 
             ptr += material.count() as u64;
 
             Ok(sides)
         }).collect::<ProbeResult<ArrayVec<_, 4>>>()?;
+        // println!("wat 3");
 
         ptr += ptr & 1;
 
@@ -1188,12 +1251,20 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
             return Ok(u16::from(d.min_symlen));
         }
 
+        // println!("wat 0");
         // Use the sparse index to jump very close to the correct block.
         let main_idx = idx / u64::from(d.span);
         ensure!(main_idx <= u64::from(u32::max_value()));
 
+        // eprintln!("idx = {:?}", idx);
+        // eprintln!("main_idx = {:?}", main_idx);
+        // eprintln!("d.spars_index = {:?}", d.sparse_index);
+
+        // println!("wat 1");
         let mut block = self.raf.read_u32_at::<LE>(d.sparse_index + 6 * main_idx)?;
+        // println!("wat 2");
         let offset = i64::from(self.raf.read_u16_at::<LE>(d.sparse_index + 6 * main_idx + 4)?);
+        // println!("wat 3");
 
         let mut lit_idx = idx as i64 % i64::from(d.span) - i64::from(d.span) / 2;
         lit_idx += offset;
@@ -1203,6 +1274,7 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
             block = u!(block.checked_sub(1));
             lit_idx += i64::from(self.raf.read_u16_at::<LE>(d.block_lengths + u64::from(block) * 2)?) + 1;
         }
+        // println!("wat 4");
         loop {
             let block_length = i64::from(self.raf.read_u16_at::<LE>(d.block_lengths + u64::from(block) * 2)?) + 1;
             if lit_idx >= block_length {
@@ -1212,18 +1284,27 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
                 break;
             }
         }
+        // println!("wat 5");
 
         // Read block (and 4 bytes to prevent out of bounds read) into memory.
         let mut block_buffer = [0; MAX_BLOCK_SIZE + 4];
         let block_buffer = &mut block_buffer[..(d.block_size as usize + 4)];
 
+        // eprintln!("block = {:?}", block);
+        // eprintln!("d.block_size = {:?}", d.block_size);
+
         self.raf.read_exact_at(u!(d.data.checked_add(u64::from(block) * u64::from(d.block_size))), block_buffer)?;
+
+        // eprintln!("block_buffer = {:?}", block_buffer);
+
+        // println!("wat 6");
 
         let mut cursor = io::Cursor::new(block_buffer);
 
         // Find sym, the Huffman symbol that encodes the value for idx.
         let mut buf = cursor.read_u64::<BE>()?;
         let mut buf_size = 64;
+        // println!("wat 7");
 
         let mut sym;
 
@@ -1239,7 +1320,9 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
             }
 
             sym = ((buf - d.base[len]) >> (64 - len - usize::from(d.min_symlen))) as u16;
+            // println!("wat 8");
             sym += self.raf.read_u16_at::<LE>(d.lowest_sym + 2 * len as u64)?;
+            // println!("wat 9");
 
             if lit_idx < i64::from(*u!(d.symlen.get(usize::from(sym)))) + 1 {
                 break;
@@ -1268,6 +1351,7 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
             }
         }
 
+        // println!("wat 10");
         // Decompress Huffman symbol.
         while *u!(d.symlen.get(usize::from(sym))) != 0 {
             let (left, right) = read_lr(&self.raf, d.btree + 3 * u64::from(sym))?;
@@ -1279,6 +1363,7 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
                 sym = right;
             }
         }
+        // println!("wat 11");
 
         let w = d.btree + 3 * u64::from(sym);
         match T::METRIC {
@@ -1386,6 +1471,7 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
         }
 
         let mut idx = if material.has_pawns() {
+            // panic!("nope");
             let mut idx = CONSTS.lead_pawn_idx[lead_pawns_count][usize::from(squares[0])];
 
             squares[1..lead_pawns_count].sort_unstable_by_key(|sq| CONSTS.map_pawns[usize::from(*sq)]);
@@ -1397,47 +1483,60 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
             idx
         } else {
             if squares[0].rank() >= 4 {
+                // println!("wat 1");
                 for square in &mut squares {
                     *square = square.flip_vertical();
                 }
             }
 
             for i in 0..side.groups.lens[0] {
+                // println!("wat 2");
                 // if squares[i].file().flip_diagonal() == squares[i].rank() {
                 if squares[i].flip_diagonal().rank() == squares[i].rank() {
+                    // println!("wat 2 a");
                     continue;
                 }
 
                 // if squares[i].rank().flip_diagonal() > squares[i].file() {
                 if squares[i].flip_diagonal().file() > squares[i].file() {
+                    // println!("wat 2 b");
                     for square in &mut squares[i..] {
+                        // println!("wat 2 c");
                         *square = square.flip_diagonal();
                     }
                 }
 
                 break;
             }
+            // eprintln!("squares = {:?}", squares);
+
+            // eprint_self!(self.num_unique_pieces);
 
             if self.num_unique_pieces > 2 {
+                // println!("branch -1");
                 let adjust1 = if squares[1] > squares[0] { 1 } else { 0 };
                 let adjust2 = if squares[2] > squares[0] { 1 } else { 0 } +
                               if squares[2] > squares[1] { 1 } else { 0 };
 
                 if offdiag(squares[0]) {
+                    // println!("branch 0");
                     TRIANGLE[usize::from(squares[0])] * 63 * 62 +
                     (sq_to_u64(squares[1]) - adjust1) * 62 +
                     (sq_to_u64(squares[2]) - adjust2)
                 } else if offdiag(squares[1]) {
+                    // println!("branch 1");
                     6 * 63 * 62 +
                     squares[0].rank() as u64 * 28 * 62 +
                     LOWER[usize::from(squares[1])] * 62 +
                     sq_to_u64(squares[2]) - adjust2
                 } else if offdiag(squares[2]) {
+                    // println!("branch 2");
                     6 * 63 * 62 + 4 * 28 * 62 +
                     squares[0].rank() as u64 * 7 * 28 +
                     (squares[1].rank() as u64 - adjust1) * 28 +
                     LOWER[usize::from(squares[2])]
                 } else {
+                    // println!("branch 3");
                     6 * 63 * 62 + 4 * 28 * 62 + 4 * 7 * 28 +
                     squares[0].rank() as u64 * 7 * 6 +
                     (squares[1].rank() as u64 - adjust1) * 6 +
@@ -1516,6 +1615,7 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
                 }
 
                 let mut idx = CONSTS.mult_idx[side.groups.lens[0] - 1][TRIANGLE[usize::from(squares[0])] as usize];
+                // eprintln!("idx -1 = {:?}", idx);
                 for i in 1..side.groups.lens[0] {
                     idx += binomial(MULT_TWIST[usize::from(squares[i])], i as u64);
                 }
@@ -1523,6 +1623,7 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
                 idx
             }
         };
+        // eprintln!("idx 0 = {:?}", idx);
 
         idx *= side.groups.factors[0];
 
@@ -1556,13 +1657,18 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
         assert_eq!(T::METRIC, Metric::Wdl);
 
         let (side, idx) = self.encode(g)?.expect("wdl tables are two sided");
+
+        // eprintln!("(side,idx) = {:?}", (side,idx));
+        // eprintln!("probe_wdl idx = {:?}", idx);
+
         // let decompressed = self.decompress_pairs(g, side, idx)?;
         let decompressed = match self.decompress_pairs(g, side, idx) {
             Ok(d) => d,
             Err(e) => {
                 // let k: RandomAccessFile = self.raf;
                 eprintln!("self.raf = {:?}", self.raf);
-                eprintln!("nope probe_wdl = {:?}\n{:?}", e, g);
+                // eprintln!("nope probe_wdl = {:?}\n{:?}", e, g);
+                eprintln!("nope probe_wdl = {:?}", e);
                 panic!();
             }
         };
@@ -1608,7 +1714,7 @@ fn sq_to_u64(c0: Coord) -> u64 {
     k as u64
 }
 
-fn open_table_file<P: AsRef<Path>>(path: P) -> ProbeResult<RandomAccessFile> {
+pub fn open_table_file<P: AsRef<Path>>(path: P) -> ProbeResult<RandomAccessFile> {
     let file = std::fs::File::open(path)?;
     ensure!(file.metadata()?.len() % 64 == 16);
     Ok(RandomAccessFile::try_new(file)?)
@@ -1617,7 +1723,7 @@ fn open_table_file<P: AsRef<Path>>(path: P) -> ProbeResult<RandomAccessFile> {
 /// A WDL Table.
 #[derive(Debug)]
 pub struct WdlTable<F: ReadAt> {
-    table: Table<WdlTag, F>,
+    pub table: Table<WdlTag, F>,
 }
 
 impl<F: ReadAt + std::fmt::Debug> WdlTable<F> {

@@ -91,7 +91,7 @@ pub struct GameState {
     pub check_block_mask:   BitBoard,
 }
 
-#[derive(Debug,Default,Hash,Eq,Ord,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Default,Hash,Eq,Ord,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Material {
     pub buf:  [[u8; 6]; 2],
 }
@@ -1233,6 +1233,38 @@ impl Hash for GameState {
         self.kings.hash(state);
 
         self.castling.hash(state);
+    }
+}
+
+impl std::fmt::Debug for Material {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+
+        let mut white = vec![];
+        self.buf[White].iter().enumerate().rev().for_each(|(p,&k)| {
+            let pc = Piece::from_index(p as u8);
+            for _ in 0..k {
+                white.push(pc);
+            }
+        });
+        let mut black = vec![];
+        self.buf[Black].iter().enumerate().rev().for_each(|(p,&k)| {
+            let pc = Piece::from_index(p as u8);
+            for _ in 0..k {
+                black.push(pc);
+            }
+        });
+
+        let white = white.into_iter().map(|pc| {
+            pc.print_char().to_ascii_uppercase()
+        }).collect::<String>();
+
+        let black = black.into_iter().map(|pc| {
+            pc.print_char().to_ascii_uppercase()
+        }).collect::<String>();
+
+        f.write_str(&format!("{} v {}", white, black))?;
+
+        Ok(())
     }
 }
 

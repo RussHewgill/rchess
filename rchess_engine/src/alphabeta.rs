@@ -5,6 +5,7 @@ use crate::tables::*;
 use crate::evaluate::*;
 use crate::pruning::*;
 use crate::explore::*;
+use crate::syzygy::SyzygyTB;
 
 use crate::stats;
 
@@ -85,6 +86,7 @@ impl Explorer {
     pub fn _ab_search_negamax(
         &self,
         ts:                      &Tables,
+        tb:                      &SyzygyTB,
         g:                       &Game,
         // max_depth:               Depth,
         mut cfg:                 ABConfig,
@@ -316,7 +318,7 @@ impl Explorer {
                         // };
 
                         match self._ab_search_negamax(
-                            &ts, &g2, cfg2, depth3, ply + 1, &mut stop_counter,
+                            ts, tb, &g2, cfg2, depth3, ply + 1, &mut stop_counter,
                             (-beta, -alpha), &mut stats,
                             pms.clone(), &mut history, tt_r, tt_w.clone(),
                             // false,
@@ -347,7 +349,7 @@ impl Explorer {
                     let (a2,b2) = (-beta, -alpha);
 
                     match self._ab_search_negamax(
-                        &ts, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
+                        ts, tb, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
                         (a2, b2), &mut stats,
                         pms.clone(), &mut history, tt_r, tt_w.clone()) {
                         ABSingle(mut res) => {
@@ -357,7 +359,7 @@ impl Explorer {
                             #[cfg(feature = "pvs_search")]
                             if !search_pv && res.score > alpha {
                                 match self._ab_search_negamax(
-                                    &ts, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
+                                    ts, tb, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
                                     (-beta, -alpha), &mut stats,
                                     pms, &mut history, tt_r, tt_w.clone()) {
                                     ABSingle(mut res2) => {

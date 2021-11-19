@@ -5,6 +5,7 @@ use crate::tables::*;
 use crate::evaluate::*;
 use crate::pruning::*;
 use crate::alphabeta::*;
+use crate::syzygy::SyzygyTB;
 
 pub use crate::move_ordering::*;
 pub use crate::timer::*;
@@ -36,8 +37,8 @@ pub struct Explorer {
     pub timer:         Timer,
     pub stop:          Arc<AtomicBool>,
     pub best_mate:     Arc<RwLock<Option<Depth>>>,
+    // pub syzygy:        Option<Arc<SyzygyTB>>,
     // pub move_history:  VecDeque<(Zobrist, Move)>,
-    // pub 
     // pub prev_eval:     Arc<>
 }
 
@@ -77,6 +78,7 @@ impl Explorer {
             stop:           Arc::new(AtomicBool::new(false)),
             best_mate:      Arc::new(RwLock::new(None)),
             // move_history:   VecDeque::default(),
+            // syzygy:         None,
         }
     }
 }
@@ -96,7 +98,7 @@ impl Explorer {
         // let mv = moves.get(0).map(|x| x.0);
         // let mv = moves.get(0).map(|x| (x.0,x.2));
 
-        let ((best, scores),stats,(tt_r,tt_w)) = self.lazy_smp_negamax(&ts, false, false);
+        let ((best, scores),stats,(tt_r,tt_w)) = self.lazy_smp_negamax(ts, false, false);
         let mv = best.moves[0];
         let score = best.score;
 
@@ -275,6 +277,7 @@ impl Explorer {
     fn _lazy_smp_single_negamax(
         &self,
         ts:               &Tables,
+        // tb:               &SyzygyTB,
         depth:            Depth,
         tx:               Sender<(Depth,ABResults,SearchStats)>,
         // stats:            Arc<RwLock<SearchStats>>,
@@ -294,7 +297,7 @@ impl Explorer {
         cfg.root = true;
 
         let res = self._ab_search_negamax(
-            &ts, &self.game, cfg, depth,
+            ts, &self.game, cfg, depth,
             0, &mut stop_counter, (alpha, beta),
             &mut stats,
             VecDeque::new(),
@@ -315,7 +318,7 @@ impl Explorer {
     }
 
     #[allow(unused_doc_comments)]
-    pub fn lazy_smp_negamax(&self, ts: &Tables, print: bool, strict_depth: bool)
+    pub fn lazy_smp_negamax(&self, ts: &Tables, tb: &SyzygyTB, print: bool, strict_depth: bool)
                             -> ((ABResult, Vec<ABResult>),SearchStats,(TTRead,TTWrite)) {
 
         let out: Arc<RwLock<(Depth,ABResults,SearchStats)>> =
@@ -525,7 +528,7 @@ impl Explorer {
                         .spawn(move |_| {
                             self._lazy_smp_single_negamax(
                                 // self._lazy_smp_single_aspiration(
-                                &ts, cur_depth, tx2, tt_r2, tt_w2.clone());
+                                ts, tb, cur_depth, tx2, tt_r2, tt_w2.clone());
                         }).unwrap();
 
                     thread_counter.fetch_add(1, SeqCst);

@@ -6,7 +6,7 @@
 #![feature(destructuring_assignment)]
 #![feature(core_intrinsics)]
 #![feature(label_break_value)]
-#![feature(backtrace)]
+#![feature(backtrace,backtrace_frames)]
 
 #![allow(
     // clippy::all,
@@ -74,6 +74,13 @@ pub mod util;
 
 // #[cfg(test)]
 // pub mod tests;
+
+#[macro_export]
+macro_rules! eprint_self {
+    ($e:expr) => {
+        eprintln!("{} = {:?}", stringify!($e), $e);
+    }
+}
 
 #[macro_export]
 macro_rules! stats {

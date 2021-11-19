@@ -534,7 +534,7 @@ impl Piece {
         }
     }
 
-    fn print_char(&self) -> char {
+    pub fn print_char(&self) -> char {
         match self {
             Pawn   => 'p',
             Rook   => 'R',

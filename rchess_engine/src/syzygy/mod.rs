@@ -27,6 +27,7 @@ pub struct SyzygyTB {
 }
 
 impl SyzygyTB {
+
     pub fn new() -> Self {
         Self {
             wdl: HashMap::with_capacity_and_hasher(145, Default::default()),
@@ -198,6 +199,7 @@ impl SyzygyTB {
         // }
 
         // Probe table.
+        // println!("wat pre probe");
         let v = self.probe_wdl_table(g)?;
 
         // Now max(v, best_capture) is the WDL value of the position without
@@ -245,34 +247,26 @@ impl SyzygyTB {
         })
     }
 
-    fn probe_ab_no_ep(&self, ts: &Tables, g: &Game, mut alpha: Wdl, beta: Wdl) -> SyzygyResult<Wdl> {
+    pub fn probe_ab_no_ep(&self, ts: &Tables, g: &Game, mut alpha: Wdl, beta: Wdl) -> SyzygyResult<Wdl> {
         // Use alpha-beta to recursively resolve captures. This is only called
         // for positions without ep rights.
         assert!(g.state.en_passant.is_none());
+        // println!("wat 0 probe_ab_no_ep");
 
-        let mvs = g.search_all(ts).get_moves_unsafe();
-        let mvs = mvs.into_iter().filter(|m| m.filter_all_captures());
+        let mut mvs = g.search_all(ts).get_moves_unsafe();
+        mvs.retain(|m| m.filter_all_captures());
 
-        let gs = mvs.flat_map(|mv| {
-            if let Ok(g2) = g.make_move_unchecked(ts, mv) {
-                let mvs = g2.search_all(ts);
-                if mvs.is_end() { None } else {
-                    Some((mv,g2))
-                }
-            } else { None }
-        });
-        // eprintln!("gs.count() = {:?}", gs.clone().count());
+        // let gs = mvs.flat_map(|mv| {
+        //     if let Ok(g2) = g.make_move_unchecked(ts, mv) {
+        //         let mvs = g2.search_all(ts);
+        //         if mvs.is_end() { None } else {
+        //             Some((mv,g2))
+        //         }
+        //     } else { None }
+        // });
+        // // eprintln!("gs.count() = {:?}", gs.clone().count());
 
-        for (mv,after) in gs {
-            let v = -self.probe_ab_no_ep(ts, &after, -beta, -alpha)?;
-            if v >= beta {
-                return Ok(v);
-            }
-            alpha = std::cmp::max(alpha, v);
-        }
-
-        // for mv in mvs {
-        //     let after = g.make_move_unchecked(ts, mv).unwrap();
+        // for (mv,after) in gs {
         //     let v = -self.probe_ab_no_ep(ts, &after, -beta, -alpha)?;
         //     if v >= beta {
         //         return Ok(v);
@@ -280,7 +274,17 @@ impl SyzygyTB {
         //     alpha = std::cmp::max(alpha, v);
         // }
 
-        println!("wat pre probe_ab_no_ep");
+        for mv in mvs.into_iter() {
+            // eprintln!("mv = {:?}", mv);
+            let after = g.make_move_unchecked(ts, mv).unwrap();
+            let v = -self.probe_ab_no_ep(ts, &after, -beta, -alpha)?;
+            if v >= beta {
+                return Ok(v);
+            }
+            alpha = std::cmp::max(alpha, v);
+        }
+
+        // println!("wat pre probe_ab_no_ep");
         let v = self.probe_wdl_table(g)?;
         Ok(std::cmp::max(alpha, v))
     }
@@ -322,8 +326,45 @@ impl SyzygyTB {
 
         // Get raw WDL value from the appropriate table.
         let key = g.state.material;
+        // eprintln!("key = {:?}", key);
+
+        // let t = if let Some(&(ref path, ref table)) = self.wdl.get(&key) {
+        //     println!("wat 0");
+        //     let file = std::fs::File::open(path).unwrap();
+        //     // let file = open_table_file(&path).unwrap();
+        //     // eprintln!("file = {:?}", file);
+        //     let k = file.metadata().unwrap().len() % 64 == 16;
+        //     eprintln!("k = {:?}", k);
+        //     let f = RandomAccessFile::try_new(file).unwrap();
+        //     eprintln!("f = {:?}", f);
+        //     let t = WdlTable::new(f, &key).unwrap();
+        //     eprintln!("t = {:?}", t);
+        //     // let t = WdlTable::open(path, &key);
+        //     // let table = table.get();
+        //     // eprintln!("table = {:?}", table);
+        //     unimplemented!()
+        // };
+        // // eprintln!("t = {:?}", t);
+
+        // // let k = t.probe_wdl(g).ctx(Metric::Wdl, &key);
+        // // k
+        // unimplemented!()
+
+        // let t = self.wdl_table(&key)?;
+        // eprintln!("t.num_unique_pieces = {:?}", t.table.num_unique_pieces);
+        // eprintln!("t.min_like_man = {:?}", t.table.min_like_man);
+        // let f = &t.table.files[0];
+        // let f0 = &f.sides[0];
+        // let f1 = &f.sides[1];
+        // f0.print_debug();
+        // f1.print_debug();
+
         self.wdl_table(&key)
             .and_then(|table| table.probe_wdl(g).ctx(Metric::Wdl, &key))
+
+        // let t = self.wdl_table(&key)?;
+
+        // unimplemented!()
     }
 
     pub fn probe_dtz_table(&self, g: &Game, wdl: DecisiveWdl) -> SyzygyResult<Option<Dtz>> {
@@ -334,7 +375,8 @@ impl SyzygyTB {
     }
 
     fn wdl_table(&self, key: &Material) -> SyzygyResult<&WdlTable<RandomAccessFile>> {
-        if let Some(&(ref path, ref table)) = self.wdl.get(key).or_else(|| self.wdl.get(&key.clone().into_flipped())) {
+        if let Some(&(ref path, ref table)) = self.wdl.get(key)
+            .or_else(|| self.wdl.get(&key.clone().into_flipped())) {
             table.get_or_try_init(|| WdlTable::open(path, key)).ctx(Metric::Wdl, key)
         } else {
             Err(SyzygyError::MissingTable {
@@ -398,10 +440,10 @@ impl SyzygyTB {
 
         }).collect::<ArrayVec<_, 256>>();
 
-        eprintln!("with_after.len() = {:?}", with_after.len());
+        // eprintln!("with_after.len() = {:?}", with_after.len());
         // Determine WDL for each move.
         let with_wdl = with_after.iter().map(|e| {
-            eprintln!("e.mv = {:?}", e.mv);
+            // eprintln!("e.mv = {:?}", e.mv);
             Ok(WithWdlEntry {
                 mv: e.mv.clone(),
                 entry: self.probe(ts, &e.after)?,
@@ -426,6 +468,36 @@ impl SyzygyTB {
             m.zeroing ^ (m.dtz < Dtz(0)), // zeroing is good/bad if winning/losing
             std::cmp::Reverse(m.dtz),
         )).map(|m| (m.m, m.dtz)))
+    }
+
+    pub fn fathom(&self, ts: &Tables, g: &Game) -> SyzygyResult<()> {
+
+        // let mut wins   = vec![];
+        // let mut draws  = vec![];
+        // let mut losses = vec![];
+
+        let mvs = g.search_all(ts).get_moves_unsafe();
+
+        for mv in mvs.into_iter() {
+            let g2 = g.make_move_unchecked(ts, mv).unwrap();
+
+            let mvs2 = g2.search_all(ts);
+            if mvs2.is_end() { continue; }
+
+            let dtz: Dtz = self.probe_dtz(ts, &g2)?;
+
+            let best = self.best_move(ts, &g2)?;
+
+            eprintln!("best {:?} = {:?}", mv, best);
+
+            // eprintln!("dtz {:?} = {:?}", mv, dtz);
+            // match Dtz::before_zeroing(dtz) {
+                // _ => unimplemented!(),
+            // }
+
+        }
+
+        Ok(())
     }
 
 }
@@ -468,7 +540,7 @@ impl<'a> WdlEntry<'a> {
 
         if self.state == ProbeState::ZeroingBestMove
             || self.g.get_color(self.g.state.side_to_move) == self.g.get(Pawn, self.g.state.side_to_move) {
-                println!("wat 0");
+                // println!("wat 0");
                 return Ok(Dtz::before_zeroing(wdl));
         }
 
@@ -492,7 +564,7 @@ impl<'a> WdlEntry<'a> {
                 let g = self.g.make_move_unchecked(ts, mv);
                 let v = -self.tablebase.probe_wdl(ts, &after)?;
                 if v == wdl.into() {
-                    println!("wat 2");
+                    // println!("wat 2");
                     return Ok(Dtz::before_zeroing(wdl));
                 }
             }
@@ -537,133 +609,4 @@ impl<'a> WdlEntry<'a> {
     }
 
 }
-
-// /// WDL, .rtbw: win / draw / loss
-// /// DTZ, .rtbz: distance to zero
-// #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
-// // #[derive(Serialize,Deserialize,Debug,Eq,PartialEq,PartialOrd,Clone)]
-// pub struct SyzygyBase {
-//     pub wdl:   Vec<SyzWDL>,
-//     pub dtz:   Vec<SyzDTZ>,
-// }
-
-// #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
-// pub struct SyzWDL {
-// }
-
-// #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
-// pub struct SyzDTZ {
-// }
-
-// /// Probe
-// impl SyzygyBase {
-
-//     pub fn probe(&self, ts: &Tables, g: &Game) -> () {
-//         unimplemented!()
-//     }
-
-//     pub fn probe_wdl(&self, ts: &Tables, g: &Game) -> () {
-
-//         let mvs = g.search_all(ts).get_moves_unsafe();
-
-//         unimplemented!()
-//     }
-
-// }
-
-// /// Load
-// impl SyzygyBase {
-
-//     // const PCHR: [char; 6] = ['K', 'Q', 'R', 'B', 'N', 'P'];
-
-//     // pub fn load_dir(ts: &Tables, dir: &str) -> std::io::Result<Self> {
-//     pub fn load_dir(dir: &str) -> std::io::Result<Self> {
-//         let paths = std::fs::read_dir(&dir)?;
-//         let mut wdl = vec![];
-//         let mut dtz = vec![];
-//         for f in paths {
-//             let f = f?;
-//             let p = f.path();
-//             match p.extension().map(|x| x.to_str()).flatten() {
-//                 Some(e@"rtbw") => wdl.push((e.to_owned(),p)),
-//                 Some(e@"rtbz") => dtz.push((e.to_owned(),p)),
-//                 _            => {},
-//             }
-//         }
-
-//         // XXX: 
-//         for (ext,p) in wdl.into_iter().take(2) {
-//         // for (ext,p) in wdl.into_iter() {
-
-//             let n = p.file_name().unwrap().to_str().unwrap().replace(&ext, "").replace(".", "");
-//             // eprintln!("n = {:?}", n);
-//             let mut buf: Vec<u8> = std::fs::read(p)?;
-
-//             // let n2 = Self::normalize_tablename(&n, false);
-//             // Self::load_table(true, &n, buf);
-
-//         }
-
-//         unimplemented!()
-//     }
-
-//     // fn normalize_tablename(name: &str, mirror: bool) -> String {
-//     //     // const PCHR: [char; 6] = ['K', 'Q', 'R', 'B', 'N', 'P'];
-//     //     const fn f(c: char) -> usize {
-//     //         match c {
-//     //             'K' => 0,
-//     //             'Q' => 1,
-//     //             'R' => 2,
-//     //             'B' => 3,
-//     //             'N' => 4,
-//     //             'P' => 5,
-//     //             _   => unimplemented!(),
-//     //         }
-//     //     }
-//     //     let mut xs = name.split("v");
-//     //     let mut black = xs.next().unwrap();
-//     //     let mut white = xs.next().unwrap();
-//     //     let black = black.chars().sorted_by_key(|&c| f(c)).collect::<String>();
-//     //     let white = white.chars().sorted_by_key(|&c| f(c)).collect::<String>();
-//     //     let a = black.chars().map(|c| f(c)).collect::<Vec<_>>();
-//     //     let b = white.chars().map(|c| f(c)).collect::<Vec<_>>();
-//     //     if mirror ^ ((white.len(), a) < (black.len(), b)) {
-//     //         vec![black,"v".to_string(),white].join("")
-//     //     } else {
-//     //         vec![white,"v".to_string(),black].join("")
-//     //     }
-//     // }
-
-//     // fn load_table(is_wdl: bool, name: &str, buf: Vec<u8>) {
-//     //     let n_pcs = name.len() - 1;
-//     //     // eprintln!("name = {:?}", name);
-//     //     let key   = Self::normalize_tablename(&name, false);
-//     //     let key_m = Self::normalize_tablename(&name, true);
-//     //     let has_pawns = name.contains('P');
-//     //     let mut xs = name.split("v");
-//     //     let black = xs.next().unwrap();
-//     //     let white = xs.next().unwrap();
-//     //     if has_pawns {
-//     //         let mut pawns = (black.match_indices('P').count(),white.match_indices('P').count());
-//     //         if pawns.1 > 0 && (pawns.0 == 0 || pawns.1 < pawns.0) {
-//     //             std::mem::swap(&mut pawns.0, &mut pawns.1);
-//     //         }
-//     //     } else {
-//     //         let mut k = 0;
-//     //         for pc in Self::PCHR {
-//     //             if black.match_indices(pc).count == 1 {
-//     //                 k += 1;
-//     //             }
-//     //             if white.match_indices(pc).count == 1 {
-//     //                 k += 1;
-//     //             }
-//     //         }
-//     //         if k >= 3 {
-//     //             // enc_type = 0
-//     //         }
-//     //     }
-//     // }
-
-// }
-
 
