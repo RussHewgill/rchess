@@ -1,10 +1,17 @@
 
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 use crate::tables::*;
 use crate::types::*;
 // use crate::evaluate::*;
 
+use rand::prelude::SliceRandom;
+use rand::{Rng,SeedableRng};
+use rand::prelude::StdRng;
+
+use byteorder::{ByteOrder,LittleEndian,BigEndian};
+use positioned_io::{RandomAccessFile, ReadAt, ReadBytesAtExt as _};
 
 const OP_RNG: [u64; 781] = [
    0x9D39247E33776D41, 0x2AF7398005AAA5C7, 0x44DB015024623547, 0x9C15F73E62A76AE2,
@@ -205,22 +212,117 @@ const OP_RNG: [u64; 781] = [
    0xF8D626AAAF278509,
 ];
 
+#[derive(Debug)]
+pub struct OpeningBook2 {
+    // pub map: HashMap<u64, HashMap<(Coord,Coord),(u16,Option<u64>)>>,
+    pub file:   RandomAccessFile,
+    pub size:   u64,
+}
+
+#[repr(C)]
+#[derive(Debug,Eq,PartialEq,Clone,Copy)]
+pub struct ABKEntry {
+    pub from:         Coord,
+    pub to:           Coord,
+    pub promotion:    i8,
+    pub priority:     u8,
+    pub ngames:       u32,
+    pub nwon:         u32,
+    pub nlost:        u32,
+    pub plycount:     u32,
+    pub nextmove:     i32,
+    pub nextsibling:  i32,
+}
+
+impl ABKEntry {
+    pub fn read(buf: [u8; 28]) -> Self {
+
+        let b0 = buf[0];
+        let b1 = buf[1];
+        assert!(b0 < 64);
+        assert!(b1 < 64);
+        let from      = BitBoard::index_bit(b0);
+        let to        = BitBoard::index_bit(b1);
+        let promotion = buf[2] as i8;
+        let priority  = buf[3];
+
+        let ngames      = LittleEndian::read_u32(&buf[4..8]);
+        let nwon        = LittleEndian::read_u32(&buf[8..12]);
+        let nlost       = LittleEndian::read_u32(&buf[12..16]);
+        let plycount    = LittleEndian::read_u32(&buf[16..20]);
+        let nextmove    = LittleEndian::read_i32(&buf[20..24]);
+        let nextsibling = LittleEndian::read_i32(&buf[24..28]);
+
+        Self {
+            from,
+            to,
+            promotion,
+            priority,
+            ngames,
+            nwon,
+            nlost,
+            plycount,
+            nextmove,
+            nextsibling,
+        }
+    }
+}
+
+impl OpeningBook2 {
+
+    fn read(&self, offset: Option<i32>) -> std::io::Result<ABKEntry> {
+        const ROOT: u64 = 0x6270;
+        let mut buf = [0; 28];
+
+        let offset = if let Some(o) = offset {
+            (o as u64) * 28
+        } else {
+            ROOT
+        };
+
+        let x = self.file.read_at(offset, &mut buf)?;
+
+        eprintln!("buf = {:?}", buf);
+
+        if x != 28 {
+            panic!();
+        }
+        let e = ABKEntry::read(buf);
+        Ok(e)
+    }
+
+    pub fn get_moves(&self) {
+    }
+
+    pub fn read_from_file<P: AsRef<std::path::Path>>(path: P) -> std::io::Result<Self> {
+        let file = std::fs::File::open(path)?;
+        let size = file.metadata().unwrap().len();
+        let file = RandomAccessFile::try_new(file)?;
+        Ok(Self { file, size })
+    }
+}
+
+type OBMapInit = HashMap<u64, HashMap<(Coord,Coord),u16>>;
+
 #[derive(Debug,Eq,PartialEq,Clone)]
 pub struct OpeningBook {
-    pub map: HashMap<u64, HashMap<(Coord,Coord),u16>>,
+    pub map: HashMap<u64, HashMap<(Coord,Coord),(u16,Option<u64>)>>,
 }
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
-pub struct OBEntry {
-    pub mv:      (Coord,Coord,Option<Piece>),
-    pub weight:  u16,
-}
+// #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+// pub struct OBEntry {
+//     pub mv:      (Coord,Coord,Option<Piece>),
+//     pub weight:  u16,
+// }
 
-impl OBEntry {
+/// Read
+impl OpeningBook {
+
     fn convert_move(mv: u16) -> Option<(Coord,Coord,Option<Piece>)> {
         use bitvec::prelude::*;
 
         let bs = mv.view_bits::<Lsb0>();
+        // eprintln!("mv = {:#018b}", mv);
 
         let mut from_f = 0u8;
         let mut ff = from_f.view_bits_mut::<Lsb0>();
@@ -237,12 +339,15 @@ impl OBEntry {
         tf.set(0, bs[0]);
         tf.set(1, bs[1]);
         tf.set(2, bs[2]);
+
         tr.set(0, bs[3]);
         tr.set(1, bs[4]);
         tr.set(2, bs[5]);
+
         ff.set(0, bs[6]);
         ff.set(1, bs[7]);
         ff.set(2, bs[8]);
+
         fr.set(0, bs[9]);
         fr.set(1, bs[10]);
         fr.set(2, bs[11]);
@@ -253,7 +358,7 @@ impl OBEntry {
         if to_r >= 8 { panic!() }
 
         let mut prom = 0u8;
-        let mut p = to_r.view_bits_mut::<Lsb0>();
+        let mut p = prom.view_bits_mut::<Lsb0>();
 
         p.set(0, bs[12]);
         p.set(1, bs[13]);
@@ -269,11 +374,8 @@ impl OBEntry {
 
         Some((Coord(from_f,from_r),Coord(to_f,to_r),p))
     }
-}
 
-impl OpeningBook {
-
-    pub fn read_from_file(path: &str) -> std::io::Result<Self> {
+    pub fn read_from_file<P: AsRef<std::path::Path>>(ts: &Tables, path: P) -> std::io::Result<Self> {
         use std::io::{BufRead,Read};
         use std::io::BufReader;
         use byteorder::{BigEndian,ReadBytesExt};
@@ -293,7 +395,7 @@ impl OpeningBook {
             let weight = f.read_u16::<BigEndian>()?;
             let learn  = f.read_u32::<BigEndian>()?;
 
-            let mv = OBEntry::convert_move(mv).unwrap();
+            let mv = Self::convert_move(mv).unwrap();
 
             if xs.contains_key(&key) {
                 let mut x = xs.get_mut(&key).unwrap();
@@ -306,15 +408,196 @@ impl OpeningBook {
 
         }
 
-        Ok(Self {
-            map: xs,
-        })
+        Ok(Self::init_indices(ts, xs))
+    }
+
+    fn init_indices(ts: &Tables, mut xs: OBMapInit) -> Self {
+        let mut xs2: HashMap<u64, HashMap<(Coord,Coord), (u16,Option<u64>)>> = HashMap::default();
+        let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
+        Self::_init_indices(ts, &g, &mut xs, &mut xs2);
+        Self { map: xs2 }
+    }
+
+    fn _init_indices(
+        ts:       &Tables,
+        g:        &Game,
+        mut xs:   &mut OBMapInit,
+        mut xs2:  &mut HashMap<u64, HashMap<(Coord,Coord), (u16,Option<u64>)>>
+    ) {
+
+        if xs.len() == 0 { return; }
+
+        let key = Self::gen_key(g);
+
+        if let Some(ms) = xs.remove(&key) {
+
+            if ms.len() == 0 { return; }
+
+            let ms = ms.into_iter().map(|((from,to), wt)| {
+                if let Some(mv) = g._convert_move(from, to, "", true) {
+                    ((from,to), mv, wt)
+                } else {
+                    panic!("bad move convert: {:?}, {:?}", from, to);
+                }
+            });
+
+            let mut gs = HashMap::default();
+
+            let mut gs2 = vec![];
+
+            for ((from,to), mv, wt) in ms {
+                if let Ok(g2) = g.make_move_unchecked(ts, mv) {
+                    let key2 = Self::gen_key(&g2);
+                    gs.insert((from,to), (wt, Some(key2)));
+                    gs2.push(g2);
+                }
+            }
+            xs2.insert(key, gs);
+
+            for g2 in gs2.iter() {
+                Self::_init_indices(ts, &g2, xs, &mut xs2);
+            }
+
+        }
     }
 
 }
 
+/// Probe
 impl OpeningBook {
 
+    pub fn best_move(&self, g: &Game, mut s: &mut OBSelection) -> Option<Move> {
+        let (mvs, key) = self._best_moves(&g)?;
+        let mv = s.choose(key, &mvs)?;
+        Some(mv)
+    }
+
+    pub fn best_moves(&self, g: &Game) -> Option<Vec<(Move, u16)>> {
+        let (xs,_) = self._best_moves(g)?;
+        Some(xs.into_iter().map(|(mv,(wt,_))| (mv,wt)).collect())
+    }
+
+    pub fn _best_moves(&self, g: &Game) -> Option<(Vec<(Move, (u16,Option<u64>))>, u64)> {
+        let key = Self::gen_key(g);
+
+        let mut ms = self.map.get(&key)?;
+
+        let ms = ms.iter().map(|((from,to), wt)| {
+            if let Some(mv) = g._convert_move(*from, *to, "", true) {
+                (mv, *wt)
+            } else {
+                panic!("bad move convert: {:?}, {:?}", from, to);
+            }
+        }).collect::<Vec<_>>();
+        if ms.len() == 0 {
+            panic!("OpeningBook::best_moves empty?");
+        }
+        Some((ms, key))
+    }
+
+}
+
+/// Init Game
+impl OpeningBook {
+
+    pub fn start_game(
+        &self,
+        ts:         &Tables,
+        depth:      Option<usize>,
+        mut s:      &mut OBSelection,
+    ) -> Option<(Game, Vec<Move>)> {
+        let mut g = Game::from_fen(ts, STARTPOS).unwrap();
+        let mut once = false;
+
+        let mut out = vec![];
+
+        let mut ply = 0;
+        // trace!("start_game: ");
+        loop {
+            if depth.is_some() && ply >= depth.unwrap() { break; }
+            if let Some((mut mvs, key)) = self._best_moves(&g) {
+                if let Some(mv) = s.choose(key, &mvs) {
+                    // trace!("mv = {:?}", mv);
+                    once = true;
+                    ply += 1;
+                    out.push(mv);
+                    g = g.make_move_unchecked(ts, mv).unwrap();
+                } else { break; }
+            } else { break; }
+        }
+        if !once { None } else { Some((g,out)) }
+    }
+
+}
+
+#[derive(Debug,Clone)]
+// pub enum OBSelection<'a> {
+pub enum OBSelection {
+    BestN(usize),
+    WorstN(usize),
+    Random(StdRng),
+    Sequential(HashMap<u64, HashSet<Move>>),
+}
+
+// impl<'a> OBSelection<'a> {
+impl OBSelection {
+
+    pub fn new_seq() -> Self {
+        Self::Sequential(HashMap::default())
+    }
+
+    pub fn choose(&mut self, key: u64, mvs: &[(Move, (u16, Option<u64>))]) -> Option<Move> {
+        use self::OBSelection::*;
+        if mvs.len() == 0 { return None; }
+        match self {
+            BestN(0)  => mvs.iter().max_by_key(|(_,k)| *k).map(|x| x.0),
+            WorstN(0) => mvs.iter().min_by_key(|(_,k)| *k).map(|x| x.0),
+            Random(ref mut rng) => {
+                mvs.choose(rng).map(|x| x.0)
+            },
+
+            Sequential(ref mut xs) => {
+                let mut mvs = mvs.to_vec();
+                if let Some(mut prev_ms) = xs.get_mut(&key) {
+                    unimplemented!()
+                } else {
+                    mvs.sort_by_key(|x| x.0);
+                    let (mv,(_,next)) = mvs[0];
+                    if let Some(next) = next {
+                        // if let Some(next_g) = 
+                    }
+                    Some(mv)
+                }
+            }
+
+            // Sequential(ref mut xs) => {
+            //     let mut mvs = mvs.to_vec();
+            //     if let Some(mut prev_ms) = xs.get_mut(&key) {
+            //         mvs.retain(|x| !prev_ms.contains(&x.0));
+            //         if mvs.is_empty() {
+            //             return None;
+            //         }
+            //         mvs.sort_by_key(|x| x.1);
+            //         let mv = mvs[0].0;
+            //         prev_ms.insert(mv);
+            //         Some(mv)
+            //     } else {
+            //         mvs.sort_by_key(|x| x.1);
+            //         let mv = mvs[0].0;
+            //         let mut cs = HashSet::new();
+            //         cs.insert(mv);
+            //         xs.insert(key, cs);
+            //         Some(mv)
+            //     }
+            // },
+
+            _         => unimplemented!()
+        }
+    }
+}
+
+/// Keygen
+impl OpeningBook {
     pub fn gen_key(g: &Game) -> u64 {
         const KIND_OF_PIECE: [[usize; 2]; 6] = [
             [0,1],
@@ -374,9 +657,9 @@ impl OpeningBook {
 
             let (dw,de) = if g.state.side_to_move == Black { (NW,NE) } else { (SW,SE) };
 
-            let b = BitBoard::new(&[
-                dw.shift_coord(ep).unwrap(), de.shift_coord(ep).unwrap()
-            ]);
+            let bs: Vec<_> = vec![dw.shift_coord(ep), de.shift_coord(ep)]
+                .into_iter().flatten().collect();
+            let b = BitBoard::new(&bs);
 
             let ps = g.get(Pawn, g.state.side_to_move);
 
@@ -397,7 +680,4 @@ impl OpeningBook {
     }
 
 }
-
-
-
 

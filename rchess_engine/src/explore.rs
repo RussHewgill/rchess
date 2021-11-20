@@ -6,13 +6,15 @@ use crate::evaluate::*;
 use crate::pruning::*;
 use crate::alphabeta::*;
 use crate::syzygy::SyzygyTB;
+use crate::opening_book::*;
 
 pub use crate::move_ordering::*;
 pub use crate::timer::*;
 pub use crate::trans_table::*;
 pub use crate::searchstats::*;
 
-use std::collections::VecDeque;
+use std::path::Path;
+use std::collections::{VecDeque,HashMap};
 use std::hash::BuildHasher;
 use std::sync::atomic::{Ordering,Ordering::SeqCst,AtomicU8};
 use std::time::{Instant,Duration};
@@ -37,9 +39,12 @@ pub struct Explorer {
     pub timer:         Timer,
     pub stop:          Arc<AtomicBool>,
     pub best_mate:     Arc<RwLock<Option<Depth>>>,
-    // pub syzygy:        Option<Arc<SyzygyTB>>,
-    // pub move_history:  VecDeque<(Zobrist, Move)>,
-    // pub prev_eval:     Arc<>
+
+    pub syzygy:        Option<Arc<SyzygyTB>>,
+    pub opening_book:  Option<Arc<OpeningBook>>,
+
+    // pub move_history:  Vec<(Zobrist, Move)>,
+    // pub pos_history:   HashMap<Zobrist,u8>,
 }
 
 #[derive(Debug,Default,Clone,Copy)]
@@ -50,14 +55,16 @@ pub struct ABConfig {
     // pub tt_r:             &'a TTRead,
     pub root:             bool,
     pub do_null:          bool,
+    pub use_ob:           bool,
 }
 
 impl ABConfig {
     pub fn new_depth(max_depth: Depth) -> Self {
         Self {
             max_depth,
-            root: false,
-            do_null: true,
+            root:      false,
+            do_null:   true,
+            use_ob:    false,
         }
     }
 }
@@ -78,9 +85,32 @@ impl Explorer {
             stop:           Arc::new(AtomicBool::new(false)),
             best_mate:      Arc::new(RwLock::new(None)),
             // move_history:   VecDeque::default(),
-            // syzygy:         None,
+            // syzygy:         Arc::new(None),
+            syzygy:         None,
+            opening_book:   None,
+
+            // move_history:   vec![],
+            // pos_history:    HashMap::default(),
         }
     }
+
+    // pub fn add_move_to_history(&mut self, zb: Zobrist, mv: Move) {
+    //     self.move_history.push((zb,mv));
+    // }
+
+    pub fn load_syzygy<P: AsRef<Path>>(&mut self, dir: P) -> std::io::Result<()> {
+        let mut tb = SyzygyTB::new();
+        tb.add_directory(&dir)?;
+        self.syzygy = Some(Arc::new(tb));
+        Ok(())
+    }
+
+    pub fn load_opening_book<P: AsRef<Path>>(&mut self, ts: &Tables, path: P) -> std::io::Result<()> {
+        let b = OpeningBook::read_from_file(ts, &path)?;
+        self.opening_book = Some(Arc::new(b));
+        Ok(())
+    }
+
 }
 
 /// Entry points
@@ -97,6 +127,12 @@ impl Explorer {
 
         // let mv = moves.get(0).map(|x| x.0);
         // let mv = moves.get(0).map(|x| (x.0,x.2));
+
+        // if let Some(ob) = &self.opening_book {
+        //     if let Some(mvs) = ob.best_moves(&self.game) {
+        //         unimplemented!()
+        //     }
+        // }
 
         let ((best, scores),stats,(tt_r,tt_w)) = self.lazy_smp_negamax(ts, false, false);
         let mv = best.moves[0];
@@ -318,7 +354,7 @@ impl Explorer {
     }
 
     #[allow(unused_doc_comments)]
-    pub fn lazy_smp_negamax(&self, ts: &Tables, tb: &SyzygyTB, print: bool, strict_depth: bool)
+    pub fn lazy_smp_negamax(&self, ts: &Tables, print: bool, strict_depth: bool)
                             -> ((ABResult, Vec<ABResult>),SearchStats,(TTRead,TTWrite)) {
 
         let out: Arc<RwLock<(Depth,ABResults,SearchStats)>> =
@@ -404,29 +440,54 @@ impl Explorer {
                                 break;
                             }
                             match abres.clone() {
-                                ABResults::ABList(bestres, ress) if depth > best_depth2.load(SeqCst) => {
-                                    best_depth2.store(depth,SeqCst);
+                                ABResults::ABList(bestres, _) | ABResults::ABSingle(bestres)
+                                    if depth > best_depth2.load(SeqCst) => {
+                                        best_depth2.store(depth,SeqCst);
 
-                                    debug!("new best move d({}): {:.3}s: {}: {:?}",
-                                        depth, t0.elapsed().as_secs_f64(),
-                                        bestres.score, bestres.moves.front());
+                                        debug!("new best move d({}): {:.3}s: {}: {:?}",
+                                            depth, t0.elapsed().as_secs_f64(),
+                                            bestres.score, bestres.moves.front());
 
-                                    if bestres.score > 100_000_000 - 50 {
-                                        let k = 100_000_000 - bestres.score.abs();
-                                        debug!("Found mate in {}: d({}), {:?}",
-                                               k, depth, bestres.moves.front());
-                                        let mut best = self.best_mate.write();
-                                        *best = Some(k as u8);
-                                        let mut w = out1.write();
-                                        *w = (depth, abres, w.2 + stats0);
-                                        // *w = (depth, scores, None);
-                                        break;
-                                    } else {
-                                        let mut w = out1.write();
-                                        *w = (depth, abres, w.2 + stats0);
-                                    }
-
+                                        if bestres.score > 100_000_000 - 50 {
+                                            let k = 100_000_000 - bestres.score.abs();
+                                            debug!("Found mate in {}: d({}), {:?}",
+                                                k, depth, bestres.moves.front());
+                                            let mut best = self.best_mate.write();
+                                            *best = Some(k as u8);
+                                            let mut w = out1.write();
+                                            *w = (depth, abres, w.2 + stats0);
+                                            // *w = (depth, scores, None);
+                                            break;
+                                        } else {
+                                            let mut w = out1.write();
+                                            *w = (depth, abres, w.2 + stats0);
+                                        }
                                 },
+
+                                // ABResults::ABSingle(bestres) if depth > best_depth2.load(SeqCst) => {
+                                //     best_depth2.store(depth,SeqCst);
+
+                                //     debug!("new best move d({}): {:.3}s: {}: {:?}",
+                                //         depth, t0.elapsed().as_secs_f64(),
+                                //         bestres.score, bestres.moves.front());
+
+                                //     if bestres.score > 100_000_000 - 50 {
+                                //         let k = 100_000_000 - bestres.score.abs();
+                                //         debug!("Found mate in {}: d({}), {:?}",
+                                //                k, depth, bestres.moves.front());
+                                //         let mut best = self.best_mate.write();
+                                //         *best = Some(k as u8);
+                                //         let mut w = out1.write();
+                                //         *w = (depth, abres, w.2 + stats0);
+                                //         // *w = (depth, scores, None);
+                                //         break;
+                                //     } else {
+                                //         let mut w = out1.write();
+                                //         *w = (depth, abres, w.2 + stats0);
+                                //     }
+
+                                // },
+
                                 _ => {
                                     let mut w = out1.write();
                                     w.2 = w.2 + stats0;
@@ -528,7 +589,7 @@ impl Explorer {
                         .spawn(move |_| {
                             self._lazy_smp_single_negamax(
                                 // self._lazy_smp_single_aspiration(
-                                ts, tb, cur_depth, tx2, tt_r2, tt_w2.clone());
+                                ts, cur_depth, tx2, tt_r2, tt_w2.clone());
                         }).unwrap();
 
                     thread_counter.fetch_add(1, SeqCst);
@@ -566,12 +627,15 @@ impl Explorer {
 
                 ((best,ress),stats,(tt_r,tt_w))
             },
-            ABResults::ABSingle(_) => {
-                panic!("single result only?");
+            ABResults::ABSingle(best) => {
+                // panic!("single result only?");
+                debug!("finished lazy_smp_negamax: single move {:?}", best.moves);
+                ((best,vec![]),stats,(tt_r,tt_w))
             }
-            _ => {
+            r => {
                 // ((ABResults::ABNone, vec![]), stats, (tt_r,tt_w))
-                unimplemented!()
+                // unimplemented!()
+                panic!("ABResults: {:?}", r);
             },
         }
     }

@@ -1,7 +1,12 @@
 
+use std::collections::HashMap;
+
+use crate::explore::*;
+use crate::opening_book::OpeningBook;
 use crate::tables::*;
 use crate::types::*;
 use crate::evaluate::*;
+use crate::alphabeta::*;
 // use crate::brain::types::*;
 use crate::brain::types::nnue::*;
 
@@ -9,8 +14,91 @@ use ndarray as nd;
 use nd::{Array2};
 use ndarray::linalg::Dot;
 
+#[derive(Debug,Eq,PartialEq,Clone)]
+pub struct TrainingData {
+    pub result:   GameEnd,
+    pub opening:  Vec<Move>,
+    pub moves:    Vec<TDEntry>,
+}
 
-pub fn generate_training_data(ts: &Tables) -> () {
+#[derive(Debug,Eq,PartialEq,Clone,Copy)]
+pub struct TDEntry {
+    mv:       Move,
+    eval:     Score,
+}
+
+impl TDEntry {
+    pub fn new(mv: Move, eval: Score) -> Self {
+        Self {
+            mv,
+            eval,
+        }
+    }
+}
+
+impl TrainingData {
+
+    pub fn generate_single(ts: &Tables, opening: Vec<Move>) -> Self {
+
+        let mut g = Game::from_fen(ts, STARTPOS).unwrap();
+        let mut moves = vec![];
+
+        for &mv in opening.iter() {
+            g = g.clone().make_move_unchecked(ts, mv).unwrap();
+        }
+
+        // let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
+        // let fen = "7k/4Q3/8/4K3/8/8/8/8 w - - 8 5"; // Queen endgame, #2
+        // let mut g = Game::from_fen(ts, fen).unwrap();
+
+        let max_depth = 5;
+        let t = 0.5;
+
+        let stop = Arc::new(AtomicBool::new(false));
+        let timesettings = TimeSettings::new_f64(0.0,t);
+        let mut ex = Explorer::new(g.state.side_to_move, g.clone(), max_depth, stop, timesettings);
+
+        let mut prevs: HashMap<Zobrist, u8> = HashMap::default();
+
+        debug!("generate_single starting...");
+        let result = loop {
+            if let (Some((mv,score)),stats) = ex.explore(&ts, None) {
+                g = g.clone().make_move_unchecked(ts, mv).unwrap();
+
+                // if let Some(mut p) = prevs.get_mut(&g.zobrist) {
+                //     if p == 1 {
+                //     }
+                // } else {
+                //     prevs.insert(&g.zobrist, 1);
+                // }
+
+                eprintln!("{:?}\n{:?}\n{:?}", mv, g, g.to_fen());
+
+                if score.score > CHECKMATE_VALUE - 100 {
+                    break GameEnd::Checkmate { win: !g.state.side_to_move };
+                }
+
+                ex.game = g.clone();
+                ex.side = g.state.side_to_move;
+                // ex.add_move_to_history(g.zobrist, mv);
+
+                let e = TDEntry::new(mv, score.score);
+                moves.push(e);
+            } else { break GameEnd::Error; }
+        };
+
+        Self {
+            result,
+            opening,
+            moves,
+        }
+    }
+
+}
+
+pub fn generate_training_data(ts: &Tables, ob: &OpeningBook) -> () {
+    let mut ob = ob.clone();
+
     unimplemented!()
 }
 

@@ -5,7 +5,7 @@ use crate::tables::*;
 use crate::evaluate::*;
 use crate::pruning::*;
 use crate::explore::*;
-use crate::syzygy::SyzygyTB;
+use crate::syzygy::{SyzygyTB, Wdl, Dtz};
 
 use crate::stats;
 
@@ -25,6 +25,15 @@ impl ABResult {
     pub fn new_empty(score: Score) -> Self {
         Self {
             moves: VecDeque::default(),
+            score,
+        }
+    }
+
+    pub fn new_single(mv: Move, score: Score) -> Self {
+        let mut moves = VecDeque::default();
+        moves.push_back(mv);
+        Self {
+            moves,
             score,
         }
     }
@@ -55,13 +64,13 @@ impl Explorer {
     /// returns (can_use, SearchInfo)
     /// true: when score can be used instead of searching
     /// false: score can be used ONLY for move ordering
-    pub fn check_tt_negamax(&self,
-                ts:             &Tables,
-                g:              &Game,
-                depth:          Depth,
-                // maximizing:     bool,
-                tt_r:           &TTRead,
-                mut stats:      &mut SearchStats,
+    pub fn check_tt_negamax(
+        &self,
+        ts:             &Tables,
+        g:              &Game,
+        depth:          Depth,
+        tt_r:           &TTRead,
+        mut stats:      &mut SearchStats,
     ) -> Option<(SICanUse,SearchInfo)> {
         if let Some(si) = tt_r.get_one(&g.zobrist) {
             if si.depth_searched >= depth {
@@ -86,7 +95,6 @@ impl Explorer {
     pub fn _ab_search_negamax(
         &self,
         ts:                      &Tables,
-        tb:                      &SyzygyTB,
         g:                       &Game,
         // max_depth:               Depth,
         mut cfg:                 ABConfig,
@@ -105,6 +113,18 @@ impl Explorer {
 
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
 
+        /// Repetition checking
+        {
+            if let Some(k) = g.history.get(&g.zobrist) {
+                if *k >= 2 {
+                    let score = -STALEMATE_VALUE + ply as Score;
+                    return ABSingle(ABResult::new_empty(-score));
+                    // return ABSingle(ABResult::new_empty(0));
+                }
+            }
+        }
+
+        // TODO: bench this
         if *stop_counter > 2000 {
             if self.stop.load(SeqCst) {
                 return ABNone;
@@ -175,6 +195,44 @@ impl Explorer {
 
             return ABSingle(ABResult::new_empty(score));
         }
+
+
+        /// Syzygy Probe
+        if let Some(tb) = &self.syzygy {
+            // let mv = Move::Quiet { from: "E5".into(), to: "F6".into(), pc: King };
+            // let score = CHECKMATE_VALUE - (ply as Score + 4);
+            // return ABResults::ABSingle(ABResult::new_single(mv, -score));
+
+            match tb.probe_wdl(ts, g) {
+                Ok(Wdl::Win) => {
+                    // trace!("found WDL win: {:?}", Wdl::Win);
+                    match tb.best_move(ts, g) {
+                        Ok(Some((mv,dtz)))  => {
+                            // eprintln!("dtz,ply = {:?}, {:?}", dtz, ply);
+                            // let score = CHECKMATE_VALUE - ply as Score - dtz.0 as Score;
+                            let score = CHECKMATE_VALUE - dtz.add_plies(ply as i32).0.abs() as Score;
+
+                            // XXX: wrong, but matches with other wrong mate in x count
+                            let score = score + 1;
+                            return ABResults::ABSingle(ABResult::new_single(mv, score));
+                        },
+                        Err(e) => {
+                        },
+                        _ => {
+                        },
+                    }
+                },
+                Ok(wdl) => {
+                    trace!("found other WDL: {:?}", wdl);
+                    // unimplemented!()
+                },
+                Err(e) => {
+                    // unimplemented!()
+                }
+            }
+
+        }
+
 
         #[cfg(feature = "pvs_search")]
         let mut is_pv_node = beta != alpha + 1;
@@ -318,7 +376,7 @@ impl Explorer {
                         // };
 
                         match self._ab_search_negamax(
-                            ts, tb, &g2, cfg2, depth3, ply + 1, &mut stop_counter,
+                            ts, &g2, cfg2, depth3, ply + 1, &mut stop_counter,
                             (-beta, -alpha), &mut stats,
                             pms.clone(), &mut history, tt_r, tt_w.clone(),
                             // false,
@@ -349,7 +407,7 @@ impl Explorer {
                     let (a2,b2) = (-beta, -alpha);
 
                     match self._ab_search_negamax(
-                        ts, tb, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
+                        ts, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
                         (a2, b2), &mut stats,
                         pms.clone(), &mut history, tt_r, tt_w.clone()) {
                         ABSingle(mut res) => {
@@ -359,7 +417,7 @@ impl Explorer {
                             #[cfg(feature = "pvs_search")]
                             if !search_pv && res.score > alpha {
                                 match self._ab_search_negamax(
-                                    ts, tb, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
+                                    ts, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
                                     (-beta, -alpha), &mut stats,
                                     pms, &mut history, tt_r, tt_w.clone()) {
                                     ABSingle(mut res2) => {

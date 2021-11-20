@@ -53,42 +53,42 @@ pub fn crit_bench_2(c: &mut Criterion) {
     let ts = &_TABLES;
     let mut g = Game::from_fen(&ts, fen).unwrap();
 
-    let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
-    let mut nn = NNUE::new(&mut rng);
+    // let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
+    // let mut nn = NNUE::new(&mut rng);
 
-    nn.init_inputs(&g);
+    // nn.init_inputs(&g);
 
-    let ws0: nd::Array2<f32> = nn.weights_1.clone();
-    let xs0: nd::Array2<f32> = nn.inputs_own.clone();
+    // let ws0: nd::Array2<f32> = nn.weights_1.clone();
+    // let xs0: nd::Array2<f32> = nn.inputs_own.clone();
 
     // group.bench_function("backprop 1", |b| b.iter(|| {
     //     nn2.backprop_mut_matrix(black_box(&ins), 0.1);
     // }));
 
-    group.bench_function("mat mul 1: ndarray f32", |b| b.iter(|| {
-        let result = ws0.dot(&xs0);
-    }));
+    // group.bench_function("mat mul 1: ndarray f32", |b| b.iter(|| {
+    //     let result = ws0.dot(&xs0);
+    // }));
 
-    let ws1: nd::Array2<i8> = ws0.clone().map(|x| *x as i8);
-    let xs1: nd::Array2<i8> = xs0.clone().map(|x| *x as i8);
+    // let ws1: nd::Array2<i8> = ws0.clone().map(|x| *x as i8);
+    // let xs1: nd::Array2<i8> = xs0.clone().map(|x| *x as i8);
 
-    group.bench_function("mat mul 1: ndarray i8", |b| b.iter(|| {
-        let result: nd::Array2<i8> = ws1.dot(&xs1);
-    }));
+    // group.bench_function("mat mul 1: ndarray i8", |b| b.iter(|| {
+    //     let result: nd::Array2<i8> = ws1.dot(&xs1);
+    // }));
 
-    let ws2: na::DMatrix<f32> = ws0.clone().into_nalgebra(); // N,1
-    let xs2: na::DMatrix<f32> = xs0.clone().into_nalgebra(); // N,1
+    // let ws2: na::DMatrix<f32> = ws0.clone().into_nalgebra(); // N,1
+    // let xs2: na::DMatrix<f32> = xs0.clone().into_nalgebra(); // N,1
 
-    group.bench_function("mat mul 1: nalgebra f32 Dynamic", |b| b.iter(|| {
-        let result: na::DMatrix<f32> = &ws2 * &xs2;
-    }));
+    // group.bench_function("mat mul 1: nalgebra f32 Dynamic", |b| b.iter(|| {
+    //     let result: na::DMatrix<f32> = &ws2 * &xs2;
+    // }));
 
-    let ws3: na::DMatrix<i8> = ws2.map(|x| x as i8); // N,1
-    let xs3: na::DMatrix<i8> = xs2.map(|x| x as i8); // N,1
+    // let ws3: na::DMatrix<i8> = ws2.map(|x| x as i8); // N,1
+    // let xs3: na::DMatrix<i8> = xs2.map(|x| x as i8); // N,1
 
-    group.bench_function("mat mul 1: nalgebra i8 Dynamic", |b| b.iter(|| {
-        let result: na::DMatrix<i8> = &ws3 * &xs3;
-    }));
+    // group.bench_function("mat mul 1: nalgebra i8 Dynamic", |b| b.iter(|| {
+    //     let result: na::DMatrix<i8> = &ws3 * &xs3;
+    // }));
 
     // let ws4 = ws4.rows(0, ws4.shape().0);
     // let ws4: na::SMatrix<i8,40356,256> = ws4.fixed_slice::<40356,256>(0, 0).into();
@@ -151,11 +151,11 @@ pub fn crit_bench_1(c: &mut Criterion) {
     // let ts    = Tables::new();
     let mut g = Game::from_fen(&ts, fen).unwrap();
 
-    // let mut games = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
-    // let mut games: Vec<Game> = games.into_iter().map(|(fen,_)| {
-    //     Game::from_fen(&ts, &fen).unwrap()
-    // }).collect();
-    // // games.truncate(10);
+    let mut games = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
+    let mut games: Vec<Game> = games.into_iter().map(|(fen,_)| {
+        Game::from_fen(&ts, &fen).unwrap()
+    }).collect();
+    // games.truncate(10);
 
     let stop = Arc::new(AtomicBool::new(false));
     let timesettings = TimeSettings::new_f64(0.0, t);
@@ -178,8 +178,6 @@ pub fn crit_bench_1(c: &mut Criterion) {
     //     let (m,stats) = ex.explore(&ts, None);
     // }));
 
-    // baseline = 6.69 us
-
     // group.bench_function("game_phase", |b| b.iter(|| {
     //     let mut k = 0;
     //     for g in games.iter() {
@@ -190,7 +188,7 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
     // group.bench_function("search_all", |b| b.iter(|| {
     //     for g in games.iter() {
-    //         let mvs = g.search_all(&ts, black_box(None));
+    //         let mvs = g.search_all(&ts);
     //     }
     // }));
 
@@ -267,7 +265,7 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
 }
 
-// criterion_group!(benches, crit_bench_1);
-criterion_group!(benches, crit_bench_2);
+criterion_group!(benches, crit_bench_1);
+// criterion_group!(benches, crit_bench_2);
 criterion_main!(benches);
 

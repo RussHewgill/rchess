@@ -18,6 +18,8 @@ use itertools::Itertools;
 use serde::{Serialize,Deserialize};
 use serde_big_array::BigArray;
 
+pub const STARTPOS: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 lazy_static! {
     pub static ref SQUAREDIST: [[u8; 64]; 64] = {
         let mut out = [[0; 64]; 64];

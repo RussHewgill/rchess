@@ -7,6 +7,7 @@ use crate::hashing::*;
 pub use self::castling::*;
 pub use self::ghistory::*;
 
+use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::hash::{Hash,Hasher};
 
@@ -14,7 +15,8 @@ use std::hash::{Hash,Hasher};
 use ringbuffer::ConstGenericRingBuffer;
 
 // #[derive(Default,PartialEq,Clone)]
-#[derive(Default,PartialEq,Clone,Copy)]
+// #[derive(Default,PartialEq,Clone,Copy)]
+#[derive(Default,PartialEq,Clone)]
 pub struct Game {
     // pub move_history: Vec<Move>,
     pub state:        GameState,
@@ -23,6 +25,8 @@ pub struct Game {
     // pub history:      VecDeque<Zobrist>,
     // pub history:      GHistory,
     pub last_move:    Option<Move>,
+    // pub history:      Vec<(Zobrist,Move)>,
+    pub history:      HashMap<Zobrist, u8>,
 }
 
 mod ghistory {
@@ -482,6 +486,19 @@ impl Game {
 
                 next.last_move = Some(mv);
 
+                // // XXX: current or prev Zobrist ??
+                // next.history.push((next.zobrist, mv));
+
+                // next.history.push((next.zobrist, mv));
+                if let Some(mut k) = next.history.get_mut(&next.zobrist) {
+                    *k += 1;
+                    // if *k >= 2 {
+                    //     return Err(GameEnd::DrawRepetition);
+                    // }
+                } else {
+                    next.history.insert(next.zobrist, 1);
+                }
+
                 match next.recalc_gameinfo_mut(&ts) {
                     // Err(win) => panic!("wot"),
                     Err(win) => Err(win),
@@ -778,6 +795,10 @@ impl Game {
     pub fn convert_move(&self, from: &str, to: &str, other: &str) -> Option<Move> {
         let from: Coord = from.into();
         let to: Coord = to.into();
+        self._convert_move(from, to, other, false)
+    }
+
+    pub fn _convert_move(&self, from: Coord, to: Coord, other: &str, ob_castle: bool) -> Option<Move> {
         // eprintln!("from,to = {:?}, {:?}", from, to);
         match (self.get_at(from), self.get_at(to)) {
             (Some((col,pc)),None) => {
@@ -809,7 +830,39 @@ impl Game {
                 }
             },
             (Some((col0,pc0)),Some((col1,pc1))) => {
-                if col0 == col1 { panic!("self capture?"); }
+                if col0 == col1 {
+                    if ob_castle && pc0 == King && pc1 == Rook && col0 == col1 {
+
+                        let king_to = match to {
+                            Coord(0,0) => Coord(2,0),
+                            Coord(7,0) => Coord(6,0),
+                            Coord(0,7) => Coord(2,7),
+                            Coord(7,7) => Coord(6,7),
+                            _          =>
+                                panic!("polyglot castle king_to ??: ({:?},{:?})",
+                                       from, to,
+                                ),
+                        };
+                        let rook_from = to;
+                        let rook_to   = match to {
+                            Coord(0,0) => Coord(3,0),
+                            Coord(7,0) => Coord(5,0),
+                            Coord(0,7) => Coord(0,7),
+                            Coord(7,7) => Coord(0,7),
+                            _          =>
+                                panic!("polyglot castle rook_to ??: ({:?},{:?})",
+                                    from, to,
+                                ),
+                        };
+
+                        // panic!("convert move polyglot castle");
+
+                        return Some(Move::Castle { from, to: king_to, rook_from, rook_to });
+
+                    } else {
+                        panic!("self capture?: {:?}->{:?}\n{:?}", from, to, self);
+                    }
+                }
 
                 let cc = if col0 == White { 7 } else { 0 };
                 if (pc0 == Pawn) & (to.1 == cc) {

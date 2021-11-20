@@ -20,15 +20,14 @@
 // extern crate blas_src;
 // extern crate openblas_src;
 
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::collections::VecDeque;
+use std::collections::{HashMap,HashSet,VecDeque};
 use std::slice::SliceIndex;
 use std::str::FromStr;
 
 use itertools::Itertools;
 
 use rchess_engine_lib::explore::Explorer;
+use rchess_engine_lib::opening_book::*;
 // use crate::lib::*;
 use rchess_engine_lib::types::*;
 use rchess_engine_lib::search::*;
@@ -40,6 +39,8 @@ use rchess_engine_lib::explore::*;
 use rchess_engine_lib::tuning::*;
 use rchess_engine_lib::alphabeta::*;
 use rchess_engine_lib::{stats,not_stats,stats_or};
+use rchess_engine_lib::syzygy::SyzygyTB;
+use rchess_engine_lib::brain::trainer::*;
 
 use log::{debug, error, log_enabled, info, Level};
 use gag::Redirect;
@@ -50,14 +51,13 @@ use simplelog::{
 use chrono::Timelike;
 use std::time::{Instant,Duration};
 
-const STARTPOS: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
 #[allow(unreachable_code)]
 fn main() {
     // main_nnue();
     // main_nn();
     // main_mnist();
-    main_syzygy();
+    // main_syzygy();
+    main9();
 }
 
 #[allow(unreachable_code)]
@@ -576,7 +576,7 @@ fn main_nnue() {
     use rchess_engine_lib::brain::matrix::*;
     // use rchess_engine_lib::brain::accumulator::*;
 
-    init_logger();
+    // init_logger();
 
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
@@ -609,16 +609,153 @@ fn main_nnue() {
     // eprintln!("idx1 = {:?}", idx1);
     // return;
 
+    let fen = STARTPOS;
     // let fen     = "rnbqkb1r/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     // let fen = "4k3/3pp3/8/8/8/8/3PP3/4K3 w - - 0 1";
-    let fen = "4k3/3pp3/8/8/8/8/3P1P2/4K3 w - - 0 1";
+    // let fen = "4k3/3pp3/8/8/8/8/3P1P2/4K3 w - - 0 1";
     let correct = 10;
 
     // let dnn = DNetwork::<f32,512,1>::_new_rng(vec![512,32,32,1], (-1.,1.), &mut rng);
 
     let ts = Tables::read_from_file_def().unwrap();
+
+    let ob = OpeningBook::read_from_file(&ts, "tables/Perfect_2021/BIN/Perfect2021.bin").unwrap();
+    // let ob = OpeningBook2::read_from_file("tables/Perfect_2021/ABK/Perfect2021.abk").unwrap();
+
+    // let fen = "rn1qkb1r/1p3pp1/p2pbn2/4p2p/4P3/1NN1BP2/PPP3PP/R2QKB1R w KQkq - 0 9";
+    // let fen = "rn1qkb1r/1p3pp1/p2pbn2/4p2p/4P3/1NN1BP2/PPP3PP/R2QKB1R w KQkq - 0 2";
+    // let fen = "r2qkb1r/1p1n1p2/p2p1np1/3Pp2p/8/1N2BP2/PPPQ2PP/R3KB1R w KQkq - 0 2";
+
+    // let fen = "7k/8/3q4/8/8/4Q3/8/7K w - - 0 1"; // repetition tester
+
     let mut g = Game::from_fen(&ts, fen).unwrap();
+    // let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
     // let mut nn = NNUE::new(White, &mut rng, dnn);
+    // g.state.en_passant = Some("H6".into());
+
+    // let mut s = OBSelection::new_seq();
+    let mut s = OBSelection::BestN(0);
+
+    // let gs = rchess_engine_lib::brain::trainer::generate_training_data(&ts, &ob);
+
+    let (_,opening) = ob.start_game(&ts, Some(6), &mut s).unwrap();
+    let k0 = TrainingData::generate_single(&ts, opening);
+    // let k0 = TrainingData::generate_single(&ts, vec![]);
+
+    eprintln!("k0.result = {:?}", k0.result);
+
+    return;
+
+    let mv0 = Move::Quiet { from: "E3".into(), to: "D3".into(), pc: Queen };
+    let mv1 = Move::Quiet { from: "D6".into(), to: "E6".into(), pc: Queen };
+    let mv2 = Move::Quiet { from: "D3".into(), to: "E3".into(), pc: Queen };
+    let mv3 = Move::Quiet { from: "E6".into(), to: "D6".into(), pc: Queen };
+
+    for _ in 0..2 {
+        g = g.make_move_unchecked(&ts, mv0).unwrap();
+        g = g.make_move_unchecked(&ts, mv1).unwrap();
+        g = g.make_move_unchecked(&ts, mv2).unwrap();
+        g = g.make_move_unchecked(&ts, mv3).unwrap();
+    }
+
+    for (n,(zb,mv)) in g.history.iter().enumerate() {
+        eprintln!("{}: {:?} = {:?}", n, zb, mv);
+    }
+
+    let g2 = g.clone().make_move_unchecked(&ts, mv0).unwrap();
+
+
+    let zb0 = g.zobrist;
+    let zb1 = g2.zobrist;
+
+    eprintln!("zb0 = {:?}", zb0);
+    eprintln!("zb1 = {:?}", zb1);
+
+    // let n = g.history.len();
+    // let mut k = 0;
+
+    // for (pz,pmv) in g.history.iter() {
+    //     if *pz == g.zobrist {
+    //         panic!("{}, {:?}", k, pmv);
+    //     }
+    //     k += 1;
+    // }
+
+    // loop {
+    //     let idx = 3 + k * 2;
+    //     eprintln!("idx = {:?}", idx);
+    //     if idx >= n { break; }
+    //     // let (z,pmv) = g.history[n - idx];
+    //     let (z,pmv) = g.history[idx];
+    //     if z == g.zobrist {
+    //         panic!("{}, {:?}", k, pmv);
+    //     } else {
+    //         eprintln!("nop {}, {:?}", k, pmv);
+    //     }
+    //     k += 1;
+    // }
+
+    return;
+
+    // let mv = ob.best_move(&g, &mut s).unwrap();
+    // let g = g.make_move_unchecked(&ts, mv).unwrap();
+
+    // eprintln!("g = {:?}", g);
+
+    // let mvs = ob.best_moves(&g).unwrap();
+    // for mv in mvs {
+    //     eprintln!("mv = {:?}", mv);
+    // }
+    // println!();
+
+    // loop {
+    //     if let Some(mv) = ob.best_move(&g, &mut s) {
+    //         eprintln!("mv = {:?}", mv);
+    //     } else { break; }
+    // }
+
+    // let mut gs = vec![];
+
+    // println!("wat 0");
+    // loop {
+    //     if let Some(mv) = ob.best_move(&g, &mut s) {
+    //         let g2 = g.make_move_unchecked(&ts, mv).unwrap();
+    //         gs.push(g2);
+    //     } else { break; }
+    // }
+
+    // loop {
+    //     if let Some(g) = ob.start_game(&ts, &mut s) {
+    //         gs.push(g);
+    //     } else { break; }
+    // }
+
+    // eprintln!("gs.len() = {:?}", gs.len());
+
+    // eprintln!("gs.len() = {:?}", gs.len());
+    // for (n,g) in gs.into_iter().enumerate() {
+    //     eprintln!("g {} = {:?}", n, g);
+    // }
+
+    // let g = ob.start_game(&ts, s);
+
+    // let key = OpeningBook::gen_key(&g);
+    // let mvs = ob.map.get(&key).unwrap();
+
+    // let mvs = ob.best_moves(&g).unwrap();
+
+    // for mv in mvs.into_iter() {
+    //     eprintln!("mv = {:?}", mv);
+    // }
+
+    // let mv = mvs.into_iter().max_by_key(|(_,k)| *k).unwrap();
+    // let g2 = g.make_move_unchecked(&ts, mv.0).unwrap();
+
+    // eprintln!("g2 = {:?}", g2);
+
+    // let _ = rchess_engine_lib::brain::trainer::generate_training_data(&ts, &ob);
+
+    return;
 
     let mut nn = NNUE::new(White, &mut rng);
     // nn.init_inputs(&g);
@@ -667,7 +804,7 @@ fn main_nnue() {
 
         if k % 50 == 0 {
             let delta = pred - correct;
-            eprintln!("{:>8}, delta {:>8} = {:?}", pred, k, delta);
+            eprintln!("({:>4}): {:>8}, delta = {:?}", k, pred, delta);
         }
         // nn.run_partial();
     }
@@ -1042,6 +1179,7 @@ fn main9() {
         let stop = Arc::new(AtomicBool::new(false));
         let timesettings = TimeSettings::new_f64(0.0,t);
         let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+        ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
         ex.lazy_smp_negamax(&ts, false, false)
     }
 
@@ -1067,9 +1205,10 @@ fn main9() {
     // // let fen = "5rk1/4npp1/1p4b1/1B2p3/1P1P4/4P3/5PP1/3K3R b - - 0 4"; // after block, -220
 
     // let fen = "7k/8/8/8/8/8/4Q3/7K w - - 0 1"; // Queen endgame, #7
-    let fen = "7k/4Q3/8/8/8/8/8/7K w - - 4 3"; // Queen endgame, #6
-    // let fen = "7k/4Q3/8/8/8/8/6K1/8 w - - 4 3"; // Queen endgame, #5
+    // let fen = "7k/4Q3/8/8/8/8/8/7K w - - 4 3"; // Queen endgame, #6
+    let fen = "7k/4Q3/8/8/8/8/6K1/8 w - - 4 3"; // Queen endgame, #5
     // let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
+    // let fen = "7k/4Q3/8/4K3/8/8/8/8 w - - 8 5"; // Queen endgame, #2
     // let fen = "7k/8/8/8/8/8/4R3/7K w - - 0 1"; // Rook endgame,
 
     // let fen = "r2n1rk1/1pp1qppp/p2p1n2/3Bp1B1/4P1b1/3P1N2/PPP2PPP/R2Q1RK1 w - - 4 11"; // ??
@@ -1080,18 +1219,36 @@ fn main9() {
     // let fen = &games(2); // STS2 002, Qt R a7E7
     // let fen = &games(2); // STS15 001, Qt Q d3d1
 
+    let fen = "r3rbk1/1pq2ppp/p1n3b1/3BpNP1/4P3/P1Q1B2P/1PP2P2/3RR1K1 b - - 0 1"; // repetition
+    // let fen = "r3rbk1/1pq2ppp/p1n5/3BpNPb/4P3/P1Q1B2P/1PP2P2/3RR1K1 w - - 1 2"; // repetition
+    // let fen = "r3rbk1/1pq2ppp/p1n5/3BpNPb/4P3/P1QRB2P/1PP2P2/4R1K1 b - - 2 2"; // repetition
+    // let fen = "r3rbk1/1pq2ppp/p1n3b1/3BpNP1/4P3/P1QRB2P/1PP2P2/4R1K1 w - - 3 3"; // repetition
+
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
+
+    eprintln!("g = {:?}", g);
+
+    let mv0 = Move::Quiet { from: "G6".into(), to: "H5".into(), pc: Bishop };
+    let mv1 = Move::Quiet { from: "D1".into(), to: "D3".into(), pc: Rook };
+    let mv2 = Move::Quiet { from: "H5".into(), to: "G6".into(), pc: Bishop };
+    let mv3 = Move::Quiet { from: "D3".into(), to: "D1".into(), pc: Rook };
+
+    let g = g.make_move_unchecked(&ts, mv0).unwrap();
+    let g = g.make_move_unchecked(&ts, mv1).unwrap();
+    let g = g.make_move_unchecked(&ts, mv2).unwrap();
+    let g = g.make_move_unchecked(&ts, mv3).unwrap();
 
     // eprintln!("g = {:?}", g);
 
     let n = 35;
     // let n = 6;
 
-    let t = 10.0;
+    // let t = 10.0;
     // let t = 5.0;
     // let t = 2.0;
+    let t = 1.0;
     // let t = 0.5;
 
     let hook = std::panic::take_hook();
@@ -1122,31 +1279,24 @@ fn main9() {
     // eprintln!("g2 = {:?}", g2);
 
     use rchess_engine_lib::opening_book::*;
-
     // let g = Game::from_fen(&ts, "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1").unwrap();
     // let g = Game::from_fen(&ts, STARTPOS).unwrap();
-
     // eprintln!("g = {:?}", g);
 
-    let ob = OpeningBook::read_from_file("tables/Perfect_2021/BIN/Perfect2021.bin").unwrap();
-
-    let fen = STARTPOS;
-    let g = Game::from_fen(&ts, &fen).unwrap();
-
-    let k = OpeningBook::gen_key(&g);
-
-    let ms = ob.map.get(&k).unwrap();
-
-    for ((from,to),wt) in ms.iter() {
-        // let w = *wt as f64 / i16::MAX as f64;
-        let w = *wt;
-        eprintln!("(from,to) = ({:?},{:?}) = {:?}", from, to, w);
-    }
+    // let ob = OpeningBook::read_from_file("tables/Perfect_2021/BIN/Perfect2021.bin").unwrap();
+    // let fen = STARTPOS;
+    // // let fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    // let g = Game::from_fen(&ts, &fen).unwrap();
+    // let mut ms: Vec<(Move,u16)> = ob.best_moves(&g).unwrap();
+    // ms.sort_by_key(|x| x.1);
+    // for (mv,wt) in ms.iter() {
+    //     let w = *wt as f64 / i16::MAX as f64;
+    //     eprintln!("mv {:?} = {:?}", mv, wt);
+    // }
 
     // eprintln!("mv = {:?}", m.mv);
     // eprintln!("wt = {:?} / {}: {:.2}", m.weight, i16::MAX, m.weight as f64 / i16::MAX as f64);
-
-    return;
+    // return;
 
     // let e = g.evaluate(&ts);
     // eprintln!("base eval = {:?}", e.sum());
@@ -1165,6 +1315,17 @@ fn main9() {
     // let min = xs.iter().min_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
     // let max = xs.iter().max_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
     // eprintln!("{} iterations, avg {:.3}s, [{:.3},{:.3}]", k, avg, min, max);
+    // return;
+
+    // let mut tb = SyzygyTB::new();
+    // tb.add_directory("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+    // // let g = Game::from_fen(&ts, "3k4/5P2/8/8/4K3/2P3P1/PP6/8 w - - 0 1").unwrap();
+    // let k0 = tb.probe_wdl(&ts, &g);
+    // eprintln!("k0 = {:?}", k0);
+    // let k1 = tb.probe_dtz(&ts, &g);
+    // eprintln!("k1 = {:?}", k1);
+    // let k2 = tb.best_move(&ts, &g).unwrap();
+    // eprintln!("k2 = {:?}", k2.map(|x| x.0));
     // return;
 
     let t0 = std::time::Instant::now();
@@ -1200,6 +1361,8 @@ fn main9() {
     eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
     println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
              stats0.max_depth, t2);
+
+    return;
 
     // let k = best.score - CHECKMATE_VALUE;
     // eprintln!("k = {:?}", k);

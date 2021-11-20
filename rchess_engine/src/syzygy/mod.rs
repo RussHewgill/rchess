@@ -6,6 +6,8 @@ pub mod sz_format;
 use self::sz_format::*;
 use self::sz_errors::*;
 
+pub use self::sz_format::{Wdl,Dtz};
+
 use crate::tables::*;
 use crate::types::*;
 
@@ -118,7 +120,7 @@ impl SyzygyTB {
 
 impl SyzygyTB {
 
-    pub fn probe<'a>(&'a self, ts: &'a Tables, g: &'a Game) -> SyzygyResult<WdlEntry<'a>> {
+    fn probe<'a>(&'a self, ts: &'a Tables, g: &'a Game) -> SyzygyResult<WdlEntry<'a>> {
         if g.all_occupied().count() > MAX_PIECES {
             return Err(SyzygyError::TooManyPieces);
         }
@@ -247,7 +249,7 @@ impl SyzygyTB {
         })
     }
 
-    pub fn probe_ab_no_ep(&self, ts: &Tables, g: &Game, mut alpha: Wdl, beta: Wdl) -> SyzygyResult<Wdl> {
+    fn probe_ab_no_ep(&self, ts: &Tables, g: &Game, mut alpha: Wdl, beta: Wdl) -> SyzygyResult<Wdl> {
         // Use alpha-beta to recursively resolve captures. This is only called
         // for positions without ep rights.
         assert!(g.state.en_passant.is_none());
@@ -310,6 +312,7 @@ impl SyzygyTB {
     ///
     /// Requires both WDL and DTZ tables.
     ///
+
     /// # Errors
     ///
     /// See [`SyzygyError`] for possible error
@@ -367,7 +370,7 @@ impl SyzygyTB {
         // unimplemented!()
     }
 
-    pub fn probe_dtz_table(&self, g: &Game, wdl: DecisiveWdl) -> SyzygyResult<Option<Dtz>> {
+    fn probe_dtz_table(&self, g: &Game, wdl: DecisiveWdl) -> SyzygyResult<Option<Dtz>> {
         // Get raw DTZ value from the appropriate table.
         let key = g.state.material;
         self.dtz_table(&key)
