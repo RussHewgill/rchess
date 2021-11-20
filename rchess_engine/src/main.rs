@@ -53,11 +53,11 @@ use std::time::{Instant,Duration};
 
 #[allow(unreachable_code)]
 fn main() {
-    // main_nnue();
+    main_nnue();
     // main_nn();
     // main_mnist();
     // main_syzygy();
-    main9();
+    // main9();
 }
 
 #[allow(unreachable_code)]
@@ -626,7 +626,7 @@ fn main_nnue() {
     // let fen = "rn1qkb1r/1p3pp1/p2pbn2/4p2p/4P3/1NN1BP2/PPP3PP/R2QKB1R w KQkq - 0 2";
     // let fen = "r2qkb1r/1p1n1p2/p2p1np1/3Pp2p/8/1N2BP2/PPPQ2PP/R3KB1R w KQkq - 0 2";
 
-    // let fen = "7k/8/3q4/8/8/4Q3/8/7K w - - 0 1"; // repetition tester
+    let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
 
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
@@ -1184,7 +1184,7 @@ fn main9() {
     }
 
     // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
-    // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
+    let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
     // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
@@ -1204,12 +1204,12 @@ fn main9() {
     // // let fen = "5rk1/4npp1/1p4b1/1B2p3/1P1P2Q1/4P3/4KPP1/7r w - - 0 4"; // after evade, -320
     // // let fen = "5rk1/4npp1/1p4b1/1B2p3/1P1P4/4P3/5PP1/3K3R b - - 0 4"; // after block, -220
 
-    // let fen = "7k/8/8/8/8/8/4Q3/7K w - - 0 1"; // Queen endgame, #7
-    // let fen = "7k/4Q3/8/8/8/8/8/7K w - - 4 3"; // Queen endgame, #6
-    let fen = "7k/4Q3/8/8/8/8/6K1/8 w - - 4 3"; // Queen endgame, #5
-    // let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
-    // let fen = "7k/4Q3/8/4K3/8/8/8/8 w - - 8 5"; // Queen endgame, #2
-    // let fen = "7k/8/8/8/8/8/4R3/7K w - - 0 1"; // Rook endgame,
+    // // let fen = "7k/8/8/8/8/8/4Q3/7K w - - 0 1"; // Queen endgame, #7
+    // // let fen = "7k/4Q3/8/8/8/8/8/7K w - - 4 3"; // Queen endgame, #6
+    // let fen = "7k/4Q3/8/8/8/8/6K1/8 w - - 4 3"; // Queen endgame, #5
+    // // let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
+    // // let fen = "7k/4Q3/8/4K3/8/8/8/8 w - - 8 5"; // Queen endgame, #2
+    // // let fen = "7k/8/8/8/8/8/4R3/7K w - - 0 1"; // Rook endgame,
 
     // let fen = "r2n1rk1/1pp1qppp/p2p1n2/3Bp1B1/4P1b1/3P1N2/PPP2PPP/R2Q1RK1 w - - 4 11"; // ??
     // let fen = "r2n1rk1/1pp1qppp/p2p1n2/3Bp1B1/4P1bP/3P1N2/PPP2PP1/R2Q1RK1 b - - 0 11"; // ??

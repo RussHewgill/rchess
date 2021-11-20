@@ -198,6 +198,7 @@ impl Explorer {
 
 
         /// Syzygy Probe
+        #[cfg(feature = "syzygy")]
         if let Some(tb) = &self.syzygy {
             // let mv = Move::Quiet { from: "E5".into(), to: "F6".into(), pc: King };
             // let score = CHECKMATE_VALUE - (ply as Score + 4);
@@ -208,7 +209,7 @@ impl Explorer {
                     // trace!("found WDL win: {:?}", Wdl::Win);
                     match tb.best_move(ts, g) {
                         Ok(Some((mv,dtz)))  => {
-                            // eprintln!("dtz,ply = {:?}, {:?}", dtz, ply);
+                            trace!("dtz,ply = {:?}, {:?}", dtz, ply);
                             // let score = CHECKMATE_VALUE - ply as Score - dtz.0 as Score;
                             let score = CHECKMATE_VALUE - dtz.add_plies(ply as i32).0.abs() as Score;
 
@@ -230,7 +231,6 @@ impl Explorer {
                     // unimplemented!()
                 }
             }
-
         }
 
 

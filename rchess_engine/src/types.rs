@@ -121,7 +121,7 @@ impl PartialOrd for Move {
     }
 }
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
+#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Serialize,Deserialize)]
 pub enum GameEnd {
     Checkmate { win: Color },
     Stalemate,

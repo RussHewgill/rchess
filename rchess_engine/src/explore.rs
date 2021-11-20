@@ -135,12 +135,16 @@ impl Explorer {
         // }
 
         let ((best, scores),stats,(tt_r,tt_w)) = self.lazy_smp_negamax(ts, false, false);
-        let mv = best.moves[0];
-        let score = best.score;
 
-        debug!("explore: best move = {:?}", mv);
-        // (Some((mv,score)),stats)
-        (Some((mv,best)),stats)
+        if let Some(mv) = best.moves.get(0) {
+            let score = best.score;
+
+            debug!("explore: best move = {:?}", mv);
+            // (Some((mv,score)),stats)
+            (Some((*mv,best)),stats)
+        } else {
+            (None, stats)
+        }
 
         // unimplemented!()
 

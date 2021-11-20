@@ -28,6 +28,7 @@ default = [
     "keep_stats",
 
     "positional_scoring",
+    "syzygy",
 
     "null_pruning",
     "late_move_reduction",
@@ -48,6 +49,8 @@ backtrace = []
 keep_stats = []
 
 positional_scoring = []
+
+syzygy = []
 
 null_pruning = []
 late_move_reduction = []

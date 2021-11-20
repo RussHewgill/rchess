@@ -27,6 +27,8 @@ pub struct Game {
     pub last_move:    Option<Move>,
     // pub history:      Vec<(Zobrist,Move)>,
     pub history:      HashMap<Zobrist, u8>,
+
+    pub half_move:    u8,
 }
 
 mod ghistory {
@@ -499,15 +501,21 @@ impl Game {
                     next.history.insert(next.zobrist, 1);
                 }
 
+                if mv.is_zeroing() {
+                    next.half_move = 0;
+                } else {
+                    next.half_move += 1;
+                }
+
                 match next.recalc_gameinfo_mut(&ts) {
                     // Err(win) => panic!("wot"),
                     Err(win) => Err(win),
                     Ok(_)    => {
-                        if self._check_history() {
-                            Err(GameEnd::DrawRepetition)
-                        } else {
-                            Ok(next)
-                        }
+                        // if self._check_history() {
+                        //     Err(GameEnd::DrawRepetition)
+                        // } else {
+                        // }
+                        Ok(next)
                     },
                 }
             },
@@ -1107,8 +1115,13 @@ impl Game {
 
         out.state = st;
         out.zobrist = Zobrist::new(&ts, out.clone());
+
+        out.init_gameinfo_mut(ts).unwrap();
+        out.recalc_gameinfo_mut(ts).unwrap();
+
         out
     }
+
 }
 
 /// get_at

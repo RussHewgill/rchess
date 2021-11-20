@@ -1,5 +1,6 @@
 
 use std::collections::HashMap;
+use std::path::Path;
 
 use crate::explore::*;
 use crate::opening_book::OpeningBook;
@@ -14,14 +15,16 @@ use ndarray as nd;
 use nd::{Array2};
 use ndarray::linalg::Dot;
 
-#[derive(Debug,Eq,PartialEq,Clone)]
+use serde::{Serialize,Deserialize};
+
+#[derive(Debug,Eq,PartialEq,Clone,Serialize,Deserialize)]
 pub struct TrainingData {
     pub result:   GameEnd,
     pub opening:  Vec<Move>,
     pub moves:    Vec<TDEntry>,
 }
 
-#[derive(Debug,Eq,PartialEq,Clone,Copy)]
+#[derive(Debug,Eq,PartialEq,Clone,Copy,Serialize,Deserialize)]
 pub struct TDEntry {
     mv:       Move,
     eval:     Score,
@@ -38,6 +41,33 @@ impl TDEntry {
 
 impl TrainingData {
 
+    pub fn save_all<P: AsRef<Path>>(path: P, xs: &[Self]) -> std::io::Result<()> {
+        use std::io::Write;
+        let mut buf: Vec<u8> = vec![];
+
+        for x in xs.iter() {
+            let b: Vec<u8> = bincode::serialize(&x).unwrap();
+            buf.extend(b.into_iter());
+        }
+
+        let mut file = std::fs::File::open(path)?;
+        file.write_all(&buf)
+    }
+
+    pub fn save<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
+        use std::io::Write;
+        let b: Vec<u8> = bincode::serialize(&self).unwrap();
+        let mut file = std::fs::File::open(path)?;
+        file.write_all(&b)
+    }
+
+    pub fn load<P: AsRef<Path>>(path: P) -> std::io::Result<Self> {
+        use std::io::Write;
+        let mut b = std::fs::read(path)?;
+        let out: Self = bincode::deserialize(&b).unwrap();
+        Ok(out)
+    }
+
     pub fn generate_single(ts: &Tables, opening: Vec<Move>) -> Self {
 
         let mut g = Game::from_fen(ts, STARTPOS).unwrap();
@@ -48,8 +78,10 @@ impl TrainingData {
         }
 
         // let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
-        // let fen = "7k/4Q3/8/4K3/8/8/8/8 w - - 8 5"; // Queen endgame, #2
+        // // let fen = "7k/4Q3/8/4K3/8/8/8/8 w - - 8 5"; // Queen endgame, #2
         // let mut g = Game::from_fen(ts, fen).unwrap();
+
+        // let mut g = g.flip_sides(ts);
 
         let max_depth = 5;
         let t = 0.5;
@@ -58,6 +90,8 @@ impl TrainingData {
         let timesettings = TimeSettings::new_f64(0.0,t);
         let mut ex = Explorer::new(g.state.side_to_move, g.clone(), max_depth, stop, timesettings);
 
+        ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+
         let mut prevs: HashMap<Zobrist, u8> = HashMap::default();
 
         debug!("generate_single starting...");
@@ -65,22 +99,17 @@ impl TrainingData {
             if let (Some((mv,score)),stats) = ex.explore(&ts, None) {
                 g = g.clone().make_move_unchecked(ts, mv).unwrap();
 
-                // if let Some(mut p) = prevs.get_mut(&g.zobrist) {
-                //     if p == 1 {
-                //     }
-                // } else {
-                //     prevs.insert(&g.zobrist, 1);
-                // }
-
                 eprintln!("{:?}\n{:?}\n{:?}", mv, g, g.to_fen());
+                eprintln!("score.score = {:?}", score.score);
 
                 if score.score > CHECKMATE_VALUE - 100 {
                     break GameEnd::Checkmate { win: !g.state.side_to_move };
+                } else if score.score.abs() > CHECKMATE_VALUE - 100 {
+                    break GameEnd::Checkmate { win: g.state.side_to_move };
                 }
 
                 ex.game = g.clone();
                 ex.side = g.state.side_to_move;
-                // ex.add_move_to_history(g.zobrist, mv);
 
                 let e = TDEntry::new(mv, score.score);
                 moves.push(e);
