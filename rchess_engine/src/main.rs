@@ -1219,7 +1219,7 @@ fn main9() {
     // let fen = &games(2); // STS2 002, Qt R a7E7
     // let fen = &games(2); // STS15 001, Qt Q d3d1
 
-    let fen = "r3rbk1/1pq2ppp/p1n3b1/3BpNP1/4P3/P1Q1B2P/1PP2P2/3RR1K1 b - - 0 1"; // repetition
+    // let fen = "r3rbk1/1pq2ppp/p1n3b1/3BpNP1/4P3/P1Q1B2P/1PP2P2/3RR1K1 b - - 0 1"; // repetition
     // let fen = "r3rbk1/1pq2ppp/p1n5/3BpNPb/4P3/P1Q1B2P/1PP2P2/3RR1K1 w - - 1 2"; // repetition
     // let fen = "r3rbk1/1pq2ppp/p1n5/3BpNPb/4P3/P1QRB2P/1PP2P2/4R1K1 b - - 2 2"; // repetition
     // let fen = "r3rbk1/1pq2ppp/p1n3b1/3BpNP1/4P3/P1QRB2P/1PP2P2/4R1K1 w - - 3 3"; // repetition
@@ -1230,15 +1230,14 @@ fn main9() {
 
     eprintln!("g = {:?}", g);
 
-    let mv0 = Move::Quiet { from: "G6".into(), to: "H5".into(), pc: Bishop };
-    let mv1 = Move::Quiet { from: "D1".into(), to: "D3".into(), pc: Rook };
-    let mv2 = Move::Quiet { from: "H5".into(), to: "G6".into(), pc: Bishop };
-    let mv3 = Move::Quiet { from: "D3".into(), to: "D1".into(), pc: Rook };
-
-    let g = g.make_move_unchecked(&ts, mv0).unwrap();
-    let g = g.make_move_unchecked(&ts, mv1).unwrap();
-    let g = g.make_move_unchecked(&ts, mv2).unwrap();
-    let g = g.make_move_unchecked(&ts, mv3).unwrap();
+    // let mv0 = Move::Quiet { from: "G6".into(), to: "H5".into(), pc: Bishop };
+    // let mv1 = Move::Quiet { from: "D1".into(), to: "D3".into(), pc: Rook };
+    // let mv2 = Move::Quiet { from: "H5".into(), to: "G6".into(), pc: Bishop };
+    // let mv3 = Move::Quiet { from: "D3".into(), to: "D1".into(), pc: Rook };
+    // let g = g.make_move_unchecked(&ts, mv0).unwrap();
+    // let g = g.make_move_unchecked(&ts, mv1).unwrap();
+    // let g = g.make_move_unchecked(&ts, mv2).unwrap();
+    // let g = g.make_move_unchecked(&ts, mv3).unwrap();
 
     // eprintln!("g = {:?}", g);
 
@@ -1246,9 +1245,9 @@ fn main9() {
     // let n = 6;
 
     // let t = 10.0;
-    // let t = 5.0;
+    let t = 5.0;
     // let t = 2.0;
-    let t = 1.0;
+    // let t = 1.0;
     // let t = 0.5;
 
     let hook = std::panic::take_hook();
@@ -1362,7 +1361,7 @@ fn main9() {
     println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
              stats0.max_depth, t2);
 
-    return;
+    // return;
 
     // let k = best.score - CHECKMATE_VALUE;
     // eprintln!("k = {:?}", k);
