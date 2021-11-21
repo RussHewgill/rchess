@@ -821,27 +821,22 @@ impl PairsData {
         eprintln!("PairsData Debug: ");
 
         let gd = &self.groups;
-
-        // eprint_self!(gd.pieces);
-
         for (side,pc) in gd.pieces.iter() {
             eprintln!("(side,pc) = {:?}", (side,pc));
         }
-
         eprint_self!(gd.lens);
         eprint_self!(gd.factors);
 
-        // eprint_self!(self.base);
-        // eprint_self!(self.symlen);
         // eprint_self!(self.flags);
+        // eprint_self!(self.groups);
         // eprint_self!(self.block_size);
         // eprint_self!(self.span);
         // eprint_self!(self.blocks_num);
         // eprint_self!(self.btree);
         // eprint_self!(self.min_symlen);
         // eprint_self!(self.lowest_sym);
-        // // eprint_self!(self.base);
-        // // eprint_self!(self.symlen);
+        // eprint_self!(self.base);
+        // eprint_self!(self.symlen);
         // eprint_self!(self.sparse_index);
         // eprint_self!(self.sparse_index_size);
         // eprint_self!(self.block_lengths);
@@ -1371,7 +1366,7 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
                 let c = match self.raf.read_u8_at(w) {
                     Ok(c) => c,
                     Err(e) => {
-                        eprintln!("nope 0: {:?}\n{:?}", e, g);
+                        eprintln!("nope 1: {:?}\n{:?}", e, g);
                         panic!()
                     }
                 };
@@ -1381,7 +1376,7 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
                 let c = match self.raf.read_u16_at::<LE>(w) {
                     Ok(c) => c,
                     Err(e) => {
-                        eprintln!("nope 0: {:?}\n{:?}", e, g);
+                        eprintln!("nope 2: {:?}\n{:?}", e, g);
                         panic!()
                     }
                 };
@@ -1396,6 +1391,9 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
         let key = g.state.material;
         let material = Material::from_iter(self.files[0].sides[0].groups.pieces.clone());
         assert!(key == material || key == material.clone().into_flipped());
+
+        // eprintln!("key = {:?}", key);
+        // eprintln!("material = {:?}", material);
 
         let symmetric_btm = material.is_symmetric() && g.state.side_to_move == Black;
         let black_stronger = key != material;
@@ -1470,15 +1468,24 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
             }
         }
 
+        // eprintln!("squares = {:?}", squares);
+
         let mut idx = if material.has_pawns() {
             // panic!("nope");
             let mut idx = CONSTS.lead_pawn_idx[lead_pawns_count][usize::from(squares[0])];
 
+            // eprintln!("idx = {:?}", idx);
+
             squares[1..lead_pawns_count].sort_unstable_by_key(|sq| CONSTS.map_pawns[usize::from(*sq)]);
 
+            // eprintln!("lead_pawns_count = {:?}", lead_pawns_count);
+
             for (i, &square) in squares.iter().enumerate().take(lead_pawns_count).skip(1) {
+                // eprintln!("(i,square) = {:?}", (i,square));
                 idx += binomial(CONSTS.map_pawns[usize::from(square)], i as u64);
             }
+
+            // eprintln!("idx = {:?}", idx);
 
             idx
         } else {
@@ -1623,9 +1630,12 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
                 idx
             }
         };
+
         // eprintln!("idx 0 = {:?}", idx);
 
         idx *= side.groups.factors[0];
+
+        // eprintln!("idx 0 = {:?}", idx);
 
         // Encode remaining pawns.
         // let mut remaining_pawns = material.white.has_pawns() && material.black.has_pawns();
@@ -1633,21 +1643,42 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
         let mut next = 1;
         let mut group_sq = side.groups.lens[0];
         for lens in side.groups.lens.iter().cloned().skip(1) {
+            // eprintln!("\nlens = {:?}", lens);
+
             let (prev_squares, group_squares) = squares.split_at_mut(group_sq);
             let group_squares = &mut group_squares[..lens];
-            group_squares.sort_unstable();
+            // group_squares.sort_unstable();
+            group_squares.sort_unstable_by_key(|x| {
+                x.flip_diagonal()
+            });
 
             let mut n = 0;
 
+            // eprintln!("group_squares = {:?}", group_squares);
+
             for (i, &group_square) in group_squares.iter().enumerate().take(lens) {
-                let adjust = prev_squares[..group_sq].iter().filter(|sq| group_square > **sq).count() as u64;
-                n += binomial(sq_to_u64(group_square) - adjust - if remaining_pawns { 8 } else { 0 }, i as u64 + 1);
+                // eprintln!("(i,group_square) = {:?}", (i,group_square));
+                // eprintln!("prev_squares = {:?}", prev_squares);
+                // let adjust = prev_squares[..group_sq].iter().filter(|sq| group_square > **sq).count() as u64;
+                // let adjust = prev_squares[..group_sq].iter().filter(|sq| group_square <= **sq).count() as u64;
+                let adjust = prev_squares[..group_sq].iter()
+                    .filter(|sq| u8::from(group_square) > u8::from(**sq)).count() as u64;
+                // eprintln!("adjust = {:?}", adjust);
+                let kk = binomial(
+                    sq_to_u64(group_square) - adjust - if remaining_pawns { 8 } else { 0 }, i as u64 + 1);
+                // eprintln!("kk = {:?}", kk);
+                n += kk;
+                // eprintln!("n {} = {:?}", i, n);
             }
+            // eprintln!("n = {:?}", n);
+            // eprintln!("next = {:?}", next);
+            // eprintln!("side.groups.factors[next] = {:?}", side.groups.factors[next]);
 
             remaining_pawns = false;
             idx += n * side.groups.factors[next];
             group_sq += side.groups.lens[next];
             next += 1;
+            // eprintln!("idx 1 = {:?}", idx);
         }
 
         Ok(Some((side, idx)))
@@ -1661,14 +1692,16 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
         // eprintln!("(side,idx) = {:?}", (side,idx));
         // eprintln!("probe_wdl idx = {:?}", idx);
 
+        // side.print_debug();
+
         // let decompressed = self.decompress_pairs(g, side, idx)?;
         let decompressed = match self.decompress_pairs(g, side, idx) {
             Ok(d) => d,
             Err(e) => {
                 // let k: RandomAccessFile = self.raf;
                 eprintln!("self.raf = {:?}", self.raf);
-                // eprintln!("nope probe_wdl = {:?}\n{:?}", e, g);
-                eprintln!("nope probe_wdl = {:?}", e);
+                eprintln!("nope probe_wdl = {:?}\n{:?}", e, g);
+                // eprintln!("nope probe_wdl = {:?}", e);
                 panic!();
             }
         };

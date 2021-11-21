@@ -164,6 +164,9 @@ name = "cc"
 version = "1.0.71"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "79c2681d6594606957bbb8631c4b90a7fcaaa72cdb714743a437b156d6a7eedd"
+dependencies = [
+ "jobserver",
+]
 
 [[package]]
 name = "cfg-if"
@@ -541,6 +544,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "jobserver"
+version = "0.1.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af25a77299a7f711a01975c35a6a424eb6862092cc2d6c72c4ed6cbc56dfc1fa"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "js-sys"
 version = "0.3.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -583,6 +595,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "lzzzz"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6d891cedd3b1659c206a60ff8afd15bccd7c2754b157f8a164861989e042b88"
+dependencies = [
+ "cc",
 ]
 
 [[package]]
@@ -819,6 +840,7 @@ dependencies = [
  "bitvec",
  "packed_struct_codegen",
  "serde",
+ "serde_derive",
 ]
 
 [[package]]
@@ -1056,6 +1078,7 @@ dependencies = [
  "jemallocator",
  "lazy_static",
  "log",
+ "lzzzz",
  "mnist",
  "nalgebra",
  "ndarray",
@@ -1082,6 +1105,7 @@ dependencies = [
  "serde_derive",
  "simplelog",
  "sprs",
+ "termtree",
  "zerocopy",
 ]
 
@@ -1362,6 +1386,12 @@ checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
 dependencies = [
  "winapi-util",
 ]
+
+[[package]]
+name = "termtree"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13a4ec180a2de59b57434704ccfad967f789b12737738798fa08798cd5824c16"
 
 [[package]]
 name = "textwrap"

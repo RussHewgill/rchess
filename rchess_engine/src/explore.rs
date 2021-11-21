@@ -14,7 +14,7 @@ pub use crate::trans_table::*;
 pub use crate::searchstats::*;
 
 use std::path::Path;
-use std::collections::{VecDeque,HashMap};
+use std::collections::{VecDeque,HashMap,HashSet};
 use std::hash::BuildHasher;
 use std::sync::atomic::{Ordering,Ordering::SeqCst,AtomicU8};
 use std::time::{Instant,Duration};
@@ -42,6 +42,8 @@ pub struct Explorer {
 
     pub syzygy:        Option<Arc<SyzygyTB>>,
     pub opening_book:  Option<Arc<OpeningBook>>,
+
+    pub blocked_moves: HashSet<Move>,
 
     // pub move_history:  Vec<(Zobrist, Move)>,
     // pub pos_history:   HashMap<Zobrist,u8>,
@@ -89,6 +91,8 @@ impl Explorer {
             syzygy:         None,
             opening_book:   None,
 
+            blocked_moves:  HashSet::default(),
+
             // move_history:   vec![],
             // pos_history:    HashMap::default(),
         }
@@ -116,7 +120,18 @@ impl Explorer {
 /// Entry points
 impl Explorer {
 
-    pub fn explore(&self, ts: &Tables, depth: Option<Depth>)
+    pub fn explore_mult(&self, ts: &Tables)
+                        -> ((ABResult,Vec<ABResult>),SearchStats) {
+
+        let ((best, mut scores),stats,(tt_r,tt_w)) = self.lazy_smp_negamax(ts, false, false);
+
+        scores.sort_by_key(|x| x.score);
+        scores.reverse();
+
+        ((best,scores), stats)
+    }
+
+    pub fn explore(&self, ts: &Tables, _: Option<Depth>)
                    // -> (Option<(Move,Score)>,SearchStats) {
                    -> (Option<(Move,ABResult)>,SearchStats) {
 

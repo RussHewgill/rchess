@@ -53,11 +53,11 @@ use std::time::{Instant,Duration};
 
 #[allow(unreachable_code)]
 fn main() {
+    // main9();
     main_nnue();
     // main_nn();
     // main_mnist();
     // main_syzygy();
-    // main9();
 }
 
 #[allow(unreachable_code)]
@@ -238,10 +238,13 @@ fn main_syzygy() {
     // let fen = "5B2/8/6N1/8/8/2k5/8/2K5 b - - 0 2";
     // let fen = "5B1N/8/8/8/8/2k5/8/2K3r1 w - - 1 2";
 
-    let fen = "3qk3/8/8/8/8/8/8/4K3 w - - 0 1";
+    // let fen = "3qk3/8/8/8/8/8/8/4K3 w - - 0 1";
 
     // let fen = "8/6B1/8/8/B7/8/K1pk4/8 b - - 0 1";
     // let fen = "8/6B1/8/8/B7/8/3k4/K1n5 b - - 1 2";
+
+    let fen = "8/8/8/2k5/7R/7P/7K/6R1 w - - 0 1"; // syzygy error
+    // let fen = "8/8/8/2k5/7R/7P/7K/R7 w - - 0 1"; // works?
 
     let ts = Tables::read_from_file_def().unwrap();
     let g = Game::from_fen(&ts, &fen).unwrap();
@@ -609,58 +612,21 @@ fn main_nnue() {
     // eprintln!("idx1 = {:?}", idx1);
     // return;
 
-    // let s = std::mem::size_of::<Move>();
-    // eprintln!("s = {:?}", s);
+    // let s0 = std::mem::size_of::<TDOutcome>();
+    // eprintln!("s0 = {:?}", s0);
 
-    // let c0 = 1; // B1
-    // let c1 = 2; // C1
-    // let mut x = 0;
-    // eprintln!("x = {:#08b}", x);
-    // // x |= 0b000_111 & c0;
-    // x |= 0b111_000 & (c1 << 3);
-    // eprintln!("x = {:#08b}", x);
-    // // let k0 = x & 0b000_111;
-    // let k0 = (x & 0b111_000) >> 3;
+
+    // let s0 = i32::MAX;
+    // let s1 = i8::MAX as i32;
+    // let k = s0 / s1;
+    // eprintln!("k = {:?}", k);
+    // let k0 = s0 / k;
     // eprintln!("k0 = {:?}", k0);
+    // let k1 = k0 * k;
+    // eprintln!("k1 = {:?}", k1);
+    // eprintln!("s0 = {:?}", s0);
+    // eprintln!("s1 = {:?}", s1);
     // return;
-
-    let c0 = Coord::from("A1");
-    let c1 = Coord::from("A2");
-
-    eprintln!("u16::from(c0) = {:?}", u16::from(c0));
-    eprintln!("u16::from(c1) = {:?}", u16::from(c1));
-
-
-    let mv0 = PackedMove::new(c0.into(), c1.into(), None);
-
-    use packed_struct::PackedStruct;
-    let mv1 = mv0.pack().unwrap();
-
-    let s0 = std::mem::size_of_val(&mv1);
-    eprintln!("s0 = {:?}", s0);
-
-    // let mut m0 = PackedMove::empty();
-    // let m0 = PackedMove::new(c0, c1, None);
-
-    // m0.set_from(u16::from(c0));
-    // m0.set_to(u16::from(c1));
-
-    // let mb = m0.get();
-    // eprintln!("mb = {:#08b}", mb);
-
-    // let k0 = m0.get_from();
-    // let k1 = m0.get_to();
-
-    // eprintln!("k0 = {:?}", k0);
-    // eprintln!("k1 = {:?}", k1);
-
-    // let k0: Coord = k0.into();
-    // let k1: Coord = k1.into();
-
-    // eprintln!("k0 = {:?}", k0);
-    // eprintln!("k1 = {:?}", k1);
-
-    return;
 
     let fen = STARTPOS;
     // let fen     = "rnbqkb1r/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -691,8 +657,23 @@ fn main_nnue() {
 
     // let gs = rchess_engine_lib::brain::trainer::generate_training_data(&ts, &ob);
 
+    // init_logger();
+
+    generate_training_data(&ts, &ob);
+
+    return;
+
     let (_,opening) = ob.start_game(&ts, Some(6), &mut s).unwrap();
-    let k0 = TrainingData::generate_single(&ts, opening);
+
+    let k0 = TDBuilder::new()
+        .with_opening(opening)
+        .with_branch_factor(5)
+        .with_max_depth(5)
+        .with_time(0.5)
+        .generate_single(&ts)
+        .unwrap();
+
+    // let k0 = builder.generate_single(&ts, opening);
     // let k0 = TrainingData::generate_single(&ts, vec![]);
 
     eprintln!("k0.result = {:?}", k0.result);
@@ -1277,6 +1258,11 @@ fn main9() {
     // let fen = "r3rbk1/1pq2ppp/p1n5/3BpNPb/4P3/P1QRB2P/1PP2P2/4R1K1 b - - 2 2"; // repetition
     // let fen = "r3rbk1/1pq2ppp/p1n3b1/3BpNP1/4P3/P1QRB2P/1PP2P2/4R1K1 w - - 3 3"; // repetition
 
+    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+
+    // let fen = "r1b2rk1/1pq1bppp/p2ppn2/2n3B1/3NP3/2N2Q2/PPP1BPPP/R4RK1 w - - 8 12"; // ??
+    let fen = "8/1p1b1pq1/3Npk2/2Q1p3/P4rp1/1PP5/K6p/4R3 w - - 2 45"; // Q cap c5e5
+
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
@@ -1298,8 +1284,8 @@ fn main9() {
     // let n = 6;
 
     // let t = 10.0;
-    let t = 5.0;
-    // let t = 2.0;
+    // let t = 5.0;
+    let t = 2.0;
     // let t = 1.0;
     // let t = 0.5;
 
@@ -1380,6 +1366,19 @@ fn main9() {
     // eprintln!("k2 = {:?}", k2.map(|x| x.0));
     // return;
 
+    // let moves = g.search_all(&ts).get_moves_unsafe();
+    // let mut list = vec![];
+    // for mv in moves.into_iter() {
+    //     let g2 = g.clone().make_move_unchecked(&ts, mv).unwrap();
+    //     let t = 0.4;
+    //     let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g2, t);
+    //     list.push((mv, best.moves[0], best.score));
+    // }
+    // for (mv0,mv1,score) in list.into_iter() {
+    //     eprintln!("{:?} = {:?}", mv0, score);
+    // }
+    // return;
+
     let t0 = std::time::Instant::now();
     // println!("g = {:?}", g);
     let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), t);
@@ -1414,7 +1413,16 @@ fn main9() {
     println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
              stats0.max_depth, t2);
 
-    // return;
+    let mut scores = scores;
+    scores.sort_by_key(|x| x.score);
+    scores.reverse();
+
+    for s in scores.iter() {
+        let mv = s.moves[0];
+        eprintln!("{:?} = {:?}", mv, s.score);
+    }
+
+    return;
 
     // let k = best.score - CHECKMATE_VALUE;
     // eprintln!("k = {:?}", k);

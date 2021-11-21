@@ -28,6 +28,7 @@ default = [
     "keep_stats",
 
     "positional_scoring",
+
     "syzygy",
 
     "null_pruning",
@@ -146,7 +147,11 @@ bitflags = "1.3.*"
 byteorder = "1.4.3"
 bitvec = "0.22.3"
 # bytes = "1.1.0"
-packed_struct = "0.10.0"
+packed_struct = { version = "0.10.0", features = ["use_serde"] }
+
+termtree = "0.2.3"
+
+lzzzz = "0.8.0"
 
 positioned-io = { package = "positioned-io-preview", version = "0.3.3" }
 once_cell = "1.8.0"

@@ -170,6 +170,10 @@ impl Explorer {
             Outcome::Moves(ms)    => ms,
         };
 
+        if cfg.root {
+            moves.retain(|mv| !self.blocked_moves.contains(&mv));
+        }
+
         // let mvs = self.move_history.clone();
 
         if depth == 0 {

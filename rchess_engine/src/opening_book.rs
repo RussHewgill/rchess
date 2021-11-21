@@ -1,6 +1,7 @@
 
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::VecDeque;
 
 use crate::tables::*;
 use crate::types::*;
@@ -466,11 +467,11 @@ impl OpeningBook {
 /// Probe
 impl OpeningBook {
 
-    pub fn best_move(&self, g: &Game, mut s: &mut OBSelection) -> Option<Move> {
-        let (mvs, key) = self._best_moves(&g)?;
-        let mv = s.choose(key, &mvs)?;
-        Some(mv)
-    }
+    // pub fn best_move(&self, g: &Game, mut s: &mut OBSelection) -> Option<Move> {
+    //     let (mvs, key) = self._best_moves(&g)?;
+    //     let mv = s.choose(key, ply, &mvs)?;
+    //     Some(mv)
+    // }
 
     pub fn best_moves(&self, g: &Game) -> Option<Vec<(Move, u16)>> {
         let (xs,_) = self._best_moves(g)?;
@@ -516,7 +517,7 @@ impl OpeningBook {
         loop {
             if depth.is_some() && ply >= depth.unwrap() { break; }
             if let Some((mut mvs, key)) = self._best_moves(&g) {
-                if let Some(mv) = s.choose(key, &mvs) {
+                if let Some(mv) = s.choose(key, ply, &mvs) {
                     // trace!("mv = {:?}", mv);
                     once = true;
                     ply += 1;
@@ -536,17 +537,24 @@ pub enum OBSelection {
     BestN(usize),
     WorstN(usize),
     Random(StdRng),
-    Sequential(HashMap<u64, HashSet<Move>>),
+    // Sequential(HashMap<u64, HashSet<Move>>),
+    Sequential(VecDeque<Move>),
 }
 
 // impl<'a> OBSelection<'a> {
 impl OBSelection {
 
-    pub fn new_seq() -> Self {
-        Self::Sequential(HashMap::default())
+    pub fn new_random_seeded(seed: u64) -> Self {
+        let mut rng: StdRng = SeedableRng::seed_from_u64(seed);
+        Self::Random(rng)
     }
 
-    pub fn choose(&mut self, key: u64, mvs: &[(Move, (u16, Option<u64>))]) -> Option<Move> {
+    pub fn new_seq() -> Self {
+        // Self::Sequential(HashMap::default())
+        Self::Sequential(VecDeque::default())
+    }
+
+    pub fn choose(&mut self, key: u64, ply: usize, mvs: &[(Move, (u16, Option<u64>))]) -> Option<Move> {
         use self::OBSelection::*;
         if mvs.len() == 0 { return None; }
         match self {
@@ -555,20 +563,23 @@ impl OBSelection {
             Random(ref mut rng) => {
                 mvs.choose(rng).map(|x| x.0)
             },
+            // Sequential(ref mut stack) => {
+            //     unimplemented!()
+            // },
 
-            Sequential(ref mut xs) => {
-                let mut mvs = mvs.to_vec();
-                if let Some(mut prev_ms) = xs.get_mut(&key) {
-                    unimplemented!()
-                } else {
-                    mvs.sort_by_key(|x| x.0);
-                    let (mv,(_,next)) = mvs[0];
-                    if let Some(next) = next {
-                        // if let Some(next_g) = 
-                    }
-                    Some(mv)
-                }
-            }
+            // Sequential(ref mut xs) => {
+            //     let mut mvs = mvs.to_vec();
+            //     if let Some(mut prev_ms) = xs.get_mut(&key) {
+            //         unimplemented!()
+            //     } else {
+            //         mvs.sort_by_key(|x| x.0);
+            //         let (mv,(_,next)) = mvs[0];
+            //         if let Some(next) = next {
+            //             // if let Some(next_g) = 
+            //         }
+            //         Some(mv)
+            //     }
+            // }
 
             // Sequential(ref mut xs) => {
             //     let mut mvs = mvs.to_vec();
