@@ -590,12 +590,12 @@ impl Consts {
             for file in 0..4 {
                 let mut idx = 0;
                 for rank in 1..7 {
-                    let c0 = Coord(file,rank);
+                    let c0 = Coord::from_coords(file,rank);
                     if lead_pawns_cnt == 1 {
                         available_squares -= 1;
                         map_pawns[usize::from(c0)] = available_squares;
                         available_squares -= 1;
-                        let c1 = Coord(7 - c0.0,c0.1);
+                        let c1 = Coord::from_coords(7 - c0.file(),c0.rank());
                         map_pawns[usize::from(c1)] = available_squares;
                     }
                     lead_pawn_idx[lead_pawns_cnt][usize::from(c0)] = idx;

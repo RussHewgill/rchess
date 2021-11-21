@@ -360,7 +360,7 @@ impl Move {
             match pc {
                 Pawn   => {
                     if self.filter_all_captures() {
-                        let cc = cs[self.sq_from().0 as usize];
+                        let cc = cs[self.sq_from().file() as usize];
                         format!("{}x{}", cc, to)
                     } else {
                         format!("{}", to)

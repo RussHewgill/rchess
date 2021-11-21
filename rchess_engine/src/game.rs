@@ -673,14 +673,14 @@ impl Game {
                     }
                     (White, Some((_,Rook))) => {
                         x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
-                        if from == Coord(7,0) { x.state.castling.set_king(White,false); };
-                        if from == Coord(0,0) { x.state.castling.set_queen(White,false); };
+                        if from == Coord::from_coords(7,0) { x.state.castling.set_king(White,false); };
+                        if from == Coord::from_coords(0,0) { x.state.castling.set_queen(White,false); };
                         x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
                     },
                     (Black, Some((_,Rook))) => {
                         x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
-                        if from == Coord(7,7) { x.state.castling.set_king(Black,false); };
-                        if from == Coord(0,7) { x.state.castling.set_queen(Black,false); };
+                        if from == Coord::from_coords(7,7) { x.state.castling.set_king(Black,false); };
+                        if from == Coord::from_coords(0,7) { x.state.castling.set_queen(Black,false); };
                         x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
                     },
                     _              => {},
@@ -813,21 +813,21 @@ impl Game {
                 let cc = if col == White { 7 } else { 0 };
                 if (pc == King) & (from.file_dist(to) == 2) {
                     // Queenside
-                    let (rook_from,rook_to) = if to.0 == 2 {
+                    let (rook_from,rook_to) = if to.file() == 2 {
                         (0,3)
-                    } else if to.0 == 6 {
+                    } else if to.file() == 6 {
                         (7,5)
                     } else {
                         panic!("bad castle?");
                     };
                     let r = if col == White { 0 } else { 7 };
-                    let (rook_from,rook_to) = (Coord(rook_from,r),Coord(rook_to,r));
+                    let (rook_from,rook_to) = (Coord::from_coords(rook_from,r),Coord::from_coords(rook_to,r));
                     Some(Move::Castle { from, to, rook_from, rook_to })
                 } else if pc == Pawn && Some(to) == self.state.en_passant {
                     let capture = if col == White { S.shift_coord(to).unwrap() }
                         else { N.shift_coord(to).unwrap() };
                     Some(Move::EnPassant { from, to, capture })
-                } else if (pc == Pawn) && (to.1 == cc) {
+                } else if (pc == Pawn) && (to.rank() == cc) {
                     // XXX: bad
                     let new_piece = Queen;
                     Some(Move::Promotion { from, to, new_piece })
@@ -841,22 +841,22 @@ impl Game {
                 if col0 == col1 {
                     if ob_castle && pc0 == King && pc1 == Rook && col0 == col1 {
 
-                        let king_to = match to {
-                            Coord(0,0) => Coord(2,0),
-                            Coord(7,0) => Coord(6,0),
-                            Coord(0,7) => Coord(2,7),
-                            Coord(7,7) => Coord(6,7),
+                        let king_to = match (to.file(),to.rank()) {
+                            (0,0) => Coord::from_coords(2,0),
+                            (7,0) => Coord::from_coords(6,0),
+                            (0,7) => Coord::from_coords(2,7),
+                            (7,7) => Coord::from_coords(6,7),
                             _          =>
                                 panic!("polyglot castle king_to ??: ({:?},{:?})",
                                        from, to,
                                 ),
                         };
                         let rook_from = to;
-                        let rook_to   = match to {
-                            Coord(0,0) => Coord(3,0),
-                            Coord(7,0) => Coord(5,0),
-                            Coord(0,7) => Coord(0,7),
-                            Coord(7,7) => Coord(0,7),
+                        let rook_to   = match (to.file(),to.rank()) {
+                            (0,0) => Coord::from_coords(3,0),
+                            (7,0) => Coord::from_coords(5,0),
+                            (0,7) => Coord::from_coords(0,7),
+                            (7,7) => Coord::from_coords(0,7),
                             _          =>
                                 panic!("polyglot castle rook_to ??: ({:?},{:?})",
                                     from, to,
@@ -873,7 +873,7 @@ impl Game {
                 }
 
                 let cc = if col0 == White { 7 } else { 0 };
-                if (pc0 == Pawn) & (to.1 == cc) {
+                if (pc0 == Pawn) & (to.rank() == cc) {
                     let (_,victim) = self.get_at(to).unwrap();
                     Some(Move::PromotionCapture { from, to, new_piece: Queen, victim })
                 } else {
@@ -1142,7 +1142,9 @@ impl Game {
 
 }
 
-pub fn square_color(Coord(x,y): Coord) -> Color {
+pub fn square_color(c0: Coord) -> Color {
+    let x = c0.file();
+    let y = c0.rank();
     if y % 2 == 0 {
         if x % 2 == 0 {
             Black
@@ -1169,7 +1171,7 @@ impl Game {
             let y = 7-y0;
 
             let pieces = (0..8)
-                .map(|x| self.get_at(Coord(x,y)));
+                .map(|x| self.get_at(Coord::from_coords(x,y)));
                 // .collect::<Vec<Option<(Color,Piece)>>>();
 
             let mut n = 0;
@@ -1344,10 +1346,10 @@ impl std::fmt::Debug for Game {
             let mut line = String::new();
             line.push_str(&format!("{}  ", y + 1));
             for x in 0..8 {
-                let ch: char = match self.get_at(Coord(x,y)) {
+                let ch: char = match self.get_at(Coord::from_coords(x,y)) {
                     Some((c,p)) => p.print(c),
                     None        => {
-                        let c = square_color(Coord(x,y));
+                        let c = square_color(Coord::from_coords(x,y));
                         c.print()
                     },
                 };

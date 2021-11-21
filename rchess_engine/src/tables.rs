@@ -151,33 +151,33 @@ impl Copy for Tables {}
 
 /// Piece getters
 impl Tables {
-    // pub fn get_rook(&self, Coord(x,y): Coord) -> &MoveSetRook {
-    pub fn get_rook<T: Into<Coord>>(&self, c: T) -> &MoveSetRook {
-        let Coord(x,y) = c.into();
+    pub fn get_rook(&self, c: Coord) -> &MoveSetRook {
+    // pub fn get_rook<T: Into<Coord>>(&self, c: T) -> &MoveSetRook {
+        let (x,y) = (c.file(),c.rank());
         if (x > 7) | (y > 7) {
             panic!("x,y = {}, {}", x, y);
         }
         &self.rook_moves[x as usize][y as usize]
     }
-    // pub fn get_bishop(&self, Coord(x,y): Coord) -> &MoveSetBishop {
-    pub fn get_bishop<T: Into<Coord>>(&self, c: T) -> &MoveSetBishop {
-        let Coord(x,y) = c.into();
+    pub fn get_bishop(&self, c: Coord) -> &MoveSetBishop {
+    // pub fn get_bishop<T: Into<Coord>>(&self, c: T) -> &MoveSetBishop {
+        let (x,y) = (c.file(),c.rank());
         &self.bishop_moves[x as usize][y as usize]
     }
-    // pub fn get_knight(&self, Coord(x,y): Coord) -> &BitBoard {
-    pub fn get_knight<T: Into<Coord>>(&self, c: T) -> &BitBoard {
+    pub fn get_knight(&self, c: Coord) -> &BitBoard {
+    // pub fn get_knight<T: Into<Coord>>(&self, c: T) -> &BitBoard {
         // let Coord(x,y) = c.into();
         // &self.knight_moves[x as usize][y as usize]
-        &self.knight_moves[c.into()]
+        &self.knight_moves[c]
     }
-    // pub fn get_pawn(&self, Coord(x,y): Coord) -> &MoveSetPawn {
-    pub fn get_pawn<T: Into<Coord>>(&self, c: T) -> &MoveSetPawn {
-        let Coord(x,y) = c.into();
+    pub fn get_pawn(&self, c: Coord) -> &MoveSetPawn {
+    // pub fn get_pawn<T: Into<Coord>>(&self, c: T) -> &MoveSetPawn {
+        let (x,y) = (c.file(),c.rank());
         &self.pawn_moves[x as usize][y as usize]
     }
-    // pub fn get_king(&self, Coord(x,y): Coord) -> &BitBoard {
-    pub fn get_king<T: Into<Coord>>(&self, c: T) -> &BitBoard {
-        let Coord(x,y) = c.into();
+    pub fn get_king(&self, c: Coord) -> &BitBoard {
+    // pub fn get_king<T: Into<Coord>>(&self, c: T) -> &BitBoard {
+        let (x,y) = (c.file(),c.rank());
         &self.king_moves[x as usize][y as usize]
     }
 }
@@ -330,15 +330,15 @@ impl Tables {
 
     fn mask_between(bishops: [[MoveSetBishop; 8]; 8], c0: Coord, c1: Coord) -> BitBoard {
 
-        let Coord(x0,y0) = c0;
-        let Coord(x1,y1) = c1;
+        let (x0,y0) = (c0.file(),c0.rank());
+        let (x1,y1) = (c1.file(),c1.rank());
 
         if x0 == x1 {
             // File
             let (x0,x1) = (x0.min(x1),x0.max(x1));
             let (y0,y1) = (y0.min(y1),y0.max(y1));
-            let b0 = BitBoard::single(Coord(x0,y0));
-            let b1 = BitBoard::single(Coord(x1,y1));
+            let b0 = BitBoard::single(Coord::from_coords(x0,y0));
+            let b1 = BitBoard::single(Coord::from_coords(x1,y1));
             let b = 2u64.overflowing_mul(b1.0).0;
             let b = b.overflowing_sub(b0.0).0;
             let b = BitBoard(b);
@@ -349,8 +349,8 @@ impl Tables {
             // Rank
             let (x0,x1) = (x0.min(x1),x0.max(x1));
             let (y0,y1) = (y0.min(y1),y0.max(y1));
-            let b0 = BitBoard::single(Coord(x0,y0));
-            let b1 = BitBoard::single(Coord(x1,y1));
+            let b0 = BitBoard::single(Coord::from_coords(x0,y0));
+            let b1 = BitBoard::single(Coord::from_coords(x1,y1));
             let b = 2u64.overflowing_mul(b1.0).0;
             let b = b.overflowing_sub(b0.0).0;
             let b = BitBoard(b);
@@ -360,9 +360,9 @@ impl Tables {
         // } else if (x1 - x0) == (y1 - y0) {
         } else if (x1 as i64 - x0 as i64).abs() == (y1 as i64 - y0 as i64).abs() {
             // Diagonal
-            let b0 = BitBoard::single(Coord(x0,y0));
-            let b1 = BitBoard::single(Coord(x1,y1));
-            // let b = BitBoard::new(&[Coord(x0,y0),Coord(x1,y1)])
+            let b0 = BitBoard::single(Coord::from_coords(x0,y0));
+            let b1 = BitBoard::single(Coord::from_coords(x1,y1));
+            // let b = BitBoard::new(&[Coord::from_coords(x0,y0),Coord::from_coords(x1,y1)])
 
             let (bb0,bb1) = (b0.0.min(b1.0),b0.0.max(b1.0));
 
@@ -377,8 +377,8 @@ impl Tables {
             // eprintln!("b = {:?}", b);
             // let m = BitBoard::mask_rank(y0.into());
             let m = {
-                let Coord(x,y) = c0.into();
-                bishops[x as usize][y as usize]
+                // let Coord::from_coords(x,y) = c0.into();
+                bishops[c0.file() as usize][c0.rank() as usize]
             };
 
             let xx = x1 as i64 - x0 as i64;
@@ -400,11 +400,13 @@ impl Tables {
 
     fn gen_linebb(bishops: [[MoveSetBishop; 8]; 8]) -> [[BitBoard; 64]; 64] {
         let mut out = [[BitBoard::empty(); 64]; 64];
-        for x in 0u32..64 {
-            for y in 0u32..64 {
+        for x in 0u8..64 {
+            let xx = Coord::new(x);
+            for y in 0u8..64 {
 
-                let Coord(x0,y0) = x.into();
-                let Coord(x1,y1) = y.into();
+                let yy = Coord::new(y);
+                let (x0,y0) = (xx.file(),xx.rank());
+                let (x1,y1) = (yy.file(),yy.rank());
 
                 let f = BitBoard::mask_file(x0.into());
                 let r = BitBoard::mask_rank(y0.into());
@@ -440,7 +442,7 @@ impl Tables {
 
         for y in 0..8 {
             for x in 0..8 {
-                out[x as usize][y as usize] = Self::gen_rook_move(Coord(x,y));
+                out[x as usize][y as usize] = Self::gen_rook_move(Coord::from_coords(x,y));
             }
         }
 
@@ -492,7 +494,7 @@ impl Tables {
         let mut out = [[m0; 8]; 8];
         for y in 0..8 {
             for x in 0..8 {
-                out[x as usize][y as usize] = Self::gen_bishop_move(Coord(x,y));
+                out[x as usize][y as usize] = Self::gen_bishop_move(Coord::from_coords(x,y));
             }
         }
         out
@@ -572,13 +574,13 @@ impl Tables {
     //     }
     // }
 
-    fn index_diagonal(Coord(x,y): Coord) -> u8 {
-        y.overflowing_sub(x).0 & 15
-    }
+    // fn index_diagonal(Coord(x,y): Coord) -> u8 {
+    //     y.overflowing_sub(x).0 & 15
+    // }
 
-    fn index_antidiagonal(Coord(x,y): Coord) -> u8 {
-        (y + x) ^ 7
-    }
+    // fn index_antidiagonal(Coord(x,y): Coord) -> u8 {
+    //     (y + x) ^ 7
+    // }
 
     // pub fn gen_bishop_block_mask(c: Coord) -> BitBoard {
     //     unimplemented!()
@@ -601,7 +603,7 @@ impl Tables {
 
         for y in 0..8 {
             for x in 0..8 {
-                out[Coord(x,y)] = Self::gen_knight_move(Coord(x,y));
+                out[Coord::from_coords(x,y)] = Self::gen_knight_move(Coord::from_coords(x,y));
             }
         }
         out
@@ -644,7 +646,7 @@ impl Tables {
 
         for y in 0..8 {
             for x in 0..8 {
-                out[x as usize][y as usize] = Self::gen_king_move(Coord(x as u8,y as u8));
+                out[x as usize][y as usize] = Self::gen_king_move(Coord::from_coords(x as u8,y as u8));
             }
         }
         out
@@ -672,7 +674,7 @@ impl Tables {
 
         for y in 0..8 {
             for x in 0..8 {
-                out[x as usize][y as usize] = Self::gen_pawn_move(Coord(x as u8,y as u8));
+                out[x as usize][y as usize] = Self::gen_pawn_move(Coord::from_coords(x as u8,y as u8));
             }
         }
         out
@@ -725,30 +727,30 @@ mod eval {
 
     impl PcTables {
 
-        pub fn print_table(ss: [Score; 64]) {
-            for y in 0..8 {
-                let y = 7 - y;
-                for x in 0..8 {
-                    // println!("(x,y) = ({},{}), coord = {:?}", x, y, Coord(x,y));
-                    // print!("{:>3?},", ps.get(Pawn, Coord(x,y)));
-                    let s = ss[Coord(x,y)];
-                    print!("{:>3?},", s);
-                }
-                println!();
-            }
-        }
+        // pub fn print_table(ss: [Score; 64]) {
+        //     for y in 0..8 {
+        //         let y = 7 - y;
+        //         for x in 0..8 {
+        //             // println!("(x,y) = ({},{}), coord = {:?}", x, y, Coord(x,y));
+        //             // print!("{:>3?},", ps.get(Pawn, Coord(x,y)));
+        //             let s = ss[Coord(x,y)];
+        //             print!("{:>3?},", s);
+        //         }
+        //         println!();
+        //     }
+        // }
 
         pub fn get_mid<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
             let c1: Coord = c0.into();
             // let c1 = if col == White { c1 } else { Coord(7 - c1.0,7 - c1.1) };
-            let c1 = if col == White { c1 } else { Coord(c1.0,7 - c1.1) };
+            let c1 = if col == White { c1 } else { Coord::from_coords(c1.file(),7 - c1.rank()) };
             self.tables_mid[pc.index()][c1]
         }
 
         pub fn get_end<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
             let c1: Coord = c0.into();
             // let c1 = if col == White { c1 } else { Coord(7 - c1.0,7 - c1.1) };
-            let c1 = if col == White { c1 } else { Coord(c1.0,7 - c1.1) };
+            let c1 = if col == White { c1 } else { Coord::from_coords(c1.file(),7 - c1.rank()) };
             self.tables_end[pc.index()][c1]
         }
 
@@ -855,7 +857,7 @@ mod eval {
                 let c0: Coord = c.into();
                 let sq: usize = c0.into();
                 out[sq] = s;
-                let c1 = Coord(7-c0.0,c0.1);
+                let c1 = Coord::from_coords(7-c0.file(),c0.rank());
                 let sq: usize = c1.into();
                 out[sq] = s;
             }
@@ -949,7 +951,7 @@ mod eval {
             let mut out = [0; 64];
             for y in 0..8 {
                 for x in 0..8 {
-                    out[Coord(x,7 - y)] = xs[Coord(x,y)];
+                    out[Coord::from_coords(x,7 - y)] = xs[Coord::from_coords(x,y)];
                 }
             }
             out

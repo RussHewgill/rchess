@@ -34,7 +34,7 @@ impl Zobrist {
             for pc in Piece::iter_pieces() {
                 let b = g.get(pc,col);
                 for sq in b.into_iter() {
-                    out ^= zb.get_piece(pc, col)[sq as usize];
+                    out ^= zb.get_piece(pc, col)[sq];
                 }
             }
         }
@@ -50,7 +50,7 @@ impl Zobrist {
         out ^= zb.castling[Black][b as usize];
 
         if let Some(ep) = g.state.en_passant {
-            out ^= zb.en_passant[ep.0 as usize];
+            out ^= zb.en_passant[ep.file() as usize];
         }
 
         Zobrist(out)
@@ -79,7 +79,7 @@ impl Zobrist {
     #[must_use]
     pub fn update_ep(&self, ts: &Tables, c0: Coord) -> Self {
         let mut out = self.0;
-        out ^= ts.zobrist_tables.en_passant[c0.0 as usize];
+        out ^= ts.zobrist_tables.en_passant[c0.file() as usize];
         Self(out)
     }
 

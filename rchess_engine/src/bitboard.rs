@@ -9,7 +9,7 @@ use serde::{Serialize,Deserialize};
 pub struct BitBoard(pub u64);
 
 impl Iterator for BitBoard {
-    type Item = u8;
+    type Item = Coord;
     fn next(&mut self) -> Option<Self::Item> {
         if self.is_empty() {
             None
@@ -169,69 +169,69 @@ impl BitBoard {
         MASK_FILES[f as usize]
     }
 
-    pub fn mask_between(ts: &Tables, c0: Coord, c1: Coord) -> BitBoard {
-    // pub fn obstructed(&self, ts: &Tables, c0: Coord, c1: Coord) -> BitBoard {
+    // pub fn mask_between(ts: &Tables, c0: Coord, c1: Coord) -> BitBoard {
+    // // pub fn obstructed(&self, ts: &Tables, c0: Coord, c1: Coord) -> BitBoard {
 
-        let Coord(x0,y0) = c0;
-        let Coord(x1,y1) = c1;
+    //     let Coord(x0,y0) = c0;
+    //     let Coord(x1,y1) = c1;
 
-        if x0 == x1 {
-            // File
-            let (x0,x1) = (x0.min(x1),x0.max(x1));
-            let (y0,y1) = (y0.min(y1),y0.max(y1));
-            let b0 = BitBoard::single(Coord(x0,y0));
-            let b1 = BitBoard::single(Coord(x1,y1));
-            let b = BitBoard(2 * b1.0 - b0.0);
-            let m = BitBoard::mask_file(x0.into());
-            (b & m) & !(b0 | b1)
-        } else if y0 == y1 {
-            // Rank
-            let (x0,x1) = (x0.min(x1),x0.max(x1));
-            let (y0,y1) = (y0.min(y1),y0.max(y1));
-            let b0 = BitBoard::single(Coord(x0,y0));
-            let b1 = BitBoard::single(Coord(x1,y1));
-            let b = BitBoard(2 * b1.0 - b0.0);
-            let m = BitBoard::mask_rank(y0.into());
-            (b & m) & !(b0 | b1)
-        // } else if (x1 - x0) == (y1 - y0) {
-        } else if (x1 as i64 - x0 as i64).abs() == (y1 as i64 - y0 as i64).abs() {
-            // Diagonal
-            let b0 = BitBoard::single(Coord(x0,y0));
-            let b1 = BitBoard::single(Coord(x1,y1));
-            // let b = BitBoard::new(&[Coord(x0,y0),Coord(x1,y1)])
+    //     if x0 == x1 {
+    //         // File
+    //         let (x0,x1) = (x0.min(x1),x0.max(x1));
+    //         let (y0,y1) = (y0.min(y1),y0.max(y1));
+    //         let b0 = BitBoard::single(Coord(x0,y0));
+    //         let b1 = BitBoard::single(Coord(x1,y1));
+    //         let b = BitBoard(2 * b1.0 - b0.0);
+    //         let m = BitBoard::mask_file(x0.into());
+    //         (b & m) & !(b0 | b1)
+    //     } else if y0 == y1 {
+    //         // Rank
+    //         let (x0,x1) = (x0.min(x1),x0.max(x1));
+    //         let (y0,y1) = (y0.min(y1),y0.max(y1));
+    //         let b0 = BitBoard::single(Coord(x0,y0));
+    //         let b1 = BitBoard::single(Coord(x1,y1));
+    //         let b = BitBoard(2 * b1.0 - b0.0);
+    //         let m = BitBoard::mask_rank(y0.into());
+    //         (b & m) & !(b0 | b1)
+    //     // } else if (x1 - x0) == (y1 - y0) {
+    //     } else if (x1 as i64 - x0 as i64).abs() == (y1 as i64 - y0 as i64).abs() {
+    //         // Diagonal
+    //         let b0 = BitBoard::single(Coord(x0,y0));
+    //         let b1 = BitBoard::single(Coord(x1,y1));
+    //         // let b = BitBoard::new(&[Coord(x0,y0),Coord(x1,y1)])
 
-            let (bb0,bb1) = (b0.0.min(b1.0),b0.0.max(b1.0));
+    //         let (bb0,bb1) = (b0.0.min(b1.0),b0.0.max(b1.0));
 
-            // eprintln!("b0 = {:?}", b0);
-            // eprintln!("b1 = {:?}", b1);
+    //         // eprintln!("b0 = {:?}", b0);
+    //         // eprintln!("b1 = {:?}", b1);
 
-            // eprintln!("bb0 = {:?}", b0.bitscan());
-            // eprintln!("bb1 = {:?}", b1.bitscan());
+    //         // eprintln!("bb0 = {:?}", b0.bitscan());
+    //         // eprintln!("bb1 = {:?}", b1.bitscan());
 
-            let b = BitBoard(2u64.overflowing_mul(bb1).0.overflowing_sub(bb0).0);
-            // let b = BitBoard(2 * b0.0 - b1.0);
-            // eprintln!("b = {:?}", b);
-            // let m = BitBoard::mask_rank(y0.into());
-            let m = ts.get_bishop(c0);
+    //         let b = BitBoard(2u64.overflowing_mul(bb1).0.overflowing_sub(bb0).0);
+    //         // let b = BitBoard(2 * b0.0 - b1.0);
+    //         // eprintln!("b = {:?}", b);
+    //         // let m = BitBoard::mask_rank(y0.into());
+    //         let m = ts.get_bishop(c0);
 
-            let xx = x1 as i64 - x0 as i64;
-            let yy = y1 as i64 - y0 as i64;
+    //         let xx = x1 as i64 - x0 as i64;
+    //         let yy = y1 as i64 - y0 as i64;
 
-            let m = if xx.signum() == yy.signum() {
-                m.ne | m.sw
-            } else {
-                m.nw | m.se
-            };
+    //         let m = if xx.signum() == yy.signum() {
+    //             m.ne | m.sw
+    //         } else {
+    //             m.nw | m.se
+    //         };
 
-            (b & m) & !(b0 | b1)
-        } else {
-            // println!("wat 2");
-            // unimplemented!()
-            BitBoard::empty()
-        }
-    }
+    //         (b & m) & !(b0 | b1)
+    //     } else {
+    //         // println!("wat 2");
+    //         // unimplemented!()
+    //         BitBoard::empty()
+    //     }
+    // }
 
-    pub fn bitscan_safe(&self) -> Option<u8> {
+    pub fn bitscan_safe(&self) -> Option<Coord> {
         if self.is_empty() {
             None
         } else {
@@ -239,10 +239,11 @@ impl BitBoard {
         }
     }
 
-    pub fn bitscan(&self) -> u8 {
+    // pub fn bitscan(&self) -> u8 {
+    pub fn bitscan(&self) -> Coord {
         // Bitscan Forward
         // self.0.leading_zeros()
-        self.0.trailing_zeros() as u8
+        Coord::new(self.0.trailing_zeros() as u8)
 
         // // XXX: No Improvement
         // std::intrinsics::cttz(self.0) as u8
@@ -250,8 +251,8 @@ impl BitBoard {
     }
 
     pub fn bitscan_isolate(&self) -> Self {
-        let x = self.bitscan() as u32;
-        Self::single(x.into())
+        let x = self.bitscan();
+        Self::single(x)
     }
 
     pub fn bitscan_rev_isolate(&self) -> Self {
@@ -259,13 +260,13 @@ impl BitBoard {
         Self::single(x.into())
     }
 
-    pub fn bitscan_reset(&self) -> (Self, u8) {
+    pub fn bitscan_reset(&self) -> (Self, Coord) {
         let x = self.bitscan();
         // (*self & BitBoard(self.0.overflowing_sub(1).0),x)
-        (*self & !Self::single((x as u32).into()),x)
+        (*self & !Self::single(x),x)
     }
 
-    pub fn bitscan_reset_mut(&mut self) -> u8 {
+    pub fn bitscan_reset_mut(&mut self) -> Coord {
         let (b,x) = self.bitscan_reset();
         *self = b;
         x
@@ -391,11 +392,12 @@ impl BitBoard {
         Self::_index_square(Self::relative_rank(side, sq), Self::index_file(sq.into()))
     }
 
+    /// Little Endian Rank File Mapping
+    /// Least Significant File Mapping
     pub fn index_square(c: Coord) -> u8 {
-        // Little Endian Rank File Mapping
-        // Least Significant File Mapping
-        let p = c.0 as u8 + 8 * c.1 as u8;
-        p
+        // let p = c.0 as u8 + 8 * c.1 as u8;
+        // p
+        c.inner()
     }
 
     pub fn _index_square(rank: u8, file: u8) -> u8 {
@@ -403,7 +405,7 @@ impl BitBoard {
     }
 
     pub fn index_bit<T: Into<u8> + Copy>(s: T) -> Coord {
-        Coord(Self::index_file(s.into()) as u8,Self::index_rank(s.into()) as u8)
+        Coord::from_coords(Self::index_file(s.into()) as u8,Self::index_rank(s.into()) as u8)
         // Coord
     }
 

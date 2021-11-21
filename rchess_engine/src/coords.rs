@@ -27,7 +27,8 @@ pub enum D {
 // #[derive(Eq,Ord,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 #[derive(Serialize,Deserialize,Eq,Ord,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 // #[derive(Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
-pub struct Coord(pub u8, pub u8);
+// pub struct Coord(pub u8, pub u8);
+pub struct Coord(u8);
 
 // pub type PackedCoords = Integer<u8, packed_bits::Bits::<6>>;
 
@@ -65,11 +66,25 @@ impl<T> std::ops::IndexMut<Coord> for [T; 64] {
 
 impl Coord {
 
-    pub fn file(self) -> u8 {
+    pub fn inner(&self) -> u8 {
         self.0
     }
+
+    pub fn new(sq: u8) -> Self {
+        Self(sq)
+    }
+
+    pub fn from_coords(rank: u8, file: u8) -> Self {
+        // let p = c.0 as u8 + 8 * c.1 as u8;
+        Coord(rank + file * 8)
+    }
+
+    pub fn file(self) -> u8 {
+        self.0 & 7
+    }
     pub fn rank(self) -> u8 {
-        self.1
+        // self.1
+        self.0 >> 3
     }
 
     pub fn flip_diagonal_int<T>(x: T) -> T where
@@ -92,10 +107,12 @@ impl Coord {
     }
 
     pub fn flip_vertical(self) -> Self {
-        Coord(self.0, 7 - self.1)
+        // Coord(self.0, 7 - self.1)
+        Coord(self.0 ^ 0b111_000)
     }
     pub fn flip_horizontal(self) -> Self {
-        Coord(7 - self.0, self.1)
+        // Coord(7 - self.0, self.1)
+        Coord(self.0 ^ 0b000_111)
     }
 }
 
@@ -110,7 +127,7 @@ impl Coord {
     }
 
     pub fn rank_dist(&self, c1: Coord) -> u8 {
-        (self.1 as i8 - c1.1 as i8).abs() as u8
+        (self.rank() as i8 - c1.rank() as i8).abs() as u8
     }
 
     pub fn square_dist(&self, c1: Coord) -> u8 {
@@ -264,52 +281,99 @@ impl D {
 
     }
 
-    pub fn shift_coord(&self, Coord(x0,y0): Coord) -> Option<Coord> {
+    pub fn shift_coord(&self, c0: Coord) -> Option<Coord> {
+        let x0 = c0.file();
+        let y0 = c0.rank();
         match *self {
             N => {
                 if y0 >= 7 { None } else {
-                    Some(Coord(x0,y0+1))
+                    Some(Coord::from_coords(x0,y0+1))
                 }
             },
             NE => {
                 if (y0 >= 7) | (x0 >= 7) { None } else {
-                    Some(Coord(x0+1,y0+1))
+                    Some(Coord::from_coords(x0+1,y0+1))
                 }
             },
             E => {
                 if x0 >= 7 { None } else {
-                    Some(Coord(x0+1,y0))
+                    Some(Coord::from_coords(x0+1,y0))
                 }
             },
             NW => {
                 if (y0 >= 7) | (x0 == 0) { None } else {
-                    Some(Coord(x0-1,y0+1))
+                    Some(Coord::from_coords(x0-1,y0+1))
                 }
             },
             S => {
                 if y0 == 0 { None } else {
-                    Some(Coord(x0,y0-1))
+                    Some(Coord::from_coords(x0,y0-1))
                 }
             },
             SE => {
                 if (y0 == 0) | (x0 >= 7) { None } else {
-                    Some(Coord(x0+1,y0-1))
+                    Some(Coord::from_coords(x0+1,y0-1))
                 }
             },
             SW => {
                 if (y0 == 0) | (x0 == 0) { None } else {
-                    Some(Coord(x0-1,y0-1))
+                    Some(Coord::from_coords(x0-1,y0-1))
                 }
             },
             W => {
                 if x0 == 0 { None } else {
-                    Some(Coord(x0-1,y0))
+                    Some(Coord::from_coords(x0-1,y0))
                 }
             },
         }
-        // let k = self.shift_sq(c.into())?;
-        // Some(k.into())
     }
+
+    // pub fn shift_coord(&self, Coord(x0,y0): Coord) -> Option<Coord> {
+    //     match *self {
+    //         N => {
+    //             if y0 >= 7 { None } else {
+    //                 Some(Coord(x0,y0+1))
+    //             }
+    //         },
+    //         NE => {
+    //             if (y0 >= 7) | (x0 >= 7) { None } else {
+    //                 Some(Coord(x0+1,y0+1))
+    //             }
+    //         },
+    //         E => {
+    //             if x0 >= 7 { None } else {
+    //                 Some(Coord(x0+1,y0))
+    //             }
+    //         },
+    //         NW => {
+    //             if (y0 >= 7) | (x0 == 0) { None } else {
+    //                 Some(Coord(x0-1,y0+1))
+    //             }
+    //         },
+    //         S => {
+    //             if y0 == 0 { None } else {
+    //                 Some(Coord(x0,y0-1))
+    //             }
+    //         },
+    //         SE => {
+    //             if (y0 == 0) | (x0 >= 7) { None } else {
+    //                 Some(Coord(x0+1,y0-1))
+    //             }
+    //         },
+    //         SW => {
+    //             if (y0 == 0) | (x0 == 0) { None } else {
+    //                 Some(Coord(x0-1,y0-1))
+    //             }
+    //         },
+    //         W => {
+    //             if x0 == 0 { None } else {
+    //                 Some(Coord(x0-1,y0))
+    //             }
+    //         },
+    //     }
+    //     // let k = self.shift_sq(c.into())?;
+    //     // Some(k.into())
+    // }
 
 }
 
@@ -332,9 +396,9 @@ impl std::ops::Not for D {
 impl std::fmt::Debug for Coord {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let letters: [char; 8] = ['a','b','c','d','e','f','g','h'];
-        let r = letters[self.0 as usize];
+        let r = letters[self.file() as usize];
         // f.write_str(&format!("Coord({}{})", r, self.1+1))?;
-        f.write_str(&format!("{}{}", r, self.1+1))?;
+        f.write_str(&format!("{}{}", r, self.rank()+1))?;
         Ok(())
     }
 }
@@ -364,7 +428,8 @@ impl FromStr for Coord {
         assert!(x < 8);
         assert!(y < 8);
 
-        Ok(Coord(x as u8,y))
+        // Ok(Coord(x as u8,y))
+        Ok(Coord::from_coords(x as u8, y as u8))
 
         // let coords: Vec<&str> = s.trim_matches(|p| p == '(' || p == ')' )
         //     .split(',')
@@ -378,18 +443,18 @@ impl FromStr for Coord {
     }
 }
 
-fn test_directions() {
+pub fn test_directions() {
 
-    let b = BitBoard::new(&[Coord(1,1)]);
+    let b = BitBoard::new(&[Coord::from_coords(1,1)]);
 
-    assert_eq!(b.shift_dir(D::E), BitBoard::new(&[Coord(2,1)]));
-    assert_eq!(b.shift_dir(D::W), BitBoard::new(&[Coord(0,1)]));
-    assert_eq!(b.shift_dir(D::N), BitBoard::new(&[Coord(1,2)]));
-    assert_eq!(b.shift_dir(D::S), BitBoard::new(&[Coord(1,0)]));
-    assert_eq!(b.shift_dir(D::NE), BitBoard::new(&[Coord(2,2)]));
-    assert_eq!(b.shift_dir(D::NW), BitBoard::new(&[Coord(0,2)]));
-    assert_eq!(b.shift_dir(D::SE), BitBoard::new(&[Coord(2,0)]));
-    assert_eq!(b.shift_dir(D::SW), BitBoard::new(&[Coord(0,0)]));
+    assert_eq!(b.shift_dir(D::E), BitBoard::new(&[Coord::from_coords(2,1)]));
+    assert_eq!(b.shift_dir(D::W), BitBoard::new(&[Coord::from_coords(0,1)]));
+    assert_eq!(b.shift_dir(D::N), BitBoard::new(&[Coord::from_coords(1,2)]));
+    assert_eq!(b.shift_dir(D::S), BitBoard::new(&[Coord::from_coords(1,0)]));
+    assert_eq!(b.shift_dir(D::NE), BitBoard::new(&[Coord::from_coords(2,2)]));
+    assert_eq!(b.shift_dir(D::NW), BitBoard::new(&[Coord::from_coords(0,2)]));
+    assert_eq!(b.shift_dir(D::SE), BitBoard::new(&[Coord::from_coords(2,0)]));
+    assert_eq!(b.shift_dir(D::SW), BitBoard::new(&[Coord::from_coords(0,0)]));
 
     // let b = BitBoard::new(&vec![Coord(0,0)]);
     // assert_eq!(b.shift(D::W), BitBoard::new(&vec![]));
