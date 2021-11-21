@@ -239,55 +239,15 @@ pub enum TDOutcome {
 pub struct TrainingData {
     pub result:       TDOutcome,
     pub opening:      Vec<PackedMove>,
-    // pub moves:        TDTree<TDEntry>,
-    pub moves:        Vec<TDEntry>,
+    pub moves:        TDTree<TDEntry>,
 }
 
-impl TrainingData {
-
-    pub fn generate_training_data<P: AsRef<Path>>(
-        ts:       &Tables,
-        ob:       &OpeningBook,
-        open_ply: usize,
-        n:        usize,
-        path:     P,
-    ) -> std::io::Result<()> {
-        use std::io::Write;
-
-        // let mut s = OBSelection::BestN(0);
-        let mut s = OBSelection::new_random_seeded(1234);
-
-        let mut out: Vec<TrainingData> = vec![];
-
-        let mut fens = 0;
-
-        loop {
-
-            let (_,opening) = ob.start_game(&ts, Some(open_ply), &mut s).unwrap();
-            // eprintln!("opening = {:?}", opening);
-
-            let k0: TrainingData = TDBuilder::new()
-                .with_opening(opening)
-                .with_max_depth(5)
-                .with_time(0.5)
-                .generate_single(&ts)
-                .unwrap();
-
-            fens += k0.moves.len();
-            eprintln!("fens = {:?}", fens);
-            if fens >= n { break; }
-
-            eprintln!("result = {:?}", k0.result);
-
-            out.push(k0);
-
-            Self::save_all(&path, &out)?;
-        }
-
-        Ok(())
-    }
-
-}
+// #[derive(Debug,Eq,PartialEq,Clone,Serialize,Deserialize)]
+// pub struct TrainingData {
+//     pub result:   GameEnd,
+//     pub opening:  Vec<Move>,
+//     pub moves:    Vec<TDEntry>,
+// }
 
 #[derive(Debug,Eq,PartialEq,Clone,Copy,Serialize,Deserialize)]
 pub struct TDEntry {
@@ -317,7 +277,7 @@ impl TDEntry {
 #[derive(Debug,PartialEq,Clone)]
 pub struct TDBuilder {
     opening:         Vec<Move>,
-    // branch_factor:   usize,
+    branch_factor:   usize,
     max_depth:       Depth,
     time:            f64,
 }
@@ -326,17 +286,17 @@ impl TDBuilder {
     pub fn new() -> Self {
         Self {
             opening:        vec![],
-            // branch_factor:  1,
+            branch_factor:  1,
             max_depth:      10,
             time:           0.5,
             // ..Default::default()
         }
     }
 
-    // pub fn with_branch_factor(mut self, branch_factor: usize) -> Self {
-    //     self.branch_factor = branch_factor;
-    //     self
-    // }
+    pub fn with_branch_factor(mut self, branch_factor: usize) -> Self {
+        self.branch_factor = branch_factor;
+        self
+    }
 
     pub fn with_opening(mut self, opening: Vec<Move>) -> Self {
         self.opening = opening;
@@ -385,9 +345,8 @@ impl TDBuilder {
 
         let mut prevs: HashMap<Zobrist, u8> = HashMap::default();
 
-        // let mut prev_idx = None;
-        // let mut tree = TDTree::empty();
-        let mut moves = vec![];
+        let mut prev_idx = None;
+        let mut tree = TDTree::empty();
 
         debug!("generate_single starting...");
         let result = loop {
@@ -436,9 +395,9 @@ impl TDBuilder {
                 ex.side = g.state.side_to_move;
 
                 let e = TDEntry::new(mv, score.score);
-                // prev_idx = Some(tree.insert(prev_idx, e));
-                moves.push(e);
+                prev_idx = Some(tree.insert(prev_idx, e));
 
+                // moves.push(e);
             } else {
                 panic!("wat");
                 // break GameEnd::Error;
@@ -449,8 +408,7 @@ impl TDBuilder {
         Some(TrainingData {
             result,
             opening: self.opening.iter().map(|&mv| PackedMove::convert(mv)).collect(),
-            // moves: tree,
-            moves,
+            moves: tree,
         })
 
     }
@@ -460,31 +418,23 @@ impl TDBuilder {
 /// Load, Save
 impl TrainingData {
 
-    pub fn load_all<P: AsRef<Path>>(path: P) -> std::io::Result<Vec<Self>> {
-        let mut b = std::fs::read(path)?;
-        let out: Vec<Self> = bincode::deserialize(&b).unwrap();
-        Ok(out)
-    }
-
-    pub fn save_all<P: AsRef<Path>>(path: P, xs: &Vec<Self>) -> std::io::Result<()> {
+    pub fn save_all<P: AsRef<Path>>(path: P, xs: &[Self]) -> std::io::Result<()> {
         use std::io::Write;
-        // let mut buf: Vec<u8> = vec![];
+        let mut buf: Vec<u8> = vec![];
 
-        let buf: Vec<u8> = bincode::serialize(&xs).unwrap();
+        for x in xs.iter() {
+            let b: Vec<u8> = bincode::serialize(&x).unwrap();
+            buf.extend(b.into_iter());
+        }
 
-        // for x in xs.iter() {
-        //     let b: Vec<u8> = bincode::serialize(&x).unwrap();
-        //     buf.extend(b.into_iter());
-        // }
-
-        let mut file = std::fs::File::create(path)?;
+        let mut file = std::fs::File::open(path)?;
         file.write_all(&buf)
     }
 
     pub fn save<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
         use std::io::Write;
         let b: Vec<u8> = bincode::serialize(&self).unwrap();
-        let mut file = std::fs::File::create(path)?;
+        let mut file = std::fs::File::open(path)?;
         file.write_all(&b)
     }
 
@@ -517,6 +467,29 @@ impl TrainingData {
 //         // unimplemented!()
 //     }
 // }
+
+pub fn generate_training_data(ts: &Tables, ob: &OpeningBook) -> () {
+
+    // let mut s = OBSelection::BestN(0);
+    let mut s = OBSelection::new_random_seeded(1234);
+
+    let (_,opening) = ob.start_game(&ts, Some(6), &mut s).unwrap();
+    eprintln!("opening = {:?}", opening);
+
+    let (_,opening) = ob.start_game(&ts, Some(6), &mut s).unwrap();
+    eprintln!("opening = {:?}", opening);
+
+    // let k0 = TDBuilder::new()
+    //     .with_opening(opening)
+    //     .with_branch_factor(5)
+    //     .with_max_depth(5)
+    //     .with_time(0.5)
+    //     .generate_single(&ts)
+    //     .unwrap();
+
+
+    unimplemented!()
+}
 
 impl NNUE {
     pub fn train(&mut self) {
