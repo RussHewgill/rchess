@@ -609,6 +609,59 @@ fn main_nnue() {
     // eprintln!("idx1 = {:?}", idx1);
     // return;
 
+    // let s = std::mem::size_of::<Move>();
+    // eprintln!("s = {:?}", s);
+
+    // let c0 = 1; // B1
+    // let c1 = 2; // C1
+    // let mut x = 0;
+    // eprintln!("x = {:#08b}", x);
+    // // x |= 0b000_111 & c0;
+    // x |= 0b111_000 & (c1 << 3);
+    // eprintln!("x = {:#08b}", x);
+    // // let k0 = x & 0b000_111;
+    // let k0 = (x & 0b111_000) >> 3;
+    // eprintln!("k0 = {:?}", k0);
+    // return;
+
+    let c0 = Coord::from("A1");
+    let c1 = Coord::from("A2");
+
+    eprintln!("u16::from(c0) = {:?}", u16::from(c0));
+    eprintln!("u16::from(c1) = {:?}", u16::from(c1));
+
+
+    let mv0 = PackedMove::new(c0.into(), c1.into(), None);
+
+    use packed_struct::PackedStruct;
+    let mv1 = mv0.pack().unwrap();
+
+    let s0 = std::mem::size_of_val(&mv1);
+    eprintln!("s0 = {:?}", s0);
+
+    // let mut m0 = PackedMove::empty();
+    // let m0 = PackedMove::new(c0, c1, None);
+
+    // m0.set_from(u16::from(c0));
+    // m0.set_to(u16::from(c1));
+
+    // let mb = m0.get();
+    // eprintln!("mb = {:#08b}", mb);
+
+    // let k0 = m0.get_from();
+    // let k1 = m0.get_to();
+
+    // eprintln!("k0 = {:?}", k0);
+    // eprintln!("k1 = {:?}", k1);
+
+    // let k0: Coord = k0.into();
+    // let k1: Coord = k1.into();
+
+    // eprintln!("k0 = {:?}", k0);
+    // eprintln!("k1 = {:?}", k1);
+
+    return;
+
     let fen = STARTPOS;
     // let fen     = "rnbqkb1r/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     // let fen = "4k3/3pp3/8/8/8/8/3PP3/4K3 w - - 0 1";

@@ -25,7 +25,7 @@ pub mod nnue {
     use crate::evaluate::*;
     use crate::brain::types::*;
     use crate::brain::matrix::*;
-    use crate::brain::accumulator::*;
+    // use crate::brain::accumulator::*;
 
     use nalgebra::{SMatrix,SVector,Matrix,Vector,DVector,DMatrix,Dynamic,Const};
     use nalgebra as na;

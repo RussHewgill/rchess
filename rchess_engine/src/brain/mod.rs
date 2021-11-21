@@ -4,7 +4,8 @@ pub mod filter;
 pub mod nnue;
 pub mod matrix;
 pub mod trainer;
-pub mod accumulator;
+// pub mod accumulator;
+pub mod binpack;
 
 use crate::types::*;
 use crate::brain::types::*;

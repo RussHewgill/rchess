@@ -1,7 +1,4 @@
 
-use std::collections::HashMap;
-use std::path::Path;
-
 use crate::explore::*;
 use crate::opening_book::OpeningBook;
 use crate::tables::*;
@@ -11,11 +8,129 @@ use crate::alphabeta::*;
 // use crate::brain::types::*;
 use crate::brain::types::nnue::*;
 
+pub use self::packed_move::*;
+
+use std::collections::HashMap;
+use std::path::Path;
+
 use ndarray as nd;
 use nd::{Array2};
 use ndarray::linalg::Dot;
 
 use serde::{Serialize,Deserialize};
+
+mod packed_move {
+    use super::*;
+    use packed_struct::prelude::*;
+
+    // #[derive(Debug,Eq,PartialEq,Clone,Copy)]
+    #[derive(Debug,Eq,PartialEq,Clone,Copy,PackedStruct)]
+    #[packed_struct(bit_numbering = "msb0")]
+    pub struct PackedMove {
+        #[packed_field(bits = "0..6")]
+        from:   Integer<u8, packed_bits::Bits::<6>>,
+        #[packed_field(bits = "6..12")]
+        to:     Integer<u8, packed_bits::Bits::<6>>,
+        #[packed_field(bits = "13..15")]
+        prom:   Integer<u8, packed_bits::Bits::<3>>,
+    }
+
+    impl PackedMove {
+        pub fn new(from: u8, to: u8, prom: Option<Piece>) -> Self {
+            Self {
+                from:  from.into(),
+                to:    to.into(),
+                prom:  Self::convert_from_piece(prom).into(),
+            }
+        }
+
+        fn convert_from_piece(pc: Option<Piece>) -> u8 {
+            match pc {
+                None         => 0,
+                Some(Knight) => 1,
+                Some(Bishop) => 2,
+                Some(Rook)   => 3,
+                Some(Queen)  => 4,
+                _            => panic!("PackedMove: bad promotion: {:?}", pc),
+            }
+        }
+
+        fn convert_to_piece(pc: u8) -> Option<Piece> {
+            match pc {
+                0 => None,
+                1 => Some(Knight),
+                2 => Some(Bishop),
+                3 => Some(Rook),
+                4 => Some(Queen),
+                _ => unimplemented!(),
+            }
+        }
+
+    }
+
+}
+
+mod packed_move2 {
+    use super::*;
+    use bitvec::prelude::*;
+
+    #[derive(Debug,Eq,PartialEq,Clone,Copy)]
+    // pub struct PackedMove(BitArr!(for 16));
+    // pub struct PackedMove(BitArray<Lsb0, [u8; 16]>);
+    pub struct PackedMove(u16);
+
+    impl PackedMove {
+        const FROM: u16 = 0b000_000_111;
+        const TO: u16   = 0b000_111_000;
+        const PROM: u16 = 0b111_000_000;
+
+        pub fn get(&self) -> u16 {
+            self.0
+        }
+        pub fn empty() -> Self {
+            Self(Self::FROM | Self::TO | Self::PROM)
+        }
+
+        pub fn new<T: Into<u16>>(from: T, to: T, prom: Option<Piece>) -> Self {
+            let mut out = 0;
+            out |= Self::FROM & from.into();
+            out |= Self::TO & to.into();
+            // out |= Self::PROM & prom;
+            Self(out)
+        }
+
+        pub fn set_from(&mut self, from: u16) {
+            self.0 &= !Self::FROM;
+            self.0 |= Self::FROM & from;
+        }
+        pub fn set_to(&mut self, to: u16) {
+            self.0 &= !Self::TO;
+            self.0 |= Self::TO & (to << 3);
+        }
+        pub fn set_prom(&mut self, prom: u16) {
+            self.0 &= !Self::PROM;
+            self.0 |= Self::PROM & (prom << 6);
+        }
+
+        pub fn get_from(&self) -> u16 {
+            self.0 & Self::FROM
+        }
+        pub fn get_to(&self) -> u16 {
+            (self.0 & Self::TO) >> 3
+        }
+        pub fn get_prom(&self) -> u16 {
+            (self.0 & Self::PROM) >> 6
+        }
+    }
+
+}
+
+// #[derive(Debug,Eq,PartialEq,Clone,Serialize,Deserialize)]
+#[derive(Debug,Eq,PartialEq,Clone)]
+pub struct TrainingData2 {
+    // pub opening:      Vec<PackedMove>,
+}
+
 
 #[derive(Debug,Eq,PartialEq,Clone,Serialize,Deserialize)]
 pub struct TrainingData {
@@ -39,6 +154,7 @@ impl TDEntry {
     }
 }
 
+/// Load, Save
 impl TrainingData {
 
     pub fn save_all<P: AsRef<Path>>(path: P, xs: &[Self]) -> std::io::Result<()> {
@@ -67,6 +183,11 @@ impl TrainingData {
         let out: Self = bincode::deserialize(&b).unwrap();
         Ok(out)
     }
+
+}
+
+/// Generate
+impl TrainingData {
 
     pub fn generate_single(ts: &Tables, opening: Vec<Move>) -> Self {
 

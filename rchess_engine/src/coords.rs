@@ -129,6 +129,13 @@ impl std::convert::From<u32> for Coord {
     }
 }
 
+impl std::convert::From<u16> for Coord {
+    fn from(sq: u16) -> Self {
+        // assert!(sq < 64);
+        BitBoard::index_bit(sq as u8)
+    }
+}
+
 impl std::convert::From<u8> for Coord {
     fn from(sq: u8) -> Self {
         // assert!(sq < 64);
@@ -139,6 +146,12 @@ impl std::convert::From<u8> for Coord {
 impl std::convert::From<Coord> for u32 {
     fn from(c: Coord) -> Self {
         BitBoard::index_square(c) as u32
+    }
+}
+
+impl std::convert::From<Coord> for u16 {
+    fn from(c: Coord) -> Self {
+        BitBoard::index_square(c) as u16
     }
 }
 
