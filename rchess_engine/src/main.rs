@@ -583,6 +583,11 @@ fn main_nnue() {
 
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
+    // let ts = Tables::read_from_file_def().unwrap();
+    // use rchess_engine_lib::brain::binpack::*;
+    // let path = "/home/me/code/rust/rchess/training_data/generated_kifu.binpack";
+    // return;
+
     let fen = STARTPOS;
     // let fen = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1";
     // let fen = "4k3/4p3/8/8/8/8/4P3/3QK3 w - - 0 1";
@@ -653,30 +658,52 @@ fn main_nnue() {
     // g.state.en_passant = Some("H6".into());
 
     // let mut s = OBSelection::new_seq();
-    let mut s = OBSelection::BestN(0);
-
-    // let gs = rchess_engine_lib::brain::trainer::generate_training_data(&ts, &ob);
+    // let mut s = OBSelection::BestN(0);
+    // let mut s = OBSelection::new_random_seeded(1234);
 
     // init_logger();
 
-    generate_training_data(&ts, &ob);
+    let path =  "/home/me/code/rust/rchess/training_data/test_2.bin";
+
+    let n_fens = 100;
+
+    let t0 = Instant::now();
+    TrainingData::generate_training_data(&ts, &ob, 16, n_fens, path).unwrap();
+    println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
     return;
 
-    let (_,opening) = ob.start_game(&ts, Some(6), &mut s).unwrap();
+    let tds: Vec<TrainingData> = TrainingData::load_all(path).unwrap();
 
-    let k0 = TDBuilder::new()
-        .with_opening(opening)
-        .with_branch_factor(5)
-        .with_max_depth(5)
-        .with_time(0.5)
-        .generate_single(&ts)
-        .unwrap();
+    // eprintln!("tds.len() = {:?}", tds.len());
+
+    for td in tds.into_iter() {
+
+        eprintln!("td.result = {:?}", td.result);
+        eprintln!("td.moves.len() = {:?}", td.moves.len());
+
+        let b: Vec<u8> = bincode::serialize(&td).unwrap();
+
+        eprintln!("b.len() = {:?}", b.len());
+
+    }
+
+    return;
+
+    // let (_,opening) = ob.start_game(&ts, Some(6), &mut s).unwrap();
+
+    // let k0 = TDBuilder::new()
+    //     .with_opening(opening)
+    //     .with_branch_factor(5)
+    //     .with_max_depth(5)
+    //     .with_time(0.5)
+    //     .generate_single(&ts)
+    //     .unwrap();
 
     // let k0 = builder.generate_single(&ts, opening);
     // let k0 = TrainingData::generate_single(&ts, vec![]);
 
-    eprintln!("k0.result = {:?}", k0.result);
+    // eprintln!("k0.result = {:?}", k0.result);
 
     return;
 
