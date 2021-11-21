@@ -78,8 +78,8 @@ pub fn _gen_magics(bishop: bool)
         let c0: Coord = sq.into();
 
         let edges: BitBoard =
-            ((BitBoard::mask_rank(0) | BitBoard::mask_rank(7)) & !BitBoard::mask_rank(c0.rank() as u8))
-            | ((BitBoard::mask_file(0) | BitBoard::mask_file(7)) & !BitBoard::mask_file(c0.file() as u8));
+            ((BitBoard::mask_rank(0) | BitBoard::mask_rank(7)) & !BitBoard::mask_rank(c0.1 as u8))
+            | ((BitBoard::mask_file(0) | BitBoard::mask_file(7)) & !BitBoard::mask_file(c0.0 as u8));
 
         let mask = if bishop {
             Tables::gen_blockermask_bishop(c0) & !edges
@@ -326,8 +326,8 @@ impl Tables {
 
     pub fn gen_blockermask_rook(c0: Coord) -> BitBoard {
         // let b0 = BitBoard(0xff818181818181ff);
-        let b1 = BitBoard::mask_file(c0.file() as u8)
-            | BitBoard::mask_rank(c0.rank() as u8);
+        let b1 = BitBoard::mask_file(c0.0 as u8)
+            | BitBoard::mask_rank(c0.1 as u8);
         // (!b0 & b1).set_zero(c0)
         b1.set_zero(c0)
     }

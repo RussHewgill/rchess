@@ -1,6 +1,6 @@
 
 pub mod types;
-// pub mod filter;
+pub mod filter;
 pub mod nnue;
 pub mod matrix;
 pub mod trainer;

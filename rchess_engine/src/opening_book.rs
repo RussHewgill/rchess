@@ -373,7 +373,7 @@ impl OpeningBook {
             _ => None,
         };
 
-        Some((Coord::from_coords(from_f,from_r),Coord::from_coords(to_f,to_r),p))
+        Some((Coord(from_f,from_r),Coord(to_f,to_r),p))
     }
 
     pub fn read_from_file<P: AsRef<std::path::Path>>(ts: &Tables, path: P) -> std::io::Result<Self> {
@@ -648,7 +648,7 @@ impl OpeningBook {
                 g.get(pc, side).into_iter().for_each(|sq| {
                     let c0: Coord = sq.into();
                     let k0 = KIND_OF_PIECE[pc][!side];
-                    let k = 64 * k0 + 8 * c0.rank() as usize + c0.file() as usize;
+                    let k = 64 * k0 + 8 * c0.1 as usize + c0.0 as usize;
                     let k = OP_RNG[k];
                     out ^= k;
                 });
@@ -677,7 +677,7 @@ impl OpeningBook {
             let b = b & ps;
 
             if b.is_not_empty() {
-                let k = 772 + ep.file() as usize;
+                let k = 772 + ep.0 as usize;
                 out ^= OP_RNG[k];
             }
         }

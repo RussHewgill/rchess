@@ -54,12 +54,10 @@ use std::time::{Instant,Duration};
 #[allow(unreachable_code)]
 fn main() {
     // main9();
-    // main_nnue();
+    main_nnue();
     // main_nn();
     // main_mnist();
     // main_syzygy();
-    // main_perft(Some(4));
-    _main();
 }
 
 #[allow(unreachable_code)]
@@ -186,8 +184,8 @@ fn _main() {
             }
             "wac2"  => main3(None, true), // read from file and test, send URL to firefox
             "perft" => match args.get(2).map(|x| u64::from_str(x).ok()) {
-                Some(n) => main_perft(n),
-                _       => main_perft(None),
+                Some(n) => main4(n),
+                _       => main4(None),
             }
             "main7" => main7(),
             "sts"   => match args.get(2).map(|x| u64::from_str(x).ok()) {
@@ -354,6 +352,7 @@ fn main_mnist() {
     use rand::{Rng,SeedableRng};
 
     use rchess_engine_lib::brain::*;
+    use rchess_engine_lib::brain::filter::*;
     use rchess_engine_lib::brain::nnue::*;
     use rchess_engine_lib::brain::types::*;
 
@@ -573,6 +572,7 @@ fn main_nnue() {
     use rand::distributions::{Uniform,uniform::SampleUniform};
 
     use rchess_engine_lib::brain::*;
+    use rchess_engine_lib::brain::filter::*;
     use rchess_engine_lib::brain::types::*;
     use rchess_engine_lib::brain::types::nnue::*;
     use rchess_engine_lib::brain::nnue::*;
@@ -900,6 +900,7 @@ fn main_nn() {
     use rand::{Rng,SeedableRng};
 
     use rchess_engine_lib::brain::*;
+    use rchess_engine_lib::brain::filter::*;
     use rchess_engine_lib::brain::nnue::*;
     use rchess_engine_lib::brain::types::*;
 
@@ -2177,7 +2178,7 @@ fn main5() {
 }
 
 /// Perft
-fn main_perft(depth: Option<u64>) {
+fn main4(depth: Option<u64>) {
 
     // let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
@@ -2185,10 +2186,10 @@ fn main_perft(depth: Option<u64>) {
     // let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
     let fen = STARTPOS;
 
-    let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
-    let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
-    let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
-    let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  "; // Position 5
+    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
+    // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
+    // let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
+    // let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  "; // Position 5
 
     // let fen = "r3k2r/p1p1qpb1/bn1ppnp1/3PN3/1p2P3/2N4Q/PPPBBPPP/R3K2R w KQkq - 0 2";
 

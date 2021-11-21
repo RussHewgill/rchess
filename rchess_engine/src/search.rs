@@ -531,11 +531,13 @@ impl Game {
         (blockers, pinners)
     }
 
-    // pub fn obstructed(&self, ts: &Tables, c0: Coord, c1: Coord) -> BitBoard {
-    //     let oc = self.all_occupied();
-    //     let m = BitBoard::mask_between(&ts, c0, c1);
-    //     oc & m
-    // }
+    pub fn obstructed(&self, ts: &Tables, c0: Coord, c1: Coord) -> BitBoard {
+
+        let oc = self.all_occupied();
+        let m = BitBoard::mask_between(&ts, c0, c1);
+
+        oc & m
+    }
 
     pub fn find_attacks_by_side(&self, ts: &Tables, c0: Coord, col: Color, king: bool) -> bool {
 
@@ -674,7 +676,7 @@ impl Game {
 
         if kingside {
             // let rook: Coord = if col == White { "H1".into() } else { "H8".into() };
-            let rook: Coord = if col == White { Coord::from_coords(7,0) } else { Coord::from_coords(7,7) };
+            let rook: Coord = if col == White { Coord(7,0) } else { Coord(7,7) };
             if let Some((_,Rook)) = self.get_at(rook) {
                 let between = ts.between_exclusive(king, rook);
 
@@ -689,8 +691,8 @@ impl Game {
                     if go {
                         // let to = if col == White { "G1".into() } else { "G8".into() };
                         // let rook_to = if col == White { "F1".into() } else { "F8".into() };
-                        let to = if col == White { Coord::from_coords(6,0) } else { Coord::from_coords(6,7) };
-                        let rook_to = if col == White { Coord::from_coords(5,0) } else { Coord::from_coords(5,7) };
+                        let to = if col == White { Coord(6,0) } else { Coord(6,7) };
+                        let rook_to = if col == White { Coord(5,0) } else { Coord(5,7) };
                         out.push(Move::Castle { from: king, to, rook_from: rook, rook_to });
                     }
                 }
@@ -699,7 +701,7 @@ impl Game {
         }
         if queenside {
             // let rook: Coord = if col == White { "A1".into() } else { "A8".into() };
-            let rook: Coord = if col == White { Coord::from_coords(0,0) } else { Coord::from_coords(0,7) };
+            let rook: Coord = if col == White { Coord(0,0) } else { Coord(0,7) };
             if let Some((_,Rook)) = self.get_at(rook) {
                 let between = ts.between_exclusive(king, rook);
 
@@ -718,8 +720,8 @@ impl Game {
                     if go {
                         // let to      = if col == White { "C1".into() } else { "C8".into() };
                         // let rook_to = if col == White { "D1".into() } else { "D8".into() };
-                        let to      = if col == White { Coord::from_coords(2,0) } else { Coord::from_coords(2,7) };
-                        let rook_to = if col == White { Coord::from_coords(3,0) } else { Coord::from_coords(3,7) };
+                        let to      = if col == White { Coord(2,0) } else { Coord(2,7) };
+                        let rook_to = if col == White { Coord(3,0) } else { Coord(3,7) };
                         out.push(Move::Castle { from: king, to, rook_from: rook, rook_to });
                     }
                 }
@@ -768,8 +770,7 @@ impl Game {
     ) -> Vec<Move> {
 
         let p0 = self.get(King, col).bitscan();
-        // if p0.inner() == 64 { return vec![]; }
-        if p0.inner() == 64 { panic!("_search_king, no King ?"); }
+        if p0 == 64 { return vec![]; }
         let moves = *ts.get_king(p0);
 
         let oc = self.all_occupied();

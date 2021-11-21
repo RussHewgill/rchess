@@ -49,8 +49,8 @@ impl NNUE {
 /// Apply Move
 impl NNUE {
 
-    pub fn update_insert_piece(
-        &mut self, king_sq_own: Coord, king_sq_other: Coord, pc: Piece, sq: Coord, side: Color,
+    pub fn update_insert_piece<T: Into<u8> + Copy>(
+        &mut self, king_sq_own: u8, king_sq_other: u8, pc: Piece, sq: T, side: Color,
     ) {
         // trace!("inserting (k {:?}) {:?} {:?} at {:?}",
         //        Coord::from(king_sq_own), side, pc, Coord::from(sq));
@@ -60,8 +60,8 @@ impl NNUE {
         self.increment_act_other(idx1, true);
     }
 
-    pub fn update_delete_piece(
-        &mut self, king_sq_own: Coord, king_sq_other: Coord, pc: Piece, sq: Coord, side: Color,
+    pub fn update_delete_piece<T: Into<u8> + Copy>(
+        &mut self, king_sq_own: u8, king_sq_other: u8, pc: Piece, sq: T, side: Color,
     ) {
         // trace!("removing (k {:?}) {:?} {:?} at {:?}",
         //        Coord::from(king_sq_own), side, pc, Coord::from(sq));
@@ -71,8 +71,8 @@ impl NNUE {
         self.increment_act_other(idx1, false);
     }
 
-    pub fn update_move_piece(
-        &mut self, king_sq_own: Coord, king_sq_other: Coord, pc: Piece, from: Coord, to: Coord, side: Color,
+    pub fn update_move_piece<T: Into<u8> + Copy>(
+        &mut self, king_sq_own: u8, king_sq_other: u8, pc: Piece, from: T, to: T, side: Color,
     ) {
         self.update_delete_piece(king_sq_own, king_sq_other, pc, from, side);
         self.update_insert_piece(king_sq_own, king_sq_other, pc, to, side);
@@ -319,10 +319,10 @@ impl NNUE {
 
 /// Indexing
 impl NNUE {
-    pub fn index_halfkp(&self, king_sq: Coord, pc: Piece, side: Color, sq: Coord) -> usize {
+    pub fn index_halfkp(&self, king_sq: u8, pc: Piece, side: Color, sq: u8) -> usize {
         let cc = if self.side == side { 1 } else { 0 };
         let pi = pc.index() * 2 + cc;
-        sq.inner() as usize + (pi + king_sq.inner() as usize * 11) * 64
+        sq as usize + (pi + king_sq as usize * 11) * 64
     }
 }
 

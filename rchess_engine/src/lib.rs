@@ -45,7 +45,7 @@ pub mod parsing;
 
 pub mod see;
 pub mod qsearch;
-// pub mod gen_moves;
+pub mod gen_moves;
 pub mod search;
 pub mod explore;
 pub mod alphabeta;
