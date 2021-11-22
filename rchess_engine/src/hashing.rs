@@ -25,6 +25,7 @@ impl Default for Zobrist {
 //     }
 // }
 
+/// New
 impl Zobrist {
     pub fn new(ts: &Tables, g: Game) -> Self {
         let mut out = 0u64;
@@ -55,6 +56,30 @@ impl Zobrist {
 
         Zobrist(out)
     }
+}
+
+/// Update
+impl Zobrist {
+
+    // pub fn update_move_unchecked(mut self, ts: &Tables, g: &crate::stack_game::Game2, mv: Move) -> Self {
+    //     match mv {
+    //         Move::Quiet { from, to, pc }            => self
+    //             .update_piece(ts, pc, g.state.side_to_move, from)
+    //             .update_piece(ts, pc, g.state.side_to_move, to),
+    //         Move::PawnDouble { from, to, .. }       => self
+    //             .update_piece(ts, Pawn, g.state.side_to_move, from)
+    //             .update_piece(ts, Pawn, g.state.side_to_move, to),
+    //         Move::Capture { from, to, pc, victim }          => self
+    //             .update_piece(ts, pc, g.state.side_to_move, from)
+    //             .update_piece(ts, pc, g.state.side_to_move, to)
+    //             .update_piece(ts, victim, g.state.side_to_move, to),
+    //         Move::EnPassant { from, to, capture }   => unimplemented!(),
+    //         Move::Castle { from, to, .. }           => unimplemented!(),
+    //         Move::Promotion { from, to, .. }        => unimplemented!(),
+    //         Move::PromotionCapture { from, to, .. } => unimplemented!(),
+    //         Move::NullMove                          => self,
+    //     }
+    // }
 
     #[must_use]
     pub fn update_side_to_move(&self, ts: &Tables) -> Self {

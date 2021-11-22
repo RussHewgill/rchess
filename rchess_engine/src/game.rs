@@ -7,13 +7,11 @@ use crate::hashing::*;
 pub use self::castling::*;
 // pub use self::ghistory::*;
 
-use std::collections::HashMap;
-use std::collections::VecDeque;
+use std::collections::{HashMap,VecDeque};
 use std::hash::{Hash,Hasher};
 
 // use arrayvec::ArrayVec;
-use ringbuffer::ConstGenericRingBuffer;
-use rustc_hash::{FxHashMap};
+use rustc_hash::FxHashMap;
 
 pub type Phase = u8;
 
@@ -31,7 +29,7 @@ pub struct Game {
     // pub history:      HashMap<Zobrist, u8>,
     pub history:      FxHashMap<Zobrist, u8>,
 
-    pub half_move:    u8,
+    pub halfmove:    u8,
 }
 
 impl Default for Game {
@@ -56,7 +54,7 @@ impl Default for Game {
             zobrist:      Zobrist(0),
             last_move:    None,
             history,
-            half_move:    0,
+            halfmove:    0,
             // ..Default::default()
         }
     }
@@ -497,9 +495,9 @@ impl Game {
                 }
 
                 if mv.is_zeroing() {
-                    next.half_move = 0;
+                    next.halfmove = 0;
                 } else {
-                    next.half_move += 1;
+                    next.halfmove += 1;
                 }
 
                 match next.recalc_gameinfo_mut(&ts) {

@@ -1408,11 +1408,13 @@ fn main9() {
     // }
     // return;
 
-    use std::borrow::Cow;
+    // use std::borrow::Cow;
+    // let x: Cow<Game> = Cow::from(&g.clone());
 
-    let x: Cow<Game> = Cow::from(g.clone());
+    // let s0 = std::mem::size_of::<Move2>();
+    // eprintln!("s0 = {:?}", s0);
 
-    return;
+    // return;
 
     // let t = 10.0;
     let t = 1.0;
