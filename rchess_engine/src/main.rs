@@ -1408,19 +1408,46 @@ fn main9() {
     // }
     // return;
 
+    // let t = 10.0;
+    let t = 4.0;
+    let n = 35;
+
+    let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
+    eprintln!("g = {:?}", g);
+
     let t0 = std::time::Instant::now();
     // println!("g = {:?}", g);
     let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), t);
     let t1 = t0.elapsed();
     let t2 = t1.as_secs_f64();
 
+    // let moves = g.search_all(&ts).get_moves_unsafe();
+    // for mv in moves.iter() {
+    //     eprintln!("mv = {:?}", mv);
+    // }
+    // return;
+
+    // let n = 35;
+    // let t = 0.5;
+    // let stop = Arc::new(AtomicBool::new(false));
+    // let timesettings = TimeSettings::new_f64(0.0,t);
+    // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+    // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
     // let mut t1;
     // let mut t2;
     // let ((best, scores),stats0,(tt_r,tt_w)) = loop {
     //     let t0 = std::time::Instant::now();
-    //     let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), t);
+    //     // let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), t);
+    //     let ((best, scores),stats0,(tt_r,tt_w)) = ex.lazy_smp_negamax(&ts, false, false);
     //     t1 = t0.elapsed();
     //     t2 = t1.as_secs_f64();
+    //     eprintln!("done in {:?}", t2);
+    //     eprintln!("tt_r.len() = {:?}", tt_r.len());
+    //     // {
+    //     //     let mut w = tt_w.lock();
+    //     //     w.purge();
+    //     //     w.refresh();
+    //     // }
     //     if best.score > 50000 {
     //         break ((best, scores),stats0,(tt_r,tt_w));
     //     }
@@ -1437,7 +1464,7 @@ fn main9() {
     //     eprintln!("s, ms = {:>8}: {:?}", res.score, res.moves);
     // }
 
-    for m in best.moves.iter() { eprintln!("\t{:?}", m); }
+    // for m in best.moves.iter() { eprintln!("\t{:?}", m); }
     eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
     println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
              stats0.max_depth, t2);
@@ -1450,9 +1477,9 @@ fn main9() {
     //     eprintln!("{:?} = {:?}", mv, s.score);
     // }
 
-    eprintln!("tt_r.len() = {:?}", tt_r.len());
+    // eprintln!("tt_r.len() = {:?}", tt_r.len());
 
-    return;
+    // return;
 
     // let k = best.score - CHECKMATE_VALUE;
     // eprintln!("k = {:?}", k);
@@ -1467,21 +1494,10 @@ fn main9() {
     // }
 
     stats0.print(t1);
-    // stats0.print_ebf(true);
 
     eprintln!();
-    eprintln!("nodes/qt nodes 0 = {:.1?}", stats0.qt_nodes as f64 / stats0.nodes as f64);
-    eprintln!("qt nodes 0 = {}", pretty_print_si(stats0.qt_nodes as i64));
-    eprintln!("stats0.q_max_depth = {:?}", stats0.q_max_depth);
 
-    // eprintln!("stats0.qt_hits = {}", pretty_print_si(stats0.qt_hits as i64));
-    // eprintln!("stats0.qt_misses = {}", pretty_print_si(stats0.qt_misses as i64));
-
-    eprintln!("null prunes = {:?}", stats0.null_prunes);
-    eprintln!("stats0.lmrs = {:?}", stats0.lmrs);
-
-    let bcs = stats0.beta_cut_first;
-    eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
+    stats0.print_ebf(true);
 
     // let zb = g.zobrist;
     // let si = tt_r.get_one(&zb).unwrap();

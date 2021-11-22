@@ -2,6 +2,7 @@
 use std::time::Duration;
 
 pub use crate::{stats,not_stats,stats_or};
+pub use crate::util::pretty_print_si;
 
 pub use self::ss::*;
 
@@ -156,7 +157,7 @@ mod ss {
             let tot = self.tt_hits + self.tt_halfmiss + self.tt_misses;
             let tot = tot as f64;
 
-            println!("hits/half/miss  = {}, {}, {}, ({:.3}%,{:.3}%,{:.3}%)",
+            println!("hits/half/miss  = {}, {}, {}, ({:.4}%,{:.3}%,{:.3}%)",
                      Self::_print(self.tt_hits as i32),
                      Self::_print(self.tt_halfmiss as i32),
                      Self::_print(self.tt_misses as i32),
@@ -167,6 +168,19 @@ mod ss {
             // println!("qt_nodes     = {}", Self::_print(self.qt_nodes as i32));
             // println!("qt_hits      = {}", Self::_print(self.qt_hits as i32));
             // println!("qt_misses    = {}", Self::_print(self.qt_misses as i32));
+
+            eprintln!("nodes/qt nodes = {:.1?}", self.qt_nodes as f64 / self.nodes as f64);
+            eprintln!("qt nodes    = {}", pretty_print_si(self.qt_nodes as i64));
+            eprintln!("q_max_depth = {:?}", self.q_max_depth);
+
+            eprintln!("null prunes = {:?}", self.null_prunes);
+            eprintln!("lmrs        = {:?}", self.lmrs);
+
+            let bcs = self.beta_cut_first;
+            eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
+
+            // eprintln!("stats0.qt_hits = {}", pretty_print_si(stats0.qt_hits as i64));
+            // eprintln!("stats0.qt_misses = {}", pretty_print_si(stats0.qt_misses as i64));
 
             // println!("alpha      = {:?}", self.alpha);
             // println!("beta       = {:?}", self.beta);

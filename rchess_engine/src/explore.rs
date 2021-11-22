@@ -60,6 +60,7 @@ pub struct ABConfig {
     // pub tt_r:             &'a TTRead,
     pub root:             bool,
     pub do_null:          bool,
+    pub inside_null:      bool,
     pub use_ob:           bool,
 }
 
@@ -67,9 +68,10 @@ impl ABConfig {
     pub fn new_depth(max_depth: Depth) -> Self {
         Self {
             max_depth,
-            root:      false,
-            do_null:   true,
-            use_ob:    false,
+            root:         false,
+            do_null:      true,
+            inside_null:  false,
+            use_ob:       false,
         }
     }
 }

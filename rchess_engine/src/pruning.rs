@@ -23,12 +23,12 @@ impl Explorer {
         mut stats:          &mut SearchStats,
         prev_mvs:           VecDeque<(Zobrist,Move)>,
         mut history:        &mut [[[Score; 64]; 64]; 2],
-        tt_r:               &TTRead,
-        tt_w:               TTWrite,
+        (tt_r,tt_w):        (&TTRead,TTWrite),
     ) -> bool {
 
-        cfg.root    = false;
-        cfg.do_null = false;
+        cfg.root        = false;
+        cfg.do_null     = false;
+        cfg.inside_null = true;
 
         let mv = Move::NullMove;
 

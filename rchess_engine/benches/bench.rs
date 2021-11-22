@@ -166,45 +166,13 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
     group.warm_up_time(Duration::from_secs_f64(2.0));
 
-    // group.sample_size(20);
-    // group.measurement_time(Duration::from_secs_f64(5.));
+    group.sample_size(20);
+    group.measurement_time(Duration::from_secs_f64(5.));
 
-    use evmap::{ReadHandle,ReadHandleFactory,WriteHandle};
-
-    let (tt_r, tt_w) = evmap::Options::default()
-        .with_hasher(FxBuildHasher::default())
-        .construct();
-    // let tt_rf = tt_w.factory();
-    let tt_w: TTWrite = Arc::new(parking_lot::Mutex::new(tt_w));
-
-    let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
-
-    fn add_zb(tt_w: TTWrite, mut zbs: &mut HashSet<Zobrist>, mut rng: &mut StdRng) {
-        let zb = Zobrist(rng.gen());
-        zbs.insert(zb);
-        let mv = Move::Quiet { from: Coord(0,0), to: Coord(0,1), pc: Queen };
-        let si = SearchInfo::new(mv, vec![], 1, Node::PV, 0);
-        let mut w = tt_w.lock();
-        w.update(zb, si);
-        w.refresh();
-    }
-
-    let mut zbs = HashSet::<Zobrist>::default();
-
-    for _ in 0..1_000_000 {
-        add_zb(tt_w.clone(), &mut zbs, &mut rng);
-    }
-
-    let zbs2: Vec<Zobrist> = zbs.iter().copied().collect();
-    group.bench_function("test evmap 100_000", |b| b.iter(|| {
-        let zb = zbs2.choose(&mut rng).unwrap();
-        let si = tt_r.get(&zb).unwrap();
+    group.bench_function("explore endgame", |b| b.iter(|| {
+        let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+        let (m,stats) = ex.explore(&ts, None);
     }));
-
-    // group.bench_function("explore endgame", |b| b.iter(|| {
-    //     let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
-    //     let (m,stats) = ex.explore(&ts, None);
-    // }));
 
     // group.bench_function("explore", |b| b.iter(|| {
     //     let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);

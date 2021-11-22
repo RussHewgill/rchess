@@ -45,7 +45,6 @@ pub mod parsing;
 
 pub mod see;
 pub mod qsearch;
-pub mod gen_moves;
 pub mod search;
 pub mod explore;
 pub mod alphabeta;
@@ -54,10 +53,13 @@ pub mod timer;
 pub mod tuning;
 pub mod hashing;
 pub mod trans_table;
-pub mod lockfree_hashmap;
-pub mod material_table;
 pub mod opening_book;
 pub mod syzygy;
+
+pub mod game_stack;
+// pub mod gen_moves;
+// pub mod lockfree_hashmap;
+// pub mod material_table;
 
 pub mod brain;
 

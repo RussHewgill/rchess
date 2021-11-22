@@ -54,8 +54,14 @@ impl ABResult {
 pub enum ABResults {
     ABSingle(ABResult),
     ABList(ABResult, Vec<ABResult>),
-    // ABPrune,
+    ABPrune(Score, Prune),
+    ABSyzygy(ABResult),
     ABNone,
+}
+
+#[derive(Debug,PartialEq,PartialOrd,Clone)]
+pub enum Prune {
+    NullMove,
 }
 
 /// Negamax AB
@@ -96,7 +102,6 @@ impl Explorer {
         &self,
         ts:                      &Tables,
         g:                       &Game,
-        // max_depth:               Depth,
         mut cfg:                 ABConfig,
         depth:                   Depth,
         ply:                     Depth,
@@ -107,8 +112,6 @@ impl Explorer {
         mut history:             &mut [[[Score; 64]; 64]; 2],
         tt_r:                    &TTRead,
         tt_w:                    TTWrite,
-        // root:                    bool,
-        // do_null:                 bool,
     ) -> ABResults {
 
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
@@ -220,12 +223,16 @@ impl Explorer {
                             // XXX: wrong, but matches with other wrong mate in x count
                             let score = score + 1;
                             return ABResults::ABSingle(ABResult::new_single(mv, score));
+                            // return ABResults::ABSyzygy(ABResult::new_single(mv, score));
                         },
                         Err(e) => {
                         },
                         _ => {
                         },
                     }
+                },
+                Ok(Wdl::Loss) => {
+                    // return ABResults::ABSingle()
                 },
                 Ok(wdl) => {
                     trace!("found other WDL: {:?}", wdl);
@@ -243,13 +250,6 @@ impl Explorer {
         #[cfg(not(feature = "pvs_search"))]
         let is_pv_node = false;
 
-        // if is_pv_node {
-        //     // trace!("is_pv_node, ply {}: g = {:?}", ply, g);
-        //     trace!("is pv_node, ply {}: {}, {}", ply, alpha, beta);
-        // } else {
-        //     trace!("not pv_node, ply {}: {}, {}", ply, alpha, beta);
-        // }
-
         /// Null Move pruning
         #[cfg(feature = "null_pruning")]
         if g.state.checkers.is_empty()
@@ -259,10 +259,11 @@ impl Explorer {
             && cfg.do_null {
                 if self.prune_null_move_negamax(
                     ts, g, cfg, depth, ply, alpha, beta, &mut stats,
-                    prev_mvs.clone(), &mut history, tt_r, tt_w.clone()) {
+                    prev_mvs.clone(), &mut history, (tt_r, tt_w.clone())) {
 
                     // return ABNone;
-                    return ABSingle(ABResult::new_empty(beta));
+                    // return ABSingle(ABResult::new_empty(beta));
+                    return ABPrune(beta, Prune::NullMove);
                 }
         }
 
@@ -387,7 +388,7 @@ impl Explorer {
                             // // XXX: No Null pruning inside reduced depth search ?
                             // true
                         ) {
-                            ABSingle(mut res) => {
+                            ABSingle(mut res) | ABSyzygy(mut res) => {
                                 res.neg_score();
                                 if res.score <= alpha {
                                     stats!(stats.lmrs.0 += 1);
@@ -395,8 +396,12 @@ impl Explorer {
                                     break 'search (false,res);
                                 }
                             },
-                            // ABNone => {},
-                            _ => {},
+                            ABList(_, _) => panic!("found ABList when not root?"),
+                            ABPrune(beta, prune) => {
+                                // panic!("ABPrune 0");
+                                // trace!("ABPrune 0: {:?} {:?}", beta, prune);
+                            },
+                            ABNone       => {},
                         }
 
                     }
@@ -414,7 +419,7 @@ impl Explorer {
                         ts, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
                         (a2, b2), &mut stats,
                         pms.clone(), &mut history, tt_r, tt_w.clone()) {
-                        ABSingle(mut res) => {
+                        ABSingle(mut res) | ABSyzygy(mut res) => {
                             res.moves.push_front(*mv);
                             res.neg_score();
 
@@ -424,14 +429,17 @@ impl Explorer {
                                     ts, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
                                     (-beta, -alpha), &mut stats,
                                     pms, &mut history, tt_r, tt_w.clone()) {
-                                    ABSingle(mut res2) => {
+                                    ABSingle(mut res2) | ABSyzygy(mut res2) => {
                                         res2.neg_score();
                                         res2.moves.push_front(*mv);
                                         res = res2;
                                     },
-                                    _ => {
-                                        break 'outer
+                                    // ABList(_, _) => break 'outer,
+                                    ABList(_, _) => panic!("found ABList when not root?"),
+                                    ABPrune(beta, prune) => {
+                                        panic!("ABPrune 1");
                                     },
+                                    ABNone       => break 'outer,
                                 }
                             }
 
@@ -440,13 +448,14 @@ impl Explorer {
                             }
                             (false, res)
                         },
-                        // ABPrune => {
-                        //     unimplemented!()
-                        // },
-                        _ => {
-                            // continue 'outer;
-                            break 'outer;
+                        ABPrune(beta, prune) => {
+                            // panic!("ABPrune 2");
+                            // trace!("ABPrune 2: {:?} {:?}", beta, prune);
+                            continue 'outer;
                         },
+                        // ABList(_, _) => break 'outer,
+                        ABList(_, _) => panic!("found ABList when not root?"),
+                        ABNone       => break 'outer,
                     }
 
                 },
