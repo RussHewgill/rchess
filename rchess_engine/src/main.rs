@@ -39,6 +39,7 @@ use rchess_engine_lib::explore::*;
 use rchess_engine_lib::tuning::*;
 use rchess_engine_lib::alphabeta::*;
 use rchess_engine_lib::{stats,not_stats,stats_or};
+#[cfg(feature = "syzygy")]
 use rchess_engine_lib::syzygy::SyzygyTB;
 use rchess_engine_lib::brain::trainer::*;
 
@@ -53,11 +54,90 @@ use std::time::{Instant,Duration};
 
 #[allow(unreachable_code)]
 fn main() {
-    main9();
+    main4(None);
+    // main10();
+    // main9();
     // main_nnue();
     // main_nn();
     // main_mnist();
     // main_syzygy();
+}
+
+#[allow(unreachable_code)]
+fn main10() {
+    init_logger();
+
+    let ts = Tables::read_from_file_def().unwrap();
+
+    fn go(ts: &Tables, n: Depth, g: Game, t: f64) -> ((ABResult, Vec<ABResult>),SearchStats,(TTRead,TTWrite)) {
+        let stop = Arc::new(AtomicBool::new(false));
+        let timesettings = TimeSettings::new_f64(0.0,t);
+        let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+        ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+        ex.lazy_smp_negamax(&ts, false, false)
+    }
+
+
+    // eprintln!("fen = {:?}", fen);
+    // let mut g = Game::from_fen(&ts, fen).unwrap();
+    // let g = g.flip_sides(&ts);
+
+    let fen = STARTPOS;
+    // let fen = "4k3/4p3/8/8/8/8/4P3/4K3 w - - 0 1";
+    // let fen = "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2"; // Capture
+    // let fen = "rnbqkbnr/ppp1ppp1/7p/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3"; // EP
+    // let fen = "r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"; // Castle
+    let fen = "1n5k/2P5/8/8/8/8/8/7K w - - 0 1"; // Promotion
+
+    let mut g = Game::from_fen(&ts, fen).unwrap();
+    eprintln!("g1 = {:?}", g);
+    let zb1 = g.zobrist;
+    let g1 = g.clone();
+
+    // let mv = Move::Quiet { from: "E2".into(), to: "E3".into(), pc: Pawn };
+    // let mv = Move::PawnDouble { from: "E2".into(), to: "E4".into() };
+    // let mv = Move::Capture { from: "E4".into(), to: "D5".into(), pc: Pawn, victim: Pawn };
+    // let mv = Move::EnPassant { from: "E5".into(), to: "D6".into(), capture: "D5".into() };
+    // let mv = Move::Castle {from: "E1".into(), to: "G1".into(), rook_from: "H1".into(), rook_to: "F1".into()};
+    // let mv = Move::Promotion { from: "C7".into(), to: "C8".into(), new_piece: Queen };
+    let mv = Move::PromotionCapture { from: "C7".into(), to: "B8".into(), new_piece: Queen, victim: Knight };
+
+    g.make_move(&ts, mv);
+    eprintln!("g2 = {:?}", g);
+    let zb2 = g.zobrist;
+
+    g.unmake_move(&ts);
+    eprintln!("g3 = {:?}", g);
+    let zb3 = g.zobrist;
+    let g3 = g.clone();
+
+    eprintln!("g1.zobrist = {:?}", zb1);
+    eprintln!("g2.zobrist = {:?}", zb2);
+    eprintln!("g3.zobrist = {:?}", zb3);
+
+    eprintln!("g1 == g2: {:?}", g1.state == g3.state);
+    eprintln!("zb1 == zb2: {:?}", zb1 == zb3);
+
+    return;
+
+    let t = 1.0;
+    let n = 35;
+
+    let t0 = std::time::Instant::now();
+    // println!("g = {:?}", g);
+    let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), t);
+    let t1 = t0.elapsed();
+    let t2 = t1.as_secs_f64();
+
+    eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
+    println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
+             stats0.max_depth, t2);
+    stats0.print(t1);
+
+    eprintln!();
+
+    stats0.print_ebf(true);
+
 }
 
 #[allow(unreachable_code)]
@@ -213,6 +293,7 @@ fn _main() {
 
 }
 
+#[cfg(feature = "syzygy")]
 #[allow(unreachable_code)]
 fn main_syzygy() {
     use rchess_engine_lib::syzygy::*;
@@ -712,25 +793,25 @@ fn main_nnue() {
     let mv2 = Move::Quiet { from: "D3".into(), to: "E3".into(), pc: Queen };
     let mv3 = Move::Quiet { from: "E6".into(), to: "D6".into(), pc: Queen };
 
-    for _ in 0..2 {
-        g = g.make_move_unchecked(&ts, mv0).unwrap();
-        g = g.make_move_unchecked(&ts, mv1).unwrap();
-        g = g.make_move_unchecked(&ts, mv2).unwrap();
-        g = g.make_move_unchecked(&ts, mv3).unwrap();
-    }
+    // for _ in 0..2 {
+    //     g = g.make_move_unchecked(&ts, mv0).unwrap();
+    //     g = g.make_move_unchecked(&ts, mv1).unwrap();
+    //     g = g.make_move_unchecked(&ts, mv2).unwrap();
+    //     g = g.make_move_unchecked(&ts, mv3).unwrap();
+    // }
 
     // for (n,(zb,mv)) in g.history.iter().enumerate() {
     //     eprintln!("{}: {:?} = {:?}", n, zb, mv);
     // }
 
-    let g2 = g.clone().make_move_unchecked(&ts, mv0).unwrap();
+    // let g2 = g.clone().make_move_unchecked(&ts, mv0).unwrap();
 
 
-    let zb0 = g.zobrist;
-    let zb1 = g2.zobrist;
+    // let zb0 = g.zobrist;
+    // let zb1 = g2.zobrist;
 
-    eprintln!("zb0 = {:?}", zb0);
-    eprintln!("zb1 = {:?}", zb1);
+    // eprintln!("zb0 = {:?}", zb0);
+    // eprintln!("zb1 = {:?}", zb1);
 
     // let n = g.history.len();
     // let mut k = 0;
@@ -1814,25 +1895,25 @@ fn main7() {
 
     eprintln!("last move = {:?}", ms0.last().unwrap());
 
-    let mut g2 = g2.clone();
-    for m in ms0.into_iter() {
-        let from = &m[0..2];
-        let to = &m[2..4];
-        let other = &m[4..];
-        let mm = g2.convert_move(from, to, other).unwrap();
-        g2 = g2.make_move_unchecked(&ts, mm).unwrap();
-    }
-    // eprintln!("hash0 = {:?}", g2.zobrist);
+    // let mut g2 = g2.clone();
+    // for m in ms0.into_iter() {
+    //     let from = &m[0..2];
+    //     let to = &m[2..4];
+    //     let other = &m[4..];
+    //     let mm = g2.convert_move(from, to, other).unwrap();
+    //     g2 = g2.make_move_unchecked(&ts, mm).unwrap();
+    // }
+    // // eprintln!("hash0 = {:?}", g2.zobrist);
 
-    eprintln!("g2 = {:?}", g2);
-    let g2fen = g2.to_fen();
-    eprintln!("g2fen = {:?}", g2fen);
-    // // eprintln!("g0 = {:?}", g0);
+    // eprintln!("g2 = {:?}", g2);
+    // let g2fen = g2.to_fen();
+    // eprintln!("g2fen = {:?}", g2fen);
+    // // // eprintln!("g0 = {:?}", g0);
 
-    let m0 = g2.convert_move("g7", "f6", "").unwrap();
-    // let m0 = g2.convert_move("e5", "d6", "").unwrap();
+    // let m0 = g2.convert_move("g7", "f6", "").unwrap();
+    // // let m0 = g2.convert_move("e5", "d6", "").unwrap();
 
-    eprintln!("m0 = {:?}", m0);
+    // eprintln!("m0 = {:?}", m0);
 
     // let m0 = Move::EnPassant { from: "E5".into(), to: "D6".into(), capture: "D5".into() };
     // let g3 = g2.make_move_unchecked(&ts, m0).unwrap();
@@ -2233,17 +2314,17 @@ fn main4(depth: Option<u64>) {
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // eprintln!("g = {:?}", g);
 
-    let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, n, true).unwrap();
-    // let (t,(_,_)) = test_stockfish(fen, n, false).unwrap();
-    println!("perft done in {} seconds.", t);
-    println!("stockfish took {} seconds.", t_sf);
+    // let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, n, true).unwrap();
+    // // let (t,(_,_)) = test_stockfish(fen, n, false).unwrap();
+    // println!("perft done in {} seconds.", t);
+    // println!("stockfish took {} seconds.", t_sf);
 
-    // let t0 = std::time::Instant::now();
-    // let (tot,_) = g.perft(&ts, n);
-    // // let (tot,vs) = g.perft2(&ts, n as Depth);
-    // // eprintln!("n = {:?}", n);
-    // let t1 = t0.elapsed().as_secs_f64();
-    // println!("perft done in {} seconds.", t1);
+    let t0 = std::time::Instant::now();
+    let (tot,_) = g.perft(&ts, n);
+    // let (tot,vs) = g.perft2(&ts, n as Depth);
+    // eprintln!("n = {:?}", n);
+    let t1 = t0.elapsed().as_secs_f64();
+    println!("perft done in {} seconds.", t1);
 
     let ds = vec![
         20,

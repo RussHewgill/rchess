@@ -228,19 +228,21 @@ impl Game {
         if moves.is_end() { return; }
         let moves = moves.get_moves_unsafe();
 
-        let gs = moves.into_iter().flat_map(|mv| {
-            if let Ok(g2) = self.make_move_unchecked(ts, mv) {
-                Some((mv,g2))
-            } else { None }
-        });
+        // let gs = moves.into_iter().flat_map(|mv| {
+        //     if let Ok(g2) = self.make_move_unchecked(ts, mv) {
+        //         Some((mv,g2))
+        //     } else { None }
+        // });
 
-        for (mv, g2) in gs {
-            g2._perft2(ts, depth - 1, ply + 1, &mut vs);
-            vs[ply] += 1;
-        }
+        // for (mv, g2) in gs {
+        //     g2._perft2(ts, depth - 1, ply + 1, &mut vs);
+        //     vs[ply] += 1;
+        // }
+        unimplemented!();
+
     }
 
-    pub fn perft(&self, ts: &Tables, depth: u64) -> (u64,Vec<(Move,u64)>) {
+    pub fn perft(&mut self, ts: &Tables, depth: u64) -> (u64,Vec<(Move,u64)>) {
         // let mut nodes = 0;
         // let mut captures = 0;
 
@@ -254,54 +256,57 @@ impl Game {
         // let mut k = 0;
         // let mut out = vec![];
 
-        // let out = moves.into_iter().flat_map(|m| {
-        let out = moves.into_par_iter().flat_map(|m| {
-            if let Ok(g2) = self.make_move_unchecked(&ts, m) {
-                let (ns,cs) = g2._perft(ts, depth - 1, false);
-                // match m {
-                //     Move::Capture { .. } => captures += 1,
-                //     _                    => {},
-                // }
-                // if root {
-                //     eprintln!("{:>2}: {:?}: ({}, {})", k, m, ns, cs);
-                // }
-                // captures += cs;
-                // nodes += ns;
-                // out.push((m, ns));
-                // k += 1;
-                Some((m,ns))
-            } else {
-                // panic!("move: {:?}\n{:?}", m, self);
-                None
-            }
-        });
-
-        let out: Vec<(Move,u64)> = out.collect();
-        let nodes = out.clone().into_iter().map(|x| x.1).sum();
-
-        // for m in moves.into_iter() {
-        //     if let Ok(g2) = self.make_move_unchecked(&ts, &m) {
+        // // let out = moves.into_iter().flat_map(|m| {
+        // let out = moves.into_par_iter().flat_map(|m| {
+        //     if let Ok(g2) = self.make_move_unchecked(&ts, m) {
         //         let (ns,cs) = g2._perft(ts, depth - 1, false);
-        //         match m {
-        //             Move::Capture { .. } => captures += 1,
-        //             _                    => {},
-        //         }
+        //         // match m {
+        //         //     Move::Capture { .. } => captures += 1,
+        //         //     _                    => {},
+        //         // }
         //         // if root {
         //         //     eprintln!("{:>2}: {:?}: ({}, {})", k, m, ns, cs);
         //         // }
-        //         captures += cs;
-        //         nodes += ns;
-        //         out.push((m, ns));
-        //         k += 1;
+        //         // captures += cs;
+        //         // nodes += ns;
+        //         // out.push((m, ns));
+        //         // k += 1;
+        //         Some((m,ns))
         //     } else {
         //         // panic!("move: {:?}\n{:?}", m, self);
+        //         None
         //     }
-        // }
+        // });
+
+        let n = moves.len();
+        // let moves = moves.into_iter().map(|mv| (mv, self.clone()))
+        let moves: Vec<(Vec<Move>, Self)> =
+            moves.chunks(n / 6).map(|mvs| (mvs.to_vec(), self.clone())).collect();
+
+        let out = moves.into_par_iter().map(|(mvs, mut g)| {
+            mvs.into_iter().map(|mv| {
+                g.make_move(ts, mv);
+                let (ns,cs) = g._perft(ts, depth - 1, false);
+                g.unmake_move(ts);
+                (mv,ns)
+            }).collect::<Vec<(Move,u64)>>()
+        });
+
+        // let out = moves.into_iter().map(|mv| {
+        //     self.make_move(ts, mv);
+        //     let (ns,cs) = self._perft(ts, depth - 1, false);
+        //     self.unmake_move(ts);
+        //     (mv,ns)
+        // });
+
+        // let out: Vec<Vec<(Move,u64)>> = out.collect();
+        let out: Vec<(Move,u64)> = out.flatten().collect();
+        let nodes = out.clone().into_iter().map(|x| x.1).sum();
 
         (nodes, out)
     }
 
-    pub fn _perft(&self, ts: &Tables, depth: u64, root: bool) -> (u64,u64) {
+    pub fn _perft(&mut self, ts: &Tables, depth: u64, root: bool) -> (u64,u64) {
         let mut nodes = 0;
         let mut captures = 0;
 
@@ -310,25 +315,36 @@ impl Game {
         let moves = self.search_all(&ts);
         if moves.is_end() { return (0,0); }
 
-        // eprintln!("moves.len() = {:?}", moves.len());
-        let mut k = 0;
-        for m in moves.into_iter() {
-            if let Ok(g2) = self.make_move_unchecked(&ts, m) {
-                let (ns,cs) = g2._perft(ts, depth - 1, false);
-                match m {
-                    Move::Capture { .. } => captures += 1,
-                    _                    => {},
-                }
-                if root {
-                    eprintln!("{:>2}: {:?}: ({}, {})", k, m, ns, cs);
-                }
-                captures += cs;
-                nodes += ns;
-                k += 1;
-            } else {
-                // panic!("move: {:?}\n{:?}", m, self);
-            }
-        }
+        // // eprintln!("moves.len() = {:?}", moves.len());
+        // let mut k = 0;
+        // for m in moves.into_iter() {
+        //     if let Ok(g2) = self.make_move_unchecked(&ts, m) {
+        //         let (ns,cs) = g2._perft(ts, depth - 1, false);
+        //         match m {
+        //             Move::Capture { .. } => captures += 1,
+        //             _                    => {},
+        //         }
+        //         if root {
+        //             eprintln!("{:>2}: {:?}: ({}, {})", k, m, ns, cs);
+        //         }
+        //         captures += cs;
+        //         nodes += ns;
+        //         k += 1;
+        //     } else {
+        //         // panic!("move: {:?}\n{:?}", m, self);
+        //     }
+        // }
+
+        moves.into_iter().for_each(|mv| {
+            self.make_move(ts, mv);
+            let (ns,cs) = self._perft(ts, depth - 1, false);
+
+            captures += cs;
+            nodes += ns;
+            // k += 1;
+
+            self.unmake_move(ts);
+        });
 
         (nodes, captures)
     }
@@ -347,24 +363,23 @@ impl Game {
         let moves = self.search_all(&ts);
         if moves.is_end() { return (0,0); }
 
-        let moves = moves.into_iter().flat_map(|m| if let Ok(g2) = self.make_move_unchecked(&ts, m) {
-            Some((m,g2)) } else { None });
+        // let moves = moves.into_iter().flat_map(|m| if let Ok(g2) = self.make_move_unchecked(&ts, m) {
+        //     Some((m,g2)) } else { None });
 
-        for (m,g2) in moves.into_iter() {
-            if let Some(st0) = hs.insert(g2.zobrist, g2.state) {
-                if !st0.game_equal(g2.state) {
-                    collisions += 1;
-                    cols.push((m,g2.zobrist, (st0,g2.state)));
-                }
-            }
+        // for (m,g2) in moves.into_iter() {
+        //     if let Some(st0) = hs.insert(g2.zobrist, g2.state) {
+        //         if !st0.game_equal(g2.state) {
+        //             collisions += 1;
+        //             cols.push((m,g2.zobrist, (st0,g2.state)));
+        //         }
+        //     }
+        //     let (ns,cs) = g2.perft_hash_collisions(&ts, &mut hs, &mut cols, depth - 1);
+        //     collisions += cs;
+        //     nodes += ns;
+        // }
 
-            let (ns,cs) = g2.perft_hash_collisions(&ts, &mut hs, &mut cols, depth - 1);
-
-            collisions += cs;
-            nodes += ns;
-        }
-
-        (nodes,collisions)
+        // (nodes,collisions)
+        unimplemented!()
     }
 
 }
@@ -374,14 +389,24 @@ impl Game {
 
     pub fn move_is_legal(&self, ts: &Tables, m: Move) -> bool {
 
+        // if m.filter_en_passant() {
+        //     if self.state.en_passant.is_none() {
+        //         return false;
+        //     } else if let Some(g2) = self.clone()._make_move_unchecked(&ts, &m) {
+        //         let checks = g2.find_checkers(&ts, self.state.side_to_move);
+        //         return checks.is_empty();
+        //     } else {
+        //         return false;
+        //     }
+        // }
+
         if m.filter_en_passant() {
             if self.state.en_passant.is_none() {
                 return false;
-            } else if let Some(g2) = self.clone()._make_move_unchecked(&ts, &m) {
-                let checks = g2.find_checkers(&ts, self.state.side_to_move);
-                return checks.is_empty();
             } else {
-                return false;
+
+                debug!("bad en passen check ??");
+                return true;
             }
         }
 
@@ -409,48 +434,6 @@ impl Game {
             },
         }
 
-    }
-
-    pub fn move_is_legal2(&self, ts: &Tables, m: Move) -> bool {
-
-        // TODO: En Passant Captures
-        // TODO: Castling
-
-        if m.filter_en_passant() {
-            if self.state.en_passant.is_none() {
-                return false;
-            } else if let Some(g2) = self.clone()._make_move_unchecked(&ts, &m) {
-                let checks = g2.find_checkers(&ts, self.state.side_to_move);
-                return checks.is_empty();
-            } else {
-                return false;
-            }
-        }
-
-        match self.get_at(m.sq_from()) {
-            Some((col,King)) => {
-                !self.find_attacks_by_side(&ts, m.sq_to(), !col, true)
-            },
-            Some((col,pc)) => {
-                let pins = self.get_pins(col);
-
-                // Not pinned
-                // OR moving along pin ray
-                let x = (BitBoard::single(m.sq_from()) & pins).is_empty()
-                    || (ts.aligned(m.sq_from(), m.sq_to(), self.get(King, col).bitscan().into()).0 != 0);
-
-                // not in check
-                let x0 = x & self.state.checkers.is_empty();
-
-                x0 & self.state.checkers.is_empty()
-                    || (x && m.sq_to() == self.state.checkers.bitscan().into())
-                    || (x && (BitBoard::single(m.sq_to())
-                              & self.state.check_block_mask).is_not_empty())
-
-
-            },
-            None => panic!(),
-        }
     }
 
 }

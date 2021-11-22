@@ -5,8 +5,10 @@ use crate::tables::*;
 use crate::evaluate::*;
 use crate::pruning::*;
 use crate::alphabeta::*;
-use crate::syzygy::SyzygyTB;
 use crate::opening_book::*;
+
+#[cfg(feature = "syzygy")]
+use crate::syzygy::SyzygyTB;
 
 pub use crate::move_ordering::*;
 pub use crate::timer::*;
@@ -40,6 +42,7 @@ pub struct Explorer {
     pub stop:          Arc<AtomicBool>,
     pub best_mate:     Arc<RwLock<Option<Depth>>>,
 
+    #[cfg(feature = "syzygy")]
     pub syzygy:        Option<Arc<SyzygyTB>>,
     pub opening_book:  Option<Arc<OpeningBook>>,
 
@@ -100,6 +103,7 @@ impl Explorer {
             best_mate:      Arc::new(RwLock::new(None)),
             // move_history:   VecDeque::default(),
             // syzygy:         Arc::new(None),
+            #[cfg(feature = "syzygy")]
             syzygy:         None,
             opening_book:   None,
 
@@ -118,9 +122,12 @@ impl Explorer {
     // }
 
     pub fn load_syzygy<P: AsRef<Path>>(&mut self, dir: P) -> std::io::Result<()> {
-        let mut tb = SyzygyTB::new();
-        tb.add_directory(&dir)?;
-        self.syzygy = Some(Arc::new(tb));
+        #[cfg(feature = "syzygy")]
+        {
+            let mut tb = SyzygyTB::new();
+            tb.add_directory(&dir)?;
+            self.syzygy = Some(Arc::new(tb));
+        }
         Ok(())
     }
 
@@ -366,11 +373,14 @@ impl Explorer {
         let mut cfg = ABConfig::new_depth(depth);
         cfg.root = true;
 
+        let mut g       = self.game.clone();
+        let mut prev_ms = VecDeque::new();
+
         let res = self._ab_search_negamax(
-            ts, &self.game, cfg, depth,
+            ts, &mut g, cfg, depth,
             0, &mut stop_counter, (alpha, beta),
             &mut stats,
-            VecDeque::new(),
+            &mut prev_ms,
             &mut history,
             // &tt_r, tt_w.clone(),true,true);
             &tt_r, tt_w.clone());

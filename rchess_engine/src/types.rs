@@ -36,15 +36,15 @@ pub enum Piece {
     King,
 }
 
-// #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
-// pub struct SimpleMove {
-//     from: Coord,
-//     to:   Coord,
-// }
-
-// #[derive(Serialize,Deserialize,Eq,PartialEq,Ord,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
+/// Quiet              { from: Coord, to: Coord, pc: Piece },
+/// PawnDouble         { from: Coord, to: Coord },
+/// Capture            { from: Coord, to: Coord, pc: Piece, victim: Piece },
+/// EnPassant          { from: Coord, to: Coord, capture: Coord },
+/// Castle             { from: Coord, to: Coord, rook_from: Coord, rook_to: Coord },
+/// Promotion          { from: Coord, to: Coord, new_piece: Piece },
+/// PromotionCapture   { from: Coord, to: Coord, new_piece: Piece, victim: Piece },
+/// NullMove,
 #[derive(Serialize,Deserialize,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
-// #[derive(Serialize,Deserialize,Ord,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
 pub enum Move {
 
     Quiet              { from: Coord, to: Coord, pc: Piece },
@@ -54,6 +54,8 @@ pub enum Move {
     Castle             { from: Coord, to: Coord, rook_from: Coord, rook_to: Coord },
     Promotion          { from: Coord, to: Coord, new_piece: Piece },
     PromotionCapture   { from: Coord, to: Coord, new_piece: Piece, victim: Piece },
+    NullMove,
+
 
     // Quiet              { side: Color, from: Coord, to: Coord, pc: Piece },
     // PawnDouble         { side: Color, from: Coord, to: Coord },
@@ -62,8 +64,6 @@ pub enum Move {
     // Castle             { side: Color, from: Coord, to: Coord, rook_from: Coord, rook_to: Coord },
     // Promotion          { side: Color, from: Coord, to: Coord, new_piece: Piece },
     // PromotionCapture   { side: Color, from: Coord, to: Coord, new_piece: Piece, victim: Piece },
-
-    NullMove,
 }
 
 // #[derive(Serialize,Deserialize,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]

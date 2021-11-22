@@ -54,6 +54,7 @@ pub mod tuning;
 pub mod hashing;
 pub mod trans_table;
 pub mod opening_book;
+#[cfg(feature = "syzygy")]
 pub mod syzygy;
 
 pub mod stack_game;

@@ -447,11 +447,15 @@ impl OpeningBook {
             let mut gs2 = vec![];
 
             for ((from,to), mv, wt) in ms {
-                if let Ok(g2) = g.make_move_unchecked(ts, mv) {
-                    let key2 = Self::gen_key(&g2);
-                    gs.insert((from,to), (wt, Some(key2)));
-                    gs2.push(g2);
-                }
+
+                // if let Ok(g2) = g.make_move_unchecked(ts, mv) {
+                //     let key2 = Self::gen_key(&g2);
+                //     gs.insert((from,to), (wt, Some(key2)));
+                //     gs2.push(g2);
+                // }
+
+                unimplemented!()
+
             }
             xs2.insert(key, gs);
 
@@ -522,7 +526,9 @@ impl OpeningBook {
                     once = true;
                     ply += 1;
                     out.push(mv);
-                    g = g.make_move_unchecked(ts, mv).unwrap();
+                    // g = g.make_move_unchecked(ts, mv).unwrap();
+                    g.make_move(ts, mv);
+
                 } else { break; }
             } else { break; }
         }

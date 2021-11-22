@@ -132,59 +132,59 @@ pub fn read_json_fens(path: &str) -> std::io::Result<Vec<(u64,u64,String)>> {
     Ok(out)
 }
 
-pub fn find_move_error(
-    ts:        &Tables,
-    fen:       &str,
-    depth:     u64,
-    last_move: Option<Move>,
-) -> std::io::Result<Option<(Move,String)>> {
+// pub fn find_move_error(
+//     ts:        &Tables,
+//     fen:       &str,
+//     depth:     u64,
+//     last_move: Option<Move>,
+// ) -> std::io::Result<Option<(Move,String)>> {
 
-    let (_, ((ns0,nodes0),(ns1,nodes1))) = test_stockfish(&ts, &fen, depth, false)?;
+//     let (_, ((ns0,nodes0),(ns1,nodes1))) = test_stockfish(&ts, &fen, depth, false)?;
 
-    // No errors found
-    if ns0 == ns1 {
-        panic!("find_move_error: No errors");
-        // return Ok(None);
-    }
+//     // No errors found
+//     if ns0 == ns1 {
+//         panic!("find_move_error: No errors");
+//         // return Ok(None);
+//     }
 
-    // moves in one but not both
-    let diff: HashSet<String> = {
-        let d0: HashSet<String> = nodes0.keys().cloned().collect();
-        let d1: HashSet<String> = nodes1.keys().cloned().collect();
-        let diff0: HashSet<String> = d0.difference(&d1).cloned().collect();
-        let diff1: HashSet<String> = d1.difference(&d0).cloned().collect();
-        // eprintln!("diff0 = {:?}", diff0);
-        // eprintln!("diff1 = {:?}", diff1);
-        diff0.union(&diff1).cloned().collect()
-    };
+//     // moves in one but not both
+//     let diff: HashSet<String> = {
+//         let d0: HashSet<String> = nodes0.keys().cloned().collect();
+//         let d1: HashSet<String> = nodes1.keys().cloned().collect();
+//         let diff0: HashSet<String> = d0.difference(&d1).cloned().collect();
+//         let diff1: HashSet<String> = d1.difference(&d0).cloned().collect();
+//         // eprintln!("diff0 = {:?}", diff0);
+//         // eprintln!("diff1 = {:?}", diff1);
+//         diff0.union(&diff1).cloned().collect()
+//     };
 
-    // if wrong moves exist or if legal moves are missing, return that FEN
-    if !diff.is_empty() {
-        return Ok(Some((last_move.unwrap(), fen.to_string())));
-    } else {
+//     // if wrong moves exist or if legal moves are missing, return that FEN
+//     if !diff.is_empty() {
+//         return Ok(Some((last_move.unwrap(), fen.to_string())));
+//     } else {
 
-        for (k0,(m0,v0)) in nodes0.iter() {
-            let v1 = nodes1.get(k0).unwrap();
+//         for (k0,(m0,v0)) in nodes0.iter() {
+//             let v1 = nodes1.get(k0).unwrap();
 
-            // perft after move finds error
-            if v0 != v1 {
-                let mut g = Game::from_fen(&ts, &fen).unwrap();
-                let _ = g.recalc_gameinfo_mut(&ts);
-                // eprintln!("g0 = {:?}", g);
+//             // perft after move finds error
+//             if v0 != v1 {
+//                 let mut g = Game::from_fen(&ts, &fen).unwrap();
+//                 let _ = g.recalc_gameinfo_mut(&ts);
+//                 // eprintln!("g0 = {:?}", g);
 
-                let mut g = g.make_move_unchecked(&ts, *m0).unwrap();
-                let _ = g.recalc_gameinfo_mut(&ts);
-                // eprintln!("g1 = {:?}", g);
-                let fen2 = g.to_fen();
+//                 let mut g = g.make_move_unchecked(&ts, *m0).unwrap();
+//                 let _ = g.recalc_gameinfo_mut(&ts);
+//                 // eprintln!("g1 = {:?}", g);
+//                 let fen2 = g.to_fen();
 
-                return find_move_error(&ts, &fen2, depth - 1, Some(*m0))
-            }
+//                 return find_move_error(&ts, &fen2, depth - 1, Some(*m0))
+//             }
 
-        }
+//         }
 
-        unimplemented!()
-    }
-}
+//         unimplemented!()
+//     }
+// }
 
 #[derive(Debug,Default,PartialEq,PartialOrd,Clone)]
 pub struct StockfishEval {
