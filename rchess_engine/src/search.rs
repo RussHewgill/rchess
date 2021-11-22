@@ -278,29 +278,28 @@ impl Game {
         //     }
         // });
 
-        let n = moves.len();
-        // let moves = moves.into_iter().map(|mv| (mv, self.clone()))
-        let moves: Vec<(Vec<Move>, Self)> =
-            moves.chunks(n / 6).map(|mvs| (mvs.to_vec(), self.clone())).collect();
+        // let n = moves.len();
+        // let moves: Vec<(Vec<Move>, Self)> =
+        //     moves.chunks(n / 6).map(|mvs| (mvs.to_vec(), self.clone())).collect();
 
-        let out = moves.into_par_iter().map(|(mvs, mut g)| {
-            mvs.into_iter().map(|mv| {
-                g.make_move(ts, mv);
-                let (ns,cs) = g._perft(ts, depth - 1, false);
-                g.unmake_move(ts);
-                (mv,ns)
-            }).collect::<Vec<(Move,u64)>>()
-        });
-
-        // let out = moves.into_iter().map(|mv| {
-        //     self.make_move(ts, mv);
-        //     let (ns,cs) = self._perft(ts, depth - 1, false);
-        //     self.unmake_move(ts);
-        //     (mv,ns)
+        // let out = moves.into_par_iter().map(|(mvs, mut g)| {
+        //     mvs.into_iter().map(|mv| {
+        //         g.make_move(ts, mv);
+        //         let (ns,cs) = g._perft(ts, depth - 1, false);
+        //         g.unmake_move(ts);
+        //         (mv,ns)
+        //     }).collect::<Vec<(Move,u64)>>()
         // });
 
-        // let out: Vec<Vec<(Move,u64)>> = out.collect();
-        let out: Vec<(Move,u64)> = out.flatten().collect();
+        let out = moves.into_iter().map(|mv| {
+            self.make_move(ts, mv);
+            let (ns,cs) = self._perft(ts, depth - 1, false);
+            self.unmake_move(ts);
+            (mv,ns)
+        });
+
+        // let out: Vec<(Move,u64)> = out.flatten().collect();
+        let out: Vec<(Move,u64)> = out.collect();
         let nodes = out.clone().into_iter().map(|x| x.1).sum();
 
         (nodes, out)

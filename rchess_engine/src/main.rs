@@ -2304,7 +2304,7 @@ fn main4(depth: Option<u64>) {
     // let fen = "rnb1k1nr/pppp1ppp/5q2/2b1p3/4P1P1/7P/PPPP1P2/RNBQKBNR w KQkq - 1 4";
 
     let n = match depth {
-        None    => 4,
+        None    => 3,
         Some(d) => d,
     };
 
