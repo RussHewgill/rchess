@@ -259,9 +259,10 @@ impl TrainingData {
 
         let mut out: Vec<TrainingData> = vec![];
 
-        let mut fens = 0;
+        // let mut fens = 0;
 
-        loop {
+        // loop {
+        for _ in 0..n {
 
             let (_,opening) = ob.start_game(&ts, Some(open_ply), &mut s).unwrap();
             // eprintln!("opening = {:?}", opening);
@@ -273,9 +274,9 @@ impl TrainingData {
                 .generate_single(&ts)
                 .unwrap();
 
-            fens += k0.moves.len();
-            eprintln!("fens = {:?}", fens);
-            if fens >= n { break; }
+            // fens += k0.moves.len();
+            // eprintln!("fens = {:?}", fens);
+            // if fens >= n { break; }
 
             eprintln!("result = {:?}", k0.result);
 

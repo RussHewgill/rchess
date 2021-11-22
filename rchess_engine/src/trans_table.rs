@@ -13,13 +13,15 @@ use std::sync::Arc;
 
 use std::hash::Hash;
 
-use evmap::{ReadHandle,WriteHandle};
+use evmap::{ReadHandle,ReadHandleFactory,WriteHandle};
 use evmap_derive::ShallowCopy;
 // use rustc_hash::Fx;
 use dashmap::{DashMap,DashSet};
 
 
 pub type FxBuildHasher = core::hash::BuildHasherDefault<rustc_hash::FxHasher>;
+
+pub type TTReadFactory  = ReadHandleFactory<Zobrist, SearchInfo, (), FxBuildHasher>;
 
 pub type TTRead  = ReadHandle<Zobrist, SearchInfo, (), FxBuildHasher>;
 pub type TTWrite = Arc<Mutex<WriteHandle<Zobrist, SearchInfo, (), FxBuildHasher>>>;

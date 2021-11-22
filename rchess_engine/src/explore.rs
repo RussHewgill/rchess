@@ -28,7 +28,7 @@ use parking_lot::{Mutex,RwLock};
 use rand::prelude::{SliceRandom,thread_rng};
 use rayon::prelude::*;
 
-use evmap::{ReadHandle,WriteHandle};
+use evmap::{ReadHandle,ReadHandleFactory,WriteHandle};
 
 // #[derive(Debug)]
 #[derive(Debug,Clone)]
@@ -44,6 +44,9 @@ pub struct Explorer {
     pub opening_book:  Option<Arc<OpeningBook>>,
 
     pub blocked_moves: HashSet<Move>,
+
+    pub tt_rf:         TTReadFactory,
+    pub tt_w:          TTWrite,
 
     // pub move_history:  Vec<(Zobrist, Move)>,
     // pub pos_history:   HashMap<Zobrist,u8>,
@@ -79,6 +82,13 @@ impl Explorer {
                should_stop:   Arc<AtomicBool>,
                settings:      TimeSettings,
     ) -> Self {
+
+        let (tt_r, tt_w) = evmap::Options::default()
+            .with_hasher(FxBuildHasher::default())
+            .construct();
+        let tt_rf = tt_w.factory();
+        let tt_w = Arc::new(Mutex::new(tt_w));
+
         Self {
             side,
             game,
@@ -92,6 +102,9 @@ impl Explorer {
             opening_book:   None,
 
             blocked_moves:  HashSet::default(),
+
+            tt_rf,
+            tt_w,
 
             // move_history:   vec![],
             // pos_history:    HashMap::default(),
@@ -379,11 +392,13 @@ impl Explorer {
         let out: Arc<RwLock<(Depth,ABResults,SearchStats)>> =
             Arc::new(RwLock::new((0, ABResults::ABNone, SearchStats::default())));
 
-        let (tt_r, tt_w) = evmap::Options::default()
-            .with_hasher(FxBuildHasher::default())
-            .construct();
+        // let (tt_r, tt_w) = evmap::Options::default()
+        //     .with_hasher(FxBuildHasher::default())
+        //     .construct();
+        // let tt_w = Arc::new(Mutex::new(tt_w));
 
-        let tt_w = Arc::new(Mutex::new(tt_w));
+        let tt_w = self.tt_w.clone();
+        let tt_r = self.tt_rf.handle();
 
         let sleep_time = Duration::from_millis(1);
 

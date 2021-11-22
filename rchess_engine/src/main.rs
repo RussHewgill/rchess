@@ -53,8 +53,8 @@ use std::time::{Instant,Duration};
 
 #[allow(unreachable_code)]
 fn main() {
-    // main9();
-    main_nnue();
+    main9();
+    // main_nnue();
     // main_nn();
     // main_mnist();
     // main_syzygy();
@@ -668,7 +668,7 @@ fn main_nnue() {
     let n_fens = 100;
 
     let t0 = Instant::now();
-    TrainingData::generate_training_data(&ts, &ob, 16, n_fens, path).unwrap();
+    TrainingData::generate_training_data(&ts, &ob, 2, n_fens, path).unwrap();
     println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
     return;
@@ -1288,7 +1288,9 @@ fn main9() {
     let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
     // let fen = "r1b2rk1/1pq1bppp/p2ppn2/2n3B1/3NP3/2N2Q2/PPP1BPPP/R4RK1 w - - 8 12"; // ??
-    let fen = "8/1p1b1pq1/3Npk2/2Q1p3/P4rp1/1PP5/K6p/4R3 w - - 2 45"; // Q cap c5e5
+    // let fen = "8/1p1b1pq1/3Npk2/2Q1p3/P4rp1/1PP5/K6p/4R3 w - - 2 45"; // Q cap c5e5
+
+    let fen = "8/8/P6k/5K2/3b1P2/8/6N1/8 b - -";
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -1440,14 +1442,15 @@ fn main9() {
     println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
              stats0.max_depth, t2);
 
-    let mut scores = scores;
-    scores.sort_by_key(|x| x.score);
-    scores.reverse();
+    // let mut scores = scores;
+    // scores.sort_by_key(|x| x.score);
+    // scores.reverse();
+    // for s in scores.iter() {
+    //     let mv = s.moves[0];
+    //     eprintln!("{:?} = {:?}", mv, s.score);
+    // }
 
-    for s in scores.iter() {
-        let mv = s.moves[0];
-        eprintln!("{:?} = {:?}", mv, s.score);
-    }
+    eprintln!("tt_r.len() = {:?}", tt_r.len());
 
     return;
 
