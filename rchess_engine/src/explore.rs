@@ -634,6 +634,7 @@ impl Explorer {
                         // .stack_size(1 * 512 * 1024) // 0.5 MiB
                         // .stack_size(64 * 1024) // 64 KiB
                         .spawn(move |_| {
+                            coz::thread_init();
                             self._lazy_smp_single_negamax(
                                 // self._lazy_smp_single_aspiration(
                                 ts, cur_depth, tx2, tt_r2, tt_w2.clone());

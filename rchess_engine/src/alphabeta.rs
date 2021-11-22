@@ -736,6 +736,7 @@ impl Explorer {
                 //     }
                 // }
 
+                coz::progress!();
                 if cfg.root {
                     ABList(res.clone(), list)
                 } else {

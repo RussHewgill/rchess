@@ -430,7 +430,7 @@ impl Game {
                 // not in check
                 let x0 = x & self.state.checkers.is_empty();
 
-                x0 & self.state.checkers.is_empty()
+                x0 && self.state.checkers.is_empty()
                     || (x && m.sq_to() == self.state.checkers.bitscan().into())
                     || (x && (BitBoard::single(m.sq_to())
                               & self.state.check_block_mask).is_not_empty())
@@ -917,7 +917,8 @@ impl Game {
 impl Game {
 
     pub fn search_pawns(&self, ts: &Tables, col: Color, only_caps: bool) -> Vec<Move> {
-        self._search_pawns(&ts, None, col, only_caps)
+        // self._search_pawns(&ts, None, col, only_caps)
+        self._search_pawns2(&ts, None, col, only_caps)
     }
 
     pub fn _search_pawns2(
