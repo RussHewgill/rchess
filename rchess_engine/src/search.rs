@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use crate::types::*;
 use crate::tables::*;
 
+use itertools::Itertools;
 use rayon::prelude::*;
 
 const PERFTLENTH: usize = 20;
@@ -242,7 +243,7 @@ impl Game {
 
     }
 
-    pub fn perft(&mut self, ts: &Tables, depth: u64) -> (u64,Vec<(Move,u64)>) {
+    pub fn perft(&self, ts: &Tables, depth: u64) -> (u64,Vec<(Move,u64)>) {
         // let mut nodes = 0;
         // let mut captures = 0;
 
@@ -256,27 +257,27 @@ impl Game {
         // let mut k = 0;
         // let mut out = vec![];
 
-        // // let out = moves.into_iter().flat_map(|m| {
+        let out = moves.into_iter().flat_map(|m| {
         // let out = moves.into_par_iter().flat_map(|m| {
-        //     if let Ok(g2) = self.make_move_unchecked(&ts, m) {
-        //         let (ns,cs) = g2._perft(ts, depth - 1, false);
-        //         // match m {
-        //         //     Move::Capture { .. } => captures += 1,
-        //         //     _                    => {},
-        //         // }
-        //         // if root {
-        //         //     eprintln!("{:>2}: {:?}: ({}, {})", k, m, ns, cs);
-        //         // }
-        //         // captures += cs;
-        //         // nodes += ns;
-        //         // out.push((m, ns));
-        //         // k += 1;
-        //         Some((m,ns))
-        //     } else {
-        //         // panic!("move: {:?}\n{:?}", m, self);
-        //         None
-        //     }
-        // });
+            if let Ok(g2) = self.make_move_unchecked(&ts, m) {
+                let (ns,cs) = g2._perft(ts, depth - 1, false);
+                // match m {
+                //     Move::Capture { .. } => captures += 1,
+                //     _                    => {},
+                // }
+                // if root {
+                //     eprintln!("{:>2}: {:?}: ({}, {})", k, m, ns, cs);
+                // }
+                // captures += cs;
+                // nodes += ns;
+                // out.push((m, ns));
+                // k += 1;
+                Some((m,ns))
+            } else {
+                // panic!("move: {:?}\n{:?}", m, self);
+                None
+            }
+        });
 
         // let n = moves.len();
         // let moves: Vec<(Vec<Move>, Self)> =
@@ -291,13 +292,13 @@ impl Game {
         //     }).collect::<Vec<(Move,u64)>>()
         // });
 
-        let out = moves.into_iter().map(|mv| {
-            // self.make_move(ts, mv);
-            let mut g2 = self.make_move_unchecked(ts, mv).unwrap();
-            let (ns,cs) = g2._perft(ts, depth - 1, false);
-            // self.unmake_move(ts);
-            (mv,ns)
-        });
+        // let out = moves.into_iter().map(|mv| {
+        //     // self.make_move(ts, mv);
+        //     let mut g2 = self.make_move_unchecked(ts, mv).unwrap();
+        //     let (ns,cs) = g2._perft(ts, depth - 1, false);
+        //     // self.unmake_move(ts);
+        //     (mv,ns)
+        // });
 
         // let out: Vec<(Move,u64)> = out.flatten().collect();
         let out: Vec<(Move,u64)> = out.collect();
@@ -306,7 +307,7 @@ impl Game {
         (nodes, out)
     }
 
-    pub fn _perft(&mut self, ts: &Tables, depth: u64, root: bool) -> (u64,u64) {
+    pub fn _perft(&self, ts: &Tables, depth: u64, root: bool) -> (u64,u64) {
         let mut nodes = 0;
         let mut captures = 0;
 
@@ -917,6 +918,82 @@ impl Game {
 
     pub fn search_pawns(&self, ts: &Tables, col: Color, only_caps: bool) -> Vec<Move> {
         self._search_pawns(&ts, None, col, only_caps)
+    }
+
+    pub fn _search_pawns2(
+        &self,
+        ts:          &Tables,
+        single:      Option<Coord>,
+        side:        Color,
+        only_caps:   bool
+    ) -> Vec<Move> {
+        let occ = self.all_occupied();
+
+        let ps = match single {
+            Some(c0) => BitBoard::single(c0),
+            None     => self.get(Pawn, side),
+        };
+        let ps = ps & !(if side == White { BitBoard::mask_rank(6) } else { BitBoard::mask_rank(1) });
+
+        let (dir,dw,de) = match side {
+            White => (N,NW,NE),
+            Black => (S,SW,SE),
+        };
+
+        let mut out = vec![];
+
+        if !only_caps {
+            let pushes = ps.shift_dir(dir);
+            let pushes = pushes & !(occ);
+
+            let doubles = ps & BitBoard::mask_rank(if side == White { 1 } else { 6 });
+            let doubles = doubles.shift_mult(dir, 2);
+            let doubles = doubles & !(occ) & (!(occ)).shift_dir(dir);
+
+            for t in pushes.into_iter() {
+                let t = t.into();
+                if let Some(f) = (!dir).shift_coord(t) {
+                    let m = Move::Quiet { from: f, to: t, pc: Pawn };
+                    if self.move_is_legal(&ts, m) { out.push(m); }
+                }
+            };
+
+            for t in doubles.into_iter() {
+                let f = BitBoard::single(t.into()).shift_mult(!dir, 2);
+                let m = Move::PawnDouble { from: f.bitscan().into(), to: t.into() };
+                if self.move_is_legal(&ts, m) { out.push(m); }
+            }
+        }
+
+        for p0 in ps.into_iter() {
+            let f  = BitBoard::index_bit(p0);
+            let bb = BitBoard::empty().flip(f);
+            let mut cs = (bb.shift_dir(dw) & self.get_color(!side))
+                | (bb.shift_dir(de) & self.get_color(!side));
+            while cs.0 != 0 {
+                let t = cs.bitscan_reset_mut();
+                let (_,victim) = self.get_at(t.into()).unwrap();
+                let m = Move::Capture { from: f, to: t.into(), pc: Pawn, victim };
+                if self.move_is_legal(&ts, m) { out.push(m); }
+            }
+        }
+
+        if let Some(ep) = self.state.en_passant {
+            let attacks = ts.get_pawn(ep).get_capture(!side);
+            let attacks = *attacks & ps;
+            attacks.into_iter().for_each(|sq| {
+                let capture = if side == White { S.shift_coord(ep) } else { N.shift_coord(ep) };
+                let capture = capture
+                    // .expect(&format!("en passant bug? ep: {:?}, capture: {:?}", ep, capture));
+                    .unwrap_or_else(|| panic!("en passant bug? ep: {:?}, capture: {:?}", ep, capture));
+                // let (_,victim) = self.get_at(capture).unwrap();
+                // out.push(Move::EnPassant { from: sq.into(), to: ep, capture, victim });
+                let m = Move::EnPassant { from: sq.into(), to: ep, capture };
+                if self.move_is_legal(&ts, m) { out.push(m); }
+            });
+        }
+
+        out
     }
 
     pub fn _search_pawns(&self, ts: &Tables, single: Option<Coord>, col: Color, only_caps: bool)
