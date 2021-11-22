@@ -13,14 +13,14 @@ use std::hash::{Hash,Hasher};
 // use arrayvec::ArrayVec;
 use rustc_hash::FxHashMap;
 
-pub use crate::stack_game::*;
+// pub use crate::stack_game::*;
 
 pub type Phase = u8;
 
 // #[derive(Default,PartialEq,Clone)]
 // #[derive(Default,PartialEq,Clone,Copy)]
 #[derive(PartialEq,Clone)]
-pub struct Game3 {
+pub struct Game {
     // pub move_history: Vec<Move>,
     pub state:        GameState,
     pub zobrist:      Zobrist,
@@ -34,7 +34,7 @@ pub struct Game3 {
     pub halfmove:    u8,
 }
 
-impl Default for Game3 {
+impl Default for Game {
     fn default() -> Self {
 
         // let history = HashMap::with_capacity_and_hasher(
@@ -353,430 +353,438 @@ impl GameState {
 
 }
 
-// /// make move
-// impl Game {
-
-//     pub fn swap_side_to_move(&mut self, ts: &Tables) {
-//         self.state.side_to_move = !self.state.side_to_move;
-//         self.zobrist = self.zobrist.update_side_to_move(&ts);
-//     }
-
-//     pub fn _make_move_unchecked(&self, ts: &Tables, mv: &Move) -> Option<Game> {
-//         match mv {
-//             &Move::Quiet      { from, to, pc } => {
-//                 let (side,pc) = self.get_at(from)?;
-//                 let mut out = self.clone();
-//                 out.move_piece_mut_unchecked(&ts, from, to, pc, side);
-//                 Some(out)
-//             },
-//             &Move::PawnDouble { from, to } => {
-//                 let (side,pc) = self.get_at(from)?;
-//                 let mut out = self.clone();
-//                 out.move_piece_mut_unchecked(&ts, from, to, pc, side);
-
-//                 let ep = ts.between_exclusive(from, to).bitscan().into();
-//                 if let Some(ep) = out.state.en_passant {
-//                     // remove previous EP
-//                     out.zobrist = out.zobrist.update_ep(&ts, ep);
-//                 }
-//                 out.state.en_passant = Some(ep);
-//                 // add new EP
-//                 out.zobrist = out.zobrist.update_ep(&ts, ep);
-
-//                 Some(out)
-//             },
-//             // &Move::Capture    { from, to } => {
-//             &Move::Capture    { from, to, pc, victim } => {
-//                 let col = self.state.side_to_move;
-//                 // let (c0,_) = self.get_at(from)?;
-//                 // let (c1,_) = self.get_at(to)?;
-//                 let mut out = self.clone();
-//                 // out.delete_piece_mut_unchecked(&ts, from, pc, col);
-//                 // out.insert_piece_mut_unchecked(&ts, to, pc, col);
-//                 out.delete_piece_mut_unchecked(&ts, to, victim, !col);
-//                 out.move_piece_mut_unchecked(&ts, from, to, pc, col);
-//                 Some(out)
-//             },
-//             &Move::EnPassant  { from, to, capture } => {
-//                 let col = self.state.side_to_move;
-//                 // let (c0,pc0) = self.get_at(from)?;
-//                 // let to1 = if col == White { S.shift_coord(to)? } else { N.shift_coord(to)? };
-//                 // let (c1,_) = self.get_at(capture)?;
-//                 let mut out = self.clone();
-//                 // out.delete_piece_mut_unchecked(&ts, from, Pawn, col);
-//                 // out.insert_piece_mut_unchecked(&ts, to, Pawn, col);
-//                 out.delete_piece_mut_unchecked(&ts, capture, Pawn, !col);
-//                 out.move_piece_mut_unchecked(&ts, from, to, Pawn, col);
-//                 Some(out)
-//             },
-//             &Move::Promotion  { from, to, new_piece } => {
-//                 let col = self.state.side_to_move;
-//                 // let (c0,pc0) = self.get_at(from)?;
-//                 let mut out = self.clone();
-//                 out.delete_piece_mut_unchecked(&ts, from, Pawn, col);
-//                 out.insert_piece_mut_unchecked(&ts, to, new_piece, col);
-//                 Some(out)
-//             },
-//             &Move::PromotionCapture  { from, to, new_piece, victim } => {
-//                 let col = self.state.side_to_move;
-//                 // let (c0,pc0) = self.get_at(from)?;
-//                 // let (c1,pc1) = self.get_at(to)?;
-//                 let mut out = self.clone();
-//                 out.delete_piece_mut_unchecked(&ts, from, Pawn, col);
-//                 out.delete_piece_mut_unchecked(&ts, to, victim, !col);
-//                 out.insert_piece_mut_unchecked(&ts, to, new_piece, col);
-//                 Some(out)
-//             },
-//             &Move::Castle     { from, to, rook_from, rook_to } => {
-//                 let mut out = self.clone();
-//                 let col = self.state.side_to_move;
-//                 out.delete_piece_mut_unchecked(&ts, from, King, col);
-//                 out.delete_piece_mut_unchecked(&ts, rook_from, Rook, col);
-//                 out.insert_pieces_mut_unchecked(&ts, &[(to,King,col),(rook_to,Rook,col)], true);
-//                 Some(out)
-//             },
-//             &Move::NullMove => {
-//                 let mut out = self.clone();
-//                 Some(out)
-//             }
-//         }
-//     }
-
-//     #[must_use]
-//     // pub fn make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Self> {
-//     pub fn make_move_unchecked(&self, ts: &Tables, mv: Move) -> GameResult<Game> {
-
-//         if mv != Move::NullMove {
-//             let (side,_) = self.get_at(mv.sq_from()).unwrap();
-//             if self.state.side_to_move != side {
-//                 panic!("non legal move: {:?}", self);
-//             }
-//         }
-
-//         match self._make_move_unchecked(&ts, &mv) {
-//             Some(mut next) => {
-//                 match mv {
-//                     Move::PawnDouble { .. }                   => {
-//                     },
-//                     _                                         => {
-//                         if let Some(ep) = next.state.en_passant {
-//                             next.zobrist = next.zobrist.update_ep(&ts, ep);
-//                         }
-//                         next.state.en_passant = None;
-//                     },
-//                 }
-
-//                 if let Move::EnPassant { capture, .. } = mv {
-//                     next.state.last_capture = Some(capture);
-//                 } else if mv.filter_all_captures() {
-//                     next.state.last_capture = Some(mv.sq_to());
-//                 } else {
-//                     next.state.last_capture = None;
-//                 }
-
-//                 next.state.side_to_move = !next.state.side_to_move;
-//                 next.zobrist = next.zobrist.update_side_to_move(&ts);
-//                 // x.move_history.push(*m);
-//                 next.reset_gameinfo_mut();
-
-//                 self.update_castles(&ts, mv, &mut next);
-
-//                 next.last_move = Some(mv);
-
-//                 // // XXX: current or prev Zobrist ??
-//                 // next.history.push((next.zobrist, mv));
-
-//                 // next.history.push((next.zobrist, mv));
-//                 if let Some(mut k) = next.history.get_mut(&next.zobrist) {
-//                     *k += 1;
-//                     // if *k >= 2 {
-//                     //     return Err(GameEnd::DrawRepetition);
-//                     // }
-//                 } else {
-//                     next.history.insert(next.zobrist, 1);
-//                 }
-
-//                 if mv.is_zeroing() {
-//                     next.halfmove = 0;
-//                 } else {
-//                     next.halfmove += 1;
-//                 }
-
-//                 match next.recalc_gameinfo_mut(&ts) {
-//                     // Err(win) => panic!("wot"),
-//                     Err(win) => Err(win),
-//                     Ok(_)    => {
-//                         // if self._check_history() {
-//                         //     Err(GameEnd::DrawRepetition)
-//                         // } else {
-//                         // }
-//                         Ok(next)
-//                     },
-//                 }
-//             },
-//             _ => {
-//                 return Err(GameEnd::Error);
-//             },
-//         }
-
-//         // if let Some(mut x) = self._make_move_unchecked(&ts, &m) {
-//         // } else {
-//         // }
-
-//     }
-
-//     // /// [m-4, m-3, m-2, m-1, m]
-//     // /// draw when:
-//     // ///     m == m-2
-//     // fn _check_history(&self) -> bool {
-
-//     //     // // self.history
-//     //     // let m0 = self.history.get_at(0);
-//     //     // let m2 = self.history.get_at(2);
-
-//     //     // unimplemented!()
-//     //     false
-//     // }
-
-// }
-
-// /// update info
-// impl Game {
-
-//     pub fn init_gameinfo_mut(&mut self, ts: &Tables) -> GameResult<()> {
-//         self.state.material = self.count_material();
-//         Ok(())
-//     }
-
-//     // pub fn count_material(&self) -> [[u8; 5]; 2] {
-//     pub fn count_material(&self) -> Material {
-//         const COLS: [Color; 2] = [White,Black];
-//         // const PCS:  [Piece; 5] = [Pawn,Knight,Bishop,Rook,Queen,];
-
-//         // let mut out = [[0; 5]; 2];
-//         let mut out = [[0; 6]; 2];
-//         for side in COLS {
-//             for pc in Piece::iter_pieces() {
-//                 out[side][pc.index()] = self.get(pc, side).popcount() as u8;
-//             }
-//         }
-//         Material { buf: out }
-//         // out
-//     }
-
-//     pub fn recalc_gameinfo_mut(&mut self, ts: &Tables) -> GameResult<()> {
-
-//         let king = self.get(King, self.state.side_to_move);
-//         if king.is_empty() {
-//             return Err(GameEnd::Checkmate{ win: !self.state.side_to_move});
-//         }
-
-//         self.state.checkers      = BitBoard::empty();
-//         self.state.king_blocks_w = BitBoard::empty();
-//         self.state.king_blocks_b = BitBoard::empty();
-//         // self.state.pinners       = None;
-
-//         self.update_pins_mut(&ts);
-//         self.update_checkers_mut(&ts);
-//         self.update_check_block_mut(&ts);
-//         // self.update_occupied_mut();
-
-//         self.state.phase = self.game_phase();
-
-//         // if self.history.len() > 5 {
-//         //     self.history.pop_front();
-//         // }
-//         // self.history.push_back(self.zobrist);
-
-//         Ok(())
-//     }
-
-//     fn reset_gameinfo_mut(&mut self) {
-//         self.state.checkers      = BitBoard::empty();
-//         self.state.king_blocks_w = BitBoard::empty();
-//         self.state.king_blocks_b = BitBoard::empty();
-//         // self.state.pinners       = None;
-//     }
-
-//     fn update_pins_mut(&mut self, ts: &Tables) {
-//         // let pw = self.find_pins_absolute(&ts, White);
-//         // let pb = self.find_pins_absolute(&ts, Black);
-//         // self.state.pinned = Some((pw,pb));
-//         let c0 = self.get(King, White);
-//         if c0.is_empty() {
-//             panic!("No King? g = {:?}", self);
-//         }
-//         let c0 = c0.bitscan().into();
-//         let (bs_w, ps_b) = self.find_slider_blockers(&ts, c0, White);
-
-//         let c1 = self.get(King, Black);
-//         if c1.is_empty() {
-//             panic!("No King? g = {:?}", self);
-//         }
-//         let c1 = c1.bitscan().into();
-//         let (bs_b, ps_w) = self.find_slider_blockers(&ts, c1, Black);
-
-//         // let bs_w = bs_w & self.get_color(White);
-//         // let bs_b = bs_b & self.get_color(Black);
-
-//         self.state.king_blocks_w = bs_w;
-//         self.state.king_blocks_b = bs_b;
-
-//         // self.state.pinners = Some(ps_b | ps_w);
-
-//     }
-
-//     fn update_checkers_mut(&mut self, ts: &Tables) {
-//         // let col = self.state.side_to_move;
-//         // let p0: Coord = self.get(King, col).bitscan().into();
-
-//         // let moves = self.find_attackers_to(&ts, p0);
-//         // let moves = moves & self.get_color(!col);
-//         // eprintln!("moves = {:?}", moves);
-//         let moves = self.find_checkers(&ts, self.state.side_to_move);
-
-//         // // XXX: trim this unless needed?
-//         // let moves = moves | self.find_checkers(&ts, !self.state.side_to_move);
-
-//         self.state.checkers = moves;
-
-//         // unimplemented!()
-//     }
-
-//     fn update_check_block_mut(&mut self, ts: &Tables) {
-//         let c0 = self.state.checkers;
-//         if c0.is_empty() | c0.more_than_one() {
-//             self.state.check_block_mask = BitBoard::empty();
-//             return;
-//         }
-
-//         let king = self.get(King, self.state.side_to_move).bitscan();
-//         let b = ts.between_exclusive(king, c0.bitscan());
-
-//         self.state.check_block_mask = b;
-//     }
-
-//     fn update_castles(&self, ts: &Tables, m: Move, x: &mut Self) {
-//         match m {
-//             Move::Quiet { from, .. } | Move::Capture { from, .. } => {
-//                 match (self.state.side_to_move, self.get_at(from)) {
-//                     (col, Some((_,King))) => {
-//                         x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
-//                         x.state.castling.set_king(col,false);
-//                         x.state.castling.set_queen(col,false);
-//                         x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
-//                     }
-//                     (White, Some((_,Rook))) => {
-//                         x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
-//                         if from == Coord(7,0) { x.state.castling.set_king(White,false); };
-//                         if from == Coord(0,0) { x.state.castling.set_queen(White,false); };
-//                         x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
-//                     },
-//                     (Black, Some((_,Rook))) => {
-//                         x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
-//                         if from == Coord(7,7) { x.state.castling.set_king(Black,false); };
-//                         if from == Coord(0,7) { x.state.castling.set_queen(Black,false); };
-//                         x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
-//                     },
-//                     _              => {},
-//                 }
-//             },
-//             Move::Castle { .. }                       => {
-//                 x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
-//                 let col = self.state.side_to_move;
-//                 x.state.castling.set_king(col,false);
-//                 x.state.castling.set_queen(col,false);
-//                 // match self.state.side_to_move {
-//                 //     White => {
-//                 //         x.state.castling.set_king(col,false);
-//                 //         x.state.castling.set_queen(col,false);
-//                 //     },
-//                 //     Black => {
-//                 //         // x.state.castling.black_king  = false;
-//                 //         // x.state.castling.black_queen = false;
-//                 //     },
-//                 // }
-//                 x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
-//             },
-//             _ => {},
-//         }
-
-//     }
-
-// }
-
-// /// Insertion and Deletion of Pieces
-// impl Game {
-
-//     fn move_piece_mut_unchecked<T: Into<Coord>>(
-//         &mut self, ts: &Tables, from: T, to: T, pc: Piece, side: Color) {
-//         self._delete_piece_mut_unchecked(&ts, from, pc, side, false);
-//         self._insert_piece_mut_unchecked(&ts, to, pc, side, false);
-//     }
-
-//     fn delete_piece_mut_unchecked<T: Into<Coord>>(
-//         &mut self, ts: &Tables, at: T, pc: Piece, side: Color) {
-//         self._delete_piece_mut_unchecked(&ts, at, pc, side, true);
-//     }
-
-//     fn _delete_piece_mut_unchecked<T: Into<Coord>>(
-//         &mut self, ts: &Tables, at: T, pc: Piece, side: Color, mat: bool) {
-//         let at = at.into();
-
-//         let mut bc = self.get_color_mut(side);
-//         *bc = bc.set_zero(at);
-
-//         let mut bp = self.get_piece_mut(pc);
-//         *bp = bp.set_zero(at);
-
-//         if mat && pc != King {
-//             assert!(self.state.material.buf[side][pc.index()] > 0);
-//             self.state.material.buf[side][pc.index()] -= 1;
-//         }
-
-//         self.zobrist = self.zobrist.update_piece(&ts, pc, side, at.into());
-//     }
-
-//     pub fn insert_piece_mut_unchecked<T: Into<Coord>>(
-//         &mut self, ts: &Tables, at: T, pc: Piece, side: Color) {
-//         self._insert_piece_mut_unchecked(&ts, at, pc, side, true);
-//     }
-
-//     pub fn _insert_piece_mut_unchecked<T: Into<Coord>>(
-//         &mut self, ts: &Tables, at: T, pc: Piece, side: Color, mat: bool) {
-//         let at = at.into();
-
-//         let mut bc = self.get_color_mut(side);
-//         *bc = bc.set_one(at);
-
-//         let mut bp = self.get_piece_mut(pc);
-//         *bp = bp.set_one(at);
-
-//         if mat && pc != King {
-//             self.state.material.buf[side][pc.index()] += 1;
-//         }
-
-//         self.zobrist = self.zobrist.update_piece(&ts, pc, side, at.into());
-//     }
-
-//     pub fn insert_pieces_mut_unchecked<T: Into<Coord> + Clone + Copy>(
-//         &mut self, ts: &Tables, ps: &[(T, Piece, Color)], mat: bool) {
-//         for (at,pc,side) in ps.iter() {
-//             self._insert_piece_mut_unchecked(&ts, *at, *pc, *side, mat);
-//         }
-//     }
-
-//     pub fn insert_piece_mut_unchecked_nohash<T: Into<Coord>>(&mut self, at: T, p: Piece, c: Color) {
-//         let at = at.into();
-
-//         let mut bc = self.get_color_mut(c);
-//         *bc = bc.set_one(at);
-
-//         let mut bp = self.get_piece_mut(p);
-//         *bp = bp.set_one(at);
-//     }
-
-// }
+/// make move
+impl Game {
+
+    // pub fn make_move(&mut self, ts: &Tables, mv: Move) {
+    //     unimplemented!()
+    // }
+
+    // pub fn unmake_move(&mut self, ts: &Tables) {
+    //     unimplemented!()
+    // }
+
+    pub fn swap_side_to_move(&mut self, ts: &Tables) {
+        self.state.side_to_move = !self.state.side_to_move;
+        self.zobrist = self.zobrist.update_side_to_move(&ts);
+    }
+
+    pub fn _make_move_unchecked(&self, ts: &Tables, mv: &Move) -> Option<Game> {
+        match mv {
+            &Move::Quiet      { from, to, pc } => {
+                let (side,pc) = self.get_at(from)?;
+                let mut out = self.clone();
+                out.move_piece_mut_unchecked(&ts, from, to, pc, side);
+                Some(out)
+            },
+            &Move::PawnDouble { from, to } => {
+                let (side,pc) = self.get_at(from)?;
+                let mut out = self.clone();
+                out.move_piece_mut_unchecked(&ts, from, to, pc, side);
+
+                let ep = ts.between_exclusive(from, to).bitscan().into();
+                if let Some(ep) = out.state.en_passant {
+                    // remove previous EP
+                    out.zobrist = out.zobrist.update_ep(&ts, ep);
+                }
+                out.state.en_passant = Some(ep);
+                // add new EP
+                out.zobrist = out.zobrist.update_ep(&ts, ep);
+
+                Some(out)
+            },
+            // &Move::Capture    { from, to } => {
+            &Move::Capture    { from, to, pc, victim } => {
+                let col = self.state.side_to_move;
+                // let (c0,_) = self.get_at(from)?;
+                // let (c1,_) = self.get_at(to)?;
+                let mut out = self.clone();
+                // out.delete_piece_mut_unchecked(&ts, from, pc, col);
+                // out.insert_piece_mut_unchecked(&ts, to, pc, col);
+                out.delete_piece_mut_unchecked(&ts, to, victim, !col);
+                out.move_piece_mut_unchecked(&ts, from, to, pc, col);
+                Some(out)
+            },
+            &Move::EnPassant  { from, to, capture } => {
+                let col = self.state.side_to_move;
+                // let (c0,pc0) = self.get_at(from)?;
+                // let to1 = if col == White { S.shift_coord(to)? } else { N.shift_coord(to)? };
+                // let (c1,_) = self.get_at(capture)?;
+                let mut out = self.clone();
+                // out.delete_piece_mut_unchecked(&ts, from, Pawn, col);
+                // out.insert_piece_mut_unchecked(&ts, to, Pawn, col);
+                out.delete_piece_mut_unchecked(&ts, capture, Pawn, !col);
+                out.move_piece_mut_unchecked(&ts, from, to, Pawn, col);
+                Some(out)
+            },
+            &Move::Promotion  { from, to, new_piece } => {
+                let col = self.state.side_to_move;
+                // let (c0,pc0) = self.get_at(from)?;
+                let mut out = self.clone();
+                out.delete_piece_mut_unchecked(&ts, from, Pawn, col);
+                out.insert_piece_mut_unchecked(&ts, to, new_piece, col);
+                Some(out)
+            },
+            &Move::PromotionCapture  { from, to, new_piece, victim } => {
+                let col = self.state.side_to_move;
+                // let (c0,pc0) = self.get_at(from)?;
+                // let (c1,pc1) = self.get_at(to)?;
+                let mut out = self.clone();
+                out.delete_piece_mut_unchecked(&ts, from, Pawn, col);
+                out.delete_piece_mut_unchecked(&ts, to, victim, !col);
+                out.insert_piece_mut_unchecked(&ts, to, new_piece, col);
+                Some(out)
+            },
+            &Move::Castle     { from, to, rook_from, rook_to } => {
+                let mut out = self.clone();
+                let col = self.state.side_to_move;
+                out.delete_piece_mut_unchecked(&ts, from, King, col);
+                out.delete_piece_mut_unchecked(&ts, rook_from, Rook, col);
+                out.insert_pieces_mut_unchecked(&ts, &[(to,King,col),(rook_to,Rook,col)], true);
+                Some(out)
+            },
+            &Move::NullMove => {
+                let mut out = self.clone();
+                Some(out)
+            }
+        }
+    }
+
+    #[must_use]
+    // pub fn make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Self> {
+    pub fn make_move_unchecked(&self, ts: &Tables, mv: Move) -> GameResult<Game> {
+
+        if mv != Move::NullMove {
+            let (side,_) = self.get_at(mv.sq_from()).unwrap();
+            if self.state.side_to_move != side {
+                panic!("non legal move: {:?}", self);
+            }
+        }
+
+        match self._make_move_unchecked(&ts, &mv) {
+            Some(mut next) => {
+                match mv {
+                    Move::PawnDouble { .. }                   => {
+                    },
+                    _                                         => {
+                        if let Some(ep) = next.state.en_passant {
+                            next.zobrist = next.zobrist.update_ep(&ts, ep);
+                        }
+                        next.state.en_passant = None;
+                    },
+                }
+
+                if let Move::EnPassant { capture, .. } = mv {
+                    next.state.last_capture = Some(capture);
+                } else if mv.filter_all_captures() {
+                    next.state.last_capture = Some(mv.sq_to());
+                } else {
+                    next.state.last_capture = None;
+                }
+
+                next.state.side_to_move = !next.state.side_to_move;
+                next.zobrist = next.zobrist.update_side_to_move(&ts);
+                // x.move_history.push(*m);
+                next.reset_gameinfo_mut();
+
+                self.update_castles(&ts, mv, &mut next);
+
+                next.last_move = Some(mv);
+
+                // // XXX: current or prev Zobrist ??
+                // next.history.push((next.zobrist, mv));
+
+                // next.history.push((next.zobrist, mv));
+                if let Some(mut k) = next.history.get_mut(&next.zobrist) {
+                    *k += 1;
+                    // if *k >= 2 {
+                    //     return Err(GameEnd::DrawRepetition);
+                    // }
+                } else {
+                    next.history.insert(next.zobrist, 1);
+                }
+
+                if mv.is_zeroing() {
+                    next.halfmove = 0;
+                } else {
+                    next.halfmove += 1;
+                }
+
+                match next.recalc_gameinfo_mut(&ts) {
+                    // Err(win) => panic!("wot"),
+                    Err(win) => Err(win),
+                    Ok(_)    => {
+                        // if self._check_history() {
+                        //     Err(GameEnd::DrawRepetition)
+                        // } else {
+                        // }
+                        Ok(next)
+                    },
+                }
+            },
+            _ => {
+                return Err(GameEnd::Error);
+            },
+        }
+
+        // if let Some(mut x) = self._make_move_unchecked(&ts, &m) {
+        // } else {
+        // }
+
+    }
+
+    // /// [m-4, m-3, m-2, m-1, m]
+    // /// draw when:
+    // ///     m == m-2
+    // fn _check_history(&self) -> bool {
+
+    //     // // self.history
+    //     // let m0 = self.history.get_at(0);
+    //     // let m2 = self.history.get_at(2);
+
+    //     // unimplemented!()
+    //     false
+    // }
+
+}
+
+/// update info
+impl Game {
+
+    pub fn init_gameinfo_mut(&mut self, ts: &Tables) -> GameResult<()> {
+        self.state.material = self.count_material();
+        Ok(())
+    }
+
+    // pub fn count_material(&self) -> [[u8; 5]; 2] {
+    pub fn count_material(&self) -> Material {
+        const COLS: [Color; 2] = [White,Black];
+        // const PCS:  [Piece; 5] = [Pawn,Knight,Bishop,Rook,Queen,];
+
+        // let mut out = [[0; 5]; 2];
+        let mut out = [[0; 6]; 2];
+        for side in COLS {
+            for pc in Piece::iter_pieces() {
+                out[side][pc.index()] = self.get(pc, side).popcount() as u8;
+            }
+        }
+        Material { buf: out }
+        // out
+    }
+
+    pub fn recalc_gameinfo_mut(&mut self, ts: &Tables) -> GameResult<()> {
+
+        let king = self.get(King, self.state.side_to_move);
+        if king.is_empty() {
+            return Err(GameEnd::Checkmate{ win: !self.state.side_to_move});
+        }
+
+        self.state.checkers      = BitBoard::empty();
+        self.state.king_blocks_w = BitBoard::empty();
+        self.state.king_blocks_b = BitBoard::empty();
+        // self.state.pinners       = None;
+
+        self.update_pins_mut(&ts);
+        self.update_checkers_mut(&ts);
+        self.update_check_block_mut(&ts);
+        // self.update_occupied_mut();
+
+        self.state.phase = self.game_phase();
+
+        // if self.history.len() > 5 {
+        //     self.history.pop_front();
+        // }
+        // self.history.push_back(self.zobrist);
+
+        Ok(())
+    }
+
+    fn reset_gameinfo_mut(&mut self) {
+        self.state.checkers      = BitBoard::empty();
+        self.state.king_blocks_w = BitBoard::empty();
+        self.state.king_blocks_b = BitBoard::empty();
+        // self.state.pinners       = None;
+    }
+
+    fn update_pins_mut(&mut self, ts: &Tables) {
+        // let pw = self.find_pins_absolute(&ts, White);
+        // let pb = self.find_pins_absolute(&ts, Black);
+        // self.state.pinned = Some((pw,pb));
+        let c0 = self.get(King, White);
+        if c0.is_empty() {
+            panic!("No King? g = {:?}", self);
+        }
+        let c0 = c0.bitscan().into();
+        let (bs_w, ps_b) = self.find_slider_blockers(&ts, c0, White);
+
+        let c1 = self.get(King, Black);
+        if c1.is_empty() {
+            panic!("No King? g = {:?}", self);
+        }
+        let c1 = c1.bitscan().into();
+        let (bs_b, ps_w) = self.find_slider_blockers(&ts, c1, Black);
+
+        // let bs_w = bs_w & self.get_color(White);
+        // let bs_b = bs_b & self.get_color(Black);
+
+        self.state.king_blocks_w = bs_w;
+        self.state.king_blocks_b = bs_b;
+
+        // self.state.pinners = Some(ps_b | ps_w);
+
+    }
+
+    fn update_checkers_mut(&mut self, ts: &Tables) {
+        // let col = self.state.side_to_move;
+        // let p0: Coord = self.get(King, col).bitscan().into();
+
+        // let moves = self.find_attackers_to(&ts, p0);
+        // let moves = moves & self.get_color(!col);
+        // eprintln!("moves = {:?}", moves);
+        let moves = self.find_checkers(&ts, self.state.side_to_move);
+
+        // // XXX: trim this unless needed?
+        // let moves = moves | self.find_checkers(&ts, !self.state.side_to_move);
+
+        self.state.checkers = moves;
+
+        // unimplemented!()
+    }
+
+    fn update_check_block_mut(&mut self, ts: &Tables) {
+        let c0 = self.state.checkers;
+        if c0.is_empty() | c0.more_than_one() {
+            self.state.check_block_mask = BitBoard::empty();
+            return;
+        }
+
+        let king = self.get(King, self.state.side_to_move).bitscan();
+        let b = ts.between_exclusive(king, c0.bitscan());
+
+        self.state.check_block_mask = b;
+    }
+
+    fn update_castles(&self, ts: &Tables, m: Move, x: &mut Self) {
+        match m {
+            Move::Quiet { from, .. } | Move::Capture { from, .. } => {
+                match (self.state.side_to_move, self.get_at(from)) {
+                    (col, Some((_,King))) => {
+                        x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
+                        x.state.castling.set_king(col,false);
+                        x.state.castling.set_queen(col,false);
+                        x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
+                    }
+                    (White, Some((_,Rook))) => {
+                        x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
+                        if from == Coord(7,0) { x.state.castling.set_king(White,false); };
+                        if from == Coord(0,0) { x.state.castling.set_queen(White,false); };
+                        x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
+                    },
+                    (Black, Some((_,Rook))) => {
+                        x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
+                        if from == Coord(7,7) { x.state.castling.set_king(Black,false); };
+                        if from == Coord(0,7) { x.state.castling.set_queen(Black,false); };
+                        x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
+                    },
+                    _              => {},
+                }
+            },
+            Move::Castle { .. }                       => {
+                x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
+                let col = self.state.side_to_move;
+                x.state.castling.set_king(col,false);
+                x.state.castling.set_queen(col,false);
+                // match self.state.side_to_move {
+                //     White => {
+                //         x.state.castling.set_king(col,false);
+                //         x.state.castling.set_queen(col,false);
+                //     },
+                //     Black => {
+                //         // x.state.castling.black_king  = false;
+                //         // x.state.castling.black_queen = false;
+                //     },
+                // }
+                x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
+            },
+            _ => {},
+        }
+
+    }
+
+}
+
+/// Insertion and Deletion of Pieces
+impl Game {
+
+    fn move_piece_mut_unchecked<T: Into<Coord>>(
+        &mut self, ts: &Tables, from: T, to: T, pc: Piece, side: Color) {
+        self._delete_piece_mut_unchecked(&ts, from, pc, side, false);
+        self._insert_piece_mut_unchecked(&ts, to, pc, side, false);
+    }
+
+    fn delete_piece_mut_unchecked<T: Into<Coord>>(
+        &mut self, ts: &Tables, at: T, pc: Piece, side: Color) {
+        self._delete_piece_mut_unchecked(&ts, at, pc, side, true);
+    }
+
+    fn _delete_piece_mut_unchecked<T: Into<Coord>>(
+        &mut self, ts: &Tables, at: T, pc: Piece, side: Color, mat: bool) {
+        let at = at.into();
+
+        let mut bc = self.get_color_mut(side);
+        *bc = bc.set_zero(at);
+
+        let mut bp = self.get_piece_mut(pc);
+        *bp = bp.set_zero(at);
+
+        if mat && pc != King {
+            assert!(self.state.material.buf[side][pc.index()] > 0);
+            self.state.material.buf[side][pc.index()] -= 1;
+        }
+
+        self.zobrist = self.zobrist.update_piece(&ts, pc, side, at.into());
+    }
+
+    pub fn insert_piece_mut_unchecked<T: Into<Coord>>(
+        &mut self, ts: &Tables, at: T, pc: Piece, side: Color) {
+        self._insert_piece_mut_unchecked(&ts, at, pc, side, true);
+    }
+
+    pub fn _insert_piece_mut_unchecked<T: Into<Coord>>(
+        &mut self, ts: &Tables, at: T, pc: Piece, side: Color, mat: bool) {
+        let at = at.into();
+
+        let mut bc = self.get_color_mut(side);
+        *bc = bc.set_one(at);
+
+        let mut bp = self.get_piece_mut(pc);
+        *bp = bp.set_one(at);
+
+        if mat && pc != King {
+            self.state.material.buf[side][pc.index()] += 1;
+        }
+
+        self.zobrist = self.zobrist.update_piece(&ts, pc, side, at.into());
+    }
+
+    pub fn insert_pieces_mut_unchecked<T: Into<Coord> + Clone + Copy>(
+        &mut self, ts: &Tables, ps: &[(T, Piece, Color)], mat: bool) {
+        for (at,pc,side) in ps.iter() {
+            self._insert_piece_mut_unchecked(&ts, *at, *pc, *side, mat);
+        }
+    }
+
+    pub fn insert_piece_mut_unchecked_nohash<T: Into<Coord>>(&mut self, at: T, p: Piece, c: Color) {
+        let at = at.into();
+
+        let mut bc = self.get_color_mut(c);
+        *bc = bc.set_one(at);
+
+        let mut bp = self.get_piece_mut(p);
+        *bp = bp.set_one(at);
+    }
+
+}
 
 /// Convert Move
 impl Game {

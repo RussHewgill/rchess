@@ -292,9 +292,10 @@ impl Game {
         // });
 
         let out = moves.into_iter().map(|mv| {
-            self.make_move(ts, mv);
-            let (ns,cs) = self._perft(ts, depth - 1, false);
-            self.unmake_move(ts);
+            // self.make_move(ts, mv);
+            let mut g2 = self.make_move_unchecked(ts, mv).unwrap();
+            let (ns,cs) = g2._perft(ts, depth - 1, false);
+            // self.unmake_move(ts);
             (mv,ns)
         });
 
@@ -335,14 +336,17 @@ impl Game {
         // }
 
         moves.into_iter().for_each(|mv| {
-            self.make_move(ts, mv);
-            let (ns,cs) = self._perft(ts, depth - 1, false);
+            // self.make_move(ts, mv);
+
+            let mut g2 = self.make_move_unchecked(ts, mv).unwrap();
+
+            let (ns,cs) = g2._perft(ts, depth - 1, false);
 
             captures += cs;
             nodes += ns;
             // k += 1;
 
-            self.unmake_move(ts);
+            // self.unmake_move(ts);
         });
 
         (nodes, captures)
@@ -388,26 +392,25 @@ impl Game {
 
     pub fn move_is_legal(&self, ts: &Tables, m: Move) -> bool {
 
-        // if m.filter_en_passant() {
-        //     if self.state.en_passant.is_none() {
-        //         return false;
-        //     } else if let Some(g2) = self.clone()._make_move_unchecked(&ts, &m) {
-        //         let checks = g2.find_checkers(&ts, self.state.side_to_move);
-        //         return checks.is_empty();
-        //     } else {
-        //         return false;
-        //     }
-        // }
-
         if m.filter_en_passant() {
             if self.state.en_passant.is_none() {
                 return false;
+            } else if let Some(g2) = self.clone()._make_move_unchecked(&ts, &m) {
+                let checks = g2.find_checkers(&ts, self.state.side_to_move);
+                return checks.is_empty();
             } else {
-
-                debug!("bad en passen check ??");
-                return true;
+                return false;
             }
         }
+
+        // if m.filter_en_passant() {
+        //     if self.state.en_passant.is_none() {
+        //         return false;
+        //     } else {
+        //         debug!("bad en passen check ??");
+        //         return true;
+        //     }
+        // }
 
         let col = if self.get_color(White).is_one_at(m.sq_from()) { White } else { Black };
 

@@ -526,8 +526,8 @@ impl OpeningBook {
                     once = true;
                     ply += 1;
                     out.push(mv);
-                    // g = g.make_move_unchecked(ts, mv).unwrap();
-                    g.make_move(ts, mv);
+                    g = g.make_move_unchecked(ts, mv).unwrap();
+                    // g.make_move(ts, mv);
 
                 } else { break; }
             } else { break; }

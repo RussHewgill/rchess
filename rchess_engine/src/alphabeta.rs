@@ -98,6 +98,7 @@ impl Explorer {
         }
     }
 
+    #[cfg(feature = "nope")]
     #[allow(unused_doc_comments,unused_labels)]
     pub fn _ab_search_negamax(
         &self,
@@ -283,7 +284,6 @@ impl Explorer {
         }
     }
 
-    #[cfg(feature = "nope")]
     #[allow(unused_doc_comments,unused_labels)]
     /// alpha: the MIN score that the maximizing player is assured of
     /// beta:  the MAX score that the minimizing player is assured of
@@ -291,7 +291,7 @@ impl Explorer {
         &self,
         ts:                      &Tables,
         // g:                       &Game,
-        mut g:                   &mut Game,
+        g:                       &Game,
         mut cfg:                 ABConfig,
         depth:                   Depth,
         ply:                     Depth,
@@ -378,7 +378,7 @@ impl Explorer {
             let score = {
                 // trace!("    beginning qsearch, {:?}, a/b: {:?},{:?}",
                 //        prev_mvs.front().unwrap().1, alpha, beta);
-                let score = self.qsearch(&ts, &mut g, (ply,0), alpha, beta, &mut stats);
+                let score = self.qsearch(&ts, &g, (ply,0), alpha, beta, &mut stats);
                 // trace!("    returned from qsearch, score = {}", score);
                 score
             };
@@ -471,7 +471,7 @@ impl Explorer {
         let mut gs: Vec<(Move,Game,Option<(SICanUse,SearchInfo)>)> = {
             let mut gs0 = moves.into_iter()
                 .flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, m) {
-                    let tt = self.check_tt_negamax(&ts, &g2, depth, &tt_r, &mut stats);
+                    let tt = self.check_tt_negamax(&ts, &g2.zobrist, depth, &tt_r, &mut stats);
                     Some((m,g2,tt))
                 } else {
                     trace!("game not ok? {:?} {:?}", m, g);
@@ -479,10 +479,6 @@ impl Explorer {
                 });
             gs0.collect()
         };
-
-        unimplemented!();
-
-        let mut gs = vec![];
 
         /// Move Ordering
         order_searchinfo(&mut gs[..]);

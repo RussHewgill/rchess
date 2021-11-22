@@ -364,8 +364,8 @@ impl TDBuilder {
         // let mut moves = vec![];
 
         for &mv in self.opening.iter() {
-            // g = g.clone().make_move_unchecked(ts, mv).unwrap();
-            g.make_move(ts, mv);
+            g = g.clone().make_move_unchecked(ts, mv).unwrap();
+            // g.make_move(ts, mv);
         }
 
         // // let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
@@ -422,8 +422,8 @@ impl TDBuilder {
             // break;
 
             if let (Some((mv,score)),stats) = ex.explore(&ts, None) {
-                // g = g.clone().make_move_unchecked(ts, mv).unwrap();
-                g.make_move(ts, mv);
+                g = g.clone().make_move_unchecked(ts, mv).unwrap();
+                // g.make_move(ts, mv);
 
                 eprintln!("{:?}\n{:?}\n{:?}", mv, g, g.to_fen());
                 eprintln!("score.score = {:?}", score.score);

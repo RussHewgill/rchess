@@ -57,7 +57,7 @@ pub mod opening_book;
 #[cfg(feature = "syzygy")]
 pub mod syzygy;
 
-pub mod stack_game;
+// pub mod stack_game;
 // pub mod gen_moves;
 // pub mod lockfree_hashmap;
 // pub mod material_table;
@@ -77,6 +77,13 @@ pub mod util;
 
 // #[cfg(test)]
 // pub mod tests;
+
+// #[macro_export]
+// macro_rules! with_game_move {
+//     ($g:expr, $fn:expr) => {
+//     }
+// }
+
 
 #[macro_export]
 macro_rules! eprint_self {

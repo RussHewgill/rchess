@@ -18,8 +18,8 @@ impl Explorer {
     pub fn qsearch(
         &self,
         ts:             &Tables,
-        // g:              &Game,
-        mut g:          &mut Game,
+        g:              &Game,
+        // mut g:          &mut Game,
         (ply,qply):     (Depth,Depth),
         mut alpha:      i32,
         mut beta:       i32,
@@ -131,33 +131,33 @@ impl Explorer {
         // for (mv,g2) in ms {
         for mv in moves.into_iter() {
 
-            // if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
+            if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
 
-            //     // trace!("qsearch: mv = {:?}, g = {:?}\n, g2 = {:?}", mv, g, g2);
-            //     // trace!("qsearch: mv = {:?}", mv);
+                // trace!("qsearch: mv = {:?}, g = {:?}\n, g2 = {:?}", mv, g, g2);
+                // trace!("qsearch: mv = {:?}", mv);
 
-            //     if let Some(see) = g.static_exchange(&ts, mv) {
-            //         if see < 0 {
-            //             // trace!("fen = {}", g.to_fen());
-            //             // trace!("qsearch: SEE negative: {} {:?}", see, g);
-            //             // trace!("qsearch: SEE negative: {}", see);
-            //             continue;
-            //         }
-            //     }
+                if let Some(see) = g.static_exchange(&ts, mv) {
+                    if see < 0 {
+                        // trace!("fen = {}", g.to_fen());
+                        // trace!("qsearch: SEE negative: {} {:?}", see, g);
+                        // trace!("qsearch: SEE negative: {}", see);
+                        continue;
+                    }
+                }
 
-            //     let score = -self.qsearch(&ts, &g2, (ply + 1,qply + 1), -beta, -alpha, &mut stats);
+                let score = -self.qsearch(&ts, &g2, (ply + 1,qply + 1), -beta, -alpha, &mut stats);
 
-            //     if score >= beta && allow_stand_pat {
-            //         // trace!("qsearch returning beta 1: {:?}", beta);
-            //         return beta; // fail hard
-            //         // return stand_pat; // fail soft
-            //     }
+                if score >= beta && allow_stand_pat {
+                    // trace!("qsearch returning beta 1: {:?}", beta);
+                    return beta; // fail hard
+                    // return stand_pat; // fail soft
+                }
 
-            //     if score > alpha {
-            //         alpha = score;
-            //     }
+                if score > alpha {
+                    alpha = score;
+                }
 
-            // }
+            }
 
         }
 

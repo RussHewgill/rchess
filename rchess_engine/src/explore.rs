@@ -374,13 +374,14 @@ impl Explorer {
         cfg.root = true;
 
         let mut g       = self.game.clone();
-        let mut prev_ms = VecDeque::new();
+        // let mut prev_ms = VecDeque::new();
 
         let res = self._ab_search_negamax(
             ts, &mut g, cfg, depth,
             0, &mut stop_counter, (alpha, beta),
             &mut stats,
-            &mut prev_ms,
+            // &mut prev_ms,
+            VecDeque::new(),
             &mut history,
             // &tt_r, tt_w.clone(),true,true);
             &tt_r, tt_w.clone());
