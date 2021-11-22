@@ -41,7 +41,8 @@ fn build_from_fen(
     castling:   Castling,
     ep:         Option<Coord>,
 ) -> Game {
-    let mut out = Game::empty();
+    // let mut out = Game::empty();
+    let mut out = Game::default();
 
     for (rank,y) in v.iter().rev().zip(0..8) {
         for (sq,x) in rank.iter().zip(0..8) {

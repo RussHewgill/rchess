@@ -5,7 +5,7 @@ use crate::evaluate::*;
 use crate::hashing::*;
 
 pub use self::castling::*;
-pub use self::ghistory::*;
+// pub use self::ghistory::*;
 
 use std::collections::HashMap;
 use std::collections::VecDeque;
@@ -13,58 +13,55 @@ use std::hash::{Hash,Hasher};
 
 // use arrayvec::ArrayVec;
 use ringbuffer::ConstGenericRingBuffer;
+use rustc_hash::{FxHashMap};
+
+pub type Phase = u8;
 
 // #[derive(Default,PartialEq,Clone)]
 // #[derive(Default,PartialEq,Clone,Copy)]
-#[derive(Default,PartialEq,Clone)]
+#[derive(PartialEq,Clone)]
 pub struct Game {
     // pub move_history: Vec<Move>,
     pub state:        GameState,
     pub zobrist:      Zobrist,
-    // pub history:      ArrayVec<Zobrist, 5>,
-    // pub history:      VecDeque<Zobrist>,
-    // pub history:      GHistory,
     pub last_move:    Option<Move>,
+
+    // pub history:      GHistory,
     // pub history:      Vec<(Zobrist,Move)>,
-    pub history:      HashMap<Zobrist, u8>,
+    // pub history:      HashMap<Zobrist, u8>,
+    pub history:      FxHashMap<Zobrist, u8>,
 
     pub half_move:    u8,
 }
 
-mod ghistory {
-    use ringbuffer::{ConstGenericRingBuffer, RingBuffer, RingBufferExt, RingBufferWrite, RingBufferRead};
+impl Default for Game {
+    fn default() -> Self {
 
-    use crate::hashing::Zobrist;
+        // let history = HashMap::with_capacity_and_hasher(
+        //     80,
+        //     crate::explore::FxBuildHasher::default()
+        // );
 
-    #[derive(Debug,Default,PartialEq,Clone)]
-    pub struct GHistory {
-        buf: ConstGenericRingBuffer<Zobrist, 5>,
+        let history = FxHashMap::default();
+
+        // let history = FxHashMap::with_capacity_and_hasher(
+        //     40,
+        //     core::hash::BuildHasherDefault::<rustc_hash::FxHasher>::default()
+        // );
+
+        // .with_hasher(FxBuildHasher::default())
+
+        Self {
+            state:        GameState::default(),
+            zobrist:      Zobrist(0),
+            last_move:    None,
+            history,
+            half_move:    0,
+            // ..Default::default()
+        }
     }
-
-    impl GHistory {
-
-        pub fn len(&self) -> usize {
-            self.buf.len()
-        }
-
-        pub fn push_back(&mut self, zb: Zobrist) {
-            self.buf.push(zb);
-        }
-
-        pub fn pop_front(&mut self) -> Option<Zobrist> {
-            self.buf.dequeue()
-        }
-
-        pub fn get_at(&self, idx: isize) -> Option<&Zobrist> {
-            self.buf.get(idx)
-        }
-
-    }
-
 }
 
-// #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
-// #[derive(Debug,Hash,Default,PartialEq,PartialOrd,Clone,Copy)]
 #[derive(Debug,Default,PartialOrd,Clone,Copy)]
 pub struct GameState {
     pub side_to_move:       Color,
@@ -214,8 +211,6 @@ impl Material {
         self.buf[White][pc.index()] != 0 || self.buf[Black][pc.index()] != 0
     }
 }
-
-pub type Phase = u8;
 
 mod castling {
     use crate::types::*;
@@ -996,16 +991,16 @@ impl Game {
 /// creation
 impl Game {
 
-    pub fn empty() -> Game {
-        // Game {
-        //     // move_history: vec![],
-        //     // state: GameState::empty(),
-        //     state:        GameState::default(),
-        //     zobrist:      Zobrist(0),
-        //     history:      ArrayVec::default(),
-        // }
-        Game::default()
-    }
+    // pub fn empty() -> Game {
+    //     // Game {
+    //     //     // move_history: vec![],
+    //     //     // state: GameState::empty(),
+    //     //     state:        GameState::default(),
+    //     //     zobrist:      Zobrist(0),
+    //     //     history:      ArrayVec::default(),
+    //     // }
+    //     Game::default()
+    // }
 
     // pub fn new() -> Game {
 

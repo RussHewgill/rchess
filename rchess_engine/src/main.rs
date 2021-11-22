@@ -719,9 +719,9 @@ fn main_nnue() {
         g = g.make_move_unchecked(&ts, mv3).unwrap();
     }
 
-    for (n,(zb,mv)) in g.history.iter().enumerate() {
-        eprintln!("{}: {:?} = {:?}", n, zb, mv);
-    }
+    // for (n,(zb,mv)) in g.history.iter().enumerate() {
+    //     eprintln!("{}: {:?} = {:?}", n, zb, mv);
+    // }
 
     let g2 = g.clone().make_move_unchecked(&ts, mv0).unwrap();
 
@@ -1408,8 +1408,14 @@ fn main9() {
     // }
     // return;
 
+    use std::borrow::Cow;
+
+    let x: Cow<Game> = Cow::from(g.clone());
+
+    return;
+
     // let t = 10.0;
-    let t = 4.0;
+    let t = 1.0;
     let n = 35;
 
     let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
@@ -2283,7 +2289,7 @@ fn main2() {
     // let mut g = Game::new();
     // let mut g = Game::empty();
 
-    let mut g = Game::empty();
+    let mut g = Game::default();
 
     // g.insert_pieces_mut_unchecked(&vec![
     //     ("E1", King, White),

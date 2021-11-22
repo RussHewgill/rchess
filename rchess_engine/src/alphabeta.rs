@@ -116,16 +116,16 @@ impl Explorer {
 
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
 
-        /// Repetition checking
-        {
-            if let Some(k) = g.history.get(&g.zobrist) {
-                if *k >= 2 {
-                    let score = -STALEMATE_VALUE + ply as Score;
-                    return ABSingle(ABResult::new_empty(-score));
-                    // return ABSingle(ABResult::new_empty(0));
-                }
-            }
-        }
+        // /// Repetition checking
+        // {
+        //     if let Some(k) = g.history.get(&g.zobrist) {
+        //         if *k >= 2 {
+        //             let score = -STALEMATE_VALUE + ply as Score;
+        //             return ABSingle(ABResult::new_empty(-score));
+        //             // return ABSingle(ABResult::new_empty(0));
+        //         }
+        //     }
+        // }
 
         // TODO: bench this
         if *stop_counter > 2000 {
