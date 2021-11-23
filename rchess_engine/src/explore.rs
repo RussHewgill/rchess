@@ -58,22 +58,25 @@ pub struct Explorer {
 #[derive(Debug,Clone)]
 pub struct ExHelper {
 
-    pub id:            usize,
+    pub id:              usize,
 
-    pub side:          Color,
-    pub game:          Game,
+    pub side:            Color,
+    pub game:            Game,
 
-    pub max_depth:     Depth,
-    pub stop:          Arc<AtomicBool>,
-    pub best_mate:     Arc<RwLock<Option<Depth>>>,
+    pub max_depth:       Depth,
+    pub stop:            Arc<AtomicBool>,
+    pub best_mate:       Arc<RwLock<Option<Depth>>>,
 
     #[cfg(feature = "syzygy")]
-    pub syzygy:        Option<Arc<SyzygyTB>>,
+    pub syzygy:          Option<Arc<SyzygyTB>>,
 
-    pub blocked_moves: HashSet<Move>,
+    pub blocked_moves:   HashSet<Move>,
 
-    pub tt_r:          TTRead,
-    pub tt_w:          TTWrite,
+    pub best_depth:      Arc<AtomicU8>,
+    pub tx:              Sender<(Depth,ABResults,SearchStats)>,
+
+    pub tt_r:            TTRead,
+    pub tt_w:            TTWrite,
 }
 
 #[derive(Debug,Default,Clone,Copy)]
@@ -385,52 +388,208 @@ impl Explorer {
 /// Lazy SMP Negamax 2
 impl Explorer {
 
+    pub fn reset(&self) {
+        self.stop.store(false, SeqCst);
+        {
+            let mut w = self.best_mate.write();
+            *w = None;
+        }
+    }
+
+    #[allow(unused_labels,unused_doc_comments)]
     pub fn lazy_smp_2(
         &self,
         ts:         &Tables,
     ) -> (ABResults,SearchStats) {
 
-        const SKIP_LEN: usize = 20;
-        const SKIP_SIZE: [u8; SKIP_LEN]  = [1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4];
-        const SKIP_PHASE: [u8; SKIP_LEN] = [0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7];
-
         // let mut threads = vec![];
 
+        #[cfg(feature = "one_thread")]
+        let max_threads = 1;
+        #[cfg(not(feature = "one_thread"))]
+        let max_threads = 6;
 
-        unimplemented!()
+        self.reset();
+
+        let (tx,rx): (Sender<(Depth,ABResults,SearchStats)>,
+                      Receiver<(Depth,ABResults,SearchStats)>) =
+            crossbeam::channel::unbounded();
+
+        let out: Arc<RwLock<(Depth,ABResults,SearchStats)>> =
+            Arc::new(RwLock::new((0, ABResults::ABNone, SearchStats::default())));
+
+        let thread_counter = Arc::new(AtomicU8::new(0));
+        let best_depth     = Arc::new(AtomicU8::new(0));
+
+        let t0 = Instant::now();
+        let t_max = self.timer.settings.increment[self.side];
+        let t_max = Duration::from_secs_f64(t_max);
+
+        crossbeam::scope(|s| {
+
+            s.spawn(|_| self.lazy_smp_listener(
+                rx,
+                best_depth.clone(),
+                thread_counter.clone(),
+                t0,
+                out.clone(),
+            ));
+
+            let mut thread_id = 0;
+
+            'outer: loop {
+
+                if self.best_mate.read().is_some() {
+                    let d = best_depth.load(SeqCst);
+                    debug!("breaking loop (Mate),  d: {}, t0: {:.3}",
+                            d, t0.elapsed().as_secs_f64());
+                    self.stop.store(true, SeqCst);
+                    break 'outer;
+                }
+
+                if t0.elapsed() > t_max {
+                    let d = best_depth.load(SeqCst);
+                    debug!("breaking loop (Time),  d: {}, t0: {:.3}", d, t0.elapsed().as_secs_f64());
+                    // XXX: Only force threads to stop if out of time ?
+                    self.stop.store(true, SeqCst);
+                    drop(tx);
+                    break 'outer;
+                }
+
+                if best_depth.load(SeqCst) >= self.max_depth {
+                    break 'outer;
+                }
+
+                if thread_counter.load(SeqCst) < max_threads {
+
+                    trace!("Spawning thread, id = {}",
+                           thread_id);
+
+                    let helper = self.build_exhelper(
+                        thread_id, self.max_depth, best_depth.clone(), tx.clone());
+                    s.builder()
+                        .spawn(move |_| {
+                            helper.lazy_smp_single(ts);
+                        }).unwrap();
+
+                    thread_id += 1;
+                    thread_counter.fetch_add(1, SeqCst);
+                }
+
+                if self.stop.load(SeqCst) {
+                    break 'outer;
+                }
+
+            }
+
+        }).unwrap();
+
+        let (d,mut out,mut stats) = {
+            let r = out.read();
+            r.clone()
+        };
+        stats.max_depth = d;
+
+        (out,stats)
+
     }
 
     fn lazy_smp_listener(
         &self,
+        rx:               Receiver<(Depth,ABResults,SearchStats)>,
+        best_depth:       Arc<AtomicU8>,
+        thread_counter:   Arc<AtomicU8>,
+        t0:               Instant,
+        out:              Arc<RwLock<(Depth,ABResults,SearchStats)>>,
     ) {
-        unimplemented!()
+        loop {
+
+            // if self.stop.load(SeqCst) {
+            //     trace!("Breaking thread counter loop (Force Stop)");
+            //     // let mut w = out.write();
+            //     // w.2 = w.2 + stats;
+            //     break;
+            // }
+
+            match rx.try_recv() {
+                Ok((depth,res,stats)) => {
+                    match res.clone() {
+                        ABResults::ABList(bestres, _) | ABResults::ABSingle(bestres) => {
+                            if depth > best_depth.load(SeqCst) {
+                                best_depth.store(depth,SeqCst);
+
+                                debug!("new best move d({}): {:.3}s: {}: {:?}",
+                                    depth, t0.elapsed().as_secs_f64(),
+                                    bestres.score, bestres.moves.front());
+
+                                if bestres.score > 100_000_000 - 50 {
+                                    let k = 100_000_000 - bestres.score.abs();
+                                    debug!("Found mate in {}: d({}), {:?}",
+                                        k, depth, bestres.moves.front());
+                                    let mut best = self.best_mate.write();
+                                    *best = Some(k as u8);
+                                    let mut w = out.write();
+                                    *w = (depth, res, w.2 + stats);
+                                    // *w = (depth, scores, None);
+                                    break;
+                                } else {
+                                    let mut w = out.write();
+                                    *w = (depth, res, w.2 + stats);
+                                }
+                            } else {
+                                // XXX: add stats?
+                            }
+                        },
+                        ABResults::ABPrune(_, _) | ABResults::ABSyzygy(_) => {
+                            panic!("TODO: {:?}", res);
+                        }
+                        x => {
+                            let mut w = out.write();
+                            w.2 = w.2 + stats;
+                            // panic!("rx: ?? {:?}", x);
+                        },
+                    }
+                    thread_counter.fetch_sub(1, SeqCst);
+                    trace!("decrementing thread counter, new val = {}", thread_counter.load(SeqCst));
+                },
+                Err(TryRecvError::Empty)    => {
+                    std::thread::sleep(Duration::from_millis(1));
+                },
+                Err(TryRecvError::Disconnected)    => {
+                    trace!("Breaking thread counter loop (Disconnect)");
+                    break;
+                },
+            }
+        }
     }
 
-    fn build_exhelper(
+    pub fn build_exhelper(
         &self,
-        ts:               &Tables,
         id:               usize,
         max_depth:        Depth,
-        stop:             Arc<AtomicBool>,
-        best_mate:        Arc<RwLock<Option<Depth>>>,
+        best_depth:       Arc<AtomicU8>,
+        tx:               Sender<(Depth,ABResults,SearchStats)>,
     ) -> ExHelper {
         ExHelper {
             id,
 
-            side:          self.side,
-            game:          self.game.clone(),
+            side:            self.side,
+            game:            self.game.clone(),
 
             max_depth,
-            stop,
-            best_mate,
+            stop:            self.stop.clone(),
+            best_mate:       self.best_mate.clone(),
 
             #[cfg(feature = "syzygy")]
-            syzygy:        self.syzygy.clone(),
+            syzygy:          self.syzygy.clone(),
 
-            blocked_moves: self.blocked_moves.clone(),
+            blocked_moves:   self.blocked_moves.clone(),
 
-            tt_r:          self.tt_rf.handle(),
-            tt_w:          self.tt_w.clone(),
+            best_depth,
+            tx,
+
+            tt_r:            self.tt_rf.handle(),
+            tt_w:            self.tt_w.clone(),
         }
     }
 
@@ -438,20 +597,61 @@ impl Explorer {
 
 impl ExHelper {
 
+    const SKIP_LEN: usize = 20;
+    // const SKIP_SIZE: [Depth; SKIP_LEN]  = [1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4];
+    // const SKIP_PHASE: [Depth; SKIP_LEN] = [0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7];
+    const SKIP_SIZE: [Depth; Self::SKIP_LEN] = [1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4];
+    const START_PLY: [Depth; Self::SKIP_LEN] = [0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7];
+
+
+    #[allow(unused_doc_comments)]
     fn lazy_smp_single(
         &self,
         ts:               &Tables,
     ) {
 
+        let mut history = [[[0; 64]; 64]; 2];
         let mut stats = SearchStats::default();
 
-        for depth in 1..self.max_depth {
+        // let mut best = None;
 
-            let res = self.ab_search_negamax(ts, &mut stats, depth);
+        let skip_size = Self::SKIP_SIZE[self.id % Self::SKIP_LEN];
+        let start_ply = Self::START_PLY[self.id % Self::SKIP_LEN];
+        let mut depth = start_ply + 1;
 
+        trace!("iterative skip_size {}", skip_size);
+        trace!("iterative start_ply {}", start_ply);
+
+        /// Iterative deepening
+        while !self.stop.load(Ordering::Relaxed) && depth <= self.max_depth {
+            trace!("iterative depth {}", depth);
+
+            let res = self.ab_search_iter_deepening(ts, &mut stats, &mut history, depth);
+            // debug!("res = {:?}", res);
+
+            if depth >= self.best_depth.load(SeqCst) {
+                match self.tx.try_send((depth, res, stats)) {
+                    Ok(_)  => {
+                        stats = SearchStats::default();
+                    },
+                    Err(_) => {
+                        trace!("tx send error: id: {}, depth {}", self.id, depth);
+                    },
+                }
+            }
+
+            depth += skip_size;
         }
 
-        unimplemented!()
+        // if let Some(res) = best {
+        //     match self.tx.try_send((depth, res, stats)) {
+        //         Ok(_)  => {},
+        //         Err(_) => {
+        //             trace!("tx send error: id: {}, depth {}", self.id, depth);
+        //         },
+        //     }
+        // }
+
     }
 
 }
@@ -459,16 +659,12 @@ impl ExHelper {
 /// Lazy SMP Negamax
 impl Explorer {
 
-    fn _lazy_smp_single_negamax2(
+    fn _lazy_smp_single_negamax(
         &self,
         ts:               &Tables,
-        // tb:               &SyzygyTB,
         depth:            Depth,
         tx:               Sender<(Depth,ABResults,SearchStats)>,
-        // stats:            Arc<RwLock<SearchStats>>,
         // mut history:      [[[Score; 64]; 64]; 2],
-        // tt_r:             TTRead,
-        // tt_w:             TTWrite,
     ) {
         let mut history = [[[0; 64]; 64]; 2];
 
@@ -507,9 +703,10 @@ impl Explorer {
         }
         drop(tx);
 
+        // unimplemented!()
     }
 
-    fn _lazy_smp_single_negamax(
+    fn _lazy_smp_single_negamax2(
         &self,
         ts:               &Tables,
         depth:            Depth,
@@ -520,19 +717,19 @@ impl Explorer {
 
         let mut stats = SearchStats::default();
 
-        let helper = self.build_exhelper(ts, 1, depth, self.stop.clone(), self.best_mate.clone());
+        // let helper = self.build_exhelper(ts, 1, depth);
+        // let res = helper.ab_search_negamax(ts, &mut stats, depth);
 
-        let res = helper.ab_search_negamax(ts, &mut stats, depth);
+        // match tx.send((depth,res,stats)) {
+        //     // match tx.try_send((depth,res,stats)) {
+        //     Ok(_) => {},
+        //     // Err(_) => panic!("tx send error: depth {}", depth),
+        //     Err(_) => trace!("tx send error: depth {}", depth),
+        //     // Err(_) => {},
+        // }
+        // drop(tx);
 
-        match tx.send((depth,res,stats)) {
-            // match tx.try_send((depth,res,stats)) {
-            Ok(_) => {},
-            // Err(_) => panic!("tx send error: depth {}", depth),
-            Err(_) => trace!("tx send error: depth {}", depth),
-            // Err(_) => {},
-        }
-        drop(tx);
-
+        unimplemented!()
     }
 
     #[allow(unused_doc_comments)]

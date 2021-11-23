@@ -268,12 +268,16 @@ mod td_builder {
 
                         let mut stats = SearchStats::default();
                         let res = {
-                            let r = ex.ab_search_negamax(ts, &mut stats, depth);
+                            // let helper = self.build_exhelper(
+                            //     ts, 1, depth, self.stop.clone(), self.best_mate.clone());
+                            // let r = helper.ab_search_negamax(ts, &mut stats, depth);
+                            let r = ABResults::ABNone;
                             match r {
                                 ABResults::ABList(res, _) => res,
                                 _                         => unimplemented!(),
                             }
                         };
+
 
                         // let ((res,_),_,_) = ex.lazy_smp_negamax(ts, false, false);
 
