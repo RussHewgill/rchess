@@ -501,6 +501,9 @@ impl Explorer {
         let mut list = vec![];
 
         'outer: for (mv,zb0,tt) in gs.iter() {
+        // 'outer: for (mv,g2,tt) in gs.iter() {
+
+            // let zb = g2.zobrist;
 
             let g2 = if let Ok(g2) = g.make_move_unchecked(ts, *mv) {
                 g2
