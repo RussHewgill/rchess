@@ -613,18 +613,16 @@ impl ExHelper {
         let mut history = [[[0; 64]; 64]; 2];
         let mut stats = SearchStats::default();
 
-        // let mut best = None;
-
         let skip_size = Self::SKIP_SIZE[self.id % Self::SKIP_LEN];
         let start_ply = Self::START_PLY[self.id % Self::SKIP_LEN];
         let mut depth = start_ply + 1;
 
-        trace!("iterative skip_size {}", skip_size);
-        trace!("iterative start_ply {}", start_ply);
+        // trace!("iterative skip_size {}", skip_size);
+        // trace!("iterative start_ply {}", start_ply);
 
         /// Iterative deepening
         while !self.stop.load(Ordering::Relaxed) && depth <= self.max_depth {
-            trace!("iterative depth {}", depth);
+            // trace!("iterative depth {}", depth);
 
             let res = self.ab_search_iter_deepening(ts, &mut stats, &mut history, depth);
             // debug!("res = {:?}", res);

@@ -91,7 +91,7 @@ fn main() -> std::io::Result<()> {
 
     // let explorer = Arc::new(Mutex::new(
     //     Explorer::new(White,Game::empty(), depth, should_stop.clone(), timesettings)));
-    let mut explorer = Explorer::new(White,Game::default(), depth, should_stop.clone(), timesettings);
+    let mut explorer = Explorer::new(White,Game::default(), depth, timesettings);
     let ts = Tables::new();
 
     let g0 = {

@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use crate::types::*;
 use crate::tables::*;
 
+use arrayvec::ArrayVec;
 use itertools::Itertools;
 use rayon::prelude::*;
 
@@ -158,8 +159,31 @@ impl Game {
             self._search_castles(&ts)
         } else { Vec::with_capacity(0) };
 
-        let out = vec![k,b,r,q,n,p,pp,cs].concat();
-        // let out = vec![k,n,p,pp,cs].concat();
+        // let mut out = Vec::with_capacity(
+        //     k.len() + b.len() + r.len() + q.len() + n.len() + p.len() + pp.len() + cs.len() + 10
+        // );
+
+        // // let out = vec![k,b,r,q,n,p,pp,cs].concat();
+        let mut out = vec![k,n,p,pp,cs].concat();
+
+        // out.extend(k.into_iter());
+        out.extend(b.into_iter());
+        out.extend(r.into_iter());
+        out.extend(q.into_iter());
+
+        // out.extend(n.into_iter());
+        // out.extend(p.into_iter());
+        // out.extend(pp.into_iter());
+        // out.extend(cs.into_iter());
+
+        // out.extend_from_slice(&k);
+        // out.extend_from_slice(&b);
+        // out.extend_from_slice(&r);
+        // out.extend_from_slice(&q);
+        // out.extend_from_slice(&n);
+        // out.extend_from_slice(&p);
+        // out.extend_from_slice(&pp);
+        // out.extend_from_slice(&cs);
 
         // // XXX: par == way slower ?
         // let out: Vec<Move> = out.into_par_iter().filter(|m| {
@@ -586,8 +610,10 @@ impl Game {
 /// Sliding
 impl Game {
 
-    pub fn search_sliding(&self, ts: &Tables, pc: Piece, col: Color, only_caps: bool) -> Vec<Move> {
-        let mut out = vec![];
+    // pub fn search_sliding(&self, ts: &Tables, pc: Piece, col: Color, only_caps: bool) -> Vec<Move> {
+    pub fn search_sliding(&self, ts: &Tables, pc: Piece, col: Color, only_caps: bool) -> ArrayVec<Move, 61> {
+        // let mut out = vec![];
+        let mut out = ArrayVec::new();
         let pieces = self.get(pc, col);
 
         for sq in pieces.into_iter() {
@@ -866,6 +892,7 @@ impl Game {
 impl Game {
 
     pub fn search_knights(&self, ts: &Tables, col: Color, only_caps: bool) -> Vec<Move> {
+    // pub fn search_knights(&self, ts: &Tables, col: Color, only_caps: bool) -> ArrayVec<Move,61> {
         self._search_knights(None, ts, col, only_caps)
     }
 
@@ -876,7 +903,9 @@ impl Game {
         col:          Color,
         only_caps:    bool,
     ) -> Vec<Move> {
+    // ) -> ArrayVec<Move,61> {
         let mut out = vec![];
+        // let mut out = ArrayVec::new();
         let oc = self.all_occupied();
 
         let ks = match single {
