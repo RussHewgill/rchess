@@ -1442,19 +1442,19 @@ fn main9() {
     let n = 35;
     // let n = 4;
 
-    let t0 = std::time::Instant::now();
-    // println!("g = {:?}", g);
-    let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), t);
-    let t1 = t0.elapsed();
-    let t2 = t1.as_secs_f64();
-
     // let t0 = std::time::Instant::now();
-    // let timesettings = TimeSettings::new_f64(0.0,t);
-    // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
-    // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
-    // let ((best, scores),stats0,(tt_r,tt_w)) = ex.lazy_smp_negamax(&ts, false, false);
+    // // println!("g = {:?}", g);
+    // let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), t);
     // let t1 = t0.elapsed();
     // let t2 = t1.as_secs_f64();
+
+    let t0 = std::time::Instant::now();
+    let timesettings = TimeSettings::new_f64(0.0,t);
+    let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
+    ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+    let ((best, scores),stats0,(tt_r,tt_w)) = ex.lazy_smp_negamax(&ts, false, false);
+    let t1 = t0.elapsed();
+    let t2 = t1.as_secs_f64();
 
     // let t0 = std::time::Instant::now();
     // let timesettings = TimeSettings::new_f64(0.0,t);

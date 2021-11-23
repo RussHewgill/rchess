@@ -159,28 +159,30 @@ impl Game {
             self._search_castles(&ts)
         } else { Vec::with_capacity(0) };
 
-        // let mut out = Vec::with_capacity(
-        //     k.len() + b.len() + r.len() + q.len() + n.len() + p.len() + pp.len() + cs.len() + 10
-        // );
+        let mut out = Vec::with_capacity(
+            k.len() + b.len() + r.len() + q.len() + n.len() + p.len() + pp.len() + cs.len() + 10
+        );
 
         // // let out = vec![k,b,r,q,n,p,pp,cs].concat();
-        let mut out = vec![k,n,p,pp,cs].concat();
+        // let mut out = vec![k,n,p,pp,cs].concat();
+        // let mut out = vec![k,p,pp,cs].concat();
 
-        // out.extend(k.into_iter());
+        out.extend(k.into_iter());
+        out.extend(n.into_iter());
         out.extend(b.into_iter());
         out.extend(r.into_iter());
         out.extend(q.into_iter());
-
         // out.extend(n.into_iter());
-        // out.extend(p.into_iter());
-        // out.extend(pp.into_iter());
-        // out.extend(cs.into_iter());
+        out.extend(p.into_iter());
+        out.extend(pp.into_iter());
+        out.extend(cs.into_iter());
 
         // out.extend_from_slice(&k);
+        // out.extend_from_slice(&n);
         // out.extend_from_slice(&b);
         // out.extend_from_slice(&r);
         // out.extend_from_slice(&q);
-        // out.extend_from_slice(&n);
+        // // out.extend_from_slice(&n);
         // out.extend_from_slice(&p);
         // out.extend_from_slice(&pp);
         // out.extend_from_slice(&cs);
