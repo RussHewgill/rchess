@@ -65,8 +65,46 @@ pub enum Prune {
     NullMove,
 }
 
+// impl ExHelper {
+//     pub fn ab_search_negamax(
+//         &self,
+//         ts:         &Tables,
+//         mut stats:  &mut SearchStats,
+//         depth:      Depth,
+//     ) -> ABResults {
+
+//         let mut history = [[[0; 64]; 64]; 2];
+
+//         let mut stop_counter = 0;
+
+//         let mut cfg = ABConfig::new_depth(depth);
+//         cfg.root = true;
+
+//         let (alpha,beta) = (i32::MIN,i32::MAX);
+//         let (alpha,beta) = (alpha + 200,beta - 200);
+
+//         let mut g = self.game.clone();
+
+//         // let tt_r = self.tt_rf.handle();
+//         // let tt_w = self.tt_w.clone();
+
+//         // let res = self._ab_search_negamax(
+//         //     ts, &mut g, cfg, depth,
+//         //     0, &mut stop_counter, (alpha, beta),
+//         //     &mut stats,
+//         //     VecDeque::new(),
+//         //     &mut history,
+//         //     &tt_r, tt_w.clone());
+
+//         // res
+//         unimplemented!()
+//     }
+
+// }
+
 /// Negamax AB
-impl Explorer {
+// impl Explorer {
+impl ExHelper {
 
     /// returns (can_use, SearchInfo)
     /// true: when score can be used instead of searching
@@ -98,192 +136,6 @@ impl Explorer {
         }
     }
 
-    #[cfg(feature = "nope")]
-    #[allow(unused_doc_comments,unused_labels)]
-    pub fn _ab_search_negamax(
-        &self,
-        ts:                      &Tables,
-        // g:                       &Game,
-        mut g:                   &mut Game,
-        mut cfg:                 ABConfig,
-        depth:                   Depth,
-        ply:                     Depth,
-        mut stop_counter:        &mut u16,
-        (mut alpha, mut beta):   (i32,i32),
-        mut stats:               &mut SearchStats,
-        mut prev_mvs:            &mut VecDeque<(Zobrist,Move)>,
-        mut history:             &mut [[[Score; 64]; 64]; 2],
-        tt_r:                    &TTRead,
-        tt_w:                    TTWrite,
-    ) -> ABResults {
-
-        let moves = g.search_all(&ts);
-
-        /// Score checkmate, stalemate
-        let mut moves: Vec<Move> = match moves {
-            Outcome::Checkmate(c) => {
-                // let score = 100_000_000 - ply as Score;
-                let score = CHECKMATE_VALUE - ply as Score;
-                if !tt_r.contains_key(&g.zobrist) {
-                    stats!(stats.leaves += 1);
-                    stats!(stats.checkmates += 1);
-                }
-
-                return ABSingle(ABResult::new_empty(-score));
-
-            },
-            Outcome::Stalemate    => {
-                let score = -STALEMATE_VALUE + ply as Score;
-                if !tt_r.contains_key(&g.zobrist) {
-                    stats!(stats.leaves += 1);
-                    stats!(stats.stalemates += 1);
-                }
-                // TODO: adjust stalemate value when winning/losing
-                return ABSingle(ABResult::new_empty(-score));
-            },
-            Outcome::Moves(ms)    => ms,
-        };
-
-        if depth == 0 {
-            if !tt_r.contains_key(&g.zobrist) {
-                stats!(stats.leaves += 1);
-            }
-
-            #[cfg(feature = "qsearch")]
-            let score = {
-                // trace!("    beginning qsearch, {:?}, a/b: {:?},{:?}",
-                //        prev_mvs.front().unwrap().1, alpha, beta);
-                let score = self.qsearch(&ts, &mut g, (ply,0), alpha, beta, &mut stats);
-                // trace!("    returned from qsearch, score = {}", score);
-                score
-            };
-
-            #[cfg(not(feature = "qsearch"))]
-            let score = if g.state.side_to_move == Black {
-                -g.evaluate(&ts).sum()
-            } else {
-                g.evaluate(&ts).sum()
-            };
-
-            return ABSingle(ABResult::new_empty(score));
-        }
-
-        let mut gs: Vec<(Move,Zobrist,Option<(SICanUse,SearchInfo)>)> = moves.into_iter().map(|mv| {
-            let zb = g.zobrist.update_move_unchecked(ts, &g, mv);
-            let tt = self.check_tt_negamax(&ts, &zb, depth, &tt_r, &mut stats);
-            (mv,zb,tt)
-        }).collect();
-
-        let mut node_type = Node::All;
-
-        let mut search_pv = true;
-        let mut skip_pv   = false;
-
-        let mut moves_searched = 0;
-        let mut val = i32::MIN + 200;
-        let mut val: (Option<(Zobrist,Move,ABResult)>,i32) = (None,val);
-        let mut list = vec![];
-
-        'outer: for (mv,zb,tt) in gs.into_iter() {
-            g.make_move(ts, mv);
-
-            let (a2,b2) = (-beta, -alpha);
-            let (can_use, res) = match self._ab_search_negamax(
-                ts,
-                &mut g,
-                cfg,
-                depth,
-                ply,
-                &mut stop_counter,
-                (a2,b2),
-                &mut stats,
-                &mut prev_mvs,
-                &mut history,
-                tt_r,
-                tt_w.clone()) {
-                ABSingle(mut res) | ABSyzygy(mut res) => {
-                    res.moves.push_front(mv);
-                    res.neg_score();
-
-                    if cfg.root {
-                        list.push(res.clone());
-                    }
-                    (false, res)
-                },
-                ABPrune(beta, prune) => {
-                    continue 'outer;
-                },
-                ABList(_, _) => panic!("found ABList when not root?"),
-                ABNone       => break 'outer,
-            };
-
-            let mut b = false;
-
-            if res.score > val.1 {
-                val.1 = res.score;
-                // if !can_use { mv_seq.push(*mv) };
-                val.0 = Some((zb, mv, res.clone()))
-            }
-
-            #[cfg(not(feature = "negamax_only"))]
-            { if res.score >= beta { // Fail Soft
-                b = true;
-                // return beta;
-            }
-
-            if !b && val.1 > alpha {
-                node_type = Node::PV;
-                alpha = val.1;
-                // #[cfg(feature = "pvs_search")]
-                // if true { search_pv = false; }
-            }
-
-            if b {
-                // node_type = Some(Node::Cut);
-                node_type = Node::Cut;
-
-                #[cfg(feature = "history_heuristic")]
-                if !mv.filter_all_captures() {
-                    history[g.state.side_to_move][mv.sq_from()][mv.sq_to()] += ply as Score * ply as Score;
-                }
-
-                if moves_searched == 0 {
-                    stats!(stats.beta_cut_first.0 += 1);
-                } else {
-                    stats!(stats.beta_cut_first.1 += 1);
-                }
-
-                break;
-            }}
-
-            moves_searched += 1;
-
-            g.unmake_move(ts);
-        }
-
-
-        match &val.0 {
-            Some((zb,mv,res)) => {
-                Self::tt_insert_deepest(
-                    &tt_r, tt_w, g.zobrist,
-                    SearchInfo::new(
-                        *mv,
-                        res.moves.clone().into(),
-                        depth - 1,
-                        // depth,
-                        node_type,
-                        res.score,
-                    ));
-                if cfg.root {
-                    ABList(res.clone(), list)
-                } else {
-                    ABSingle(res.clone())
-                }
-            },
-            _                    => ABNone,
-        }
-    }
-
     pub fn ab_search_negamax(
         &self,
         ts:         &Tables,
@@ -303,7 +155,7 @@ impl Explorer {
 
         let mut g = self.game.clone();
 
-        let tt_r = self.tt_rf.handle();
+        let tt_r = self.tt_r;
         let tt_w = self.tt_w.clone();
 
         let res = self._ab_search_negamax(
@@ -316,6 +168,192 @@ impl Explorer {
 
         res
     }
+
+    // #[cfg(feature = "nope")]
+    // #[allow(unused_doc_comments,unused_labels)]
+    // pub fn _ab_search_negamax(
+    //     &self,
+    //     ts:                      &Tables,
+    //     // g:                       &Game,
+    //     mut g:                   &mut Game,
+    //     mut cfg:                 ABConfig,
+    //     depth:                   Depth,
+    //     ply:                     Depth,
+    //     mut stop_counter:        &mut u16,
+    //     (mut alpha, mut beta):   (i32,i32),
+    //     mut stats:               &mut SearchStats,
+    //     mut prev_mvs:            &mut VecDeque<(Zobrist,Move)>,
+    //     mut history:             &mut [[[Score; 64]; 64]; 2],
+    //     tt_r:                    &TTRead,
+    //     tt_w:                    TTWrite,
+    // ) -> ABResults {
+
+    //     let moves = g.search_all(&ts);
+
+    //     /// Score checkmate, stalemate
+    //     let mut moves: Vec<Move> = match moves {
+    //         Outcome::Checkmate(c) => {
+    //             // let score = 100_000_000 - ply as Score;
+    //             let score = CHECKMATE_VALUE - ply as Score;
+    //             if !tt_r.contains_key(&g.zobrist) {
+    //                 stats!(stats.leaves += 1);
+    //                 stats!(stats.checkmates += 1);
+    //             }
+
+    //             return ABSingle(ABResult::new_empty(-score));
+
+    //         },
+    //         Outcome::Stalemate    => {
+    //             let score = -STALEMATE_VALUE + ply as Score;
+    //             if !tt_r.contains_key(&g.zobrist) {
+    //                 stats!(stats.leaves += 1);
+    //                 stats!(stats.stalemates += 1);
+    //             }
+    //             // TODO: adjust stalemate value when winning/losing
+    //             return ABSingle(ABResult::new_empty(-score));
+    //         },
+    //         Outcome::Moves(ms)    => ms,
+    //     };
+
+    //     if depth == 0 {
+    //         if !tt_r.contains_key(&g.zobrist) {
+    //             stats!(stats.leaves += 1);
+    //         }
+
+    //         #[cfg(feature = "qsearch")]
+    //         let score = {
+    //             // trace!("    beginning qsearch, {:?}, a/b: {:?},{:?}",
+    //             //        prev_mvs.front().unwrap().1, alpha, beta);
+    //             let score = self.qsearch(&ts, &mut g, (ply,0), alpha, beta, &mut stats);
+    //             // trace!("    returned from qsearch, score = {}", score);
+    //             score
+    //         };
+
+    //         #[cfg(not(feature = "qsearch"))]
+    //         let score = if g.state.side_to_move == Black {
+    //             -g.evaluate(&ts).sum()
+    //         } else {
+    //             g.evaluate(&ts).sum()
+    //         };
+
+    //         return ABSingle(ABResult::new_empty(score));
+    //     }
+
+    //     let mut gs: Vec<(Move,Zobrist,Option<(SICanUse,SearchInfo)>)> = moves.into_iter().map(|mv| {
+    //         let zb = g.zobrist.update_move_unchecked(ts, &g, mv);
+    //         let tt = self.check_tt_negamax(&ts, &zb, depth, &tt_r, &mut stats);
+    //         (mv,zb,tt)
+    //     }).collect();
+
+    //     let mut node_type = Node::All;
+
+    //     let mut search_pv = true;
+    //     let mut skip_pv   = false;
+
+    //     let mut moves_searched = 0;
+    //     let mut val = i32::MIN + 200;
+    //     let mut val: (Option<(Zobrist,Move,ABResult)>,i32) = (None,val);
+    //     let mut list = vec![];
+
+    //     'outer: for (mv,zb,tt) in gs.into_iter() {
+    //         g.make_move(ts, mv);
+
+    //         let (a2,b2) = (-beta, -alpha);
+    //         let (can_use, res) = match self._ab_search_negamax(
+    //             ts,
+    //             &mut g,
+    //             cfg,
+    //             depth,
+    //             ply,
+    //             &mut stop_counter,
+    //             (a2,b2),
+    //             &mut stats,
+    //             &mut prev_mvs,
+    //             &mut history,
+    //             tt_r,
+    //             tt_w.clone()) {
+    //             ABSingle(mut res) | ABSyzygy(mut res) => {
+    //                 res.moves.push_front(mv);
+    //                 res.neg_score();
+
+    //                 if cfg.root {
+    //                     list.push(res.clone());
+    //                 }
+    //                 (false, res)
+    //             },
+    //             ABPrune(beta, prune) => {
+    //                 continue 'outer;
+    //             },
+    //             ABList(_, _) => panic!("found ABList when not root?"),
+    //             ABNone       => break 'outer,
+    //         };
+
+    //         let mut b = false;
+
+    //         if res.score > val.1 {
+    //             val.1 = res.score;
+    //             // if !can_use { mv_seq.push(*mv) };
+    //             val.0 = Some((zb, mv, res.clone()))
+    //         }
+
+    //         #[cfg(not(feature = "negamax_only"))]
+    //         { if res.score >= beta { // Fail Soft
+    //             b = true;
+    //             // return beta;
+    //         }
+
+    //         if !b && val.1 > alpha {
+    //             node_type = Node::PV;
+    //             alpha = val.1;
+    //             // #[cfg(feature = "pvs_search")]
+    //             // if true { search_pv = false; }
+    //         }
+
+    //         if b {
+    //             // node_type = Some(Node::Cut);
+    //             node_type = Node::Cut;
+
+    //             #[cfg(feature = "history_heuristic")]
+    //             if !mv.filter_all_captures() {
+    //                 history[g.state.side_to_move][mv.sq_from()][mv.sq_to()] += ply as Score * ply as Score;
+    //             }
+
+    //             if moves_searched == 0 {
+    //                 stats!(stats.beta_cut_first.0 += 1);
+    //             } else {
+    //                 stats!(stats.beta_cut_first.1 += 1);
+    //             }
+
+    //             break;
+    //         }}
+
+    //         moves_searched += 1;
+
+    //         g.unmake_move(ts);
+    //     }
+
+
+    //     match &val.0 {
+    //         Some((zb,mv,res)) => {
+    //             Self::tt_insert_deepest(
+    //                 &tt_r, tt_w, g.zobrist,
+    //                 SearchInfo::new(
+    //                     *mv,
+    //                     res.moves.clone().into(),
+    //                     depth - 1,
+    //                     // depth,
+    //                     node_type,
+    //                     res.score,
+    //                 ));
+    //             if cfg.root {
+    //                 ABList(res.clone(), list)
+    //             } else {
+    //                 ABSingle(res.clone())
+    //             }
+    //         },
+    //         _                    => ABNone,
+    //     }
+    // }
 
     #[allow(unused_doc_comments,unused_labels)]
     /// alpha: the MIN score that the maximizing player is assured of
@@ -542,12 +580,12 @@ impl Explorer {
             } else { continue 'outer; };
 
             let zb = g2.zobrist;
-            // assert_eq!(zb, *zb0);
-            if zb != *zb0 {
-                eprintln!("zb  = {:?}", zb);
-                eprintln!("zb0 = {:?}", zb0);
-                panic!("zb != zb0: {:?}\n{:?}", mv, g2);
-            }
+            assert_eq!(zb, *zb0);
+            // if zb != *zb0 {
+            //     eprintln!("zb  = {:?}", zb);
+            //     eprintln!("zb0 = {:?}", zb0);
+            //     panic!("zb != zb0: {:?}\n{:?}", mv, g2);
+            // }
 
             #[cfg(feature = "pvs_search")]
             if depth < 3 {
@@ -555,22 +593,29 @@ impl Explorer {
             }
 
             let (can_use,res) = match tt {
-                Some((SICanUse::UseScore,si)) => {
-                    let mut si = si.clone();
-                    match si.node_type {
-                        Node::PV  => {},
-                        Node::All => if si.score <= alpha {
-                            // trace!("Node::All, using alpha {}", alpha);
-                            si.score = alpha;
-                        },
-                        Node::Cut => if si.score >= beta {
-                            // trace!("Node::Cut, using beta {}", beta);
-                            si.score = beta;
-                        },
-                        _         => unimplemented!(),
-                    }
-                    (true, ABResult::new_with(si.moves.into(),si.score))
-                },
+
+                // Some((SICanUse::UseScore,si)) => {
+                //     let mut si = si.clone();
+                //     // eprintln!("using si: = {:?}", si);
+                //     (true, ABResult::new_with(si.moves.into(), si.score))
+                // },
+
+                // Some((SICanUse::UseScore,si)) => {
+                //     let mut si = si.clone();
+                //     match si.node_type {
+                //         Node::PV  => {},
+                //         Node::All => if si.score <= alpha {
+                //             // trace!("Node::All, using alpha {}", alpha);
+                //             si.score = alpha;
+                //         },
+                //         Node::Cut => if si.score >= beta {
+                //             // trace!("Node::Cut, using beta {}", beta);
+                //             si.score = beta;
+                //         },
+                //         _         => unimplemented!(),
+                //     }
+                //     (true, ABResult::new_with(si.moves.into(),si.score))
+                // },
                 _ => 'search: {
                     let mut pms = prev_mvs.clone();
                     pms.push_back((g.zobrist,*mv));
@@ -749,7 +794,6 @@ impl Explorer {
         //     trace!("node_type = {:?}", node_type);
         // }
 
-
         /// XXX: stat padding by including nodes found in TT
         stats!(stats.inc_nodes_arr(ply));
         stats!(stats.nodes += 1);
@@ -767,21 +811,23 @@ impl Explorer {
             // Some((zb,mv,mv_seq)) => Some(((mv_seq.clone(),val.1),(alpha,beta))),
             Some((zb,mv,res)) => {
 
-                // trace!("inserting TT, zb = {:?}", g.zobrist);
-                Self::tt_insert_deepest(
-                    &tt_r, tt_w, g.zobrist,
-                    // &tt_r, tt_w, *zb,
-                    SearchInfo::new(
-                        *mv,
-                        res.moves.clone().into(),
-                        // res.moves.len() as u8,
-                        // res.moves.len() as u8 - 1,
-                        // res.moves.len() as u8,
-                        depth - 1,
-                        // depth,
-                        node_type,
-                        res.score,
-                    ));
+                if !cfg.inside_null {
+                    // trace!("inserting TT, zb = {:?}", g.zobrist);
+                    Self::tt_insert_deepest(
+                        &tt_r, tt_w, g.zobrist,
+                        // &tt_r, tt_w, *zb,
+                        SearchInfo::new(
+                            *mv,
+                            res.moves.clone().into(),
+                            // res.moves.len() as u8,
+                            // res.moves.len() as u8 - 1,
+                            // res.moves.len() as u8,
+                            depth - 1,
+                            // depth,
+                            node_type,
+                            res.score,
+                        ));
+                }
 
                 // match node_type {
                 //     None => {},

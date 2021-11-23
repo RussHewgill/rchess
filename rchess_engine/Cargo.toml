@@ -20,7 +20,7 @@ harness = false
 [features]
 default = [
     # "par",
-    "one_thread",
+    # "one_thread",
     "smallstack",
 
     # "backtrace",

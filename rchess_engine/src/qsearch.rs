@@ -8,7 +8,7 @@ use crate::tuning::*;
 use std::sync::atomic::Ordering::SeqCst;
 
 /// Quiescence
-impl Explorer {
+impl ExHelper {
 
     /// alpha = the MINimum score that the MAXimizing player is assured of
     /// beta  = the MAXimum score that the MINimizing player is assured of

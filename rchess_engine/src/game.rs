@@ -457,10 +457,10 @@ impl Game {
         if mv != Move::NullMove {
             match self.get_at(mv.sq_from()) {
                 Some((side,_)) => if self.state.side_to_move != side {
-                    panic!("non legal move: {:?}\n{:?}", mv, self);
+                    panic!("non legal move: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
                 },
                 None => {
-                    panic!("non legal move, no piece?: {:?}\n{:?}", mv, self);
+                    panic!("non legal move, no piece?: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
                 }
             }
         }

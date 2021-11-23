@@ -55,8 +55,8 @@ use std::time::{Instant,Duration};
 #[allow(unreachable_code)]
 fn main() {
     // main4(None);
-    // main9();
-    main_nnue();
+    main9();
+    // main_nnue();
     // main_nn();
     // main_mnist();
     // main_syzygy();
@@ -664,7 +664,7 @@ fn main_nnue() {
     // let mut s = OBSelection::BestN(0);
     let mut s = OBSelection::new_random_seeded(1234);
 
-    init_logger();
+    // init_logger();
 
     let path =  "/home/me/code/rust/rchess/training_data/test_2.bin";
 
@@ -1314,7 +1314,7 @@ fn main9() {
     // let fen = "r1b2rk1/1pq1bppp/p2ppn2/2n3B1/3NP3/2N2Q2/PPP1BPPP/R4RK1 w - - 8 12"; // ??
     // let fen = "8/1p1b1pq1/3Npk2/2Q1p3/P4rp1/1PP5/K6p/4R3 w - - 2 45"; // Q cap c5e5
 
-    // let fen = "8/8/P6k/5K2/3b1P2/8/6N1/8 b - -";
+    let fen = "rn2k2r/ppq2pp1/2p1pnp1/3p4/2PP4/1QP1P1P1/P4P1P/1RB1KB1R b Kkq - 0 1"; // non legal
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -1444,11 +1444,32 @@ fn main9() {
     let n = 35;
     // let n = 5;
 
+    // let t0 = std::time::Instant::now();
+    // // println!("g = {:?}", g);
+    // let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), t);
+    // let t1 = t0.elapsed();
+    // let t2 = t1.as_secs_f64();
+
+    // let t0 = std::time::Instant::now();
+    // let timesettings = TimeSettings::new_f64(0.0,t);
+    // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
+    // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+    // let ((best, scores),stats0,(tt_r,tt_w)) = ex.lazy_smp_negamax(&ts, false, false);
+    // let t1 = t0.elapsed();
+    // let t2 = t1.as_secs_f64();
+
     let t0 = std::time::Instant::now();
-    // println!("g = {:?}", g);
-    let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), t);
+    let timesettings = TimeSettings::new_f64(0.0,t);
+    let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
+    ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+    let (res, stats) = ex.lazy_smp_2(&ts);
     let t1 = t0.elapsed();
     let t2 = t1.as_secs_f64();
+
+    let (res,scores) = match res {
+        ABResults::ABList(res,scores) => (res,scores),
+        _                             => panic!("wot, res = {:?}", res),
+    };
 
     // let moves = g.search_all(&ts).get_moves_unsafe();
     // for mv in moves.iter() {
@@ -1460,7 +1481,7 @@ fn main9() {
     // let t = 0.5;
     // let stop = Arc::new(AtomicBool::new(false));
     // let timesettings = TimeSettings::new_f64(0.0,t);
-    // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+    // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
     // let mut t1;
     // let mut t2;

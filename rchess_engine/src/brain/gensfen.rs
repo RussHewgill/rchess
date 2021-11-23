@@ -230,6 +230,8 @@ mod td_builder {
 
             let ex_max_ply = 200;
 
+            let opening_ply = 16;
+
             let mut g = Game::from_fen(ts, STARTPOS).unwrap();
 
             let timesettings = TimeSettings::new_f64(0.0, self.time);
@@ -240,89 +242,112 @@ mod td_builder {
 
             let mut n_games = 0;
 
-            eprintln!("starting do_explore... ");
-            'outer: loop {
+            'outer: for gk in 0..count {
+                eprintln!("starting do_explore #{}", gk);
 
-                let (mut g,opening) = ob.start_game(&ts, Some(16), &mut s).unwrap();
+                let (mut g,opening) = ob.start_game(&ts, Some(opening_ply), &mut s).unwrap();
 
                 ex.update_game(g.clone());
+                let mut ply = opening.len();
 
-                // let mut g = Game::from_fen(ts, STARTPOS).unwrap();
-                // for &mv in self.opening.iter() {
-                //     g = g.make_move_unchecked(ts, mv).unwrap();
-                // }
+                'game: loop {
 
-                let mut best = None;
-                let mut last_res = None;
-                let mut moves: Vec<TDEntry> = vec![];
+                    let mut best                       = None;
+                    let mut last_res: Option<ABResult> = None;
+                    let mut moves: Vec<TDEntry>        = vec![];
 
-                let t0 = std::time::Instant::now();
-                for depth in 1..self.max_depth {
-                    // eprintln!("depth = {:?}", depth);
+                    let t0 = std::time::Instant::now();
+                    for depth in 1..self.max_depth {
+                        // eprintln!("depth = {:?}", depth);
 
-                    // let nodes = rng.gen_range(0..(ex_max_nodes - ex_min_nodes + 1)) + ex_min_nodes;
+                        // let nodes = rng.gen_range(0..(ex_max_nodes - ex_min_nodes + 1)) + ex_min_nodes;
 
-                    // search, with multiPV: self.max_depth, nodes
+                        // search, with multiPV: self.max_depth, nodes
 
-                    let mut stats = SearchStats::default();
-                    // println!("wat 0");
-                    let res = ex.ab_search_negamax(ts, &mut stats, depth);
-                    // eprintln!("res = {:?}", res);
-                    last_res = Some(res.clone());
+                        // // println!("wat 0");
 
-                    match res {
-                        ABResults::ABList(res, _) => {
-                            best = Some((res.moves[0], res.score));
-                        },
-                        _ => break,
-                    }
+                        let mut stats = SearchStats::default();
+                        let res = {
+                            let r = ex.ab_search_negamax(ts, &mut stats, depth);
+                            match r {
+                                ABResults::ABList(res, _) => res,
+                                _                         => unimplemented!(),
+                            }
+                        };
 
-                }
+                        // let ((res,_),_,_) = ex.lazy_smp_negamax(ts, false, false);
 
-                if let Some((mv,score)) = best {
-                    g = g.make_move_unchecked(ts, mv).unwrap();
-                    // eprintln!("g  = {:?}", g);
-                    trace!("fen = {:?}", g.to_fen());
-                    trace!("mv = {:?}", mv);
-                    trace!("did move in {:.3} seconds", t0.elapsed().as_secs_f64());
+                        // eprintln!("res = {:?}", res);
+                        last_res = Some(res.clone());
 
-                    ex.game = g.clone();
-                    ex.side = g.state.side_to_move;
-
-                    let e = TDEntry::new(mv, score);
-                    moves.push(e);
-                } else {
-
-                    match last_res {
-                        Some(ABResults::ABSingle(score) | ABResults::ABList(score, _)) => {
-
-                            let result = if score.score > CHECKMATE_VALUE - 100 {
-                                TDOutcome::Win(!g.state.side_to_move)
-                            } else if score.score.abs() > CHECKMATE_VALUE - 100 {
-                                TDOutcome::Win(g.state.side_to_move)
-                            } else {
-                                panic!();
-                            };
-
-                            debug!("Finished game: {:?}", result);
-
-                            let opening = opening.iter().map(|&mv| PackedMove::convert(mv)).collect();
-                            let mut td = TrainingData {
-                                result,
-                                opening,
-                                moves,
-                            };
-                            out.push(td);
-                            TrainingData::save_all(&path, &out)?;
-                            n_games += 1;
-                            if n_games >= count { break 'outer; }
+                        // best = Some((res.moves[0], res.score));
+                        if let Some(mv) = res.moves.get(0) {
+                            best = Some((*mv, res.score));
                         }
-                        None                          => unimplemented!(),
-                        _                             => unimplemented!(),
+
+                        // match res {
+                        //     ABResults::ABList(res, _) => {
+                        //         best = Some((res.moves[0], res.score));
+                        //     },
+                        //     _ => break,
+                        // }
+
                     }
-                    // eprintln!("g        = {:?}", g);
-                    // eprintln!("last_res = {:?}", last_res);
-                    // panic!("game ended maybe?");
+
+                    if let Some((mv,score)) = best.take() {
+                        g = g.make_move_unchecked(ts, mv).unwrap();
+                        // eprintln!("g  = {:?}", g);
+                        trace!("fen = {:?}", g.to_fen());
+                        trace!("mv = {:?}", mv);
+                        trace!("did move in {:.3} seconds", t0.elapsed().as_secs_f64());
+
+                        ply += 1;
+                        eprintln!("ply = {:?}", ply);
+
+                        ex.game = g.clone();
+                        ex.side = g.state.side_to_move;
+
+                        let e = TDEntry::new(mv, score);
+                        moves.push(e);
+                    } else {
+
+                        match last_res {
+                            Some(score) => {
+
+                                let result = if score.score > CHECKMATE_VALUE - 100 {
+                                    TDOutcome::Win(!g.state.side_to_move)
+                                } else if score.score.abs() > CHECKMATE_VALUE - 100 {
+                                    TDOutcome::Win(g.state.side_to_move)
+                                } else {
+                                    panic!();
+                                };
+
+                                debug!("Finished game: {:?}", result);
+
+                                let opening = opening.iter().map(|&mv| PackedMove::convert(mv)).collect();
+                                let mut td = TrainingData {
+                                    result,
+                                    opening,
+                                    moves,
+                                };
+                                out.push(td);
+                                TrainingData::save_all(&path, &out)?;
+
+                                n_games += 1;
+                                if n_games >= count {
+                                    break 'outer;
+                                } else {
+                                    break 'game;
+                                }
+                            }
+                            None                          => unimplemented!(),
+                        }
+
+                        // eprintln!("g        = {:?}", g);
+                        // eprintln!("last_res = {:?}", last_res);
+                        // panic!("game ended maybe?");
+                    }
+
                 }
 
             }

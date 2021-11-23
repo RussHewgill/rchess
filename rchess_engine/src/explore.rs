@@ -55,6 +55,27 @@ pub struct Explorer {
     // pub pos_history:   HashMap<Zobrist,u8>,
 }
 
+#[derive(Debug,Clone)]
+pub struct ExHelper {
+
+    pub id:            usize,
+
+    pub side:          Color,
+    pub game:          Game,
+
+    pub max_depth:     Depth,
+    pub stop:          Arc<AtomicBool>,
+    pub best_mate:     Arc<RwLock<Option<Depth>>>,
+
+    #[cfg(feature = "syzygy")]
+    pub syzygy:        Option<Arc<SyzygyTB>>,
+
+    pub blocked_moves: HashSet<Move>,
+
+    pub tt_r:          TTRead,
+    pub tt_w:          TTWrite,
+}
+
 #[derive(Debug,Default,Clone,Copy)]
 pub struct ABConfig {
     pub max_depth:        Depth,
@@ -79,7 +100,7 @@ impl ABConfig {
     }
 }
 
-/// New
+/// New, misc
 impl Explorer {
     pub fn new(side:          Color,
                game:          Game,
@@ -122,6 +143,12 @@ impl Explorer {
     // pub fn add_move_to_history(&mut self, zb: Zobrist, mv: Move) {
     //     self.move_history.push((zb,mv));
     // }
+
+    pub fn clear_tt(&self) {
+        let mut w = self.tt_w.lock();
+        w.purge();
+        w.refresh();
+    }
 
     pub fn update_game(&mut self, g: Game) {
         self.side = g.state.side_to_move;
@@ -355,6 +382,80 @@ impl Explorer {
 
 }
 
+/// Lazy SMP Negamax 2
+impl Explorer {
+
+    pub fn lazy_smp_2(
+        &self,
+        ts:         &Tables,
+    ) -> (ABResults,SearchStats) {
+
+        const SKIP_LEN: usize = 20;
+        const SKIP_SIZE: [u8; SKIP_LEN]  = [1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4];
+        const SKIP_PHASE: [u8; SKIP_LEN] = [0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7];
+
+        // let mut threads = vec![];
+
+
+        unimplemented!()
+    }
+
+    fn lazy_smp_listener(
+        &self,
+    ) {
+        unimplemented!()
+    }
+
+    fn build_exhelper(
+        &self,
+        ts:               &Tables,
+        id:               usize,
+        max_depth:        Depth,
+        stop:             Arc<AtomicBool>,
+        best_mate:        Arc<RwLock<Option<Depth>>>,
+    ) -> ExHelper {
+        ExHelper {
+            id,
+
+            side:          self.side,
+            game:          self.game.clone(),
+
+            max_depth,
+            stop,
+            best_mate,
+
+            #[cfg(feature = "syzygy")]
+            syzygy:        self.syzygy.clone(),
+
+            blocked_moves: self.blocked_moves.clone(),
+
+            tt_r:          self.tt_rf.handle(),
+            tt_w:          self.tt_w.clone(),
+        }
+    }
+
+}
+
+impl ExHelper {
+
+    fn lazy_smp_single(
+        &self,
+        ts:               &Tables,
+    ) {
+
+        let mut stats = SearchStats::default();
+
+        for depth in 1..self.max_depth {
+
+            let res = self.ab_search_negamax(ts, &mut stats, depth);
+
+        }
+
+        unimplemented!()
+    }
+
+}
+
 /// Lazy SMP Negamax
 impl Explorer {
 
@@ -366,10 +467,13 @@ impl Explorer {
         tx:               Sender<(Depth,ABResults,SearchStats)>,
         // stats:            Arc<RwLock<SearchStats>>,
         // mut history:      [[[Score; 64]; 64]; 2],
-        tt_r:             TTRead,
-        tt_w:             TTWrite,
+        // tt_r:             TTRead,
+        // tt_w:             TTWrite,
     ) {
         let mut history = [[[0; 64]; 64]; 2];
+
+        let tt_r = self.tt_rf.handle();
+        let tt_w = self.tt_w.clone();
 
         let (alpha,beta) = (i32::MIN,i32::MAX);
         let (alpha,beta) = (alpha + 200,beta - 200);
@@ -416,7 +520,9 @@ impl Explorer {
 
         let mut stats = SearchStats::default();
 
-        let res = self.ab_search_negamax(ts, &mut stats, depth);
+        let helper = self.build_exhelper(ts, 1, depth, self.stop.clone(), self.best_mate.clone());
+
+        let res = helper.ab_search_negamax(ts, &mut stats, depth);
 
         match tx.send((depth,res,stats)) {
             // match tx.try_send((depth,res,stats)) {
@@ -436,11 +542,6 @@ impl Explorer {
         let out: Arc<RwLock<(Depth,ABResults,SearchStats)>> =
             Arc::new(RwLock::new((0, ABResults::ABNone, SearchStats::default())));
 
-        // let (tt_r, tt_w) = evmap::Options::default()
-        //     .with_hasher(FxBuildHasher::default())
-        //     .construct();
-        // let tt_w = Arc::new(Mutex::new(tt_w));
-
         let tt_w = self.tt_w.clone();
         let tt_r = self.tt_rf.handle();
 
@@ -451,12 +552,6 @@ impl Explorer {
             let mut w = self.best_mate.write();
             *w = None;
         }
-
-        // let stop3 = self.stop.clone();
-        // ctrlc::set_handler(move || {
-        //     debug!("Ctrl-C recieved, halting");
-        //     stop3.store(true, SeqCst);
-        // })
 
         crossbeam::scope(|s| {
 
