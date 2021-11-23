@@ -157,3 +157,5 @@ once_cell = "1.8.0"
 
 # coz = "0.1.3"
 
+derive_builder = "0.10.2"
+

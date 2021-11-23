@@ -455,9 +455,13 @@ impl Game {
     pub fn make_move_unchecked(&self, ts: &Tables, mv: Move) -> GameResult<Game> {
 
         if mv != Move::NullMove {
-            let (side,_) = self.get_at(mv.sq_from()).unwrap();
-            if self.state.side_to_move != side {
-                panic!("non legal move: {:?}", self);
+            match self.get_at(mv.sq_from()) {
+                Some((side,_)) => if self.state.side_to_move != side {
+                    panic!("non legal move: {:?}\n{:?}", mv, self);
+                },
+                None => {
+                    panic!("non legal move, no piece?: {:?}\n{:?}", mv, self);
+                }
             }
         }
 

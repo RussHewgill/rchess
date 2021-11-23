@@ -284,6 +284,39 @@ impl Explorer {
         }
     }
 
+    pub fn ab_search_negamax(
+        &self,
+        ts:         &Tables,
+        mut stats:  &mut SearchStats,
+        depth:      Depth,
+    ) -> ABResults {
+
+        let mut history = [[[0; 64]; 64]; 2];
+
+        let mut stop_counter = 0;
+
+        let mut cfg = ABConfig::new_depth(depth);
+        cfg.root = true;
+
+        let (alpha,beta) = (i32::MIN,i32::MAX);
+        let (alpha,beta) = (alpha + 200,beta - 200);
+
+        let mut g = self.game.clone();
+
+        let tt_r = self.tt_rf.handle();
+        let tt_w = self.tt_w.clone();
+
+        let res = self._ab_search_negamax(
+            ts, &mut g, cfg, depth,
+            0, &mut stop_counter, (alpha, beta),
+            &mut stats,
+            VecDeque::new(),
+            &mut history,
+            &tt_r, tt_w.clone());
+
+        res
+    }
+
     #[allow(unused_doc_comments,unused_labels)]
     /// alpha: the MIN score that the maximizing player is assured of
     /// beta:  the MAX score that the minimizing player is assured of
@@ -392,7 +425,6 @@ impl Explorer {
 
             return ABSingle(ABResult::new_empty(score));
         }
-
 
         /// Syzygy Probe
         #[cfg(feature = "syzygy")]

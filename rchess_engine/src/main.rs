@@ -55,8 +55,8 @@ use std::time::{Instant,Duration};
 #[allow(unreachable_code)]
 fn main() {
     // main4(None);
-    main9();
-    // main_nnue();
+    // main9();
+    main_nnue();
     // main_nn();
     // main_mnist();
     // main_syzygy();
@@ -662,17 +662,37 @@ fn main_nnue() {
 
     // let mut s = OBSelection::new_seq();
     // let mut s = OBSelection::BestN(0);
-    // let mut s = OBSelection::new_random_seeded(1234);
+    let mut s = OBSelection::new_random_seeded(1234);
 
-    // init_logger();
+    init_logger();
 
     let path =  "/home/me/code/rust/rchess/training_data/test_2.bin";
 
     let n_fens = 100;
 
+
+    let mut s = OBSelection::new_random_seeded(1234);
+    // let (g0,opening) = ob.start_game(&ts, Some(16), &mut s).unwrap();
+    // eprintln!("g0 = {:?}", g0);
+
+    let count = 1;
+
     let t0 = Instant::now();
-    TrainingData::generate_training_data(&ts, &ob, 2, n_fens, path).unwrap();
+    let ts: Vec<TrainingData> = TDBuilder::new()
+        // .opening(Some(s))
+        .max_depth(5)
+        .time(0.2)
+        // .generate_single(&ts)
+        .do_explore(&ts, &ob, count, rng, path)
+        .unwrap();
     println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+
+    eprintln!("ts.len() = {:?}", ts.len());
+    eprintln!("ts[0].result = {:?}", ts[0].result);
+
+    // let t0 = Instant::now();
+    // TrainingData::generate_training_data(&ts, &ob, 2, n_fens, path).unwrap();
+    // println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
     return;
 
@@ -1240,17 +1260,16 @@ fn main9() {
     }
 
     fn go(ts: &Tables, n: Depth, g: Game, t: f64) -> ((ABResult, Vec<ABResult>),SearchStats,(TTRead,TTWrite)) {
-        let stop = Arc::new(AtomicBool::new(false));
         let timesettings = TimeSettings::new_f64(0.0,t);
-        let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+        let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
         ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
         ex.lazy_smp_negamax(&ts, false, false)
     }
 
-    let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
-    let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
+    // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
+    // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
-    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
     // let fen = "5rk1/pp3pp1/8/4q1N1/6b1/4r3/PP3QP1/5K1R w - - 0 2"; // R h1h8, #4
     // let fen = "r4r1k/2Q5/1p5p/2p2n2/2Pp2R1/PN1Pq3/6PP/R3N2K b - - 0 1"; // #4, Qt N f5g3, slow
@@ -1302,26 +1321,6 @@ fn main9() {
     // let g = g.flip_sides(&ts);
 
     eprintln!("g = {:?}", g);
-
-    // let mv0 = Move::Quiet { from: "G6".into(), to: "H5".into(), pc: Bishop };
-    // let mv1 = Move::Quiet { from: "D1".into(), to: "D3".into(), pc: Rook };
-    // let mv2 = Move::Quiet { from: "H5".into(), to: "G6".into(), pc: Bishop };
-    // let mv3 = Move::Quiet { from: "D3".into(), to: "D1".into(), pc: Rook };
-    // let g = g.make_move_unchecked(&ts, mv0).unwrap();
-    // let g = g.make_move_unchecked(&ts, mv1).unwrap();
-    // let g = g.make_move_unchecked(&ts, mv2).unwrap();
-    // let g = g.make_move_unchecked(&ts, mv3).unwrap();
-
-    // eprintln!("g = {:?}", g);
-
-    let n = 35;
-    // let n = 6;
-
-    // let t = 10.0;
-    // let t = 5.0;
-    let t = 2.0;
-    // let t = 1.0;
-    // let t = 0.5;
 
     let hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |panicinfo| {
@@ -1441,7 +1440,9 @@ fn main9() {
 
     // let t = 10.0;
     let t = 2.0;
+
     let n = 35;
+    // let n = 5;
 
     let t0 = std::time::Instant::now();
     // println!("g = {:?}", g);
@@ -1569,8 +1570,7 @@ fn main_sts(sts: Option<u64>) {
     for (i,(fen,m)) in games.into_iter().enumerate() {
         let g = Game::from_fen(&ts, &fen).unwrap();
 
-        let stop = Arc::new(AtomicBool::new(false));
-        let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
+        let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
 
         let (m0,stats) = ex.explore(&ts, None);
 
@@ -1719,9 +1719,8 @@ fn main7() {
 
     let mut g = Game::from_fen(&ts, fen).unwrap();
 
-    let stop = Arc::new(AtomicBool::new(false));
     let mut timesettings = TimeSettings::new_f64(0.0,2.0);
-    let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+    let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
 
     // let mut ps = vec![
     //     ("pawn x queen", Move::Capture { from: "E4".into(), to: "F5".into(), pc: Pawn, victim: Queen }),
@@ -1874,7 +1873,7 @@ fn main7() {
 
     timesettings.increment = [t, t];
     // let mut ex0 = Explorer::new(g0.state.side_to_move, g0.clone(), n, stop.clone(), timesettings);
-    let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);
+    let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, timesettings);
 
     // let moves = vec![
     //     Move::Quiet { from: "E2".into(), to: "E4".into() },
@@ -1932,8 +1931,7 @@ fn main3(num: Option<u64>, send_url: bool) {
         let g = Game::from_fen(&ts, &fen).unwrap();
         // eprintln!("g = {:?}", g);
 
-        let stop = Arc::new(AtomicBool::new(false));
-        let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
+        let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
 
         // let e = g.evaluate(&ts);
         // let (_,e_sf) = stockfish_eval(&fen, false).unwrap();
@@ -2096,13 +2094,12 @@ fn main5() {
     // let mut g2 = Game::from_fen(&ts, fen2).unwrap();
     // let _ = g2.recalc_gameinfo_mut(&ts);
 
-    let stop = Arc::new(AtomicBool::new(false));
     let timesettings = TimeSettings::new_f64(10., 0.1);
     // let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
     // let ex = Explorer::new(White, g.clone(), n, stop.clone(), timesettings);
 
-    let ex1 = Explorer::new(g1.state.side_to_move, g1.clone(), n, stop.clone(), timesettings);
-    let ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, stop.clone(), timesettings);
+    let ex1 = Explorer::new(g1.state.side_to_move, g1.clone(), n, timesettings);
+    let ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, timesettings);
 
     let t1 = std::time::Instant::now();
     let (mv1,stats1) = ex1.explore(&ts, None);

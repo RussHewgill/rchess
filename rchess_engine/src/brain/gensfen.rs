@@ -8,11 +8,15 @@ use crate::alphabeta::*;
 
 pub use self::packed_move::*;
 pub use self::td_tree::*;
+pub use self::td_builder::*;
 
 use std::collections::HashMap;
 use std::path::Path;
 
 use serde::{Serialize,Deserialize};
+
+use rand::{prelude::{StdRng,SliceRandom},Rng,SeedableRng};
+use rand::distributions::{Uniform,uniform::SampleUniform};
 
 mod packed_move {
     use super::*;
@@ -163,6 +167,249 @@ mod td_tree {
 
 }
 
+mod td_builder {
+    use std::collections::VecDeque;
+
+    use super::*;
+    use crate::builder_field;
+
+    // use derive_builder::Builder;
+    // #[derive(Debug,Builder,PartialEq,Clone)]
+    // #[builder(pattern = "owned")]
+    // #[builder(setter(prefix = "with"))]
+
+    #[derive(Debug,Clone)]
+    pub struct TDBuilder {
+        // opening:         Option<OBSelection>,
+        min_depth:       Depth,
+        max_depth:       Depth,
+        nodes_per_pos:   Option<u64>,
+        num_positions:   Option<u64>,
+        time:            f64,
+        print:           bool,
+    }
+
+    impl TDBuilder {
+        pub fn new() -> Self {
+            Self {
+                // opening:        None,
+                min_depth:      2,
+                max_depth:      5,
+                nodes_per_pos:  None,
+                num_positions:  None,
+                time:           0.5,
+                print:          true,
+            }
+        }
+        // builder_field!(opening, Option<OBSelection>);
+        builder_field!(min_depth, Depth);
+        builder_field!(max_depth, Depth);
+        builder_field!(nodes_per_pos, Option<u64>);
+        builder_field!(num_positions, Option<u64>);
+        builder_field!(time, f64);
+        builder_field!(print, bool);
+    }
+
+    /// Generate single
+    impl TDBuilder {
+
+        // fn recurse(&self, ts: &Tables, mut ex: &mut Explorer, )
+
+        pub fn do_explore<P: AsRef<Path>>(
+            &self,
+            ts:         &Tables,
+            ob:         &OpeningBook,
+            count:      usize,
+            mut rng:    StdRng,
+            path:       P,
+        ) -> std::io::Result<Vec<TrainingData>> {
+            let mut out = vec![];
+
+            let ex_min_nodes = 5000;
+            let ex_max_nodes = 15000;
+
+            let ex_max_ply = 200;
+
+            let mut g = Game::from_fen(ts, STARTPOS).unwrap();
+
+            let timesettings = TimeSettings::new_f64(0.0, self.time);
+            let mut ex = Explorer::new(g.state.side_to_move, g.clone(), self.max_depth, timesettings);
+
+            // let mut s = if let Some(o) = self.opening { o } else { OBSelection::BestN(0) };
+            let mut s = OBSelection::Random(rng);
+
+            let mut n_games = 0;
+
+            eprintln!("starting do_explore... ");
+            'outer: loop {
+
+                let (mut g,opening) = ob.start_game(&ts, Some(16), &mut s).unwrap();
+
+                ex.update_game(g.clone());
+
+                // let mut g = Game::from_fen(ts, STARTPOS).unwrap();
+                // for &mv in self.opening.iter() {
+                //     g = g.make_move_unchecked(ts, mv).unwrap();
+                // }
+
+                let mut best = None;
+                let mut last_res = None;
+                let mut moves: Vec<TDEntry> = vec![];
+
+                let t0 = std::time::Instant::now();
+                for depth in 1..self.max_depth {
+                    // eprintln!("depth = {:?}", depth);
+
+                    // let nodes = rng.gen_range(0..(ex_max_nodes - ex_min_nodes + 1)) + ex_min_nodes;
+
+                    // search, with multiPV: self.max_depth, nodes
+
+                    let mut stats = SearchStats::default();
+                    // println!("wat 0");
+                    let res = ex.ab_search_negamax(ts, &mut stats, depth);
+                    // eprintln!("res = {:?}", res);
+                    last_res = Some(res.clone());
+
+                    match res {
+                        ABResults::ABList(res, _) => {
+                            best = Some((res.moves[0], res.score));
+                        },
+                        _ => break,
+                    }
+
+                }
+
+                if let Some((mv,score)) = best {
+                    g = g.make_move_unchecked(ts, mv).unwrap();
+                    // eprintln!("g  = {:?}", g);
+                    trace!("fen = {:?}", g.to_fen());
+                    trace!("mv = {:?}", mv);
+                    trace!("did move in {:.3} seconds", t0.elapsed().as_secs_f64());
+
+                    ex.game = g.clone();
+                    ex.side = g.state.side_to_move;
+
+                    let e = TDEntry::new(mv, score);
+                    moves.push(e);
+                } else {
+
+                    match last_res {
+                        Some(ABResults::ABSingle(score) | ABResults::ABList(score, _)) => {
+
+                            let result = if score.score > CHECKMATE_VALUE - 100 {
+                                TDOutcome::Win(!g.state.side_to_move)
+                            } else if score.score.abs() > CHECKMATE_VALUE - 100 {
+                                TDOutcome::Win(g.state.side_to_move)
+                            } else {
+                                panic!();
+                            };
+
+                            debug!("Finished game: {:?}", result);
+
+                            let opening = opening.iter().map(|&mv| PackedMove::convert(mv)).collect();
+                            let mut td = TrainingData {
+                                result,
+                                opening,
+                                moves,
+                            };
+                            out.push(td);
+                            TrainingData::save_all(&path, &out)?;
+                            n_games += 1;
+                            if n_games >= count { break 'outer; }
+                        }
+                        None                          => unimplemented!(),
+                        _                             => unimplemented!(),
+                    }
+                    // eprintln!("g        = {:?}", g);
+                    // eprintln!("last_res = {:?}", last_res);
+                    // panic!("game ended maybe?");
+                }
+
+            }
+
+            Ok(out)
+        }
+
+
+        // pub fn generate_single(&self, ts: &Tables) -> Option<TrainingData> {
+
+        //     let mut g = Game::from_fen(ts, STARTPOS).unwrap();
+        //     // let mut moves = vec![];
+
+        //     // for &mv in self.opening.iter() {
+        //     //     g = g.clone().make_move_unchecked(ts, mv).unwrap();
+        //     //     // g.make_move(ts, mv);
+        //     // }
+
+        //     // // let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
+        //     // // let fen = "7k/4Q3/8/4K3/8/8/8/8 w - - 8 5"; // Queen endgame, #2
+        //     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // position 2
+        //     // // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+        //     // let mut g = Game::from_fen(ts, fen).unwrap();
+        //     // eprintln!("g = {:?}", g);
+
+        //     // let mut g = g.flip_sides(ts);
+
+        //     let mut max_depth = self.max_depth;
+        //     let mut t = self.time;
+
+        //     let timesettings = TimeSettings::new_f64(0.0,t);
+        //     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), max_depth, timesettings);
+        //     ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+
+        //     let mut prevs: HashMap<Zobrist, u8> = HashMap::default();
+
+        //     // let mut prev_idx = None;
+        //     // let mut tree = TDTree::empty();
+        //     let mut moves = vec![];
+
+        //     debug!("generate_single starting...");
+        //     let result = loop {
+        //         ex.blocked_moves.clear();
+
+        //         if let (Some((mv,score)),stats) = ex.explore(&ts, None) {
+        //             g = g.make_move_unchecked(ts, mv).unwrap();
+
+        //             if self.print {
+        //                 eprintln!("{:?}\n{:?}\n{:?}", mv, g, g.to_fen());
+        //                 eprintln!("score.score = {:?}", score.score);
+        //             }
+
+        //             if score.score > CHECKMATE_VALUE - 100 {
+        //                 break TDOutcome::Win(!g.state.side_to_move);
+        //             } else if score.score.abs() > CHECKMATE_VALUE - 100 {
+        //                 // break GameEnd::Checkmate { win: g.state.side_to_move };
+        //                 break TDOutcome::Win(g.state.side_to_move);
+        //             }
+
+        //             ex.game = g.clone();
+        //             ex.side = g.state.side_to_move;
+
+        //             let e = TDEntry::new(mv, score.score);
+        //             // prev_idx = Some(tree.insert(prev_idx, e));
+        //             moves.push(e);
+
+        //         } else {
+        //             panic!("wat");
+        //             // break GameEnd::Error;
+        //         }
+
+        //     };
+
+        //     Some(TrainingData {
+        //         result,
+        //         opening: self.opening.iter().map(|&mv| PackedMove::convert(mv)).collect(),
+        //         // moves: tree,
+        //         moves,
+        //     })
+
+        // }
+
+    }
+
+
+}
+
 #[derive(Debug,Eq,PartialEq,Clone,Copy,Serialize,Deserialize)]
 pub enum TDOutcome {
     Win(Color),
@@ -196,28 +443,27 @@ impl TrainingData {
 
         let mut out: Vec<TrainingData> = vec![];
 
-        // let mut fens = 0;
+        let mut fens = 0;
 
         // loop {
         for _ in 0..n {
 
-            let (_,opening) = ob.start_game(&ts, Some(open_ply), &mut s).unwrap();
+            // let (_,opening) = ob.start_game(&ts, Some(open_ply), &mut s).unwrap();
             // eprintln!("opening = {:?}", opening);
 
-            let k0: TrainingData = TDBuilder::new()
-                .with_opening(opening)
-                .with_max_depth(5)
-                .with_time(0.5)
-                .generate_single(&ts)
-                .unwrap();
+            // let k0: TrainingData = TDBuilder::new()
+            //     .opening(opening)
+            //     .max_depth(5)
+            //     .time(0.2)
+            //     .generate_single(&ts)
+            //     .unwrap();
 
             // fens += k0.moves.len();
             // eprintln!("fens = {:?}", fens);
             // if fens >= n { break; }
+            // eprintln!("result = {:?}", k0.result);
 
-            eprintln!("result = {:?}", k0.result);
-
-            out.push(k0);
+            // out.push(k0);
 
             Self::save_all(&path, &out)?;
         }
@@ -249,155 +495,6 @@ impl TDEntry {
     // pub fn convert_from_score(s: Score) -> i8 {
     //     unimplemented!()
     // }
-
-}
-
-#[derive(Debug,PartialEq,Clone)]
-pub struct TDBuilder {
-    opening:         Vec<Move>,
-    min_depth:       Depth,
-    max_depth:       Depth,
-    nodes_per_pos:   Option<u64>,
-    num_positions:   u64,
-    time:            f64,
-}
-
-impl TDBuilder {
-    pub fn new() -> Self {
-        Self {
-            opening:        vec![],
-            min_depth:      2,
-            max_depth:      5,
-            nodes_per_pos:  None,
-            num_positions:  1,
-            time:           0.5,
-        }
-    }
-
-    // pub fn with_branch_factor(mut self, branch_factor: usize) -> Self {
-    //     self.branch_factor = branch_factor;
-    //     self
-    // }
-
-    pub fn with_opening(mut self, opening: Vec<Move>) -> Self {
-        self.opening = opening;
-        self
-    }
-    pub fn with_max_depth(mut self, max_depth: Depth) -> Self {
-        self.max_depth = max_depth;
-        self
-    }
-    pub fn with_time(mut self, time: f64) -> Self {
-        self.time = time;
-        self
-    }
-
-}
-
-/// Generate single
-impl TDBuilder {
-
-    // fn recurse(&self, ts: &Tables, mut ex: &mut Explorer, )
-
-    pub fn generate_single(&self, ts: &Tables) -> Option<TrainingData> {
-
-        let mut g = Game::from_fen(ts, STARTPOS).unwrap();
-        // let mut moves = vec![];
-
-        for &mv in self.opening.iter() {
-            g = g.clone().make_move_unchecked(ts, mv).unwrap();
-            // g.make_move(ts, mv);
-        }
-
-        // // let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
-        // // let fen = "7k/4Q3/8/4K3/8/8/8/8 w - - 8 5"; // Queen endgame, #2
-        // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // position 2
-        // // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
-        // let mut g = Game::from_fen(ts, fen).unwrap();
-        // eprintln!("g = {:?}", g);
-
-        // let mut g = g.flip_sides(ts);
-
-        let mut max_depth = self.max_depth;
-        let mut t = self.time;
-
-        let stop = Arc::new(AtomicBool::new(false));
-        let timesettings = TimeSettings::new_f64(0.0,t);
-        let mut ex = Explorer::new(g.state.side_to_move, g.clone(), max_depth, stop, timesettings);
-        ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
-
-        let mut prevs: HashMap<Zobrist, u8> = HashMap::default();
-
-        // let mut prev_idx = None;
-        // let mut tree = TDTree::empty();
-        let mut moves = vec![];
-
-        debug!("generate_single starting...");
-        let result = loop {
-            ex.blocked_moves.clear();
-
-            // let ((best, scores),stats,(tt_r,tt_w)) = ex.lazy_smp_negamax(ts, false, false);
-
-            // let mut bs: Vec<ABResult> = vec![];
-            // for _ in 0..self.branch_factor {
-            //     let ((best,_),stats) = ex.explore_mult(ts);
-            //     let mv = best.moves[0];
-            //     if !bs.iter().any(|x| x.moves[0] == mv) {
-            //         ex.blocked_moves.insert(best.moves[0]);
-            //         bs.push(best);
-            //     }
-            //     max_depth += 1;
-            //     t += 0.1;
-            //     ex.max_depth = max_depth;
-            //     ex.timer.settings.increment = [t; 2];
-            // }
-
-            // eprintln!("bs.len() = {:?}", bs.len());
-            // for s in bs.iter() {
-            //     let mv = s.moves[0];
-            //     eprintln!("{:?} = {:?}", mv, s.score);
-            // }
-
-            // g = g.clone().make_move_unchecked(ts, mv).unwrap();
-
-            // break;
-
-            if let (Some((mv,score)),stats) = ex.explore(&ts, None) {
-                g = g.clone().make_move_unchecked(ts, mv).unwrap();
-                // g.make_move(ts, mv);
-
-                eprintln!("{:?}\n{:?}\n{:?}", mv, g, g.to_fen());
-                eprintln!("score.score = {:?}", score.score);
-
-                if score.score > CHECKMATE_VALUE - 100 {
-                    break TDOutcome::Win(!g.state.side_to_move);
-                } else if score.score.abs() > CHECKMATE_VALUE - 100 {
-                    // break GameEnd::Checkmate { win: g.state.side_to_move };
-                    break TDOutcome::Win(g.state.side_to_move);
-                }
-
-                ex.game = g.clone();
-                ex.side = g.state.side_to_move;
-
-                let e = TDEntry::new(mv, score.score);
-                // prev_idx = Some(tree.insert(prev_idx, e));
-                moves.push(e);
-
-            } else {
-                panic!("wat");
-                // break GameEnd::Error;
-            }
-
-        };
-
-        Some(TrainingData {
-            result,
-            opening: self.opening.iter().map(|&mv| PackedMove::convert(mv)).collect(),
-            // moves: tree,
-            moves,
-        })
-
-    }
 
 }
 

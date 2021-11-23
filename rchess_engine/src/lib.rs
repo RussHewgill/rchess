@@ -84,6 +84,15 @@ pub mod util;
 //     }
 // }
 
+#[macro_export]
+macro_rules! builder_field {
+    ($field:ident, $field_type:ty) => {
+        pub fn $field(mut self, $field: $field_type) -> Self {
+            self.$field = $field;
+            self
+        }
+    };
+}
 
 #[macro_export]
 macro_rules! eprint_self {

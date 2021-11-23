@@ -448,13 +448,13 @@ impl OpeningBook {
 
             for ((from,to), mv, wt) in ms {
 
-                // if let Ok(g2) = g.make_move_unchecked(ts, mv) {
-                //     let key2 = Self::gen_key(&g2);
-                //     gs.insert((from,to), (wt, Some(key2)));
-                //     gs2.push(g2);
-                // }
+                if let Ok(g2) = g.make_move_unchecked(ts, mv) {
+                    let key2 = Self::gen_key(&g2);
+                    gs.insert((from,to), (wt, Some(key2)));
+                    gs2.push(g2);
+                }
 
-                unimplemented!()
+                // unimplemented!()
 
             }
             xs2.insert(key, gs);

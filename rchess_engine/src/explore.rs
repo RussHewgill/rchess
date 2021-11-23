@@ -84,9 +84,11 @@ impl Explorer {
     pub fn new(side:          Color,
                game:          Game,
                max_depth:     Depth,
-               should_stop:   Arc<AtomicBool>,
+               // should_stop:   Arc<AtomicBool>,
                settings:      TimeSettings,
     ) -> Self {
+
+        let stop = Arc::new(AtomicBool::new(false));
 
         let (tt_r, tt_w) = evmap::Options::default()
             .with_hasher(FxBuildHasher::default())
@@ -98,8 +100,8 @@ impl Explorer {
             side,
             game,
             max_depth,
-            timer:          Timer::new(side, should_stop, settings),
-            stop:           Arc::new(AtomicBool::new(false)),
+            timer:          Timer::new(side, stop.clone(), settings),
+            stop,
             best_mate:      Arc::new(RwLock::new(None)),
             // move_history:   VecDeque::default(),
             // syzygy:         Arc::new(None),
@@ -120,6 +122,11 @@ impl Explorer {
     // pub fn add_move_to_history(&mut self, zb: Zobrist, mv: Move) {
     //     self.move_history.push((zb,mv));
     // }
+
+    pub fn update_game(&mut self, g: Game) {
+        self.side = g.state.side_to_move;
+        self.game = g;
+    }
 
     pub fn load_syzygy<P: AsRef<Path>>(&mut self, dir: P) -> std::io::Result<()> {
         #[cfg(feature = "syzygy")]
@@ -351,7 +358,7 @@ impl Explorer {
 /// Lazy SMP Negamax
 impl Explorer {
 
-    fn _lazy_smp_single_negamax(
+    fn _lazy_smp_single_negamax2(
         &self,
         ts:               &Tables,
         // tb:               &SyzygyTB,
@@ -389,6 +396,30 @@ impl Explorer {
         // XXX: ??
         match tx.send((depth,res,stats)) {
         // match tx.try_send((depth,res,stats)) {
+            Ok(_) => {},
+            // Err(_) => panic!("tx send error: depth {}", depth),
+            Err(_) => trace!("tx send error: depth {}", depth),
+            // Err(_) => {},
+        }
+        drop(tx);
+
+    }
+
+    fn _lazy_smp_single_negamax(
+        &self,
+        ts:               &Tables,
+        depth:            Depth,
+        tx:               Sender<(Depth,ABResults,SearchStats)>,
+        // tt_r:             TTRead,
+        // tt_w:             TTWrite,
+    ) {
+
+        let mut stats = SearchStats::default();
+
+        let res = self.ab_search_negamax(ts, &mut stats, depth);
+
+        match tx.send((depth,res,stats)) {
+            // match tx.try_send((depth,res,stats)) {
             Ok(_) => {},
             // Err(_) => panic!("tx send error: depth {}", depth),
             Err(_) => trace!("tx send error: depth {}", depth),
@@ -625,8 +656,8 @@ impl Explorer {
 
                     let tx2    = tx.clone();
                     let stop2  = stop.clone();
-                    let tt_r2  = tt_r.clone();
                     let tt_w2  = tt_w.clone();
+                    let tt_r2  = self.tt_rf.handle();
 
                     trace!("spawning thread: (sid: {}) = cur_depth {:?}", sid, cur_depth);
                     s.builder()
@@ -636,7 +667,8 @@ impl Explorer {
                         .spawn(move |_| {
                             self._lazy_smp_single_negamax(
                                 // self._lazy_smp_single_aspiration(
-                                ts, cur_depth, tx2, tt_r2, tt_w2.clone());
+                                // ts, cur_depth, tx2, tt_r2, tt_w2.clone());
+                                ts, cur_depth, tx2);
                         }).unwrap();
 
                     thread_counter.fetch_add(1, SeqCst);
