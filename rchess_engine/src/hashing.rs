@@ -62,22 +62,79 @@ impl Zobrist {
 impl Zobrist {
 
     pub fn update_move_unchecked(mut self, ts: &Tables, g: &Game, mv: Move) -> Self {
+        self = self.update_side_to_move(ts);
+        if let Some(ep) = g.state.en_passant {
+            self = self.update_ep(ts, ep);
+        }
         match mv {
             Move::Quiet { from, to, pc }            => self
                 .update_piece(ts, pc, g.state.side_to_move, from)
-                .update_piece(ts, pc, g.state.side_to_move, to),
+                .update_piece(ts, pc, g.state.side_to_move, to)
+                .update_move_castles(ts, g, mv),
             Move::PawnDouble { from, to, .. }       => self
                 .update_piece(ts, Pawn, g.state.side_to_move, from)
-                .update_piece(ts, Pawn, g.state.side_to_move, to),
+                .update_piece(ts, Pawn, g.state.side_to_move, to)
+                .update_ep(ts, to),
             Move::Capture { from, to, pc, victim }          => self
                 .update_piece(ts, pc, g.state.side_to_move, from)
                 .update_piece(ts, pc, g.state.side_to_move, to)
-                .update_piece(ts, victim, g.state.side_to_move, to),
-            Move::EnPassant { from, to, capture }   => unimplemented!(),
-            Move::Castle { from, to, .. }           => unimplemented!(),
-            Move::Promotion { from, to, .. }        => unimplemented!(),
-            Move::PromotionCapture { from, to, .. } => unimplemented!(),
+                .update_piece(ts, victim, !g.state.side_to_move, to)
+                .update_move_castles(ts, g, mv),
+            Move::EnPassant { from, to, capture }   => self
+                .update_piece(ts, Pawn, g.state.side_to_move, from)
+                .update_piece(ts, Pawn, g.state.side_to_move, to)
+                .update_piece(ts, Pawn, !g.state.side_to_move, capture),
+            Move::Castle { from, to, rook_from, rook_to } => self
+                .update_piece(ts, King, g.state.side_to_move, from)
+                .update_piece(ts, King, g.state.side_to_move, to)
+                .update_piece(ts, Rook, g.state.side_to_move, rook_from)
+                .update_piece(ts, Rook, g.state.side_to_move, rook_to)
+                .update_move_castles(ts, g, mv),
+            Move::Promotion { from, to, new_piece } => self
+                .update_piece(ts, Pawn, g.state.side_to_move, from)
+                .update_piece(ts, new_piece, g.state.side_to_move, to),
+            Move::PromotionCapture { from, to, new_piece, victim } => self
+                .update_piece(ts, Pawn, g.state.side_to_move, from)
+                .update_piece(ts, victim, !g.state.side_to_move, to)
+                .update_piece(ts, new_piece, g.state.side_to_move, to),
             Move::NullMove                          => self,
+        }
+    }
+
+    fn update_move_castles(mut self, ts: &Tables, g: &Game, mv: Move) -> Self {
+        let mut castling = g.state.castling.clone();
+        match mv {
+            Move::Quiet { from, pc, .. } | Move::Capture { from, pc, .. } => {
+                // XXX: side changed prior in make_move
+                match (g.state.side_to_move, pc) {
+                    (side, King) => {
+                        self = self.update_castling(&ts, castling);
+                        castling.set_king(side,false);
+                        castling.set_queen(side,false);
+                        self.update_castling(&ts, castling)
+                    }
+                    (White, Rook) => {
+                        self = self.update_castling(&ts, castling);
+                        if from == Coord(7,0) { castling.set_king(White,false); };
+                        if from == Coord(0,0) { castling.set_queen(White,false); };
+                        self.update_castling(&ts, castling)
+                    },
+                    (Black, Rook) => {
+                        self = self.update_castling(&ts, castling);
+                        if from == Coord(7,7) { castling.set_king(Black,false); };
+                        if from == Coord(0,7) { castling.set_queen(Black,false); };
+                        self.update_castling(&ts, castling)
+                    },
+                    _              => self,
+                }
+            },
+            Move::Castle { .. } => {
+                self = self.update_castling(ts, castling);
+                castling.set_king(g.state.side_to_move,false);
+                castling.set_queen(g.state.side_to_move,false);
+                self.update_castling(ts, castling)
+            },
+            _ => self
         }
     }
 

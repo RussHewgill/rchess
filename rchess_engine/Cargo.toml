@@ -29,7 +29,7 @@ default = [
 
     "positional_scoring",
 
-    # "syzygy",
+    "syzygy",
 
     "null_pruning",
     "late_move_reduction",
@@ -155,5 +155,5 @@ packed_struct = { version = "0.10.0", features = ["use_serde"] }
 positioned-io = { package = "positioned-io-preview", version = "0.3.3" }
 once_cell = "1.8.0"
 
-coz = "0.1.3"
+# coz = "0.1.3"
 

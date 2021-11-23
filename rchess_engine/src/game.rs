@@ -666,21 +666,21 @@ impl Game {
 
     fn update_castles(&self, ts: &Tables, m: Move, x: &mut Self) {
         match m {
-            Move::Quiet { from, .. } | Move::Capture { from, .. } => {
-                match (self.state.side_to_move, self.get_at(from)) {
-                    (col, Some((_,King))) => {
+            Move::Quiet { from, pc, .. } | Move::Capture { from, pc, .. } => {
+                match (self.state.side_to_move, pc) {
+                    (col, King) => {
                         x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
                         x.state.castling.set_king(col,false);
                         x.state.castling.set_queen(col,false);
                         x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
                     }
-                    (White, Some((_,Rook))) => {
+                    (White, Rook) => {
                         x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
                         if from == Coord(7,0) { x.state.castling.set_king(White,false); };
                         if from == Coord(0,0) { x.state.castling.set_queen(White,false); };
                         x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
                     },
-                    (Black, Some((_,Rook))) => {
+                    (Black, Rook) => {
                         x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
                         if from == Coord(7,7) { x.state.castling.set_king(Black,false); };
                         if from == Coord(0,7) { x.state.castling.set_queen(Black,false); };

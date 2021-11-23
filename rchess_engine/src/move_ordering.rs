@@ -115,7 +115,8 @@ pub fn _order_mvv_lva(a: &Move, b: &Move) -> std::cmp::Ordering {
 
 }
 
-pub fn order_searchinfo(mut xs: &mut [(Move,Game,Option<(SICanUse,SearchInfo)>)]) {
+// pub fn order_searchinfo(mut xs: &mut [(Move,Game,Option<(SICanUse,SearchInfo)>)]) {
+pub fn order_searchinfo(mut xs: &mut [(Move,Zobrist,Option<(SICanUse,SearchInfo)>)]) {
 
     // #[cfg(feature = "par")]
     // xs.par_sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());

@@ -1423,10 +1423,23 @@ fn main9() {
     let t = 2.0;
     let n = 35;
 
-    let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
+    let fen = "rnbqkbnr/ppppppp1/8/7p/6PP/8/PPPPPP2/RNBQKBNR b KQkq - 0 2";
+
+    // let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
+    let mut g = Game::from_fen(&ts, fen).unwrap();
     eprintln!("g = {:?}", g);
 
-    coz::thread_init();
+    // let mv = Move::PawnDouble { from: "H2".into(), to: "H4".into() };
+    // let mv = Move::Quiet { from: "H7".into(), to: "H6".into(), pc: Pawn };
+    // let mv = Move::Quiet { from: "H1".into(), to: "H3".into(), pc: Rook };
+    let mv = Move::Capture { from: "H5".into(), to: "G4".into(), pc: Pawn, victim: Pawn };
+
+    // let g2 = g.make_move_unchecked(&ts, mv).unwrap();
+    // let zb = g.zobrist.update_move_unchecked(&ts, &g, mv);
+
+    // eprintln!("g2.zobrist = {:?}", g2.zobrist);
+    // eprintln!("zb         = {:?}", zb);
+    // return;
 
     let t0 = std::time::Instant::now();
     // println!("g = {:?}", g);

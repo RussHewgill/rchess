@@ -467,18 +467,25 @@ impl Explorer {
         #[cfg(feature = "history_heuristic")]
         order_moves_history(&history[g.state.side_to_move], &mut moves);
 
-        /// Make move, Lookup games in Trans Table
-        let mut gs: Vec<(Move,Game,Option<(SICanUse,SearchInfo)>)> = {
-            let mut gs0 = moves.into_iter()
-                .flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, m) {
-                    let tt = self.check_tt_negamax(&ts, &g2.zobrist, depth, &tt_r, &mut stats);
-                    Some((m,g2,tt))
-                } else {
-                    trace!("game not ok? {:?} {:?}", m, g);
-                    None
-                });
-            gs0.collect()
-        };
+        // /// Make move, Lookup games in Trans Table
+        // let mut gs: Vec<(Move,Game,Option<(SICanUse,SearchInfo)>)> = {
+        //     let mut gs0 = moves.into_iter()
+        //         .flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, m) {
+        //             let tt = self.check_tt_negamax(&ts, &g2.zobrist, depth, &tt_r, &mut stats);
+        //             Some((m,g2,tt))
+        //         } else {
+        //             trace!("game not ok? {:?} {:?}", m, g);
+        //             None
+        //         });
+        //     gs0.collect()
+        // };
+
+        let mut gs: Vec<(Move,Zobrist,Option<(SICanUse,SearchInfo)>)> = moves.into_iter()
+            .map(|mv| {
+                let zb = g.zobrist.update_move_unchecked(ts, g, mv);
+                let tt = self.check_tt_negamax(&ts, &zb, depth, &tt_r, &mut stats);
+                (mv,zb,tt)
+            }).collect();
 
         /// Move Ordering
         order_searchinfo(&mut gs[..]);
@@ -493,8 +500,19 @@ impl Explorer {
         let mut val: (Option<(Zobrist,Move,ABResult)>,i32) = (None,val);
         let mut list = vec![];
 
-        'outer: for (mv,g2,tt) in gs.iter() {
+        'outer: for (mv,zb0,tt) in gs.iter() {
+
+            let g2 = if let Ok(g2) = g.make_move_unchecked(ts, *mv) {
+                g2
+            } else { continue 'outer; };
+
             let zb = g2.zobrist;
+            // assert_eq!(zb, *zb0);
+            if zb != *zb0 {
+                eprintln!("zb  = {:?}", zb);
+                eprintln!("zb0 = {:?}", zb0);
+                panic!("zb != zb0: {:?}\n{:?}", mv, g2);
+            }
 
             #[cfg(feature = "pvs_search")]
             if depth < 3 {
@@ -736,7 +754,6 @@ impl Explorer {
                 //     }
                 // }
 
-                coz::progress!();
                 if cfg.root {
                     ABList(res.clone(), list)
                 } else {
