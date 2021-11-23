@@ -167,25 +167,25 @@ impl Game {
         // let mut out = vec![k,n,p,pp,cs].concat();
         // let mut out = vec![k,p,pp,cs].concat();
 
-        out.extend(k.into_iter());
-        out.extend(n.into_iter());
-        out.extend(b.into_iter());
-        out.extend(r.into_iter());
-        out.extend(q.into_iter());
+        // out.extend(k.into_iter());
         // out.extend(n.into_iter());
-        out.extend(p.into_iter());
-        out.extend(pp.into_iter());
-        out.extend(cs.into_iter());
+        // out.extend(b.into_iter());
+        // out.extend(r.into_iter());
+        // out.extend(q.into_iter());
+        // // out.extend(n.into_iter());
+        // out.extend(p.into_iter());
+        // out.extend(pp.into_iter());
+        // out.extend(cs.into_iter());
 
-        // out.extend_from_slice(&k);
+        out.extend_from_slice(&k);
+        out.extend_from_slice(&n);
+        out.extend_from_slice(&b);
+        out.extend_from_slice(&r);
+        out.extend_from_slice(&q);
         // out.extend_from_slice(&n);
-        // out.extend_from_slice(&b);
-        // out.extend_from_slice(&r);
-        // out.extend_from_slice(&q);
-        // // out.extend_from_slice(&n);
-        // out.extend_from_slice(&p);
-        // out.extend_from_slice(&pp);
-        // out.extend_from_slice(&cs);
+        out.extend_from_slice(&p);
+        out.extend_from_slice(&pp);
+        out.extend_from_slice(&cs);
 
         // // XXX: par == way slower ?
         // let out: Vec<Move> = out.into_par_iter().filter(|m| {
@@ -210,12 +210,12 @@ impl Game {
         // self.state.checkers.iter_bitscan(|sq| x += 1);
         let x = self.state.checkers.into_iter().count();
         if x == 1 {
-            out.extend(&self.search_sliding(&ts, Bishop, col, only_caps));
-            out.extend(&self.search_sliding(&ts, Rook, col, only_caps));
-            out.extend(&self.search_sliding(&ts, Queen, col, only_caps));
-            out.extend(&self.search_knights(&ts, col, only_caps));
-            out.extend(&self.search_pawns(&ts, col, only_caps));
-            out.extend(&self._search_promotions(&ts, None, col, only_caps));
+            out.extend_from_slice(&self.search_sliding(&ts, Bishop, col, only_caps));
+            out.extend_from_slice(&self.search_sliding(&ts, Rook, col, only_caps));
+            out.extend_from_slice(&self.search_sliding(&ts, Queen, col, only_caps));
+            out.extend_from_slice(&self.search_knights(&ts, col, only_caps));
+            out.extend_from_slice(&self.search_pawns(&ts, col, only_caps));
+            out.extend_from_slice(&self._search_promotions(&ts, None, col, only_caps));
         }
 
         // let out: Vec<Move> = out.into_iter().filter(|m| {
@@ -520,12 +520,15 @@ impl Game {
             if b.is_not_empty() & !b.more_than_one() {
                 // eprintln!("b = {:?}", b);
                 blockers |= b;
-                if let Some((col1,_)) = self.get_at(sq.into()) {
-                    // println!("wat 1");
-                    if col != col1 {
-                        pinners.set_one_mut(sq.into());
-                    }
-                }
+
+                // XXX: not used ??
+                // if let Some((col1,_)) = self.get_at(sq.into()) {
+                //     // println!("wat 1");
+                //     if col != col1 {
+                //         pinners.set_one_mut(sq.into());
+                //     }
+                // }
+
             }
 
 
@@ -947,7 +950,8 @@ impl Game {
 /// Pawns + Promotions
 impl Game {
 
-    pub fn search_pawns(&self, ts: &Tables, col: Color, only_caps: bool) -> Vec<Move> {
+    // pub fn search_pawns(&self, ts: &Tables, col: Color, only_caps: bool) -> Vec<Move> {
+    pub fn search_pawns(&self, ts: &Tables, col: Color, only_caps: bool) -> ArrayVec<Move, 32> {
         // self._search_pawns(&ts, None, col, only_caps)
         self._search_pawns2(&ts, None, col, only_caps)
     }
@@ -958,7 +962,8 @@ impl Game {
         single:      Option<Coord>,
         side:        Color,
         only_caps:   bool
-    ) -> Vec<Move> {
+    // ) -> Vec<Move> {
+    ) -> ArrayVec<Move, 32> {
         let occ = self.all_occupied();
 
         let ps = match single {
@@ -972,7 +977,8 @@ impl Game {
             Black => (S,SW,SE),
         };
 
-        let mut out = vec![];
+        // let mut out = vec![];
+        let mut out = ArrayVec::new();
 
         if !only_caps {
             let pushes = ps.shift_dir(dir);
