@@ -55,8 +55,8 @@ use std::time::{Instant,Duration};
 #[allow(unreachable_code)]
 fn main() {
     // main4(None);
-    // main9();
-    main_nnue();
+    main9();
+    // main_nnue();
     // main_nn();
     // main_mnist();
     // main_syzygy();
@@ -1470,12 +1470,6 @@ fn main9() {
     //     _                             => panic!("wot, res = {:?}", res),
     // };
 
-    // let moves = g.search_all(&ts).get_moves_unsafe();
-    // for mv in moves.iter() {
-    //     eprintln!("mv = {:?}", mv);
-    // }
-    // return;
-
     // let n = 35;
     // let t = 0.5;
     // let stop = Arc::new(AtomicBool::new(false));
@@ -1502,21 +1496,47 @@ fn main9() {
     //     }
     // };
 
-    // println!("correct = Cp N d4b3");
-    // eprintln!("\nBest move = {:>8} {:?}: {:?}", best.score, best.moves[0], best.moves);
-
-    // let arr = stats0.nodes_arr;
-    // eprintln!("arr = {:?}", arr);
-
-    // println!();
-    // for res in scores.iter() {
-    //     eprintln!("s, ms = {:>8}: {:?}", res.score, res.moves);
-    // }
-
     // for m in best.moves.iter() { eprintln!("\t{:?}", m); }
     eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
     println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
              stats0.max_depth, t2);
+
+    // eprintln!("tt_r.len() = {:?}", tt_r.len());
+    // let s0 = tt_total_size(&tt_r);
+    // eprintln!("s0 = {:?}", s0);
+
+    println!();
+    for (n,mv) in best.moves.iter().enumerate() {
+        eprintln!("{}\t{:?}", n, mv);
+    }
+
+    let mut zb = g.zobrist;
+    let mut g2 = g.clone();
+
+    // let si = tt_r.get_one(&zb).unwrap();
+    // eprintln!("si = {:?}", si);
+
+    let mut moves = vec![];
+    let mut k = 0;
+
+    loop {
+        if let Some(si) = tt_r.get_one(&zb) {
+
+            eprintln!("si.node_type {:>3} = {:?}", k, si.node_type);
+            eprintln!("si.best_move {:>3} = {:?}", k, si.best_move);
+            eprintln!();
+            let mv = si.best_move;
+            moves.push(mv);
+            g2 = g2.make_move_unchecked(&ts, mv).unwrap();
+            zb = g2.zobrist;
+            k += 1;
+        } else {
+            println!();
+            break;
+        }
+    }
+
+    return;
 
     // let mut scores = scores;
     // scores.sort_by_key(|x| x.score);

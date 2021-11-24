@@ -36,11 +36,22 @@ pub struct MvTable {
     set: DashSet<u64>,
 }
 
-#[derive(Debug,Default)]
-pub struct TTStats {
-    pub hits:    u32,
-    pub misses:  u32,
-    pub leaves:  u32,
+// #[derive(Debug,Default)]
+// pub struct TTStats {
+//     pub hits:    u32,
+//     pub misses:  u32,
+//     pub leaves:  u32,
+// }
+
+pub fn tt_total_size(tt_r: &TTRead) -> usize {
+    let mut out = 0;
+    for (k,vs) in tt_r.read().unwrap().iter() {
+        out += std::mem::size_of_val(k);
+        for v in vs.iter() {
+            out += std::mem::size_of_val(v);
+        }
+    }
+    out
 }
 
 #[derive(Debug,Eq,PartialEq,Clone,Copy)]
@@ -49,10 +60,8 @@ pub enum SICanUse {
     UseOrdering
 }
 
-// #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
-// #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
-#[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone)]
-// #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone)]
+// #[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone)]
+#[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
 pub struct SearchInfo {
     pub best_move:          Move,
     pub depth_searched:     Depth,
@@ -61,7 +70,7 @@ pub struct SearchInfo {
     pub score:              Score,
     // pub eval:               Eval,
 
-    pub moves:              Vec<Move>,
+    // pub moves:              Vec<Move>,
     // pub moves:              CopyValue<VMoves>,
     // pub moves:              ArrayVec<Move, 100>,
 
@@ -192,13 +201,12 @@ impl Explorer {
 
 }
 
-
 impl SearchInfo {
     // pub fn new(mv: Move, moves: Vec<Move>, depth_searched: Depth, node_type: Node, score: Score) -> Self {
     //     let moves = VMoves::from_vec(moves).into();
     pub fn new(
         best_move:          Move,
-        moves:              Vec<Move>,
+        // moves:              Vec<Move>,
         depth_searched:     Depth,
         node_type:          Node,
         score:              Score,
@@ -208,7 +216,7 @@ impl SearchInfo {
             depth_searched,
             node_type,
             score,
-            moves,
+            // moves,
             // ..Default::default()
         }
     }
