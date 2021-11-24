@@ -42,6 +42,8 @@ pub struct Explorer {
     pub stop:          Arc<AtomicBool>,
     pub best_mate:     Arc<RwLock<Option<Depth>>>,
 
+    pub num_threads:   Option<u8>,
+
     #[cfg(feature = "syzygy")]
     pub syzygy:        Option<Arc<SyzygyTB>>,
     pub opening_book:  Option<Arc<OpeningBook>>,
@@ -127,6 +129,9 @@ impl Explorer {
             timer:          Timer::new(side, stop.clone(), settings),
             stop,
             best_mate:      Arc::new(RwLock::new(None)),
+
+            num_threads:    None,
+
             // move_history:   VecDeque::default(),
             // syzygy:         Arc::new(None),
             #[cfg(feature = "syzygy")]
@@ -388,7 +393,7 @@ impl Explorer {
 /// Lazy SMP Negamax 2
 impl Explorer {
 
-    pub fn reset(&self) {
+    pub fn reset_stop(&self) {
         self.stop.store(false, SeqCst);
         {
             let mut w = self.best_mate.write();
@@ -404,12 +409,17 @@ impl Explorer {
 
         // let mut threads = vec![];
 
-        #[cfg(feature = "one_thread")]
-        let max_threads = 1;
-        #[cfg(not(feature = "one_thread"))]
-        let max_threads = 6;
+        let max_threads = if let Some(x) = self.num_threads {
+            x
+        } else {
+            #[cfg(feature = "one_thread")]
+            let max_threads = 1;
+            #[cfg(not(feature = "one_thread"))]
+            let max_threads = 6;
+            max_threads
+        };
 
-        self.reset();
+        self.reset_stop();
 
         let (tx,rx): (Sender<(Depth,ABResults,SearchStats)>,
                       Receiver<(Depth,ABResults,SearchStats)>) =
@@ -593,16 +603,33 @@ impl Explorer {
         }
     }
 
+    // fn new_exhelper(&self, id: usize) -> (ExHelper, Receiver<(Depth,ABResults,SearchStats)>) {
+    //     let best_depth = Arc::new(AtomicU8::new(0));
+    //     let (tx,rx): (Sender<(Depth,ABResults,SearchStats)>,
+    //                   Receiver<(Depth,ABResults,SearchStats)>) =
+    //         crossbeam::channel::unbounded();
+    //     let helper = self.build_exhelper(id, self.max_depth, best_depth, tx);
+    //     (helper, rx)
+    // }
+
+    // pub fn ab_search(
+    //     &self,
+    //     ts:         &Tables,
+    // ) {
+    //     let (helper,rx) = self.new_exhelper(0);
+    //     let mut stats = SearchStats::default();
+    //     let mut history = [[[0; 64]; 64]; 2];
+    //     // let res = helper.ab_search_single(ts, stats, history, depth);
+    //     unimplemented!()
+    // }
+
 }
 
 impl ExHelper {
 
     const SKIP_LEN: usize = 20;
-    // const SKIP_SIZE: [Depth; SKIP_LEN]  = [1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4];
-    // const SKIP_PHASE: [Depth; SKIP_LEN] = [0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7];
     const SKIP_SIZE: [Depth; Self::SKIP_LEN] = [1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4];
     const START_PLY: [Depth; Self::SKIP_LEN] = [0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7];
-
 
     #[allow(unused_doc_comments)]
     fn lazy_smp_single(
@@ -624,7 +651,7 @@ impl ExHelper {
         while !self.stop.load(Ordering::Relaxed) && depth <= self.max_depth {
             // trace!("iterative depth {}", depth);
 
-            let res = self.ab_search_iter_deepening(ts, &mut stats, &mut history, depth);
+            let res = self.ab_search_single(ts, &mut stats, &mut history, depth);
             // debug!("res = {:?}", res);
 
             if depth >= self.best_depth.load(SeqCst) {

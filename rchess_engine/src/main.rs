@@ -55,8 +55,8 @@ use std::time::{Instant,Duration};
 #[allow(unreachable_code)]
 fn main() {
     // main4(None);
-    main9();
-    // main_nnue();
+    // main9();
+    main_nnue();
     // main_nn();
     // main_mnist();
     // main_syzygy();
@@ -675,10 +675,12 @@ fn main_nnue() {
     // let (g0,opening) = ob.start_game(&ts, Some(16), &mut s).unwrap();
     // eprintln!("g0 = {:?}", g0);
 
-    let count = 1;
+    let count = 1000;
 
     let t0 = Instant::now();
-    let ts: Vec<TrainingData> = TDBuilder::new()
+
+    // let ts: Vec<TrainingData> = TDBuilder::new()
+    let ts = TDBuilder::new()
         // .opening(Some(s))
         .max_depth(5)
         .time(0.2)
@@ -687,8 +689,8 @@ fn main_nnue() {
         .unwrap();
     println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
-    eprintln!("ts.len() = {:?}", ts.len());
-    eprintln!("ts[0].result = {:?}", ts[0].result);
+    // eprintln!("ts.len() = {:?}", ts.len());
+    // eprintln!("ts[0].result = {:?}", ts[0].result);
 
     // let t0 = Instant::now();
     // TrainingData::generate_training_data(&ts, &ob, 2, n_fens, path).unwrap();
@@ -1266,12 +1268,12 @@ fn main9() {
         ex.lazy_smp_negamax(&ts, false, false)
     }
 
-    let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
+    // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
     // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
-    // let fen = "5rk1/pp3pp1/8/4q1N1/6b1/4r3/PP3QP1/5K1R w - - 0 2"; // R h1h8, #4
+    let fen = "5rk1/pp3pp1/8/4q1N1/6b1/4r3/PP3QP1/5K1R w - - 0 2"; // R h1h8, #4
     // let fen = "r4r1k/2Q5/1p5p/2p2n2/2Pp2R1/PN1Pq3/6PP/R3N2K b - - 0 1"; // #4, Qt N f5g3, slow
 
     // let fen = "1n4k1/2p2rpp/1n6/1q6/8/4QP2/1P3P1P/1N1R2K1 w - - 0 1"; // #3, Qt R d1d8

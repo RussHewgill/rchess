@@ -655,7 +655,7 @@ impl ExHelper {
         }
     }
 
-    pub fn ab_search_iter_deepening(
+    pub fn ab_search_single(
         &self,
         ts:             &Tables,
         mut stats:      &mut SearchStats,

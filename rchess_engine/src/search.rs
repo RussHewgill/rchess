@@ -109,30 +109,6 @@ impl Game {
 
     }
 
-    // pub fn _search_all_iters<'a>(&'a self, ts: &'a Tables, col: Color)
-    //                              -> impl Iterator<Item = Move> + 'a {
-    //     let k = self.search_king_iter(&ts, col);
-    //     let b = self.search_sliding_iter(&ts, Bishop, col);
-    //     let r = self.search_sliding_iter(&ts, Rook, col);
-    //     let q = self.search_sliding_iter(&ts, Queen, col);
-    //     let n = self.search_knights(&ts, col);
-    //     let p = self.search_pawns(&ts, col);
-    //     let pp = self._search_promotions(&ts, None, col);
-    //     let cs = self._search_castles(&ts);
-    //     let mut out = k
-    //         .chain(b)
-    //         .chain(r)
-    //         .chain(q)
-    //         // .chain(n.into_iter())
-    //         // .chain(p.into_iter())
-    //         // .chain(pp.into_iter())
-    //         // .chain(cs.into_iter())
-    //         .filter(move |m| self.move_is_legal(&ts, *m))
-    //         ;
-    //     out
-    //     // vec![].into_iter()
-    // }
-
     pub fn _search_all(&self, ts: &Tables, col: Color, only_caps: bool) -> Outcome {
 
         let k = self.search_king(&ts, col, only_caps);

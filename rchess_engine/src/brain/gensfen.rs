@@ -18,6 +18,9 @@ use serde::{Serialize,Deserialize};
 use rand::{prelude::{StdRng,SliceRandom},Rng,SeedableRng};
 use rand::distributions::{Uniform,uniform::SampleUniform};
 
+use crossbeam::channel::{Sender,Receiver,RecvError,TryRecvError};
+use std::sync::atomic::{Ordering,AtomicU64};
+
 mod packed_move {
     use super::*;
     use packed_struct::prelude::*;
@@ -185,6 +188,7 @@ mod td_builder {
         max_depth:       Depth,
         nodes_per_pos:   Option<u64>,
         num_positions:   Option<u64>,
+        num_threads:     Option<u8>,
         time:            f64,
         print:           bool,
     }
@@ -197,6 +201,7 @@ mod td_builder {
                 max_depth:      5,
                 nodes_per_pos:  None,
                 num_positions:  None,
+                num_threads:    None,
                 time:           0.5,
                 print:          true,
             }
@@ -206,6 +211,7 @@ mod td_builder {
         builder_field!(max_depth, Depth);
         builder_field!(nodes_per_pos, Option<u64>);
         builder_field!(num_positions, Option<u64>);
+        builder_field!(num_threads, Option<u8>);
         builder_field!(time, f64);
         builder_field!(print, bool);
     }
@@ -215,15 +221,70 @@ mod td_builder {
 
         // fn recurse(&self, ts: &Tables, mut ex: &mut Explorer, )
 
-        pub fn do_explore<P: AsRef<Path>>(
+        pub fn do_explore<P: AsRef<Path> + Send>(
             &self,
             ts:         &Tables,
             ob:         &OpeningBook,
             count:      usize,
             mut rng:    StdRng,
             path:       P,
-        ) -> std::io::Result<Vec<TrainingData>> {
+        ) -> std::io::Result<()> {
+
+            let (tx,rx): (Sender<TrainingData>,
+                          Receiver<TrainingData>) =
+                crossbeam::channel::unbounded();
+
+            let max_threads = self.num_threads.unwrap_or(1);
+
+            let sfen_n = Arc::new(AtomicU64::new(0));
+
+            crossbeam::scope(|s| {
+                s.spawn(|_| Self::save_listener(path, rx));
+                for id in 0..max_threads {
+                    let rng2: u64 = rng.gen();
+                    let mut rng2: StdRng = SeedableRng::seed_from_u64(1234u64);
+                    s.builder()
+                        .spawn(|_| self._do_explore(ts, ob, count, rng2, sfen_n.clone(), tx.clone()))
+                        .unwrap();
+                }
+            }).unwrap();
+
+            Ok(())
+        }
+
+        fn save_listener<P: AsRef<Path>>(
+            path:    P,
+            rx:      Receiver<TrainingData>,
+        ) {
             let mut out = vec![];
+            loop {
+                match rx.try_recv() {
+                    Ok(td) => {
+                        out.push(td);
+                        TrainingData::save_all(&path, &out).unwrap();
+                    },
+                    Err(TryRecvError::Empty)    => {
+                        std::thread::sleep(std::time::Duration::from_millis(1));
+                    },
+                    Err(TryRecvError::Disconnected)    => {
+                        // trace!("Breaking thread counter loop (Disconnect)");
+                        break;
+                    },
+                }
+            }
+
+            unimplemented!()
+        }
+
+        pub fn _do_explore(
+            &self,
+            ts:         &Tables,
+            ob:         &OpeningBook,
+            count:      usize,
+            mut rng:    StdRng,
+            sfen_n:     Arc<AtomicU64>,
+            tx:         Sender<TrainingData>,
+        ) {
 
             let ex_min_nodes = 5000;
             let ex_max_nodes = 15000;
@@ -237,15 +298,21 @@ mod td_builder {
             let timesettings = TimeSettings::new_f64(0.0, self.time);
             let mut ex = Explorer::new(g.state.side_to_move, g.clone(), self.max_depth, timesettings);
 
+            ex.num_threads = Some(1);
+
             // let mut s = if let Some(o) = self.opening { o } else { OBSelection::BestN(0) };
             let mut s = OBSelection::Random(rng);
 
             let mut n_games = 0;
 
             'outer: for gk in 0..count {
-                eprintln!("starting do_explore #{}", gk);
+                trace!("starting do_explore #{}", gk);
 
                 let (mut g,opening) = ob.start_game(&ts, Some(opening_ply), &mut s).unwrap();
+
+                // let fen = "7k/8/8/8/8/8/4Q3/7K w - - 0 1"; // Queen endgame, #7
+                // let opening = vec![];
+                // let mut g = Game::from_fen(ts, fen).unwrap();
 
                 ex.update_game(g.clone());
                 let mut ply = opening.len();
@@ -258,60 +325,45 @@ mod td_builder {
 
                     let t0 = std::time::Instant::now();
                     for depth in 1..self.max_depth {
-                        // eprintln!("depth = {:?}", depth);
-
-                        // let nodes = rng.gen_range(0..(ex_max_nodes - ex_min_nodes + 1)) + ex_min_nodes;
 
                         // search, with multiPV: self.max_depth, nodes
 
-                        // // println!("wat 0");
-
                         let mut stats = SearchStats::default();
                         let res = {
-                            // let helper = self.build_exhelper(
-                            //     ts, 1, depth, self.stop.clone(), self.best_mate.clone());
-                            // let r = helper.ab_search_negamax(ts, &mut stats, depth);
-                            let r = ABResults::ABNone;
-                            match r {
+                            let (res,stats) = ex.lazy_smp_2(ts);
+
+                            match res {
                                 ABResults::ABList(res, _) => res,
-                                _                         => unimplemented!(),
+                                ABResults::ABSingle(res)  => res,
+                                _                         => {
+                                    panic!("game ended, res = {:?}", res)
+                                },
                             }
                         };
-
-
-                        // let ((res,_),_,_) = ex.lazy_smp_negamax(ts, false, false);
 
                         // eprintln!("res = {:?}", res);
                         last_res = Some(res.clone());
 
-                        // best = Some((res.moves[0], res.score));
                         if let Some(mv) = res.moves.get(0) {
                             best = Some((*mv, res.score));
                         }
-
-                        // match res {
-                        //     ABResults::ABList(res, _) => {
-                        //         best = Some((res.moves[0], res.score));
-                        //     },
-                        //     _ => break,
-                        // }
-
                     }
 
                     if let Some((mv,score)) = best.take() {
                         g = g.make_move_unchecked(ts, mv).unwrap();
-                        // eprintln!("g  = {:?}", g);
                         trace!("fen = {:?}", g.to_fen());
                         trace!("mv = {:?}", mv);
                         trace!("did move in {:.3} seconds", t0.elapsed().as_secs_f64());
 
                         ply += 1;
-                        eprintln!("ply = {:?}", ply);
+                        // trace!("ply = {:?}", ply);
 
                         ex.game = g.clone();
                         ex.side = g.state.side_to_move;
 
-                        let e = TDEntry::new(mv, score);
+                        let skip = false;
+
+                        let e = TDEntry::new(mv, score, skip);
                         moves.push(e);
                     } else {
 
@@ -328,14 +380,17 @@ mod td_builder {
 
                                 debug!("Finished game: {:?}", result);
 
+                                let n = moves.iter().filter(|x| !x.skip).count();
+                                sfen_n.fetch_add(n as u64, Ordering::Relaxed);
+
                                 let opening = opening.iter().map(|&mv| PackedMove::convert(mv)).collect();
                                 let mut td = TrainingData {
                                     result,
                                     opening,
                                     moves,
                                 };
-                                out.push(td);
-                                TrainingData::save_all(&path, &out)?;
+                                // out.push(td);
+                                // TrainingData::save_all(&path, &out)?;
 
                                 n_games += 1;
                                 if n_games >= count {
@@ -356,7 +411,7 @@ mod td_builder {
 
             }
 
-            Ok(out)
+            // Ok(out)
         }
 
 
@@ -507,14 +562,16 @@ pub struct TDEntry {
     mv:       PackedMove,
     // eval:     i8,
     eval:     Score,
+    skip:     bool,
 }
 
 impl TDEntry {
-    pub fn new(mv: Move, eval: Score) -> Self {
+    pub fn new(mv: Move, eval: Score, skip: bool) -> Self {
         Self {
             mv: PackedMove::convert(mv),
             // eval: Self::convert_from_score(score),
             eval,
+            skip,
         }
     }
 
