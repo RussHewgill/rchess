@@ -127,6 +127,35 @@ pub fn crit_bench_2(c: &mut Criterion) {
 
 }
 
+pub fn crit_bench_simd(c: &mut Criterion) {
+
+    let mut group = c.benchmark_group("group");
+
+    group.warm_up_time(Duration::from_secs_f64(2.0));
+
+    group.sample_size(20);
+    group.measurement_time(Duration::from_secs_f64(5.));
+
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
+
+    const K: usize = 10_0000;
+
+    let src: [f32; K] = array_init::array_init(|x| rng.gen());
+    let mut dst = [0.0; K * 2 + 1];
+
+    use rchess_engine_lib::simd_test::*;
+
+    group.bench_function("SIMD test 0", |b| b.iter(|| {
+        simd_0(&mut dst, &src, 0.5, 0.5);
+    }));
+
+    group.bench_function("SIMD test 1", |b| b.iter(|| {
+        simd_1(&mut dst, &src, 0.5, 0.5);
+    }));
+
+    group.finish();
+}
+
 pub fn crit_bench_1(c: &mut Criterion) {
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
@@ -171,10 +200,10 @@ pub fn crit_bench_1(c: &mut Criterion) {
     group.sample_size(20);
     group.measurement_time(Duration::from_secs_f64(5.));
 
-    group.bench_function("explore endgame", |b| b.iter(|| {
-        let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
-        let (m,stats) = ex.explore(&ts, None);
-    }));
+    // group.bench_function("explore endgame", |b| b.iter(|| {
+    //     let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
+    //     let (m,stats) = ex.explore(&ts, None);
+    // }));
 
     // group.bench_function("explore", |b| b.iter(|| {
     //     let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
@@ -268,7 +297,8 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
 }
 
-criterion_group!(benches, crit_bench_1);
+criterion_group!(benches, crit_bench_simd);
+// criterion_group!(benches, crit_bench_1);
 // criterion_group!(benches, crit_bench_2);
 criterion_main!(benches);
 

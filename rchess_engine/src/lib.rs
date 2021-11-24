@@ -72,6 +72,8 @@ pub mod move_ordering;
 
 // pub mod lockless_map;
 
+pub mod simd_test;
+
 #[allow(clippy::all)]
 pub mod util;
 
