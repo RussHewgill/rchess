@@ -344,9 +344,12 @@ mod td_builder {
                         // eprintln!("res = {:?}", res);
                         last_res = Some(res.clone());
 
-                        if let Some(mv) = res.moves.get(0) {
-                            best = Some((*mv, res.score));
-                        }
+                        // // if let Some(mv) = res.moves.get(0) {
+                        // if let Some(mv) = res.mv {
+                        //     best = Some((mv, res.score));
+                        // }
+                        unimplemented!()
+
                     }
 
                     if let Some((mv,score)) = best.take() {

@@ -181,6 +181,34 @@ impl Explorer {
 
 }
 
+/// Get PV
+impl Explorer {
+
+    pub fn get_pv(&self, ts: &Tables, g: &Game) -> Vec<Move> {
+        let mut moves = vec![];
+        let tt_r = self.tt_rf.handle();
+
+        let mut g2 = g.clone();
+        let mut zb = g2.zobrist;
+
+        while let Some(si) = tt_r.get_one(&zb) {
+
+            // eprintln!("si.node_type {:>3} = {:?}", k, si.node_type);
+            // eprintln!("si.best_move {:>3} = {:?}", k, si.best_move);
+            // eprintln!();
+
+            let mv = si.best_move;
+            moves.push(mv);
+
+            g2 = g2.make_move_unchecked(&ts, mv).unwrap();
+            zb = g2.zobrist;
+        }
+
+        moves
+    }
+
+}
+
 /// Entry points
 impl Explorer {
 
@@ -215,15 +243,18 @@ impl Explorer {
 
         let ((best, scores),stats,(tt_r,tt_w)) = self.lazy_smp_negamax(ts, false, false);
 
-        if let Some(mv) = best.moves.get(0) {
-            let score = best.score;
+        debug!("explore: best move = {:?}", best.mv);
+        (Some((best.mv,best)),stats)
 
-            debug!("explore: best move = {:?}", mv);
-            // (Some((mv,score)),stats)
-            (Some((*mv,best)),stats)
-        } else {
-            (None, stats)
-        }
+        // // if let Some(mv) = best.moves.get(0) {
+        // if let Some(mv) = best.mv {
+        //     let score = best.score;
+        //     debug!("explore: best move = {:?}", mv);
+        //     // (Some((mv,score)),stats)
+        //     (Some((mv,best)),stats)
+        // } else {
+        //     (None, stats)
+        // }
 
         // unimplemented!()
 
@@ -432,34 +463,40 @@ impl Explorer {
         let best_depth     = Arc::new(AtomicU8::new(0));
 
         let t0 = Instant::now();
+        // std::thread::sleep(Duration::from_micros(100));
         let t_max = self.timer.settings.increment[self.side];
         let t_max = Duration::from_secs_f64(t_max);
 
         crossbeam::scope(|s| {
 
-            s.spawn(|_| self.lazy_smp_listener(
-                rx,
-                best_depth.clone(),
-                thread_counter.clone(),
-                t0,
-                out.clone(),
-            ));
+            s.spawn(|_| {
+                self.lazy_smp_listener(
+                    rx,
+                    best_depth.clone(),
+                    thread_counter.clone(),
+                    t0,
+                    out.clone(),
+                );
+            });
 
             let mut thread_id = 0;
 
             'outer: loop {
 
+                // let t1 = t0.elapsed();
+                let t1 = Instant::now().checked_duration_since(t0).unwrap();
+
                 if self.best_mate.read().is_some() {
                     let d = best_depth.load(SeqCst);
                     debug!("breaking loop (Mate),  d: {}, t0: {:.3}",
-                            d, t0.elapsed().as_secs_f64());
+                            d, t1.as_secs_f64());
                     self.stop.store(true, SeqCst);
                     break 'outer;
                 }
 
-                if t0.elapsed() > t_max {
+                if t1 > t_max {
                     let d = best_depth.load(SeqCst);
-                    debug!("breaking loop (Time),  d: {}, t0: {:.3}", d, t0.elapsed().as_secs_f64());
+                    debug!("breaking loop (Time),  d: {}, t0: {:.3}", d, t1.as_secs_f64());
                     // XXX: Only force threads to stop if out of time ?
                     self.stop.store(true, SeqCst);
                     drop(tx);
@@ -524,18 +561,24 @@ impl Explorer {
             match rx.try_recv() {
                 Ok((depth,res,stats)) => {
                     match res.clone() {
-                        ABResults::ABList(bestres, _) | ABResults::ABSingle(bestres) => {
+                        ABResults::ABList(bestres, _)
+                            | ABResults::ABSingle(bestres)
+                            | ABResults::ABSyzygy(bestres) => {
                             if depth > best_depth.load(SeqCst) {
                                 best_depth.store(depth,SeqCst);
 
+                                // let t1 = t0.elapsed();
+                                let t1 = Instant::now().checked_duration_since(t0).unwrap();
                                 debug!("new best move d({}): {:.3}s: {}: {:?}",
-                                    depth, t0.elapsed().as_secs_f64(),
-                                    bestres.score, bestres.moves.front());
+                                       depth, t1.as_secs_f64(),
+                                       // bestres.score, bestres.moves.front());
+                                       bestres.score, bestres.mv);
 
                                 if bestres.score > 100_000_000 - 50 {
                                     let k = 100_000_000 - bestres.score.abs();
                                     debug!("Found mate in {}: d({}), {:?}",
-                                        k, depth, bestres.moves.front());
+                                           // bestres.score, bestres.moves.front());
+                                           k, depth, bestres.mv);
                                     let mut best = self.best_mate.write();
                                     *best = Some(k as u8);
                                     let mut w = out.write();
@@ -550,8 +593,11 @@ impl Explorer {
                                 // XXX: add stats?
                             }
                         },
-                        ABResults::ABPrune(_, _) | ABResults::ABSyzygy(_) => {
-                            panic!("TODO: {:?}", res);
+                        // ABResults::ABSyzygy(res) => {
+                        //     panic!("TODO: Syzygy {:?}", res);
+                        // }
+                        ABResults::ABPrune(score, prune) => {
+                            panic!("TODO: Prune at root ?? {:?}, {:?}", score, prune);
                         }
                         x => {
                             let mut w = out.write();
@@ -603,28 +649,9 @@ impl Explorer {
         }
     }
 
-    // fn new_exhelper(&self, id: usize) -> (ExHelper, Receiver<(Depth,ABResults,SearchStats)>) {
-    //     let best_depth = Arc::new(AtomicU8::new(0));
-    //     let (tx,rx): (Sender<(Depth,ABResults,SearchStats)>,
-    //                   Receiver<(Depth,ABResults,SearchStats)>) =
-    //         crossbeam::channel::unbounded();
-    //     let helper = self.build_exhelper(id, self.max_depth, best_depth, tx);
-    //     (helper, rx)
-    // }
-
-    // pub fn ab_search(
-    //     &self,
-    //     ts:         &Tables,
-    // ) {
-    //     let (helper,rx) = self.new_exhelper(0);
-    //     let mut stats = SearchStats::default();
-    //     let mut history = [[[0; 64]; 64]; 2];
-    //     // let res = helper.ab_search_single(ts, stats, history, depth);
-    //     unimplemented!()
-    // }
-
 }
 
+/// Lazy SMP Negamax 2
 impl ExHelper {
 
     const SKIP_LEN: usize = 20;
@@ -681,7 +708,7 @@ impl ExHelper {
 
 }
 
-/// Lazy SMP Negamax
+/// Lazy SMP Negamax Old
 impl Explorer {
 
     fn _lazy_smp_single_negamax(
@@ -708,27 +735,27 @@ impl Explorer {
         let mut g       = self.game.clone();
         // let mut prev_ms = VecDeque::new();
 
-        let res = self._ab_search_negamax(
-            ts, &mut g, cfg, depth,
-            0, &mut stop_counter, (alpha, beta),
-            &mut stats,
-            // &mut prev_ms,
-            VecDeque::new(),
-            &mut history,
-            // &tt_r, tt_w.clone(),true,true);
-            &tt_r, tt_w.clone());
+        // let res = self._ab_search_negamax(
+        //     ts, &mut g, cfg, depth,
+        //     0, &mut stop_counter, (alpha, beta),
+        //     &mut stats,
+        //     // &mut prev_ms,
+        //     VecDeque::new(),
+        //     &mut history,
+        //     // &tt_r, tt_w.clone(),true,true);
+        //     &tt_r, tt_w.clone());
 
-        // XXX: ??
-        match tx.send((depth,res,stats)) {
-        // match tx.try_send((depth,res,stats)) {
-            Ok(_) => {},
-            // Err(_) => panic!("tx send error: depth {}", depth),
-            Err(_) => trace!("tx send error: depth {}", depth),
-            // Err(_) => {},
-        }
-        drop(tx);
+        // // XXX: ??
+        // match tx.send((depth,res,stats)) {
+        // // match tx.try_send((depth,res,stats)) {
+        //     Ok(_) => {},
+        //     // Err(_) => panic!("tx send error: depth {}", depth),
+        //     Err(_) => trace!("tx send error: depth {}", depth),
+        //     // Err(_) => {},
+        // }
+        // drop(tx);
 
-        // unimplemented!()
+        unimplemented!()
     }
 
     fn _lazy_smp_single_negamax2(
@@ -841,12 +868,14 @@ impl Explorer {
 
                                         debug!("new best move d({}): {:.3}s: {}: {:?}",
                                             depth, t0.elapsed().as_secs_f64(),
-                                            bestres.score, bestres.moves.front());
+                                            // bestres.score, bestres.moves.front());
+                                            bestres.score, bestres.mv);
 
                                         if bestres.score > 100_000_000 - 50 {
                                             let k = 100_000_000 - bestres.score.abs();
                                             debug!("Found mate in {}: d({}), {:?}",
-                                                k, depth, bestres.moves.front());
+                                                // k, depth, bestres.moves.front());
+                                                k, depth, bestres.mv);
                                             let mut best = self.best_mate.write();
                                             *best = Some(k as u8);
                                             let mut w = out1.write();
@@ -1019,13 +1048,14 @@ impl Explorer {
         match out {
             ABResults::ABList(best, ress) => {
 
-                debug!("finished lazy_smp_negamax: moves {:?}", best.moves);
+                // debug!("finished lazy_smp_negamax: moves {:?}", best.moves);
+                debug!("finished lazy_smp_negamax: move {:?}", best.mv);
 
                 ((best,ress),stats,(tt_r,tt_w))
             },
             ABResults::ABSingle(best) => {
                 // panic!("single result only?");
-                debug!("finished lazy_smp_negamax: single move {:?}", best.moves);
+                debug!("finished lazy_smp_negamax: single move {:?}", best.mv);
                 ((best,vec![]),stats,(tt_r,tt_w))
             }
             r => {
