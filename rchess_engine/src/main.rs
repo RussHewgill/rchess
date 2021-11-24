@@ -1269,8 +1269,8 @@ fn main9() {
     }
 
     // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
-    // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
-    let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
+    let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
+    // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
     // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
     // let fen = "5rk1/pp3pp1/8/4q1N1/6b1/4r3/PP3QP1/5K1R w - - 0 2"; // R h1h8, #4, knight move order?
@@ -1298,9 +1298,6 @@ fn main9() {
     // // let fen = "7k/4Q3/8/4K3/8/8/8/8 w - - 8 5"; // Queen endgame, #2
     // // let fen = "7k/8/8/8/8/8/4R3/7K w - - 0 1"; // Rook endgame,
 
-    // let fen = "r2n1rk1/1pp1qppp/p2p1n2/3Bp1B1/4P1b1/3P1N2/PPP2PPP/R2Q1RK1 w - - 4 11"; // ??
-    // let fen = "r2n1rk1/1pp1qppp/p2p1n2/3Bp1B1/4P1bP/3P1N2/PPP2PP1/R2Q1RK1 b - - 0 11"; // ??
-
     // let fen = &games(8); // Qt R e7f7, #7
 
     // let fen = &games(2); // STS2 002, Qt R a7E7
@@ -1310,8 +1307,6 @@ fn main9() {
     // let fen = "r3rbk1/1pq2ppp/p1n5/3BpNPb/4P3/P1Q1B2P/1PP2P2/3RR1K1 w - - 1 2"; // repetition
     // let fen = "r3rbk1/1pq2ppp/p1n5/3BpNPb/4P3/P1QRB2P/1PP2P2/4R1K1 b - - 2 2"; // repetition
     // let fen = "r3rbk1/1pq2ppp/p1n3b1/3BpNP1/4P3/P1QRB2P/1PP2P2/4R1K1 w - - 3 3"; // repetition
-
-    // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
     // let fen = "r1b2rk1/1pq1bppp/p2ppn2/2n3B1/3NP3/2N2Q2/PPP1BPPP/R4RK1 w - - 8 12"; // ??
     // let fen = "8/1p1b1pq1/3Npk2/2Q1p3/P4rp1/1PP5/K6p/4R3 w - - 2 45"; // Q cap c5e5
@@ -1460,6 +1455,15 @@ fn main9() {
     // let t1 = t0.elapsed();
     // let t2 = t1.as_secs_f64();
 
+    // baseline  = 1.026
+    // + PVS     = 0.26
+    // + qsearch = 1.932
+    // + history = 0.306
+    // + lmr     = 0.037
+    // + null    = ??
+
+    // + all     = 0.015
+
     let t0 = std::time::Instant::now();
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
@@ -1468,10 +1472,10 @@ fn main9() {
     let t1 = t0.elapsed();
     let t2 = t1.as_secs_f64();
 
-    // eprintln!("res = {:?}", res);
-    if let ABResults::ABList(r,_) = res {
-        eprintln!("r = {:?}", r);
-    }
+    // // eprintln!("res = {:?}", res);
+    // if let ABResults::ABList(r,_) = res {
+    //     eprintln!("r = {:?}", r);
+    // }
 
     let best   = res.get_result().unwrap();
     let scores = res.get_scores().unwrap_or_default();
@@ -1520,11 +1524,41 @@ fn main9() {
     let mut zb0 = g.zobrist;
     let mut g2 = g.clone();
 
-    eprintln!("zb0 = {:?}", zb0);
+    // eprintln!("zb0 = {:?}", zb0);
 
-    let moves = ex.get_pv(&ts, &g);
-    for (n,mv) in moves.iter().enumerate() {
-        eprintln!("mv {:>3} = {:?}", n, mv);
+    // let moves = ex.get_pv(&ts, &g);
+    // for (n,mv) in moves.iter().enumerate() {
+    //     eprintln!("    {:>3} = {:?}", n, mv);
+    // }
+
+    let mut moves = vec![];
+    let tt_r = ex.tt_rf.handle();
+
+    let mut g2 = g.clone();
+    let mut zb = g2.zobrist;
+
+    let zb1 = Game::from_fen(&ts, "r1bq2r1/pp3pbk/2p1p1p1/7P/3P4/2PB1N2/PP3PPR/2KR4 w K - 0 2").unwrap();
+    let zb1 = zb1.zobrist;
+
+    let zb1 = Zobrist(0xaa5beb342615075b);
+    let zb2 = Zobrist(0xdb13044b200db2b4);
+
+    // eprintln!("zb1 = {:?}", zb1);
+    // let si = tt_r.get_one(&zb2).unwrap();
+    // eprintln!("si = {:?}", si);
+
+    let mut k = 0;
+    while let Some(si) = tt_r.get_one(&zb) {
+
+        eprintln!("{:?}: {:>3} = {:?}", si.node_type, k, si.best_move);
+        // eprintln!();
+
+        let mv = si.best_move;
+        moves.push(mv);
+
+        g2 = g2.make_move_unchecked(&ts, mv).unwrap();
+        zb = g2.zobrist;
+        k += 1;
     }
 
     assert_eq!(moves[0], best.mv);

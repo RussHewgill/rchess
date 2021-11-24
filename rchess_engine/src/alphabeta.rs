@@ -69,6 +69,7 @@ pub enum ABResults {
     ABSingle(ABResult),
     ABList(ABResult, Vec<ABResult>),
     ABSyzygy(ABResult),
+    // ABMate()
     ABPrune(Score, Prune),
     ABNone,
 }
@@ -413,39 +414,41 @@ impl ExHelper {
             }
         }
 
-        // TODO: bench this
-        if *stop_counter > 2000 {
-            if self.stop.load(SeqCst) {
-                return ABNone;
-            }
-            {
-                let r = self.best_mate.read();
-                if let Some(best) = *r {
-                    drop(r);
-                    if best <= cfg.max_depth {
-                        trace!("halting search of depth {}, faster mate found", cfg.max_depth);
-                        return ABNone;
-                    }
-                }
-            }
-            *stop_counter = 0;
-        } else {
-            *stop_counter += 1;
-        }
-
-        // if self.stop.load(SeqCst) {
-        //     return ABNone;
-        // }
-        // {
-        //     let r = self.best_mate.read();
-        //     if let Some(best) = *r {
-        //         drop(r);
-        //         if best <= cfg.max_depth {
-        //             trace!("halting search of depth {}, faster mate found", cfg.max_depth);
-        //             return ABNone;
-        //         }
+        // // TODO: bench this
+        // if *stop_counter > 2000 {
+        //     if self.stop.load(SeqCst) {
+        //         return ABNone;
         //     }
+        //     // {
+        //     //     let r = self.best_mate.read();
+        //     //     if let Some(best) = *r {
+        //     //         drop(r);
+        //     //         if best <= cfg.max_depth {
+        //     //             trace!("halting search of depth {}, faster mate found", cfg.max_depth);
+        //     //             return ABNone;
+        //     //         }
+        //     //     }
+        //     // }
+        //     *stop_counter = 0;
+        // } else {
+        //     *stop_counter += 1;
         // }
+
+        if self.stop.load(SeqCst) {
+            return ABNone;
+        }
+        {
+            let r = self.best_mate.read();
+            if let Some(best) = *r {
+                trace!("halting search of depth {}, mate found", cfg.max_depth);
+                return ABNone;
+                // drop(r);
+                // if best <= cfg.max_depth {
+                //     trace!("halting search of depth {}, faster mate found", cfg.max_depth);
+                //     return ABNone;
+                // }
+            }
+        }
 
         let moves = g.search_all(&ts);
 
@@ -626,6 +629,8 @@ impl ExHelper {
 
             // let zb = g2.zobrist;
 
+            if self.best_mate.read().is_some() { debug!("halting {}, mate", cfg.max_depth); return ABNone; }
+
             let g2 = if let Ok(g2) = g.make_move_unchecked(ts, mv) {
                 g2
             } else { continue 'outer; };
@@ -681,7 +686,7 @@ impl ExHelper {
 
                     #[cfg(feature = "late_move_reduction")]
                     if mv.filter_all_captures() {
-                        let see = g2.static_exchange(&ts, *mv).unwrap();
+                        let see = g2.static_exchange(&ts, mv).unwrap();
                         /// Capture with good SEE: do not reduce
                         if see > 0 {
                             lmr = false;
@@ -731,7 +736,7 @@ impl ExHelper {
                             // true
                         ) {
                             ABSingle(mut res) | ABSyzygy(mut res) => {
-                                res.neg_score();
+                                res.neg_score(mv);
                                 if res.score <= alpha {
                                     stats!(stats.lmrs.0 += 1);
                                     // res.moves.push_front(*mv);
@@ -783,7 +788,7 @@ impl ExHelper {
                                     // pms, &mut history, tt_r, tt_w.clone()) {
                                     &mut history, tt_r, tt_w.clone()) {
                                     ABSingle(mut res2) | ABSyzygy(mut res2) => {
-                                        res2.neg_score();
+                                        res2.neg_score(mv);
                                         // res2.moves.push_front(*mv);
                                         res = res2;
                                     },
@@ -881,7 +886,7 @@ impl ExHelper {
 
                 if !cfg.inside_null {
                     // trace!("inserting TT, zb = {:?}", g.zobrist);
-                    Explorer::tt_insert_deepest(
+                    self.tt_insert_deepest(
                         &tt_r, tt_w, g.zobrist,
                         // &tt_r, tt_w, *zb,
                         SearchInfo::new(

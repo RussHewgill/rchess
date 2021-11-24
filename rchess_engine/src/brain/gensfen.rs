@@ -335,6 +335,7 @@ mod td_builder {
                             match res {
                                 ABResults::ABList(res, _) => res,
                                 ABResults::ABSingle(res)  => res,
+                                ABResults::ABSyzygy(res)  => res,
                                 _                         => {
                                     panic!("game ended, res = {:?}", res)
                                 },
@@ -344,11 +345,13 @@ mod td_builder {
                         // eprintln!("res = {:?}", res);
                         last_res = Some(res.clone());
 
+                        best = Some((res.mv, res.score));
+
                         // // if let Some(mv) = res.moves.get(0) {
                         // if let Some(mv) = res.mv {
                         //     best = Some((mv, res.score));
                         // }
-                        unimplemented!()
+                        // unimplemented!()
 
                     }
 

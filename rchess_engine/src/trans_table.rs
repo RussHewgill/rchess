@@ -1,5 +1,5 @@
 
-use crate::explore::Explorer;
+use crate::explore::*;
 use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
@@ -168,24 +168,49 @@ impl MvTable {
 
 }
 
-impl Explorer {
+// impl Explorer {
+impl ExHelper {
 
     #[allow(unused_doc_comments)]
     pub fn tt_insert_deepest(
-        tt_r: &TTRead, tt_w: TTWrite, zb: Zobrist, si: SearchInfo) -> bool {
+        &self, tt_r: &TTRead, tt_w: TTWrite, zb: Zobrist, si: SearchInfo) -> bool {
 
         let d  = si.depth_searched;
         let nt = si.node_type;
 
-        if let Some(prevs) = tt_r.get(&zb) {
-            if let Some(prev_si) = prevs.into_iter().max_by(|a,b| a.depth_searched.cmp(&b.depth_searched)) {
-                // if d < prev_si.depth_searched || (prev_si.node_type != Node::PV && nt == Node::PV) {
-                if d < prev_si.depth_searched {
-                    /// Value already in map is better, keep that instead
-                    return true;
-                }
+        // if zb == Zobrist(0xaa5beb342615075b) {
+        //     let r = self.best_mate.read();
+        //     let s = self.stop.load(std::sync::atomic::Ordering::Relaxed);
+        //     eprintln!("found zb1, si = {:?}, r = {:?}, s = {:?}", si.best_move, r, s);
+        // }
+        // if zb == Zobrist(0xdb13044b200db2b4) {
+        //     let r = self.best_mate.read();
+        //     let s = self.stop.load(std::sync::atomic::Ordering::Relaxed);
+        //     eprintln!("found zb2, si = {:?}, r = {:?}, s = {:?}", si.best_move, r, s);
+        // }
+
+        if let Some(prev_si) = tt_r.get_one(&zb) {
+            if d < prev_si.depth_searched {
+                /// Value already in map is better, keep that instead
+                return true;
             }
         }
+
+        // if let Some(prevs) = tt_r.get(&zb) {
+        //     if let Some(prev_si) = prevs.into_iter().max_by(|a,b| a.depth_searched.cmp(&b.depth_searched)) {
+        //         // if d < prev_si.depth_searched || (prev_si.node_type != Node::PV && nt == Node::PV) {
+
+        //         // if si.score.abs() > STALEMATE_VALUE - 100 {
+        //         //     /// Value already in map is better, keep that instead
+        //         //     return true;
+        //         // }
+
+        //         if d < prev_si.depth_searched {
+        //             /// Value already in map is better, keep that instead
+        //             return true;
+        //         }
+        //     }
+        // }
 
         {
             let mut w = tt_w.lock();

@@ -75,11 +75,23 @@ pub struct ExHelper {
     pub blocked_moves:   HashSet<Move>,
 
     pub best_depth:      Arc<AtomicU8>,
-    pub tx:              Sender<(Depth,ABResults,SearchStats)>,
+    pub tx:              ExSender,
+    // pub thread_dec:      Sender<usize>,
 
     pub tt_r:            TTRead,
     pub tt_w:            TTWrite,
 }
+
+#[derive(Debug,Clone)]
+pub enum ExMessage {
+    Message(Depth,ABResults,SearchStats),
+    End(usize),
+}
+
+// pub type ExReceiver = Receiver<(Depth,ABResults,SearchStats,Option<usize>)>;
+// pub type ExSender   = Sender<(Depth,ABResults,SearchStats,Option<usize>)>;
+pub type ExReceiver = Receiver<ExMessage>;
+pub type ExSender   = Sender<ExMessage>;
 
 #[derive(Debug,Default,Clone,Copy)]
 pub struct ABConfig {
@@ -452,9 +464,8 @@ impl Explorer {
 
         self.reset_stop();
 
-        let (tx,rx): (Sender<(Depth,ABResults,SearchStats)>,
-                      Receiver<(Depth,ABResults,SearchStats)>) =
-            crossbeam::channel::unbounded();
+        let (tx,rx): (ExSender,ExReceiver) = crossbeam::channel::unbounded();
+        // let (dec_tx,dec_rx): (Sender<usize>, Receiver<usize>) = crossbeam::channel::unbounded();
 
         let out: Arc<RwLock<(Depth,ABResults,SearchStats)>> =
             Arc::new(RwLock::new((0, ABResults::ABNone, SearchStats::default())));
@@ -472,6 +483,7 @@ impl Explorer {
             s.spawn(|_| {
                 self.lazy_smp_listener(
                     rx,
+                    // dec_rx,
                     best_depth.clone(),
                     thread_counter.clone(),
                     t0,
@@ -509,18 +521,21 @@ impl Explorer {
 
                 if thread_counter.load(SeqCst) < max_threads {
 
-                    trace!("Spawning thread, id = {}",
-                           thread_id);
+                    trace!("Spawning thread, id = {}", thread_id);
 
                     let helper = self.build_exhelper(
                         thread_id, self.max_depth, best_depth.clone(), tx.clone());
+
                     s.builder()
+                        // .stack_size(size)
                         .spawn(move |_| {
                             helper.lazy_smp_single(ts);
                         }).unwrap();
 
                     thread_id += 1;
                     thread_counter.fetch_add(1, SeqCst);
+                    trace!("Spawned thread, count = {}", thread_counter.load(SeqCst));
+                    std::thread::sleep(Duration::from_millis(1));
                 }
 
                 if self.stop.load(SeqCst) {
@@ -543,7 +558,7 @@ impl Explorer {
 
     fn lazy_smp_listener(
         &self,
-        rx:               Receiver<(Depth,ABResults,SearchStats)>,
+        rx:               ExReceiver,
         best_depth:       Arc<AtomicU8>,
         thread_counter:   Arc<AtomicU8>,
         t0:               Instant,
@@ -559,7 +574,15 @@ impl Explorer {
             // }
 
             match rx.try_recv() {
-                Ok((depth,res,stats)) => {
+                Ok(ExMessage::End(id)) => {
+
+                    thread_counter.fetch_sub(1, SeqCst);
+                    trace!("decrementing thread counter id = {}, new val = {}",
+                            id, thread_counter.load(SeqCst));
+
+                    break;
+                },
+                Ok(ExMessage::Message(depth,res,stats)) => {
                     match res.clone() {
                         ABResults::ABList(bestres, _)
                             | ABResults::ABSingle(bestres)
@@ -581,6 +604,9 @@ impl Explorer {
                                            k, depth, bestres.mv);
                                     let mut best = self.best_mate.write();
                                     *best = Some(k as u8);
+
+                                    self.stop.store(true, SeqCst);
+
                                     let mut w = out.write();
                                     *w = (depth, res, w.2 + stats);
                                     // *w = (depth, scores, None);
@@ -605,11 +631,16 @@ impl Explorer {
                             // panic!("rx: ?? {:?}", x);
                         },
                     }
-                    thread_counter.fetch_sub(1, SeqCst);
-                    trace!("decrementing thread counter, new val = {}", thread_counter.load(SeqCst));
+
+                    // if let Some(id) = thread_dec {
+                    //     thread_counter.fetch_sub(1, SeqCst);
+                    //     trace!("decrementing thread counter id = {}, new val = {}",
+                    //            id, thread_counter.load(SeqCst));
+                    // }
+
                 },
                 Err(TryRecvError::Empty)    => {
-                    std::thread::sleep(Duration::from_millis(1));
+                    // std::thread::sleep(Duration::from_millis(1));
                 },
                 Err(TryRecvError::Disconnected)    => {
                     trace!("Breaking thread counter loop (Disconnect)");
@@ -624,7 +655,7 @@ impl Explorer {
         id:               usize,
         max_depth:        Depth,
         best_depth:       Arc<AtomicU8>,
-        tx:               Sender<(Depth,ABResults,SearchStats)>,
+        tx:               ExSender,
     ) -> ExHelper {
         ExHelper {
             id,
@@ -643,6 +674,7 @@ impl Explorer {
 
             best_depth,
             tx,
+            // thread_dec,
 
             tt_r:            self.tt_rf.handle(),
             tt_w:            self.tt_w.clone(),
@@ -671,23 +703,28 @@ impl ExHelper {
         let start_ply = Self::START_PLY[self.id % Self::SKIP_LEN];
         let mut depth = start_ply + 1;
 
-        // trace!("iterative skip_size {}", skip_size);
-        // trace!("iterative start_ply {}", start_ply);
+        trace!("self.max_depth = {:?}", self.max_depth);
+        trace!("iterative skip_size {}", skip_size);
+        trace!("iterative start_ply {}", start_ply);
 
         /// Iterative deepening
-        while !self.stop.load(Ordering::Relaxed) && depth <= self.max_depth {
+        while !self.stop.load(SeqCst)
+            && depth <= self.max_depth
+            && self.best_mate.read().is_none()
+        {
             // trace!("iterative depth {}", depth);
 
             let res = self.ab_search_single(ts, &mut stats, &mut history, depth);
             // debug!("res = {:?}", res);
 
             if depth >= self.best_depth.load(SeqCst) {
-                match self.tx.try_send((depth, res, stats)) {
+                match self.tx.try_send(ExMessage::Message(depth, res, stats)) {
                     Ok(_)  => {
                         stats = SearchStats::default();
                     },
                     Err(_) => {
-                        trace!("tx send error: id: {}, depth {}", self.id, depth);
+                        trace!("tx send error 0: id: {}, depth {}", self.id, depth);
+                        break;
                     },
                 }
             }
@@ -695,14 +732,12 @@ impl ExHelper {
             depth += skip_size;
         }
 
-        // if let Some(res) = best {
-        //     match self.tx.try_send((depth, res, stats)) {
-        //         Ok(_)  => {},
-        //         Err(_) => {
-        //             trace!("tx send error: id: {}, depth {}", self.id, depth);
-        //         },
-        //     }
-        // }
+        match self.tx.try_send(ExMessage::End(self.id)) {
+            Ok(_)  => {},
+            Err(_) => {
+                trace!("tx send error 1: id: {}, depth {}", self.id, depth);
+            },
+        }
 
     }
 
