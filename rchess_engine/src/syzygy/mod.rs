@@ -255,7 +255,15 @@ impl SyzygyTB {
         assert!(g.state.en_passant.is_none());
         // println!("wat 0 probe_ab_no_ep");
 
-        let mut mvs = g.search_all(ts).get_moves_unsafe();
+        // let mut mvs = g.search_all(ts).get_moves_unsafe();
+        let mut mvs: Vec<Move> = match g.search_all(&ts) {
+            Outcome::Moves(ms)    => ms,
+            // Outcome::Checkmate(w) => return Err(SyzygyError::Checkmate(w)),
+            // Outcome::Stalemate    => return Err(SyzygyError::Stalemate),
+            Outcome::Checkmate(w) => vec![],
+            Outcome::Stalemate    => vec![],
+        };
+
         mvs.retain(|m| m.filter_all_captures());
 
         // let gs = mvs.flat_map(|mv| {

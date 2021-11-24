@@ -670,7 +670,6 @@ fn main_nnue() {
 
     let n_fens = 100;
 
-
     let mut s = OBSelection::new_random_seeded(1234);
     // let (g0,opening) = ob.start_game(&ts, Some(16), &mut s).unwrap();
     // eprintln!("g0 = {:?}", g0);
@@ -684,6 +683,7 @@ fn main_nnue() {
         // .opening(Some(s))
         .max_depth(5)
         .time(0.2)
+        .num_threads(1)
         // .generate_single(&ts)
         .do_explore(&ts, &ob, count, rng, path)
         .unwrap();
@@ -1313,18 +1313,21 @@ fn main9() {
 
     // let fen = "7k/6pp/8/8/8/8/8/RK6 w - - 0 1"; // #1, Qt R a1a8
 
+    // let fen = "r5kr/2pn1qp1/2pb1p1p/p3pP1P/4P3/2N1B3/PPP1Q1P1/3RR1K1 w - - 0 23"; // ??
+    let fen = "r5kr/2pn1qp1/2pb1p1p/p2NpP1P/4P3/4B3/PPP1Q1P1/3RR1K1 b - - 1 23"; // ??
+
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
 
     eprintln!("g = {:?}", g);
 
-    let hook = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |panicinfo| {
-        let loc = panicinfo.location();
-        debug!("Panicking, Location: {:?}", loc);
-        hook(panicinfo)
-    }));
+    // let hook = std::panic::take_hook();
+    // std::panic::set_hook(Box::new(move |panicinfo| {
+    //     let loc = panicinfo.location();
+    //     debug!("Panicking, Location: {:?}", loc);
+    //     hook(panicinfo)
+    // }));
 
     // let mv = Move::Quiet { from: "E4".into(), to: "F6".into(), pc: Knight };
     // let g2 = g.make_move_unchecked(&ts, mv).unwrap();
@@ -1436,7 +1439,8 @@ fn main9() {
     // return;
 
     let t = 10.0;
-    // let t = 2.0;
+    // let t = 1.0;
+    // let t = 0.5;
 
     let n = 35;
     // let n = 4;
@@ -1451,7 +1455,21 @@ fn main9() {
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
     ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
-    let (res,moves, stats0) = ex.lazy_smp_2(&ts);
+    ex.return_moves = true;
+
+    // let (mv,stats) = ex.explore(&ts, None);
+    // eprintln!("mv = {:?}", mv);
+
+    // return;
+
+
+    let t0 = std::time::Instant::now();
+    let timesettings = TimeSettings::new_f64(0.0,t);
+    let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
+    ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+    ex.return_moves = true;
+
+    let (res,moves,stats0) = ex.lazy_smp_2(&ts);
     let t1 = t0.elapsed();
     let t2 = t1.as_secs_f64();
 

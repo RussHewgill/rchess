@@ -20,7 +20,7 @@ harness = false
 [features]
 default = [
     # "par",
-    "one_thread",
+    # "one_thread",
     "smallstack",
 
     # "backtrace",
@@ -29,7 +29,7 @@ default = [
 
     "positional_scoring",
 
-    # "syzygy",
+    "syzygy",
 
     "null_pruning",
     "late_move_reduction",

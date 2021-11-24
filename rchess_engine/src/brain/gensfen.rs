@@ -188,7 +188,7 @@ mod td_builder {
         max_depth:       Depth,
         nodes_per_pos:   Option<u64>,
         num_positions:   Option<u64>,
-        num_threads:     Option<u8>,
+        num_threads:     u8,
         time:            f64,
         print:           bool,
     }
@@ -201,7 +201,7 @@ mod td_builder {
                 max_depth:      5,
                 nodes_per_pos:  None,
                 num_positions:  None,
-                num_threads:    None,
+                num_threads:    1,
                 time:           0.5,
                 print:          true,
             }
@@ -211,7 +211,7 @@ mod td_builder {
         builder_field!(max_depth, Depth);
         builder_field!(nodes_per_pos, Option<u64>);
         builder_field!(num_positions, Option<u64>);
-        builder_field!(num_threads, Option<u8>);
+        builder_field!(num_threads, u8);
         builder_field!(time, f64);
         builder_field!(print, bool);
     }
@@ -234,13 +234,11 @@ mod td_builder {
                           Receiver<TrainingData>) =
                 crossbeam::channel::unbounded();
 
-            let max_threads = self.num_threads.unwrap_or(1);
-
             let sfen_n = Arc::new(AtomicU64::new(0));
 
             crossbeam::scope(|s| {
                 s.spawn(|_| Self::save_listener(path, rx));
-                for id in 0..max_threads {
+                for id in 0..self.num_threads {
                     let rng2: u64 = rng.gen();
                     let mut rng2: StdRng = SeedableRng::seed_from_u64(1234u64);
                     s.builder()
@@ -306,7 +304,7 @@ mod td_builder {
             let mut n_games = 0;
 
             'outer: for gk in 0..count {
-                trace!("starting do_explore #{}", gk);
+                eprintln!("starting do_explore #{}", gk);
 
                 let (mut g,opening) = ob.start_game(&ts, Some(opening_ply), &mut s).unwrap();
 
@@ -337,7 +335,8 @@ mod td_builder {
                                 ABResults::ABSingle(res)  => res,
                                 ABResults::ABSyzygy(res)  => res,
                                 _                         => {
-                                    panic!("game ended, res = {:?}", res)
+                                    println!("game ended, res = {:?}", res);
+                                    panic!("game ended, res = {:?}", res);
                                 },
                             }
                         };
@@ -361,6 +360,8 @@ mod td_builder {
                         trace!("mv = {:?}", mv);
                         trace!("did move in {:.3} seconds", t0.elapsed().as_secs_f64());
 
+                        eprintln!("g = {:?}", g);
+
                         ply += 1;
                         // trace!("ply = {:?}", ply);
 
@@ -381,6 +382,7 @@ mod td_builder {
                                 } else if score.score.abs() > CHECKMATE_VALUE - 100 {
                                     TDOutcome::Win(g.state.side_to_move)
                                 } else {
+                                    println!("wat");
                                     panic!();
                                 };
 

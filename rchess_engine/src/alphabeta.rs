@@ -408,7 +408,9 @@ impl ExHelper {
             if let Some(k) = g.history.get(&g.zobrist) {
                 if *k >= 2 {
                     let score = -STALEMATE_VALUE + ply as Score;
-                    return ABSingle(ABResult::new_single(g.last_move.unwrap(), -score));
+                    // return ABSingle(ABResult::new_single(g.last_move.unwrap(), -score));
+                    // return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
+                    return ABSingle(ABResult::new_single(g.last_move.unwrap(), 0));
                     // return ABSingle(ABResult::new_empty(0));
                 }
             }
@@ -478,7 +480,8 @@ impl ExHelper {
 
                 // TODO: adjust stalemate value when winning/losing
                 // return ABSingle(ABResult::new_empty(-score));
-                return ABSingle(ABResult::new_single(mv, -score));
+                // return ABSingle(ABResult::new_single(mv, score));
+                return ABSingle(ABResult::new_single(mv, 0));
             },
             Outcome::Moves(ms)    => ms,
         };
@@ -527,7 +530,7 @@ impl ExHelper {
                     // trace!("found WDL win: {:?}", Wdl::Win);
                     match tb.best_move(ts, g) {
                         Ok(Some((mv,dtz)))  => {
-                            trace!("dtz,ply = {:?}, {:?}", dtz, ply);
+                            // trace!("dtz,ply = {:?}, {:?}", dtz, ply);
                             // let score = CHECKMATE_VALUE - ply as Score - dtz.0 as Score;
                             let score = CHECKMATE_VALUE - dtz.add_plies(ply as i32).0.abs() as Score;
 
@@ -629,7 +632,7 @@ impl ExHelper {
 
             // let zb = g2.zobrist;
 
-            if self.best_mate.read().is_some() { debug!("halting {}, mate", cfg.max_depth); return ABNone; }
+            if self.best_mate.read().is_some() { trace!("halting {}, mate", cfg.max_depth); return ABNone; }
 
             let g2 = if let Ok(g2) = g.make_move_unchecked(ts, mv) {
                 g2
@@ -656,22 +659,22 @@ impl ExHelper {
                 //     (true, ABResult::new_with(si.moves.into(), si.score))
                 // },
 
-                // Some((SICanUse::UseScore,si)) => {
-                //     let mut si = si.clone();
-                //     match si.node_type {
-                //         Node::PV  => {},
-                //         Node::All => if si.score <= alpha {
-                //             // trace!("Node::All, using alpha {}", alpha);
-                //             si.score = alpha;
-                //         },
-                //         Node::Cut => if si.score >= beta {
-                //             // trace!("Node::Cut, using beta {}", beta);
-                //             si.score = beta;
-                //         },
-                //         _         => unimplemented!(),
-                //     }
-                //     (true, ABResult::new_with(si.moves.into(),si.score))
-                // },
+                Some((SICanUse::UseScore,si)) => {
+                    let mut si = si.clone();
+                    match si.node_type {
+                        Node::PV  => {},
+                        Node::All => if si.score <= alpha {
+                            // trace!("Node::All, using alpha {}", alpha);
+                            si.score = alpha;
+                        },
+                        Node::Cut => if si.score >= beta {
+                            // trace!("Node::Cut, using beta {}", beta);
+                            si.score = beta;
+                        },
+                        _         => unimplemented!(),
+                    }
+                    (true, ABResult::new_single(si.best_move, si.score))
+                },
 
                 _ => 'search: {
                     // let mut pms = prev_mvs.clone();

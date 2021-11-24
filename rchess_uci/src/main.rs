@@ -94,11 +94,7 @@ fn main() -> std::io::Result<()> {
     let mut explorer = Explorer::new(White,Game::default(), depth, timesettings);
     let ts = Tables::new();
 
-    let g0 = {
-        let mut g0 = Game::from_fen(&ts, STARTPOS).unwrap();
-        let _ = g0.recalc_gameinfo_mut(&ts);
-        g0
-    };
+    let mut g0 = Game::from_fen(&ts, STARTPOS).unwrap();
 
     let stdin = std::io::stdin();
     for line in stdin.lock().lines() {
@@ -132,7 +128,6 @@ fn main() -> std::io::Result<()> {
                                 let fen = xs.next().unwrap();
 
                                 let mut g = Game::from_fen(&ts, &fen).unwrap();
-                                let _ = g.recalc_gameinfo_mut(&ts);
 
                                 // eprintln!("fen = {:?}", fen);
                                 match xs.next() {
@@ -154,8 +149,9 @@ fn main() -> std::io::Result<()> {
                                 // explorer.lock().unwrap().side = g.state.side_to_move;
                                 // explorer.lock().unwrap().game = g;
                                 debug!("setting game FEN = {}", g.to_fen());
-                                explorer.side = g.state.side_to_move;
-                                explorer.game = g;
+                                // explorer.side = g.state.side_to_move;
+                                // explorer.game = g;
+                                explorer.update_game(g.clone());
                             },
                             "startpos" => {
                                 params.next();
@@ -171,8 +167,9 @@ fn main() -> std::io::Result<()> {
                                     g = g.make_move_unchecked(&ts, mm).unwrap();
                                 }
                                 debug!("setting game FEN = {}", g.to_fen());
-                                explorer.side = g.state.side_to_move;
-                                explorer.game = g;
+                                // explorer.side = g.state.side_to_move;
+                                // explorer.game = g;
+                                explorer.update_game(g.clone());
                             },
                             x => panic!("Position not fen? {:?},  {:?}", x, params),
                         }
@@ -186,6 +183,7 @@ fn main() -> std::io::Result<()> {
 
                         // let m = explorer.lock().unwrap().explore(&ts, depth).unwrap();
                         let (m,stats) = explorer.explore(&ts, None);
+                        debug!("m = {:?}", m);
                         let (mv,score) = m.unwrap();
 
                         let mm = format_move(mv);

@@ -49,6 +49,7 @@ pub struct Explorer {
     pub opening_book:  Option<Arc<OpeningBook>>,
 
     pub blocked_moves: HashSet<Move>,
+    pub return_moves:  bool,
 
     pub tt_rf:         TTReadFactory,
     pub tt_w:          TTWrite,
@@ -73,6 +74,7 @@ pub struct ExHelper {
     pub syzygy:          Option<Arc<SyzygyTB>>,
 
     pub blocked_moves:   HashSet<Move>,
+    pub return_moves:  bool,
 
     pub best_depth:      Arc<AtomicU8>,
     pub tx:              ExSender,
@@ -151,6 +153,7 @@ impl Explorer {
             opening_book:   None,
 
             blocked_moves:  HashSet::default(),
+            return_moves:   false,
 
             tt_rf,
             tt_w,
@@ -207,7 +210,11 @@ impl Explorer {
         let mut g2 = g.clone();
         let mut zb = g2.zobrist;
 
+        let mut hashes = HashSet::<Zobrist>::default();
+        hashes.insert(zb);
+
         while let Some(si) = tt_r.get_one(&zb) {
+            hashes.insert(zb);
 
             // eprintln!("si.node_type {:>3} = {:?}", k, si.node_type);
             // eprintln!("si.best_move {:>3} = {:?}", k, si.best_move);
@@ -218,6 +225,12 @@ impl Explorer {
 
             g2 = g2.make_move_unchecked(&ts, mv).unwrap();
             zb = g2.zobrist;
+
+            if hashes.contains(&zb) {
+                trace!("_get_pv, duplicate hash: {:?}\n{:?}", zb, g);
+                break;
+            }
+
         }
 
         moves
@@ -257,10 +270,23 @@ impl Explorer {
         //     }
         // }
 
-        let ((best, scores),stats,(tt_r,tt_w)) = self.lazy_smp_negamax(ts, false, false);
+        // let ((best, scores),stats,(tt_r,tt_w)) = self.lazy_smp_negamax(ts, false, false);
 
-        debug!("explore: best move = {:?}", best.mv);
-        (Some((best.mv,best)),stats)
+        let (ress,moves,stats) = self.lazy_smp_2(ts);
+
+        // debug!("finished lazy_smp_2, ress = {:?}", ress);
+
+        // match ress {
+        //     ABResults::ABList(res,_) | ABResults::ABSingle(res) 
+        // }
+
+        if let Some(best) = ress.get_result() {
+            debug!("explore: best move = {:?}", best.mv);
+            (Some((best.mv,best)),stats)
+        } else {
+            debug!("explore: no best move? = {:?}", ress);
+            panic!();
+        }
 
         // // if let Some(mv) = best.moves.get(0) {
         // if let Some(mv) = best.mv {
@@ -515,7 +541,7 @@ impl Explorer {
                     debug!("breaking loop (Time),  d: {}, t0: {:.3}", d, t1.as_secs_f64());
                     // XXX: Only force threads to stop if out of time ?
                     self.stop.store(true, SeqCst);
-                    drop(tx);
+                    // drop(tx);
                     break 'outer;
                 }
 
@@ -539,16 +565,19 @@ impl Explorer {
                     thread_id += 1;
                     thread_counter.fetch_add(1, SeqCst);
                     trace!("Spawned thread, count = {}", thread_counter.load(SeqCst));
-                    std::thread::sleep(Duration::from_millis(1));
+                    // std::thread::sleep(Duration::from_millis(1));
                 }
 
                 if self.stop.load(SeqCst) {
                     break 'outer;
                 }
 
+                std::thread::sleep(Duration::from_millis(1));
             }
+            trace!("exiting lazy_smp_2 loop");
 
         }).unwrap();
+        trace!("exiting lazy_smp_2 scoped");
 
         let (d,mut out,moves,mut stats) = {
             let r = out.read();
@@ -642,6 +671,7 @@ impl Explorer {
                 },
             }
         }
+        trace!("exiting listener");
     }
 
     pub fn build_exhelper(
@@ -665,6 +695,7 @@ impl Explorer {
             syzygy:          self.syzygy.clone(),
 
             blocked_moves:   self.blocked_moves.clone(),
+            return_moves:    self.return_moves,
 
             best_depth,
             tx,
@@ -697,9 +728,9 @@ impl ExHelper {
         let start_ply = Self::START_PLY[self.id % Self::SKIP_LEN];
         let mut depth = start_ply + 1;
 
-        trace!("self.max_depth = {:?}", self.max_depth);
-        trace!("iterative skip_size {}", skip_size);
-        trace!("iterative start_ply {}", start_ply);
+        // trace!("self.max_depth = {:?}", self.max_depth);
+        // trace!("iterative skip_size {}", skip_size);
+        // trace!("iterative start_ply {}", start_ply);
 
         /// Iterative deepening
         while !self.stop.load(SeqCst)
@@ -710,10 +741,12 @@ impl ExHelper {
 
             let res = self.ab_search_single(ts, &mut stats, &mut history, depth);
             // debug!("res = {:?}", res);
-
-            let moves = Explorer::_get_pv(ts, &self.game, &self.tt_r);
+            trace!("finished res, id = {}, depth = {}", self.id, depth);
 
             if !self.stop.load(SeqCst) && depth >= self.best_depth.load(SeqCst) {
+                let moves = if self.return_moves {
+                    Explorer::_get_pv(ts, &self.game, &self.tt_r)
+                } else { vec![] };
                 match self.tx.try_send(ExMessage::Message(depth, res, moves, stats)) {
                     Ok(_)  => {
                         stats = SearchStats::default();
@@ -735,6 +768,7 @@ impl ExHelper {
             },
         }
 
+        trace!("exiting lazy_smp_single, id = {}", self.id);
     }
 
 }
