@@ -84,7 +84,7 @@ pub struct ExHelper {
 
 #[derive(Debug,Clone)]
 pub enum ExMessage {
-    Message(Depth,ABResults,SearchStats),
+    Message(Depth,ABResults,Vec<Move>,SearchStats),
     End(usize),
 }
 
@@ -197,8 +197,12 @@ impl Explorer {
 impl Explorer {
 
     pub fn get_pv(&self, ts: &Tables, g: &Game) -> Vec<Move> {
-        let mut moves = vec![];
         let tt_r = self.tt_rf.handle();
+        Self::_get_pv(ts, g, &tt_r)
+    }
+
+    pub fn _get_pv(ts: &Tables, g: &Game, tt_r: &TTRead) -> Vec<Move> {
+        let mut moves = vec![];
 
         let mut g2 = g.clone();
         let mut zb = g2.zobrist;
@@ -448,7 +452,7 @@ impl Explorer {
     pub fn lazy_smp_2(
         &self,
         ts:         &Tables,
-    ) -> (ABResults,SearchStats) {
+    ) -> (ABResults,Vec<Move>,SearchStats) {
 
         // let mut threads = vec![];
 
@@ -467,8 +471,8 @@ impl Explorer {
         let (tx,rx): (ExSender,ExReceiver) = crossbeam::channel::unbounded();
         // let (dec_tx,dec_rx): (Sender<usize>, Receiver<usize>) = crossbeam::channel::unbounded();
 
-        let out: Arc<RwLock<(Depth,ABResults,SearchStats)>> =
-            Arc::new(RwLock::new((0, ABResults::ABNone, SearchStats::default())));
+        let out: Arc<RwLock<(Depth,ABResults,Vec<Move>, SearchStats)>> =
+            Arc::new(RwLock::new((0, ABResults::ABNone, vec![], SearchStats::default())));
 
         let thread_counter = Arc::new(AtomicU8::new(0));
         let best_depth     = Arc::new(AtomicU8::new(0));
@@ -546,13 +550,13 @@ impl Explorer {
 
         }).unwrap();
 
-        let (d,mut out,mut stats) = {
+        let (d,mut out,moves,mut stats) = {
             let r = out.read();
             r.clone()
         };
         stats.max_depth = d;
 
-        (out,stats)
+        (out,moves,stats)
 
     }
 
@@ -562,27 +566,17 @@ impl Explorer {
         best_depth:       Arc<AtomicU8>,
         thread_counter:   Arc<AtomicU8>,
         t0:               Instant,
-        out:              Arc<RwLock<(Depth,ABResults,SearchStats)>>,
+        out:              Arc<RwLock<(Depth,ABResults,Vec<Move>,SearchStats)>>,
     ) {
         loop {
-
-            // if self.stop.load(SeqCst) {
-            //     trace!("Breaking thread counter loop (Force Stop)");
-            //     // let mut w = out.write();
-            //     // w.2 = w.2 + stats;
-            //     break;
-            // }
-
             match rx.try_recv() {
                 Ok(ExMessage::End(id)) => {
-
                     thread_counter.fetch_sub(1, SeqCst);
                     trace!("decrementing thread counter id = {}, new val = {}",
                             id, thread_counter.load(SeqCst));
-
                     break;
                 },
-                Ok(ExMessage::Message(depth,res,stats)) => {
+                Ok(ExMessage::Message(depth,res,moves,stats)) => {
                     match res.clone() {
                         ABResults::ABList(bestres, _)
                             | ABResults::ABSingle(bestres)
@@ -608,12 +602,12 @@ impl Explorer {
                                     self.stop.store(true, SeqCst);
 
                                     let mut w = out.write();
-                                    *w = (depth, res, w.2 + stats);
+                                    *w = (depth, res, moves, w.3 + stats);
                                     // *w = (depth, scores, None);
                                     break;
                                 } else {
                                     let mut w = out.write();
-                                    *w = (depth, res, w.2 + stats);
+                                    *w = (depth, res, moves, w.3 + stats);
                                 }
                             } else {
                                 // XXX: add stats?
@@ -627,7 +621,7 @@ impl Explorer {
                         }
                         x => {
                             let mut w = out.write();
-                            w.2 = w.2 + stats;
+                            w.3 = w.3 + stats;
                             // panic!("rx: ?? {:?}", x);
                         },
                     }
@@ -717,8 +711,10 @@ impl ExHelper {
             let res = self.ab_search_single(ts, &mut stats, &mut history, depth);
             // debug!("res = {:?}", res);
 
-            if depth >= self.best_depth.load(SeqCst) {
-                match self.tx.try_send(ExMessage::Message(depth, res, stats)) {
+            let moves = Explorer::_get_pv(ts, &self.game, &self.tt_r);
+
+            if !self.stop.load(SeqCst) && depth >= self.best_depth.load(SeqCst) {
+                match self.tx.try_send(ExMessage::Message(depth, res, moves, stats)) {
                     Ok(_)  => {
                         stats = SearchStats::default();
                     },

@@ -1269,9 +1269,9 @@ fn main9() {
     }
 
     // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
-    let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
+    // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
-    // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
     // let fen = "5rk1/pp3pp1/8/4q1N1/6b1/4r3/PP3QP1/5K1R w - - 0 2"; // R h1h8, #4, knight move order?
     // let fen = "r4r1k/2Q5/1p5p/2p2n2/2Pp2R1/PN1Pq3/6PP/R3N2K b - - 0 1"; // #4, Qt N f5g3, slow
@@ -1435,8 +1435,8 @@ fn main9() {
     // eprintln!("zb         = {:?}", zb);
     // return;
 
-    // let t = 10.0;
-    let t = 2.0;
+    let t = 10.0;
+    // let t = 2.0;
 
     let n = 35;
     // let n = 4;
@@ -1447,28 +1447,11 @@ fn main9() {
     // let t1 = t0.elapsed();
     // let t2 = t1.as_secs_f64();
 
-    // let t0 = std::time::Instant::now();
-    // let timesettings = TimeSettings::new_f64(0.0,t);
-    // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
-    // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
-    // let ((best, scores),stats0,(tt_r,tt_w)) = ex.lazy_smp_negamax(&ts, false, false);
-    // let t1 = t0.elapsed();
-    // let t2 = t1.as_secs_f64();
-
-    // baseline  = 1.026
-    // + PVS     = 0.26
-    // + qsearch = 1.932
-    // + history = 0.306
-    // + lmr     = 0.037
-    // + null    = ??
-
-    // + all     = 0.015
-
     let t0 = std::time::Instant::now();
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
     ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
-    let (res, stats0) = ex.lazy_smp_2(&ts);
+    let (res,moves, stats0) = ex.lazy_smp_2(&ts);
     let t1 = t0.elapsed();
     let t2 = t1.as_secs_f64();
 
@@ -1517,49 +1500,18 @@ fn main9() {
     // eprintln!("s0 = {:?}", s0);
 
     println!();
-    // for (n,mv) in best.moves.iter().enumerate() {
-    //     eprintln!("{}\t{:?}", n, mv);
-    // }
-
-    let mut zb0 = g.zobrist;
-    let mut g2 = g.clone();
-
-    // eprintln!("zb0 = {:?}", zb0);
+    for (n,mv) in moves.iter().enumerate() {
+        eprintln!("{}\t{:?}", n, mv);
+    }
 
     // let moves = ex.get_pv(&ts, &g);
     // for (n,mv) in moves.iter().enumerate() {
     //     eprintln!("    {:>3} = {:?}", n, mv);
     // }
 
-    let mut moves = vec![];
-    let tt_r = ex.tt_rf.handle();
-
-    let mut g2 = g.clone();
-    let mut zb = g2.zobrist;
-
-    let zb1 = Game::from_fen(&ts, "r1bq2r1/pp3pbk/2p1p1p1/7P/3P4/2PB1N2/PP3PPR/2KR4 w K - 0 2").unwrap();
-    let zb1 = zb1.zobrist;
-
-    let zb1 = Zobrist(0xaa5beb342615075b);
-    let zb2 = Zobrist(0xdb13044b200db2b4);
-
     // eprintln!("zb1 = {:?}", zb1);
     // let si = tt_r.get_one(&zb2).unwrap();
     // eprintln!("si = {:?}", si);
-
-    let mut k = 0;
-    while let Some(si) = tt_r.get_one(&zb) {
-
-        eprintln!("{:?}: {:>3} = {:?}", si.node_type, k, si.best_move);
-        // eprintln!();
-
-        let mv = si.best_move;
-        moves.push(mv);
-
-        g2 = g2.make_move_unchecked(&ts, mv).unwrap();
-        zb = g2.zobrist;
-        k += 1;
-    }
 
     assert_eq!(moves[0], best.mv);
 

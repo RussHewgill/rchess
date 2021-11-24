@@ -330,7 +330,7 @@ mod td_builder {
 
                         let mut stats = SearchStats::default();
                         let res = {
-                            let (res,stats) = ex.lazy_smp_2(ts);
+                            let (res,moves,stats) = ex.lazy_smp_2(ts);
 
                             match res {
                                 ABResults::ABList(res, _) => res,
