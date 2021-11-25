@@ -256,15 +256,16 @@ mod td_builder {
         ) {
             let mut out = vec![];
             loop {
-                match rx.try_recv() {
+                match rx.recv() {
                     Ok(td) => {
                         out.push(td);
                         TrainingData::save_all(&path, &out).unwrap();
                     },
-                    Err(TryRecvError::Empty)    => {
-                        std::thread::sleep(std::time::Duration::from_millis(1));
-                    },
-                    Err(TryRecvError::Disconnected)    => {
+                    // Err(TryRecvError::Empty)    => {
+                    //     std::thread::sleep(std::time::Duration::from_millis(1));
+                    // },
+                    // Err(TryRecvError::Disconnected)    => {
+                    Err(_)    => {
                         // trace!("Breaking thread counter loop (Disconnect)");
                         break;
                     },
@@ -297,6 +298,7 @@ mod td_builder {
             let mut ex = Explorer::new(g.state.side_to_move, g.clone(), self.max_depth, timesettings);
 
             ex.cfg.num_threads = Some(1);
+            ex.cfg.clear_table = false;
 
             // let mut s = if let Some(o) = self.opening { o } else { OBSelection::BestN(0) };
             let mut s = OBSelection::Random(rng);
@@ -304,7 +306,7 @@ mod td_builder {
             let mut n_games = 0;
 
             'outer: for gk in 0..count {
-                eprintln!("starting do_explore #{}", gk);
+                // eprintln!("starting do_explore #{}", gk);
 
                 let (mut g,opening) = ob.start_game(&ts, Some(opening_ply), &mut s).unwrap();
 
@@ -312,10 +314,23 @@ mod td_builder {
                 // let opening = vec![];
                 // let mut g = Game::from_fen(ts, fen).unwrap();
 
+                // eprintln!("g.to_fen() = {:?}", g.to_fen());
+                // eprintln!("g 0 = {:?}", g);
+                // for mv in opening.iter() {
+                //     eprintln!("    mv = {:?}", mv);
+                // }
+
                 ex.update_game(g.clone());
+                ex.clear_tt();
                 let mut ply = opening.len();
 
                 'game: loop {
+
+                    if let Some(k) = self.num_positions {
+                        if sfen_n.load(Ordering::Relaxed) > k {
+                            return;
+                        }
+                    }
 
                     let mut best                       = None;
                     let mut last_res: Option<ABResult> = None;
@@ -387,6 +402,8 @@ mod td_builder {
                                 };
 
                                 debug!("Finished game: {:?}", result);
+                                let k = sfen_n.load(Ordering::SeqCst);
+                                eprintln!("sfen_n = {:?}", k);
 
                                 let n = moves.iter().filter(|x| !x.skip).count();
                                 sfen_n.fetch_add(n as u64, Ordering::Relaxed);

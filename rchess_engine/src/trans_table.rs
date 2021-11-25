@@ -8,16 +8,19 @@ use evmap::shallow_copy::CopyValue;
 // use arrayvec::ArrayVec;
 use parking_lot::{RwLock,Mutex};
 use rustc_hash::FxHashMap;
+use std::collections::HashMap;
 use std::hash::Hasher;
+use std::path::Path;
 use std::sync::Arc;
 
 use std::hash::Hash;
+
+use serde::{Serialize,Deserialize};
 
 use evmap::{ReadHandle,ReadHandleFactory,WriteHandle};
 use evmap_derive::ShallowCopy;
 // use rustc_hash::Fx;
 use dashmap::{DashMap,DashSet};
-
 
 pub type FxBuildHasher = core::hash::BuildHasherDefault<rustc_hash::FxHasher>;
 
@@ -43,6 +46,12 @@ pub struct MvTable {
 //     pub leaves:  u32,
 // }
 
+impl Explorer {
+    pub fn handle(&self) -> TTRead {
+        self.tt_rf.handle()
+    }
+}
+
 pub fn tt_total_size(tt_r: &TTRead) -> usize {
     let mut out = 0;
     for (k,vs) in tt_r.read().unwrap().iter() {
@@ -54,6 +63,44 @@ pub fn tt_total_size(tt_r: &TTRead) -> usize {
     out
 }
 
+pub fn save_tt<P: AsRef<Path>>(tt_r: &TTRead, path: P) -> std::io::Result<()> {
+    use std::io::Write;
+    let mut out: HashMap<Zobrist,SearchInfo> = HashMap::default();
+    for (k,vs) in tt_r.read().unwrap().iter() {
+        for v in vs.iter() {
+            if let Some(_) = out.insert(*k, *v) {
+                println!("save_tt: dupe: {:?}", k);
+            }
+        }
+    }
+    let b: Vec<u8> = bincode::serialize(&out).unwrap();
+    let mut file = std::fs::File::create(path)?;
+    file.write_all(&b)?;
+    Ok(())
+}
+
+pub fn load_tt<P: AsRef<Path>>(
+    path:    P,
+    tt_w:    TTWrite,
+) -> std::io::Result<()> {
+    let map = _load_tt(path)?;
+
+    let mut w = tt_w.lock();
+    for (zb,si) in map.into_iter() {
+        w.update(zb, si);
+    }
+
+    w.refresh();
+
+    Ok(())
+}
+
+pub fn _load_tt<P: AsRef<Path>>(path: P) -> std::io::Result<HashMap<Zobrist,SearchInfo>> {
+    let mut b = std::fs::read(path)?;
+    let out: HashMap<Zobrist,SearchInfo> = bincode::deserialize(&b).unwrap();
+    Ok(out)
+}
+
 #[derive(Debug,Eq,PartialEq,Clone,Copy)]
 pub enum SICanUse {
     UseScore,
@@ -61,7 +108,8 @@ pub enum SICanUse {
 }
 
 // #[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone)]
-#[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
+#[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize)]
+// #[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
 pub struct SearchInfo {
     pub best_move:          Move,
     pub depth_searched:     Depth,
@@ -96,38 +144,13 @@ impl PartialOrd for SearchInfo {
     }
 }
 
-// #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
-// pub struct VMoves {
-//     buf:          [Option<Move>; 25],
-//     ptr:          usize,
-// }
-
-// impl VMoves {
-//     pub fn from_vec(v: Vec<Move>) -> Self {
-//         assert!(v.len() <= 25);
-//         let mut out = Self::default();
-//         for x in v.into_iter() {
-//             out.buf[out.ptr] = Some(x);
-//             out.ptr += 1;
-//         }
-//         out
-//     }
-//     pub fn to_vec(&self) -> Vec<Move> {
-//         self.buf.to_vec()
-//             .into_iter()
-//             .filter(|x| x.is_some())
-//             .flatten()
-//             .collect::<Vec<Move>>()
-//     }
-// }
-
 /// PV,  // Exact
 /// All, // UpperBound, Fail low, evaluation never exceeded alpha
 /// Cut, // LowerBound, Fail high, evaluation caused cutoff
 /// Quiet,
 /// // Root,
-#[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
-// #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
+// #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
+#[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize)]
 pub enum Node {
     PV,
     All, // UpperBound
@@ -168,7 +191,7 @@ impl MvTable {
 
 }
 
-// impl Explorer {
+/// tt_insert_deepest
 impl ExHelper {
 
     #[allow(unused_doc_comments)]

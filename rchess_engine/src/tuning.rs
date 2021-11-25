@@ -10,12 +10,15 @@ use serde::{Serialize,Deserialize};
 
 pub static LMR_MIN_MOVES: Depth = 2;
 pub static LMR_MIN_PLY: Depth = 3;
+pub static LMR_MIN_DEPTH: Depth = 3;
 
 pub static LMR_REDUCTION: Depth = 3;
 pub static LMR_PLY_CONST: Depth = 6;
 
 pub static QS_RECAPS_ONLY: Depth = 5;
 // pub static QS_RECAPS_ONLY: Depth = 100;
+
+pub static NULL_PRUNE_MIN_DEPTH: Depth = 2;
 
 mod piece_square_tables {
 }

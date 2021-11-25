@@ -20,7 +20,7 @@ harness = false
 [features]
 default = [
     # "par",
-    # "one_thread",
+    "one_thread",
     "smallstack",
 
     # "backtrace",
@@ -31,12 +31,12 @@ default = [
 
     "syzygy",
 
-    "null_pruning",
-    "late_move_reduction",
-    "history_heuristic",
-    "qsearch",
+    # "null_pruning",
+    # "late_move_reduction",
+    # "history_heuristic",
+    # "qsearch",
 
-    "pvs_search",
+    # "pvs_search",
 
     # "negamax_only",
 

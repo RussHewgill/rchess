@@ -103,8 +103,6 @@ pub enum Prune {
 impl ExHelper {
 
     /// returns (can_use, SearchInfo)
-    /// true: when score can be used instead of searching
-    /// false: score can be used ONLY for move ordering
     pub fn check_tt_negamax(
         &self,
         ts:             &Tables,
@@ -117,10 +115,10 @@ impl ExHelper {
         if let Some(si) = tt_r.get_one(zb) {
             if si.depth_searched >= depth {
                 stats!(stats.tt_hits += 1);
-                Some((SICanUse::UseScore,si.clone()))
+                Some((SICanUse::UseScore,*si))
             } else {
                 stats!(stats.tt_halfmiss += 1);
-                Some((SICanUse::UseOrdering,si.clone()))
+                Some((SICanUse::UseOrdering,*si))
             }
         } else {
             // if g.zobrist == Zobrist(0x1eebfbac03c62e9d) { println!("wat wat 3"); }
@@ -381,7 +379,7 @@ impl ExHelper {
         /// Null Move pruning
         #[cfg(feature = "null_pruning")]
         if g.state.checkers.is_empty()
-            && depth >= 2
+            && depth >= NULL_PRUNE_MIN_DEPTH
             && !is_pv_node
             && g.state.phase < 200
             && cfg.do_null {
@@ -437,7 +435,7 @@ impl ExHelper {
         let mut moves_searched = 0;
         let mut val = i32::MIN + 200;
         // let mut val: (Option<(Zobrist,Move,ABResult)>,i32) = (None,val);
-        let mut val: (Option<(Zobrist,ABResult)>,i32) = (None,val);
+        let mut val: (Option<(Zobrist,ABResult,bool)>,i32) = (None,val);
         let mut list = vec![];
 
         // 'outer: for (mv,zb0,tt) in gs.iter() {
@@ -446,7 +444,10 @@ impl ExHelper {
 
             // let zb = g2.zobrist;
 
-            if self.best_mate.read().is_some() { trace!("halting {}, mate", cfg.max_depth); return ABNone; }
+            // if self.best_mate.read().is_some() {
+            //     trace!("halting {}, mate", cfg.max_depth);
+            //     return ABNone;
+            // }
 
             // let g2 = if let Ok(g2) = g.make_move_unchecked(ts, mv) {
             //     g2
@@ -458,24 +459,13 @@ impl ExHelper {
 
             let zb = g2.zobrist;
             assert_eq!(zb, zb0);
-            // if zb != *zb0 {
-            //     eprintln!("zb  = {:?}", zb);
-            //     eprintln!("zb0 = {:?}", zb0);
-            //     panic!("zb != zb0: {:?}\n{:?}", mv, g2);
-            // }
 
             #[cfg(feature = "pvs_search")]
             if depth < 3 {
                 skip_pv = true;
             }
 
-            let (can_use,res) = match tt {
-
-                // Some((SICanUse::UseScore,si)) => {
-                //     let mut si = si.clone();
-                //     // eprintln!("using si: = {:?}", si);
-                //     (true, ABResult::new_with(si.moves.into(), si.score))
-                // },
+            let (from_tt,res) = match tt {
 
                 Some((SICanUse::UseScore,si)) => {
                     let mut si = si.clone();
@@ -491,12 +481,11 @@ impl ExHelper {
                         },
                         _         => unimplemented!(),
                     }
-                    (true, ABResult::new_single(si.best_move, si.score))
+                    // (true, ABResult::new_single(si.best_move, si.score))
+                    (true, ABResult::new_single(mv, si.score))
                 },
 
                 _ => 'search: {
-                    // let mut pms = prev_mvs.clone();
-                    // pms.push_back((g.zobrist,*mv));
 
                     let mut cfg2 = cfg;
                     cfg2.do_null = true;
@@ -520,14 +509,14 @@ impl ExHelper {
                         && !is_pv_node
                         && moves_searched >= LMR_MIN_MOVES
                         // && ply >= LMR_MIN_PLY
-                        && depth >= 3
+                        && depth >= LMR_MIN_DEPTH
                         && !mv.filter_promotion()
                         && g.state.checkers.is_empty()
                         && g2.state.checkers.is_empty()
                     {
 
-                        // let depth3 = depth.checked_sub(LMR_REDUCTION).unwrap();
-                        let depth3 = depth.checked_sub(3).unwrap();
+                        let depth3 = depth.checked_sub(LMR_REDUCTION).unwrap();
+                        // let depth3 = depth.checked_sub(3).unwrap();
 
                         // let depth3 = if moves_searched < 2 {
                         //     depth.checked_sub(1).unwrap()
@@ -643,42 +632,42 @@ impl ExHelper {
 
             if res.score > val.1 {
                 val.1 = res.score;
-                // if !can_use { mv_seq.push(*mv) };
-                // val.0 = Some((zb, mv, res.clone()))
-                val.0 = Some((zb, res.clone()))
+                val.0 = Some((zb, res.clone(),from_tt))
             }
 
             #[cfg(not(feature = "negamax_only"))]
             {
                 if res.score >= beta { // Fail Soft
-                b = true;
-                // return beta;
-            }
-
-            if !b && val.1 > alpha {
-                node_type = Node::PV;
-                alpha = val.1;
-                #[cfg(feature = "pvs_search")]
-                if true { search_pv = false; }
-            }
-
-            if b {
-                // node_type = Some(Node::Cut);
-                node_type = Node::Cut;
-
-                #[cfg(feature = "history_heuristic")]
-                if !mv.filter_all_captures() {
-                    history[g.state.side_to_move][mv.sq_from()][mv.sq_to()] += ply as Score * ply as Score;
+                    b = true;
+                    // return beta;
                 }
 
-                if moves_searched == 0 {
-                    stats!(stats.beta_cut_first.0 += 1);
-                } else {
-                    stats!(stats.beta_cut_first.1 += 1);
+                if !b && val.1 > alpha {
+                    node_type = Node::PV;
+                    alpha = val.1;
+                    #[cfg(feature = "pvs_search")]
+                    if true { search_pv = false; }
                 }
 
-                break;
-            }}
+                if b {
+                    // node_type = Some(Node::Cut);
+                    node_type = Node::Cut;
+
+                    #[cfg(feature = "history_heuristic")]
+                    if !mv.filter_all_captures() {
+                        history[g.state.side_to_move][mv.sq_from()][mv.sq_to()] +=
+                            ply as Score * ply as Score;
+                    }
+
+                    if moves_searched == 0 {
+                        stats!(stats.beta_cut_first.0 += 1);
+                    } else {
+                        stats!(stats.beta_cut_first.1 += 1);
+                    }
+
+                    break;
+                }
+            }
 
             moves_searched += 1;
         }
@@ -691,21 +680,12 @@ impl ExHelper {
         stats!(stats.inc_nodes_arr(ply));
         stats!(stats.nodes += 1);
 
-        // if !tt_r.contains_key(&g.zobrist) {
-        //     // /// XXX: stat padding by including nodes found in TT
-        //     stats!(stats.inc_nodes_arr(ply));
-        //     stats!(stats.nodes += 1);
-        //     // trace!("adding node: {}, {:?}", k, g.zobrist);
-        // } else {
-        //     // trace!("skipped node: {}, {:?}", k, g.zobrist);
-        // }
-
         match &val.0 {
             // Some((zb,mv,mv_seq)) => Some(((mv_seq.clone(),val.1),(alpha,beta))),
             // Some((zb,mv,res)) => {
-            Some((zb,res)) => {
+            Some((zb,res,from_tt)) => {
 
-                if !cfg.inside_null {
+                if !cfg.inside_null && !from_tt {
                     // trace!("inserting TT, zb = {:?}", g.zobrist);
                     self.tt_insert_deepest(
                         &tt_r, tt_w, g.zobrist,

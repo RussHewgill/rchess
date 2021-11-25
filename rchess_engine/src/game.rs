@@ -459,7 +459,12 @@ impl Game {
 
     #[must_use]
     // pub fn make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Self> {
-    pub fn _make_move_unchecked(&self, ts: &Tables, mv: Move, use_zb: Option<Zobrist>) -> GameResult<Game> {
+    pub fn _make_move_unchecked(
+        &self,
+        ts:          &Tables,
+        mv:          Move,
+        use_zb:      Option<Zobrist>,
+    ) -> GameResult<Game> {
         let calc_zb = use_zb.is_none();
 
         if mv != Move::NullMove {

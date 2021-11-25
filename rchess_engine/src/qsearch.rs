@@ -130,6 +130,20 @@ impl Explorer {
         // for (mv,g2) in ms {
         for mv in moves.into_iter() {
 
+            match g.get_at(mv.sq_from()) {
+                Some((side,_)) => if g.state.side_to_move != side {
+                    let tt_r = self.tt_rf.handle();
+                    // eprintln!("zb0 = {:?}", zb0);
+                    // eprintln!("tt = {:?}", tt);
+                    eprintln!("non legal move: {:?}\n{:?}\n{:?}", mv, g.to_fen(), g);
+                    save_tt(&tt_r, "/home/me/code/rust/rchess/tt.bin").unwrap();
+                    panic!("Q search: non legal move");
+                },
+                None => {
+                    panic!("Q search: non legal move, no piece?: {:?}\n{:?}\n{:?}", mv, g.to_fen(), g);
+                }
+            }
+
             if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
 
                 // trace!("qsearch: mv = {:?}, g = {:?}\n, g2 = {:?}", mv, g, g2);

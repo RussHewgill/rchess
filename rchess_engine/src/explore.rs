@@ -320,10 +320,6 @@ impl Explorer {
 
         // let ((best, scores),stats,(tt_r,tt_w)) = self.lazy_smp_negamax(ts, false, false);
 
-        debug!("clearing tt");
-        self.clear_tt();
-
-
         let (ress,moves,stats) = self.lazy_smp_2(ts);
 
         // debug!("finished lazy_smp_2, ress = {:?}", ress);
@@ -541,6 +537,11 @@ impl Explorer {
             let max_threads = 6;
             max_threads
         };
+
+        if self.cfg.clear_table {
+            debug!("clearing tt");
+            self.clear_tt();
+        }
 
         self.reset_stop();
 
