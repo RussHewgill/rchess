@@ -520,8 +520,6 @@ impl Explorer {
         ts:         &Tables,
     ) -> (ABResults,Vec<Move>,SearchStats) {
 
-        // let mut threads = vec![];
-
         let max_threads = if let Some(x) = self.num_threads {
             x
         } else {
@@ -553,7 +551,6 @@ impl Explorer {
             s.spawn(|_| {
                 self.lazy_smp_listener(
                     rx,
-                    // dec_rx,
                     best_depth.clone(),
                     thread_counter.clone(),
                     t0,

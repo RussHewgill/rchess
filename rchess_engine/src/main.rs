@@ -53,6 +53,7 @@ use chrono::Timelike;
 use std::time::{Instant,Duration};
 
 fn main() {
+
     let args: Vec<String> = std::env::args().collect();
     if args.len() <= 1 { main9(); return; }
     let arg1: &str = &args[1];
@@ -1318,6 +1319,8 @@ fn main9() {
 
     // let fen = "7k/6pp/8/8/8/8/8/RK6 w - - 0 1"; // #1, Qt R a1a8
 
+    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
@@ -1331,121 +1334,14 @@ fn main9() {
     //     hook(panicinfo)
     // }));
 
-    // let mv = Move::Quiet { from: "E4".into(), to: "F6".into(), pc: Knight };
-    // let g2 = g.make_move_unchecked(&ts, mv).unwrap();
-    // eprintln!("g2 = {:?}", g2);
-    // return;
-
-    // let stop = Arc::new(AtomicBool::new(false));
-    // let timesettings = TimeSettings::new_f64(0.0,t);
-    // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
-    // let mut stats = SearchStats::default();
-    // let (alpha,beta) = (i32::MIN,i32::MAX);
-    // let (alpha,beta) = (alpha + 200,beta - 200);
-    // // let (alpha,beta) = (-100,-99);
-    // let s = ex.qsearch(&ts, &g, (0,0), alpha, beta, &mut stats);
-    // eprintln!("qsearch result = {:?}", s);
-    // return;
-
-    // let ms = vec!["c2c4",];
-    // let g2 = g.run_moves(&ts, ms);
-    // eprintln!("g2 = {:?}", g2);
-
-    use rchess_engine_lib::opening_book::*;
-    // let g = Game::from_fen(&ts, "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1").unwrap();
-    // let g = Game::from_fen(&ts, STARTPOS).unwrap();
-    // eprintln!("g = {:?}", g);
-
-    // let ob = OpeningBook::read_from_file("tables/Perfect_2021/BIN/Perfect2021.bin").unwrap();
-    // let fen = STARTPOS;
-    // // let fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
-    // let g = Game::from_fen(&ts, &fen).unwrap();
-    // let mut ms: Vec<(Move,u16)> = ob.best_moves(&g).unwrap();
-    // ms.sort_by_key(|x| x.1);
-    // for (mv,wt) in ms.iter() {
-    //     let w = *wt as f64 / i16::MAX as f64;
-    //     eprintln!("mv {:?} = {:?}", mv, wt);
-    // }
-
-    // eprintln!("mv = {:?}", m.mv);
-    // eprintln!("wt = {:?} / {}: {:.2}", m.weight, i16::MAX, m.weight as f64 / i16::MAX as f64);
-    // return;
-
-    // let e = g.evaluate(&ts);
-    // eprintln!("base eval = {:?}", e.sum());
-
-    // let k = 4;
-    // let mut xs = vec![];
-    // for _ in 0..k {
-    //     let t0 = std::time::Instant::now();
-    //     let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), t);
-    //     let t1 = t0.elapsed();
-    //     let t2 = t1.as_secs_f64();
-    //     xs.push(t2);
-    // }
-    // let avg: f64 = xs.iter().sum();
-    // let avg = avg / xs.len() as f64;
-    // let min = xs.iter().min_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
-    // let max = xs.iter().max_by(|a,b| a.partial_cmp(&b).unwrap()).unwrap();
-    // eprintln!("{} iterations, avg {:.3}s, [{:.3},{:.3}]", k, avg, min, max);
-    // return;
-
-    // let mut tb = SyzygyTB::new();
-    // tb.add_directory("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
-    // // let g = Game::from_fen(&ts, "3k4/5P2/8/8/4K3/2P3P1/PP6/8 w - - 0 1").unwrap();
-    // let k0 = tb.probe_wdl(&ts, &g);
-    // eprintln!("k0 = {:?}", k0);
-    // let k1 = tb.probe_dtz(&ts, &g);
-    // eprintln!("k1 = {:?}", k1);
-    // let k2 = tb.best_move(&ts, &g).unwrap();
-    // eprintln!("k2 = {:?}", k2.map(|x| x.0));
-    // return;
-
-    // let moves = g.search_all(&ts).get_moves_unsafe();
-    // let mut list = vec![];
-    // for mv in moves.into_iter() {
-    //     let g2 = g.clone().make_move_unchecked(&ts, mv).unwrap();
-    //     let t = 0.4;
-    //     let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g2, t);
-    //     list.push((mv, best.moves[0], best.score));
-    // }
-    // for (mv0,mv1,score) in list.into_iter() {
-    //     eprintln!("{:?} = {:?}", mv0, score);
-    // }
-    // return;
-
-    // use std::borrow::Cow;
-    // let x: Cow<Game> = Cow::from(&g.clone());
-
-    // let s0 = std::mem::size_of::<Move2>();
-    // eprintln!("s0 = {:?}", s0);
-
-    // return;
-
-    // let fen = "rnbqkbnr/ppppppp1/8/7p/6PP/8/PPPPPP2/RNBQKBNR b KQkq - 0 2";
-
-    // // let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
-    // let mut g = Game::from_fen(&ts, fen).unwrap();
-    // eprintln!("g = {:?}", g);
-
-    // let mv = Move::PawnDouble { from: "H2".into(), to: "H4".into() };
-    // let mv = Move::Quiet { from: "H7".into(), to: "H6".into(), pc: Pawn };
-    // let mv = Move::Quiet { from: "H1".into(), to: "H3".into(), pc: Rook };
     let mv = Move::Capture { from: "H5".into(), to: "G4".into(), pc: Pawn, victim: Pawn };
 
-    // let g2 = g.make_move_unchecked(&ts, mv).unwrap();
-    // let zb = g.zobrist.update_move_unchecked(&ts, &g, mv);
-
-    // eprintln!("g2.zobrist = {:?}", g2.zobrist);
-    // eprintln!("zb         = {:?}", zb);
-    // return;
-
-    let t = 10.0;
-    // let t = 2.0;
+    // let t = 10.0;
+    let t = 2.0;
     // let t = 0.5;
 
-    let n = 35;
-    // let n = 4;
+    // let n = 35;
+    let n = 4;
 
     // let t0 = std::time::Instant::now();
     // // println!("g = {:?}", g);
