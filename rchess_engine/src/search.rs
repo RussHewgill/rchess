@@ -398,7 +398,7 @@ impl Game {
         if m.filter_en_passant() {
             if self.state.en_passant.is_none() {
                 return false;
-            } else if let Some(g2) = self.clone()._make_move_unchecked(&ts, &m) {
+            } else if let Some(g2) = self.clone()._apply_move_unchecked(&ts, &m, false) {
                 let checks = g2.find_checkers(&ts, self.state.side_to_move);
                 return checks.is_empty();
             } else {

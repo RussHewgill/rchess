@@ -302,7 +302,7 @@ impl ExHelper {
 
         /// Filter blocked moves
         if cfg.root {
-            moves.retain(|mv| !self.blocked_moves.contains(&mv));
+            moves.retain(|mv| !self.cfg.blocked_moves.contains(&mv));
         }
 
         // let mvs = self.move_history.clone();

@@ -1319,7 +1319,8 @@ fn main9() {
 
     // let fen = "7k/6pp/8/8/8/8/8/RK6 w - - 0 1"; // #1, Qt R a1a8
 
-    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
+    // let fen = "5rk1/ppR1Q1p1/8/8/8/1P6/P2r1RPP/6K1 b - - 0 2"; // b6f2, #-4
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -1340,8 +1341,8 @@ fn main9() {
     let t = 2.0;
     // let t = 0.5;
 
-    // let n = 35;
-    let n = 4;
+    let n = 35;
+    // let n = 5;
 
     // let t0 = std::time::Instant::now();
     // // println!("g = {:?}", g);
@@ -1353,19 +1354,11 @@ fn main9() {
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
     ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
-    ex.return_moves = true;
+    ex.cfg.return_moves = true;
 
     // let (mv,stats) = ex.explore(&ts, None);
     // eprintln!("mv = {:?}", mv);
-
     // return;
-
-
-    let t0 = std::time::Instant::now();
-    let timesettings = TimeSettings::new_f64(0.0,t);
-    let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
-    ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
-    ex.return_moves = true;
 
     let (res,moves,stats0) = ex.lazy_smp_2(&ts);
     let t1 = t0.elapsed();

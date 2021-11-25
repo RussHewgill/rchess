@@ -296,7 +296,7 @@ mod td_builder {
             let timesettings = TimeSettings::new_f64(0.0, self.time);
             let mut ex = Explorer::new(g.state.side_to_move, g.clone(), self.max_depth, timesettings);
 
-            ex.num_threads = Some(1);
+            ex.cfg.num_threads = Some(1);
 
             // let mut s = if let Some(o) = self.opening { o } else { OBSelection::BestN(0) };
             let mut s = OBSelection::Random(rng);

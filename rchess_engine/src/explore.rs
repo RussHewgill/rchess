@@ -37,25 +37,42 @@ use evmap::{ReadHandle,ReadHandleFactory,WriteHandle};
 pub struct Explorer {
     pub side:          Color,
     pub game:          Game,
-    pub max_depth:     Depth,
     pub timer:         Timer,
     pub stop:          Arc<AtomicBool>,
     pub best_mate:     Arc<RwLock<Option<Depth>>>,
 
-    pub num_threads:   Option<u8>,
+    pub cfg:           ExConfig,
 
     #[cfg(feature = "syzygy")]
     pub syzygy:        Option<Arc<SyzygyTB>>,
     pub opening_book:  Option<Arc<OpeningBook>>,
-
-    pub blocked_moves: HashSet<Move>,
-    pub return_moves:  bool,
 
     pub tt_rf:         TTReadFactory,
     pub tt_w:          TTWrite,
 
     // pub move_history:  Vec<(Zobrist, Move)>,
     // pub pos_history:   HashMap<Zobrist,u8>,
+}
+
+#[derive(Debug,Clone)]
+pub struct ExConfig {
+    pub max_depth:         Depth,
+    pub num_threads:       Option<u8>,
+    pub blocked_moves:     HashSet<Move>,
+    pub return_moves:      bool,
+    pub clear_table:       bool,
+}
+
+impl Default for ExConfig {
+    fn default() -> Self {
+        Self {
+            max_depth:        10,
+            num_threads:      None,
+            blocked_moves:    HashSet::default(),
+            return_moves:     false,
+            clear_table:      true,
+        }
+    }
 }
 
 #[derive(Debug,Clone)]
@@ -66,15 +83,13 @@ pub struct ExHelper {
     pub side:            Color,
     pub game:            Game,
 
-    pub max_depth:       Depth,
     pub stop:            Arc<AtomicBool>,
     pub best_mate:       Arc<RwLock<Option<Depth>>>,
 
     #[cfg(feature = "syzygy")]
     pub syzygy:          Option<Arc<SyzygyTB>>,
 
-    pub blocked_moves:   HashSet<Move>,
-    pub return_moves:    bool,
+    pub cfg:             ExConfig,
 
     pub best_depth:      Arc<AtomicU8>,
     pub tx:              ExSender,
@@ -99,15 +114,13 @@ impl Explorer {
             side:            self.side,
             game:            self.game.clone(),
 
-            max_depth,
             stop:            self.stop.clone(),
             best_mate:       self.best_mate.clone(),
 
+            cfg:             self.cfg.clone(),
+
             #[cfg(feature = "syzygy")]
             syzygy:          self.syzygy.clone(),
-
-            blocked_moves:   self.blocked_moves.clone(),
-            return_moves:    self.return_moves,
 
             best_depth,
             tx,
@@ -172,24 +185,23 @@ impl Explorer {
         let tt_rf = tt_w.factory();
         let tt_w = Arc::new(Mutex::new(tt_w));
 
+        let mut cfg = ExConfig::default();
+        cfg.max_depth = max_depth;
+
         Self {
             side,
             game,
-            max_depth,
             timer:          Timer::new(side, stop.clone(), settings),
             stop,
             best_mate:      Arc::new(RwLock::new(None)),
 
-            num_threads:    None,
+            cfg,
 
             // move_history:   VecDeque::default(),
             // syzygy:         Arc::new(None),
             #[cfg(feature = "syzygy")]
             syzygy:         None,
             opening_book:   None,
-
-            blocked_moves:  HashSet::default(),
-            return_moves:   false,
 
             tt_rf,
             tt_w,
@@ -520,7 +532,7 @@ impl Explorer {
         ts:         &Tables,
     ) -> (ABResults,Vec<Move>,SearchStats) {
 
-        let max_threads = if let Some(x) = self.num_threads {
+        let max_threads = if let Some(x) = self.cfg.num_threads {
             x
         } else {
             #[cfg(feature = "one_thread")]
@@ -565,16 +577,18 @@ impl Explorer {
                 // let t1 = t0.elapsed();
                 let t1 = Instant::now().checked_duration_since(t0).unwrap();
 
+                let d = best_depth.load(SeqCst);
+
+                /// Found mate, halt
                 if self.best_mate.read().is_some() {
-                    let d = best_depth.load(SeqCst);
                     debug!("breaking loop (Mate),  d: {}, t0: {:.3}",
                             d, t1.as_secs_f64());
                     self.stop.store(true, SeqCst);
                     break 'outer;
                 }
 
+                /// Out of time, halt
                 if t1 > t_max {
-                    let d = best_depth.load(SeqCst);
                     debug!("breaking loop (Time),  d: {}, t0: {:.3}", d, t1.as_secs_f64());
                     // XXX: Only force threads to stop if out of time ?
                     self.stop.store(true, SeqCst);
@@ -582,7 +596,11 @@ impl Explorer {
                     break 'outer;
                 }
 
-                if best_depth.load(SeqCst) >= self.max_depth {
+                /// Max depth reached, halt
+                if d >= self.cfg.max_depth {
+                    debug!("max depth reached, breaking");
+                    self.stop.store(true, SeqCst);
+                    drop(tx);
                     break 'outer;
                 }
 
@@ -591,7 +609,7 @@ impl Explorer {
                     trace!("Spawning thread, id = {}", thread_id);
 
                     let helper = self.build_exhelper(
-                        thread_id, self.max_depth, best_depth.clone(), tx.clone());
+                        thread_id, self.cfg.max_depth, best_depth.clone(), tx.clone());
 
                     s.builder()
                         // .stack_size(size)
@@ -641,7 +659,7 @@ impl Explorer {
                     thread_counter.fetch_sub(1, SeqCst);
                     trace!("decrementing thread counter id = {}, new val = {}",
                             id, thread_counter.load(SeqCst));
-                    break;
+                    // break;
                 },
                 Ok(ExMessage::Message(depth,res,moves,stats)) => {
                     match res.clone() {
@@ -740,7 +758,7 @@ impl ExHelper {
 
         /// Iterative deepening
         while !self.stop.load(SeqCst)
-            && depth <= self.max_depth
+            && depth <= self.cfg.max_depth
             && self.best_mate.read().is_none()
         {
             // trace!("iterative depth {}", depth);
@@ -750,7 +768,7 @@ impl ExHelper {
             trace!("finished res, id = {}, depth = {}", self.id, depth);
 
             if !self.stop.load(SeqCst) && depth >= self.best_depth.load(SeqCst) {
-                let moves = if self.return_moves {
+                let moves = if self.cfg.return_moves {
                     Explorer::_get_pv(ts, &self.game, &self.tt_r)
                 } else { vec![] };
                 match self.tx.try_send(ExMessage::Message(depth, res, moves, stats)) {
@@ -1009,7 +1027,7 @@ impl Explorer {
                 }
 
                 // if best_depth.load(SeqCst) + 1 + depths_largest > self.max_depth {
-                if best_depth.load(SeqCst) + 1 > self.max_depth {
+                if best_depth.load(SeqCst) + 1 > self.cfg.max_depth {
                 // if thread_counter.load(SeqCst) != 0 && best_depth.load(SeqCst) + 1 > self.max_depth {
                     let d = best_depth.load(SeqCst);
                     debug!("breaking loop (Depth), d: {}, t0: {:.3}", d, t0.elapsed().as_secs_f64());
@@ -1065,7 +1083,7 @@ impl Explorer {
                     drop(tx);
                     break;
                 }
-                if cur_depth > self.max_depth {
+                if cur_depth > self.cfg.max_depth {
                     // debug!("cur_depth > self.max_depth");
                     continue;
                 }
