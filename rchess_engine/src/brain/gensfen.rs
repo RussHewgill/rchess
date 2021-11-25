@@ -12,6 +12,7 @@ pub use self::td_builder::*;
 
 use std::collections::HashMap;
 use std::path::Path;
+use std::time::{Instant,Duration};
 
 use serde::{Serialize,Deserialize};
 
@@ -221,11 +222,37 @@ mod td_builder {
 
         // fn recurse(&self, ts: &Tables, mut ex: &mut Explorer, )
 
+        fn watch_sfen(
+            t0:       Instant,
+            sfen_n:   Arc<(AtomicU64,AtomicU64)>,
+            rx:       Receiver<TrainingData>,
+        ) {
+            loop {
+                std::thread::sleep(std::time::Duration::from_millis(1000));
+
+                let sfens = sfen_n.0.load(Ordering::Relaxed);
+                let moves = sfen_n.1.load(Ordering::Relaxed);
+
+                let t1 = t0.elapsed().as_secs_f64();
+                eprintln!("{:>6} sfens, {:>6} moves, {:.1}s, avg {:.1} sfens / sec, {:.1} moves / sec",
+                          sfens, moves, t1,
+                          sfens as f64 / t1,
+                          moves as f64 / t1,
+                );
+
+                match rx.try_recv() {
+                    Err(TryRecvError::Disconnected) => break,
+                    _                               => {},
+                }
+            }
+        }
+
         pub fn do_explore<P: AsRef<Path> + Send>(
             &self,
             ts:         &Tables,
             ob:         &OpeningBook,
-            count:      usize,
+            count:      u64,
+            print:      bool,
             mut rng:    StdRng,
             path:       P,
         ) -> std::io::Result<()> {
@@ -234,17 +261,26 @@ mod td_builder {
                           Receiver<TrainingData>) =
                 crossbeam::channel::unbounded();
 
-            let sfen_n = Arc::new(AtomicU64::new(0));
+            let sfen_n = Arc::new((AtomicU64::new(0), AtomicU64::new(0)));
+
+            let t0 = Instant::now();
 
             crossbeam::scope(|s| {
-                s.spawn(|_| Self::save_listener(path, rx));
+                s.spawn(|_| Self::save_listener(path, rx.clone()));
+
+                if print {
+                    s.spawn(|_| Self::watch_sfen(t0, sfen_n.clone(), rx.clone()));
+                }
+
                 for id in 0..self.num_threads {
                     let rng2: u64 = rng.gen();
                     let mut rng2: StdRng = SeedableRng::seed_from_u64(1234u64);
+                    let tx2 = tx.clone();
                     s.builder()
-                        .spawn(|_| self._do_explore(ts, ob, count, rng2, sfen_n.clone(), tx.clone()))
+                        .spawn(|_| self._do_explore(ts, ob, count, rng2, sfen_n.clone(), tx2))
                         .unwrap();
                 }
+                drop(tx);
             }).unwrap();
 
             Ok(())
@@ -266,22 +302,149 @@ mod td_builder {
                     // },
                     // Err(TryRecvError::Disconnected)    => {
                     Err(_)    => {
-                        // trace!("Breaking thread counter loop (Disconnect)");
+                        trace!("Breaking save listener loop (Disconnect)");
                         break;
                     },
                 }
             }
-
-            unimplemented!()
         }
 
         pub fn _do_explore(
             &self,
             ts:         &Tables,
             ob:         &OpeningBook,
+            count:      u64,
+            mut rng:    StdRng,
+            sfen_n:     Arc<(AtomicU64,AtomicU64)>,
+            tx:         Sender<TrainingData>,
+        ) {
+
+            let opening_ply = 16;
+
+            let mut g = Game::from_fen(ts, STARTPOS).unwrap();
+            let timesettings = TimeSettings::new_f64(0.0, self.time);
+            let mut ex = Explorer::new(g.state.side_to_move, g.clone(), self.max_depth, timesettings);
+            ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+
+            ex.cfg.num_threads = Some(1);
+            ex.cfg.clear_table = false;
+
+            let mut ex_white = ex.clone();
+            let mut ex_black = ex.clone();
+            ex_black.side = Black;
+
+            let mut exs = [ex_white, ex_black];
+
+            let mut s = OBSelection::Random(rng);
+
+            'outer: for gk in 0..count {
+
+                let (mut g,opening) = ob.start_game(&ts, Some(opening_ply), &mut s).unwrap();
+
+                let mut ex;
+
+                // let fen = "7k/8/8/8/8/8/4Q3/7K w - - 0 1"; // Queen endgame, #7
+                // let mut g = Game::from_fen(ts, fen).unwrap();
+
+                let mut ply = opening.len();
+
+                let mut moves = vec![];
+                // let mut result: Option<TDOutcome> = None;
+
+                let result: Option<TDOutcome> = 'game: loop {
+
+                    ex = &mut exs[g.state.side_to_move];
+
+                    assert_eq!(ex.side, g.state.side_to_move);
+
+                    ex.game = g.clone();
+                    // ex.update_game(g.clone());
+                    ex.clear_tt();
+
+                    let (res,_,stats) = ex.lazy_smp_2(ts);
+
+                    match res.get_result() {
+                        Some(res) => {
+
+                            let skip = false;
+
+                            if !skip { sfen_n.1.fetch_add(1, Ordering::SeqCst); }
+                            let e = TDEntry::new(res.mv, res.score, skip);
+
+                            moves.push(e);
+
+                            match g.make_move_unchecked(ts, res.mv) {
+                                Ok(g2) => {
+
+                                    if res.score > CHECKMATE_VALUE - 100 {
+                                        trace!("score > mate value, res = {:?}", res);
+                                        break 'game Some(TDOutcome::Win(!g.state.side_to_move));
+                                    } else if res.score.abs() > CHECKMATE_VALUE - 100 {
+                                        trace!("score < mate value, res = {:?}", res);
+                                        break 'game Some(TDOutcome::Win(g.state.side_to_move));
+                                    }
+
+                                    g = g2;
+                                },
+                                Err(e) => {
+                                    let e = match e {
+                                        GameEnd::Checkmate { win } => TDOutcome::Win(win),
+                                        GameEnd::Stalemate         => TDOutcome::Stalemate,
+                                        _                          => panic!("GameEnd other ?? {:?}", e),
+                                    };
+                                    break 'game Some(e);
+                                },
+                            }
+                        },
+                        None => {
+                            trace!("None res = {:?}", res);
+                            break 'game None;
+                        },
+                    }
+
+                };
+
+                debug!("game done, result = {:?}", result);
+
+                let n = moves.iter().filter(|x| !x.skip).count();
+                sfen_n.0.fetch_add(n as u64, Ordering::SeqCst);
+
+                if let Some(result) = result {
+                    let opening = opening.iter().map(|&mv| PackedMove::convert(mv)).collect();
+                    let mut td = TrainingData {
+                        result,
+                        opening,
+                        moves,
+                    };
+
+                    match tx.send(td) {
+                        Ok(_)  => {},
+                        // Err(e) => eprintln!("tx.send error = {:?}", e),
+                        Err(e) => {},
+                    }
+                } else {
+                    trace!("result = None ??");
+                }
+
+                let n_fens  = sfen_n.0.load(Ordering::SeqCst);
+                if n_fens > count { break 'outer; }
+                let n_moves = sfen_n.1.load(Ordering::SeqCst);
+                if let Some(n) = self.num_positions {
+                    if n_moves > n { break 'outer; }
+                }
+
+                // eprintln!("_do_explore: breaking outer loop");
+                // break 'outer;
+            }
+        }
+
+        pub fn _do_explore2(
+            &self,
+            ts:         &Tables,
+            ob:         &OpeningBook,
             count:      usize,
             mut rng:    StdRng,
-            sfen_n:     Arc<AtomicU64>,
+            sfen_n:     Arc<(AtomicU64,AtomicU64)>,
             tx:         Sender<TrainingData>,
         ) {
 
@@ -327,7 +490,7 @@ mod td_builder {
                 'game: loop {
 
                     if let Some(k) = self.num_positions {
-                        if sfen_n.load(Ordering::Relaxed) > k {
+                        if sfen_n.0.load(Ordering::Relaxed) > k {
                             return;
                         }
                     }
@@ -342,24 +505,25 @@ mod td_builder {
                         // search, with multiPV: self.max_depth, nodes
 
                         let mut stats = SearchStats::default();
-                        let res = {
-                            let (res,moves,stats) = ex.lazy_smp_2(ts);
+                        let (res,moves,stats) = ex.lazy_smp_2(ts);
 
-                            match res {
-                                ABResults::ABList(res, _) => res,
-                                ABResults::ABSingle(res)  => res,
-                                ABResults::ABSyzygy(res)  => res,
-                                _                         => {
-                                    println!("game ended, res = {:?}", res);
-                                    panic!("game ended, res = {:?}", res);
-                                },
-                            }
-                        };
+                        // match res {
+                        //     ABResults::ABList(res, _) => res,
+                        //     ABResults::ABSingle(res)  => res,
+                        //     ABResults::ABSyzygy(res)  => res,
+                        //     _                         => {
+                        //         println!("game ended, res = {:?}", res);
+                        //         // panic!("game ended, res = {:?}", res);
+                        //     },
+                        // }
 
-                        // eprintln!("res = {:?}", res);
-                        last_res = Some(res.clone());
-
-                        best = Some((res.mv, res.score));
+                        match res.get_result() {
+                            Some(res) => {
+                                last_res = Some(res.clone());
+                                best = Some((res.mv, res.score));
+                            },
+                            None => {},
+                        }
 
                         // // if let Some(mv) = res.moves.get(0) {
                         // if let Some(mv) = res.mv {
@@ -375,7 +539,7 @@ mod td_builder {
                         trace!("mv = {:?}", mv);
                         trace!("did move in {:.3} seconds", t0.elapsed().as_secs_f64());
 
-                        eprintln!("g = {:?}", g);
+                        // eprintln!("g = {:?}", g);
 
                         ply += 1;
                         // trace!("ply = {:?}", ply);
@@ -384,6 +548,10 @@ mod td_builder {
                         ex.side = g.state.side_to_move;
 
                         let skip = false;
+
+                        if !skip {
+                            sfen_n.1.fetch_add(1, Ordering::SeqCst);
+                        }
 
                         let e = TDEntry::new(mv, score, skip);
                         moves.push(e);
@@ -402,11 +570,11 @@ mod td_builder {
                                 };
 
                                 debug!("Finished game: {:?}", result);
-                                let k = sfen_n.load(Ordering::SeqCst);
-                                eprintln!("sfen_n = {:?}", k);
+                                let k = sfen_n.0.load(Ordering::SeqCst);
+                                // eprintln!("sfen_n = {:?}", k);
 
                                 let n = moves.iter().filter(|x| !x.skip).count();
-                                sfen_n.fetch_add(n as u64, Ordering::Relaxed);
+                                sfen_n.0.fetch_add(n as u64, Ordering::SeqCst);
 
                                 let opening = opening.iter().map(|&mv| PackedMove::convert(mv)).collect();
                                 let mut td = TrainingData {
@@ -538,47 +706,47 @@ pub struct TrainingData {
 /// Generate data set
 impl TrainingData {
 
-    pub fn generate_training_data<P: AsRef<Path>>(
-        ts:       &Tables,
-        ob:       &OpeningBook,
-        open_ply: usize,
-        n:        usize,
-        path:     P,
-    ) -> std::io::Result<()> {
-        use std::io::Write;
+    // pub fn generate_training_data<P: AsRef<Path>>(
+    //     ts:       &Tables,
+    //     ob:       &OpeningBook,
+    //     open_ply: usize,
+    //     n:        usize,
+    //     path:     P,
+    // ) -> std::io::Result<()> {
+    //     use std::io::Write;
 
-        // let mut s = OBSelection::BestN(0);
-        let mut s = OBSelection::new_random_seeded(1234);
+    //     // let mut s = OBSelection::BestN(0);
+    //     let mut s = OBSelection::new_random_seeded(1234);
 
-        let mut out: Vec<TrainingData> = vec![];
+    //     let mut out: Vec<TrainingData> = vec![];
 
-        let mut fens = 0;
+    //     let mut fens = 0;
 
-        // loop {
-        for _ in 0..n {
+    //     // loop {
+    //     for _ in 0..n {
 
-            // let (_,opening) = ob.start_game(&ts, Some(open_ply), &mut s).unwrap();
-            // eprintln!("opening = {:?}", opening);
+    //         // let (_,opening) = ob.start_game(&ts, Some(open_ply), &mut s).unwrap();
+    //         // eprintln!("opening = {:?}", opening);
 
-            // let k0: TrainingData = TDBuilder::new()
-            //     .opening(opening)
-            //     .max_depth(5)
-            //     .time(0.2)
-            //     .generate_single(&ts)
-            //     .unwrap();
+    //         // let k0: TrainingData = TDBuilder::new()
+    //         //     .opening(opening)
+    //         //     .max_depth(5)
+    //         //     .time(0.2)
+    //         //     .generate_single(&ts)
+    //         //     .unwrap();
 
-            // fens += k0.moves.len();
-            // eprintln!("fens = {:?}", fens);
-            // if fens >= n { break; }
-            // eprintln!("result = {:?}", k0.result);
+    //         // fens += k0.moves.len();
+    //         // eprintln!("fens = {:?}", fens);
+    //         // if fens >= n { break; }
+    //         // eprintln!("result = {:?}", k0.result);
 
-            // out.push(k0);
+    //         // out.push(k0);
 
-            Self::save_all(&path, &out)?;
-        }
+    //         Self::save_all(&path, &out)?;
+    //     }
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
 }
 

@@ -470,10 +470,14 @@ impl Game {
         if mv != Move::NullMove {
             match self.get_at(mv.sq_from()) {
                 Some((side,_)) => if self.state.side_to_move != side {
-                    panic!("non legal move: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
+                    eprintln!("non legal move: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
+                    // return Err(GameEnd::Error);
+                    panic!();
                 },
                 None => {
-                    panic!("non legal move, no piece?: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
+                    eprintln!("non legal move, no piece?: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
+                    // return Err(GameEnd::Error);
+                    panic!();
                 }
             }
         }
@@ -1394,19 +1398,19 @@ impl std::fmt::Debug for Game {
         }
         f.write_str(&format!("{}\n", line))?;
 
-        if self.state.checkers.is_not_empty() {
-            f.write_str(&format!("In Check\n"))?;
-        } else {
-            f.write_str(&format!("Not In Check\n"))?;
-        }
+        // if self.state.checkers.is_not_empty() {
+        //     f.write_str(&format!("In Check\n"))?;
+        // } else {
+        //     f.write_str(&format!("Not In Check\n"))?;
+        // }
 
+        f.write_str(&format!("Last Move: {:?}\n", self.last_move))?;
         f.write_str(&format!("En Passant: {:?}\n", self.state.en_passant))?;
         let c = self.state.castling;
 
         let (wk,wq) = c.get_color(White);
         let (bk,bq) = c.get_color(Black);
-
-        f.write_str(&format!("Castling (KQkq): {} {} {} {}\n",wk,wq,bk,bq))?;
+        f.write_str(&format!("Castling (KQkq): {} {} {} {}",wk,wq,bk,bq))?;
 
         // f.write_str(&format!("Moves: \n"))?;
         // let mut k = 0;

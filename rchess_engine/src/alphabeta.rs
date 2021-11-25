@@ -156,7 +156,7 @@ impl ExHelper {
             &mut stats,
             // VecDeque::new(),
             &mut history,
-            &tt_r, tt_w.clone());
+            &tt_r, tt_w);
 
         res
     }
@@ -216,12 +216,14 @@ impl ExHelper {
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
 
         /// Repetition checking
+        // if !cfg.inside_null {
         {
             if let Some(k) = g.history.get(&g.zobrist) {
                 if *k >= 2 {
                     let score = -STALEMATE_VALUE + ply as Score;
                     // return ABSingle(ABResult::new_single(g.last_move.unwrap(), -score));
                     // return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
+                    trace!("repetition found, last move {:?}", g.last_move);
                     return ABSingle(ABResult::new_single(g.last_move.unwrap(), 0));
                     // return ABSingle(ABResult::new_empty(0));
                 }
@@ -443,6 +445,30 @@ impl ExHelper {
         // 'outer: for (mv,g2,tt) in gs.iter() {
 
             // let zb = g2.zobrist;
+
+            match g.get_at(mv.sq_from()) {
+                None => {
+                    eprintln!("ab_search 0: non legal move, no piece?: {:?}\n{:?}\n{:?}",
+                              mv, g.to_fen(), g);
+                    panic!();
+                },
+                _ => {},
+            }
+
+            // /// Repetition checking
+            // {
+            //     if let Some(k) = g.history.get(&zb0) {
+            //         if *k >= 2 {
+            //             let score = -STALEMATE_VALUE + ply as Score;
+            //             // return ABSingle(ABResult::new_single(g.last_move.unwrap(), -score));
+            //             // return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
+            //             trace!("repetition found, last move {:?}", g.last_move);
+            //             return ABSingle(ABResult::new_single(g.last_move.unwrap(), 0));
+            //             // return ABSingle(ABResult::new_empty(0));
+            //         }
+            //     }
+            // }
+
 
             // if self.best_mate.read().is_some() {
             //     trace!("halting {}, mate", cfg.max_depth);

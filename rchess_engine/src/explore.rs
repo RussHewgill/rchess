@@ -333,7 +333,8 @@ impl Explorer {
             (Some((best.mv,best)),stats)
         } else {
             debug!("explore: no best move? = {:?}", ress);
-            panic!();
+            // panic!();
+            (None,stats)
         }
 
         // // if let Some(mv) = best.moves.get(0) {
@@ -677,8 +678,14 @@ impl Explorer {
                                        // bestres.score, bestres.moves.front());
                                        bestres.score, bestres.mv);
 
-                                if bestres.score > 100_000_000 - 50 {
-                                    let k = 100_000_000 - bestres.score.abs();
+                                if bestres.score.abs() == CHECKMATE_VALUE {
+                                    self.stop.store(true, SeqCst);
+                                    debug!("in mate, nothing to do");
+                                    break;
+                                }
+
+                                if bestres.score > CHECKMATE_VALUE - 50 {
+                                    let k = CHECKMATE_VALUE - bestres.score.abs();
                                     debug!("Found mate in {}: d({}), {:?}",
                                            // bestres.score, bestres.moves.front());
                                            k, depth, bestres.mv);

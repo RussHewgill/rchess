@@ -686,14 +686,13 @@ fn main_nnue() {
 
     // let ts: Vec<TrainingData> = TDBuilder::new()
     let ts = TDBuilder::new()
-        // .opening(Some(s))
         .max_depth(5)
         .time(0.2)
-        // .num_threads(12)
-        .num_threads(1)
-        .num_positions(Some(100))
-        // .generate_single(&ts)
-        .do_explore(&ts, &ob, count, rng, path)
+        .num_threads(12) // 90
+        // .num_threads(6) // 35
+        // .num_threads(1) // 5.5
+        .num_positions(Some(1000))
+        .do_explore(&ts, &ob, count, true, rng, path)
         .unwrap();
     println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
@@ -1327,9 +1326,13 @@ fn main9() {
 
     let fen = "rnbqkb1r/p4p2/2p1pn1p/1p2P1p1/2pP3B/2N2N2/PP3PPP/R2QKB1R w KQkq g6"; // rand opening
 
+    // let fen = "rnb2r2/p1q2pQk/2p1pB1p/1p2P3/1bpPN3/2N5/PP3PPP/R3KB1R b KQ -"; // Mate
+
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
+
+    g.last_move = Some(Move::Quiet { from: "G4".into(), to: "G7".into(), pc: Queen });
 
     eprintln!("g = {:?}", g);
 
@@ -1340,11 +1343,16 @@ fn main9() {
     //     hook(panicinfo)
     // }));
 
+    // let moves = g.search_all(&ts);
+    // eprintln!("moves = {:?}", moves);
+    // return;
+
     let mv = Move::Capture { from: "H5".into(), to: "G4".into(), pc: Pawn, victim: Pawn };
 
     // let t = 10.0;
     // let t = 1.0;
-    let t = 0.5;
+    // let t = 0.5;
+    let t = 0.3;
 
     let n = 35;
     // let n = 5;
@@ -1368,19 +1376,35 @@ fn main9() {
 
     let tt_r = ex.handle();
 
-    if !true {
+    if true {
         // non legal move: Db h2h4
         // let tt = load_tt("/home/me/code/rust/rchess/tt2.bin").unwrap();
         ex.clear_tt();
         load_tt("/home/me/code/rust/rchess/tt2.bin", ex.tt_w.clone()).unwrap();
 
-        let fen2 =  "r1bqk2r/p2n1p2/2p1p2p/1p2P3/1bpPNnp1/6B1/PPN1KPPP/R2Q1B1R w kq -";
-        let g0 = Game::from_fen(&ts, fen2).unwrap();
-        let zb0 = g0.zobrist;
-        eprintln!("g0 = {:?}", g0);
+        let fen1 = "3r1k2/1b1n4/1q1P1r1p/ppp5/2p3Q1/7P/PP2RPP1/2K2B1R w - -";
+        let g1 = Game::from_fen(&ts, fen1).unwrap();
 
-        let si = tt_r.get(&zb0).unwrap();
-        eprintln!("si = {:?}", si);
+        // ex.update_game(g1.clone());
+        // let (mv,stats) = ex.explore(&ts, None);
+        // let (mv,_) = mv.unwrap();
+        // eprintln!("g1 = {:?}", g1);
+        // eprintln!("mv = {:?}", mv);
+
+        let fen2 = "3r1k2/1b1n4/1q1PQr1p/ppp5/2p5/7P/PP2RPP1/2K2B1R b - -";
+        let mut g2 = Game::from_fen(&ts, fen2).unwrap();
+
+        g2.last_move = Some(g1.convert_move("g4", "e6", "").unwrap());
+        g2.history.insert(g2.zobrist, 2);
+
+        ex.update_game(g2.clone());
+        let (mv,stats) = ex.explore(&ts, None);
+        let (mv,_) = mv.unwrap();
+        eprintln!("g2 = {:?}", g2);
+        eprintln!("mv = {:?}", mv);
+
+        // let si = tt_r.get(&zb0).unwrap();
+        // eprintln!("si = {:?}", si);
 
         // ex.update_game(g0.clone());
         // let (mv,stats) = ex.explore(&ts, None);
@@ -1392,15 +1416,29 @@ fn main9() {
 
     loop {
         let (mv,stats) = ex.explore(&ts, None);
-        let (mv,_) = mv.unwrap();
+        // let (mv,_) = mv.unwrap();
 
-        g = g.make_move_unchecked(&ts, mv).unwrap();
-        ex.update_game(g.clone());
+        match mv.map(|(m,_)| g.make_move_unchecked(&ts, m)) {
+            Some(Ok(g2)) => {
+                g = g2;
+                ex.update_game(g.clone());
 
-        eprintln!("g = {:?}", g);
+                eprintln!("g = {:?}", g);
+                eprintln!("g.to_fen() = {:?}", g.to_fen());
 
-        save_tt(&tt_r, "/home/me/code/rust/rchess/tt2.bin").unwrap();
-
+                save_tt(&tt_r, "/home/me/code/rust/rchess/tt2.bin").unwrap();
+            },
+            // Err(e) => {
+            _ => {
+                ex.clear_tt();
+                g = Game::from_fen(&ts, fen).unwrap();
+                ex.update_game(g.clone());
+                eprintln!();
+                // eprintln!("restarting: e = {:?}", e);
+                eprintln!("restarting");
+                eprintln!();
+            },
+        }
     }
 
     return;
