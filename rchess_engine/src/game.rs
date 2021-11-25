@@ -383,13 +383,15 @@ impl Game {
                 out.move_piece_mut_unchecked(&ts, from, to, pc, side, calc_zb);
 
                 let ep = ts.between_exclusive(from, to).bitscan().into();
-                if let Some(ep) = out.state.en_passant {
-                    // remove previous EP
+                if calc_zb {
+                    if let Some(ep) = out.state.en_passant {
+                        // remove previous EP
+                        out.zobrist = out.zobrist.update_ep(&ts, ep);
+                    }
+                    // add new EP
                     out.zobrist = out.zobrist.update_ep(&ts, ep);
                 }
                 out.state.en_passant = Some(ep);
-                // add new EP
-                out.zobrist = out.zobrist.update_ep(&ts, ep);
 
                 Some(out)
             },
@@ -452,12 +454,13 @@ impl Game {
 
     #[must_use]
     pub fn make_move_unchecked(&self, ts: &Tables, mv: Move) -> GameResult<Game> {
-        self._make_move_unchecked(ts, mv, true)
+        self._make_move_unchecked(ts, mv, None)
     }
 
     #[must_use]
     // pub fn make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Self> {
-    pub fn _make_move_unchecked(&self, ts: &Tables, mv: Move, calc_zb: bool) -> GameResult<Game> {
+    pub fn _make_move_unchecked(&self, ts: &Tables, mv: Move, use_zb: Option<Zobrist>) -> GameResult<Game> {
+        let calc_zb = use_zb.is_none();
 
         if mv != Move::NullMove {
             match self.get_at(mv.sq_from()) {
@@ -476,8 +479,10 @@ impl Game {
                     Move::PawnDouble { .. }                   => {
                     },
                     _                                         => {
-                        if let Some(ep) = next.state.en_passant {
-                            next.zobrist = next.zobrist.update_ep(&ts, ep);
+                        if calc_zb {
+                            if let Some(ep) = next.state.en_passant {
+                                next.zobrist = next.zobrist.update_ep(&ts, ep);
+                            }
                         }
                         next.state.en_passant = None;
                     },
@@ -492,23 +497,24 @@ impl Game {
                 }
 
                 next.state.side_to_move = !next.state.side_to_move;
-                next.zobrist = next.zobrist.update_side_to_move(&ts);
+                if calc_zb { next.zobrist = next.zobrist.update_side_to_move(&ts); }
                 // x.move_history.push(*m);
                 next.reset_gameinfo_mut();
 
-                self.update_castles(&ts, mv, &mut next);
+                self.update_castles(&ts, mv, &mut next, calc_zb);
 
                 next.last_move = Some(mv);
 
                 // // XXX: current or prev Zobrist ??
                 // next.history.push((next.zobrist, mv));
 
-                // next.history.push((next.zobrist, mv));
+                if let Some(zb) = use_zb {
+                    next.zobrist = zb;
+                };
+
                 if let Some(mut k) = next.history.get_mut(&next.zobrist) {
                     *k += 1;
-                    // if *k >= 2 {
-                    //     return Err(GameEnd::DrawRepetition);
-                    // }
+                    // if *k >= 2 { return Err(GameEnd::DrawRepetition); }
                 } else {
                     next.history.insert(next.zobrist, 1);
                 }
@@ -627,7 +633,7 @@ impl Game {
 
     }
 
-    fn update_pins_mut2(&mut self, ts: &Tables) {
+    fn _old_update_pins_mut(&mut self, ts: &Tables) {
 
         let c0 = self.get(King, White);
         if c0.is_empty() {
@@ -679,33 +685,33 @@ impl Game {
         self.state.check_block_mask = b;
     }
 
-    fn update_castles(&self, ts: &Tables, m: Move, x: &mut Self) {
+    fn update_castles(&self, ts: &Tables, m: Move, x: &mut Self, calc_zb: bool) {
         match m {
             Move::Quiet { from, pc, .. } | Move::Capture { from, pc, .. } => {
                 match (self.state.side_to_move, pc) {
                     (col, King) => {
-                        x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
+                        if calc_zb { x.zobrist = x.zobrist.update_castling(&ts, x.state.castling); }
                         x.state.castling.set_king(col,false);
                         x.state.castling.set_queen(col,false);
-                        x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
+                        if calc_zb { x.zobrist = x.zobrist.update_castling(&ts, x.state.castling); }
                     }
                     (White, Rook) => {
-                        x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
+                        if calc_zb { x.zobrist = x.zobrist.update_castling(&ts, x.state.castling); }
                         if from == Coord(7,0) { x.state.castling.set_king(White,false); };
                         if from == Coord(0,0) { x.state.castling.set_queen(White,false); };
-                        x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
+                        if calc_zb { x.zobrist = x.zobrist.update_castling(&ts, x.state.castling); }
                     },
                     (Black, Rook) => {
-                        x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
+                        if calc_zb { x.zobrist = x.zobrist.update_castling(&ts, x.state.castling); }
                         if from == Coord(7,7) { x.state.castling.set_king(Black,false); };
                         if from == Coord(0,7) { x.state.castling.set_queen(Black,false); };
-                        x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
+                        if calc_zb { x.zobrist = x.zobrist.update_castling(&ts, x.state.castling); }
                     },
                     _              => {},
                 }
             },
             Move::Castle { .. }                       => {
-                x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
+                if calc_zb { x.zobrist = x.zobrist.update_castling(&ts, x.state.castling); }
                 let col = self.state.side_to_move;
                 x.state.castling.set_king(col,false);
                 x.state.castling.set_queen(col,false);
@@ -719,7 +725,7 @@ impl Game {
                 //         // x.state.castling.black_queen = false;
                 //     },
                 // }
-                x.zobrist = x.zobrist.update_castling(&ts, x.state.castling);
+                if calc_zb { x.zobrist = x.zobrist.update_castling(&ts, x.state.castling); }
             },
             _ => {},
         }

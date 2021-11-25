@@ -448,7 +448,11 @@ impl ExHelper {
 
             if self.best_mate.read().is_some() { trace!("halting {}, mate", cfg.max_depth); return ABNone; }
 
-            let g2 = if let Ok(g2) = g.make_move_unchecked(ts, mv) {
+            // let g2 = if let Ok(g2) = g.make_move_unchecked(ts, mv) {
+            //     g2
+            // } else { continue 'outer; };
+
+            let g2 = if let Ok(g2) = g._make_move_unchecked(ts, mv, Some(zb0)) {
                 g2
             } else { continue 'outer; };
 
