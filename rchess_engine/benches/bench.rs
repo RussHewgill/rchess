@@ -200,10 +200,10 @@ pub fn crit_bench_1(c: &mut Criterion) {
     group.sample_size(20);
     group.measurement_time(Duration::from_secs_f64(5.));
 
-    // group.bench_function("explore endgame", |b| b.iter(|| {
-    //     let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
-    //     let (m,stats) = ex.explore(&ts, None);
-    // }));
+    group.bench_function("explore endgame", |b| b.iter(|| {
+        let ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
+        let (m,stats) = ex.explore(&ts, None);
+    }));
 
     // group.bench_function("explore", |b| b.iter(|| {
     //     let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop.clone(), timesettings);
@@ -297,8 +297,8 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
 }
 
-criterion_group!(benches, crit_bench_simd);
-// criterion_group!(benches, crit_bench_1);
+// criterion_group!(benches, crit_bench_simd);
+criterion_group!(benches, crit_bench_1);
 // criterion_group!(benches, crit_bench_2);
 criterion_main!(benches);
 

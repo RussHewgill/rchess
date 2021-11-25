@@ -74,7 +74,7 @@ pub struct ExHelper {
     pub syzygy:          Option<Arc<SyzygyTB>>,
 
     pub blocked_moves:   HashSet<Move>,
-    pub return_moves:  bool,
+    pub return_moves:    bool,
 
     pub best_depth:      Arc<AtomicU8>,
     pub tx:              ExSender,
@@ -82,6 +82,42 @@ pub struct ExHelper {
 
     pub tt_r:            TTRead,
     pub tt_w:            TTWrite,
+}
+
+/// build_exhelper
+impl Explorer {
+    pub fn build_exhelper(
+        &self,
+        id:               usize,
+        max_depth:        Depth,
+        best_depth:       Arc<AtomicU8>,
+        tx:               ExSender,
+    ) -> ExHelper {
+        ExHelper {
+            id,
+
+            side:            self.side,
+            game:            self.game.clone(),
+
+            max_depth,
+            stop:            self.stop.clone(),
+            best_mate:       self.best_mate.clone(),
+
+            #[cfg(feature = "syzygy")]
+            syzygy:          self.syzygy.clone(),
+
+            blocked_moves:   self.blocked_moves.clone(),
+            return_moves:    self.return_moves,
+
+            best_depth,
+            tx,
+            // thread_dec,
+
+            tt_r:            self.tt_rf.handle(),
+            tt_w:            self.tt_w.clone(),
+        }
+    }
+
 }
 
 #[derive(Debug,Clone)]
@@ -121,11 +157,11 @@ impl ABConfig {
 
 /// New, misc
 impl Explorer {
-    pub fn new(side:          Color,
-               game:          Game,
-               max_depth:     Depth,
-               // should_stop:   Arc<AtomicBool>,
-               settings:      TimeSettings,
+    pub fn new(
+        side:          Color,
+        game:          Game,
+        max_depth:     Depth,
+        settings:      TimeSettings,
     ) -> Self {
 
         let stop = Arc::new(AtomicBool::new(false));
@@ -271,6 +307,10 @@ impl Explorer {
         // }
 
         // let ((best, scores),stats,(tt_r,tt_w)) = self.lazy_smp_negamax(ts, false, false);
+
+        debug!("clearing tt");
+        self.clear_tt();
+
 
         let (ress,moves,stats) = self.lazy_smp_2(ts);
 
@@ -598,7 +638,8 @@ impl Explorer {
         out:              Arc<RwLock<(Depth,ABResults,Vec<Move>,SearchStats)>>,
     ) {
         loop {
-            match rx.try_recv() {
+            // match rx.try_recv() {
+            match rx.recv() {
                 Ok(ExMessage::End(id)) => {
                     thread_counter.fetch_sub(1, SeqCst);
                     trace!("decrementing thread counter id = {}, new val = {}",
@@ -662,48 +703,16 @@ impl Explorer {
                     // }
 
                 },
-                Err(TryRecvError::Empty)    => {
-                    // std::thread::sleep(Duration::from_millis(1));
-                },
-                Err(TryRecvError::Disconnected)    => {
+                // Err(TryRecvError::Empty)    => {
+                //     // std::thread::sleep(Duration::from_millis(1));
+                // },
+                Err(_)    => {
                     trace!("Breaking thread counter loop (Disconnect)");
                     break;
                 },
             }
         }
         trace!("exiting listener");
-    }
-
-    pub fn build_exhelper(
-        &self,
-        id:               usize,
-        max_depth:        Depth,
-        best_depth:       Arc<AtomicU8>,
-        tx:               ExSender,
-    ) -> ExHelper {
-        ExHelper {
-            id,
-
-            side:            self.side,
-            game:            self.game.clone(),
-
-            max_depth,
-            stop:            self.stop.clone(),
-            best_mate:       self.best_mate.clone(),
-
-            #[cfg(feature = "syzygy")]
-            syzygy:          self.syzygy.clone(),
-
-            blocked_moves:   self.blocked_moves.clone(),
-            return_moves:    self.return_moves,
-
-            best_depth,
-            tx,
-            // thread_dec,
-
-            tt_r:            self.tt_rf.handle(),
-            tt_w:            self.tt_w.clone(),
-        }
     }
 
 }

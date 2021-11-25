@@ -133,7 +133,7 @@ impl Game {
         let pp = self._search_promotions(&ts, None, col, only_caps);
         let cs = if !only_caps {
             self._search_castles(&ts)
-        } else { Vec::with_capacity(0) };
+        } else { ArrayVec::new() };
 
         let mut out = Vec::with_capacity(
             k.len() + b.len() + r.len() + q.len() + n.len() + p.len() + pp.len() + cs.len() + 10
@@ -393,7 +393,7 @@ impl Game {
 /// move_is_legal
 impl Game {
 
-    pub fn move_is_legal(&self, ts: &Tables, m: Move) -> bool {
+    pub fn move_is_legal(&self, ts: &Tables, m: Move, side: Color) -> bool {
 
         if m.filter_en_passant() {
             if self.state.en_passant.is_none() {
@@ -406,28 +406,19 @@ impl Game {
             }
         }
 
-        // if m.filter_en_passant() {
-        //     if self.state.en_passant.is_none() {
-        //         return false;
-        //     } else {
-        //         debug!("bad en passen check ??");
-        //         return true;
-        //     }
-        // }
-
-        let col = if self.get_color(White).is_one_at(m.sq_from()) { White } else { Black };
+        // let side = if self.get_color(White).is_one_at(m.sq_from()) { White } else { Black };
 
         match m.piece() {
             Some(King) => {
-                !self.find_attacks_by_side(&ts, m.sq_to(), !col, true)
+                !self.find_attacks_by_side(&ts, m.sq_to(), !side, true)
             },
             _ => {
-                let pins = self.get_pins(col);
+                let pins = self.get_pins(side);
 
                 // Not pinned
                 // OR moving along pin ray
                 let x = (BitBoard::single(m.sq_from()) & pins).is_empty()
-                    || (ts.aligned(m.sq_from(), m.sq_to(), self.get(King, col).bitscan().into()).0 != 0);
+                    || (ts.aligned(m.sq_from(), m.sq_to(), self.get(King, side).bitscan().into()).0 != 0);
 
                 // not in check
                 let x0 = x & self.state.checkers.is_empty();
@@ -462,36 +453,20 @@ impl Game {
         moves
     }
 
-    pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord, col: Color) -> (BitBoard, BitBoard) {
+    // pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord, col: Color) -> (BitBoard, BitBoard) {
+    pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord, col: Color) -> BitBoard {
         let mut blockers = BitBoard::empty();
-        let mut pinners = BitBoard::empty();
+        // let mut pinners = BitBoard::empty();
 
         let snipers = ts.get_rook(c0).concat() & (self.get_piece(Rook) | self.get_piece(Queen))
             | ts.get_bishop(c0).concat() & (self.get_piece(Bishop) | self.get_piece(Queen));
 
         let snipers = snipers & self.get_color(!col);
 
-        // let mut snipers = ts.get_rook(c0).concat() & (self.get_piece(Rook) | self.get_piece(Queen));
-        // eprintln!("snipers = {:?}", snipers);
-
-        // let mut snipers = {
-        //     let (a,b,c,d) = self._search_sliding_single(c0, Rook, blocks, &ts, col);
-        //     let (e,f,g,h) = self._search_sliding_single(c0, Bishop, blocks, &ts, col);
-        //     ((a | b | c | d) & (self.get_piece(Rook) | self.get_piece(Queen)))
-        //         | ((e | f | g | h) & (self.get_piece(Bishop) | self.get_piece(Queen)))
-        // };
-
         let occ = self.all_occupied() ^ snipers;
-        // eprintln!("occ = {:?}", occ);
 
-        // let (col0, _) = self.get_at(c0).unwrap();
-
-        // snipers.iter_bitscan(|sq| {
         snipers.into_iter().for_each(|sq| {
             let b = ts.between(c0, sq.into()) & occ;
-            // eprintln!("b = {:?}", b);
-            // let cc: Coord = sq.into();
-            // eprintln!("cc = {:?}", cc);
 
             if b.is_not_empty() & !b.more_than_one() {
                 // eprintln!("b = {:?}", b);
@@ -519,7 +494,8 @@ impl Game {
             // }
 
         });
-        (blockers, pinners)
+        // (blockers, pinners)
+        blockers
     }
 
     pub fn obstructed(&self, ts: &Tables, c0: Coord, c1: Coord) -> BitBoard {
@@ -615,7 +591,7 @@ impl Game {
 
                 // out.push(Move::Capture { from: sq.into(), to, pc, victim });
                 let m = Move::Capture { from: sq.into(), to, pc, victim };
-                if self.move_is_legal(&ts, m) { out.push(m); }
+                if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
                 // out.push(m);
             });
             if !only_caps {
@@ -623,7 +599,7 @@ impl Game {
                 quiets.into_iter().for_each(|sq2| {
                     // out.push(Move::Quiet { from: sq.into(), to: sq2.into() });
                     let m = Move::Quiet { from: sq.into(), to: sq2.into(), pc };
-                    if self.move_is_legal(&ts, m) { out.push(m); }
+                    if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
                     // out.push(m);
                 });
             }
@@ -658,8 +634,10 @@ impl Game {
 /// King + Castles
 impl Game {
 
-    pub fn _search_castles(&self, ts: &Tables) -> Vec<Move> {
-        let mut out = vec![];
+    // pub fn _search_castles(&self, ts: &Tables) -> Vec<Move> {
+    pub fn _search_castles(&self, ts: &Tables) -> ArrayVec<Move, 4> {
+        // let mut out = vec![];
+        let mut out = ArrayVec::new();
         let col = self.state.side_to_move;
         let (kingside,queenside) = self.state.castling.get_color(col);
 
@@ -749,10 +727,10 @@ impl Game {
         // out
     }
 
-    pub fn search_king(&self, ts: &Tables, col: Color, only_caps: bool) -> Vec<Move> {
+    // pub fn search_king(&self, ts: &Tables, col: Color, only_caps: bool) -> Vec<Move> {
+    pub fn search_king(&self, ts: &Tables, col: Color, only_caps: bool) -> ArrayVec<Move,8> {
         self._search_king(&ts, col, true, only_caps)
     }
-
 
     pub fn _search_king(
         &self,
@@ -760,17 +738,19 @@ impl Game {
         col:              Color,
         forbid_check:     bool,
         only_caps:        bool,
-    ) -> Vec<Move> {
+    // ) -> Vec<Move> {
+    ) -> ArrayVec<Move,8> {
+        // let mut out = vec![];
+        let mut out = ArrayVec::new();
 
         let p0 = self.get(King, col).bitscan();
-        if p0 == 64 { return vec![]; }
+        // if p0 == 64 { return vec![]; }
+        if p0 == 64 { return out; }
         let moves = *ts.get_king(p0);
 
         let oc = self.all_occupied();
         let quiets   = moves & !oc;
         let captures = moves & self.get_color(!col);
-
-        let mut out = vec![];
 
         if !only_caps {
             quiets.into_iter().for_each(|sq| {
@@ -783,7 +763,7 @@ impl Game {
                 };
                 if go {
                     let m = Move::Quiet { from: p0.into(), to: sq.into(), pc: King };
-                    // if self.move_is_legal(&ts, m) { out.push(m); }
+                    // if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
                     out.push(m);
                 }
             });
@@ -802,7 +782,7 @@ impl Game {
             if go {
                 let (_,victim) = self.get_at(to).unwrap();
                 let m = Move::Capture { from: p0.into(), to, pc: King, victim };
-                // if self.move_is_legal(&ts, m) { out.push(m); }
+                // if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
                 out.push(m);
                 // out.push(Move::Capture { from: p0.into(), to, pc: King, victim });
                 // out.push(Move::Capture { from: p0.into(), to});
@@ -813,67 +793,13 @@ impl Game {
         out
     }
 
-    // pub fn search_king_iter<'a>(&'a self, ts: &'a Tables, col: Color)
-    //                             -> impl Iterator<Item = Move> + 'a {
-    //     self._search_king_iter(&ts, col, true)
-    // }
-
-    // pub fn _search_king_iter<'a>(&'a self, ts: &'a Tables, col: Color, forbid_check: bool)
-    //                         -> impl Iterator<Item = Move> + 'a {
-    //     let p0 = self.get(King, col).bitscan();
-    //     // if p0 == 64 { return vec![].into_iter() }
-    //     let moves = *ts.get_king(p0);
-
-    //     let moves = moves & !self.get_color(col);
-
-    //     let attacks = self.get_color(!col);
-
-    //     let p1: Coord = p0.into();
-    //     moves.into_iter().flat_map(move |to| {
-    //         let to: Coord = to.into();
-    //         if attacks.is_one_at(to) {
-    //             if forbid_check && !self.find_attacks_by_side(&ts, to, !col, false) {
-    //                 let (_,victim) = self.get_at(to).unwrap();
-    //                 Some(Move::Capture { from: p1, to: to, pc: King, victim })
-    //                 // Some(Move::Capture { from: p1, to: to})
-    //             } else {
-    //                 None
-    //             }
-    //         } else {
-    //             if forbid_check && !self.find_attacks_by_side(&ts, to, !col, false) {
-    //                 Some(Move::Quiet { from: p1, to: to, pc: King })
-    //             } else {
-    //                 None
-    //             }
-    //         }
-    //     })
-
-    // }
-
-    // pub fn _search_king_single(&self, c0: Coord, ts: &Tables, col: Color, forbid_check: bool)
-    //                            -> Vec<Move> {
-    //     // let mut out = vec![];
-    //     let occ = self.all_occupied();
-
-    //     let moves = ts.get_king(c0);
-    //     // let quiets   = b3 & !oc;
-    //     // let captures = b3 & oc;
-
-    //     eprintln!("moves = {:?}", moves);
-
-    //     unimplemented!()
-    //     // out
-    // }
-
-    // pub fn search_knight(&self, )
-
 }
 
 /// Knights
 impl Game {
 
-    pub fn search_knights(&self, ts: &Tables, col: Color, only_caps: bool) -> Vec<Move> {
-    // pub fn search_knights(&self, ts: &Tables, col: Color, only_caps: bool) -> ArrayVec<Move,61> {
+    // pub fn search_knights(&self, ts: &Tables, col: Color, only_caps: bool) -> Vec<Move> {
+    pub fn search_knights(&self, ts: &Tables, col: Color, only_caps: bool) -> ArrayVec<Move,61> {
         self._search_knights(None, ts, col, only_caps)
     }
 
@@ -883,10 +809,10 @@ impl Game {
         ts:           &Tables,
         col:          Color,
         only_caps:    bool,
-    ) -> Vec<Move> {
-    // ) -> ArrayVec<Move,61> {
-        let mut out = vec![];
-        // let mut out = ArrayVec::new();
+    // ) -> Vec<Move> {
+    ) -> ArrayVec<Move,61> {
+        // let mut out = vec![];
+        let mut out = ArrayVec::new();
         let oc = self.all_occupied();
 
         let ks = match single {
@@ -904,7 +830,7 @@ impl Game {
                 quiets.into_iter().for_each(|t| {
                     // out.push(Move::Quiet { from: sq.into(), to: t.into()});
                     let m = Move::Quiet { from: sq.into(), to: t.into(), pc: Knight };
-                    if self.move_is_legal(&ts, m) { out.push(m); }
+                    if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
                 });
             }
 
@@ -913,7 +839,7 @@ impl Game {
                 // out.push(Move::Capture { from: sq.into(), to: t.into(), pc: Knight, victim});
                 // out.push(Move::Capture { from: sq.into(), to: t.into()});
                 let m = Move::Capture { from: sq.into(), to: t.into(), pc: Knight, victim};
-                if self.move_is_legal(&ts, m) { out.push(m); }
+                if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
             });
 
         });
@@ -968,14 +894,14 @@ impl Game {
                 let t = t.into();
                 if let Some(f) = (!dir).shift_coord(t) {
                     let m = Move::Quiet { from: f, to: t, pc: Pawn };
-                    if self.move_is_legal(&ts, m) { out.push(m); }
+                    if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
                 }
             };
 
             for t in doubles.into_iter() {
                 let f = BitBoard::single(t.into()).shift_mult(!dir, 2);
                 let m = Move::PawnDouble { from: f.bitscan().into(), to: t.into() };
-                if self.move_is_legal(&ts, m) { out.push(m); }
+                if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
             }
         }
 
@@ -988,7 +914,7 @@ impl Game {
                 let t = cs.bitscan_reset_mut();
                 let (_,victim) = self.get_at(t.into()).unwrap();
                 let m = Move::Capture { from: f, to: t.into(), pc: Pawn, victim };
-                if self.move_is_legal(&ts, m) { out.push(m); }
+                if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
             }
         }
 
@@ -1003,7 +929,7 @@ impl Game {
                 // let (_,victim) = self.get_at(capture).unwrap();
                 // out.push(Move::EnPassant { from: sq.into(), to: ep, capture, victim });
                 let m = Move::EnPassant { from: sq.into(), to: ep, capture };
-                if self.move_is_legal(&ts, m) { out.push(m); }
+                if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
             });
         }
 
@@ -1042,7 +968,7 @@ impl Game {
                 if let Some(f) = (!dir).shift_coord(t) {
                     // out.push(Move::Quiet { from: f, to: t });
                     let m = Move::Quiet { from: f, to: t, pc: Pawn };
-                    if self.move_is_legal(&ts, m) { out.push(m); }
+                    if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
                 }
             });
 
@@ -1050,7 +976,7 @@ impl Game {
                 let f = BitBoard::single(t.into()).shift_mult(!dir, 2);
                 // out.push(Move::PawnDouble { from: f.bitscan().into(), to: t.into() })
                 let m = Move::PawnDouble { from: f.bitscan().into(), to: t.into() };
-                if self.move_is_legal(&ts, m) { out.push(m); }
+                if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
             });
         }
 
@@ -1065,7 +991,7 @@ impl Game {
                 // out.push(Move::Capture { from: f, to: t.into(), pc: Pawn, victim });
                 // out.push(Move::Capture { from: f, to: t.into()});
                 let m = Move::Capture { from: f, to: t.into(), pc: Pawn, victim };
-                if self.move_is_legal(&ts, m) { out.push(m); }
+                if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
             }
         });
 
@@ -1080,7 +1006,7 @@ impl Game {
                 // let (_,victim) = self.get_at(capture).unwrap();
                 // out.push(Move::EnPassant { from: sq.into(), to: ep, capture, victim });
                 let m = Move::EnPassant { from: sq.into(), to: ep, capture };
-                if self.move_is_legal(&ts, m) { out.push(m); }
+                if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
             });
         }
 
@@ -1122,17 +1048,17 @@ impl Game {
                     // out.push(Move::Promotion { from: f, to: t, new_piece: Bishop });
 
                     // let m = Move::Promotion { from: f, to: t, new_piece: Queen };
-                    // if self.move_is_legal(&ts, m) { out.push(m); }
+                    // if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
                     // let m = Move::Promotion { from: f, to: t, new_piece: Knight };
-                    // if self.move_is_legal(&ts, m) { out.push(m); }
+                    // if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
                     // let m = Move::Promotion { from: f, to: t, new_piece: Rook };
-                    // if self.move_is_legal(&ts, m) { out.push(m); }
+                    // if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
                     // let m = Move::Promotion { from: f, to: t, new_piece: Bishop };
-                    // if self.move_is_legal(&ts, m) { out.push(m); }
+                    // if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
 
                     // XXX: would this ever be different?
                     let m = Move::Promotion { from: f, to: t, new_piece: Queen };
-                    let legal = self.move_is_legal(&ts, m);
+                    let legal = self.move_is_legal(&ts, m, self.state.side_to_move);
                     if legal { out.push(m); }
                     let m = Move::Promotion { from: f, to: t, new_piece: Knight };
                     if legal { out.push(m); }
@@ -1159,16 +1085,16 @@ impl Game {
                 // out.push(Move::PromotionCapture { from: f, to: t, new_piece: Bishop, victim });
 
                 // let m = Move::PromotionCapture { from: f, to: t, new_piece: Queen, victim };
-                // if self.move_is_legal(&ts, m) { out.push(m); }
+                // if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
                 // let m = Move::PromotionCapture { from: f, to: t, new_piece: Knight, victim };
-                // if self.move_is_legal(&ts, m) { out.push(m); }
+                // if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
                 // let m = Move::PromotionCapture { from: f, to: t, new_piece: Rook, victim };
-                // if self.move_is_legal(&ts, m) { out.push(m); }
+                // if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
                 // let m = Move::PromotionCapture { from: f, to: t, new_piece: Bishop, victim };
-                // if self.move_is_legal(&ts, m) { out.push(m); }
+                // if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
 
                 let m = Move::PromotionCapture { from: f, to: t, new_piece: Queen, victim };
-                let legal = self.move_is_legal(&ts, m);
+                let legal = self.move_is_legal(&ts, m, self.state.side_to_move);
                 if legal { out.push(m); }
                 let m = Move::PromotionCapture { from: f, to: t, new_piece: Knight, victim };
                 if legal { out.push(m); }

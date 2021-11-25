@@ -611,30 +611,36 @@ impl Game {
     }
 
     fn update_pins_mut(&mut self, ts: &Tables) {
-        // let pw = self.find_pins_absolute(&ts, White);
-        // let pb = self.find_pins_absolute(&ts, Black);
-        // self.state.pinned = Some((pw,pb));
+        let side = self.state.side_to_move;
+        let c0: Coord = self.get(King, side).bitscan().into();
+        let bs = self.find_slider_blockers(&ts, c0, side);
+
+        match side {
+            White => self.state.king_blocks_w = bs,
+            Black => self.state.king_blocks_b = bs,
+        }
+
+    }
+
+    fn update_pins_mut2(&mut self, ts: &Tables) {
+
         let c0 = self.get(King, White);
         if c0.is_empty() {
             panic!("No King? g = {:?}", self);
         }
         let c0 = c0.bitscan().into();
-        let (bs_w, ps_b) = self.find_slider_blockers(&ts, c0, White);
+        // let (bs_w, ps_b) = self.find_slider_blockers(&ts, c0, White);
+        let bs_w = self.find_slider_blockers(&ts, c0, White);
 
         let c1 = self.get(King, Black);
         if c1.is_empty() {
             panic!("No King? g = {:?}", self);
         }
         let c1 = c1.bitscan().into();
-        let (bs_b, ps_w) = self.find_slider_blockers(&ts, c1, Black);
-
-        // let bs_w = bs_w & self.get_color(White);
-        // let bs_b = bs_b & self.get_color(Black);
+        let bs_b = self.find_slider_blockers(&ts, c1, Black);
 
         self.state.king_blocks_w = bs_w;
         self.state.king_blocks_b = bs_b;
-
-        // self.state.pinners = Some(ps_b | ps_w);
 
     }
 
@@ -955,13 +961,13 @@ impl Game {
         }
     }
 
-    pub fn get(&self, piece: Piece, col: Color) -> BitBoard {
-        self.get_color(col) & self.get_piece(piece)
+    pub fn get(&self, piece: Piece, side: Color) -> BitBoard {
+        self.get_color(side) & self.get_piece(piece)
     }
 
-    pub fn get_pins(&self, col: Color) -> BitBoard {
+    pub fn get_pins(&self, side: Color) -> BitBoard {
 
-        match col {
+        match side {
             White => self.state.king_blocks_w,
             Black => self.state.king_blocks_b,
         }

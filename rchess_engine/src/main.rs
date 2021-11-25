@@ -52,14 +52,19 @@ use simplelog::{
 use chrono::Timelike;
 use std::time::{Instant,Duration};
 
-#[allow(unreachable_code)]
 fn main() {
-    // main4(None);
-    main9();
-    // main_nnue();
-    // main_nn();
-    // main_mnist();
-    // main_syzygy();
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() <= 1 { main9(); return; }
+    let arg1: &str = &args[1];
+    match &arg1[..] {
+        "nnue"  => main_nnue(),
+        "perft" => match args.get(2).map(|x| u64::from_str(x).ok()) {
+            Some(n) => main_perft(n),
+            _       => main_perft(None),
+        },
+        _       => main9(),
+    }
+
 }
 
 #[allow(unreachable_code)]
@@ -186,8 +191,8 @@ fn _main() {
             }
             "wac2"  => main3(None, true), // read from file and test, send URL to firefox
             "perft" => match args.get(2).map(|x| u64::from_str(x).ok()) {
-                Some(n) => main4(n),
-                _       => main4(None),
+                Some(n) => main_perft(n),
+                _       => main_perft(None),
             }
             "main7" => main7(),
             "sts"   => match args.get(2).map(|x| u64::from_str(x).ok()) {
@@ -1268,10 +1273,10 @@ fn main9() {
         ex.lazy_smp_negamax(&ts, false, false)
     }
 
-    // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
+    let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
-    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
     // let fen = "5rk1/pp3pp1/8/4q1N1/6b1/4r3/PP3QP1/5K1R w - - 0 2"; // R h1h8, #4, knight move order?
     // let fen = "r4r1k/2Q5/1p5p/2p2n2/2Pp2R1/PN1Pq3/6PP/R3N2K b - - 0 1"; // #4, Qt N f5g3, slow
@@ -1312,9 +1317,6 @@ fn main9() {
     // let fen = "8/1p1b1pq1/3Npk2/2Q1p3/P4rp1/1PP5/K6p/4R3 w - - 2 45"; // Q cap c5e5
 
     // let fen = "7k/6pp/8/8/8/8/8/RK6 w - - 0 1"; // #1, Qt R a1a8
-
-    // let fen = "r5kr/2pn1qp1/2pb1p1p/p3pP1P/4P3/2N1B3/PPP1Q1P1/3RR1K1 w - - 0 23"; // ??
-    let fen = "r5kr/2pn1qp1/2pb1p1p/p2NpP1P/4P3/4B3/PPP1Q1P1/3RR1K1 b - - 1 23"; // ??
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -1439,7 +1441,7 @@ fn main9() {
     // return;
 
     let t = 10.0;
-    // let t = 1.0;
+    // let t = 2.0;
     // let t = 0.5;
 
     let n = 35;
@@ -1472,6 +1474,8 @@ fn main9() {
     let (res,moves,stats0) = ex.lazy_smp_2(&ts);
     let t1 = t0.elapsed();
     let t2 = t1.as_secs_f64();
+
+    let tt_r = ex.tt_rf.handle();
 
     // // eprintln!("res = {:?}", res);
     // if let ABResults::ABList(r,_) = res {
@@ -2259,7 +2263,8 @@ fn main5() {
 }
 
 /// Perft
-fn main4(depth: Option<u64>) {
+#[allow(unreachable_code)]
+fn main_perft(depth: Option<u64>) {
 
     // let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
@@ -2267,10 +2272,10 @@ fn main4(depth: Option<u64>) {
     // let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
     let fen = STARTPOS;
 
-    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
-    // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
-    // let fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
-    // let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  "; // Position 5
+    let fen2 = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
+    let fen3 = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
+    let fen4 = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
+    let fen5 = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  "; // Position 5
 
     // let fen = "r3k2r/p1p1qpb1/bn1ppnp1/3PN3/1p2P3/2N4Q/PPPBBPPP/R3K2R w KQkq - 0 2";
 
@@ -2281,23 +2286,38 @@ fn main4(depth: Option<u64>) {
         Some(d) => d,
     };
 
+    let fens = vec![fen,fen2,fen3,fen4,fen5];
+
+    for (k,fen) in fens.iter().enumerate() {
+        let ts = Tables::read_from_file_def().unwrap();
+        let mut g = Game::from_fen(&ts, fen).unwrap();
+
+        println!("fen #{}:", k + 1);
+        let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, n, true, false).unwrap();
+        println!("perft done in {} seconds.", t);
+        println!("stockfish took {} seconds.", t_sf);
+        println!();
+
+    }
+    return;
+
     // let ts = Tables::new();
     // let ts = &_TABLES;
     let ts = Tables::read_from_file_def().unwrap();
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // eprintln!("g = {:?}", g);
 
-    // let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, n, true).unwrap();
-    // // let (t,(_,_)) = test_stockfish(fen, n, false).unwrap();
-    // println!("perft done in {} seconds.", t);
-    // println!("stockfish took {} seconds.", t_sf);
+    let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, n, true, true).unwrap();
+    // let (t,(_,_)) = test_stockfish(fen, n, false).unwrap();
+    println!("perft done in {} seconds.", t);
+    println!("stockfish took {} seconds.", t_sf);
 
-    let t0 = std::time::Instant::now();
-    let (tot,_) = g.perft(&ts, n);
-    // let (tot,vs) = g.perft2(&ts, n as Depth);
-    // eprintln!("n = {:?}", n);
-    let t1 = t0.elapsed().as_secs_f64();
-    println!("perft done in {} seconds.", t1);
+    // let t0 = std::time::Instant::now();
+    // let (tot,_) = g.perft(&ts, n);
+    // // let (tot,vs) = g.perft2(&ts, n as Depth);
+    // // eprintln!("n = {:?}", n);
+    // let t1 = t0.elapsed().as_secs_f64();
+    // println!("perft done in {} seconds.", t1);
 
     let ds = vec![
         20,

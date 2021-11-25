@@ -284,10 +284,11 @@ pub fn stockfish_eval(
 /// ns0    = total nodes found
 /// nodes0 = HashMap<Move String, (Move, nodes after Move)>
 pub fn test_stockfish(
-    ts:     &Tables,
-    fen:    &str,
-    n:      u64,
-    print:  bool,
+    ts:         &Tables,
+    fen:        &str,
+    n:          u64,
+    print:      bool,
+    print_all:  bool,
 ) -> std::io::Result<((f64,f64),((u64,HashMap<String,(Move,i64)>),(u64,HashMap<String,i64>)))> {
 
     let mut child = Command::new("stockfish")
@@ -376,17 +377,17 @@ pub fn test_stockfish(
         for k in d0.union(&d1) {
             match (nodes0.get(k),nodes1.get(k)) {
                 (Some((_,v0)),None)     => {
-                    if print {
+                    if print_all {
                         eprintln!("k0, rchess, stockfish = {:?} / {:>4} / ---- / failed", k, v0);
                     }
                 },
                 (None,Some(v1))         => {
-                    if print {
+                    if print_all {
                         eprintln!("k0, rchess, stockfish = {:?} / ---- / {:>4} / failed", k, v1);
                     }
                 },
                 (Some((_,v0)),Some(v1)) => {
-                    if print {
+                    if print_all {
                         if v0 == v1 {
                             eprintln!("k0, rchess, stockfish = {:?} / {:>4} / {:>4}", k, v0, v1);
                         } else {
