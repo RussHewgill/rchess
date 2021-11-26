@@ -91,12 +91,31 @@ pub struct ExHelper {
 
     pub cfg:             ExConfig,
 
+    pub heuristics:      ExHeuristics,
+
     pub best_depth:      Arc<AtomicU8>,
     pub tx:              ExSender,
     // pub thread_dec:      Sender<usize>,
 
     pub tt_r:            TTRead,
     pub tt_w:            TTWrite,
+}
+
+#[derive(Debug,Clone)]
+pub struct ExHeuristics {
+    pub history:      [[[Score; 64]; 64]; 2],
+    pub killers_1:    Vec<Move>,
+    pub killers_2:    Vec<Move>,
+}
+
+impl Default for ExHeuristics {
+    fn default() -> Self {
+        Self {
+            history:      [[[0; 64]; 64]; 2],
+            killers_1:    vec![],
+            killers_2:    vec![],
+        }
+    }
 }
 
 /// build_exhelper
@@ -121,6 +140,8 @@ impl Explorer {
 
             #[cfg(feature = "syzygy")]
             syzygy:          self.syzygy.clone(),
+
+            heuristics:      ExHeuristics::default(),
 
             best_depth,
             tx,

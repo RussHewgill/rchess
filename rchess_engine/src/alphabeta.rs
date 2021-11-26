@@ -208,7 +208,8 @@ impl ExHelper {
         (mut alpha, mut beta):   (i32,i32),
         mut stats:               &mut SearchStats,
         // prev_mvs:                VecDeque<(Zobrist,Move)>,
-        mut history:             &mut [[[Score; 64]; 64]; 2],
+        // mut history:             &mut [[[Score; 64]; 64]; 2],
+        // mut killers:             [[Option<Move>]]
         tt_r:                    &TTRead,
         tt_w:                    TTWrite,
     ) -> ABResults {
@@ -224,7 +225,11 @@ impl ExHelper {
                     // return ABSingle(ABResult::new_single(g.last_move.unwrap(), -score));
                     // return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
                     trace!("repetition found, last move {:?}", g.last_move);
-                    return ABSingle(ABResult::new_single(g.last_move.unwrap(), 0));
+                    if cfg.root {
+                        return ABNone;
+                    } else {
+                        return ABSingle(ABResult::new_single(g.last_move.unwrap(), 0));
+                    }
                     // return ABSingle(ABResult::new_empty(0));
                 }
             }
@@ -469,7 +474,6 @@ impl ExHelper {
             //     }
             // }
 
-
             // if self.best_mate.read().is_some() {
             //     trace!("halting {}, mate", cfg.max_depth);
             //     return ABNone;
@@ -495,18 +499,18 @@ impl ExHelper {
 
                 Some((SICanUse::UseScore,si)) => {
                     let mut si = si.clone();
-                    match si.node_type {
-                        Node::PV  => {},
-                        Node::All => if si.score <= alpha {
-                            // trace!("Node::All, using alpha {}", alpha);
-                            si.score = alpha;
-                        },
-                        Node::Cut => if si.score >= beta {
-                            // trace!("Node::Cut, using beta {}", beta);
-                            si.score = beta;
-                        },
-                        _         => unimplemented!(),
-                    }
+                    // match si.node_type {
+                    //     Node::PV  => {},
+                    //     Node::All => if si.score <= alpha {
+                    //         // trace!("Node::All, using alpha {}", alpha);
+                    //         si.score = alpha;
+                    //     },
+                    //     Node::Cut => if si.score >= beta {
+                    //         // trace!("Node::Cut, using beta {}", beta);
+                    //         si.score = beta;
+                    //     },
+                    //     _         => unimplemented!(),
+                    // }
                     // (true, ABResult::new_single(si.best_move, si.score))
                     (true, ABResult::new_single(mv, si.score))
                 },

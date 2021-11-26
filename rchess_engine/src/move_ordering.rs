@@ -9,42 +9,6 @@ use rayon::prelude::*;
 
 use std::cmp::Ordering;
 
-// /// Sort Order:
-// ///     TT Lookups sorted by score,
-// ///     Captures sorted by MVV/LVA
-// ///     Promotions // TODO:
-// ///     rest
-// pub fn order_searchinfo(maximizing: bool, mut xs: &mut [(Move,Game,Option<(SICanUse,SearchInfo)>)]) {
-//     use std::cmp::Ordering;
-//     if maximizing {
-//         xs.par_sort_unstable_by(|(mv0,g0,msi0),(mv1,g1,msi1)| {
-//             match (msi0,msi1) {
-//                 (Some((_,si0)),Some((_,si1))) => si0.score.cmp(&si1.score).reverse(),
-//                 (Some((_,si0)),None)          => Ordering::Less,
-//                 (None,Some((_,si1)))          => Ordering::Greater,
-//                 _                             => {
-//                     _order_mvv_lva(mv0, mv1)
-//                     // mv0.cmp(mv1)
-//                 },
-//             }
-//         });
-//     } else {
-//         xs.par_sort_unstable_by(|(mv0,g0,msi0),(mv1,g1,msi1)| {
-//             match (msi0,msi1) {
-//                 (Some((_,si0)),Some((_,si1))) => si0.score.cmp(&si1.score),
-//                 (Some((_,si0)),None)          => Ordering::Less,
-//                 (None,Some((_,si1)))          => Ordering::Greater,
-//                 _                             => {
-//                     // _order_mvv_lva(mv0, mv1).reverse()
-//                     _order_mvv_lva(mv0, mv1)
-//                     // mv0.cmp(mv1).reverse()
-//                 },
-//             }
-//         });
-//     }
-//     // xs.reverse()
-// }
-
 pub fn order_moves_piece_tables(ts: &Tables, mut xs: &mut [Move]) {
     // xs.par_sort_unstable_by(|a,b| {
     //     let s0 = ts.piece_tables.get_mid(a.piece(), col, a.sq_from())
@@ -85,16 +49,6 @@ pub fn order_mvv_lva(mut xs: &mut [Move]) {
 
 pub fn _order_mvv_lva(a: &Move, b: &Move) -> std::cmp::Ordering {
 
-    // match (a.victim(), b.piece()) {
-    //     (Some(victim), Some(attacker)) => {
-    //         attacker.cmp(&victim)
-    //     },
-    //     (None,_) => a.cmp(&b).reverse(),
-    //     (x,y) => panic!("wot mvv_lva: ({:?},{:?}) {:?}, {:?}", x, y, a, b)
-    // }
-
-    // a.cmp(&b).reverse()
-
     match (a.victim(), b.victim()) {
         (Some(v0), Some(v1)) => match (a.piece(),b.piece()) {
             (Some(pc0),Some(pc1)) => {
@@ -118,43 +72,6 @@ pub fn _order_mvv_lva(a: &Move, b: &Move) -> std::cmp::Ordering {
 // pub fn order_searchinfo(mut xs: &mut [(Move,Game,Option<(SICanUse,SearchInfo)>)]) {
 pub fn order_searchinfo(mut xs: &mut [(Move,Zobrist,Option<(SICanUse,SearchInfo)>)]) {
 
-    // #[cfg(feature = "par")]
-    // xs.par_sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
-    // #[cfg(not(feature = "par"))]
-    // xs.sort_unstable_by(|a,b| a.2.partial_cmp(&b.2).unwrap());
-    // if !maximizing {
-    //     xs.reverse();
-    // }
-
-    // #[cfg(feature = "par")]
-    // {
-    //     if maximizing {
-    //         // xs.par_sort_unstable_by(|a,b| {
-    //         xs.par_sort_by(|a,b| {
-    //             match (a.2.as_ref(),b.2.as_ref()) {
-    //                 (Some((_,a)),Some((_,b))) => a.score.cmp(&b.score),
-    //                 // (None,None)               => _order_mvv_lva(&a.0, &b.0),
-    //                 (None,None)               => a.0.cmp(&b.0),
-    //                 (a,b)                     => a.partial_cmp(&b).unwrap(),
-    //                 // _                         => std::cmp::Ordering::Equal,
-    //             }
-    //         });
-    //         xs.reverse();
-    //     } else {
-    //         // xs.par_sort_unstable_by(|a,b| {
-    //         xs.par_sort_by(|a,b| {
-    //             match (a.2.as_ref(),b.2.as_ref()) {
-    //                 (Some((_,a)),Some((_,b))) => a.score.cmp(&b.score).reverse(),
-    //                 // (None,None)               => _order_mvv_lva(&a.0, &b.0).reverse(),
-    //                 (None,None)               => a.0.cmp(&b.0).reverse(),
-    //                 (a,b)                     => a.partial_cmp(&b).unwrap(),
-    //                 // _                         => std::cmp::Ordering::Equal,
-    //             }
-    //         });
-    //         xs.reverse();
-    //     }
-    // }
-
     #[cfg(not(feature = "par"))]
     {
         xs.sort_by(|a,b| {
@@ -163,48 +80,12 @@ pub fn order_searchinfo(mut xs: &mut [(Move,Zobrist,Option<(SICanUse,SearchInfo)
 
                 (Some((_,a)),Some((_,b))) => a.score.cmp(&b.score).reverse(),
 
-                // TODO: 
-                // (Some((_,a)),Some((_,b))) => {
-                //     match (a.node_type,b.node_type) {
-                //         (Node::PV, Node::PV) => Ordering::Equal,
-                //         (Node::PV, _)        => Ordering::Less,
-                //         (_, Node::PV)        => Ordering::Greater,
-                //         _                    => a.score.cmp(&b.score).reverse()
-                //     }
-                // },
-
                 (None,None)               => a.0.cmp(&b.0).reverse(),
                 (a,b)                     => a.partial_cmp(&b).unwrap(),
             }
         });
         xs.reverse();
     }
-
-    // let maximizing = false;
-    // #[cfg(not(feature = "par"))]
-    // {
-    //     if maximizing {
-    //         // xs.par_sort_unstable_by(|a,b| {
-    //         xs.sort_by(|a,b| {
-    //             match (a.2.as_ref(),b.2.as_ref()) {
-    //                 (Some((_,a)),Some((_,b))) => a.score.cmp(&b.score),
-    //                 (None,None)               => a.0.cmp(&b.0),
-    //                 (a,b)                     => a.partial_cmp(&b).unwrap(),
-    //             }
-    //         });
-    //         xs.reverse();
-    //     } else {
-    //         // xs.par_sort_unstable_by(|a,b| {
-    //         xs.sort_by(|a,b| {
-    //             match (a.2.as_ref(),b.2.as_ref()) {
-    //                 (Some((_,a)),Some((_,b))) => a.score.cmp(&b.score).reverse(),
-    //                 (None,None)               => a.0.cmp(&b.0).reverse(),
-    //                 (a,b)                     => a.partial_cmp(&b).unwrap(),
-    //             }
-    //         });
-    //         xs.reverse();
-    //     }
-    // }
 
 }
 

@@ -1322,9 +1322,9 @@ fn main9() {
 
     // let fen = "r1bqk2r/ppp2ppp/2np1n2/4p3/1PP1P3/P1NPbN2/5PPP/R2QKB1R w KQkq -";
 
-    // let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
+    let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
 
-    let fen = "rnbqkb1r/p4p2/2p1pn1p/1p2P1p1/2pP3B/2N2N2/PP3PPP/R2QKB1R w KQkq g6"; // rand opening
+    // let fen = "rnbqkb1r/p4p2/2p1pn1p/1p2P1p1/2pP3B/2N2N2/PP3PPP/R2QKB1R w KQkq g6"; // rand opening
 
     // let fen = "rnb2r2/p1q2pQk/2p1pB1p/1p2P3/1bpPN3/2N5/PP3PPP/R3KB1R b KQ -"; // Mate
 
@@ -1350,9 +1350,9 @@ fn main9() {
     let mv = Move::Capture { from: "H5".into(), to: "G4".into(), pc: Pawn, victim: Pawn };
 
     // let t = 10.0;
-    // let t = 1.0;
+    let t = 3.0;
     // let t = 0.5;
-    let t = 0.3;
+    // let t = 0.3;
 
     let n = 35;
     // let n = 5;
@@ -1376,7 +1376,7 @@ fn main9() {
 
     let tt_r = ex.handle();
 
-    if true {
+    if !true {
         // non legal move: Db h2h4
         // let tt = load_tt("/home/me/code/rust/rchess/tt2.bin").unwrap();
         ex.clear_tt();
@@ -1414,7 +1414,8 @@ fn main9() {
         return;
     }
 
-    loop {
+    // loop {
+    if !true {
         let (mv,stats) = ex.explore(&ts, None);
         // let (mv,_) = mv.unwrap();
 
@@ -1441,8 +1442,6 @@ fn main9() {
         }
     }
 
-    return;
-
     let (res,moves,stats0) = ex.lazy_smp_2(&ts);
     let t1 = t0.elapsed();
     let t2 = t1.as_secs_f64();
@@ -1466,24 +1465,20 @@ fn main9() {
 
     let moves = g.search_all(&ts).get_moves_unsafe();
 
-    for mv in moves.iter() {
-        eprintln!("mv = {:?}", mv);
+    // return;
 
-        let zb = g.zobrist.update_move_unchecked(&ts, &g, *mv);
-
-        if let Some(si) = tt_r.get_one(&zb) {
-            let mv1 = si.best_move;
-            let d   = si.depth_searched;
-            let nt  = si.node_type;
-
-            eprintln!("{:?} = {:?}, {:?}", mv1, nt, d);
-
-        } else {
-            println!("wat 1");
-        }
-
-    }
-
+    // for mv in moves.iter() {
+    //     eprintln!("mv = {:?}", mv);
+    //     let zb = g.zobrist.update_move_unchecked(&ts, &g, *mv);
+    //     if let Some(si) = tt_r.get_one(&zb) {
+    //         let mv1 = si.best_move;
+    //         let d   = si.depth_searched;
+    //         let nt  = si.node_type;
+    //         eprintln!("{:?} = {:?}, {:?}", mv1, nt, d);
+    //     } else {
+    //         println!("wat 1");
+    //     }
+    // }
 
     // let n = 35;
     // let t = 0.5;
@@ -1520,8 +1515,6 @@ fn main9() {
     //     eprintln!("{}\t{:?}", n, mv);
     // }
 
-    return;
-
     // let mut scores = scores;
     // scores.sort_by_key(|x| x.score);
     // scores.reverse();
@@ -1550,7 +1543,7 @@ fn main9() {
 
     eprintln!();
 
-    stats0.print_ebf(true);
+    stats0.print_ebf(false);
 
     // let zb = g.zobrist;
     // let si = tt_r.get_one(&zb).unwrap();
