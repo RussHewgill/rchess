@@ -30,11 +30,6 @@ pub enum OrdMove {
     Other,
 }
 
-fn convert_score(s: Score) -> i8 {
-    const K: Score = 16909320;
-    (s / K) as i8
-}
-
 impl ExHelper {
     pub fn order_moves(
         &self,

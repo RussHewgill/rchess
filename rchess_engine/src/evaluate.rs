@@ -4,12 +4,18 @@ use crate::tables::*;
 
 pub use self::tapered::TaperedScore;
 
+use nalgebra::Quaternion;
 use serde::{Serialize,Deserialize};
 
 pub type Score = i32;
 
 pub static CHECKMATE_VALUE: Score = 100_000_000;
 pub static STALEMATE_VALUE: Score = 20_000_000;
+
+pub fn convert_from_score(s: Score) -> i8 {
+    const K: Score = 16909320;
+    (s / K) as i8
+}
 
 mod tapered {
     use crate::types::*;
@@ -134,13 +140,6 @@ impl Eval {
 
 }
 
-/// Attack and defend maps
-impl Game {
-
-
-
-}
-
 /// Main Evaluation
 impl Game {
 
@@ -172,27 +171,103 @@ impl Game {
         out
     }
 
-    pub fn non_pawn_material(&self) -> (Score,Score) {
-        unimplemented!()
-    }
-
     pub fn taper_score(&self, mid: Score, end: Score) -> Score {
         let phase = self.state.phase as Score;
         ((mid * (256 - phase)) + (end * phase)) / 256
     }
 
+}
+
+/// Main Eval 2
+impl Game {
+
+    pub fn sum_evaluate(&self, ts: &Tables) -> Score {
+        // const SIDES: [Color; 2] = [White,Black];
+        let side = self.state.side_to_move;
+
+        let mut score = 0;
+
+        score += self.score_material2(White) - self.score_material2(Black);
+        score += self.score_psqt(ts, White) - self.score_psqt(ts, Black);
+
+        score
+    }
+
+    fn score_material2(&self, side: Color) -> Score {
+        const PCS: [Piece; 6] = [Pawn,Knight,Bishop,Rook,Queen,King];
+        PCS.iter().map(|&pc| self.state.material.get(pc, side) as Score * pc.score()).sum()
+    }
+
+    fn score_psqt(&self, ts: &Tables, side: Color) -> Score {
+        const PCS: [Piece; 6] = [Pawn,Knight,Bishop,Rook,Queen,King];
+        PCS.iter().map(|&pc| {
+            self._score_psqt(ts, pc, side)
+        }).sum()
+    }
+
+    fn _score_psqt(&self, ts: &Tables, pc: Piece, side: Color) -> Score {
+        let pieces = self.get(pc, side);
+        let score_mg = pieces.into_iter().map(|sq| {
+            ts.piece_tables.get_mid(pc, side, sq)
+        }).sum();
+        let score_eg = pieces.into_iter().map(|sq| {
+            ts.piece_tables.get_end(pc, side, sq)
+        }).sum();
+        self.taper_score(score_mg, score_eg)
+    }
+
+}
+
+/// Phase
+impl Game {
+
     // pub fn update_phase(&self, new_piece: Option<Piece>, delete_piece: Option<>)
     #[must_use]
     pub fn update_phase(&self, mv: Move) -> Phase {
         let mut ph = self.state.phase;
-
         if let Some(victim) = mv.victim() {
         }
-
         unimplemented!()
     }
 
+    // pub fn increment_phase(&self, mv: Move) -> u8 {
+    //     match mv {
+    //         Move::Promotion { new_piece, .. }        => unimplemented!(),
+    //         Move::PromotionCapture { new_piece, .. } => unimplemented!(),
+    //         _                                        => {},
+    //     }
+    //     match mv.victim() {
+    //         None         => self.state.phase,
+    //         Some(victim) => {
+    //             self.state.phase - victim.score()
+    //             unimplemented!()
+    //         },
+    //     }
+    // }
+
     pub fn game_phase(&self) -> u8 {
+        const MIDGAME_LIMIT: i32 = 15258;
+        const ENDGAME_LIMIT: i32 = 3915;
+
+        const NON_PAWN: [Piece; 4] = [Knight,Bishop,Rook,Queen];
+
+        let side = self.state.side_to_move;
+
+        let npm: Score = NON_PAWN.iter().map(|&pc| {
+            self.state.material.get(pc, White) as Score * pc.score()
+                + self.state.material.get(pc, Black) as Score * pc.score()
+        }).sum();
+
+        let npm = Score::max(ENDGAME_LIMIT, Score::min(npm, MIDGAME_LIMIT));
+
+        let out = (((npm - ENDGAME_LIMIT) * 128) / (MIDGAME_LIMIT - ENDGAME_LIMIT)) << 0;
+
+        let out = convert_from_score(out) as i16 + 127;
+
+        out as u8
+    }
+
+    pub fn game_phase2(&self) -> u8 {
         const PAWN_PH: u16   = 0;
         const KNIGHT_PH: u16 = 1;
         const BISHOP_PH: u16 = 1;
@@ -393,8 +468,67 @@ impl Game {
 /// Mobility
 impl Game {
 
-    pub fn score_mobility(&self, ts: &Tables, pc: Piece, c0: Coord, side: Color) -> Score {
-        unimplemented!()
+    pub fn score_mobility(&self, ts: &Tables, side: Color) -> Score {
+        const PCS: [Piece; 4] = [Knight,Bishop,Rook,Queen];
+        let mob = self.mobility_area(ts, side);
+
+        PCS.iter().map(|&pc| {
+            self.get(pc, side).into_iter().map(|sq| {
+                let c0: Coord = sq.into();
+                self._score_mobility(ts, mob, pc, c0, side)
+            }).sum::<Score>()
+        }).sum::<Score>()
+    }
+
+    pub fn _score_mobility(&self, ts: &Tables, mob: BitBoard, pc: Piece, c0: Coord, side: Color) -> Score {
+        match pc {
+            Knight => {
+                let mvs = ts.get_knight(c0);
+                (*mvs & mob).popcount() as Score
+            },
+            Bishop => {
+                let occ = self.all_occupied() & !self.get(Queen, side);
+                let mvs = ts.attacks_bishop(c0, occ);
+                (mvs & mob).popcount() as Score
+            },
+            Rook   => {
+                let occ = self.all_occupied() & !self.get(Queen, side);
+                let mvs = ts.attacks_rook(c0, occ);
+                (mvs & mob).popcount() as Score
+            },
+            Queen  => {
+                let mvs0 = ts.attacks_bishop(c0, self.all_occupied());
+                let mvs1 = ts.attacks_rook(c0, self.all_occupied());
+                ((mvs0 | mvs1) & mob).popcount() as Score
+            },
+
+            Pawn   => unimplemented!(),
+            King   => unimplemented!(),
+        }
+
+    }
+
+    pub fn mobility_area(&self, ts: &Tables, side: Color) -> BitBoard {
+        const WHITE_R23: BitBoard = BitBoard(0x0000000000ffff00);
+        const BLACK_R67: BitBoard = BitBoard(0x00ffff0000000000);
+
+        let mut mob = !BitBoard::empty();
+
+        mob &= !self.get(King, side);
+        mob &= !self.get(Queen, side);
+        mob &= !(self.get(Pawn, side) & (if side == White { WHITE_R23 } else { BLACK_R67 }));
+        mob &= !self.get_pins(side);
+
+        let (d,dw,de) = if side == White { (S,SW,SE) } else { (N,NW,NE) };
+
+        let enemy_pawns = self.get(Pawn, !side);
+        // Enemy pawn attacks
+        mob &= !(enemy_pawns.shift_dir(dw) | enemy_pawns.shift_dir(de));
+
+        // Blocked pawns
+        mob &= !(self.get(Pawn, side) & enemy_pawns.shift_dir(d));
+
+        mob
     }
 
 }
@@ -451,15 +585,15 @@ impl Game {
         // unimplemented!()
     }
 
-    pub fn count_pawns_backward(&self, ts: &Tables, col: Color) -> u8 {
+    pub fn count_pawns_backward(&self, ts: &Tables, side: Color) -> u8 {
         unimplemented!()
     }
 
-    pub fn count_pawns_isolated(&self, ts: &Tables, col: Color) -> u8 {
+    pub fn count_pawns_isolated(&self, ts: &Tables, side: Color) -> u8 {
         unimplemented!()
     }
 
-    pub fn count_pawns_passed(&self, ts: &Tables, col: Color) -> u8 {
+    pub fn count_pawns_passed(&self, ts: &Tables, side: Color) -> u8 {
         unimplemented!()
     }
 

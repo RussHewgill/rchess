@@ -1324,17 +1324,43 @@ fn main9() {
 
     let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
 
-    // let fen = "rnbqkb1r/p4p2/2p1pn1p/1p2P1p1/2pP3B/2N2N2/PP3PPP/R2QKB1R w KQkq g6"; // rand opening
+    let fen = "rnbqkb1r/p4p2/2p1pn1p/1p2P1p1/2pP3B/2N2N2/PP3PPP/R2QKB1R w KQkq g6"; // rand opening
 
     // let fen = "rnb2r2/p1q2pQk/2p1pB1p/1p2P3/1bpPN3/2N5/PP3PPP/R3KB1R b KQ -"; // Mate
+
+    // let fen = "4k3/r2bbprp/3p1p1N/2qBpP2/ppP1P1P1/1P1R3P/P7/1KR1Q3 w - - "; // STS 1 56
+
+    let fen = "rnb1kbnr/1pppqpp1/8/7p/p3P3/P7/1PPP1PPP/RNBQKBNR w KQkq - 1 2";
+    // let fen = "4k3/4p3/8/8/8/8/4P3/N3K3 w - - 0 1";
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
 
-    g.last_move = Some(Move::Quiet { from: "G4".into(), to: "G7".into(), pc: Queen });
+    // g.last_move = Some(Move::Quiet { from: "G4".into(), to: "G7".into(), pc: Queen });
 
     eprintln!("g = {:?}", g);
+
+    let side = Black;
+    let mob = g.mobility_area(&ts, side);
+
+    let c0 = Coord::from("F8");
+    let (_,pc) = g.get_at(c0).unwrap();
+
+    let m0 = g._score_mobility(&ts, mob, pc, c0, side);
+
+    eprintln!("m0 = {:?}", m0);
+
+    let m0 = g.score_mobility(&ts, White);
+    let m1 = g.score_mobility(&ts, Black);
+
+    // let m0 = g.mobility_area(&ts, White);
+    // let m1 = g.mobility_area(&ts, Black);
+
+    eprintln!("white = {:?}", m0);
+    eprintln!("black = {:?}", m1);
+
+    return;
 
     // let hook = std::panic::take_hook();
     // std::panic::set_hook(Box::new(move |panicinfo| {
@@ -1350,7 +1376,7 @@ fn main9() {
     let mv = Move::Capture { from: "H5".into(), to: "G4".into(), pc: Pawn, victim: Pawn };
 
     // let t = 10.0;
-    let t = 3.0;
+    let t = 4.0;
     // let t = 0.5;
     // let t = 0.3;
 
@@ -1372,19 +1398,17 @@ fn main9() {
     // ex.cfg.num_threads = Some(6);
     ex.cfg.num_threads = Some(1);
 
-    let k0 = i32::MAX;
-    let k1 = i8::MAX as i32;
-
-    eprintln!("k0 = {:?}", k0);
-    eprintln!("k1 = {:?}", k1);
-
-    let k = k0 / k1;
-    eprintln!("k = {:?}", k);
-
-    let k2 = k0 / k;
-    eprintln!("k2 = {:?}", k2);
-
-    return;
+    // let fen1 = "rnbqkb1r/p4p2/2p1pn1p/1p2P1N1/2pP3B/2N5/PP3PPP/R2QKB1R b KQkq - 0 1"; // rand opening
+    // let fen2 = "rnbqkb1r/p4p2/2p1pn2/1p2P1p1/2pP3B/2N5/PP3PPP/R2QKB1R w KQkq - 0 2";
+    // let g1 = Game::from_fen(&ts, fen1).unwrap();
+    // let g2 = Game::from_fen(&ts, fen2).unwrap();
+    // let s0 = g1.game_phase2();
+    // let s1 = g2.game_phase2();
+    // let s2 = g1.increment_phase(Move::new_capture("h6", "g5", Pawn, Knight));
+    // eprintln!("s0 = {:?}", s0);
+    // eprintln!("s1 = {:?}", s1);
+    // eprintln!("s2 = {:?}", s2);
+    // return;
 
     // let s0 = std::mem::size_of::<OrdMove>();
     // eprintln!("s0 = {:?}", s0);

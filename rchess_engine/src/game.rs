@@ -140,6 +140,10 @@ impl Material {
 /// Queries
 impl Material {
 
+    pub fn get(&self, pc: Piece, side: Color) -> u8 {
+        self.buf[side][pc]
+    }
+
     pub fn into_normalized(self) -> Self {
         if self.buf[White] < self.buf[Black] {
             Self {
@@ -617,7 +621,7 @@ impl Game {
         // self.state.pinners       = None;
     }
 
-    fn update_pins_mut(&mut self, ts: &Tables) {
+    fn update_pins_mut2(&mut self, ts: &Tables) {
         let side = self.state.side_to_move;
         let c0: Coord = self.get(King, side).bitscan().into();
         let bs = self.find_slider_blockers(&ts, c0, side);
@@ -626,10 +630,10 @@ impl Game {
             White => self.state.king_blocks_w = bs,
             Black => self.state.king_blocks_b = bs,
         }
-
     }
 
-    fn _old_update_pins_mut(&mut self, ts: &Tables) {
+    // fn _old_update_pins_mut(&mut self, ts: &Tables) {
+    fn update_pins_mut(&mut self, ts: &Tables) {
 
         let c0 = self.get(King, White);
         if c0.is_empty() {

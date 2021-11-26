@@ -66,6 +66,16 @@ pub enum Move {
     // PromotionCapture   { side: Color, from: Coord, to: Coord, new_piece: Piece, victim: Piece },
 }
 
+/// Conveninience builders
+impl Move {
+    pub fn new_quiet<T: Into<Coord>>(from: T, to: T, pc: Piece) -> Move {
+        Move::Quiet { from: from.into(), to: to.into(), pc }
+    }
+    pub fn new_capture<T: Into<Coord>>(from: T, to: T, pc: Piece, victim: Piece) -> Move {
+        Move::Capture { from: from.into(), to: to.into(), pc, victim }
+    }
+}
+
 // #[derive(Serialize,Deserialize,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
 // // #[derive(Serialize,Deserialize,Ord,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
 // pub enum Move2 {
