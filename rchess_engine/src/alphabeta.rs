@@ -108,11 +108,10 @@ impl ExHelper {
         ts:             &Tables,
         zb:             &Zobrist,
         depth:          Depth,
-        tt_r:           &TTRead,
         mut stats:      &mut SearchStats,
     ) -> Option<(SICanUse,SearchInfo)> {
         // if let Some(si) = tt_r.get_one(&g.zobrist) {
-        if let Some(si) = tt_r.get_one(zb) {
+        if let Some(si) = self.tt_r.get_one(zb) {
             if si.depth_searched >= depth {
                 stats!(stats.tt_hits += 1);
                 Some((SICanUse::UseScore,*si))
@@ -133,7 +132,7 @@ impl ExHelper {
         &self,
         ts:             &Tables,
         mut stats:      &mut SearchStats,
-        mut history:    &mut [[[Score; 64]; 64]; 2],
+        mut tracking:   &mut ExTracking,
         depth:          Depth,
     ) -> ABResults {
 
@@ -155,41 +154,8 @@ impl ExHelper {
             0, &mut stop_counter, (alpha, beta),
             &mut stats,
             // VecDeque::new(),
-            &mut history,
-            &tt_r, tt_w);
-
-        res
-    }
-
-    pub fn ab_search_negamax(
-        &self,
-        ts:             &Tables,
-        mut stats:      &mut SearchStats,
-        depth:          Depth,
-    ) -> ABResults {
-
-        let mut history = [[[0; 64]; 64]; 2];
-
-        let mut stop_counter = 0;
-
-        let mut cfg = ABConfig::new_depth(depth);
-        cfg.root = true;
-
-        let (alpha,beta) = (i32::MIN,i32::MAX);
-        let (alpha,beta) = (alpha + 200,beta - 200);
-
-        let mut g = self.game.clone();
-
-        let tt_r = self.tt_r.clone();
-        let tt_w = self.tt_w.clone();
-
-        let res = self._ab_search_negamax(
-            ts, &mut g, cfg, depth,
-            0, &mut stop_counter, (alpha, beta),
-            &mut stats,
-            // VecDeque::new(),
-            &mut history,
-            &tt_r, tt_w.clone());
+            &mut tracking,
+            );
 
         res
     }
@@ -207,11 +173,7 @@ impl ExHelper {
         mut stop_counter:        &mut u16,
         (mut alpha, mut beta):   (i32,i32),
         mut stats:               &mut SearchStats,
-        // prev_mvs:                VecDeque<(Zobrist,Move)>,
-        // mut history:             &mut [[[Score; 64]; 64]; 2],
-        // mut killers:             [[Option<Move>]]
-        tt_r:                    &TTRead,
-        tt_w:                    TTWrite,
+        mut tracking:            &mut ExTracking,
     ) -> ABResults {
 
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
@@ -278,10 +240,10 @@ impl ExHelper {
             Outcome::Checkmate(c) => {
                 // let score = 100_000_000 - ply as Score;
                 let score = CHECKMATE_VALUE - ply as Score;
-                if !tt_r.contains_key(&g.zobrist) {
-                    stats!(stats.leaves += 1);
-                    stats!(stats.checkmates += 1);
-                }
+                // if !self.tt_r.contains_key(&g.zobrist) {
+                //     stats!(stats.leaves += 1);
+                //     stats!(stats.checkmates += 1);
+                // }
 
                 let mv = g.last_move.unwrap();
 
@@ -291,7 +253,7 @@ impl ExHelper {
             },
             Outcome::Stalemate    => {
                 let score = -STALEMATE_VALUE + ply as Score;
-                if !tt_r.contains_key(&g.zobrist) {
+                if !self.tt_r.contains_key(&g.zobrist) {
                     stats!(stats.leaves += 1);
                     stats!(stats.stalemates += 1);
                 }
@@ -313,9 +275,9 @@ impl ExHelper {
         // let mvs = self.move_history.clone();
 
         if depth == 0 {
-            if !tt_r.contains_key(&g.zobrist) {
-                stats!(stats.leaves += 1);
-            }
+            // if !self.tt_r.contains_key(&g.zobrist) {
+            //     stats!(stats.leaves += 1);
+            // }
 
             #[cfg(feature = "qsearch")]
             let score = {
@@ -393,7 +355,8 @@ impl ExHelper {
                 if self.prune_null_move_negamax(
                     ts, g, cfg, depth, ply, alpha, beta, &mut stats,
                     // prev_mvs.clone(), &mut history, (tt_r, tt_w.clone())) {
-                    &mut history, (tt_r, tt_w.clone())) {
+                    // &mut tracking, (tt_r, tt_w.clone())) {
+                    &mut tracking) {
 
                     // return ABNone;
                     // return ABSingle(ABResult::new_empty(beta));
@@ -401,15 +364,15 @@ impl ExHelper {
                 }
         }
 
-        /// MVV LVA move ordering
-        order_mvv_lva(&mut moves);
+        // /// MVV LVA move ordering
+        // order_mvv_lva(&mut moves);
 
         // moves.sort_by_cached_key(|m| g.static_exchange(&ts, *m));
         // moves.reverse();
 
-        /// History Heuristic ordering
-        #[cfg(feature = "history_heuristic")]
-        order_moves_history(&history[g.state.side_to_move], &mut moves);
+        // /// History Heuristic ordering
+        // #[cfg(feature = "history_heuristic")]
+        // order_moves_history(&tracking.history[g.state.side_to_move], &mut moves);
 
         // /// Make move, Lookup games in Trans Table
         // let mut gs: Vec<(Move,Game,Option<(SICanUse,SearchInfo)>)> = {
@@ -427,12 +390,24 @@ impl ExHelper {
         let mut gs: Vec<(Move,Zobrist,Option<(SICanUse,SearchInfo)>)> = moves.into_iter()
             .map(|mv| {
                 let zb = g.zobrist.update_move_unchecked(ts, g, mv);
-                let tt = self.check_tt_negamax(&ts, &zb, depth, &tt_r, &mut stats);
+                let tt = self.check_tt_negamax(&ts, &zb, depth, &mut stats);
                 (mv,zb,tt)
             }).collect();
 
-        /// Move Ordering
-        order_searchinfo(&mut gs[..]);
+        // /// Move Ordering
+        // order_searchinfo(&mut gs[..]);
+
+        self.order_moves(ts, g, ply, &mut tracking, &mut gs[..]);
+
+        // // XXX: debug
+        // let xs = gs.iter().map(|x| {
+        //     let k = Self::order_score_move(ts, g, ply, tracking, x);
+        //     (k,*x)
+        // }).collect::<Vec<_>>();
+        // for (k,(mv,_,tt)) in xs.into_iter() {
+        //     eprintln!("{:?} = {:?}, {:?}", k, mv, tt);
+        // }
+        // panic!();
 
         let mut node_type = Node::All;
 
@@ -570,7 +545,7 @@ impl ExHelper {
                             ts, &g2, cfg2, depth3, ply + 1, &mut stop_counter,
                             (-beta, -alpha), &mut stats,
                             // pms.clone(), &mut history, tt_r, tt_w.clone(),
-                            &mut history, tt_r, tt_w.clone(),
+                            &mut tracking,
                             // false,
                             // // XXX: No Null pruning inside reduced depth search ?
                             // true
@@ -606,7 +581,7 @@ impl ExHelper {
                         ts, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
                         (a2, b2), &mut stats,
                         // pms.clone(), &mut history, tt_r, tt_w.clone()) {
-                        &mut history, tt_r, tt_w.clone()) {
+                        &mut tracking) {
                         ABSingle(mut res) | ABSyzygy(mut res) => {
                             // res.moves.push_front(*mv);
                             res.neg_score(mv);
@@ -626,7 +601,7 @@ impl ExHelper {
                                     ts, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
                                     (-beta, -alpha), &mut stats,
                                     // pms, &mut history, tt_r, tt_w.clone()) {
-                                    &mut history, tt_r, tt_w.clone()) {
+                                    &mut tracking) {
                                     ABSingle(mut res2) | ABSyzygy(mut res2) => {
                                         res2.neg_score(mv);
                                         // res2.moves.push_front(*mv);
@@ -685,7 +660,7 @@ impl ExHelper {
 
                     #[cfg(feature = "history_heuristic")]
                     if !mv.filter_all_captures() {
-                        history[g.state.side_to_move][mv.sq_from()][mv.sq_to()] +=
+                        tracking.history[g.state.side_to_move][mv.sq_from()][mv.sq_to()] +=
                             ply as Score * ply as Score;
                     }
 
@@ -718,7 +693,7 @@ impl ExHelper {
                 if !cfg.inside_null && !from_tt {
                     // trace!("inserting TT, zb = {:?}", g.zobrist);
                     self.tt_insert_deepest(
-                        &tt_r, tt_w, g.zobrist,
+                        g.zobrist,
                         // &tt_r, tt_w, *zb,
                         SearchInfo::new(
                             res.mv,

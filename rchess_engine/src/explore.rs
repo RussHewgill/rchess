@@ -21,6 +21,7 @@ use std::hash::BuildHasher;
 use std::sync::atomic::{Ordering,Ordering::SeqCst,AtomicU8};
 use std::time::{Instant,Duration};
 
+use arrayvec::ArrayVec;
 use crossbeam::channel::{Sender,Receiver,RecvError,TryRecvError};
 use crossbeam::thread::ScopedJoinHandle;
 
@@ -91,8 +92,6 @@ pub struct ExHelper {
 
     pub cfg:             ExConfig,
 
-    pub heuristics:      ExHeuristics,
-
     pub best_depth:      Arc<AtomicU8>,
     pub tx:              ExSender,
     // pub thread_dec:      Sender<usize>,
@@ -102,18 +101,22 @@ pub struct ExHelper {
 }
 
 #[derive(Debug,Clone)]
-pub struct ExHeuristics {
+pub struct ExTracking {
     pub history:      [[[Score; 64]; 64]; 2],
-    pub killers_1:    Vec<Move>,
-    pub killers_2:    Vec<Move>,
+    pub killers:      [[u8; 64]; 64],
+    // pub killers_1:    Vec<Move>,
+    // pub killers_2:    Vec<Move>,
 }
 
-impl Default for ExHeuristics {
-    fn default() -> Self {
+impl ExTracking {
+    fn new() -> Self {
         Self {
             history:      [[[0; 64]; 64]; 2],
-            killers_1:    vec![],
-            killers_2:    vec![],
+            killers:      [[0; 64]; 64],
+            // killers_1:    ArrayVec::new(),
+            // killers_2:    ArrayVec::new(),
+            // killers_1:    vec![],
+            // killers_2:    vec![],
         }
     }
 }
@@ -140,8 +143,6 @@ impl Explorer {
 
             #[cfg(feature = "syzygy")]
             syzygy:          self.syzygy.clone(),
-
-            heuristics:      ExHeuristics::default(),
 
             best_depth,
             tx,
@@ -774,7 +775,8 @@ impl ExHelper {
         ts:               &Tables,
     ) {
 
-        let mut history = [[[0; 64]; 64]; 2];
+        // let mut history = [[[0; 64]; 64]; 2];
+        let mut tracking = ExTracking::new();
         let mut stats = SearchStats::default();
 
         let skip_size = Self::SKIP_SIZE[self.id % Self::SKIP_LEN];
@@ -792,7 +794,7 @@ impl ExHelper {
         {
             // trace!("iterative depth {}", depth);
 
-            let res = self.ab_search_single(ts, &mut stats, &mut history, depth);
+            let res = self.ab_search_single(ts, &mut stats, &mut tracking, depth);
             // debug!("res = {:?}", res);
             trace!("finished res, id = {}, depth = {}", self.id, depth);
 

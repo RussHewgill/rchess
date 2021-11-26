@@ -34,33 +34,6 @@ pub struct Game {
     pub halfmove:    u8,
 }
 
-impl Default for Game {
-    fn default() -> Self {
-
-        // let history = HashMap::with_capacity_and_hasher(
-        //     80,
-        //     crate::explore::FxBuildHasher::default()
-        // );
-
-        let history = FxHashMap::default();
-
-        // let history = FxHashMap::with_capacity_and_hasher(
-        //     40,
-        //     core::hash::BuildHasherDefault::<rustc_hash::FxHasher>::default()
-        // );
-
-        // .with_hasher(FxBuildHasher::default())
-
-        Self {
-            state:        GameState::default(),
-            zobrist:      Zobrist(0),
-            last_move:    None,
-            history,
-            halfmove:    0,
-            // ..Default::default()
-        }
-    }
-}
 
 #[derive(Debug,Default,PartialOrd,Clone,Copy)]
 pub struct GameState {
@@ -81,7 +54,6 @@ pub struct GameState {
 
     pub phase:              Phase,
     pub last_capture:       Option<Coord>,
-    // pub material:           [[u8; 5]; 2],
     pub material:           Material,
 
     // pub checkers:           Option<BitBoard>,
@@ -92,6 +64,21 @@ pub struct GameState {
     pub king_blocks_w:      BitBoard,
     pub king_blocks_b:      BitBoard,
     pub check_block_mask:   BitBoard,
+}
+
+impl Default for Game {
+    fn default() -> Self {
+        let history = FxHashMap::default();
+
+        Self {
+            state:        GameState::default(),
+            zobrist:      Zobrist(0),
+            last_move:    None,
+            history,
+            halfmove:    0,
+            // ..Default::default()
+        }
+    }
 }
 
 #[derive(Default,Hash,Eq,Ord,PartialEq,PartialOrd,Clone,Copy)]

@@ -196,7 +196,7 @@ impl ExHelper {
 
     #[allow(unused_doc_comments)]
     pub fn tt_insert_deepest(
-        &self, tt_r: &TTRead, tt_w: TTWrite, zb: Zobrist, si: SearchInfo) -> bool {
+        &self, zb: Zobrist, si: SearchInfo) -> bool {
 
         let d  = si.depth_searched;
         let nt = si.node_type;
@@ -212,7 +212,7 @@ impl ExHelper {
         //     eprintln!("found zb2, si = {:?}, r = {:?}, s = {:?}", si.best_move, r, s);
         // }
 
-        if let Some(prev_si) = tt_r.get_one(&zb) {
+        if let Some(prev_si) = self.tt_r.get_one(&zb) {
             if d < prev_si.depth_searched {
                 /// Value already in map is better, keep that instead
                 return true;
@@ -236,7 +236,7 @@ impl ExHelper {
         // }
 
         {
-            let mut w = tt_w.lock();
+            let mut w = self.tt_w.lock();
             // w.clear(zb);
             // w.insert(zb, si);
             w.update(zb, si);

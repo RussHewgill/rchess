@@ -2,6 +2,8 @@
 use crate::types::*;
 use crate::tables::*;
 
+pub use self::tapered::TaperedScore;
+
 use serde::{Serialize,Deserialize};
 
 pub type Score = i32;
@@ -9,18 +11,58 @@ pub type Score = i32;
 pub static CHECKMATE_VALUE: Score = 100_000_000;
 pub static STALEMATE_VALUE: Score = 20_000_000;
 
+mod tapered {
+    use crate::types::*;
+    use crate::tables::*;
+    use crate::evaluate::*;
+
+    #[derive(Serialize,Deserialize,Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+    pub struct TaperedScore {
+        mid: Score,
+        end: Score,
+    }
+
+    impl TaperedScore {
+        pub const fn new(mid: Score, end: Score) -> Self {
+            Self {
+                mid,
+                end,
+            }
+        }
+
+        // pub fn taper(&self, phase: Phase) -> Score {
+        //     ((self.mid * (256 - phase as Score)) + (self.end * phase as Score)) / 256
+        // }
+
+    }
+
+    impl std::ops::Add for TaperedScore {
+        type Output = Self;
+        fn add(self, other: Self) -> Self {
+            Self {
+                mid: self.mid + other.mid,
+                end: self.end + other.end,
+            }
+        }
+    }
+
+    impl std::ops::Mul<Score> for TaperedScore {
+        type Output = Self;
+        fn mul(self, x: Score) -> Self {
+            Self {
+                mid: self.mid * x,
+                end: self.end * x,
+            }
+        }
+    }
+
+}
+
 #[derive(Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Eval {
     pub phase:            Phase,
     pub material:         [[Score; 6]; 2],
     pub piece_positions:  [[Score; 6]; 2],
-}
-
-// #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
-#[derive(Serialize,Deserialize,Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
-pub struct TaperedScore {
-    mid: Score,
-    end: Score,
 }
 
 impl Eval {
@@ -298,8 +340,8 @@ impl Game {
 impl Game {
 
     // pub fn score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> TaperedScore {
-    pub fn score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> Score {
-        let mut pos = self._score_positions(&ts, pc, col);
+    pub fn score_positions(&self, ts: &Tables, pc: Piece, side: Color) -> Score {
+        let mut pos = self._score_positions(&ts, pc, side);
         match pc {
             Pawn   => {
                 // let ds = self.count_pawns_doubled(&ts, col);
@@ -308,7 +350,7 @@ impl Game {
                 pos
             },
             Rook   => {
-                let rs = self.get(Rook, col);
+                let rs = self.get(Rook, side);
 
                 // let r_7r = if col == White {
                 //     rs & BitBoard::mask_rank(6)
@@ -334,16 +376,25 @@ impl Game {
     }
 
     // fn _score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> TaperedScore {
-    fn _score_positions(&self, ts: &Tables, pc: Piece, col: Color) -> Score {
-        let pieces = self.get(pc, col);
+    fn _score_positions(&self, ts: &Tables, pc: Piece, side: Color) -> Score {
+        let pieces = self.get(pc, side);
         let mut score_mg = 0;
         let mut score_eg = 0;
         pieces.into_iter().for_each(|sq| {
-            score_mg += ts.piece_tables.get_mid(pc, col, sq);
-            score_eg += ts.piece_tables.get_end(pc, col, sq);
+            score_mg += ts.piece_tables.get_mid(pc, side, sq);
+            score_eg += ts.piece_tables.get_end(pc, side, sq);
         });
         self.taper_score(score_mg, score_eg)
         // TaperedScore::new(score_mg,score_eg)
+    }
+
+}
+
+/// Mobility
+impl Game {
+
+    pub fn score_mobility(&self, ts: &Tables, pc: Piece, c0: Coord, side: Color) -> Score {
+        unimplemented!()
     }
 
 }
@@ -426,44 +477,4 @@ impl std::fmt::Debug for Eval {
     }
 }
 
-mod tapered {
-    use crate::types::*;
-    use crate::tables::*;
-    use crate::evaluate::*;
-
-    impl TaperedScore {
-        pub const fn new(mid: Score, end: Score) -> Self {
-            Self {
-                mid,
-                end,
-            }
-        }
-
-        // pub fn taper(&self, phase: Phase) -> Score {
-        //     ((self.mid * (256 - phase as Score)) + (self.end * phase as Score)) / 256
-        // }
-
-    }
-
-    impl std::ops::Add for TaperedScore {
-        type Output = Self;
-        fn add(self, other: Self) -> Self {
-            Self {
-                mid: self.mid + other.mid,
-                end: self.end + other.end,
-            }
-        }
-    }
-
-    impl std::ops::Mul<Score> for TaperedScore {
-        type Output = Self;
-        fn mul(self, x: Score) -> Self {
-            Self {
-                mid: self.mid * x,
-                end: self.end * x,
-            }
-        }
-    }
-
-}
 

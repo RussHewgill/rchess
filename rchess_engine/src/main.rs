@@ -1369,6 +1369,26 @@ fn main9() {
     ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
     // ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
+    // ex.cfg.num_threads = Some(6);
+    ex.cfg.num_threads = Some(1);
+
+    let k0 = i32::MAX;
+    let k1 = i8::MAX as i32;
+
+    eprintln!("k0 = {:?}", k0);
+    eprintln!("k1 = {:?}", k1);
+
+    let k = k0 / k1;
+    eprintln!("k = {:?}", k);
+
+    let k2 = k0 / k;
+    eprintln!("k2 = {:?}", k2);
+
+    return;
+
+    // let s0 = std::mem::size_of::<OrdMove>();
+    // eprintln!("s0 = {:?}", s0);
+    // return;
 
     // let (mv,stats) = ex.explore(&ts, None);
     // eprintln!("mv = {:?}", mv);

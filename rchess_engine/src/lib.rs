@@ -53,10 +53,12 @@ pub mod timer;
 pub mod tuning;
 pub mod hashing;
 pub mod trans_table;
+
 pub mod opening_book;
 #[cfg(feature = "syzygy")]
 pub mod syzygy;
 
+pub mod attack_maps;
 // pub mod stack_game;
 // pub mod gen_moves;
 // pub mod lockfree_hashmap;

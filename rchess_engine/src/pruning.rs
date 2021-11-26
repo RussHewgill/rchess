@@ -21,8 +21,9 @@ impl ExHelper {
         beta:               i32,
         mut stats:          &mut SearchStats,
         // prev_mvs:           VecDeque<(Zobrist,Move)>,
-        mut history:        &mut [[[Score; 64]; 64]; 2],
-        (tt_r,tt_w):        (&TTRead,TTWrite),
+        // mut history:        &mut [[[Score; 64]; 64]; 2],
+        mut tracking:       &mut ExTracking,
+        // (tt_r,tt_w):        (&TTRead,TTWrite),
     ) -> bool {
 
         cfg.root        = false;
@@ -46,9 +47,8 @@ impl ExHelper {
                 depth - 1 - r, ply + 1, &mut stop_counter,
                 (-beta, -beta + 1),
                 // -beta, -alpha,
-                // &mut stats, pms, &mut history,
-                &mut stats, &mut history,
-                tt_r, tt_w) {
+                &mut stats, &mut tracking,
+            ) {
 
                 // res.moves.push_front(mv);
                 res.neg_score(mv);
