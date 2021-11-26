@@ -42,6 +42,7 @@ impl ExHelper {
         gs.sort_by_cached_key(|x| {
             Self::order_score_move(ts, g, ply, tracking, x)
         });
+        // gs.reverse();
     }
 
     pub fn order_score_move(
@@ -55,18 +56,30 @@ impl ExHelper {
 
         match mtt {
             Some((SICanUse::UseScore,_))     => return Hash,
-            Some((SICanUse::UseOrdering,si)) => { // XXX: use lower-depth values for ordering?
-                if si.node_type == Node::PV { return Hash; }
-            },
-            None                             => {},
+            // Some((SICanUse::UseOrdering,si)) => { // XXX: use lower-depth values for ordering?
+            //     if si.node_type == Node::PV { return Hash; }
+            // },
+            // None                             => {},
+            _ => {},
         }
         // TODO: killer mate
+
+        // match mv {
+        //     &Move::PromotionCapture { .. }            => return PromCapture,
+        //     &Move::Promotion { new_piece: Queen, .. } => return Prom,
+        //     &Move::Promotion { .. }                   => return PromMinor,
+        //     &Move::EnPassant { .. }                   => return GoodCapture,
+        //     &Move::Capture { pc, victim, .. }         => {
+        //         return CaptureEvenSee;
+        //     },
+        //     &Move::Castle { .. }                      => return Castle,
+        //     _                                         => {},
+        // }
 
         match mv {
             &Move::PromotionCapture { .. }            => return PromCapture,
             &Move::Promotion { new_piece: Queen, .. } => return Prom,
             &Move::Promotion { .. }                   => return PromMinor,
-
             &Move::EnPassant { .. }                   => return GoodCapture,
             &Move::Capture { pc, victim, .. } => match (pc,victim) {
                 (Queen,Queen)   => return GoodCapture,

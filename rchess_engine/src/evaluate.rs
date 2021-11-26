@@ -73,7 +73,7 @@ pub struct Eval {
 
 impl Eval {
 
-    pub fn sum(&self) -> Score {
+    fn sum(&self) -> Score {
 
         let white = self.sum_color(White);
         let black = self.sum_color(Black);
@@ -143,7 +143,11 @@ impl Eval {
 /// Main Evaluation
 impl Game {
 
-    pub fn evaluate(&self, ts: &Tables) -> Eval {
+    fn sum_evaluate2(&self, ts: &Tables) -> Score {
+        self.evaluate(ts).sum()
+    }
+
+    fn evaluate(&self, ts: &Tables) -> Eval {
         let mut out = Eval::default();
 
         let phase = self.state.phase;
@@ -171,7 +175,7 @@ impl Game {
         out
     }
 
-    pub fn taper_score(&self, mid: Score, end: Score) -> Score {
+    fn taper_score(&self, mid: Score, end: Score) -> Score {
         let phase = self.state.phase as Score;
         ((mid * (256 - phase)) + (end * phase)) / 256
     }
@@ -183,12 +187,32 @@ impl Game {
 
     pub fn sum_evaluate(&self, ts: &Tables) -> Score {
         // const SIDES: [Color; 2] = [White,Black];
-        let side = self.state.side_to_move;
+        // let side = self.state.side_to_move;
 
+        let mg = self.sum_evaluate_mg(ts);
+        let eg = self.sum_evaluate_eg(ts);
+
+        self.taper_score(mg, eg)
+    }
+
+    fn sum_evaluate_mg(&self, ts: &Tables) -> Score {
         let mut score = 0;
 
         score += self.score_material2(White) - self.score_material2(Black);
         score += self.score_psqt(ts, White) - self.score_psqt(ts, Black);
+        score += self.score_mobility(ts, White) - self.score_mobility(ts, Black);
+        score += self.score_pieces_mg(ts, White) - self.score_pieces_mg(ts, Black);
+
+        score
+    }
+
+    fn sum_evaluate_eg(&self, ts: &Tables) -> Score {
+        let mut score = 0;
+
+        score += self.score_material2(White) - self.score_material2(Black);
+        score += self.score_psqt(ts, White) - self.score_psqt(ts, Black);
+        score += self.score_mobility(ts, White) - self.score_mobility(ts, Black);
+        score += self.score_pieces_eg(ts, White) - self.score_pieces_eg(ts, Black);
 
         score
     }
@@ -214,6 +238,20 @@ impl Game {
             ts.piece_tables.get_end(pc, side, sq)
         }).sum();
         self.taper_score(score_mg, score_eg)
+    }
+
+    fn score_pieces_mg(&self, ts: &Tables, side: Color) -> Score {
+
+        let rook_files = self.rook_on_open_file(side);
+        let outposts   = self.outpost_squares(side);
+
+        // unimplemented!()
+        0
+    }
+
+    fn score_pieces_eg(&self, ts: &Tables, side: Color) -> Score {
+        // unimplemented!()
+        0
     }
 
 }
@@ -465,6 +503,59 @@ impl Game {
 
 }
 
+/// Outposts
+impl Game {
+
+    pub fn outpost_squares(&self, side: Color) -> Score {
+        let n = self.get(Knight, side).into_iter()
+            .filter(|&sq| self.outpost_square(sq.into(), side)).count() as Score;
+        let b = self.get(Bishop, side).into_iter()
+            .filter(|&sq| self.outpost_square(sq.into(), side)).count() as Score;
+        n + b
+    }
+
+    pub fn outpost_square(&self, c0: Coord, side: Color) -> bool {
+        if c0.rank() < 4 || c0.rank() > 6 { return false; }
+
+        let (dw,de) = if side == White { (NW,NE) } else { (SW,SE) };
+
+        let b0 = BitBoard::single(c0);
+        if (self.get(Pawn, side) & (b0.shift_dir(!dw) | b0.shift_dir(!de))).is_empty() {
+            false
+        } else {
+            let b1 = b0.shift_dir(dw) | b0.shift_dir(de);
+            let b2 = if side == White { b1.fill_north() } else { b1.fill_south() };
+
+            (b2 & self.get(Pawn, !side)).is_empty()
+        }
+    }
+
+}
+
+/// Misc Positional
+impl Game {
+
+    /// Open      = no pawns = 2
+    /// Half open = only enemy pawns = 1
+    pub fn rook_on_open_file(&self, side: Color) -> Score {
+        let pawns_own   = self.get(Pawn, side);
+        let pawns_other = self.get(Pawn, !side);
+
+        self.get(Rook, side).into_iter().map(|sq| {
+            let c0 = Coord::from(sq);
+            let file = c0.file();
+            if (BitBoard::mask_file(file) & pawns_own).is_not_empty() {
+                0
+            } else if (BitBoard::mask_file(file) & pawns_other).is_not_empty() {
+                1
+            } else {
+                2
+            }
+        }).sum()
+    }
+
+}
+
 /// Mobility
 impl Game {
 
@@ -544,6 +635,17 @@ impl Game {
 
         unimplemented!()
     }
+}
+
+/// Pawn Spans
+impl Game {
+
+    // pub fn pawn_attacks_span(&self, side: Color) -> BitBoard {
+    //     let (d,dw,de) = if side == White { (S,SW,SE) } else { (N,NW,NE) };
+    //     let pawns = self.get(Pawn, !side);
+    //     pawns.shift_dir(dw) | pawns.shift_dir(de)
+    // }
+
 }
 
 /// Pawn Structure

@@ -17,13 +17,9 @@ impl ExHelper {
         mut cfg:            ABConfig,
         depth:              Depth,
         ply:                Depth,
-        alpha:              i32,
-        beta:               i32,
+        (alpha,beta):       (i32,i32),
         mut stats:          &mut SearchStats,
-        // prev_mvs:           VecDeque<(Zobrist,Move)>,
-        // mut history:        &mut [[[Score; 64]; 64]; 2],
         mut tracking:       &mut ExTracking,
-        // (tt_r,tt_w):        (&TTRead,TTWrite),
     ) -> bool {
 
         cfg.root        = false;
@@ -46,7 +42,7 @@ impl ExHelper {
                 &ts, &g2, cfg,
                 depth - 1 - r, ply + 1, &mut stop_counter,
                 (-beta, -beta + 1),
-                // -beta, -alpha,
+                // (-beta, -alpha), // XXX: doesn't work
                 &mut stats, &mut tracking,
             ) {
 

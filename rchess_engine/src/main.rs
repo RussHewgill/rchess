@@ -45,11 +45,13 @@ use rchess_engine_lib::brain::trainer::*;
 
 use log::{debug, error, log_enabled, info, Level};
 use gag::Redirect;
-// use simplelog::*;
 use simplelog::{
     CombinedLogger,TermLogger,WriteLogger,ConfigBuilder,ColorChoice,TerminalMode,LevelFilter,
 };
 use chrono::Timelike;
+use rand::{prelude::{StdRng,SliceRandom},Rng,SeedableRng};
+use rand::distributions::{Uniform,uniform::SampleUniform};
+
 use std::time::{Instant,Duration};
 
 fn main() {
@@ -59,6 +61,10 @@ fn main() {
     let arg1: &str = &args[1];
     match &arg1[..] {
         "nnue"  => main_nnue(),
+        "wac"   => match args.get(2).map(|x| u64::from_str(x).ok()) {
+            Some(n) => main_wac(n, false),
+            _       => main_wac(None, false),
+        },
         "perft" => match args.get(2).map(|x| u64::from_str(x).ok()) {
             Some(n) => main_perft(n),
             _       => main_perft(None),
@@ -182,33 +188,33 @@ fn _main() {
     //     }
     // }
 
-    let mut args: Vec<String> = std::env::args().collect();
-    match args.get(1) {
-        Some(s) => match s.as_str() {
-            // "wac"   => main3(false), // read from file and test
-            "wac"   => match args.get(2).map(|x| u64::from_str(x).ok()) {
-                Some(Some(n)) => main3(Some(n),false),
-                _             => main3(None, false),
-            }
-            "wac2"  => main3(None, true), // read from file and test, send URL to firefox
-            "perft" => match args.get(2).map(|x| u64::from_str(x).ok()) {
-                Some(n) => main_perft(n),
-                _       => main_perft(None),
-            }
-            "main7" => main7(),
-            "sts"   => match args.get(2).map(|x| u64::from_str(x).ok()) {
-                Some(n) => main_sts(n),
-                _       => main_sts(None),
-            }
-            // "nn"    => main_nn(),
-            "nnue"  => main_nnue(),
-            "nn"    => main_nn(),
-            "simd"  => main_simd(),
-            _       => {},
-        },
-        // None    => main7(),
-        None    => main9(),
-    }
+    // let mut args: Vec<String> = std::env::args().collect();
+    // match args.get(1) {
+    //     Some(s) => match s.as_str() {
+    //         // "wac"   => main3(false), // read from file and test
+    //         "wac"   => match args.get(2).map(|x| u64::from_str(x).ok()) {
+    //             Some(Some(n)) => main3(Some(n),false),
+    //             _             => main3(None, false),
+    //         }
+    //         "wac2"  => main3(None, true), // read from file and test, send URL to firefox
+    //         "perft" => match args.get(2).map(|x| u64::from_str(x).ok()) {
+    //             Some(n) => main_perft(n),
+    //             _       => main_perft(None),
+    //         }
+    //         "main7" => main7(),
+    //         "sts"   => match args.get(2).map(|x| u64::from_str(x).ok()) {
+    //             Some(n) => main_sts(n),
+    //             _       => main_sts(None),
+    //         }
+    //         // "nn"    => main_nn(),
+    //         "nnue"  => main_nnue(),
+    //         "nn"    => main_nn(),
+    //         "simd"  => main_simd(),
+    //         _       => {},
+    //     },
+    //     // None    => main7(),
+    //     None    => main9(),
+    // }
 
     // main6();
     // main5(); // search + eval position
@@ -576,9 +582,6 @@ fn main_nnue() {
     use nd::Array2;
     use ndarray_rand::RandomExt;
     use ndarray_rand::rand_distr::Distribution;
-
-    use rand::{prelude::{StdRng,SliceRandom},Rng,SeedableRng};
-    use rand::distributions::{Uniform,uniform::SampleUniform};
 
     use rchess_engine_lib::brain::*;
     use rchess_engine_lib::brain::filter::*;
@@ -1260,9 +1263,15 @@ fn main9() {
     let ts = Tables::read_from_file_def().unwrap();
     // let ts = &_TABLES;
 
-    fn games(i: usize) -> String {
-        // let mut games = read_epd("testpositions/WAC.epd").unwrap();
-        let mut games = read_epd("testpositions/STS/STS15.epd").unwrap();
+    fn games_wac(i: usize) -> String {
+        let mut games = read_epd("testpositions/WAC.epd").unwrap();
+        let mut games = games.into_iter();
+        let games = games.map(|x| x.0).collect::<Vec<_>>();
+        games[i - 1].clone()
+    }
+
+    fn games_sts(i: usize, sts: u8) -> String {
+        let mut games = read_epd(&format!("testpositions/STS/STS{}.epd", sts)).unwrap();
         let mut games = games.into_iter();
         let games = games.map(|x| x.0).collect::<Vec<_>>();
         games[i - 1].clone()
@@ -1275,10 +1284,10 @@ fn main9() {
         ex.lazy_smp_negamax(&ts, false, false)
     }
 
-    let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
+    // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
-    // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
     // let fen = "5rk1/pp3pp1/8/4q1N1/6b1/4r3/PP3QP1/5K1R w - - 0 2"; // R h1h8, #4, knight move order?
     // let fen = "r4r1k/2Q5/1p5p/2p2n2/2Pp2R1/PN1Pq3/6PP/R3N2K b - - 0 1"; // #4, Qt N f5g3, slow
@@ -1322,16 +1331,23 @@ fn main9() {
 
     // let fen = "r1bqk2r/ppp2ppp/2np1n2/4p3/1PP1P3/P1NPbN2/5PPP/R2QKB1R w KQkq -";
 
-    let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
+    // let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
 
-    let fen = "rnbqkb1r/p4p2/2p1pn1p/1p2P1p1/2pP3B/2N2N2/PP3PPP/R2QKB1R w KQkq g6"; // rand opening
+    // let fen = "rnbqkb1r/p4p2/2p1pn1p/1p2P1p1/2pP3B/2N2N2/PP3PPP/R2QKB1R w KQkq g6"; // rand opening
 
     // let fen = "rnb2r2/p1q2pQk/2p1pB1p/1p2P3/1bpPN3/2N5/PP3PPP/R3KB1R b KQ -"; // Mate
 
     // let fen = "4k3/r2bbprp/3p1p1N/2qBpP2/ppP1P1P1/1P1R3P/P7/1KR1Q3 w - - "; // STS 1 56
 
-    let fen = "rnb1kbnr/1pppqpp1/8/7p/p3P3/P7/1PPP1PPP/RNBQKBNR w KQkq - 1 2";
-    // let fen = "4k3/4p3/8/8/8/8/4P3/N3K3 w - - 0 1";
+    // let fen = "8/5R2/1r3npk/1p2p1Np/p3P2P/P2K2P1/1P6/8 w - - 1 35"; // Qt K d3c3
+
+    // let fen = "8/8/p1p5/1p5p/1P5p/8/PPP2K1p/4R1rk w - - 0 1";    // Qt R e1f1
+    // let fen = "1q1k4/2Rr4/8/2Q3K1/8/8/8/8 w - - 0 1";            // Kh6
+    // let fen = "7k/5K2/5P1p/3p4/6P1/3p4/8/8 w - - 0 1";           // g5
+    // let fen = "8/6B1/p5p1/Pp4kp/1P5r/5P1Q/4q1PK/8 w - - 0 32";   // Qxh4
+    // let fen = "8/8/1p1r1k2/p1pPN1p1/P3KnP1/1P6/8/3R4 b - - 0 1"; // Nxd5
+
+    // let fen = &games_sts(2, 8);
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -1340,27 +1356,6 @@ fn main9() {
     // g.last_move = Some(Move::Quiet { from: "G4".into(), to: "G7".into(), pc: Queen });
 
     eprintln!("g = {:?}", g);
-
-    let side = Black;
-    let mob = g.mobility_area(&ts, side);
-
-    let c0 = Coord::from("F8");
-    let (_,pc) = g.get_at(c0).unwrap();
-
-    let m0 = g._score_mobility(&ts, mob, pc, c0, side);
-
-    eprintln!("m0 = {:?}", m0);
-
-    let m0 = g.score_mobility(&ts, White);
-    let m1 = g.score_mobility(&ts, Black);
-
-    // let m0 = g.mobility_area(&ts, White);
-    // let m1 = g.mobility_area(&ts, Black);
-
-    eprintln!("white = {:?}", m0);
-    eprintln!("black = {:?}", m1);
-
-    return;
 
     // let hook = std::panic::take_hook();
     // std::panic::set_hook(Box::new(move |panicinfo| {
@@ -1376,7 +1371,7 @@ fn main9() {
     let mv = Move::Capture { from: "H5".into(), to: "G4".into(), pc: Pawn, victim: Pawn };
 
     // let t = 10.0;
-    let t = 4.0;
+    let t = 3.0;
     // let t = 0.5;
     // let t = 0.3;
 
@@ -1393,7 +1388,7 @@ fn main9() {
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
     ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
-    // ex.cfg.return_moves = true;
+    ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(6);
     ex.cfg.num_threads = Some(1);
@@ -1409,6 +1404,13 @@ fn main9() {
     // eprintln!("s1 = {:?}", s1);
     // eprintln!("s2 = {:?}", s2);
     // return;
+
+
+    // // let fen1 = "r4rk1/pp3ppp/3p2n1/2pN4/4P3/8/PPP2PPP/2KRR3 w - c6 0 2"; // outpost
+    // let fen1 = "r4rk1/pp3ppp/3p2n1/2pN4/8/4P3/PPP2PPP/2KRR3 b - - 0 2"; // not outpost
+    // // let fen1 = "rnbqkbnr/pppppppp/8/8/P7/1P6/2PPPPPP/RNBQKBNR b KQkq a3 0 1";
+    // let g1 = Game::from_fen(&ts, fen1).unwrap();
+    // eprintln!("g1 = {:?}", g1);
 
     // let s0 = std::mem::size_of::<OrdMove>();
     // eprintln!("s0 = {:?}", s0);
@@ -1490,11 +1492,6 @@ fn main9() {
     let t1 = t0.elapsed();
     let t2 = t1.as_secs_f64();
 
-    // // eprintln!("res = {:?}", res);
-    // if let ABResults::ABList(r,_) = res {
-    //     eprintln!("r = {:?}", r);
-    // }
-
     let best   = res.get_result().unwrap();
     let scores = res.get_scores().unwrap_or_default();
 
@@ -1506,8 +1503,45 @@ fn main9() {
 
     let tt_r = ex.tt_rf.handle();
 
+    if !true {
+        let s0 = std::mem::size_of::<Zobrist>();
+        let s1 = std::mem::size_of::<SearchInfo>();
 
-    let moves = g.search_all(&ts).get_moves_unsafe();
+        eprintln!("s0 = {:?}", s0);
+        eprintln!("s1 = {:?}", s1);
+
+        let mut m0: HashMap<Zobrist, SearchInfo> = HashMap::default();
+
+        let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
+        for _ in 0..1000 {
+            let c0 = Coord::from(rng.gen::<u8>());
+            let c1 = Coord::from(rng.gen::<u8>());
+            let si = SearchInfo::new(Move::new_quiet(c0, c1, Pawn), 1, Node::PV, 2);
+            let zb = Zobrist(rng.gen());
+            m0.insert(zb, si);
+        }
+
+        let k = m0.capacity();
+
+        let s2 = std::mem::size_of_val(&k);
+        // let size0 = k * (s0 + s1) + s2;
+        let size0 = k * s0;
+        let size1 = k * s1;
+
+        eprintln!("size0 = {:?}", size0);
+        eprintln!("size1 = {:?}", size1);
+
+        let b: Vec<u8> = bincode::serialize(&m0).unwrap();
+
+        eprintln!("b.len() = {:?}", b.len());
+
+        return;
+    }
+
+    // println!();
+    // for (n,mv) in moves.iter().enumerate() {
+    //     eprintln!("{}\t{:?}", n, mv);
+    // }
 
     // return;
 
@@ -1553,11 +1587,6 @@ fn main9() {
     // eprintln!("tt_r.len() = {:?}", tt_r.len());
     // let s0 = tt_total_size(&tt_r);
     // eprintln!("s0 = {:?}", s0);
-
-    // println!();
-    // for (n,mv) in moves.iter().enumerate() {
-    //     eprintln!("{}\t{:?}", n, mv);
-    // }
 
     // let mut scores = scores;
     // scores.sort_by_key(|x| x.score);
@@ -1956,7 +1985,7 @@ fn main7() {
 }
 
 /// WAC
-fn main3(num: Option<u64>, send_url: bool) {
+fn main_wac(num: Option<u64>, send_url: bool) {
     // let mut games = read_ccr_onehour("ccr_onehour.txt").unwrap();
     // let mut games = read_epd("Midgames250.epd").unwrap();
     let mut games = read_epd("testpositions/WAC.epd").unwrap();
@@ -2098,7 +2127,7 @@ fn main6() {
         let mut g = Game::from_fen(&ts, fen).unwrap();
         let _ = g.recalc_gameinfo_mut(&ts);
 
-        let e = g.evaluate(&ts).sum();
+        let e = g.sum_evaluate(&ts);
         eprintln!("{} = {:?}", s, e);
 
     }

@@ -241,9 +241,9 @@ impl ExHelper {
                 // let score = 100_000_000 - ply as Score;
                 let score = CHECKMATE_VALUE - ply as Score;
                 // if !self.tt_r.contains_key(&g.zobrist) {
-                //     stats!(stats.leaves += 1);
-                //     stats!(stats.checkmates += 1);
                 // }
+                stats.leaves += 1;
+                stats.checkmates += 1;
 
                 let mv = g.last_move.unwrap();
 
@@ -253,10 +253,12 @@ impl ExHelper {
             },
             Outcome::Stalemate    => {
                 let score = -STALEMATE_VALUE + ply as Score;
-                if !self.tt_r.contains_key(&g.zobrist) {
-                    stats!(stats.leaves += 1);
-                    stats!(stats.stalemates += 1);
-                }
+                // if !self.tt_r.contains_key(&g.zobrist) {
+                //     stats!(stats.leaves += 1);
+                //     stats!(stats.stalemates += 1);
+                // }
+                stats.leaves += 1;
+                stats.stalemates += 1;
                 let mv = g.last_move.unwrap();
 
                 // TODO: adjust stalemate value when winning/losing
@@ -276,8 +278,8 @@ impl ExHelper {
 
         if depth == 0 {
             // if !self.tt_r.contains_key(&g.zobrist) {
-            //     stats!(stats.leaves += 1);
             // }
+            stats.leaves += 1;
 
             #[cfg(feature = "qsearch")]
             let score = {
@@ -353,9 +355,7 @@ impl ExHelper {
             && g.state.phase < 200
             && cfg.do_null {
                 if self.prune_null_move_negamax(
-                    ts, g, cfg, depth, ply, alpha, beta, &mut stats,
-                    // prev_mvs.clone(), &mut history, (tt_r, tt_w.clone())) {
-                    // &mut tracking, (tt_r, tt_w.clone())) {
+                    ts, g, cfg, depth, ply, (alpha, beta), &mut stats,
                     &mut tracking) {
 
                     // return ABNone;
@@ -367,25 +367,9 @@ impl ExHelper {
         // /// MVV LVA move ordering
         // order_mvv_lva(&mut moves);
 
-        // moves.sort_by_cached_key(|m| g.static_exchange(&ts, *m));
-        // moves.reverse();
-
         // /// History Heuristic ordering
         // #[cfg(feature = "history_heuristic")]
         // order_moves_history(&tracking.history[g.state.side_to_move], &mut moves);
-
-        // /// Make move, Lookup games in Trans Table
-        // let mut gs: Vec<(Move,Game,Option<(SICanUse,SearchInfo)>)> = {
-        //     let mut gs0 = moves.into_iter()
-        //         .flat_map(|m| if let Ok(g2) = g.make_move_unchecked(&ts, m) {
-        //             let tt = self.check_tt_negamax(&ts, &g2.zobrist, depth, &tt_r, &mut stats);
-        //             Some((m,g2,tt))
-        //         } else {
-        //             trace!("game not ok? {:?} {:?}", m, g);
-        //             None
-        //         });
-        //     gs0.collect()
-        // };
 
         let mut gs: Vec<(Move,Zobrist,Option<(SICanUse,SearchInfo)>)> = moves.into_iter()
             .map(|mv| {
@@ -420,11 +404,7 @@ impl ExHelper {
         let mut val: (Option<(Zobrist,ABResult,bool)>,i32) = (None,val);
         let mut list = vec![];
 
-        // 'outer: for (mv,zb0,tt) in gs.iter() {
         'outer: for (mv,zb0,tt) in gs.into_iter() {
-        // 'outer: for (mv,g2,tt) in gs.iter() {
-
-            // let zb = g2.zobrist;
 
             match g.get_at(mv.sq_from()) {
                 None => {
@@ -435,28 +415,10 @@ impl ExHelper {
                 _ => {},
             }
 
-            // /// Repetition checking
-            // {
-            //     if let Some(k) = g.history.get(&zb0) {
-            //         if *k >= 2 {
-            //             let score = -STALEMATE_VALUE + ply as Score;
-            //             // return ABSingle(ABResult::new_single(g.last_move.unwrap(), -score));
-            //             // return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
-            //             trace!("repetition found, last move {:?}", g.last_move);
-            //             return ABSingle(ABResult::new_single(g.last_move.unwrap(), 0));
-            //             // return ABSingle(ABResult::new_empty(0));
-            //         }
-            //     }
-            // }
-
             // if self.best_mate.read().is_some() {
             //     trace!("halting {}, mate", cfg.max_depth);
             //     return ABNone;
             // }
-
-            // let g2 = if let Ok(g2) = g.make_move_unchecked(ts, mv) {
-            //     g2
-            // } else { continue 'outer; };
 
             let g2 = if let Ok(g2) = g._make_move_unchecked(ts, mv, Some(zb0)) {
                 g2
@@ -691,10 +653,10 @@ impl ExHelper {
             Some((zb,res,from_tt)) => {
 
                 if !cfg.inside_null && !from_tt {
+                // if !from_tt {
                     // trace!("inserting TT, zb = {:?}", g.zobrist);
                     self.tt_insert_deepest(
                         g.zobrist,
-                        // &tt_r, tt_w, *zb,
                         SearchInfo::new(
                             res.mv,
                             // res.moves.clone().into(),

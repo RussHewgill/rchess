@@ -31,9 +31,10 @@ default = [
 
     "syzygy",
 
-    "null_pruning",
+    # "null_pruning",
     "late_move_reduction",
     "history_heuristic",
+
     "qsearch",
 
     "pvs_search",
