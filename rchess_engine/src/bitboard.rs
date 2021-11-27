@@ -3,9 +3,10 @@ use crate::types::*;
 use crate::tables::*;
 
 use serde::{Serialize,Deserialize};
+use evmap_derive::ShallowCopy;
 
 // #[derive(Hash,Eq,PartialEq,PartialOrd,Clone,Copy)]
-#[derive(Serialize,Deserialize,Hash,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Serialize,Deserialize,Hash,Eq,PartialEq,PartialOrd,Clone,Copy,ShallowCopy)]
 pub struct BitBoard(pub u64);
 
 impl Iterator for BitBoard {
@@ -303,6 +304,7 @@ impl BitBoard {
     // }
 
     pub fn popcount(&self) -> u8 {
+
         const K1: u64 = 0x5555555555555555; /*  -1/3   */
         const K2: u64 = 0x3333333333333333; /*  -1/5   */
         const K4: u64 = 0x0f0f0f0f0f0f0f0f; /*  -1/17  */
@@ -314,7 +316,13 @@ impl BitBoard {
         /* returns 8 most significant bits of x + (x<<8) + (x<<16) + (x<<24) + ...  */
         x = (x.overflowing_mul(KF)).0 >> 56;
         x as u8
+
     }
+
+    // pub fn popcount2(&self) -> u8 {
+    //     let k = unsafe { core::arch::x86_64::_popcnt64(self.0 as i64) };
+    //     k as u8
+    // }
 
 }
 

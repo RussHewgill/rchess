@@ -26,23 +26,17 @@ mod piece_square_tables {
 
 #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize)]
 pub struct EvalParams {
-    pub mid: EPMid,
-    pub end: EPEnd,
+    pub pawns:     EPPawns,
+    pub pieces:    EPPieces,
 }
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize)]
-pub struct EPMid {
+#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new)]
+pub struct EPPieces {
     pub rook_open_file:  [Score; 2],
     pub outpost:         EvOutpost,
 }
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize)]
-pub struct EPEnd {
-    pub rook_open_file:  [Score; 2],
-    pub outpost:         EvOutpost,
-}
-
-impl Default for EPMid {
+impl Default for EPPieces {
     fn default() -> Self {
         Self {
             rook_open_file:   [10,20],
@@ -51,25 +45,50 @@ impl Default for EPMid {
     }
 }
 
-impl Default for EPEnd {
+#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new)]
+pub struct EvOutpost {
+    pub outpost_knight:     Score,
+    pub outpost_bishop:     Score,
+    pub reachable_knight:   Score,
+    pub reachable_bishop:   Score,
+}
+
+impl Default for EvOutpost {
     fn default() -> Self {
         Self {
-            rook_open_file:   [7,30],
-            outpost:          EvOutpost::default(),
+            // Self::new(50,30,30,0)
+            outpost_knight:     50,
+            outpost_bishop:     30,
+            reachable_knight:   30,
+            reachable_bishop:   0,
         }
     }
 }
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new)]
-pub struct EvOutpost {
-    outpost_knight:     Score,
-    outpost_bishop:     Score,
-    reachable_knight:   Score,
-    reachable_bishop:   Score,
+pub struct EPPawns {
+    pub doubled_isolated:     Score,
+    pub isolated:             Score,
+    pub backward:             Score,
+    pub doubled:              Score,
+    // pub connected:            Score,
+    // pub passed:               Score,
+    pub blocked_r5:           Score,
+    pub blocked_r6:           Score,
 }
 
-impl Default for EvOutpost {
-    fn default() -> Self { Self::new(50,30,30,0) }
+impl Default for EPPawns {
+    fn default() -> Self {
+        Self {
+            doubled_isolated:     10,
+            isolated:             5,
+            backward:             10,
+            doubled:              10,
+            // connected:            Score,
+            blocked_r5:           -10,
+            blocked_r6:           -5,
+        }
+    }
 }
 
 /// Passed bonus = passed * ranks past 2nd

@@ -62,7 +62,8 @@ pub struct ExConfig {
     pub blocked_moves:     HashSet<Move>,
     pub return_moves:      bool,
     pub clear_table:       bool,
-    pub eval_params:       EvalParams,
+    pub eval_params_mid:   EvalParams,
+    pub eval_params_end:   EvalParams,
 }
 
 impl Default for ExConfig {
@@ -73,7 +74,8 @@ impl Default for ExConfig {
             blocked_moves:    HashSet::default(),
             return_moves:     false,
             clear_table:      true,
-            eval_params:      EvalParams::default(),
+            eval_params_mid:  EvalParams::default(),
+            eval_params_end:  EvalParams::default(),
         }
     }
 }

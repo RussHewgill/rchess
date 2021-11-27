@@ -60,16 +60,18 @@ fn main() {
     if args.len() <= 1 { main9(); return; }
     let arg1: &str = &args[1];
     match &arg1[..] {
-        "nnue"  => main_nnue(),
-        "wac"   => match args.get(2).map(|x| u64::from_str(x).ok()) {
+        "nnue"      => main_nnue(),
+        "eval"      => main_eval(),
+        "gensfen"   => main_gensfen(),
+        "wac"       => match args.get(2).map(|x| u64::from_str(x).ok()) {
             Some(n) => main_wac(n, false),
             _       => main_wac(None, false),
         },
-        "perft" => match args.get(2).map(|x| u64::from_str(x).ok()) {
+        "perft"     => match args.get(2).map(|x| u64::from_str(x).ok()) {
             Some(n) => main_perft(n),
             _       => main_perft(None),
         },
-        _       => main9(),
+        _           => main9(),
     }
 
 }
@@ -573,6 +575,30 @@ fn main_mnist() {
     return;
 }
 
+fn main_gensfen() {
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
+
+    let ts = Tables::read_from_file_def().unwrap();
+    let ob = OpeningBook::read_from_file(&ts, "tables/Perfect_2021/BIN/Perfect2021.bin").unwrap();
+    let t0 = Instant::now();
+
+    let t0 = Instant::now();
+
+    let count = 10;
+
+    let path = "/home/me/code/rust/rchess/training_data/test_3.bin";
+
+    let ts = TDBuilder::new()
+        .max_depth(5)
+        .time(0.3)
+        .num_threads(12) // 90
+        .num_positions(Some(1000))
+        .do_explore(&ts, &ob, count, true, rng, true, path)
+        .unwrap();
+    println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+
+}
+
 #[allow(unreachable_code)]
 fn main_nnue() {
     use nalgebra as na;
@@ -695,7 +721,7 @@ fn main_nnue() {
         // .num_threads(6) // 35
         // .num_threads(1) // 5.5
         .num_positions(Some(1000))
-        .do_explore(&ts, &ob, count, true, rng, path)
+        .do_explore(&ts, &ob, count, true, rng, true, path)
         .unwrap();
     println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
@@ -1253,6 +1279,43 @@ fn main_nn() {
 
 }
 
+fn main_eval() {
+    let ts = Tables::read_from_file_def().unwrap();
+    let fen = STARTPOS;
+
+    // let fen1 = "rnbqkbnr/ppp3pp/4p3/3pNp2/3P4/8/PPP1PPPP/RNBQKB1R w KQkq - 0 1"; // outpost knight
+    // let fen1 = "rnbqkbnr/ppp3pp/4p3/3pBp2/3P4/8/PPP1PPPP/RNBQK1NR w KQkq - 0 1"; // outpost bishop
+    // let fen1 = "rnbqkbnr/ppp3pp/4p3/3p1p2/3P4/5N2/PPP1PPPP/RNBQKB1R w KQkq - 0 1"; // reachable knight
+    // let fen1 = "rnbqkbnr/ppp3pp/4p3/3p1p2/3P4/3N1N2/PPP1PPPP/R1BQKB1R w KQkq - 0 1"; // reachable knight x2
+    // let fen1 = "rnbqkbnr/ppp5/4p1p1/3p1p1p/3P3P/5N2/PPP1PPP1/RNBQKB1R w KQkq - 0 1"; // 2x reachable knight
+
+    // let fen = "4k3/8/8/8/1P6/2PPPPP1/P7/4K3 w - - 0 1"; // pawns supported = 1
+    // let fen = "4k3/8/8/8/1P6/P1PPPPP1/8/4K3 w - - 0 1"; // pawns supported = 2
+    // let fen = "4k3/8/8/8/1P1P4/P1P1PPP1/8/4K3 b - - 0 1"; // pawns supported = 4
+    let fen = "4k3/8/8/8/1P1P1PP1/P1P1P3/8/4K3 b - - 0 1"; // pawns phalanx 2
+    let fen = "4k3/8/8/8/1P1P1PPP/P1P5/8/4K3 b - - 0 1"; // pawns phalanx 3
+
+    eprintln!("fen = {:?}", fen);
+    // let g = g.flip_sides(&ts);
+    let g = Game::from_fen(&ts, fen).unwrap();
+    eprintln!("g = {:?}", g);
+
+    let ev = EvalParams::default();
+    let side = White;
+
+    // let k = g.outpost_total(&ts, &ev, White);
+    // let k = g.reachable_outposts(&ts, &ev, White);
+
+    // let k = g.score_pawns(&ts, side);
+    // let k = g.pawns_supported(side);
+    // let k = g.pawns_phalanx(side);
+
+    // eprintln!("k = {:?}", k);
+
+    return;
+
+}
+
 #[allow(unreachable_code)]
 fn main9() {
     let fen = STARTPOS;
@@ -1404,17 +1467,6 @@ fn main9() {
     // eprintln!("s1 = {:?}", s1);
     // eprintln!("s2 = {:?}", s2);
     // return;
-
-
-    let fen1 = "rnbqkbnr/ppp3pp/4p3/3pNp2/3P4/8/PPP1PPPP/RNBQKB1R w KQkq - 0 1"; // outpost
-    // let fen1 = "r4rk1/pp3ppp/3p2n1/2pN4/8/4P3/PPP2PPP/2KRR3 b - - 0 2"; // not outpost
-    // let fen1 = "rnbqkbnr/pppppppp/8/8/P7/1P6/2PPPPPP/RNBQKBNR b KQkq a3 0 1";
-    let g1 = Game::from_fen(&ts, fen1).unwrap();
-    eprintln!("g1 = {:?}", g1);
-
-    let ev = EvalParams::default();
-
-    let k = g1.outpost_total(&ev, White);
 
     // let s0 = std::mem::size_of::<OrdMove>();
     // eprintln!("s0 = {:?}", s0);
@@ -2126,15 +2178,12 @@ fn main6() {
     // eprintln!("sum = {:?}", e);
 
 
-    for (s,fen) in fens.iter() {
-
-        let mut g = Game::from_fen(&ts, fen).unwrap();
-        let _ = g.recalc_gameinfo_mut(&ts);
-
-        let e = g.sum_evaluate(&EvalParams::default(), &ts);
-        eprintln!("{} = {:?}", s, e);
-
-    }
+    // for (s,fen) in fens.iter() {
+    //     let mut g = Game::from_fen(&ts, fen).unwrap();
+    //     let _ = g.recalc_gameinfo_mut(&ts);
+    //     let e = g.sum_evaluate(&EvalParams::default(), &ts);
+    //     eprintln!("{} = {:?}", s, e);
+    // }
 
 }
 

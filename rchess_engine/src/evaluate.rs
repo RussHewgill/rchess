@@ -1,6 +1,8 @@
 
+use crate::explore::*;
 use crate::types::*;
 use crate::tables::*;
+use crate::pawn_hash_table::*;
 
 pub use self::tapered::TaperedScore;
 
@@ -143,7 +145,7 @@ impl Eval {
 /// Main Evaluation
 impl Game {
 
-    fn sum_evaluate2(&self, ts: &Tables) -> Score {
+    pub fn sum_evaluate2(&self, ts: &Tables) -> Score {
         self.evaluate(ts).sum()
     }
 
@@ -182,54 +184,61 @@ impl Game {
 
 }
 
+impl ExConfig {
+    pub fn evaluate(&self, ts: &Tables, g: &Game) -> Score {
+        g.sum_evaluate(&self.eval_params_mid, &self.eval_params_mid, ts)
+        // g.sum_evaluate2(ts)
+    }
+}
+
 /// Main Eval 2
 impl Game {
 
-    pub fn sum_evaluate(&self, ev: &EvalParams, ts: &Tables) -> Score {
+    pub fn sum_evaluate(&self, ev_mid: &EvalParams, ev_end: &EvalParams, ts: &Tables) -> Score {
         // const SIDES: [Color; 2] = [White,Black];
         // let side = self.state.side_to_move;
 
-        let mg = self.sum_evaluate_mg(ev, ts);
-        let eg = self.sum_evaluate_eg(ev, ts);
+        let mg = self.sum_evaluate_mg(ts, ev_mid);
+        let eg = self.sum_evaluate_eg(ts, ev_end);
 
         self.taper_score(mg, eg)
     }
 
-    fn sum_evaluate_mg(&self, ev: &EvalParams, ts: &Tables) -> Score {
+    fn sum_evaluate_mg(&self, ts: &Tables, ev: &EvalParams) -> Score {
         let mut score = 0;
 
         score += self.score_material2(White) - self.score_material2(Black);
         score += self.score_psqt(ts, White) - self.score_psqt(ts, Black);
         score += self.score_mobility(ts, White) - self.score_mobility(ts, Black);
-        score += self.score_pieces_mg(ev, ts, White) - self.score_pieces_mg(ev, ts, Black);
+        score += self.score_pieces_mg(ts, ev, White) - self.score_pieces_mg(ts, ev, Black);
 
         score
     }
 
-    fn sum_evaluate_eg(&self, ev: &EvalParams, ts: &Tables) -> Score {
+    fn sum_evaluate_eg(&self, ts: &Tables, ev: &EvalParams) -> Score {
         let mut score = 0;
 
         score += self.score_material2(White) - self.score_material2(Black);
         score += self.score_psqt(ts, White) - self.score_psqt(ts, Black);
         score += self.score_mobility(ts, White) - self.score_mobility(ts, Black);
-        score += self.score_pieces_eg(ev, ts, White) - self.score_pieces_eg(ev, ts, Black);
+        score += self.score_pieces_eg(ts, ev, White) - self.score_pieces_eg(ts, ev, Black);
 
         score
     }
 
-    fn score_material2(&self, side: Color) -> Score {
+    pub fn score_material2(&self, side: Color) -> Score {
         const PCS: [Piece; 6] = [Pawn,Knight,Bishop,Rook,Queen,King];
         PCS.iter().map(|&pc| self.state.material.get(pc, side) as Score * pc.score()).sum()
     }
 
-    fn score_psqt(&self, ts: &Tables, side: Color) -> Score {
+    pub fn score_psqt(&self, ts: &Tables, side: Color) -> Score {
         const PCS: [Piece; 6] = [Pawn,Knight,Bishop,Rook,Queen,King];
         PCS.iter().map(|&pc| {
             self._score_psqt(ts, pc, side)
         }).sum()
     }
 
-    fn _score_psqt(&self, ts: &Tables, pc: Piece, side: Color) -> Score {
+    pub fn _score_psqt(&self, ts: &Tables, pc: Piece, side: Color) -> Score {
         let pieces = self.get(pc, side);
         let score_mg = pieces.into_iter().map(|sq| {
             ts.piece_tables.get_mid(pc, side, sq)
@@ -240,18 +249,22 @@ impl Game {
         self.taper_score(score_mg, score_eg)
     }
 
-    fn score_pieces_mg(&self, ev: &EvalParams, ts: &Tables, side: Color) -> Score {
+    pub fn score_pieces_mg(&self, ts: &Tables, ev: &EvalParams, side: Color) -> Score {
+        let mut score = 0;
 
-        let rook_files = self.rook_on_open_file(ev, side, true);
-        let outposts   = self.outpost_total(ev, side);
+        score += self.rook_on_open_file(ev, side);
+        score += self.outpost_total(ts, ev, side);
 
-        // unimplemented!()
-        0
+        score
     }
 
-    fn score_pieces_eg(&self, ev: &EvalParams, ts: &Tables, side: Color) -> Score {
-        // unimplemented!()
-        0
+    pub fn score_pieces_eg(&self, ts: &Tables, ev: &EvalParams, side: Color) -> Score {
+        let mut score = 0;
+
+        score += self.rook_on_open_file(ev, side);
+        score += self.outpost_total(ts, ev, side);
+
+        score
     }
 
 }
@@ -506,19 +519,29 @@ impl Game {
 /// Outposts
 impl Game {
 
-    pub fn outpost_total(&self, ev: &EvalParams, side: Color) -> Score {
-        let outposts = self.outpost_squares(ev, side);
-        outposts
+    pub fn outpost_total(&self, ts: &Tables, ev: &EvalParams, side: Color) -> Score {
+        let outposts  = self.outpost_squares(ev, side);
+        let reachable = self.reachable_outposts(ts, ev, side);
+        outposts + reachable * ev.pieces.outpost.reachable_knight
     }
 
-    // pub fn reachable_outpost
+    pub fn reachable_outposts(&self, ts: &Tables, ev: &EvalParams, side: Color) -> Score {
+        self.get(Knight, side).into_iter()
+            .map(|sq| {
+                let moves = ts.get_knight(sq);
+                let moves = *moves & self.all_empty();
+                moves.into_iter().filter(|&sq2| {
+                    self.outpost_square(ev, sq2.into(), side)
+                }).count() as Score
+            }).sum()
+    }
 
     pub fn outpost_squares(&self, ev: &EvalParams, side: Color) -> Score {
         let n = self.get(Knight, side).into_iter()
             .filter(|&sq| self.outpost_square(ev, sq.into(), side)).count() as Score;
         let b = self.get(Bishop, side).into_iter()
             .filter(|&sq| self.outpost_square(ev, sq.into(), side)).count() as Score;
-        n + b
+        n * ev.pieces.outpost.outpost_knight + b * ev.pieces.outpost.outpost_bishop
     }
 
     pub fn outpost_square(&self, ev: &EvalParams, c0: Coord, side: Color) -> bool {
@@ -544,7 +567,7 @@ impl Game {
 
     /// Open      = no pawns = 2
     /// Half open = only enemy pawns = 1
-    pub fn rook_on_open_file(&self, ev: &EvalParams, side: Color, mid: bool) -> Score {
+    pub fn rook_on_open_file(&self, ev: &EvalParams, side: Color) -> Score {
         let pawns_own   = self.get(Pawn, side);
         let pawns_other = self.get(Pawn, !side);
 
@@ -554,17 +577,9 @@ impl Game {
             if (BitBoard::mask_file(file) & pawns_own).is_not_empty() {
                 0
             } else if (BitBoard::mask_file(file) & pawns_other).is_not_empty() {
-                if mid {
-                    ev.mid.rook_open_file[0]
-                } else {
-                    ev.end.rook_open_file[0]
-                }
+                ev.pieces.rook_open_file[0]
             } else {
-                if mid {
-                    ev.mid.rook_open_file[1]
-                } else {
-                    ev.end.rook_open_file[1]
-                }
+                ev.pieces.rook_open_file[1]
             }
         }).sum()
     }
@@ -655,18 +670,92 @@ impl Game {
 /// Pawn Spans
 impl Game {
 
-    // pub fn pawn_attacks_span(&self, side: Color) -> BitBoard {
-    //     let (d,dw,de) = if side == White { (S,SW,SE) } else { (N,NW,NE) };
-    //     let pawns = self.get(Pawn, !side);
-    //     pawns.shift_dir(dw) | pawns.shift_dir(de)
-    // }
+    pub fn pawn_attacks_span(&self, side: Color) -> BitBoard {
+        let (d,dw,de) = if side == White { (N,NW,NE) } else { (S,SW,SE) };
+        let pawns = self.get(Pawn, side);
+        pawns.shift_dir(dw) | pawns.shift_dir(de)
+    }
+
+    pub fn _pawn_attacks_span(bb: BitBoard, side: Color) -> BitBoard {
+        let (d,dw,de) = if side == White { (N,NW,NE) } else { (S,SW,SE) };
+        bb.shift_dir(dw) | bb.shift_dir(de)
+    }
 
 }
 
 /// Pawn Structure
 impl Game {
 
-    pub fn count_pawns_doubled(&self, ts: &Tables, col: Color) -> u8 {
+    pub fn score_pawns(&self, ts: &Tables, ev: &EvalParams, ph: &PHEntry, side: Color) -> Score {
+        // self.pawns_connected(side)
+
+        let mut score = 0;
+
+        score += ev.pawns.doubled_isolated * ph.doubled_isolated.popcount() as Score;
+        // score += ev.pawns.isolated
+        // score += ev.pawns.backward
+        // score += ev.pawns.doubled
+        // score += ev.pawns.blocked_r5
+        // score += ev.pawns.blocked_r6
+
+        score
+    }
+
+    pub fn _score_pawns(&self, ts: &Tables) -> PHEntry {
+
+
+
+        // PHEntry {
+        //     connected:,
+        //     supported_1:,
+        //     supported_2:,
+        //     blocked:,
+        //     doubled:,
+        //     isolated:,
+        //     doubled_isolated:,
+        //     backward:,
+        // }
+
+        unimplemented!()
+    }
+
+    // pub fn _score_pawns(&self, ts: &Tables, ev: &EvalParams, ph: &PHEntry, c0: Coord, side: Color) -> Score {
+    //     let mut score = 0;
+    //     // score +=
+    //     unimplemented!()
+    // }
+
+    // pub fn pawns_supported(&self, side: Color) -> Score {
+    //     let pawns = self.get(Pawn, side);
+    //     pawns.into_iter().map(|sq| {
+    //         let b = Self::_pawn_attacks_span(BitBoard::single(sq.into()), !side);
+    //         (pawns & b).popcount() as Score
+    //     }).sum()
+    // }
+
+    // pub fn pawns_phalanx(&self, side: Color) -> Score {
+    //     pawns.into_iter().map(|sq| {
+    //         self._pawns_phalanx(sq.into(), side)
+    //     }).sum()
+    // }
+
+    pub fn _pawns_supported(&self, c0: Coord, side: Color) -> Score {
+        let b = Self::_pawn_attacks_span(BitBoard::single(c0), !side);
+        (self.get(Pawn,side) & b).popcount() as Score
+    }
+
+    pub fn _pawns_phalanx(&self, c0: Coord, side: Color) -> bool {
+        let pawns = self.get(Pawn, side);
+        let b = BitBoard::single(c0);
+        let b0 = b.shift_dir(W) | b.shift_dir(E);
+        (pawns & b0).is_not_empty()
+    }
+
+    pub fn _pawns_connected(&self, c0: Coord, side: Color) -> bool {
+        self._pawns_supported(c0, side) > 0 || self._pawns_phalanx(c0, side)
+    }
+
+    pub fn pawns_doubled(&self, ts: &Tables, col: Color) -> u8 {
         let pawns = self.get(Pawn, col);
 
         let out = (0..8).map(|f| {
@@ -702,15 +791,15 @@ impl Game {
         // unimplemented!()
     }
 
-    pub fn count_pawns_backward(&self, ts: &Tables, side: Color) -> u8 {
+    pub fn pawns_backward(&self, ts: &Tables, side: Color) -> u8 {
         unimplemented!()
     }
 
-    pub fn count_pawns_isolated(&self, ts: &Tables, side: Color) -> u8 {
+    pub fn pawns_isolated(&self, ts: &Tables, side: Color) -> u8 {
         unimplemented!()
     }
 
-    pub fn count_pawns_passed(&self, ts: &Tables, side: Color) -> u8 {
+    pub fn pawns_passed(&self, ts: &Tables, side: Color) -> u8 {
         unimplemented!()
     }
 

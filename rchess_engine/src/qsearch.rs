@@ -29,7 +29,8 @@ impl ExHelper {
         //        g.state.side_to_move, ply, alpha, beta);
 
         // let stand_pat = g.evaluate(&ts).sum();
-        let stand_pat = g.sum_evaluate(&self.cfg.eval_params, ts);
+        // let stand_pat = g.sum_evaluate(&self.cfg.eval_params, ts);
+        let stand_pat = self.cfg.evaluate(ts, g);
         // let stand_pat = if self.side == Black { stand_pat } else { -stand_pat };
         let stand_pat = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
 

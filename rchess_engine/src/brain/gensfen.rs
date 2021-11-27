@@ -254,6 +254,7 @@ mod td_builder {
             count:      u64,
             print:      bool,
             mut rng:    StdRng,
+            save_bin:   bool,
             path:       P,
         ) -> std::io::Result<()> {
 
@@ -266,7 +267,7 @@ mod td_builder {
             let t0 = Instant::now();
 
             crossbeam::scope(|s| {
-                s.spawn(|_| Self::save_listener(path, rx.clone()));
+                s.spawn(|_| Self::save_listener(save_bin, path, rx.clone()));
 
                 if print {
                     s.spawn(|_| Self::watch_sfen(t0, sfen_n.clone(), rx.clone()));
@@ -287,15 +288,16 @@ mod td_builder {
         }
 
         fn save_listener<P: AsRef<Path>>(
-            path:    P,
-            rx:      Receiver<TrainingData>,
+            save_bin:   bool,
+            path:       P,
+            rx:         Receiver<TrainingData>,
         ) {
             let mut out = vec![];
             loop {
                 match rx.recv() {
                     Ok(td) => {
                         out.push(td);
-                        TrainingData::save_all(&path, &out).unwrap();
+                        TrainingData::save_all(save_bin, &path, &out).unwrap();
                     },
                     // Err(TryRecvError::Empty)    => {
                     //     std::thread::sleep(std::time::Duration::from_millis(1));
@@ -786,19 +788,25 @@ impl TrainingData {
         Ok(out)
     }
 
-    pub fn save_all<P: AsRef<Path>>(path: P, xs: &Vec<Self>) -> std::io::Result<()> {
+    pub fn save_all<P: AsRef<Path>>(save_bin: bool, path: P, xs: &Vec<Self>) -> std::io::Result<()> {
         use std::io::Write;
         // let mut buf: Vec<u8> = vec![];
 
-        let buf: Vec<u8> = bincode::serialize(&xs).unwrap();
+        let mut file = std::fs::File::create(path)?;
+
+        if save_bin {
+            let buf: Vec<u8> = bincode::serialize(&xs).unwrap();
+            file.write_all(&buf)
+        } else {
+            // file.write_all(&buf)
+            unimplemented!()
+        }
 
         // for x in xs.iter() {
         //     let b: Vec<u8> = bincode::serialize(&x).unwrap();
         //     buf.extend(b.into_iter());
         // }
 
-        let mut file = std::fs::File::create(path)?;
-        file.write_all(&buf)
     }
 
     pub fn save<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {

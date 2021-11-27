@@ -179,8 +179,8 @@ pub fn crit_bench_1(c: &mut Criterion) {
     let ts = &_TABLES;
     // let ts    = Tables::new();
 
-    let mut games = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
-    let mut games: Vec<Game> = games.into_iter().map(|(fen,_)| {
+    let mut wacs = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
+    let mut wacs: Vec<Game> = wacs.into_iter().map(|(fen,_)| {
         Game::from_fen(&ts, &fen).unwrap()
     }).collect();
     // games.truncate(10);
@@ -195,15 +195,15 @@ pub fn crit_bench_1(c: &mut Criterion) {
     group.sample_size(20);
     group.measurement_time(Duration::from_secs_f64(5.));
 
-    let fen = "1n4k1/2p2rpp/1n6/1q6/8/4QP2/1P3P1P/1N1R2K1 w - - 0 1"; // #3, Qt R d1d8
-    let (n,t) = (35,1.0);
-    let timesettings = TimeSettings::new_f64(0.0, t);
-    let mut g = Game::from_fen(&ts, fen).unwrap();
-    group.bench_function("explore endgame", |b| b.iter(|| {
-        let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
-        ex.cfg.clear_table = true;
-        let (m,stats) = ex.explore(&ts, None);
-    }));
+    // let fen = "1n4k1/2p2rpp/1n6/1q6/8/4QP2/1P3P1P/1N1R2K1 w - - 0 1"; // #3, Qt R d1d8
+    // let (n,t) = (35,1.0);
+    // let timesettings = TimeSettings::new_f64(0.0, t);
+    // let mut g = Game::from_fen(&ts, fen).unwrap();
+    // group.bench_function("explore endgame", |b| b.iter(|| {
+    //     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
+    //     ex.cfg.clear_table = true;
+    //     let (m,stats) = ex.explore(&ts, None);
+    // }));
 
     // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
     // let (n,t) = (35,1.0);
@@ -211,6 +211,48 @@ pub fn crit_bench_1(c: &mut Criterion) {
     // group.bench_function("explore", |b| b.iter(|| {
     //     let ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
     //     let (m,stats) = ex.explore(&ts, None);
+    // }));
+
+    let ev_mid = EvalParams::default();
+    let ev_end = EvalParams::default();
+
+    // group.bench_function("eval wacs", |b| b.iter(|| {
+    //     let mut k = 0;
+    //     for g in wacs.iter() {
+    //         k += g.sum_evaluate(&ev_mid, &ev_end, &ts);
+    //     }
+    // }));
+
+    // group.bench_function("eval material2", |b| b.iter(|| {
+    //     let mut k = 0;
+    //     for g in wacs.iter() {
+    //         k += g.score_material2(White) - g.score_material2(Black);
+    //     }
+    // }));
+    // group.bench_function("eval psqt", |b| b.iter(|| {
+    //     let mut k = 0;
+    //     for g in wacs.iter() {
+    //         k += g.score_psqt(&ts, White) - g.score_psqt(&ts, Black);
+    //     }
+    // }));
+    // group.bench_function("eval mobility", |b| b.iter(|| {
+    //     let mut k = 0;
+    //     for g in wacs.iter() {
+    //         k += g.score_mobility(&ts, White) - g.score_mobility(&ts, Black);
+    //     }
+    // }));
+    // group.bench_function("eval pieces", |b| b.iter(|| {
+    //     let mut k = 0;
+    //     for g in wacs.iter() {
+    //         k += g.score_pieces_mg(&ev_mid, &ts, White) - g.score_pieces_mg(&ev_mid, &ts, Black);
+    //     }
+    // }));
+
+    // group.bench_function("eval wacs old", |b| b.iter(|| {
+    //     let mut k = 0;
+    //     for g in wacs.iter() {
+    //         k += g.sum_evaluate2(&ts);
+    //     }
     // }));
 
     // group.bench_function("game_phase", |b| b.iter(|| {
@@ -226,75 +268,6 @@ pub fn crit_bench_1(c: &mut Criterion) {
     //         let mvs = g.search_all(&ts);
     //     }
     // }));
-
-    // group.bench_function("_search_pawns", |b| b.iter(|| {
-    //     for g in games.iter() {
-    //         let col = White;
-    //         let pawns = g.search_pawns(&ts, black_box(col));
-    //         let n = pawns.len();
-    //     }
-    // }));
-    // group.bench_function("_search_pawns_iter", |b| b.iter(|| {
-    //     for g in games.iter() {
-    //         let col = White;
-    //         let pawns = g.search_pawns_iter(&ts, black_box(col));
-    //         let n = pawns.collect::<Vec<_>>().len();
-    //     }
-    // }));
-
-    // group.bench_function("search_sliding 1", |b| b.iter(|| {
-    //     for g in games.iter() {
-    //         let col = White;
-    //         let b = g.search_sliding(&ts, black_box(Bishop), black_box(col));
-    //         let r = g.search_sliding(&ts, black_box(Rook), black_box(col));
-    //         let q = g.search_sliding(&ts, black_box(Queen), black_box(col));
-    //         let n = b.len() + r.len() + q.len();
-    //     }
-    // }));
-    // group.bench_function("search_sliding 2", |b| b.iter(|| {
-    //     for g in games.iter() {
-    //         let col = White;
-    //         let b = g.search_sliding_iter(&ts, black_box(Bishop), black_box(col));
-    //         let r = g.search_sliding_iter(&ts, black_box(Rook), black_box(col));
-    //         let q = g.search_sliding_iter(&ts, black_box(Queen), black_box(col));
-    //         // let n = b.len() + r.len() + q.len();
-    //         let b = b.collect::<Vec<_>>();
-    //         let r = r.collect::<Vec<_>>();
-    //         let q = q.collect::<Vec<_>>();
-    //     }
-    // }));
-
-    // group.sample_size(10);
-    // group.measurement_time(std::time::Duration::from_secs_f64(5.));
-
-    // group.bench_function("rank moves lazy_smp", |b| b.iter(|| {
-    //     let (m,stats,_) = ex.lazy_smp(&ts, false, true);
-    // }));
-
-    // group.bench_function("search_all", |b| b.iter(|| {
-    //     let mvs = g.search_all(&ts, black_box(None));
-    // }));
-
-    // let moves = g.search_all(&ts, None).get_moves_unsafe();
-    // group.bench_function("move_is_legal", |b| b.iter(|| {
-    //     for m in moves.iter() {
-    //         let k = g.move_is_legal(&ts, *m);
-    //     }
-    // }));
-
-    // group.bench_function("perft", |b| b.iter(
-    //     || g.perft(&ts, black_box(4))
-    // ));
-    // group.bench_function("perft2", |b| b.iter(
-    //     || g.perft2(&ts, black_box(4))
-    // ));
-
-    // group.bench_function("sliding_old", |b| b.iter(
-    //     || g._search_all_test(&ts, White, false)
-    // ));
-    // group.bench_function("sliding_test", |b| b.iter(
-    //     || g._search_all_test(&ts, White, true)
-    // ));
 
     group.finish();
 
