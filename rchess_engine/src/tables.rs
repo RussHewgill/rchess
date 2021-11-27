@@ -139,8 +139,8 @@ pub struct Tables {
     pub magics_bishop: [Magic; 64],
     #[serde(with = "BigArray")]
     pub table_bishop:  [BitBoard; 0x1480],
-    #[serde(skip)]
-    pub piece_tables:  PcTables,
+    // #[serde(skip)]
+    // pub piece_tables:  PcTables,
     #[serde(skip)]
     pub zobrist_tables: ZbTable,
     // endgames: 
@@ -260,7 +260,7 @@ impl Tables {
         };
 
         // let (piece_tables_midgame,piece_tables_endgame) = PcTables::new();
-        let piece_tables = PcTables::new();
+        // let piece_tables = PcTables::new();
 
         Self {
             knight_moves: Self::gen_knights(),
@@ -274,7 +274,7 @@ impl Tables {
             table_rook,
             magics_bishop,
             table_bishop,
-            piece_tables,
+            // piece_tables,
             // piece_tables_midgame,
             // piece_tables_endgame,
 
@@ -707,19 +707,20 @@ mod eval {
 
     #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
     pub struct PcTables {
-        pub tables_mid:         [[Score; 64]; 6],
-        tables_end:         [[Score; 64]; 6],
-        pub ev_pawn:        EvPawn,
-        pub ev_rook:        EvRook,
-        pub ev_knight:      EvKnight,
-        pub ev_bishop:      EvBishop,
-        pub ev_queen:       EvQueen,
-        pub ev_king:        EvKing,
+        tables:      [[Score; 64]; 6],
+        // tables_mid:         [[Score; 64]; 6],
+        // tables_end:         [[Score; 64]; 6],
+        // pub ev_pawn:        EvPawn,
+        // pub ev_rook:        EvRook,
+        // pub ev_knight:      EvKnight,
+        // pub ev_bishop:      EvBishop,
+        // pub ev_queen:       EvQueen,
+        // pub ev_king:        EvKing,
     }
 
     impl Default for PcTables {
         fn default() -> Self {
-            Self::new()
+            Self::new_mid()
         }
     }
 
@@ -738,19 +739,25 @@ mod eval {
             }
         }
 
-        pub fn get_mid<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
+        pub fn get<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
             let c1: Coord = c0.into();
-            // let c1 = if col == White { c1 } else { Coord(7 - c1.0,7 - c1.1) };
             let c1 = if col == White { c1 } else { Coord(c1.0,7 - c1.1) };
-            self.tables_mid[pc.index()][c1]
+            self.tables[pc.index()][c1]
         }
 
-        pub fn get_end<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
-            let c1: Coord = c0.into();
-            // let c1 = if col == White { c1 } else { Coord(7 - c1.0,7 - c1.1) };
-            let c1 = if col == White { c1 } else { Coord(c1.0,7 - c1.1) };
-            self.tables_end[pc.index()][c1]
-        }
+        // pub fn get_mid<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
+        //     let c1: Coord = c0.into();
+        //     // let c1 = if col == White { c1 } else { Coord(7 - c1.0,7 - c1.1) };
+        //     let c1 = if col == White { c1 } else { Coord(c1.0,7 - c1.1) };
+        //     self.tables_mid[pc.index()][c1]
+        // }
+
+        // pub fn get_end<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
+        //     let c1: Coord = c0.into();
+        //     // let c1 = if col == White { c1 } else { Coord(7 - c1.0,7 - c1.1) };
+        //     let c1 = if col == White { c1 } else { Coord(c1.0,7 - c1.1) };
+        //     self.tables_end[pc.index()][c1]
+        // }
 
         // let out = [
         //     0,  0,  0,  0,  0,  0,  0,  0,
@@ -768,47 +775,85 @@ mod eval {
     /// Generate
     impl PcTables {
 
-        pub fn new() -> Self {
+        pub fn new_mid() -> Self {
             let pawns   = Self::gen_pawns();
-
             let knights = Self::gen_knights();
             let bishops = Self::gen_bishops();
             let rooks   = Self::gen_rooks();
             let queens  = Self::gen_queens();
             let kings   = Self::gen_kings_opening();
-
-            // let knights = [0; 64];
-            // let bishops = [0; 64];
-            // let rooks   = [0; 64];
-            // let queens  = [0; 64];
-            // let kings   = [0; 64];
-
-            let out = Self {
-                tables_mid: [pawns,
-                             knights,
-                             bishops,
-                             rooks,
-                             queens,
-                             kings,
+            Self {
+                tables: [pawns,
+                         knights,
+                         bishops,
+                         rooks,
+                         queens,
+                         kings,
                 ],
-                tables_end: [pawns,
-                             knights,
-                             bishops,
-                             rooks,
-                             queens,
-                             Self::gen_kings_endgame(),
-                ],
-                ev_pawn:   EvPawn::new(),
-                ev_knight: EvKnight::new(),
-                ev_bishop: EvBishop::new(),
-                ev_rook:   EvRook::new(),
-                ev_queen:  EvQueen::new(),
-                ev_king:   EvKing::new(),
-            };
-
-            out
-            // (opening,endgame)
+            }
         }
+
+        pub fn new_end() -> Self {
+            let pawns   = Self::gen_pawns();
+            let knights = Self::gen_knights();
+            let bishops = Self::gen_bishops();
+            let rooks   = Self::gen_rooks();
+            let queens  = Self::gen_queens();
+            let kings   = Self::gen_kings_endgame();
+            Self {
+                tables: [pawns,
+                         knights,
+                         bishops,
+                         rooks,
+                         queens,
+                         kings,
+                ],
+            }
+        }
+
+        // pub fn new() -> Self {
+        //     let pawns   = Self::gen_pawns();
+
+        //     let knights = Self::gen_knights();
+        //     let bishops = Self::gen_bishops();
+        //     let rooks   = Self::gen_rooks();
+        //     let queens  = Self::gen_queens();
+        //     let kings   = Self::gen_kings_opening();
+
+        //     // let knights = [0; 64];
+        //     // let bishops = [0; 64];
+        //     // let rooks   = [0; 64];
+        //     // let queens  = [0; 64];
+        //     // let kings   = [0; 64];
+
+        //     let out = Self {
+        //         tables_mid: [pawns,
+        //                      knights,
+        //                      bishops,
+        //                      rooks,
+        //                      queens,
+        //                      kings,
+        //         ],
+
+        //         // tables_end: [pawns,
+        //         //              knights,
+        //         //              bishops,
+        //         //              rooks,
+        //         //              queens,
+        //         //              Self::gen_kings_endgame(),
+        //         // ],
+
+        //         // ev_pawn:   EvPawn::new(),
+        //         // ev_knight: EvKnight::new(),
+        //         // ev_bishop: EvBishop::new(),
+        //         // ev_rook:   EvRook::new(),
+        //         // ev_queen:  EvQueen::new(),
+        //         // ev_king:   EvKing::new(),
+        //     };
+
+        //     out
+        //     // (opening,endgame)
+        // }
 
         #[allow(clippy::vec_init_then_push)]
         fn gen_pawns() -> [Score; 64] {

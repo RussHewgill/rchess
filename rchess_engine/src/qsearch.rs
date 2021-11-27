@@ -5,7 +5,69 @@ use crate::evaluate::*;
 use crate::explore::*;
 use crate::tuning::*;
 
+use std::sync::atomic::AtomicU8;
 use std::sync::atomic::Ordering::SeqCst;
+use parking_lot::{Mutex,RwLock};
+
+
+pub fn qsearch_once(
+    ts:       &Tables,
+    g:        &Game,
+    side:     Color,
+    ev_mid:   &EvalParams,
+    ev_end:   &EvalParams,
+) -> Score {
+
+    let mut cfg = ExConfig::default();
+    cfg.eval_params_mid = ev_mid.clone();
+    cfg.eval_params_end = ev_end.clone();
+
+    let (tt_r, tt_w) = evmap::Options::default()
+        .with_hasher(FxBuildHasher::default())
+        .construct();
+    let tt_rf = tt_w.factory();
+    let tt_w = Arc::new(Mutex::new(tt_w));
+    let (tx,rx): (ExSender,ExReceiver) = crossbeam::channel::unbounded();
+
+    let stop = Arc::new(AtomicBool::new(false));
+    let best_mate = Arc::new(RwLock::new(None));
+    let best_depth = Arc::new(AtomicU8::new(0));
+
+    let helper = ExHelper {
+        id:              0,
+        side,
+        game:            g.clone(),
+        stop,
+        best_mate,
+        #[cfg(feature = "syzygy")]
+        syzygy:          None,
+        cfg,
+        best_depth,
+        tx,
+        tt_r,
+        tt_w,
+    };
+
+    let (alpha,beta) = (i32::MIN,i32::MAX);
+    let (alpha,beta) = (alpha + 200,beta - 200);
+    let mut stats = SearchStats::default();
+
+    let score = helper.qsearch(
+        ts,
+        g,
+        (0,0),
+        alpha,
+        beta,
+        &mut stats);
+
+    if side == Black {
+        -score
+    } else {
+        score
+    }
+
+}
+
 
 /// Quiescence
 impl ExHelper {

@@ -63,6 +63,7 @@ fn main() {
         "nnue"      => main_nnue(),
         "eval"      => main_eval(),
         "gensfen"   => main_gensfen(),
+        "tuning"    => main_tuning(),
         "wac"       => match args.get(2).map(|x| u64::from_str(x).ok()) {
             Some(n) => main_wac(n, false),
             _       => main_wac(None, false),
@@ -575,26 +576,69 @@ fn main_mnist() {
     return;
 }
 
+#[allow(unreachable_code)]
 fn main_tuning() {
     use rchess_engine_lib::texel::*;
+    use rchess_engine_lib::qsearch::*;
 
     let ts = Tables::read_from_file_def().unwrap();
 
     let ob = OpeningBook::read_from_file(&ts, "tables/Perfect_2021/BIN/Perfect2021.bin").unwrap();
-    let path = "/home/me/code/rust/rchess/training_data/test_3.bin";
 
+    let path = "/home/me/code/rust/rchess/training_data/test_5.bin";
     let tds: Vec<TrainingData> = TrainingData::load_all(path).unwrap();
 
-    // let mut ps = vec![];
+    let mut ps: Vec<TxPosition> = vec![];
 
-    // for td in tds.into_iter() {
-    //     let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
-    //     for mv in td.opening.into_iter() {
-    //         let mv = g._convert_move(mv.from().into(), mv.to().into(), "");
-    //         // g = g.make_move_unchecked(&ts, mv).unwrap();
-    //     }
-    // }
+    let ev_mid = EvalParams::default();
+    let ev_end = EvalParams::default();
 
+    eprintln!("tds.len() = {:?}", tds.len());
+
+    for td in tds.into_iter() {
+        let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
+        for mv in td.opening.into_iter() {
+            g = g.make_move_unchecked(&ts, mv).unwrap();
+        }
+
+        for te in td.moves.into_iter() {
+            g = g.make_move_unchecked(&ts, te.mv).unwrap();
+            if !te.skip
+                && !te.mv.filter_all_captures()
+                && g.state.checkers.is_empty()
+                && te.eval.abs() < STALEMATE_VALUE - 100
+            {
+                // g = g.flip_sides(&ts);
+
+                let score   = g.sum_evaluate(&ts, &ev_mid, &ev_end);
+                let q_score = qsearch_once(&ts, &g, g.state.side_to_move, &ev_mid, &ev_end);
+
+                if score == q_score {
+                    ps.push(TxPosition::new(g.clone(), td.result));
+                }
+            }
+
+        }
+    }
+
+    eprintln!("ps.len() = {:?}", ps.len());
+
+    let ks = vec![
+        -1.0,
+        -0.5,
+        0.1,
+        0.5,
+        1.0,
+        2.0,
+        10.0,
+    ];
+
+    // let k = 1.0;
+
+    for k in ks.iter() {
+        let error = average_eval_error(&ts, &ev_mid, &ev_end, ps.clone(), *k);
+        eprintln!("error, k = {:.2} = {:?}", k, error);
+    }
 
 }
 
@@ -607,15 +651,16 @@ fn main_gensfen() {
 
     let t0 = Instant::now();
 
-    let count = 10;
+    let count = 100;
 
-    let path = "/home/me/code/rust/rchess/training_data/test_4.bin";
+    let path = "/home/me/code/rust/rchess/training_data/test_6.bin";
 
     let ts = TDBuilder::new()
         .max_depth(5)
-        .time(0.3)
+        .time(0.2)
         .num_threads(12) // 90
-        .num_positions(Some(1000))
+        // .num_positions(Some(1000))
+        .num_positions(None)
         .do_explore(&ts, &ob, count, true, rng, true, path)
         .unwrap();
     println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
@@ -1247,16 +1292,28 @@ fn main_eval() {
     // let fen = "4k3/8/8/8/1P6/2PPPPP1/P7/4K3 w - - 0 1"; // pawns supported = 1
     // let fen = "4k3/8/8/8/1P6/P1PPPPP1/8/4K3 w - - 0 1"; // pawns supported = 2
     // let fen = "4k3/8/8/8/1P1P4/P1P1PPP1/8/4K3 b - - 0 1"; // pawns supported = 4
-    let fen = "4k3/8/8/8/1P1P1PP1/P1P1P3/8/4K3 b - - 0 1"; // pawns phalanx 2
-    let fen = "4k3/8/8/8/1P1P1PPP/P1P5/8/4K3 b - - 0 1"; // pawns phalanx 3
+    // let fen = "4k3/8/8/8/1P1P1PP1/P1P1P3/8/4K3 b - - 0 1"; // pawns phalanx 2
+    // let fen = "4k3/8/8/8/1P1P1PPP/P1P5/8/4K3 b - - 0 1"; // pawns phalanx 3
+
+    // let fen = "4k3/8/8/8/1P1PP2P/PP3P2/8/4K3 b - - 0 1"; // isolated
+
+    let fen = "4k3/pp1ppp2/8/3p4/PP1PP2P/2P2P2/8/4K3 b - - 0 2"; // backward
+    // let fen = "4k3/pp1ppp2/8/3p4/P2PP2P/1PP2P2/8/4K3 b - - 0 2"; // not backward
 
     eprintln!("fen = {:?}", fen);
     // let g = g.flip_sides(&ts);
     let g = Game::from_fen(&ts, fen).unwrap();
-    eprintln!("g = {:?}", g);
+    // eprintln!("g = {:?}", g);
 
-    let ev = EvalParams::default();
+    let ev_mid = EvalParams::default();
+    let ev_end = EvalParams::default();
     let side = White;
+
+    // let g = g.flip_sides(&ts);
+    eprintln!("g = {:?}", g);
+    eprintln!("g.to_fen() = {:?}", g.to_fen());
+    let score = g.sum_evaluate(&ts, &ev_mid, &ev_end);
+    eprintln!("score = {:?}", score);
 
     // let k = g.outpost_total(&ts, &ev, White);
     // let k = g.reachable_outposts(&ts, &ev, White);
@@ -1265,6 +1322,16 @@ fn main_eval() {
     // let k = g.pawns_supported(side);
     // let k = g.pawns_phalanx(side);
 
+    // g.get(Pawn, White).into_iter().for_each(|sq| {
+    //     let c0 = Coord::from(sq);
+    //     let k = g._pawns_backward(&ts, c0, White);
+    //     if k {
+    //         eprintln!("backward = {:?}", c0);
+    //     }
+    //     // eprintln!("k = {:?}", k);
+    // });
+
+    // let k = g._pawns_backward(&ts, Coord::from("C3"), White);
     // eprintln!("k = {:?}", k);
 
     return;
@@ -1302,10 +1369,10 @@ fn main9() {
         ex.lazy_smp_negamax(&ts, false, false)
     }
 
-    // let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
+    let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
-    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
     // let fen = "5rk1/pp3pp1/8/4q1N1/6b1/4r3/PP3QP1/5K1R w - - 0 2"; // R h1h8, #4, knight move order?
     // let fen = "r4r1k/2Q5/1p5p/2p2n2/2Pp2R1/PN1Pq3/6PP/R3N2K b - - 0 1"; // #4, Qt N f5g3, slow
