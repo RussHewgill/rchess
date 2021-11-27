@@ -1406,11 +1406,15 @@ fn main9() {
     // return;
 
 
-    // // let fen1 = "r4rk1/pp3ppp/3p2n1/2pN4/4P3/8/PPP2PPP/2KRR3 w - c6 0 2"; // outpost
+    let fen1 = "rnbqkbnr/ppp3pp/4p3/3pNp2/3P4/8/PPP1PPPP/RNBQKB1R w KQkq - 0 1"; // outpost
     // let fen1 = "r4rk1/pp3ppp/3p2n1/2pN4/8/4P3/PPP2PPP/2KRR3 b - - 0 2"; // not outpost
-    // // let fen1 = "rnbqkbnr/pppppppp/8/8/P7/1P6/2PPPPPP/RNBQKBNR b KQkq a3 0 1";
-    // let g1 = Game::from_fen(&ts, fen1).unwrap();
-    // eprintln!("g1 = {:?}", g1);
+    // let fen1 = "rnbqkbnr/pppppppp/8/8/P7/1P6/2PPPPPP/RNBQKBNR b KQkq a3 0 1";
+    let g1 = Game::from_fen(&ts, fen1).unwrap();
+    eprintln!("g1 = {:?}", g1);
+
+    let ev = EvalParams::default();
+
+    let k = g1.outpost_total(&ev, White);
 
     // let s0 = std::mem::size_of::<OrdMove>();
     // eprintln!("s0 = {:?}", s0);
@@ -2127,7 +2131,7 @@ fn main6() {
         let mut g = Game::from_fen(&ts, fen).unwrap();
         let _ = g.recalc_gameinfo_mut(&ts);
 
-        let e = g.sum_evaluate(&ts);
+        let e = g.sum_evaluate(&EvalParams::default(), &ts);
         eprintln!("{} = {:?}", s, e);
 
     }

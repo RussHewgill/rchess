@@ -185,34 +185,34 @@ impl Game {
 /// Main Eval 2
 impl Game {
 
-    pub fn sum_evaluate(&self, ts: &Tables) -> Score {
+    pub fn sum_evaluate(&self, ev: &EvalParams, ts: &Tables) -> Score {
         // const SIDES: [Color; 2] = [White,Black];
         // let side = self.state.side_to_move;
 
-        let mg = self.sum_evaluate_mg(ts);
-        let eg = self.sum_evaluate_eg(ts);
+        let mg = self.sum_evaluate_mg(ev, ts);
+        let eg = self.sum_evaluate_eg(ev, ts);
 
         self.taper_score(mg, eg)
     }
 
-    fn sum_evaluate_mg(&self, ts: &Tables) -> Score {
+    fn sum_evaluate_mg(&self, ev: &EvalParams, ts: &Tables) -> Score {
         let mut score = 0;
 
         score += self.score_material2(White) - self.score_material2(Black);
         score += self.score_psqt(ts, White) - self.score_psqt(ts, Black);
         score += self.score_mobility(ts, White) - self.score_mobility(ts, Black);
-        score += self.score_pieces_mg(ts, White) - self.score_pieces_mg(ts, Black);
+        score += self.score_pieces_mg(ev, ts, White) - self.score_pieces_mg(ev, ts, Black);
 
         score
     }
 
-    fn sum_evaluate_eg(&self, ts: &Tables) -> Score {
+    fn sum_evaluate_eg(&self, ev: &EvalParams, ts: &Tables) -> Score {
         let mut score = 0;
 
         score += self.score_material2(White) - self.score_material2(Black);
         score += self.score_psqt(ts, White) - self.score_psqt(ts, Black);
         score += self.score_mobility(ts, White) - self.score_mobility(ts, Black);
-        score += self.score_pieces_eg(ts, White) - self.score_pieces_eg(ts, Black);
+        score += self.score_pieces_eg(ev, ts, White) - self.score_pieces_eg(ev, ts, Black);
 
         score
     }
@@ -240,16 +240,16 @@ impl Game {
         self.taper_score(score_mg, score_eg)
     }
 
-    fn score_pieces_mg(&self, ts: &Tables, side: Color) -> Score {
+    fn score_pieces_mg(&self, ev: &EvalParams, ts: &Tables, side: Color) -> Score {
 
-        let rook_files = self.rook_on_open_file(side);
-        let outposts   = self.outpost_squares(side);
+        let rook_files = self.rook_on_open_file(ev, side, true);
+        let outposts   = self.outpost_total(ev, side);
 
         // unimplemented!()
         0
     }
 
-    fn score_pieces_eg(&self, ts: &Tables, side: Color) -> Score {
+    fn score_pieces_eg(&self, ev: &EvalParams, ts: &Tables, side: Color) -> Score {
         // unimplemented!()
         0
     }
@@ -506,15 +506,22 @@ impl Game {
 /// Outposts
 impl Game {
 
-    pub fn outpost_squares(&self, side: Color) -> Score {
+    pub fn outpost_total(&self, ev: &EvalParams, side: Color) -> Score {
+        let outposts = self.outpost_squares(ev, side);
+        outposts
+    }
+
+    // pub fn reachable_outpost
+
+    pub fn outpost_squares(&self, ev: &EvalParams, side: Color) -> Score {
         let n = self.get(Knight, side).into_iter()
-            .filter(|&sq| self.outpost_square(sq.into(), side)).count() as Score;
+            .filter(|&sq| self.outpost_square(ev, sq.into(), side)).count() as Score;
         let b = self.get(Bishop, side).into_iter()
-            .filter(|&sq| self.outpost_square(sq.into(), side)).count() as Score;
+            .filter(|&sq| self.outpost_square(ev, sq.into(), side)).count() as Score;
         n + b
     }
 
-    pub fn outpost_square(&self, c0: Coord, side: Color) -> bool {
+    pub fn outpost_square(&self, ev: &EvalParams, c0: Coord, side: Color) -> bool {
         if c0.rank() < 4 || c0.rank() > 6 { return false; }
 
         let (dw,de) = if side == White { (NW,NE) } else { (SW,SE) };
@@ -537,7 +544,7 @@ impl Game {
 
     /// Open      = no pawns = 2
     /// Half open = only enemy pawns = 1
-    pub fn rook_on_open_file(&self, side: Color) -> Score {
+    pub fn rook_on_open_file(&self, ev: &EvalParams, side: Color, mid: bool) -> Score {
         let pawns_own   = self.get(Pawn, side);
         let pawns_other = self.get(Pawn, !side);
 
@@ -547,9 +554,17 @@ impl Game {
             if (BitBoard::mask_file(file) & pawns_own).is_not_empty() {
                 0
             } else if (BitBoard::mask_file(file) & pawns_other).is_not_empty() {
-                1
+                if mid {
+                    ev.mid.rook_open_file[0]
+                } else {
+                    ev.end.rook_open_file[0]
+                }
             } else {
-                2
+                if mid {
+                    ev.mid.rook_open_file[1]
+                } else {
+                    ev.end.rook_open_file[1]
+                }
             }
         }).sum()
     }
