@@ -575,6 +575,29 @@ fn main_mnist() {
     return;
 }
 
+fn main_tuning() {
+    use rchess_engine_lib::texel::*;
+
+    let ts = Tables::read_from_file_def().unwrap();
+
+    let ob = OpeningBook::read_from_file(&ts, "tables/Perfect_2021/BIN/Perfect2021.bin").unwrap();
+    let path = "/home/me/code/rust/rchess/training_data/test_3.bin";
+
+    let tds: Vec<TrainingData> = TrainingData::load_all(path).unwrap();
+
+    // let mut ps = vec![];
+
+    // for td in tds.into_iter() {
+    //     let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
+    //     for mv in td.opening.into_iter() {
+    //         let mv = g._convert_move(mv.from().into(), mv.to().into(), "");
+    //         // g = g.make_move_unchecked(&ts, mv).unwrap();
+    //     }
+    // }
+
+
+}
+
 fn main_gensfen() {
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
@@ -586,7 +609,7 @@ fn main_gensfen() {
 
     let count = 10;
 
-    let path = "/home/me/code/rust/rchess/training_data/test_3.bin";
+    let path = "/home/me/code/rust/rchess/training_data/test_4.bin";
 
     let ts = TDBuilder::new()
         .max_depth(5)
@@ -644,33 +667,6 @@ fn main_nnue() {
     // let mut inputs = nd::array![[1],[0]];
     // let ws         = Array2::<i16>::random_using((2,2), dist, &mut rng);
 
-    // let pc          = Pawn;
-    // let king_sq: u8 = Coord::from("A1").into();
-    // let c0: u8      = Coord::from("A2").into();
-    // let idx0 = NNUE::index(king_sq, pc, c0, true);
-    // let king_sq: u8 = Coord::from("H1").into();
-    // let c0: u8      = Coord::from("H2").into();
-    // let idx1 = NNUE::index(king_sq, pc, c0, false);
-    // eprintln!("idx0 = {:?}", idx0);
-    // eprintln!("idx1 = {:?}", idx1);
-    // return;
-
-    // let s0 = std::mem::size_of::<TDOutcome>();
-    // eprintln!("s0 = {:?}", s0);
-
-
-    // let s0 = i32::MAX;
-    // let s1 = i8::MAX as i32;
-    // let k = s0 / s1;
-    // eprintln!("k = {:?}", k);
-    // let k0 = s0 / k;
-    // eprintln!("k0 = {:?}", k0);
-    // let k1 = k0 * k;
-    // eprintln!("k1 = {:?}", k1);
-    // eprintln!("s0 = {:?}", s0);
-    // eprintln!("s1 = {:?}", s1);
-    // return;
-
     let fen = STARTPOS;
     // let fen     = "rnbqkb1r/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     // let fen = "4k3/3pp3/8/8/8/8/3PP3/4K3 w - - 0 1";
@@ -695,59 +691,18 @@ fn main_nnue() {
     // let mut nn = NNUE::new(White, &mut rng, dnn);
     // g.state.en_passant = Some("H6".into());
 
-    // let mut s = OBSelection::new_seq();
-    // let mut s = OBSelection::BestN(0);
-    let mut s = OBSelection::new_random_seeded(1234);
-
-    // init_logger();
-
-    let path =  "/home/me/code/rust/rchess/training_data/test_2.bin";
-
-    let n_fens = 100;
-
-    let mut s = OBSelection::new_random_seeded(1234);
-    // let (g0,opening) = ob.start_game(&ts, Some(16), &mut s).unwrap();
-    // eprintln!("g0 = {:?}", g0);
-
-    let count = 1000;
-
-    let t0 = Instant::now();
-
-    // let ts: Vec<TrainingData> = TDBuilder::new()
-    let ts = TDBuilder::new()
-        .max_depth(5)
-        .time(0.2)
-        .num_threads(12) // 90
-        // .num_threads(6) // 35
-        // .num_threads(1) // 5.5
-        .num_positions(Some(1000))
-        .do_explore(&ts, &ob, count, true, rng, true, path)
-        .unwrap();
-    println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
-
-    // eprintln!("ts.len() = {:?}", ts.len());
-    // eprintln!("ts[0].result = {:?}", ts[0].result);
-
-    // let t0 = Instant::now();
-    // TrainingData::generate_training_data(&ts, &ob, 2, n_fens, path).unwrap();
-    // println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
-
-    return;
+    let path = "/home/me/code/rust/rchess/training_data/test_3.bin";
 
     let tds: Vec<TrainingData> = TrainingData::load_all(path).unwrap();
 
-    // eprintln!("tds.len() = {:?}", tds.len());
+    eprintln!("tds.len() = {:?}", tds.len());
 
-    for td in tds.into_iter() {
-
-        eprintln!("td.result = {:?}", td.result);
-        eprintln!("td.moves.len() = {:?}", td.moves.len());
-
-        let b: Vec<u8> = bincode::serialize(&td).unwrap();
-
-        eprintln!("b.len() = {:?}", b.len());
-
-    }
+    // for td in tds.into_iter() {
+    //     eprintln!("td.result = {:?}", td.result);
+    //     eprintln!("td.moves.len() = {:?}", td.moves.len());
+    //     let b: Vec<u8> = bincode::serialize(&td).unwrap();
+    //     eprintln!("b.len() = {:?}", b.len());
+    // }
 
     return;
 

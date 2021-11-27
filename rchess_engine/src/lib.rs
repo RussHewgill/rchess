@@ -51,6 +51,7 @@ pub mod alphabeta;
 pub mod evaluate;
 pub mod timer;
 pub mod tuning;
+pub mod texel;
 pub mod hashing;
 pub mod trans_table;
 
