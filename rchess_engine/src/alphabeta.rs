@@ -274,8 +274,6 @@ impl ExHelper {
             moves.retain(|mv| !self.cfg.blocked_moves.contains(&mv));
         }
 
-        // let mvs = self.move_history.clone();
-
         if depth == 0 {
             // if !self.tt_r.contains_key(&g.zobrist) {
             // }

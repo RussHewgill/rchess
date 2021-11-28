@@ -30,7 +30,21 @@ impl Default for Zobrist {
 
 /// New
 impl Zobrist {
-    pub fn new(ts: &Tables, g: Game) -> Self {
+
+    pub fn new_pawns(ts: &Tables, g: &Game) -> Self {
+        let mut out = 0u64;
+
+        for &side in [White,Black].iter() {
+            g.get(Pawn, side).into_iter()
+                .for_each(|sq| {
+                    out ^= ts.zobrist_tables.get_piece(Pawn, side)[sq as usize];
+                });
+        }
+
+        Zobrist(out)
+    }
+
+    pub fn new(ts: &Tables, g: &Game) -> Self {
         let mut out = 0u64;
         let zb = &ts.zobrist_tables;
 

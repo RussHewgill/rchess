@@ -21,7 +21,7 @@ harness = false
 default = [
     # "par",
     # "one_thread",
-    # "smallstack",
+    "smallstack",
 
     # "backtrace",
 
@@ -33,7 +33,7 @@ default = [
 
     # "null_pruning",
     "late_move_reduction",
-    "history_heuristic",
+    # "history_heuristic",
 
     "qsearch",
 

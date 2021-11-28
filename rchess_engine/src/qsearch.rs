@@ -27,6 +27,12 @@ pub fn qsearch_once(
         .construct();
     let tt_rf = tt_w.factory();
     let tt_w = Arc::new(Mutex::new(tt_w));
+
+    let (ph_r, ph_w) = evmap::Options::default()
+        .with_hasher(FxBuildHasher::default())
+        .construct();
+    let ph_w = Arc::new(Mutex::new(ph_w));
+
     let (tx,rx): (ExSender,ExReceiver) = crossbeam::channel::unbounded();
 
     let stop = Arc::new(AtomicBool::new(false));
@@ -46,6 +52,7 @@ pub fn qsearch_once(
         tx,
         tt_r,
         tt_w,
+        ph_rw:           (ph_r,ph_w),
     };
 
     let (alpha,beta) = (i32::MIN,i32::MAX);
@@ -67,7 +74,6 @@ pub fn qsearch_once(
     }
 
 }
-
 
 /// Quiescence
 impl ExHelper {
@@ -92,7 +98,7 @@ impl ExHelper {
 
         // let stand_pat = g.evaluate(&ts).sum();
         // let stand_pat = g.sum_evaluate(&self.cfg.eval_params, ts);
-        let stand_pat = self.cfg.evaluate(ts, g);
+        let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
         // let stand_pat = if self.side == Black { stand_pat } else { -stand_pat };
         let stand_pat = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
 

@@ -29,7 +29,8 @@ impl Game {
         let _ = g.recalc_gameinfo_mut(&ts);
         let _ = g.init_gameinfo_mut(&ts);
 
-        g.zobrist = Zobrist::new(&ts, g.clone());
+        g.zobrist = Zobrist::new(&ts, &g);
+        g.pawn_zb = Zobrist::new_pawns(ts, &g);
 
         Some(g)
     }

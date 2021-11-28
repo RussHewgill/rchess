@@ -20,7 +20,7 @@ use serde::{Serialize,Deserialize};
 use evmap::{ReadHandle,ReadHandleFactory,WriteHandle};
 use evmap_derive::ShallowCopy;
 // use rustc_hash::Fx;
-use dashmap::{DashMap,DashSet};
+// use dashmap::{DashMap,DashSet};
 
 pub type FxBuildHasher = core::hash::BuildHasherDefault<rustc_hash::FxHasher>;
 
@@ -32,12 +32,12 @@ pub type TTWrite = Arc<Mutex<WriteHandle<Zobrist, SearchInfo, (), FxBuildHasher>
 // pub type TTWrite = Arc<Mutex<WriteHandle<Zobrist, SearchInfo>>>;
 
 // pub type TransTable = FxHashMap<Zobrist, SearchInfo>;
-pub type TransTable = Arc<DashMap<Zobrist, SearchInfo>>;
+// pub type TransTable = Arc<DashMap<Zobrist, SearchInfo>>;
 
-#[derive(Debug,Default,Clone)]
-pub struct MvTable {
-    set: DashSet<u64>,
-}
+// #[derive(Debug,Default,Clone)]
+// pub struct MvTable {
+//     set: DashSet<u64>,
+// }
 
 // #[derive(Debug,Default)]
 // pub struct TTStats {
@@ -161,35 +161,35 @@ pub enum Node {
     // NodeCut(Score), // Score = lower bound
 }
 
-impl MvTable {
+// impl MvTable {
 
-    fn make_key(depth: Depth, zb: Zobrist, mv: Move) -> u64 {
-        let mut out = 0;
-        out |= zb.0;
-        out |= depth as u64;
-        let m = {
-            let mut h = rustc_hash::FxHasher::default();
-            mv.hash(&mut h);
-            h.finish()
-        };
-        out |= m;
-        out
-    }
+//     fn make_key(depth: Depth, zb: Zobrist, mv: Move) -> u64 {
+//         let mut out = 0;
+//         out |= zb.0;
+//         out |= depth as u64;
+//         let m = {
+//             let mut h = rustc_hash::FxHasher::default();
+//             mv.hash(&mut h);
+//             h.finish()
+//         };
+//         out |= m;
+//         out
+//     }
 
-    /// Returns true if key was already in set
-    pub fn insert(&self, depth: Depth, zb: Zobrist, mv: Move) -> bool {
-        self.set.insert(Self::make_key(depth, zb, mv))
-    }
+//     /// Returns true if key was already in set
+//     pub fn insert(&self, depth: Depth, zb: Zobrist, mv: Move) -> bool {
+//         self.set.insert(Self::make_key(depth, zb, mv))
+//     }
 
-    pub fn remove(&self, depth: Depth, zb: Zobrist, mv: Move) {
-        self.set.remove(&Self::make_key(depth, zb, mv));
-    }
+//     pub fn remove(&self, depth: Depth, zb: Zobrist, mv: Move) {
+//         self.set.remove(&Self::make_key(depth, zb, mv));
+//     }
 
-    pub fn contains(&self, depth: Depth, zb: Zobrist, mv: Move) -> bool {
-        self.set.contains(&Self::make_key(depth, zb, mv))
-    }
+//     pub fn contains(&self, depth: Depth, zb: Zobrist, mv: Move) -> bool {
+//         self.set.contains(&Self::make_key(depth, zb, mv))
+//     }
 
-}
+// }
 
 /// tt_insert_deepest
 impl ExHelper {

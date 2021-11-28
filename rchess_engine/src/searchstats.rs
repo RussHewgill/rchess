@@ -79,6 +79,8 @@ mod ss {
         pub tt_hits:        u32,
         pub tt_halfmiss:    u32,
         pub tt_misses:      u32,
+        pub ph_hits:        u32,
+        pub ph_misses:      u32,
         pub qt_nodes:       u32,
         pub qt_hits:        u32,
         pub qt_misses:      u32,
@@ -125,6 +127,8 @@ mod ss {
                 tt_hits:            self.tt_hits + other.tt_hits,
                 tt_halfmiss:            self.tt_halfmiss + other.tt_halfmiss,
                 tt_misses:          self.tt_misses + other.tt_misses,
+                ph_hits:            self.ph_hits + other.ph_hits,
+                ph_misses:          self.ph_misses + other.ph_misses,
                 qt_nodes:           self.qt_nodes + other.qt_nodes,
                 qt_hits:            self.qt_hits + other.qt_hits,
                 qt_misses:          self.qt_misses + other.qt_misses,
@@ -178,6 +182,9 @@ mod ss {
 
             let bcs = self.beta_cut_first;
             eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
+
+            eprintln!("pawn hash hitrate = {:.3}",
+                      self.ph_hits as f64 / (self.ph_hits as f64 + self.ph_misses as f64));
 
             // eprintln!("stats0.qt_hits = {}", pretty_print_si(stats0.qt_hits as i64));
             // eprintln!("stats0.qt_misses = {}", pretty_print_si(stats0.qt_misses as i64));

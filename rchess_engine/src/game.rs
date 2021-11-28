@@ -24,6 +24,7 @@ pub struct Game {
     // pub move_history: Vec<Move>,
     pub state:        GameState,
     pub zobrist:      Zobrist,
+    pub pawn_zb:      Zobrist,
     pub last_move:    Option<Move>,
 
     // pub history:      GHistory,
@@ -73,6 +74,7 @@ impl Default for Game {
         Self {
             state:        GameState::default(),
             zobrist:      Zobrist(0),
+            pawn_zb:      Zobrist(0),
             last_move:    None,
             history,
             halfmove:    0,
@@ -763,7 +765,12 @@ impl Game {
             self.state.material.buf[side][pc.index()] -= 1;
         }
 
-        self.zobrist = self.zobrist.update_piece(&ts, pc, side, at.into());
+        if calc_zb {
+            self.zobrist = self.zobrist.update_piece(&ts, pc, side, at.into());
+            if pc == Pawn {
+                self.pawn_zb = self.pawn_zb.update_piece(ts, pc, side, at.into())
+            }
+        }
     }
 
     pub fn insert_piece_mut_unchecked<T: Into<Coord>>(
@@ -785,7 +792,12 @@ impl Game {
             self.state.material.buf[side][pc.index()] += 1;
         }
 
-        self.zobrist = self.zobrist.update_piece(&ts, pc, side, at.into());
+        if calc_zb {
+            self.zobrist = self.zobrist.update_piece(&ts, pc, side, at.into());
+            if pc == Pawn {
+                self.pawn_zb = self.pawn_zb.update_piece(ts, pc, side, at.into())
+            }
+        }
     }
 
     pub fn insert_pieces_mut_unchecked<T: Into<Coord> + Clone + Copy>(
@@ -1110,7 +1122,6 @@ impl Game {
         open::with(url, "firefox")
     }
 
-
     pub fn zobrist_from_fen(ts: &Tables, fen: &str) -> Zobrist {
         let g = Game::from_fen(ts, fen).unwrap();
         g.zobrist
@@ -1139,7 +1150,8 @@ impl Game {
         let mut out = Game::default();
 
         out.state = st;
-        out.zobrist = Zobrist::new(&ts, out.clone());
+        out.zobrist = Zobrist::new(&ts, &out);
+        out.pawn_zb = Zobrist::new_pawns(&ts, &out);
 
         out.init_gameinfo_mut(ts).unwrap();
         out.recalc_gameinfo_mut(ts).unwrap();

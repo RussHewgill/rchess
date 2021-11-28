@@ -6,6 +6,7 @@ use crate::evaluate::*;
 use crate::pruning::*;
 use crate::alphabeta::*;
 use crate::opening_book::*;
+use crate::pawn_hash_table::*;
 
 #[cfg(feature = "syzygy")]
 use crate::syzygy::SyzygyTB;
@@ -50,6 +51,8 @@ pub struct Explorer {
 
     pub tt_rf:         TTReadFactory,
     pub tt_w:          TTWrite,
+
+    pub ph_rw:         (PHReadFactory,PHWrite),
 
     // pub move_history:  Vec<(Zobrist, Move)>,
     // pub pos_history:   HashMap<Zobrist,u8>,
@@ -102,6 +105,8 @@ pub struct ExHelper {
 
     pub tt_r:            TTRead,
     pub tt_w:            TTWrite,
+
+    pub ph_rw:         (PHRead,PHWrite),
 }
 
 #[derive(Debug,Clone)]
@@ -154,6 +159,8 @@ impl Explorer {
 
             tt_r:            self.tt_rf.handle(),
             tt_w:            self.tt_w.clone(),
+
+            ph_rw:           (self.ph_rw.0.handle(),self.ph_rw.1.clone()),
         }
     }
 
@@ -211,6 +218,12 @@ impl Explorer {
         let tt_rf = tt_w.factory();
         let tt_w = Arc::new(Mutex::new(tt_w));
 
+        let (ph_r, ph_w) = evmap::Options::default()
+            .with_hasher(FxBuildHasher::default())
+            .construct();
+        let ph_rf: PHReadFactory = ph_w.factory();
+        let ph_w: PHWrite = Arc::new(Mutex::new(ph_w));
+
         let mut cfg = ExConfig::default();
         cfg.max_depth = max_depth;
 
@@ -231,6 +244,8 @@ impl Explorer {
 
             tt_rf,
             tt_w,
+
+            ph_rw:          (ph_rf,ph_w),
 
             // move_history:   vec![],
             // pos_history:    HashMap::default(),

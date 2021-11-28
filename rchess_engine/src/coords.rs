@@ -72,6 +72,13 @@ impl Coord {
         self.1
     }
 
+    pub fn mask_file(self) -> BitBoard {
+        MASK_FILES[self.file() as usize]
+    }
+    pub fn mask_rank(self) -> BitBoard {
+        MASK_RANKS[self.rank() as usize]
+    }
+
     pub fn flip_diagonal_int<T>(x: T) -> T where
         T: num_traits::PrimInt + num_traits::WrappingMul,
     {

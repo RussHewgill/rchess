@@ -610,7 +610,7 @@ fn main_tuning() {
             {
                 // g = g.flip_sides(&ts);
 
-                let score   = g.sum_evaluate(&ts, &ev_mid, &ev_end);
+                let score   = g.sum_evaluate(&ts, &ev_mid, &ev_end, None);
                 let q_score = qsearch_once(&ts, &g, g.state.side_to_move, &ev_mid, &ev_end);
 
                 if score == q_score {
@@ -1297,41 +1297,42 @@ fn main_eval() {
 
     // let fen = "4k3/8/8/8/1P1PP2P/PP3P2/8/4K3 b - - 0 1"; // isolated
 
-    let fen = "4k3/pp1ppp2/8/3p4/PP1PP2P/2P2P2/8/4K3 b - - 0 2"; // backward
+    // let fen = "4k3/pp1ppp2/8/3p4/PP1PP2P/2P2P2/8/4K3 b - - 0 2"; // backward
     // let fen = "4k3/pp1ppp2/8/3p4/P2PP2P/1PP2P2/8/4K3 b - - 0 2"; // not backward
 
+    // let fen = "4k3/pppppp2/8/1P1P4/P2P3P/2P2P2/8/4K3 b - - 0 2"; // doubled
+    // let fen = "4k3/pppppp2/8/1P1P4/P1PP3P/5P2/8/4K3 b - - 0 2"; // doubled but supported
+
+    let fen = "4k3/2p1ppp1/1pP5/pP6/P6P/4PPP1/8/4K3 w - - 0 3"; // blocked 1x 5 + 1x 6
+
     eprintln!("fen = {:?}", fen);
-    // let g = g.flip_sides(&ts);
     let g = Game::from_fen(&ts, fen).unwrap();
-    // eprintln!("g = {:?}", g);
+    // let g = g.flip_sides(&ts);
 
     let ev_mid = EvalParams::default();
     let ev_end = EvalParams::default();
     let side = White;
 
-    // let g = g.flip_sides(&ts);
     eprintln!("g = {:?}", g);
     eprintln!("g.to_fen() = {:?}", g.to_fen());
-    let score = g.sum_evaluate(&ts, &ev_mid, &ev_end);
-    eprintln!("score = {:?}", score);
 
-    // let k = g.outpost_total(&ts, &ev, White);
-    // let k = g.reachable_outposts(&ts, &ev, White);
+    // let score = g.sum_evaluate(&ts, &ev_mid, &ev_end, None);
+    // eprintln!("score = {:?}", score);
 
     // let k = g.score_pawns(&ts, side);
     // let k = g.pawns_supported(side);
     // let k = g.pawns_phalanx(side);
 
-    // g.get(Pawn, White).into_iter().for_each(|sq| {
-    //     let c0 = Coord::from(sq);
-    //     let k = g._pawns_backward(&ts, c0, White);
-    //     if k {
-    //         eprintln!("backward = {:?}", c0);
-    //     }
-    //     // eprintln!("k = {:?}", k);
-    // });
+    g.get(Pawn, White).into_iter().for_each(|sq| {
+        let c0 = Coord::from(sq);
+        let k = g._pawns_blocked(&ts, c0, White);
+        if let Some(k) = k {
+            eprintln!("blocked {:?} = {:?}", k, c0);
+        }
+        // eprintln!("k = {:?}", k);
+    });
 
-    // let k = g._pawns_backward(&ts, Coord::from("C3"), White);
+    // let k = g._pawns_doubled(&ts, Coord::from("D5"), White);
     // eprintln!("k = {:?}", k);
 
     return;
@@ -1362,7 +1363,8 @@ fn main9() {
         games[i - 1].clone()
     }
 
-    fn go(ts: &Tables, n: Depth, g: Game, t: f64) -> ((ABResult, Vec<ABResult>),SearchStats,(TTRead,TTWrite)) {
+    fn go(ts: &Tables, n: Depth, g: Game, t: f64)
+          -> ((ABResult, Vec<ABResult>),SearchStats,(TTRead,TTWrite)) {
         let timesettings = TimeSettings::new_f64(0.0,t);
         let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
         ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
@@ -1477,6 +1479,11 @@ fn main9() {
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(6);
     ex.cfg.num_threads = Some(1);
+
+    let k = g.pawn_zb;
+    eprintln!("k = {:?}", k);
+
+    return;
 
     // let fen1 = "rnbqkb1r/p4p2/2p1pn1p/1p2P1N1/2pP3B/2N5/PP3PPP/R2QKB1R b KQkq - 0 1"; // rand opening
     // let fen2 = "rnbqkb1r/p4p2/2p1pn2/1p2P1p1/2pP3B/2N5/PP3PPP/R2QKB1R w KQkq - 0 2";
