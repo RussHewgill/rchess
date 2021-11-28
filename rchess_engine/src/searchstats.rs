@@ -183,8 +183,8 @@ mod ss {
             let bcs = self.beta_cut_first;
             eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
 
-            eprintln!("pawn hash hitrate = {:.3}",
-                      self.ph_hits as f64 / (self.ph_hits as f64 + self.ph_misses as f64));
+            // eprintln!("pawn hash hitrate = {:.3}",
+            //           self.ph_hits as f64 / (self.ph_hits as f64 + self.ph_misses as f64));
 
             // eprintln!("stats0.qt_hits = {}", pretty_print_si(stats0.qt_hits as i64));
             // eprintln!("stats0.qt_misses = {}", pretty_print_si(stats0.qt_misses as i64));

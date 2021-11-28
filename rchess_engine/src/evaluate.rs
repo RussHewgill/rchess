@@ -226,12 +226,17 @@ impl Game {
         let ev = ev_mid;
 
         score += self.score_material2(White) - self.score_material2(Black);
-        score += self.score_psqt(ts, ev, White) - self.score_psqt(ts, ev, Black);
+
+        if cfg!(feature = "positional_scoring") {
+            score += self.score_psqt(ts, ev, White) - self.score_psqt(ts, ev, Black);
+        }
+
         score += self.score_mobility(ts, White) - self.score_mobility(ts, Black);
         score += self.score_pieces_mg(ts, ev, White) - self.score_pieces_mg(ts, ev, Black);
         // score += self.score_pawns(ts, ev, ph_rw, White) - self.score_pawns(ts, ev, ph_rw, Black);
 
         let pawns: [Score; 2] = self.score_pawns(ts, ev_mid, ev_end, ph_rw, true);
+        score += pawns[0] - pawns[1];
 
         score
     }
@@ -247,10 +252,17 @@ impl Game {
         let ev = ev_end;
 
         score += self.score_material2(White) - self.score_material2(Black);
-        score += self.score_psqt(ts, ev, White) - self.score_psqt(ts, ev, Black);
+
+        if cfg!(feature = "positional_scoring") {
+            score += self.score_psqt(ts, ev, White) - self.score_psqt(ts, ev, Black);
+        }
+
         score += self.score_mobility(ts, White) - self.score_mobility(ts, Black);
         score += self.score_pieces_eg(ts, ev, White) - self.score_pieces_eg(ts, ev, Black);
         // score += self.score_pawns(ts, ev, ph_rw, White) - self.score_pawns(ts, ev, ph_rw, Black);
+
+        let pawns: [Score; 2] = self.score_pawns(ts, ev_mid, ev_end, ph_rw, false);
+        score += pawns[0] - pawns[1];
 
         score
     }

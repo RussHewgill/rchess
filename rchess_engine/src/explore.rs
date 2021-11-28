@@ -231,7 +231,8 @@ impl Explorer {
         Self {
             side,
             game,
-            timer:          Timer::new(side, stop.clone(), settings),
+            // timer:          Timer::new(side, stop.clone(), settings),
+            timer:          Timer::new(settings),
             stop,
             best_mate:      Arc::new(RwLock::new(None)),
 
@@ -332,16 +333,13 @@ impl Explorer {
 /// Entry points
 impl Explorer {
 
-    pub fn explore_mult(&self, ts: &Tables)
-                        -> ((ABResult,Vec<ABResult>),SearchStats) {
-
-        let ((best, mut scores),stats,(tt_r,tt_w)) = self.lazy_smp_negamax(ts, false, false);
-
-        scores.sort_by_key(|x| x.score);
-        scores.reverse();
-
-        ((best,scores), stats)
-    }
+    // pub fn explore_mult(&self, ts: &Tables)
+    //                     -> ((ABResult,Vec<ABResult>),SearchStats) {
+    //     let ((best, mut scores),stats,(tt_r,tt_w)) = self.lazy_smp_negamax(ts, false, false);
+    //     scores.sort_by_key(|x| x.score);
+    //     scores.reverse();
+    //     ((best,scores), stats)
+    // }
 
     pub fn explore(&self, ts: &Tables, _: Option<Depth>)
                    // -> (Option<(Move,Score)>,SearchStats) {
@@ -600,8 +598,11 @@ impl Explorer {
 
         let t0 = Instant::now();
         // std::thread::sleep(Duration::from_micros(100));
+
         let t_max = self.timer.settings.increment[self.side];
         let t_max = Duration::from_secs_f64(t_max);
+
+        // let t_max = self.timer.allocate_time()
 
         crossbeam::scope(|s| {
 
@@ -689,7 +690,6 @@ impl Explorer {
         stats.ph_misses = self.ph_rw.misses.load(Ordering::Relaxed);
 
         (out,moves,stats)
-
     }
 
     fn lazy_smp_listener(
@@ -929,6 +929,7 @@ impl Explorer {
     }
 
     #[allow(unused_doc_comments)]
+    #[cfg(feature = "nope")]
     pub fn lazy_smp_negamax(&self, ts: &Tables, print: bool, strict_depth: bool)
                             -> ((ABResult, Vec<ABResult>),SearchStats,(TTRead,TTWrite)) {
 

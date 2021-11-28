@@ -28,6 +28,7 @@ use itertools::Itertools;
 
 use rchess_engine_lib::explore::Explorer;
 use rchess_engine_lib::opening_book::*;
+use rchess_engine_lib::qsearch::qsearch_once;
 // use crate::lib::*;
 use rchess_engine_lib::types::*;
 use rchess_engine_lib::search::*;
@@ -1409,18 +1410,18 @@ fn main9() {
         games[i - 1].clone()
     }
 
-    fn go(ts: &Tables, n: Depth, g: Game, t: f64)
-          -> ((ABResult, Vec<ABResult>),SearchStats,(TTRead,TTWrite)) {
-        let timesettings = TimeSettings::new_f64(0.0,t);
-        let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
-        ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
-        ex.lazy_smp_negamax(&ts, false, false)
-    }
+    // fn go(ts: &Tables, n: Depth, g: Game, t: f64)
+    //       -> ((ABResult, Vec<ABResult>),SearchStats,(TTRead,TTWrite)) {
+    //     let timesettings = TimeSettings::new_f64(0.0,t);
+    //     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
+    //     ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+    //     ex.lazy_smp_negamax(&ts, false, false)
+    // }
 
     let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
-    // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
     // let fen = "5rk1/pp3pp1/8/4q1N1/6b1/4r3/PP3QP1/5K1R w - - 0 2"; // R h1h8, #4, knight move order?
     // let fen = "r4r1k/2Q5/1p5p/2p2n2/2Pp2R1/PN1Pq3/6PP/R3N2K b - - 0 1"; // #4, Qt N f5g3, slow
@@ -1481,6 +1482,7 @@ fn main9() {
     // let fen = "8/8/1p1r1k2/p1pPN1p1/P3KnP1/1P6/8/3R4 b - - 0 1"; // Nxd5
 
     // let fen = &games_sts(2, 8);
+    let fen = &games_sts(1, 15);
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -1526,20 +1528,9 @@ fn main9() {
     // ex.cfg.num_threads = Some(6);
     ex.cfg.num_threads = Some(1);
 
-    // let k = g.pawn_zb;
-    // eprintln!("k = {:?}", k);
-    // return;
-
-    // let fen1 = "rnbqkb1r/p4p2/2p1pn1p/1p2P1N1/2pP3B/2N5/PP3PPP/R2QKB1R b KQkq - 0 1"; // rand opening
-    // let fen2 = "rnbqkb1r/p4p2/2p1pn2/1p2P1p1/2pP3B/2N5/PP3PPP/R2QKB1R w KQkq - 0 2";
-    // let g1 = Game::from_fen(&ts, fen1).unwrap();
-    // let g2 = Game::from_fen(&ts, fen2).unwrap();
-    // let s0 = g1.game_phase2();
-    // let s1 = g2.game_phase2();
-    // let s2 = g1.increment_phase(Move::new_capture("h6", "g5", Pawn, Knight));
+    // // let s0 = g.sum_evaluate(&ts, &ex.cfg.eval_params_mid, &ex.cfg.eval_params_end, None);
+    // let s0 = qsearch_once(&ts, &g, g.state.side_to_move, &ex.cfg.eval_params_mid, &ex.cfg.eval_params_end);
     // eprintln!("s0 = {:?}", s0);
-    // eprintln!("s1 = {:?}", s1);
-    // eprintln!("s2 = {:?}", s2);
     // return;
 
     // let s0 = std::mem::size_of::<OrdMove>();
@@ -1668,10 +1659,10 @@ fn main9() {
         return;
     }
 
-    // println!();
-    // for (n,mv) in moves.iter().enumerate() {
-    //     eprintln!("{}\t{:?}", n, mv);
-    // }
+    println!();
+    for (n,mv) in moves.iter().enumerate() {
+        eprintln!("{}\t{:?}", n, mv);
+    }
 
     // return;
 
@@ -2118,8 +2109,9 @@ fn main7() {
 fn main_wac(num: Option<u64>, send_url: bool) {
     // let mut games = read_ccr_onehour("ccr_onehour.txt").unwrap();
     // let mut games = read_epd("Midgames250.epd").unwrap();
-    let mut games = read_epd("testpositions/WAC.epd").unwrap();
-    // let mut games = read_epd("testpositions/STS6.epd").unwrap();
+
+    // let mut games = read_epd("testpositions/WAC.epd").unwrap();
+    let mut games = read_epd("testpositions/STS15.epd").unwrap();
 
     // for (fen,ms) in games.iter() {
     //     // eprintln!("fen, ms = {:?}: {:?}", fen, ms);
