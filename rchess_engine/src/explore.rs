@@ -1,4 +1,5 @@
 
+use crate::evmap_tables::*;
 use crate::searchstats;
 use crate::types::*;
 use crate::tables::*;
@@ -52,7 +53,8 @@ pub struct Explorer {
     pub tt_rf:         TTReadFactory,
     pub tt_w:          TTWrite,
 
-    pub ph_rw:         (PHReadFactory,PHWrite),
+    // pub ph_rw:         (PHReadFactory,PHWrite),
+    pub ph_rw:         PHTableFactory,
 
     // pub move_history:  Vec<(Zobrist, Move)>,
     // pub pos_history:   HashMap<Zobrist,u8>,
@@ -106,7 +108,8 @@ pub struct ExHelper {
     pub tt_r:            TTRead,
     pub tt_w:            TTWrite,
 
-    pub ph_rw:         (PHRead,PHWrite),
+    // pub ph_rw:         (PHRead,PHWrite),
+    pub ph_rw:         PHTable,
 }
 
 #[derive(Debug,Clone)]
@@ -160,7 +163,8 @@ impl Explorer {
             tt_r:            self.tt_rf.handle(),
             tt_w:            self.tt_w.clone(),
 
-            ph_rw:           (self.ph_rw.0.handle(),self.ph_rw.1.clone()),
+            // ph_rw:           (self.ph_rw.0.handle(),self.ph_rw.1.clone()),
+            ph_rw:           self.ph_rw.handle(),
         }
     }
 
@@ -212,13 +216,14 @@ impl Explorer {
 
         let stop = Arc::new(AtomicBool::new(false));
 
-        let (tt_r, tt_w) = evmap::Options::default()
-            .with_hasher(FxBuildHasher::default())
-            .construct();
-        let tt_rf = tt_w.factory();
-        let tt_w = Arc::new(Mutex::new(tt_w));
+        // let (tt_r, tt_w) = evmap::Options::default()
+        //     .with_hasher(FxBuildHasher::default())
+        //     .construct();
+        // let tt_rf = tt_w.factory();
+        // let tt_w = Arc::new(Mutex::new(tt_w));
+        let (tt_rf, tt_w) = new_hash_table();
 
-        let ph_rw = PHTable::new();
+        let ph_rw = PHTableFactory::new();
 
         let mut cfg = ExConfig::default();
         cfg.max_depth = max_depth;

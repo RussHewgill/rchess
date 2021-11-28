@@ -4,6 +4,8 @@ use crate::tables::*;
 use crate::evaluate::*;
 use crate::explore::*;
 use crate::tuning::*;
+use crate::pawn_hash_table::*;
+use crate::evmap_tables::*;
 
 use std::sync::atomic::AtomicU8;
 use std::sync::atomic::Ordering::SeqCst;
@@ -28,10 +30,9 @@ pub fn qsearch_once(
     let tt_rf = tt_w.factory();
     let tt_w = Arc::new(Mutex::new(tt_w));
 
-    let (ph_r, ph_w) = evmap::Options::default()
-        .with_hasher(FxBuildHasher::default())
-        .construct();
-    let ph_w = Arc::new(Mutex::new(ph_w));
+    // let (ph_rf,ph_w) = new_hash_table();
+    let ph_rw = PHTableFactory::new();
+    let ph_rw = ph_rw.handle();
 
     let (tx,rx): (ExSender,ExReceiver) = crossbeam::channel::unbounded();
 
@@ -52,7 +53,7 @@ pub fn qsearch_once(
         tx,
         tt_r,
         tt_w,
-        ph_rw:           (ph_r,ph_w),
+        ph_rw,
     };
 
     let (alpha,beta) = (i32::MIN,i32::MAX);

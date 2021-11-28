@@ -1355,7 +1355,6 @@ fn main_eval() {
 
     let ph = g.gen_ph_entry(&ts);
 
-
     // g.get(Pawn, White).into_iter().for_each(|sq| {
     //     let c0 = Coord::from(sq);
     //     // if g._pawn_backward(&ts, c0, g.state.side_to_move) {

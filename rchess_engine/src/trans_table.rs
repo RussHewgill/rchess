@@ -3,6 +3,7 @@ use crate::explore::*;
 use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
+use crate::evmap_tables::*;
 
 use evmap::shallow_copy::CopyValue;
 // use arrayvec::ArrayVec;
@@ -22,12 +23,14 @@ use evmap_derive::ShallowCopy;
 // use rustc_hash::Fx;
 // use dashmap::{DashMap,DashSet};
 
-pub type FxBuildHasher = core::hash::BuildHasherDefault<rustc_hash::FxHasher>;
+// pub type TTReadFactory  = ReadHandleFactory<Zobrist, SearchInfo, (), FxBuildHasher>;
+// pub type TTRead  = ReadHandle<Zobrist, SearchInfo, (), FxBuildHasher>;
+// pub type TTWrite = Arc<Mutex<WriteHandle<Zobrist, SearchInfo, (), FxBuildHasher>>>;
 
-pub type TTReadFactory  = ReadHandleFactory<Zobrist, SearchInfo, (), FxBuildHasher>;
+pub type TTReadFactory = EVReadFactory<SearchInfo>;
+pub type TTRead        = EVRead<SearchInfo>;
+pub type TTWrite       = EVWrite<SearchInfo>;
 
-pub type TTRead  = ReadHandle<Zobrist, SearchInfo, (), FxBuildHasher>;
-pub type TTWrite = Arc<Mutex<WriteHandle<Zobrist, SearchInfo, (), FxBuildHasher>>>;
 // pub type TTRead  = ReadHandle<Zobrist, SearchInfo>;
 // pub type TTWrite = Arc<Mutex<WriteHandle<Zobrist, SearchInfo>>>;
 

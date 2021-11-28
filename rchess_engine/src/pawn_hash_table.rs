@@ -3,27 +3,24 @@ use crate::types::*;
 use crate::tables::*;
 use crate::explore::*;
 use crate::evaluate::*;
-use crate::trans_table::FxBuildHasher;
+use crate::evmap_tables::*;
 
+use std::hash::Hash;
 use std::sync::Arc;
 
 use derive_new::new;
-use parking_lot::lock_api::RawRwLock;
+use evmap::ShallowCopy;
 use serde::{Serialize,Deserialize};
 use evmap::{ReadHandle,ReadHandleFactory,WriteHandle};
 use evmap_derive::ShallowCopy;
 use parking_lot::Mutex;
 
-pub type PHReadFactory  = ReadHandleFactory<Zobrist, PHEntry, (), FxBuildHasher>;
-
-pub type PHRead  = ReadHandle<Zobrist, PHEntry, (), FxBuildHasher>;
-pub type PHWrite = Arc<Mutex<WriteHandle<Zobrist, PHEntry, (), FxBuildHasher>>>;
+pub type PHReadFactory = EVReadFactory<PHEntry>;
+pub type PHRead        = EVRead<PHEntry>;
+pub type PHWrite       = EVWrite<PHEntry>;
 
 #[derive(Debug,Default,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize,new)]
 pub struct PHEntry {
-
-    // pub score_mid:            ByColor<Option<Score>>,
-    // pub score_end:            ByColor<Option<Score>>,
 
     pub connected:            BitBoard,
     pub supported_1:          BitBoard,
@@ -41,25 +38,46 @@ pub struct PHEntry {
 
 }
 
+#[derive(Debug,Default,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize,new)]
+pub struct PHScore {
+    pub score_mid:            ByColor<Option<Score>>,
+    pub score_end:            ByColor<Option<Score>>,
+}
+
 #[derive(Debug,Clone)]
+pub struct PHTableFactory {
+    pub ph_rf:    PHReadFactory,
+    pub ph_w:    PHWrite,
+    pub score_rf: EVReadFactory<PHScore>,
+    pub score_w: EVWrite<PHScore>,
+}
+
+impl PHTableFactory {
+    pub fn handle(&self) -> PHTable {
+        // PHTable::new(self.ph_r.handle(), self.ph_w.clone())
+        unimplemented!()
+    }
+
+    pub fn new() -> Self {
+
+        let (ph_rf, ph_w) = new_hash_table();
+        let (score_rf, score_w) = new_hash_table();
+
+        Self {
+            ph_rf,
+            ph_w,
+            score_rf,
+            score_w,
+        }
+    }
+}
+
+#[derive(Debug,Clone,new)]
 pub struct PHTable {
     pub ph_r:    PHRead,
     pub ph_w:    PHWrite,
-}
-
-impl PHTable {
-    pub fn new() -> Self {
-
-        let (ph_r, ph_w) = evmap::Options::default()
-            .with_hasher(FxBuildHasher::default())
-            .construct();
-        let ph_w: PHWrite = Arc::new(Mutex::new(ph_w));
-
-        Self {
-            ph_r,
-            ph_w,
-        }
-    }
+    pub score_r: EVRead<PHScore>,
+    pub score_w: EVWrite<PHScore>,
 }
 
 impl PHEntry {
