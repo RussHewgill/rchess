@@ -14,8 +14,8 @@ pub struct TimeSettings {
     clock_time:      [Seconds; 2],
     pub increment:   [Seconds; 2],
     pub safety:      Seconds,
-    // pub ponder:      bool,
-    // pub infinite:    bool,
+    pub ponder:      bool,
+    pub infinite:    bool,
 }
 
 #[derive(Debug,Clone)]
@@ -137,8 +137,8 @@ impl TimeSettings {
             clock_time:   [clock_time; 2],
             increment:    [increment; 2],
             safety:       0.1,
-            // ponder:       false,
-            // infinite:     false,
+            ponder:       false,
+            infinite:     false,
         }
     }
 

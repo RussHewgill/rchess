@@ -1403,6 +1403,13 @@ fn main9() {
         games[i - 1].clone()
     }
 
+    fn games_iq(i: usize) -> (String,Vec<String>) {
+        let mut games = read_epd("testpositions/iq6.epd").unwrap();
+        // let mut games = games.into_iter();
+        // let games = games.map(|x| x.0).collect::<Vec<_>>();
+        games[i - 1].clone()
+    }
+
     fn games_sts(i: usize, sts: u8) -> String {
         let mut games = read_epd(&format!("testpositions/STS/STS{}.epd", sts)).unwrap();
         let mut games = games.into_iter();
@@ -1482,7 +1489,9 @@ fn main9() {
     // let fen = "8/8/1p1r1k2/p1pPN1p1/P3KnP1/1P6/8/3R4 b - - 0 1"; // Nxd5
 
     // let fen = &games_sts(2, 8);
-    let fen = &games_sts(1, 15);
+    // let fen = &games_sts(1, 15);
+
+    eprintln!("correct = {:?}", correct);
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -1505,8 +1514,8 @@ fn main9() {
 
     let mv = Move::Capture { from: "H5".into(), to: "G4".into(), pc: Pawn, victim: Pawn };
 
-    // let t = 10.0;
-    let t = 3.0;
+    let t = 10.0;
+    // let t = 3.0;
     // let t = 0.5;
     // let t = 0.3;
 
@@ -1527,6 +1536,11 @@ fn main9() {
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(6);
     ex.cfg.num_threads = Some(1);
+
+    // let mut only_moves = HashSet::default();
+    // only_moves.insert(Move::new_quiet("F5", "F1", Rook));
+    // only_moves.insert(Move::new_double("b7", "b5"));
+    // ex.cfg.only_moves = Some(only_moves);
 
     // // let s0 = g.sum_evaluate(&ts, &ex.cfg.eval_params_mid, &ex.cfg.eval_params_end, None);
     // let s0 = qsearch_once(&ts, &g, g.state.side_to_move, &ex.cfg.eval_params_mid, &ex.cfg.eval_params_end);
@@ -2111,12 +2125,13 @@ fn main_wac(num: Option<u64>, send_url: bool) {
     // let mut games = read_epd("Midgames250.epd").unwrap();
 
     // let mut games = read_epd("testpositions/WAC.epd").unwrap();
-    let mut games = read_epd("testpositions/STS15.epd").unwrap();
+    // let mut games = read_epd("testpositions/STS15.epd").unwrap();
+    let mut games = read_epd("testpositions/iq6.epd").unwrap();
 
-    // for (fen,ms) in games.iter() {
-    //     // eprintln!("fen, ms = {:?}: {:?}", fen, ms);
-    //     eprintln!("ms = {:?}", ms);
-    // }
+    for (fen,ms) in games.iter() {
+        // eprintln!("fen, ms = {:?}: {:?}", fen, ms);
+        eprintln!("ms = {:?}", ms);
+    }
 
     if let Some(num) = num {
         games.truncate(num as usize);

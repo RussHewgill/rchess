@@ -7,14 +7,13 @@
 
 pub mod notation;
 
-use chrono::Datelike;
-use chrono::Timelike;
 use rchess_engine_lib::alphabeta::ABResult;
 use rchess_engine_lib::types::*;
 use rchess_engine_lib::tables::*;
 use rchess_engine_lib::explore::*;
 use rchess_engine_lib::evaluate::*;
 
+use std::str::FromStr;
 use std::io;
 use std::io::{BufRead,Stdout};
 use std::sync::mpsc;
@@ -26,6 +25,7 @@ use std::{thread, time};
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool,Ordering};
 
+use chrono::{Datelike,Timelike};
 use std::io::Write;
 use log::{debug, error, log_enabled, info, Level};
 use simplelog::*;
@@ -181,6 +181,8 @@ fn main() -> std::io::Result<()> {
 
                         debug!("explorer going: ");
 
+                        parse_go(&mut explorer, params.clone().collect());
+
                         // let m = explorer.lock().unwrap().explore(&ts, depth).unwrap();
                         let (m,stats) = explorer.explore(&ts, None);
                         debug!("m = {:?}", m);
@@ -198,6 +200,67 @@ fn main() -> std::io::Result<()> {
 
     }
     Ok(())
+}
+
+fn parse_go(mut ex: &mut Explorer,params: Vec<&str>) {
+
+    let mut ps = params.clone().into_iter();
+
+    while let Some(cmd) = ps.next() {
+        match cmd {
+            "searchmoves" => {
+                unimplemented!()
+            },
+            "ponder"      => {
+                unimplemented!()
+            },
+            "wtime"       => {
+                let val = u32::from_str(ps.next().unwrap()).unwrap();
+                let t = val as f64 / 1000.0;
+                ex.timer.time_left[White] = t;
+            },
+            "btime"       => {
+                let val = u32::from_str(ps.next().unwrap()).unwrap();
+                let t = val as f64 / 1000.0;
+                ex.timer.time_left[Black] = t;
+            },
+            "winc"        => {
+                let val = u32::from_str(ps.next().unwrap()).unwrap();
+                let t = val as f64 / 1000.0;
+                ex.timer.settings.increment[White] = t;
+            },
+            "binc"        => {
+                let val = u32::from_str(ps.next().unwrap()).unwrap();
+                let t = val as f64 / 1000.0;
+                ex.timer.settings.increment[White] = t;
+            },
+            "movestogo"   => {
+                let val = u32::from_str(ps.next().unwrap()).unwrap();
+            },
+            "depth"       => {
+                let val = u32::from_str(ps.next().unwrap()).unwrap();
+            },
+            "nodes"       => {
+                let val = u32::from_str(ps.next().unwrap()).unwrap();
+            },
+            "mate"        => {
+                let val = u32::from_str(ps.next().unwrap()).unwrap();
+            },
+            "movetime"    => {
+                let val = u32::from_str(ps.next().unwrap()).unwrap();
+                let t = val as f64 / 1000.0;
+                ex.timer.settings.increment = [t; 2];
+            },
+            "infinite"    => {
+                // ex.timer.settings.infinite = true;
+            },
+            _             => {
+                debug!("unrecognized go command: {:?}", &params);
+                break;
+            },
+        }
+    }
+
 }
 
 // info depth 245

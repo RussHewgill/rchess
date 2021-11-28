@@ -233,7 +233,18 @@ impl ExHelper {
             }
         }
 
-        let moves = g.search_all(&ts);
+        // let moves = g.search_all(&ts);
+
+        let moves = if cfg.root {
+            if let Some(mvs) = &self.cfg.only_moves {
+                let mvs = mvs.clone().into_iter().collect();
+                Outcome::Moves(mvs)
+            } else {
+                g.search_all(&ts)
+            }
+        } else {
+            g.search_all(&ts)
+        };
 
         /// Filter checkmate, stalemate
         let mut moves: Vec<Move> = match moves {

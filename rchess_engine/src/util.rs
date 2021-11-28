@@ -24,6 +24,10 @@ pub fn read_epd(path: &str) -> std::io::Result<Vec<(String, Vec<String>)>> {
     let lines = file.lines();
     let mut out = vec![];
 
+    let lines = lines.filter(|x| {
+        !x.starts_with("#")
+    });
+
     // let mut lines = lines.collect::<Vec<&str>>();
     // lines.truncate(1);
 

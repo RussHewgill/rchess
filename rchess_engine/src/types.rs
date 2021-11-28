@@ -97,6 +97,9 @@ impl Move {
     pub fn new_capture<T: Into<Coord>>(from: T, to: T, pc: Piece, victim: Piece) -> Move {
         Move::Capture { from: from.into(), to: to.into(), pc, victim }
     }
+    pub fn new_double<T: Into<Coord>>(from: T, to: T) -> Move {
+        Move::PawnDouble { from: from.into(), to: to.into() }
+    }
 }
 
 // #[derive(Serialize,Deserialize,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
