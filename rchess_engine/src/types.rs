@@ -24,6 +24,21 @@ pub enum Color {
     Black,
 }
 
+#[derive(Debug,Default,Hash,Eq,PartialEq,PartialOrd,ShallowCopy,Clone,Copy,Serialize,Deserialize)]
+pub struct ByColor<T> {
+    pub white:  T,
+    pub black:  T,
+}
+
+impl<T> ByColor<T> {
+    pub fn get(&self, side: Color) -> &T {
+        match side {
+            White => &self.white,
+            Black => &self.black,
+        }
+    }
+}
+
 #[derive(Serialize,Deserialize,Debug,Hash,Eq,PartialEq,Ord,PartialOrd,ShallowCopy,Clone,Copy)]
 // #[derive(Debug,Hash,Eq,PartialEq,Ord,PartialOrd,ShallowCopy,Clone,Copy)]
 // #[derive(Debug,Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]

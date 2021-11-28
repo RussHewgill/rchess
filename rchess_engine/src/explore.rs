@@ -218,11 +218,7 @@ impl Explorer {
         let tt_rf = tt_w.factory();
         let tt_w = Arc::new(Mutex::new(tt_w));
 
-        let (ph_r, ph_w) = evmap::Options::default()
-            .with_hasher(FxBuildHasher::default())
-            .construct();
-        let ph_rf: PHReadFactory = ph_w.factory();
-        let ph_w: PHWrite = Arc::new(Mutex::new(ph_w));
+        let ph_rw = PHTable::new();
 
         let mut cfg = ExConfig::default();
         cfg.max_depth = max_depth;
@@ -245,7 +241,8 @@ impl Explorer {
             tt_rf,
             tt_w,
 
-            ph_rw:          (ph_rf,ph_w),
+            // ph_rw:          (ph_rf,ph_w),
+            ph_rw,
 
             // move_history:   vec![],
             // pos_history:    HashMap::default(),

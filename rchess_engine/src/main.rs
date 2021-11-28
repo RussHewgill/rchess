@@ -1279,6 +1279,7 @@ fn main_nn() {
 
 }
 
+#[allow(unreachable_code)]
 fn main_eval() {
     let ts = Tables::read_from_file_def().unwrap();
     let fen = STARTPOS;
@@ -1318,6 +1319,8 @@ fn main_eval() {
     // backward:    a4
     let fen = "4k3/2p1ppp1/1pP5/pP6/P2PP2P/4P3/8/4K3 w - - 0 3"; // catch all pawns
 
+    let fen = "4k3/8/8/2PP4/8/8/8/4K3 w - - 0 3";
+
     eprintln!("fen = {:?}", fen);
     let g1 = Game::from_fen(&ts, fen).unwrap();
     let g2 = g1.clone().flip_sides(&ts);
@@ -1335,34 +1338,49 @@ fn main_eval() {
     // let score = g.sum_evaluate(&ts, &ev_mid, &ev_end, None);
     // eprintln!("score = {:?}", score);
 
-    let k0 = g1.score_pawns(&ts, &ev_mid, None, g1.state.side_to_move)
-        - g1.score_pawns(&ts, &ev_mid, None, !g1.state.side_to_move);
-    let k1 = g2.score_pawns(&ts, &ev_mid, None, g2.state.side_to_move)
-        - g2.score_pawns(&ts, &ev_mid, None, !g2.state.side_to_move);
+    // let k0 = g1.score_pawns(&ts, &ev_mid, None, g1.state.side_to_move)
+    //     - g1.score_pawns(&ts, &ev_mid, None, !g1.state.side_to_move);
+    // let k1 = g2.score_pawns(&ts, &ev_mid, None, g2.state.side_to_move)
+    //     - g2.score_pawns(&ts, &ev_mid, None, !g2.state.side_to_move);
 
-    eprintln!("k0 = {:?}", k0);
-    eprintln!("k1 = {:?}", k1);
+    // let k0 = g1.score_pawns(&ts, &ev_mid, None, g1.state.side_to_move);
+
+    // eprintln!("k0 = {:?}", k0);
+
 
     // let k = g.pawns_supported(side);
     // let k = g.pawns_phalanx(side);
 
     let g = g1;
 
+    let ph = g.gen_ph_entry(&ts);
+
+
     // g.get(Pawn, White).into_iter().for_each(|sq| {
     //     let c0 = Coord::from(sq);
-    //     let k = g._pawns_backward(&ts, c0, White);
-    //     // if let Some(k) = k {
-    //     if k {
-    //         eprintln!("backward {:?} = {:?}", k, c0);
-    //     }
+    //     // if g._pawn_backward(&ts, c0, g.state.side_to_move) {
+    //     //     eprintln!("backward = {:?}", c0);
+    //     // }
+    //     // if g._pawn_isolated(&ts, c0, g.state.side_to_move) {
+    //     //     eprintln!("isolated = {:?}", c0);
+    //     // }
+    //     // if g._pawn_doubled(&ts, c0, g.state.side_to_move) {
+    //     //     eprintln!("doubled = {:?}", c0);
+    //     // }
+    //     // if g._pawn_opposed(c0, g.state.side_to_move) {
+    //     //     eprintln!("opposed = {:?}", c0);
+    //     // }
+    //     let c0 = Coord::from(sq);
+    //     let score = g.connected_bonus(&ev_mid, &ph, c0, g.state.side_to_move);
+    //     eprintln!("score {:?} = {:?}", c0, score);
     //     // eprintln!("k = {:?}", k);
     // });
 
-    // let c0 = Coord::from("A5");
-    // // let c0 = Coord::from("C2");
-    // let k = g._pawns_backward(&ts, c0, g.state.side_to_move);
+    let c0 = Coord::from("D5");
+    // let c0 = Coord::from("C2");
+    let k = g._pawn_connected_bonus(&ev_mid, &ph, c0, g.state.side_to_move);
 
-    // eprintln!("k = {:?}", k);
+    eprintln!("k = {:?}", k);
 
     return;
 

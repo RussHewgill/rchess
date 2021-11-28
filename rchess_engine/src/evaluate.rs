@@ -185,7 +185,7 @@ impl Game {
 }
 
 impl ExConfig {
-    pub fn evaluate(&self, ts: &Tables, g: &Game, tt_rw: &(PHRead,PHWrite)) -> Score {
+    pub fn evaluate(&self, ts: &Tables, g: &Game, tt_rw: &PHTable) -> Score {
         g.sum_evaluate(ts, &self.eval_params_mid, &self.eval_params_mid, Some(tt_rw))
         // g.sum_evaluate2(ts)
     }
@@ -199,7 +199,7 @@ impl Game {
         ts:         &Tables,
         ev_mid:     &EvalParams,
         ev_end:     &EvalParams,
-        ph_rw:      Option<&(PHRead,PHWrite)>,
+        ph_rw:      Option<&PHTable>,
     ) -> Score {
         // const SIDES: [Color; 2] = [White,Black];
         // let side = self.state.side_to_move;
@@ -215,7 +215,7 @@ impl Game {
         ((mid * p + ((end * (128 - p)) << 0)) / 128) << 0
     }
 
-    fn sum_evaluate_mg(&self, ts: &Tables, ev: &EvalParams, ph_rw: Option<&(PHRead,PHWrite)>) -> Score {
+    fn sum_evaluate_mg(&self, ts: &Tables, ev: &EvalParams, ph_rw: Option<&PHTable>) -> Score {
         let mut score = 0;
 
         score += self.score_material2(White) - self.score_material2(Black);
@@ -227,7 +227,7 @@ impl Game {
         score
     }
 
-    fn sum_evaluate_eg(&self, ts: &Tables, ev: &EvalParams, ph_rw: Option<&(PHRead,PHWrite)>) -> Score {
+    fn sum_evaluate_eg(&self, ts: &Tables, ev: &EvalParams, ph_rw: Option<&PHTable>) -> Score {
         let mut score = 0;
 
         score += self.score_material2(White) - self.score_material2(Black);
@@ -648,23 +648,38 @@ impl Game {
         &self,
         ts:           &Tables,
         ev:           &EvalParams,
-        ph_rw:        Option<&(PHRead,PHWrite)>,
+        ph_rw:        Option<&PHTable>,
         side:         Color,
     ) -> Score {
         let ph    = PHEntry::get_or_insert_pawns(ts, &self, ph_rw);
         let pawns = self.get(Pawn, side);
 
-        let mut score = 0;
+        // if let Some(score) = ph.get_score(ev.mid, side) {
+        //     unimplemented!()
+        // } else {
 
-        // score += ev.pawns.blocked_r5 * (ph.blocked & BitBoard::mask_rank(r)).popcount() as Score;
-        // score += ev.pawns.blocked_r6 * ph.blocked_r6.popcount() as Score;
+        //     let mut score = 0;
 
-        // score += ev.pawns.doubled_isolated * (ph.doubled_isolated & pawns).popcount() as Score;
-        // score += ev.pawns.doubled * (ph.doubled & pawns).popcount() as Score;
-        // score += ev.pawns.isolated * (ph.isolated & pawns).popcount() as Score;
-        score += ev.pawns.backward * (ph.backward & pawns).popcount() as Score;
+        //     // score += ev.pawns.blocked_r5 * (ph.blocked & BitBoard::mask_rank(r)).popcount() as Score;
+        //     // score += ev.pawns.blocked_r6 * ph.blocked_r6.popcount() as Score;
 
-        score
+        //     // score += ev.pawns.doubled_isolated * (ph.doubled_isolated & pawns).popcount() as Score;
+        //     score += ev.pawns.doubled * (ph.doubled & pawns).popcount() as Score;
+        //     score += ev.pawns.isolated * (ph.isolated & pawns).popcount() as Score;
+        //     score += ev.pawns.backward * (ph.backward & pawns).popcount() as Score;
+
+        //     pawns.into_iter().for_each(|sq| {
+        //         score += self._pawn_connected_bonus(ev, &ph, sq.into(), side);
+        //     });
+
+        //     // if let Some(ph_rw) = ph_rw {
+        //     //     PHEntry::update_score(ph_rw, self.pawn_zb, ev.mid, score, side);
+        //     // }
+
+        //     score
+        // }
+
+        unimplemented!()
     }
 
     pub fn gen_ph_entry(&self, ts: &Tables) -> PHEntry {
@@ -677,19 +692,20 @@ impl Game {
         pawns_white.into_iter().for_each(|sq| {
             let c0 = Coord::from(sq);
 
-            match self._pawns_supported(c0, side) {
+            match self._pawn_supported(c0, side) {
                 1 => out.supported_1.set_one_mut(c0),
                 2 => out.supported_2.set_one_mut(c0),
                 _ => {},
             }
-            if self._pawns_phalanx(c0, side) { out.phalanx.set_one_mut(c0); }
+            if self._pawn_phalanx(c0, side) { out.phalanx.set_one_mut(c0); }
             // TODO: passed
             // TODO: candidate
-            if self._pawns_blocked(ts, c0, side).is_some() { out.blocked.set_one_mut(c0); }
+            if self._pawn_blocked(ts, c0, side).is_some() { out.blocked.set_one_mut(c0); }
+            if self._pawn_opposed(c0, side) { out.opposed.set_one_mut(c0); }
 
-            if self._pawns_doubled(ts, c0, side) { out.doubled.set_one_mut(c0); }
-            if self._pawns_isolated(ts, c0, side) { out.isolated.set_one_mut(c0); }
-            if self._pawns_backward(ts, c0, side) { out.backward.set_one_mut(c0); }
+            if self._pawn_doubled(ts, c0, side) { out.doubled.set_one_mut(c0); }
+            if self._pawn_isolated(ts, c0, side) { out.isolated.set_one_mut(c0); }
+            if self._pawn_backward(ts, c0, side) { out.backward.set_one_mut(c0); }
 
         });
 
@@ -698,23 +714,44 @@ impl Game {
         out
     }
 
-    pub fn _pawns_supported(&self, c0: Coord, side: Color) -> Score {
+    pub fn _pawn_connected_bonus(&self, ev: &EvalParams, ph: &PHEntry, c0: Coord, side: Color) -> Score {
+
+        let rank = BitBoard::relative_rank(side, c0);
+        if rank == 0 || rank == 7 { return 0; }
+
+        let op  = if ph.opposed.is_one_at(c0) { 1 } else { 0 };
+        let px  = if ph.phalanx.is_one_at(c0) { 1 } else { 0 };
+
+        let su1 = ph.supported_1.is_one_at(c0);
+        let su2 = ph.supported_2.is_one_at(c0);
+        let su = if su2 { 2 } else if su1 { 1 } else { 0 };
+
+        ev.pawns.connected_ranks[rank as usize] * (2 + px - op) + ev.pawns.supported * su
+    }
+
+    pub fn _pawn_opposed(&self, c0: Coord, side: Color) -> bool {
+        let b = BitBoard::single(c0);
+        let m = if side == White { b.fill_north() } else { b.fill_south() };
+        (self.get(Pawn, !side) & (m & !b)).is_not_empty()
+    }
+
+    pub fn _pawn_supported(&self, c0: Coord, side: Color) -> Score {
         let b = Self::_pawn_attacks_span(BitBoard::single(c0), !side);
         (self.get(Pawn,side) & b).popcount() as Score
     }
 
-    pub fn _pawns_phalanx(&self, c0: Coord, side: Color) -> bool {
+    pub fn _pawn_phalanx(&self, c0: Coord, side: Color) -> bool {
         let pawns = self.get(Pawn, side);
         let b = BitBoard::single(c0);
         let b0 = b.shift_dir(W) | b.shift_dir(E);
         (pawns & b0).is_not_empty()
     }
 
-    pub fn _pawns_connected(&self, c0: Coord, side: Color) -> bool {
-        self._pawns_supported(c0, side) > 0 || self._pawns_phalanx(c0, side)
+    pub fn _pawn_connected(&self, c0: Coord, side: Color) -> bool {
+        self._pawn_supported(c0, side) > 0 || self._pawn_phalanx(c0, side)
     }
 
-    pub fn _pawns_doubled(&self, ts: &Tables, c0: Coord, side: Color) -> bool {
+    pub fn _pawn_doubled(&self, ts: &Tables, c0: Coord, side: Color) -> bool {
         let b = BitBoard::single(c0);
         let ps = self.get(Pawn, side) & !b;
         let m = c0.mask_file() & !b;
@@ -724,7 +761,7 @@ impl Game {
     }
 
     // TODO: bench not finding rank
-    pub fn _pawns_blocked(&self, ts: &Tables, c0: Coord, side: Color) -> Option<u8> {
+    pub fn _pawn_blocked(&self, ts: &Tables, c0: Coord, side: Color) -> Option<u8> {
 
         let b = BitBoard::single(c0);
         let b0 = b.shift_dir(side.fold(N, S));
@@ -734,7 +771,7 @@ impl Game {
         Some(BitBoard::relative_rank(side, c0))
     }
 
-    pub fn _pawns_isolated(&self, ts: &Tables, c0: Coord, side: Color) -> bool {
+    pub fn _pawn_isolated(&self, ts: &Tables, c0: Coord, side: Color) -> bool {
         let ps = self.get(Pawn, side);
         let file = c0.file();
 
@@ -751,7 +788,7 @@ impl Game {
         }
     }
 
-    pub fn _pawns_backward(&self, ts: &Tables, c0: Coord, side: Color) -> bool {
+    pub fn _pawn_backward(&self, ts: &Tables, c0: Coord, side: Color) -> bool {
 
         let b = BitBoard::single(c0);
 

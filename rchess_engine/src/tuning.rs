@@ -26,6 +26,7 @@ mod piece_square_tables {
 
 #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize)]
 pub struct EvalParams {
+    pub mid:       bool,
     pub pawns:     EPPawns,
     pub pieces:    EPPieces,
     #[serde(skip)]
@@ -69,39 +70,51 @@ impl Default for EvOutpost {
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new)]
 pub struct EPPawns {
-    pub doubled_isolated:     Score,
-    pub isolated:             Score,
-    pub backward:             Score,
-    pub doubled:              Score,
-    // pub connected:            Score,
-    // pub passed:               Score,
+    pub supported:            Score,
+    pub connected_ranks:      [Score; 7],
+
     pub blocked_r5:           Score,
     pub blocked_r6:           Score,
+
+    // pub candidate:            Score,
+    // pub passed:               Score,
+
+    // pub doubled_isolated:     Score,
+    pub doubled:              Score,
+    pub isolated:             Score,
+    pub backward:             Score,
+
 }
 
 impl Default for EPPawns {
     fn default() -> Self {
         Self {
-            doubled_isolated:     10,
+            supported:            20,
+            connected_ranks:      [0, 5, 10, 15, 30, 50, 80],
+
+            blocked_r5:           -10,
+            blocked_r6:           -5,
+
+            // candidate:            Score,
+            // passed:               Score,
+
+            // doubled_isolated:     10,
             isolated:             5,
             backward:             10,
             doubled:              10,
-            // connected:            Score,
-            blocked_r5:           -10,
-            blocked_r6:           -5,
         }
     }
 }
 
-/// Passed bonus = passed * ranks past 2nd
-// #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
-#[derive(Serialize,Deserialize,Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
-pub struct EvPawn {
-    pub backward: TaperedScore,
-    pub doubled:  TaperedScore,
-    pub isolated: TaperedScore,
-    pub passed:   TaperedScore,
-}
+// /// Passed bonus = passed * ranks past 2nd
+// // #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+// #[derive(Serialize,Deserialize,Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+// pub struct EvPawn {
+//     pub backward: TaperedScore,
+//     pub doubled:  TaperedScore,
+//     pub isolated: TaperedScore,
+//     pub passed:   TaperedScore,
+// }
 
 // // #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
 // #[derive(Serialize,Deserialize,Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
