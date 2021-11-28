@@ -643,6 +643,7 @@ impl Game {
 /// Pawn Structure
 impl Game {
 
+    /// All values are added, penalties are negative
     pub fn score_pawns(
         &self,
         ts:           &Tables,
@@ -650,19 +651,18 @@ impl Game {
         ph_rw:        Option<&(PHRead,PHWrite)>,
         side:         Color,
     ) -> Score {
+        let ph    = PHEntry::get_or_insert_pawns(ts, &self, ph_rw);
+        let pawns = self.get(Pawn, side);
 
         let mut score = 0;
 
-        let pawns = self.get(Pawn, side);
-
-        let ph = PHEntry::get_or_insert_pawns(ts, &self, ph_rw);
+        // score += ev.pawns.blocked_r5 * (ph.blocked & BitBoard::mask_rank(r)).popcount() as Score;
+        // score += ev.pawns.blocked_r6 * ph.blocked_r6.popcount() as Score;
 
         // score += ev.pawns.doubled_isolated * (ph.doubled_isolated & pawns).popcount() as Score;
-        score += ev.pawns.isolated * (ph.isolated & pawns).popcount() as Score;
+        // score += ev.pawns.doubled * (ph.doubled & pawns).popcount() as Score;
+        // score += ev.pawns.isolated * (ph.isolated & pawns).popcount() as Score;
         score += ev.pawns.backward * (ph.backward & pawns).popcount() as Score;
-        // score += ev.pawns.doubled * ph.doubled.popcount() as Score;
-        // score += ev.pawns.blocked_r5 * ph.blocked_r5.popcount() as Score;
-        // score += ev.pawns.blocked_r6 * ph.blocked_r6.popcount() as Score;
 
         score
     }
@@ -756,7 +756,11 @@ impl Game {
         let b = BitBoard::single(c0);
 
         let b0 = b.shift_dir(E) | b.shift_dir(W);
+
         let b0 = if side == White { b0.fill_south() } else { b0.fill_north() };
+
+        // eprintln!("b0 = {:?}", b0);
+
         if (b0 & self.get(Pawn, side)).is_not_empty() { return false; }
 
         let b1 = b | Self::_pawn_attacks_span(b, side);

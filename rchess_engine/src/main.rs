@@ -1303,36 +1303,65 @@ fn main_eval() {
     // let fen = "4k3/pppppp2/8/1P1P4/P2P3P/2P2P2/8/4K3 b - - 0 2"; // doubled
     // let fen = "4k3/pppppp2/8/1P1P4/P1PP3P/5P2/8/4K3 b - - 0 2"; // doubled but supported
 
-    let fen = "4k3/2p1ppp1/1pP5/pP6/P6P/4PPP1/8/4K3 w - - 0 3"; // blocked 1x 5 + 1x 6
+    // let fen = "4k3/2p1ppp1/1pP5/pP6/P6P/4PPP1/8/4K3 w - - 0 3"; // blocked 1x 5 + 1x 6
+
+
+    // connected:   b5, c6, d4, e4
+    // supported:   b5, c6, d4
+    // phalanx:     d4, e4
+    // passed:      
+    // candidate:   
+    // blocked 5:   b5
+    // blocked 6:   c6
+    // doubled:     e4
+    // isolated:    h4
+    // backward:    a4
+    let fen = "4k3/2p1ppp1/1pP5/pP6/P2PP2P/4P3/8/4K3 w - - 0 3"; // catch all pawns
 
     eprintln!("fen = {:?}", fen);
-    let g = Game::from_fen(&ts, fen).unwrap();
-    // let g = g.flip_sides(&ts);
+    let g1 = Game::from_fen(&ts, fen).unwrap();
+    let g2 = g1.clone().flip_sides(&ts);
 
     let ev_mid = EvalParams::default();
     let ev_end = EvalParams::default();
     let side = White;
 
-    eprintln!("g = {:?}", g);
-    eprintln!("g.to_fen() = {:?}", g.to_fen());
+    // eprintln!("g = {:?}", g);
+    // eprintln!("g2 = {:?}", g2);
+
+    // eprintln!("g1.to_fen() = {:?}", g1.to_fen());
+    // eprintln!("g2.to_fen() = {:?}", g2.to_fen());
 
     // let score = g.sum_evaluate(&ts, &ev_mid, &ev_end, None);
     // eprintln!("score = {:?}", score);
 
-    // let k = g.score_pawns(&ts, side);
+    let k0 = g1.score_pawns(&ts, &ev_mid, None, g1.state.side_to_move)
+        - g1.score_pawns(&ts, &ev_mid, None, !g1.state.side_to_move);
+    let k1 = g2.score_pawns(&ts, &ev_mid, None, g2.state.side_to_move)
+        - g2.score_pawns(&ts, &ev_mid, None, !g2.state.side_to_move);
+
+    eprintln!("k0 = {:?}", k0);
+    eprintln!("k1 = {:?}", k1);
+
     // let k = g.pawns_supported(side);
     // let k = g.pawns_phalanx(side);
 
-    g.get(Pawn, White).into_iter().for_each(|sq| {
-        let c0 = Coord::from(sq);
-        let k = g._pawns_blocked(&ts, c0, White);
-        if let Some(k) = k {
-            eprintln!("blocked {:?} = {:?}", k, c0);
-        }
-        // eprintln!("k = {:?}", k);
-    });
+    let g = g1;
 
-    // let k = g._pawns_doubled(&ts, Coord::from("D5"), White);
+    // g.get(Pawn, White).into_iter().for_each(|sq| {
+    //     let c0 = Coord::from(sq);
+    //     let k = g._pawns_backward(&ts, c0, White);
+    //     // if let Some(k) = k {
+    //     if k {
+    //         eprintln!("backward {:?} = {:?}", k, c0);
+    //     }
+    //     // eprintln!("k = {:?}", k);
+    // });
+
+    // let c0 = Coord::from("A5");
+    // // let c0 = Coord::from("C2");
+    // let k = g._pawns_backward(&ts, c0, g.state.side_to_move);
+
     // eprintln!("k = {:?}", k);
 
     return;
