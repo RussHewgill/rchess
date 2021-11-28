@@ -204,8 +204,8 @@ impl Game {
         // const SIDES: [Color; 2] = [White,Black];
         // let side = self.state.side_to_move;
 
-        let mg = self.sum_evaluate_mg(ts, ev_mid, ph_rw);
-        let eg = self.sum_evaluate_eg(ts, ev_end, ph_rw);
+        let mg = self.sum_evaluate_mg(ts, ev_mid, ev_end, ph_rw);
+        let eg = self.sum_evaluate_eg(ts, ev_mid, ev_end, ph_rw);
 
         self.taper_score2(mg, eg)
     }
@@ -215,26 +215,42 @@ impl Game {
         ((mid * p + ((end * (128 - p)) << 0)) / 128) << 0
     }
 
-    fn sum_evaluate_mg(&self, ts: &Tables, ev: &EvalParams, ph_rw: Option<&PHTable>) -> Score {
+    fn sum_evaluate_mg(
+        &self,
+        ts:          &Tables,
+        ev_mid:      &EvalParams,
+        ev_end:      &EvalParams,
+        ph_rw:       Option<&PHTable>,
+    ) -> Score {
         let mut score = 0;
+        let ev = ev_mid;
 
         score += self.score_material2(White) - self.score_material2(Black);
         score += self.score_psqt(ts, ev, White) - self.score_psqt(ts, ev, Black);
         score += self.score_mobility(ts, White) - self.score_mobility(ts, Black);
         score += self.score_pieces_mg(ts, ev, White) - self.score_pieces_mg(ts, ev, Black);
-        score += self.score_pawns(ts, ev, ph_rw, White) - self.score_pawns(ts, ev, ph_rw, Black);
+        // score += self.score_pawns(ts, ev, ph_rw, White) - self.score_pawns(ts, ev, ph_rw, Black);
+
+        let pawns: [Score; 2] = self.score_pawns(ts, ev_mid, ev_end, ph_rw, true);
 
         score
     }
 
-    fn sum_evaluate_eg(&self, ts: &Tables, ev: &EvalParams, ph_rw: Option<&PHTable>) -> Score {
+    fn sum_evaluate_eg(
+        &self,
+        ts:          &Tables,
+        ev_mid:      &EvalParams,
+        ev_end:      &EvalParams,
+        ph_rw:       Option<&PHTable>,
+    ) -> Score {
         let mut score = 0;
+        let ev = ev_end;
 
         score += self.score_material2(White) - self.score_material2(Black);
         score += self.score_psqt(ts, ev, White) - self.score_psqt(ts, ev, Black);
         score += self.score_mobility(ts, White) - self.score_mobility(ts, Black);
         score += self.score_pieces_eg(ts, ev, White) - self.score_pieces_eg(ts, ev, Black);
-        score += self.score_pawns(ts, ev, ph_rw, White) - self.score_pawns(ts, ev, ph_rw, Black);
+        // score += self.score_pawns(ts, ev, ph_rw, White) - self.score_pawns(ts, ev, ph_rw, Black);
 
         score
     }
@@ -647,69 +663,71 @@ impl Game {
     pub fn score_pawns(
         &self,
         ts:           &Tables,
-        ev:           &EvalParams,
+        ev_mid:       &EvalParams,
+        ev_end:       &EvalParams,
         ph_rw:        Option<&PHTable>,
-        side:         Color,
-    ) -> Score {
-        let ph    = PHEntry::get_or_insert_pawns(ts, &self, ph_rw);
-        let pawns = self.get(Pawn, side);
+        mid:          bool,
+    ) -> [Score; 2] {
 
-        // if let Some(score) = ph.get_score(ev.mid, side) {
-        //     unimplemented!()
-        // } else {
+        let mut ph = PHEntry::get_or_insert_pawns(ts, &self, ev_mid, ev_end, ph_rw);
 
-        //     let mut score = 0;
-
-        //     // score += ev.pawns.blocked_r5 * (ph.blocked & BitBoard::mask_rank(r)).popcount() as Score;
-        //     // score += ev.pawns.blocked_r6 * ph.blocked_r6.popcount() as Score;
-
-        //     // score += ev.pawns.doubled_isolated * (ph.doubled_isolated & pawns).popcount() as Score;
-        //     score += ev.pawns.doubled * (ph.doubled & pawns).popcount() as Score;
-        //     score += ev.pawns.isolated * (ph.isolated & pawns).popcount() as Score;
-        //     score += ev.pawns.backward * (ph.backward & pawns).popcount() as Score;
-
-        //     pawns.into_iter().for_each(|sq| {
-        //         score += self._pawn_connected_bonus(ev, &ph, sq.into(), side);
-        //     });
-
-        //     // if let Some(ph_rw) = ph_rw {
-        //     //     PHEntry::update_score(ph_rw, self.pawn_zb, ev.mid, score, side);
-        //     // }
-
-        //     score
-        // }
-
-        unimplemented!()
+        ph.get_scores(mid)
     }
 
-    pub fn gen_ph_entry(&self, ts: &Tables) -> PHEntry {
-        let mut out = PHEntry::default();
+    /// Take PHEntry without scores and update score for side, phase
+    pub fn _score_pawns_mut(
+        &self,
+        // ts:           &Tables,
+        mut ph:       &mut PHEntry,
+        ev:           &EvalParams,
+        side:         Color,
+    ) {
+        let mut score = 0;
+        let pawns = self.get(Pawn, side);
 
-        let pawns_white = self.get(Pawn, White);
-        let pawns_black = self.get(Pawn, Black);
+        // score += ev.pawns.blocked_r5 * (ph.blocked & BitBoard::mask_rank(r)).popcount() as Score;
+        // score += ev.pawns.blocked_r6 * ph.blocked_r6.popcount() as Score;
 
-        let side = White;
-        pawns_white.into_iter().for_each(|sq| {
-            let c0 = Coord::from(sq);
+        // score += ev.pawns.doubled_isolated * (ph.doubled_isolated & pawns).popcount() as Score;
+        score += ev.pawns.doubled * (ph.doubled & pawns).popcount() as Score;
+        score += ev.pawns.isolated * (ph.isolated & pawns).popcount() as Score;
+        score += ev.pawns.backward * (ph.backward & pawns).popcount() as Score;
 
-            match self._pawn_supported(c0, side) {
-                1 => out.supported_1.set_one_mut(c0),
-                2 => out.supported_2.set_one_mut(c0),
-                _ => {},
-            }
-            if self._pawn_phalanx(c0, side) { out.phalanx.set_one_mut(c0); }
-            // TODO: passed
-            // TODO: candidate
-            if self._pawn_blocked(ts, c0, side).is_some() { out.blocked.set_one_mut(c0); }
-            if self._pawn_opposed(c0, side) { out.opposed.set_one_mut(c0); }
-
-            if self._pawn_doubled(ts, c0, side) { out.doubled.set_one_mut(c0); }
-            if self._pawn_isolated(ts, c0, side) { out.isolated.set_one_mut(c0); }
-            if self._pawn_backward(ts, c0, side) { out.backward.set_one_mut(c0); }
-
+        pawns.into_iter().for_each(|sq| {
+            score += self._pawn_connected_bonus(ev, &ph, sq.into(), side);
         });
 
-        out.connected = out.phalanx | out.supported_1 | out.supported_2;
+        ph.update_score_mut(score, ev.mid, side);
+    }
+
+    pub fn gen_ph_entry(&self, ts: &Tables, ev_mid: &EvalParams, ev_end: &EvalParams) -> PHEntry {
+        let mut out = PHEntry::default();
+
+        for side in [White,Black] {
+            let pawns = self.get(Pawn, side);
+
+            pawns.into_iter().for_each(|sq| {
+                let c0 = Coord::from(sq);
+
+                match self._pawn_supported(c0, side) {
+                    1 => out.supported_1.set_one_mut(c0),
+                    2 => out.supported_2.set_one_mut(c0),
+                    _ => {},
+                }
+                if self._pawn_phalanx(c0, side) { out.phalanx.set_one_mut(c0); }
+                // TODO: passed
+                // TODO: candidate
+                if self._pawn_blocked(ts, c0, side).is_some() { out.blocked.set_one_mut(c0); }
+                if self._pawn_opposed(c0, side) { out.opposed.set_one_mut(c0); }
+
+                if self._pawn_doubled(ts, c0, side) { out.doubled.set_one_mut(c0); }
+                if self._pawn_isolated(ts, c0, side) { out.isolated.set_one_mut(c0); }
+                if self._pawn_backward(ts, c0, side) { out.backward.set_one_mut(c0); }
+
+            });
+
+            out.connected = out.phalanx | out.supported_1 | out.supported_2;
+        }
 
         out
     }

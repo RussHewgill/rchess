@@ -37,6 +37,14 @@ impl<T> ByColor<T> {
             Black => &self.black,
         }
     }
+
+    pub fn insert_mut(&mut self, side: Color, t: T) {
+        match side {
+            White => self.white = t,
+            Black => self.black = t,
+        }
+    }
+
 }
 
 #[derive(Serialize,Deserialize,Debug,Hash,Eq,PartialEq,Ord,PartialOrd,ShallowCopy,Clone,Copy)]

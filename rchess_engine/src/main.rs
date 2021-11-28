@@ -1353,7 +1353,7 @@ fn main_eval() {
 
     let g = g1;
 
-    let ph = g.gen_ph_entry(&ts);
+    // let ph = g.gen_ph_entry(&ts);
 
     // g.get(Pawn, White).into_iter().for_each(|sq| {
     //     let c0 = Coord::from(sq);
@@ -1375,11 +1375,11 @@ fn main_eval() {
     //     // eprintln!("k = {:?}", k);
     // });
 
-    let c0 = Coord::from("D5");
-    // let c0 = Coord::from("C2");
-    let k = g._pawn_connected_bonus(&ev_mid, &ph, c0, g.state.side_to_move);
+    // let c0 = Coord::from("D5");
+    // // let c0 = Coord::from("C2");
+    // let k = g._pawn_connected_bonus(&ev_mid, &ph, c0, g.state.side_to_move);
 
-    eprintln!("k = {:?}", k);
+    // eprintln!("k = {:?}", k);
 
     return;
 
@@ -1526,10 +1526,9 @@ fn main9() {
     // ex.cfg.num_threads = Some(6);
     ex.cfg.num_threads = Some(1);
 
-    let k = g.pawn_zb;
-    eprintln!("k = {:?}", k);
-
-    return;
+    // let k = g.pawn_zb;
+    // eprintln!("k = {:?}", k);
+    // return;
 
     // let fen1 = "rnbqkb1r/p4p2/2p1pn1p/1p2P1N1/2pP3B/2N5/PP3PPP/R2QKB1R b KQkq - 0 1"; // rand opening
     // let fen2 = "rnbqkb1r/p4p2/2p1pn2/1p2P1p1/2pP3B/2N5/PP3PPP/R2QKB1R w KQkq - 0 2";

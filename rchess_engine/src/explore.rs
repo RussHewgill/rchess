@@ -685,6 +685,9 @@ impl Explorer {
         };
         stats.max_depth = d;
 
+        stats.ph_hits   = self.ph_rw.hits.load(Ordering::Relaxed);
+        stats.ph_misses = self.ph_rw.misses.load(Ordering::Relaxed);
+
         (out,moves,stats)
 
     }
