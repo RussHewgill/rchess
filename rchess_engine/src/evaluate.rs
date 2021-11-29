@@ -185,8 +185,8 @@ impl Game {
 }
 
 impl ExConfig {
-    pub fn evaluate(&self, ts: &Tables, g: &Game, tt_rw: &PHTable) -> Score {
-        g.sum_evaluate(ts, &self.eval_params_mid, &self.eval_params_mid, Some(tt_rw))
+    pub fn evaluate(&self, ts: &Tables, g: &Game, ph_rw: &PHTable) -> Score {
+        g.sum_evaluate(ts, &self.eval_params_mid, &self.eval_params_mid, Some(ph_rw))
         // g.sum_evaluate2(ts)
     }
 }
@@ -215,7 +215,7 @@ impl Game {
         ((mid * p + ((end * (128 - p)) << 0)) / 128) << 0
     }
 
-    fn sum_evaluate_mg(
+    pub fn sum_evaluate_mg(
         &self,
         ts:          &Tables,
         ev_mid:      &EvalParams,
@@ -231,7 +231,7 @@ impl Game {
             score += self.score_psqt(ts, ev, White) - self.score_psqt(ts, ev, Black);
         }
 
-        score += self.score_mobility(ts, White) - self.score_mobility(ts, Black);
+        // score += self.score_mobility(ts, White) - self.score_mobility(ts, Black);
         score += self.score_pieces_mg(ts, ev, White) - self.score_pieces_mg(ts, ev, Black);
         // score += self.score_pawns(ts, ev, ph_rw, White) - self.score_pawns(ts, ev, ph_rw, Black);
 
@@ -257,7 +257,7 @@ impl Game {
             score += self.score_psqt(ts, ev, White) - self.score_psqt(ts, ev, Black);
         }
 
-        score += self.score_mobility(ts, White) - self.score_mobility(ts, Black);
+        // score += self.score_mobility(ts, White) - self.score_mobility(ts, Black);
         score += self.score_pieces_eg(ts, ev, White) - self.score_pieces_eg(ts, ev, Black);
         // score += self.score_pawns(ts, ev, ph_rw, White) - self.score_pawns(ts, ev, ph_rw, Black);
 

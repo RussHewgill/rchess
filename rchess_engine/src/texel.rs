@@ -20,47 +20,76 @@ pub struct TxPosition {
 
 pub fn texel_optimize(
     ts:                          &Tables,
-    (mut ev_mid,mut ev_end):     (EvalParams,EvalParams),
-    inputs:                      Vec<TxPosition>,
-    exhelper:                    &ExHelper,
+    inputs:                      &[TxPosition],
+    mut exhelper:                &mut ExHelper,
     ignore_weights:              Vec<bool>,
-) {
-    let mut best_error = average_eval_error(ts, &ev_mid, &ev_end, inputs, exhelper, None);
+    count:                       Option<usize>
+) -> (EvalParams,EvalParams) {
+    let mut best_error = average_eval_error(ts, &inputs, &exhelper, None);
 
+    let (mut arr_mid, mut arr_end) =
+        (exhelper.cfg.eval_params_mid.to_arr(),exhelper.cfg.eval_params_end.to_arr());
+
+    // eprintln!("arr_mid.len() = {:?}", arr_mid.len());
+    let t0 = std::time::Instant::now();
+    let mut loops = 0;
     loop {
 
-        let (arr_mid, arr_end) = (ev_mid.to_arr(), ev_end.to_arr());
-        let mut weights = vec![];
-        weights.extend_from_slice(&arr_mid);
-        weights.extend_from_slice(&arr_end);
+        for n in 0..arr_mid.len() {
+            if let Some(true) = ignore_weights.get(n) {
+                continue;
+            }
 
-        // for (n,w) in weights.iter().enumerate() {
-        //     if ignore_weights[n] {
-        //         continue;
-        //     }
-        // }
+            arr_mid[n] = arr_mid[n].checked_add(1).unwrap();
+            exhelper.cfg.eval_params_mid = EvalParams::from_arr(&arr_mid);
+            exhelper.ph_rw.purge();
 
-        break;
+            let new_error = average_eval_error(ts, &inputs, &exhelper, None);
+
+            if new_error < best_error {
+                best_error = new_error;
+            } else {
+                arr_mid[n] = arr_mid[n].checked_sub(2).unwrap();
+                exhelper.cfg.eval_params_mid = EvalParams::from_arr(&arr_mid);
+                exhelper.ph_rw.purge();
+                let new_error = average_eval_error(ts, &inputs, &exhelper, None);
+
+                if new_error < best_error {
+                    best_error = new_error;
+                } else {
+                    arr_mid[n] = arr_mid[n].checked_add(1).unwrap();
+                    exhelper.cfg.eval_params_mid = EvalParams::from_arr(&arr_mid);
+                    exhelper.ph_rw.purge();
+                }
+            }
+
+            // let t1 = t0.elapsed().as_secs_f64();
+            // println!("n {} in {:.3} seconds, {:.1}", n, t1, n as f64 / t1);
+        }
+
+        loops += 1;
+        eprintln!("loops = {:>3}, best_error = {:.3}, time: {:.1}",
+                  loops, best_error, t0.elapsed().as_secs_f64());
+        if let Some(c) = count { if loops >= c { break; } }
     }
 
+    // (ev_mid,ev_end)
+    (exhelper.cfg.eval_params_mid,exhelper.cfg.eval_params_end)
 }
 
-pub fn texel_optimize_once(
-    ts:                          &Tables,
-    (mut ev_mid,mut ev_end):     (EvalParams,EvalParams),
-    inputs:                      Vec<TxPosition>,
-    exhelper:                    &ExHelper,
-) -> (EvalParams,EvalParams) {
+pub fn find_k(
+    ts:         &Tables,
+    inputs:     &[TxPosition],
+    exhelper:   &ExHelper,
+) -> f64 {
+    // let mut k = 0.0;
+    // let mut best = average_eval_error(&ts, inputs, exhelper, Some(k));
     unimplemented!()
 }
 
-
 pub fn average_eval_error(
     ts:         &Tables,
-    ev_mid:     &EvalParams,
-    ev_end:     &EvalParams,
-    inputs:     Vec<TxPosition>,
-    // ph_rw:      Option<&PHTable>,
+    inputs:     &[TxPosition],
     exhelper:   &ExHelper,
     k:          Option<f64>,
 ) -> f64 {
@@ -85,8 +114,21 @@ pub fn average_eval_error(
             TDOutcome::Stalemate  => 0.5,
         };
         // let q_score = qsearch_once(&ts, &pos.game, pos.game.state.side_to_move, &ev_mid, &ev_end, ph_rw);
-        let q_score = exhelper.qsearch(ts, &pos.game, (0,0), (alpha, beta), &mut stats);
-        (r - sigmoid(q_score as f64, k)).powi(2)
+        // exhelper.game = pos.game.clone();
+        // exhelper.side = pos.game.state.side_to_move;
+
+        // let q_score = exhelper.qsearch(ts, &pos.game, (0,0), (alpha, beta), &mut stats);
+        // let q_score = pos.game.state.side_to_move.fold(q_score, -q_score);
+
+        let score = pos.game.sum_evaluate(
+            ts, &exhelper.cfg.eval_params_mid, &exhelper.cfg.eval_params_end,
+            Some(&exhelper.ph_rw),
+            // None,
+        );
+
+        // assert_eq!(score, q_score);
+
+        (r - sigmoid(score as f64, k)).powi(2)
     }).sum();
     sum / inputs.len() as f64
 

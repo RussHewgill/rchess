@@ -600,7 +600,9 @@ fn main_tuning() {
     let ph_rw = PHTableFactory::new();
     let ph_rw = ph_rw.handle();
     let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
-    let mut helper = exhelper_once(&g, g.state.side_to_move, &ev_mid, &ev_end, Some(&ph_rw));
+    let mut exhelper = exhelper_once(&g, g.state.side_to_move, &ev_mid, &ev_end, Some(&ph_rw));
+
+    let mut non_q = 0;
 
     for td in tds.into_iter() {
         let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
@@ -621,7 +623,7 @@ fn main_tuning() {
                 // helper.side = g.state.side_to_move;
 
                 let score   = g.sum_evaluate(&ts, &ev_mid, &ev_end, None);
-                let q_score = helper.qsearch_once(&ts, &g, &mut stats);
+                let q_score = exhelper.qsearch_once(&ts, &g, &mut stats);
                 let q_score = g.state.side_to_move.fold(q_score, -q_score);
 
                 // eprintln!("g.to_fen() = {:?}", g.to_fen());
@@ -632,38 +634,27 @@ fn main_tuning() {
 
                 if score == q_score {
                     ps.push(TxPosition::new(g.clone(), td.result));
+                } else {
+                    non_q += 1;
                 }
             }
 
         }
     }
 
+    eprintln!("non_q = {:?}", non_q);
     eprintln!("ps.len() = {:?}", ps.len());
 
-    // let error = average_eval_error(&ts, &ev_mid, &ev_end, ps, &helper, None);
-    // eprintln!("error = {:.3}", error);
+    // let k = find_k();
 
+    let error = average_eval_error(&ts, &ps, &exhelper, None);
+    eprintln!("error = {:.3}", error);
 
-    // let arr = ev_mid.to_arr();
-    // eprintln!("arr.len() = {:?}", arr.len());
+    let (ev_mid2,ev_end2) = texel_optimize(
+        &ts, &ps, &mut exhelper, vec![], Some(1));
 
-    // let ev2 = EvalParams::from_arr(&arr);
-    // eprintln!("ev2 == ev_mid.psqt = {:?}", ev2 == ev_mid);
-
-    let ev1 = ev_mid;
-
-    let arr = ev1.to_arr();
-
-    eprintln!("arr.len() = {:?}", arr.len());
-
-    let k0 = EPPawns::from_arr(&arr[1 .. EPPawns::LEN]);
-
-    eprintln!("k0 == ev1 = {:?}", k0 == ev1.pawns);
-
-    let ev2 = EvalParams::from_arr(&arr);
-    // let ev2 = PcTables::from_arr(&arr);
-
-    eprintln!("ev1 == ev2 = {:?}", ev1 == ev2);
+    let error = average_eval_error(&ts, &ps, &exhelper, None);
+    eprintln!("error = {:.3}", error);
 
     // let ks = vec![
     //     -1.0,

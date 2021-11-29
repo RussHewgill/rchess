@@ -74,6 +74,14 @@ mod table {
         pub misses:  Arc<AtomicU32>,
     }
 
+    impl PHTable {
+        pub fn purge(&self) {
+            let mut w = self.ph_w.lock();
+            w.purge();
+            w.refresh();
+        }
+    }
+
     // impl PHTable {
     //     // pub fn get_score(&self, mid: bool, side: Color) -> &Option<Score> {
     //     //     self.get_scores(mid).get(side)

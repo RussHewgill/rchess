@@ -195,31 +195,50 @@ pub fn crit_bench_1(c: &mut Criterion) {
     group.sample_size(20);
     group.measurement_time(Duration::from_secs_f64(5.));
 
-    let fen = "1n4k1/2p2rpp/1n6/1q6/8/4QP2/1P3P1P/1N1R2K1 w - - 0 1"; // #3, Qt R d1d8
-    let (n,t) = (35,1.0);
-    let timesettings = TimeSettings::new_f64(0.0, t);
-    let mut g = Game::from_fen(&ts, fen).unwrap();
-    group.bench_function("explore endgame", |b| b.iter(|| {
-        let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
-        ex.cfg.clear_table = true;
-        let (m,stats) = ex.explore(&ts, None);
-    }));
+    // let fen = "1n4k1/2p2rpp/1n6/1q6/8/4QP2/1P3P1P/1N1R2K1 w - - 0 1"; // #3, Qt R d1d8
+    // let (n,t) = (35,1.0);
+    // let timesettings = TimeSettings::new_f64(0.0, t);
+    // let mut g = Game::from_fen(&ts, fen).unwrap();
+    // group.bench_function("explore endgame", |b| b.iter(|| {
+    //     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
+    //     ex.cfg.clear_table = true;
+    //     let (m,stats) = ex.explore(&ts, None);
+    // }));
 
-    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
-    let (n,t) = (35,1.0);
-    let mut g = Game::from_fen(&ts, fen).unwrap();
-    group.bench_function("explore", |b| b.iter(|| {
-        let ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
-        let (m,stats) = ex.explore(&ts, None);
-    }));
+    // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    // let (n,t) = (35,1.0);
+    // let mut g = Game::from_fen(&ts, fen).unwrap();
+    // group.bench_function("explore", |b| b.iter(|| {
+    //     let ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
+    //     let (m,stats) = ex.explore(&ts, None);
+    // }));
 
     let ev_mid = EvalParams::default();
     let ev_end = EvalParams::default();
 
-    // group.bench_function("eval wacs", |b| b.iter(|| {
+    // group.bench_function("eval arr", |b| b.iter(|| {
+    //     let arr = ev_mid.to_arr();
+    //     let ev2 = EvalParams::from_arr(&arr);
+    // }));
+
+    let ph_rw = rchess_engine_lib::pawn_hash_table::PHTableFactory::new();
+    let ph_rw = ph_rw.handle();
+
+
+    // Baseline = 118 us
+    // material = 1.78 us
+    // psqt     = 9.03 us
+    // mobility = 38.61 us
+    // pieces   = 28.0 us
+    // pawns
+    // nohash   = 120 us
+    // hash     = 24.3 us
+    // purged   = 230 us
+
+    // group.bench_function("eval wacs all", |b| b.iter(|| {
     //     let mut k = 0;
     //     for g in wacs.iter() {
-    //         k += g.sum_evaluate(&ev_mid, &ev_end, &ts);
+    //         k += g.sum_evaluate_mg(&ts, &ev_mid, &ev_end, Some(&ph_rw));
     //     }
     // }));
 
@@ -232,19 +251,34 @@ pub fn crit_bench_1(c: &mut Criterion) {
     // group.bench_function("eval psqt", |b| b.iter(|| {
     //     let mut k = 0;
     //     for g in wacs.iter() {
-    //         k += g.score_psqt(&ts, White) - g.score_psqt(&ts, Black);
+    //         k += g.score_psqt(&ts, &ev_mid, White) - g.score_psqt(&ts, &ev_mid, Black);
     //     }
     // }));
-    // group.bench_function("eval mobility", |b| b.iter(|| {
-    //     let mut k = 0;
-    //     for g in wacs.iter() {
-    //         k += g.score_mobility(&ts, White) - g.score_mobility(&ts, Black);
-    //     }
-    // }));
+    group.bench_function("eval mobility", |b| b.iter(|| {
+        let mut k = 0;
+        for g in wacs.iter() {
+            k += g.score_mobility(&ts, White) - g.score_mobility(&ts, Black);
+        }
+    }));
     // group.bench_function("eval pieces", |b| b.iter(|| {
     //     let mut k = 0;
     //     for g in wacs.iter() {
-    //         k += g.score_pieces_mg(&ev_mid, &ts, White) - g.score_pieces_mg(&ev_mid, &ts, Black);
+    //         k += g.score_pieces_mg(&ts, &ev_mid, White) - g.score_pieces_mg(&ts, &ev_mid, Black);
+    //     }
+    // }));
+    // group.bench_function("eval pawns no hash", |b| b.iter(|| {
+    //     let mut k = 0;
+    //     for g in wacs.iter() {
+    //         let pawns = g.score_pawns(ts, &ev_mid, &ev_end, None, true);
+    //         k += pawns[0] - pawns[1];
+    //     }
+    // }));
+    // group.bench_function("eval pawns hashed", |b| b.iter(|| {
+    //     ph_rw.purge();
+    //     let mut k = 0;
+    //     for g in wacs.iter() {
+    //         let pawns = g.score_pawns(ts, &ev_mid, &ev_end, Some(&ph_rw), true);
+    //         k += pawns[0] - pawns[1];
     //     }
     // }));
 
