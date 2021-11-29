@@ -62,7 +62,12 @@ fn main() {
     match &arg1[..] {
         "nnue"      => main_nnue(),
         "eval"      => main_eval(),
-        "gensfen"   => main_gensfen(),
+        "gensfen"   => {
+            let count = u64::from_str(&args[2]).unwrap();
+            let path = &args[3];
+
+            main_gensfen(count, path);
+        },
         "tuning"    => main_tuning(),
         "wac"       => match args.get(2).map(|x| u64::from_str(x).ok()) {
             Some(n) => main_wac(n, false),
@@ -675,7 +680,7 @@ fn main_tuning() {
 
 }
 
-fn main_gensfen() {
+fn main_gensfen(count: u64, path: &str) {
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
     let ts = Tables::read_from_file_def().unwrap();
@@ -684,7 +689,7 @@ fn main_gensfen() {
 
     let t0 = Instant::now();
 
-    let count = 100;
+    // let count = 100;
 
     let path = "/home/me/code/rust/rchess/training_data/test_6.bin";
 

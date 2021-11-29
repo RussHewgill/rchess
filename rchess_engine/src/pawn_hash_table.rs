@@ -28,36 +28,37 @@ mod table {
 
     #[derive(Debug,Clone)]
     pub struct PHTableFactory {
-        pub ph_rf:    PHReadFactory,
-        pub ph_w:    PHWrite,
-        // pub score_rf: EVReadFactory<PHScore>,
-        // pub score_w: EVWrite<PHScore>,
-        pub hits:    Arc<AtomicU32>,
-        pub misses:  Arc<AtomicU32>,
+        pub ph_rf:     PHReadFactory,
+        pub ph_w:      PHWrite,
+        pub score_rf:  EVReadFactory<PHScore>,
+        pub score_w:   EVWrite<PHScore>,
+        pub hits:      Arc<AtomicU32>,
+        pub misses:    Arc<AtomicU32>,
     }
 
     impl PHTableFactory {
         pub fn new() -> Self {
 
             let (ph_rf, ph_w) = new_hash_table();
-            // let (score_rf, score_w) = new_hash_table();
+            let (score_rf, score_w) = new_hash_table();
 
             Self {
                 ph_rf,
                 ph_w,
-                // score_rf,
-                // score_w,
+                score_rf,
+                score_w,
                 hits:     Arc::new(AtomicU32::new(0)),
                 misses:   Arc::new(AtomicU32::new(0)),
             }
         }
+
         pub fn handle(&self) -> PHTable {
             // PHTable::new(self.ph_r.handle(), self.ph_w.clone())
             PHTable {
                 ph_r:       self.ph_rf.handle(),
                 ph_w:       self.ph_w.clone(),
-                // score_r:    self.score_rf.handle(),
-                // score_w:    self.score_w.clone(),
+                score_r:    self.score_rf.handle(),
+                score_w:    self.score_w.clone(),
                 hits:       self.hits.clone(),
                 misses:     self.misses.clone(),
             }
@@ -68,15 +69,20 @@ mod table {
     pub struct PHTable {
         pub ph_r:    PHRead,
         pub ph_w:    PHWrite,
-        // pub score_r: EVRead<PHScore>,
-        // pub score_w: EVWrite<PHScore>,
+        pub score_r: EVRead<PHScore>,
+        pub score_w: EVWrite<PHScore>,
         pub hits:    Arc<AtomicU32>,
         pub misses:  Arc<AtomicU32>,
     }
 
     impl PHTable {
-        pub fn purge(&self) {
+        pub fn purge_pawns(&self) {
             let mut w = self.ph_w.lock();
+            w.purge();
+            w.refresh();
+        }
+        pub fn purge_scores(&self) {
+            let mut w = self.score_w.lock();
             w.purge();
             w.refresh();
         }
@@ -97,10 +103,16 @@ mod table {
 }
 
 #[derive(Debug,Default,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize,new)]
-pub struct PHEntry {
-
+pub struct PHScore {
     pub score_mid:            ByColor<Score>,
     pub score_end:            ByColor<Score>,
+}
+
+#[derive(Debug,Default,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize,new)]
+pub struct PHEntry {
+
+    // pub score_mid:            ByColor<Score>,
+    // pub score_end:            ByColor<Score>,
 
     pub connected:            BitBoard,
     pub supported_1:          BitBoard,
@@ -126,22 +138,22 @@ pub struct PHEntry {
 
 impl PHEntry {
 
-    pub fn get_scores(&self, mid: bool) -> [Score; 2] {
-        if mid {
-            [self.score_mid.white,self.score_mid.black]
-        } else {
-            [self.score_end.white,self.score_end.black]
-        }
-    }
+    // pub fn get_scores(&self, mid: bool) -> [Score; 2] {
+    //     if mid {
+    //         [self.score_mid.white,self.score_mid.black]
+    //     } else {
+    //         [self.score_end.white,self.score_end.black]
+    //     }
+    // }
 
-    pub fn update_score_mut(&mut self, score: Score, mid: bool, side: Color) {
-        let mut bc = if mid {
-            &mut self.score_mid
-        } else {
-            &mut self.score_end
-        };
-        bc.insert_mut(side, score);
-    }
+    // pub fn update_score_mut(&mut self, score: Score, mid: bool, side: Color) {
+    //     let mut bc = if mid {
+    //         &mut self.score_mid
+    //     } else {
+    //         &mut self.score_end
+    //     };
+    //     bc.insert_mut(side, score);
+    // }
 
     pub fn get_or_insert_pawns(
         ts:           &Tables,

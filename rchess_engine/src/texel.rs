@@ -42,7 +42,7 @@ pub fn texel_optimize(
 
             arr_mid[n] = arr_mid[n].checked_add(1).unwrap();
             exhelper.cfg.eval_params_mid = EvalParams::from_arr(&arr_mid);
-            exhelper.ph_rw.purge();
+            exhelper.ph_rw.purge_scores();
 
             let new_error = average_eval_error(ts, &inputs, &exhelper, None);
 
@@ -51,7 +51,7 @@ pub fn texel_optimize(
             } else {
                 arr_mid[n] = arr_mid[n].checked_sub(2).unwrap();
                 exhelper.cfg.eval_params_mid = EvalParams::from_arr(&arr_mid);
-                exhelper.ph_rw.purge();
+                exhelper.ph_rw.purge_scores();
                 let new_error = average_eval_error(ts, &inputs, &exhelper, None);
 
                 if new_error < best_error {
@@ -59,7 +59,7 @@ pub fn texel_optimize(
                 } else {
                     arr_mid[n] = arr_mid[n].checked_add(1).unwrap();
                     exhelper.cfg.eval_params_mid = EvalParams::from_arr(&arr_mid);
-                    exhelper.ph_rw.purge();
+                    exhelper.ph_rw.purge_scores();
                 }
             }
 
