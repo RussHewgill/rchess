@@ -6,7 +6,7 @@ use crate::evaluate::*;
 
 pub use self::piece_square_tables::*;
 
-use rchess_macros::EvalIndex;
+// use rchess_macros::EvalIndex;
 
 use serde::{Serialize,Deserialize};
 use derive_new::new;
@@ -24,7 +24,7 @@ pub static QS_RECAPS_ONLY: Depth = 5;
 pub static NULL_PRUNE_MIN_DEPTH: Depth = 2;
 
 pub trait Tunable {
-    // const LEN: usize;
+    const LEN: usize;
     fn to_arr(&self) -> Vec<Score>;
     fn from_arr(v: &[Score]) -> Self;
 }
@@ -38,15 +38,21 @@ mod piece_square_tables {
     use serde::{Serialize,Deserialize};
     use serde_big_array::BigArray;
 
-    #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
-    // #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize)]
+    // #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+    #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize)]
     pub struct PcTables {
         // tables:      [[Score; 64]; 6],
+        #[serde(with = "BigArray")]
         pawn:       [Score; 64],
+        #[serde(with = "BigArray")]
         knight:     [Score; 64],
+        #[serde(with = "BigArray")]
         bishop:     [Score; 64],
+        #[serde(with = "BigArray")]
         rook:       [Score; 64],
+        #[serde(with = "BigArray")]
         queen:      [Score; 64],
+        #[serde(with = "BigArray")]
         king:       [Score; 64],
     }
 
@@ -60,6 +66,19 @@ mod piece_square_tables {
                 Rook   => &self.rook,
                 Queen  => &self.queen,
                 King   => &self.king,
+            }
+        }
+    }
+
+    impl std::ops::IndexMut<Piece> for PcTables {
+        fn index_mut(&mut self, pc: Piece) -> &mut Self::Output {
+            match pc {
+                Pawn   => &mut self.pawn,
+                Knight => &mut self.knight,
+                Bishop => &mut self.bishop,
+                Rook   => &mut self.rook,
+                Queen  => &mut self.queen,
+                King   => &mut self.king,
             }
         }
     }
@@ -94,7 +113,7 @@ mod piece_square_tables {
     }
 
     impl Tunable for PcTables {
-        // const LEN: usize = 64 * 6;
+        const LEN: usize = 64 * 6;
         fn from_arr(v: &[Score]) -> Self {
             const N: usize = 64;
             assert!(v.len() >= N * 6);
@@ -329,8 +348,7 @@ mod piece_square_tables {
     }
 }
 
-#[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,EvalIndex)]
-// #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize)]
 pub struct EvalParams {
     pub mid:       bool,
     pub pawns:     EPPawns,
@@ -340,30 +358,54 @@ pub struct EvalParams {
 }
 
 impl Tunable for EvalParams {
-    // const LEN: usize = ;
-    fn to_arr(&self) -> Vec<Score> {
-        unimplemented!()
-    }
+    const LEN: usize = 1
+        + EPPawns::LEN
+        + EPPieces::LEN
+        + PcTables::LEN;
 
+    fn to_arr(&self) -> Vec<Score> {
+        let mut out = vec![if self.mid { 1 } else { 0 }];
+        out.extend_from_slice(&self.pawns.to_arr());
+        out.extend_from_slice(&self.pieces.to_arr());
+        out.extend_from_slice(&self.psqt.to_arr());
+        out
+    }
     fn from_arr(v: &[Score]) -> Self {
-        unimplemented!()
+        let n0 = 1 + EPPawns::LEN;
+        let n1 = n0 + EPPieces::LEN;
+        let n2 = n1 + PcTables::LEN;
+        Self {
+            mid:     v[0] == 1,
+            pawns:   EPPawns::from_arr(&v[1..n0]),
+            pieces:  EPPieces::from_arr(&v[n0..n1]),
+            psqt:    PcTables::from_arr(&v[n1..n2 + 1]),
+        }
     }
 }
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new,EvalIndex)]
+#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new)]
 pub struct EPPieces {
     pub rook_open_file:  [Score; 2],
     pub outpost:         EvOutpost,
 }
 
 impl Tunable for EPPieces {
-    // const LEN: usize = ;
+    const LEN: usize = 2 + EvOutpost::LEN;
     fn to_arr(&self) -> Vec<Score> {
-        unimplemented!()
+        let mut out = vec![
+            self.rook_open_file[0],
+            self.rook_open_file[1],
+        ];
+        out.extend_from_slice(&self.outpost.to_arr());
+        out
     }
 
     fn from_arr(v: &[Score]) -> Self {
-        unimplemented!()
+        assert!(v.len() >= Self::LEN);
+        Self {
+            rook_open_file: [v[0],v[1]],
+            outpost:        EvOutpost::from_arr(&v[2..]),
+        }
     }
 }
 
@@ -376,10 +418,7 @@ impl Default for EPPieces {
     }
 }
 
-// use rchess_macros::EvalIndex;
-
-#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new,EvalIndex)]
-// #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new,EvalIndex)]
+#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new)]
 pub struct EvOutpost {
     pub outpost_knight:     Score,
     pub outpost_bishop:     Score,
@@ -388,13 +427,18 @@ pub struct EvOutpost {
 }
 
 impl Tunable for EvOutpost {
-    // const LEN: usize = ;
+    const LEN: usize = 3;
     fn to_arr(&self) -> Vec<Score> {
-        unimplemented!()
+        vec![self.outpost_knight,self.outpost_bishop,self.reachable_knight]
     }
 
     fn from_arr(v: &[Score]) -> Self {
-        unimplemented!()
+        assert!(v.len() >= 3);
+        Self {
+            outpost_knight: v[0],
+            outpost_bishop: v[1],
+            reachable_knight: v[2],
+        }
     }
 }
 
@@ -410,7 +454,8 @@ impl Default for EvOutpost {
     }
 }
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new,EvalIndex)]
+// #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new,EvalIndex)]
+#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new)]
 pub struct EPPawns {
     pub supported:            Score,
     pub connected_ranks:      [Score; 7],
@@ -429,13 +474,32 @@ pub struct EPPawns {
 }
 
 impl Tunable for EPPawns {
-    // const LEN: usize = 13;
+    const LEN: usize = 13;
     fn to_arr(&self) -> Vec<Score> {
-        unimplemented!()
+        let mut out = vec![self.supported];
+        out.extend_from_slice(&self.connected_ranks);
+        out.push(self.blocked_r5);
+        out.push(self.blocked_r6);
+        out.push(self.doubled);
+        out.push(self.isolated);
+        out.push(self.backward);
+        out
     }
 
     fn from_arr(v: &[Score]) -> Self {
-        unimplemented!()
+        assert!(v.len() >= Self::LEN);
+        let mut out = Self::default();
+        out.supported = v[0];
+        out.connected_ranks.copy_from_slice(&v[1..8]);
+
+        out.blocked_r5 = v[8];
+        out.blocked_r6 = v[9];
+
+        out.doubled  = v[10];
+        out.isolated = v[11];
+        out.backward = v[12];
+
+        out
     }
 }
 
@@ -542,45 +606,90 @@ impl Default for EPPawns {
 //     }
 // }
 
-// pub mod indexing {
-//     use super::*;
+pub mod indexing {
+    use super::*;
 
-//     // pub trait EvalIndex {}
+    // impl std::ops::Index<usize> for EvalParams {
+    //     type Output = Score;
+    //     fn index(&self, idx: usize) -> &Self::Output {
+    //         match idx {
+    //             0 => &self.a,
+    //             _ => unimplemented!(),
+    //         }
+    //     }
+    // }
+    // impl std::ops::IndexMut<usize> for EvalParams {
+    //     fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
+    //         match idx {
+    //             0 => &mut self.a,
+    //             _ => unimplemented!(),
+    //         }
+    //     }
+    // }
 
-//     // use rchess_macros::evalindex_derive;
+    // pub trait EvalIndex {}
 
-//     #[derive(EvalIndex)]
-//     // #[derive(evalindex_derive)]
-//     pub struct Wat {
-//         pub a:    Score,
-//         pub b:    Score,
-//     }
+    // use rchess_macros::evalindex_derive;
 
-//     // impl std::ops::Index<usize> for EPPawns {
-//     //     type Output = Score;
-//     //     fn index(&self, idx: usize) -> &Self::Output {
-//     //         match idx {
-//     //             0 => &self.supported,
-//     //             1 => &self.connected_ranks,
-//     //             2 => &self.reachable_knight,
-//     //             // 3 => &self.reachable_bishop,
-//     //             _ => unimplemented!()
-//     //         }
-//     //     }
-//     // }
+    // #[derive(EvalIndex)]
+    // #[derive(evalindex_derive)]
+    pub struct Wat {
+        pub a:    Score,
+        pub b:    Score,
+    }
 
-//     // impl std::ops::Index<usize> for EvOutpost {
-//     //     type Output = Score;
-//     //     fn index(&self, idx: usize) -> &Self::Output {
-//     //         match idx {
-//     //             0 => &self.outpost_knight,
-//     //             1 => &self.outpost_bishop,
-//     //             2 => &self.reachable_knight,
-//     //             // 3 => &self.reachable_bishop,
-//     //             _ => unimplemented!()
-//     //         }
-//     //     }
-//     // }
+    impl std::ops::Index<usize> for Wat {
+        type Output = i32;
+        fn index(&self, idx: usize) -> &Self::Output {
+            match idx {
+                0usize => &self.a,
+                1usize => &self.b,
+                _ => unimplemented!(),
+            }
+        }
+    }
+    impl std::ops::IndexMut<usize> for Wat {
+        fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
+            match idx {
+                0usize => &mut self.a,
+                1usize => &mut self.b,
+                _ => unimplemented!(),
+            }
+        }
+    }
 
-// }
+
+    // impl std::ops::IndexMut<usize> for Wat {
+    //     fn index_mut(&mut self, pc: Piece) -> &mut Self::Output {
+    //         &mut self[pc.index()]
+    //     }
+    // }
+
+    // impl std::ops::Index<usize> for EPPawns {
+    //     type Output = Score;
+    //     fn index(&self, idx: usize) -> &Self::Output {
+    //         match idx {
+    //             0 => &self.supported,
+    //             1 => &self.connected_ranks,
+    //             2 => &self.reachable_knight,
+    //             // 3 => &self.reachable_bishop,
+    //             _ => unimplemented!()
+    //         }
+    //     }
+    // }
+
+    // impl std::ops::Index<usize> for EvOutpost {
+    //     type Output = Score;
+    //     fn index(&self, idx: usize) -> &Self::Output {
+    //         match idx {
+    //             0 => &self.outpost_knight,
+    //             1 => &self.outpost_bishop,
+    //             2 => &self.reachable_knight,
+    //             // 3 => &self.reachable_bishop,
+    //             _ => unimplemented!()
+    //         }
+    //     }
+    // }
+
+}
 

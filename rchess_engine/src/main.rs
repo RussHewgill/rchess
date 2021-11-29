@@ -646,19 +646,24 @@ fn main_tuning() {
 
     // let arr = ev_mid.to_arr();
     // eprintln!("arr.len() = {:?}", arr.len());
-    // let psqt = EvalParams::from_arr(&arr);
-    // eprintln!("psqt == ev_mid.psqt = {:?}", psqt == ev_mid);
 
-    use rchess_engine_lib::tuning::indexing::*;
+    // let ev2 = EvalParams::from_arr(&arr);
+    // eprintln!("ev2 == ev_mid.psqt = {:?}", ev2 == ev_mid);
 
-    let x = Wat {
-        a:  10,
-        b:  20,
-    };
+    let ev1 = ev_mid;
 
-    let k = x[0];
+    let arr = ev1.to_arr();
 
-    eprintln!("k = {:?}", k);
+    eprintln!("arr.len() = {:?}", arr.len());
+
+    let k0 = EPPawns::from_arr(&arr[1 .. EPPawns::LEN]);
+
+    eprintln!("k0 == ev1 = {:?}", k0 == ev1.pawns);
+
+    let ev2 = EvalParams::from_arr(&arr);
+    // let ev2 = PcTables::from_arr(&arr);
+
+    eprintln!("ev1 == ev2 = {:?}", ev1 == ev2);
 
     // let ks = vec![
     //     -1.0,
