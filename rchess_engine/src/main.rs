@@ -26,10 +26,9 @@ use std::str::FromStr;
 
 use itertools::Itertools;
 
-use rchess_engine_lib::explore::Explorer;
+use rchess_engine_lib::explore::*;
 use rchess_engine_lib::opening_book::*;
-use rchess_engine_lib::qsearch::qsearch_once;
-// use crate::lib::*;
+use rchess_engine_lib::qsearch::*;
 use rchess_engine_lib::types::*;
 use rchess_engine_lib::search::*;
 use rchess_engine_lib::tables::*;
@@ -581,6 +580,7 @@ fn main_mnist() {
 fn main_tuning() {
     use rchess_engine_lib::texel::*;
     use rchess_engine_lib::qsearch::*;
+    use rchess_engine_lib::pawn_hash_table::*;
 
     let ts = Tables::read_from_file_def().unwrap();
 
@@ -595,6 +595,12 @@ fn main_tuning() {
     let ev_end = EvalParams::default();
 
     eprintln!("tds.len() = {:?}", tds.len());
+
+    let mut stats = SearchStats::default();
+    let ph_rw = PHTableFactory::new();
+    let ph_rw = ph_rw.handle();
+    let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
+    let mut helper = exhelper_once(&g, g.state.side_to_move, &ev_mid, &ev_end, Some(&ph_rw));
 
     for td in tds.into_iter() {
         let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
@@ -611,8 +617,18 @@ fn main_tuning() {
             {
                 // g = g.flip_sides(&ts);
 
+                // helper.game = g;
+                // helper.side = g.state.side_to_move;
+
                 let score   = g.sum_evaluate(&ts, &ev_mid, &ev_end, None);
-                let q_score = qsearch_once(&ts, &g, g.state.side_to_move, &ev_mid, &ev_end);
+                let q_score = helper.qsearch_once(&ts, &g, &mut stats);
+                let q_score = g.state.side_to_move.fold(q_score, -q_score);
+
+                // eprintln!("g.to_fen() = {:?}", g.to_fen());
+                // eprintln!("g = {:?}", g);
+                // eprintln!("score = {:?}", score);
+                // eprintln!("q_score = {:?}", q_score);
+                // panic!();
 
                 if score == q_score {
                     ps.push(TxPosition::new(g.clone(), td.result));
@@ -624,22 +640,42 @@ fn main_tuning() {
 
     eprintln!("ps.len() = {:?}", ps.len());
 
-    let ks = vec![
-        -1.0,
-        -0.5,
-        0.1,
-        0.5,
-        1.0,
-        2.0,
-        10.0,
-    ];
+    // let error = average_eval_error(&ts, &ev_mid, &ev_end, ps, &helper, None);
+    // eprintln!("error = {:.3}", error);
+
+
+    // let arr = ev_mid.to_arr();
+    // eprintln!("arr.len() = {:?}", arr.len());
+    // let psqt = EvalParams::from_arr(&arr);
+    // eprintln!("psqt == ev_mid.psqt = {:?}", psqt == ev_mid);
+
+    use rchess_engine_lib::tuning::indexing::*;
+
+    let x = Wat {
+        a:  10,
+        b:  20,
+    };
+
+    let k = x[0];
+
+    eprintln!("k = {:?}", k);
+
+    // let ks = vec![
+    //     -1.0,
+    //     -0.5,
+    //     0.1,
+    //     0.5,
+    //     1.0,
+    //     2.0,
+    //     10.0,
+    // ];
 
     // let k = 1.0;
 
-    for k in ks.iter() {
-        let error = average_eval_error(&ts, &ev_mid, &ev_end, ps.clone(), *k);
-        eprintln!("error, k = {:.2} = {:?}", k, error);
-    }
+    // for k in ks.iter() {
+    //     let error = average_eval_error(&ts, &ev_mid, &ev_end, ps.clone(), *k);
+    //     eprintln!("error, k = {:.2} = {:?}", k, error);
+    // }
 
 }
 
@@ -1491,7 +1527,7 @@ fn main9() {
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
 
-    eprintln!("correct = {:?}", correct);
+    // eprintln!("correct = {:?}", correct);
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -1514,8 +1550,8 @@ fn main9() {
 
     let mv = Move::Capture { from: "H5".into(), to: "G4".into(), pc: Pawn, victim: Pawn };
 
-    let t = 10.0;
-    // let t = 3.0;
+    // let t = 10.0;
+    let t = 4.0;
     // let t = 0.5;
     // let t = 0.3;
 

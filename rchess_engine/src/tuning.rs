@@ -1,10 +1,12 @@
 
 use crate::evaluate::TaperedScore;
 use crate::types::*;
-use crate::tables::*;
+// use crate::tables::*;
 use crate::evaluate::*;
 
 pub use self::piece_square_tables::*;
+
+use rchess_macros::EvalIndex;
 
 use serde::{Serialize,Deserialize};
 use derive_new::new;
@@ -21,10 +23,314 @@ pub static QS_RECAPS_ONLY: Depth = 5;
 
 pub static NULL_PRUNE_MIN_DEPTH: Depth = 2;
 
-mod piece_square_tables {
+pub trait Tunable {
+    // const LEN: usize;
+    fn to_arr(&self) -> Vec<Score>;
+    fn from_arr(v: &[Score]) -> Self;
 }
 
-#[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize)]
+mod piece_square_tables {
+    use crate::types::*;
+    use crate::tables::*;
+    use crate::evaluate::*;
+    use crate::tuning::*;
+
+    use serde::{Serialize,Deserialize};
+    use serde_big_array::BigArray;
+
+    #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+    // #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize)]
+    pub struct PcTables {
+        // tables:      [[Score; 64]; 6],
+        pawn:       [Score; 64],
+        knight:     [Score; 64],
+        bishop:     [Score; 64],
+        rook:       [Score; 64],
+        queen:      [Score; 64],
+        king:       [Score; 64],
+    }
+
+    impl std::ops::Index<Piece> for PcTables {
+        type Output = [Score; 64];
+        fn index(&self, pc: Piece) -> &Self::Output {
+            match pc {
+                Pawn   => &self.pawn,
+                Knight => &self.knight,
+                Bishop => &self.bishop,
+                Rook   => &self.rook,
+                Queen  => &self.queen,
+                King   => &self.king,
+            }
+        }
+    }
+
+    impl Default for PcTables {
+        fn default() -> Self {
+            Self::new_mid()
+        }
+    }
+
+    impl PcTables {
+
+        pub fn print_table(ss: [Score; 64]) {
+            for y in 0..8 {
+                let y = 7 - y;
+                for x in 0..8 {
+                    // println!("(x,y) = ({},{}), coord = {:?}", x, y, Coord(x,y));
+                    // print!("{:>3?},", ps.get(Pawn, Coord(x,y)));
+                    let s = ss[Coord(x,y)];
+                    print!("{:>3?},", s);
+                }
+                println!();
+            }
+        }
+
+        pub fn get<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
+            let c1: Coord = c0.into();
+            let c1 = if col == White { c1 } else { Coord(c1.0,7 - c1.1) };
+            self[pc][c1]
+        }
+
+    }
+
+    impl Tunable for PcTables {
+        // const LEN: usize = 64 * 6;
+        fn from_arr(v: &[Score]) -> Self {
+            const N: usize = 64;
+            assert!(v.len() >= N * 6);
+            let mut out = Self::empty();
+            out.pawn.copy_from_slice(&v[..N]);
+            out.knight.copy_from_slice(&v[N..N*2]);
+            out.bishop.copy_from_slice(&v[N*2..N*3]);
+            out.rook.copy_from_slice(&v[N*3..N*4]);
+            out.queen.copy_from_slice(&v[N*4..N*5]);
+            out.king.copy_from_slice(&v[N*5..N*6]);
+            out
+        }
+
+        fn to_arr(&self) -> Vec<Score> {
+            let mut out = vec![];
+            out.extend_from_slice(&self.pawn);
+            out.extend_from_slice(&self.knight);
+            out.extend_from_slice(&self.bishop);
+            out.extend_from_slice(&self.rook);
+            out.extend_from_slice(&self.queen);
+            out.extend_from_slice(&self.king);
+            out
+        }
+    }
+
+    /// Generate
+    impl PcTables {
+
+        fn empty() -> Self {
+            Self {
+                pawn:       [0; 64],
+                knight:     [0; 64],
+                bishop:     [0; 64],
+                rook:       [0; 64],
+                queen:      [0; 64],
+                king:       [0; 64],
+            }
+        }
+
+        pub fn new_mid() -> Self {
+            let pawn   = Self::gen_pawns();
+            let knight = Self::gen_knights();
+            let bishop = Self::gen_bishops();
+            let rook   = Self::gen_rooks();
+            let queen  = Self::gen_queens();
+            let king   = Self::gen_kings_opening();
+            Self {
+                pawn,
+                knight,
+                bishop,
+                rook,
+                queen,
+                king,
+            }
+        }
+
+        pub fn new_end() -> Self {
+            let pawn   = Self::gen_pawns();
+            let knight = Self::gen_knights();
+            let bishop = Self::gen_bishops();
+            let rook   = Self::gen_rooks();
+            let queen  = Self::gen_queens();
+            let king   = Self::gen_kings_endgame();
+            Self {
+                pawn,
+                knight,
+                bishop,
+                rook,
+                queen,
+                king,
+            }
+        }
+
+        #[allow(clippy::vec_init_then_push)]
+        fn old_gen_pawns() -> [Score; 64] {
+            // let mut out = [0; 64];
+            let mut scores: Vec<(&str,Score)> = vec![];
+
+            // Castles
+            scores.push(("A2",5));
+            scores.push(("B2",10));
+            scores.push(("C2",10));
+
+            // Castle holes
+            scores.push(("A3",5));
+            scores.push(("B3",-5));
+            scores.push(("C3",-10));
+
+            // King/Queen Pawns
+            scores.push(("D2",-20));
+
+            // Center pawns
+            scores.push(("D4",20));
+
+            // Rank 5 pawns
+            scores.push(("A5",5));
+            scores.push(("B5",5));
+            scores.push(("C5",10));
+            scores.push(("D5",25));
+
+            // Rank 6 pawns
+            scores.push(("A6",10));
+            scores.push(("B6",10));
+            scores.push(("C6",20));
+            scores.push(("D6",30));
+
+            // Rank 7 pawns
+            scores.push(("A7",50));
+            scores.push(("B7",50));
+            scores.push(("C7",50));
+            scores.push(("D7",50));
+
+            let mut out = [0; 64];
+
+            for (c,s) in scores.into_iter() {
+                let c0: Coord = c.into();
+                let sq: usize = c0.into();
+                out[sq] = s;
+                let c1 = Coord(7-c0.0,c0.1);
+                let sq: usize = c1.into();
+                out[sq] = s;
+            }
+            // Self::transform_arr(out)
+            out
+        }
+
+        fn gen_pawns() -> [Score; 64] {
+            Self::transform_arr([
+                0,   0,  0,  0,  0,  0,  0,  0,
+                50, 50, 50, 50, 50, 50, 50, 50,
+                10, 10, 20, 30, 30, 20, 10, 10,
+                5,   5, 10, 25, 25, 10,  5,  5,
+                0,   0,  0, 20, 20,  0,  0,  0,
+                5,  -5,-10,  0,  0,-10, -5,  5,
+                5,  10, 10,-20,-20, 10, 10,  5,
+                0,   0,  0,  0,  0,  0,  0,  0,
+            ])
+        }
+
+        fn gen_rooks() -> [Score; 64] {
+            Self::transform_arr([
+                 0,  0,  0,  0,  0,  0,  0,  0,
+                 5, 10, 10, 10, 10, 10, 10,  5,
+                -5,  0,  0,  0,  0,  0,  0, -5,
+                -5,  0,  0,  0,  0,  0,  0, -5,
+                -5,  0,  0,  0,  0,  0,  0, -5,
+                -5,  0,  0,  0,  0,  0,  0, -5,
+                -5,  0,  0,  0,  0,  0,  0, -5,
+                 0,  0,  0,  5,  5,  0,  0,  0,
+            ])
+        }
+
+        fn gen_knights() -> [Score; 64] {
+            let mut scores: Vec<(&str,Score)> = vec![];
+
+            let out = Self::transform_arr([
+                -50,-40,-30,-30,-30,-30,-40,-50,
+                -40,-20,  0,  0,  0,  0,-20,-40,
+                -30,  0, 10, 15, 15, 10,  0,-30,
+                -30,  5, 15, 20, 20, 15,  5,-30,
+                -30,  0, 15, 20, 20, 15,  0,-30,
+                -30,  5, 10, 15, 15, 10,  5,-30,
+                -40,-20,  0,  5,  5,  0,-20,-40,
+                -50,-40,-30,-30,-30,-30,-40,-50,
+            ]);
+
+            out
+        }
+
+        fn gen_bishops() -> [Score; 64] {
+            Self::transform_arr([
+                -20,-10,-10,-10,-10,-10,-10,-20,
+                -10,  0,  0,  0,  0,  0,  0,-10,
+                -10,  0,  5, 10, 10,  5,  0,-10,
+                -10,  5,  5, 10, 10,  5,  5,-10,
+                -10,  0, 10, 10, 10, 10,  0,-10,
+                -10, 10, 10, 10, 10, 10, 10,-10,
+                -10,  5,  0,  0,  0,  0,  5,-10,
+                -20,-10,-10,-10,-10,-10,-10,-20,
+            ])
+        }
+
+        fn gen_queens() -> [Score; 64] {
+            Self::transform_arr([
+                -20,-10,-10, -5, -5,-10,-10,-20,
+                -10,  0,  0,  0,  0,  0,  0,-10,
+                -10,  0,  5,  5,  5,  5,  0,-10,
+                 -5,  0,  5,  5,  5,  5,  0, -5,
+                  0,  0,  5,  5,  5,  5,  0, -5,
+                -10,  5,  5,  5,  5,  5,  0,-10,
+                -10,  0,  5,  0,  0,  0,  0,-10,
+                -20,-10,-10, -5, -5,-10,-10,-20,
+            ])
+        }
+
+        pub fn gen_kings_opening() -> [Score; 64] {
+            Self::transform_arr([
+                -30,-40,-40,-50,-50,-40,-40,-30,
+                -30,-40,-40,-50,-50,-40,-40,-30,
+                -30,-40,-40,-50,-50,-40,-40,-30,
+                -30,-40,-40,-50,-50,-40,-40,-30,
+                -20,-30,-30,-40,-40,-30,-30,-20,
+                -10,-20,-20,-20,-20,-20,-20,-10,
+                 20, 20,  0,  0,  0,  0, 20, 20,
+                 20, 30, 10, -5,  0, 10, 30, 20,
+            ])
+        }
+
+        pub fn gen_kings_endgame() -> [Score; 64] {
+            Self::transform_arr([
+                -50,-40,-30,-20,-20,-30,-40,-50,
+                -30,-20,-10,  0,  0,-10,-20,-30,
+                -30,-10, 20, 30, 30, 20,-10,-30,
+                -30,-10, 30, 40, 40, 30,-10,-30,
+                -30,-10, 30, 40, 40, 30,-10,-30,
+                -30,-10, 20, 30, 30, 20,-10,-30,
+                -30,-30,  0,  0,  0,  0,-30,-30,
+                -50,-30,-30,-30,-30,-30,-30,-50
+            ])
+        }
+
+        fn transform_arr(xs: [Score; 64]) -> [Score; 64] {
+            let mut out = [0; 64];
+            for y in 0..8 {
+                for x in 0..8 {
+                    out[Coord(x,7 - y)] = xs[Coord(x,y)];
+                }
+            }
+            out
+        }
+
+    }
+}
+
+#[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,EvalIndex)]
+// #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct EvalParams {
     pub mid:       bool,
     pub pawns:     EPPawns,
@@ -33,10 +339,32 @@ pub struct EvalParams {
     pub psqt:      PcTables,
 }
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new)]
+impl Tunable for EvalParams {
+    // const LEN: usize = ;
+    fn to_arr(&self) -> Vec<Score> {
+        unimplemented!()
+    }
+
+    fn from_arr(v: &[Score]) -> Self {
+        unimplemented!()
+    }
+}
+
+#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new,EvalIndex)]
 pub struct EPPieces {
     pub rook_open_file:  [Score; 2],
     pub outpost:         EvOutpost,
+}
+
+impl Tunable for EPPieces {
+    // const LEN: usize = ;
+    fn to_arr(&self) -> Vec<Score> {
+        unimplemented!()
+    }
+
+    fn from_arr(v: &[Score]) -> Self {
+        unimplemented!()
+    }
 }
 
 impl Default for EPPieces {
@@ -48,12 +376,26 @@ impl Default for EPPieces {
     }
 }
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new)]
+// use rchess_macros::EvalIndex;
+
+#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new,EvalIndex)]
+// #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new,EvalIndex)]
 pub struct EvOutpost {
     pub outpost_knight:     Score,
     pub outpost_bishop:     Score,
     pub reachable_knight:   Score,
-    pub reachable_bishop:   Score,
+    // pub reachable_bishop:   Score,
+}
+
+impl Tunable for EvOutpost {
+    // const LEN: usize = ;
+    fn to_arr(&self) -> Vec<Score> {
+        unimplemented!()
+    }
+
+    fn from_arr(v: &[Score]) -> Self {
+        unimplemented!()
+    }
 }
 
 impl Default for EvOutpost {
@@ -63,12 +405,12 @@ impl Default for EvOutpost {
             outpost_knight:     50,
             outpost_bishop:     30,
             reachable_knight:   30,
-            reachable_bishop:   0,
+            // reachable_bishop:   0,
         }
     }
 }
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new)]
+#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new,EvalIndex)]
 pub struct EPPawns {
     pub supported:            Score,
     pub connected_ranks:      [Score; 7],
@@ -84,6 +426,17 @@ pub struct EPPawns {
     pub isolated:             Score,
     pub backward:             Score,
 
+}
+
+impl Tunable for EPPawns {
+    // const LEN: usize = 13;
+    fn to_arr(&self) -> Vec<Score> {
+        unimplemented!()
+    }
+
+    fn from_arr(v: &[Score]) -> Self {
+        unimplemented!()
+    }
 }
 
 impl Default for EPPawns {
@@ -189,4 +542,45 @@ impl Default for EPPawns {
 //     }
 // }
 
+// pub mod indexing {
+//     use super::*;
+
+//     // pub trait EvalIndex {}
+
+//     // use rchess_macros::evalindex_derive;
+
+//     #[derive(EvalIndex)]
+//     // #[derive(evalindex_derive)]
+//     pub struct Wat {
+//         pub a:    Score,
+//         pub b:    Score,
+//     }
+
+//     // impl std::ops::Index<usize> for EPPawns {
+//     //     type Output = Score;
+//     //     fn index(&self, idx: usize) -> &Self::Output {
+//     //         match idx {
+//     //             0 => &self.supported,
+//     //             1 => &self.connected_ranks,
+//     //             2 => &self.reachable_knight,
+//     //             // 3 => &self.reachable_bishop,
+//     //             _ => unimplemented!()
+//     //         }
+//     //     }
+//     // }
+
+//     // impl std::ops::Index<usize> for EvOutpost {
+//     //     type Output = Score;
+//     //     fn index(&self, idx: usize) -> &Self::Output {
+//     //         match idx {
+//     //             0 => &self.outpost_knight,
+//     //             1 => &self.outpost_bishop,
+//     //             2 => &self.reachable_knight,
+//     //             // 3 => &self.reachable_bishop,
+//     //             _ => unimplemented!()
+//     //         }
+//     //     }
+//     // }
+
+// }
 

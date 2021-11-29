@@ -11,13 +11,62 @@ use std::sync::atomic::AtomicU8;
 use std::sync::atomic::Ordering::SeqCst;
 use parking_lot::{Mutex,RwLock};
 
+pub fn exhelper_once(
+    g:        &Game,
+    side:     Color,
+    ev_mid:   &EvalParams,
+    ev_end:   &EvalParams,
+    ph_rw:    Option<&PHTable>,
+) -> ExHelper {
+    let mut cfg = ExConfig::default();
+    cfg.eval_params_mid = ev_mid.clone();
+    cfg.eval_params_end = ev_end.clone();
 
-pub fn qsearch_once(
+    let (tt_r, tt_w) = evmap::Options::default()
+        .with_hasher(FxBuildHasher::default())
+        .construct();
+    let tt_rf = tt_w.factory();
+    let tt_w = Arc::new(Mutex::new(tt_w));
+
+    let ph_rw = if let Some(t) = ph_rw {
+        t.clone()
+    } else {
+        let ph_rw = PHTableFactory::new();
+        ph_rw.handle()
+    };
+
+    let (tx,rx): (ExSender,ExReceiver) = crossbeam::channel::unbounded();
+
+    let stop = Arc::new(AtomicBool::new(false));
+    let best_mate = Arc::new(RwLock::new(None));
+    let best_depth = Arc::new(AtomicU8::new(0));
+
+    let helper = ExHelper {
+        id:              0,
+        side,
+        game:            g.clone(),
+        stop,
+        best_mate,
+        #[cfg(feature = "syzygy")]
+        syzygy:          None,
+        cfg,
+        best_depth,
+        tx,
+        tt_r,
+        tt_w,
+        ph_rw,
+    };
+
+    helper
+}
+
+pub fn qsearch_once2(
     ts:       &Tables,
     g:        &Game,
     side:     Color,
     ev_mid:   &EvalParams,
     ev_end:   &EvalParams,
+    ph_rw:    Option<&PHTable>,
 ) -> Score {
 
     let mut cfg = ExConfig::default();
@@ -31,8 +80,12 @@ pub fn qsearch_once(
     let tt_w = Arc::new(Mutex::new(tt_w));
 
     // let (ph_rf,ph_w) = new_hash_table();
-    let ph_rw = PHTableFactory::new();
-    let ph_rw = ph_rw.handle();
+    let ph_rw = if let Some(t) = ph_rw {
+        t.clone()
+    } else {
+        let ph_rw = PHTableFactory::new();
+        ph_rw.handle()
+    };
 
     let (tx,rx): (ExSender,ExReceiver) = crossbeam::channel::unbounded();
 
@@ -64,8 +117,7 @@ pub fn qsearch_once(
         ts,
         g,
         (0,0),
-        alpha,
-        beta,
+        (alpha, beta),
         &mut stats);
 
     if side == Black {
@@ -79,6 +131,19 @@ pub fn qsearch_once(
 /// Quiescence
 impl ExHelper {
 
+    pub fn qsearch_once(
+        &mut self,
+        ts:                       &Tables,
+        g:                        &Game,
+        mut stats:                &mut SearchStats,
+    ) -> Score {
+        let (alpha,beta) = (i32::MIN,i32::MAX);
+        let (alpha,beta) = (alpha + 200,beta - 200);
+        self.game = g.clone();
+        self.side = g.state.side_to_move;
+        self.qsearch(ts, g, (0,0), (alpha,beta), stats)
+    }
+
     /// alpha = the MINimum score that the MAXimizing player is assured of
     /// beta  = the MAXimum score that the MINimizing player is assured of
     #[allow(unused_doc_comments)]
@@ -86,13 +151,11 @@ impl ExHelper {
     #[allow(unused_assignments)]
     pub fn qsearch(
         &self,
-        ts:             &Tables,
-        g:              &Game,
-        // mut g:          &mut Game,
-        (ply,qply):     (Depth,Depth),
-        mut alpha:      i32,
-        mut beta:       i32,
-        mut stats:      &mut SearchStats,
+        ts:                       &Tables,
+        g:                        &Game,
+        (ply,qply):               (Depth,Depth),
+        (mut alpha, mut beta):    (i32,i32),
+        mut stats:                &mut SearchStats,
     ) -> Score {
         // trace!("qsearch, {:?} to move, ply {}, a/b: {:?},{:?}",
         //        g.state.side_to_move, ply, alpha, beta);
@@ -216,7 +279,7 @@ impl ExHelper {
                     }
                 }
 
-                let score = -self.qsearch(&ts, &g2, (ply + 1,qply + 1), -beta, -alpha, &mut stats);
+                let score = -self.qsearch(&ts, &g2, (ply + 1,qply + 1), (-beta, -alpha), &mut stats);
 
                 if score >= beta && allow_stand_pat {
                     // trace!("qsearch returning beta 1: {:?}", beta);

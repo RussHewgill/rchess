@@ -294,7 +294,7 @@ impl ExHelper {
             let score = {
                 // trace!("    beginning qsearch, {:?}, a/b: {:?},{:?}",
                 //        prev_mvs.front().unwrap().1, alpha, beta);
-                let score = self.qsearch(&ts, &g, (ply,0), alpha, beta, &mut stats);
+                let score = self.qsearch(&ts, &g, (ply,0), (alpha, beta), &mut stats);
                 // trace!("    returned from qsearch, score = {}", score);
                 score
             };

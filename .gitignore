@@ -21,3 +21,4 @@ test*.py
 tables/*
 training_data/*
 *.zst
+reference/*
