@@ -298,7 +298,12 @@ mod td_builder {
                 match rx.recv() {
                     Ok(td) => {
                         out.push(td);
-                        TrainingData::save_all(save_bin, &path, &out).unwrap();
+                        match TrainingData::save_all(save_bin, &path, &out) {
+                            Ok(_)  => {},
+                            Err(e) => {
+                                eprintln!("save_all error = {:?}", e);
+                            },
+                        }
                     },
                     // Err(TryRecvError::Empty)    => {
                     //     std::thread::sleep(std::time::Duration::from_millis(1));
@@ -609,8 +614,16 @@ impl TrainingData {
         let mut file = std::fs::File::create(path)?;
 
         if save_bin {
-            let buf: Vec<u8> = bincode::serialize(&xs).unwrap();
-            file.write_all(&buf)
+            // let buf: Vec<u8> = bincode::serialize(&xs).unwrap();
+            match bincode::serialize(&xs) {
+                Ok(buf) => {
+                    file.write_all(&buf)
+                },
+                Err(e) => {
+                    eprintln!("save_all: bincode = {:?}", e);
+                    Ok(())
+                }
+            }
         } else {
             // file.write_all(&buf)
             unimplemented!()
