@@ -685,18 +685,18 @@ fn main_gensfen(count: u64, path: &str) {
 
     let ts = Tables::read_from_file_def().unwrap();
     let ob = OpeningBook::read_from_file(&ts, "tables/Perfect_2021/BIN/Perfect2021.bin").unwrap();
-    let t0 = Instant::now();
 
     let t0 = Instant::now();
 
     // let count = 100;
 
-    let path = "/home/me/code/rust/rchess/training_data/test_6.bin";
+    // let path = "/home/me/code/rust/rchess/training_data/test_6.bin";
 
     let ts = TDBuilder::new()
         .max_depth(5)
         .time(0.2)
-        .num_threads(12) // 90
+        .num_threads(num_cpus::get())
+        // .num_threads(12)
         // .num_positions(Some(1000))
         .num_positions(None)
         .do_explore(&ts, &ob, count, true, rng, true, path)

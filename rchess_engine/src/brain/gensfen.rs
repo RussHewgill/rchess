@@ -190,7 +190,7 @@ mod td_builder {
         max_depth:       Depth,
         nodes_per_pos:   Option<u64>,
         num_positions:   Option<u64>,
-        num_threads:     u8,
+        num_threads:     usize,
         time:            f64,
         print:           bool,
     }
@@ -213,7 +213,7 @@ mod td_builder {
         builder_field!(max_depth, Depth);
         builder_field!(nodes_per_pos, Option<u64>);
         builder_field!(num_positions, Option<u64>);
-        builder_field!(num_threads, u8);
+        builder_field!(num_threads, usize);
         builder_field!(time, f64);
         builder_field!(print, bool);
     }
