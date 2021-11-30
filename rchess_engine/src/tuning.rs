@@ -6,7 +6,7 @@ use crate::evaluate::*;
 
 pub use self::piece_square_tables::*;
 
-use rchess_macros::EPIndex;
+// use rchess_macros::EPIndex;
 
 use serde::{Serialize,Deserialize};
 use serde_big_array::BigArray;
