@@ -303,7 +303,7 @@ mod td_builder {
                     Ok(td) => {
                         // out.push(td);
                         // eprintln!("rx, len out = {:?}", out.len());
-                        eprintln!("rx, len out = {:?}", n);
+                        // eprintln!("rx, len out = {:?}", n);
                         n += 1;
                         match TrainingData::save_into(save_bin, &mut file, &td) {
                             Ok(_)  => {},
