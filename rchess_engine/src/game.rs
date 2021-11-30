@@ -469,12 +469,14 @@ impl Game {
                 Some((side,_)) => if self.state.side_to_move != side {
                     eprintln!("non legal move: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
                     // return Err(GameEnd::Error);
-                    panic!();
+                    // panic!();
+                    return Err(GameEnd::Error);
                 },
                 None => {
                     eprintln!("non legal move, no piece?: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
                     // return Err(GameEnd::Error);
-                    panic!();
+                    // panic!();
+                    return Err(GameEnd::Stalemate);
                 }
             }
         }

@@ -25,6 +25,7 @@ pub fn texel_optimize_once(
     count:                       Option<usize>,
     mid:                         bool,
     mut best_error:              &mut f64,
+    k:                           Option<f64>,
 ) {
     let mut arr = if mid {
         exhelper.cfg.eval_params_mid.to_arr()
@@ -85,9 +86,10 @@ pub fn texel_optimize(
     mut exhelper:                &mut ExHelper,
     ignore_weights:              &[bool],
     count:                       Option<usize>,
+    k:                           Option<f64>,
 ) -> (EvalParams,EvalParams) {
 
-    let mut best_error = average_eval_error(ts, &inputs, &exhelper, None);
+    let mut best_error = average_eval_error(ts, &inputs, &exhelper, k);
 
     let arr_len = exhelper.cfg.eval_params_mid.to_arr().len();
 
@@ -97,10 +99,10 @@ pub fn texel_optimize(
     loop {
 
         texel_optimize_once(
-            ts, inputs, &mut exhelper, ignore_weights, count, true, &mut best_error);
+            ts, inputs, &mut exhelper, ignore_weights, count, true, &mut best_error, k);
 
         texel_optimize_once(
-            ts, inputs, &mut exhelper, ignore_weights, count, false, &mut best_error);
+            ts, inputs, &mut exhelper, ignore_weights, count, false, &mut best_error, k);
 
         loops += 1;
         let t1 = t0.elapsed().as_secs_f64();
@@ -118,10 +120,44 @@ pub fn find_k(
     ts:         &Tables,
     inputs:     &[TxPosition],
     exhelper:   &ExHelper,
+    print:      bool,
 ) -> f64 {
-    // let mut k = 0.0;
-    // let mut best = average_eval_error(&ts, inputs, exhelper, Some(k));
-    unimplemented!()
+    let mut start = 1.0;
+    let mut end   = 10.0;
+    let mut step  = 1.0;
+
+    let mut curr = start;
+    let mut best = average_eval_error(&ts, inputs, exhelper, Some(curr));
+
+    const PREC: usize = 10;
+    for i in 0..PREC {
+
+        curr = start - step;
+
+        let mut err = 100000.0;
+
+        while curr < end {
+            curr = curr + step;
+
+            err = average_eval_error(&ts, inputs, exhelper, Some(curr));
+
+            if err < best {
+                best  = err;
+                start = curr;
+            }
+
+        }
+
+        if print {
+            eprintln!("best k {:.3} on iter {}, err = {:.3}", start, i, err);
+        }
+
+        end = start + step;
+        start = start - step;
+        step = step / 10.0;
+    }
+
+    start
 }
 
 pub fn average_eval_error(

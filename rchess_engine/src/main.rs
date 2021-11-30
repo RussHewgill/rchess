@@ -708,15 +708,18 @@ fn main_tuning() {
     eprintln!("non_q = {:?}", non_q);
     eprintln!("ps.len() = {:?}", ps.len());
 
-    // let k = find_k();
+    let k = find_k(&ts, &ps, &exhelper);
+    eprintln!("k = {:?}", k);
 
-    let error = average_eval_error(&ts, &ps, &exhelper, None);
+    // let k = -0.111f64;
+
+    let error = average_eval_error(&ts, &ps, &exhelper, Some(k));
     eprintln!("error = {:.3}", error);
 
     let (ev_mid2,ev_end2) = texel_optimize(
-        &ts, &ps, &mut exhelper, &vec![], Some(1));
+        &ts, &ps, &mut exhelper, &vec![], Some(1), Some(k));
 
-    let error = average_eval_error(&ts, &ps, &exhelper, None);
+    let error = average_eval_error(&ts, &ps, &exhelper, Some(k));
     eprintln!("error = {:.3}", error);
 
     // let ks = vec![
