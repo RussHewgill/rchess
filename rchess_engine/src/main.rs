@@ -600,13 +600,18 @@ fn main_tuning() {
 
     let ob = OpeningBook::read_from_file(&ts, "tables/Perfect_2021/BIN/Perfect2021.bin").unwrap();
 
-    let path = "/home/me/code/rust/rchess/training_data/test_5.bin";
+    // let path = "/home/me/code/rust/rchess/training_data/test_5.bin";
+    let path = "/home/me/code/rust/rchess/training_data/set1/depth5_games500_3.bin";
+
     let tds: Vec<TrainingData> = TrainingData::load_all(path).unwrap();
 
     let mut ps: Vec<TxPosition> = vec![];
 
     let ev_mid = EvalParams::default();
-    let ev_end = EvalParams::default();
+    let mut ev_end = EvalParams::default();
+    // let ev_mid = EvalParams::new();
+    // let mut ev_end = EvalParams::new();
+    ev_end.mid = false;
 
     eprintln!("tds.len() = {:?}", tds.len());
 
@@ -617,6 +622,23 @@ fn main_tuning() {
     let mut exhelper = exhelper_once(&g, g.state.side_to_move, &ev_mid, &ev_end, Some(&ph_rw));
 
     let mut non_q = 0;
+
+    // {
+    //     let mut wacs = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
+    //     let mut wacs: Vec<Game> = wacs.into_iter().map(|(fen,_)| {
+    //         Game::from_fen(&ts, &fen).unwrap()
+    //     }).collect();
+    //     // baseline = 1.154
+    //     let t0 = Instant::now();
+    //     for _ in 0..10_000 {
+    //         let mut k = 0;
+    //         for g in wacs.iter() {
+    //             k += g.sum_evaluate_mg(&ts, &ev_mid, &ev_end, Some(&ph_rw));
+    //         }
+    //     }
+    //     println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+    //     return;
+    // }
 
     for td in tds.into_iter() {
         let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
@@ -664,11 +686,11 @@ fn main_tuning() {
     let error = average_eval_error(&ts, &ps, &exhelper, None);
     eprintln!("error = {:.3}", error);
 
-    // let (ev_mid2,ev_end2) = texel_optimize(
-    //     &ts, &ps, &mut exhelper, vec![], Some(1));
+    let (ev_mid2,ev_end2) = texel_optimize(
+        &ts, &ps, &mut exhelper, &vec![], Some(1));
 
-    // let error = average_eval_error(&ts, &ps, &exhelper, None);
-    // eprintln!("error = {:.3}", error);
+    let error = average_eval_error(&ts, &ps, &exhelper, None);
+    eprintln!("error = {:.3}", error);
 
     // let ks = vec![
     //     -1.0,

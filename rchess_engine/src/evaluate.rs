@@ -177,10 +177,10 @@ impl Game {
     //     out
     // }
 
-    fn taper_score(&self, mid: Score, end: Score) -> Score {
-        let phase = self.state.phase as Score;
-        ((mid * (256 - phase)) + (end * phase)) / 256
-    }
+    // fn taper_score(&self, mid: Score, end: Score) -> Score {
+    //     let phase = self.state.phase as Score;
+    //     ((mid * (256 - phase)) + (end * phase)) / 256
+    // }
 
 }
 
@@ -207,13 +207,14 @@ impl Game {
         let mg = self.sum_evaluate_mg(ts, ev_mid, ev_end, ph_rw);
         let eg = self.sum_evaluate_eg(ts, ev_mid, ev_end, ph_rw);
 
-        self.taper_score2(mg, eg)
+        // self.taper_score2(mg, eg)
+        self.taper_score(mg, eg)
     }
 
-    fn taper_score2(&self, mid: Score, end: Score) -> Score {
-        let p = self.state.phase as Score;
-        ((mid * p + ((end * (128 - p)) << 0)) / 128) << 0
-    }
+    // fn taper_score2(&self, mid: Score, end: Score) -> Score {
+    //     let p = self.state.phase as Score;
+    //     ((mid * p + ((end * (128 - p)) << 0)) / 128) << 0
+    // }
 
     pub fn sum_evaluate_mg(
         &self,
@@ -287,7 +288,8 @@ impl Game {
     pub fn _score_psqt(&self, ev: &EvalParams, pc: Piece, side: Color) -> Score {
         let pieces = self.get(pc, side);
         pieces.into_iter().map(|sq| {
-            ev.get_psqt(pc, side, sq)
+            ev.psqt.get(pc, side, sq)
+            // ev.get_psqt(pc, side, sq)
         }).sum()
     }
 
@@ -314,31 +316,36 @@ impl Game {
 /// Phase
 impl Game {
 
-    // pub fn update_phase(&self, new_piece: Option<Piece>, delete_piece: Option<>)
-    #[must_use]
-    pub fn update_phase(&self, mv: Move) -> Phase {
-        let mut ph = self.state.phase;
-        if let Some(victim) = mv.victim() {
-        }
-        unimplemented!()
+    pub fn game_phase(&self) -> u8 {
+        const PAWN_PH: i16   = 0;
+        const KNIGHT_PH: i16 = 1;
+        const BISHOP_PH: i16 = 1;
+        const ROOK_PH: i16   = 2;
+        const QUEEN_PH: i16  = 4;
+
+        const PCS: [Piece; 5] = [Pawn,Knight,Bishop,Rook,Queen];
+        const PHASES: [i16; 5] = [PAWN_PH,KNIGHT_PH,BISHOP_PH,ROOK_PH,QUEEN_PH];
+
+        let ph_total = PAWN_PH * 16 + KNIGHT_PH * 4 + BISHOP_PH * 4 + ROOK_PH * 4 + QUEEN_PH * 2;
+
+        let mut phase = ph_total;
+
+        phase -= PAWN_PH *   self.state.material.count_piece(Pawn) as i16;
+        phase -= KNIGHT_PH * self.state.material.count_piece(Knight) as i16;
+        phase -= BISHOP_PH * self.state.material.count_piece(Bishop) as i16;
+        phase -= ROOK_PH *   self.state.material.count_piece(Rook) as i16;
+        phase -= QUEEN_PH *  self.state.material.count_piece(Queen) as i16;
+
+        let phase = (phase * 256 + (ph_total / 2)) / ph_total;
+        phase.clamp(0,255) as u8
     }
 
-    // pub fn increment_phase(&self, mv: Move) -> u8 {
-    //     match mv {
-    //         Move::Promotion { new_piece, .. }        => unimplemented!(),
-    //         Move::PromotionCapture { new_piece, .. } => unimplemented!(),
-    //         _                                        => {},
-    //     }
-    //     match mv.victim() {
-    //         None         => self.state.phase,
-    //         Some(victim) => {
-    //             self.state.phase - victim.score()
-    //             unimplemented!()
-    //         },
-    //     }
-    // }
+    pub fn taper_score(&self, mid: Score, end: Score) -> Score {
+        let p = self.state.phase as Score;
+        ((mid * (256 - p)) + (end * p)) / 256
+    }
 
-    pub fn game_phase(&self) -> u8 {
+    fn _game_phase(&self) -> u8 {
         const MIDGAME_LIMIT: i32 = 15258;
         const ENDGAME_LIMIT: i32 = 3915;
 
@@ -360,7 +367,7 @@ impl Game {
         out as u8
     }
 
-    pub fn game_phase2(&self) -> u8 {
+    fn game_phase2(&self) -> u8 {
         const PAWN_PH: u16   = 0;
         const KNIGHT_PH: u16 = 1;
         const BISHOP_PH: u16 = 1;
@@ -510,7 +517,8 @@ impl Game {
     pub fn outpost_total(&self, ts: &Tables, ev: &EvalParams, side: Color) -> Score {
         let outposts  = self.outpost_squares(ev, side);
         let reachable = self.reachable_outposts(ts, ev, side);
-        outposts + reachable * ev[EPIndex::OutpostReachableKnight]
+        outposts + reachable * ev.pieces.outpost.reachable_knight
+        // outposts + reachable * ev[EPIndex::OutpostReachableKnight]
     }
 
     pub fn reachable_outposts(&self, ts: &Tables, ev: &EvalParams, side: Color) -> Score {
@@ -529,7 +537,8 @@ impl Game {
             .filter(|&sq| self.outpost_square(ev, sq.into(), side)).count() as Score;
         let b = self.get(Bishop, side).into_iter()
             .filter(|&sq| self.outpost_square(ev, sq.into(), side)).count() as Score;
-        n * ev[EPIndex::OutpostKnight] + b * ev[EPIndex::OutpostBishop]
+        n * ev.pieces.outpost.outpost_knight + b * ev.pieces.outpost.outpost_bishop
+        // n * ev[EPIndex::OutpostKnight] + b * ev[EPIndex::OutpostBishop]
     }
 
     pub fn outpost_square(&self, ev: &EvalParams, c0: Coord, side: Color) -> bool {
@@ -567,9 +576,11 @@ impl Game {
             if (BitBoard::mask_file(file) & pawns_own).is_not_empty() {
                 0
             } else if (BitBoard::mask_file(file) & pawns_other).is_not_empty() {
-                ev[EPIndex::PPRookHalfOpenFile]
+                // ev[EPIndex::PPRookHalfOpenFile]
+                ev.pieces.rook_open_file[0]
             } else {
-                ev[EPIndex::PPRookOpenFile]
+                // ev[EPIndex::PPRookOpenFile]
+                ev.pieces.rook_open_file[1]
             }
         }).sum()
     }
@@ -720,9 +731,13 @@ impl Game {
         // score += ev.pawns.blocked_r6 * ph.blocked_r6.popcount() as Score;
 
         // score += ev.pawns.doubled_isolated * (ph.doubled_isolated & pawns).popcount() as Score;
-        score += ev[EPIndex::PawnDoubled] * (ph.doubled & pawns).popcount() as Score;
-        score += ev[EPIndex::PawnIsolated] * (ph.isolated & pawns).popcount() as Score;
-        score += ev[EPIndex::PawnBackward] * (ph.backward & pawns).popcount() as Score;
+
+        // score += ev[EPIndex::PawnDoubled] * (ph.doubled & pawns).popcount() as Score;
+        // score += ev[EPIndex::PawnIsolated] * (ph.isolated & pawns).popcount() as Score;
+        // score += ev[EPIndex::PawnBackward] * (ph.backward & pawns).popcount() as Score;
+        score += ev.pawns.doubled * (ph.doubled & pawns).popcount() as Score;
+        score += ev.pawns.isolated * (ph.isolated & pawns).popcount() as Score;
+        score += ev.pawns.backward * (ph.backward & pawns).popcount() as Score;
 
         pawns.into_iter().for_each(|sq| {
             score += self._pawn_connected_bonus(ev, &ph, sq.into(), side);
@@ -776,8 +791,8 @@ impl Game {
         let su2 = ph.supported_2.is_one_at(c0);
         let su = if su2 { 2 } else if su1 { 1 } else { 0 };
 
-        // ev.pawns.connected_ranks[rank as usize] * (2 + px - op) + ev.pawns.supported * su
-        ev[EPIndex::PawnConnectedRank(rank as usize)] * (2 + px - op) + ev[EPIndex::PawnSupported] * su
+        ev.pawns.connected_ranks[rank as usize] * (2 + px - op) + ev.pawns.supported * su
+        // ev[EPIndex::PawnConnectedRank(rank)] * (2 + px - op) + ev[EPIndex::PawnSupported] * su
     }
 
     pub fn _pawn_opposed(&self, c0: Coord, side: Color) -> bool {

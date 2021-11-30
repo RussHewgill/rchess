@@ -164,6 +164,10 @@ impl Material {
         self.buf[side].iter().sum::<u8>()
     }
 
+    pub fn count_piece(&self, pc: Piece) -> u8 {
+        self.buf[White][pc] + self.buf[Black][pc]
+    }
+
     pub fn min_like_man(&self) -> u8 {
         let c0 = Piece::iter_pieces()
             .map(|pc| self.buf[Black][pc.index()]);
@@ -606,7 +610,15 @@ impl Game {
         self.update_check_block_mut(&ts);
         // self.update_occupied_mut();
 
-        self.state.phase = self.game_phase();
+        // self.state.phase = self.game_phase();
+
+        if let Some(mv) = self.last_move {
+            if mv.filter_all_captures() {
+                self.state.phase = self.game_phase();
+            }
+        } else {
+            self.state.phase = self.game_phase();
+        }
 
         // if self.history.len() > 5 {
         //     self.history.pop_front();

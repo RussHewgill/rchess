@@ -24,11 +24,11 @@ pub static QS_RECAPS_ONLY: Depth = 5;
 
 pub static NULL_PRUNE_MIN_DEPTH: Depth = 2;
 
-// pub trait Tunable {
-//     const LEN: usize;
-//     fn to_arr(&self) -> Vec<Score>;
-//     fn from_arr(v: &[Score]) -> Self;
-// }
+pub trait Tunable {
+    const LEN: usize;
+    fn to_arr(&self) -> Vec<Score>;
+    fn from_arr(v: &[Score]) -> Self;
+}
 
 mod piece_square_tables {
     use crate::types::*;
@@ -113,32 +113,31 @@ mod piece_square_tables {
 
     }
 
-    // impl Tunable for PcTables {
-    //     const LEN: usize = 64 * 6;
-    //     fn from_arr(v: &[Score]) -> Self {
-    //         const N: usize = 64;
-    //         assert!(v.len() >= N * 6);
-    //         let mut out = Self::empty();
-    //         out.pawn.copy_from_slice(&v[..N]);
-    //         out.knight.copy_from_slice(&v[N..N*2]);
-    //         out.bishop.copy_from_slice(&v[N*2..N*3]);
-    //         out.rook.copy_from_slice(&v[N*3..N*4]);
-    //         out.queen.copy_from_slice(&v[N*4..N*5]);
-    //         out.king.copy_from_slice(&v[N*5..N*6]);
-    //         out
-    //     }
-
-    //     fn to_arr(&self) -> Vec<Score> {
-    //         let mut out = vec![];
-    //         out.extend_from_slice(&self.pawn);
-    //         out.extend_from_slice(&self.knight);
-    //         out.extend_from_slice(&self.bishop);
-    //         out.extend_from_slice(&self.rook);
-    //         out.extend_from_slice(&self.queen);
-    //         out.extend_from_slice(&self.king);
-    //         out
-    //     }
-    // }
+    impl Tunable for PcTables {
+        const LEN: usize = 64 * 6;
+        fn from_arr(v: &[Score]) -> Self {
+            const N: usize = 64;
+            assert!(v.len() >= N * 6);
+            let mut out = Self::empty();
+            out.pawn.copy_from_slice(&v[..N]);
+            out.knight.copy_from_slice(&v[N..N*2]);
+            out.bishop.copy_from_slice(&v[N*2..N*3]);
+            out.rook.copy_from_slice(&v[N*3..N*4]);
+            out.queen.copy_from_slice(&v[N*4..N*5]);
+            out.king.copy_from_slice(&v[N*5..N*6]);
+            out
+        }
+        fn to_arr(&self) -> Vec<Score> {
+            let mut out = vec![];
+            out.extend_from_slice(&self.pawn);
+            out.extend_from_slice(&self.knight);
+            out.extend_from_slice(&self.bishop);
+            out.extend_from_slice(&self.rook);
+            out.extend_from_slice(&self.queen);
+            out.extend_from_slice(&self.king);
+            out
+        }
+    }
 
     /// Generate
     impl PcTables {
@@ -349,104 +348,80 @@ mod piece_square_tables {
     }
 }
 
-// #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize)]
-// pub struct EvalParams2()
+#[cfg(feature = "nope")]
+pub mod ep_index {
+    use super::*;
 
-// pub mod wat {
-//     use super::*;
-//     use rchess_macros::EPIndex;
-//     #[derive(Debug,Clone,EPIndex)]
-//     pub enum Wat {
-//         AA,
-//         #[epindex_max(7)]
-//         BB(usize),
-//         #[epindex_max(64)]
-//         PSQTPawn(usize),
-//     }
-// }
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,EPIndex)]
-pub enum EPIndex {
-    PawnSupported,
-    #[epindex_max(7)]
-    PawnConnectedRank(usize),
-    PawnBlockedR5,
-    PawnBlockedR6,
-    PawnDoubled,
-    PawnIsolated,
-    PawnBackward,
-    OutpostKnight,
-    OutpostBishop,
-    OutpostReachableKnight,
-    PPRookOpenFile,
-    PPRookHalfOpenFile,
-    #[epindex_max(64)]
-    PSQTPawn(usize),
-    #[epindex_max(64)]
-    PSQTKnight(usize),
-    #[epindex_max(64)]
-    PSQTBishop(usize),
-    #[epindex_max(64)]
-    PSQTRook(usize),
-    #[epindex_max(64)]
-    PSQTQueen(usize),
-    #[epindex_max(64)]
-    PSQTKing(usize),
-}
+    #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,EPIndex)]
+    pub enum EPIndex {
+        PawnSupported,
+        #[epindex_max(7)]
+        PawnConnectedRank(u8),
+        PawnBlockedR5,
+        PawnBlockedR6,
+        PawnDoubled,
+        PawnIsolated,
+        PawnBackward,
+        OutpostKnight,
+        OutpostBishop,
+        OutpostReachableKnight,
+        PPRookOpenFile,
+        PPRookHalfOpenFile,
+        #[epindex_max(64)]
+        PSQTPawn(u8),
+        #[epindex_max(64)]
+        PSQTKnight(u8),
+        #[epindex_max(64)]
+        PSQTBishop(u8),
+        #[epindex_max(64)]
+        PSQTRook(u8),
+        #[epindex_max(64)]
+        PSQTQueen(u8),
+        #[epindex_max(64)]
+        PSQTKing(u8),
+    }
 
-impl EvalParams {
+    impl EvalParams {
 
-    pub fn idx_piece<T: Into<Coord>>(pc: Piece, side: Color, c0: T) -> EPIndex {
-        let c1: Coord = c0.into();
-        let c1 = if side == White { c1 } else { Coord(c1.0,7 - c1.1) };
-        let c2 = u8::from(c1) as usize;
+        pub fn new() -> Self {
+            let mut out = Self::default();
+            out
+        }
 
-        match pc {
-            Pawn   => EPIndex::PSQTPawn(c2),
-            Knight => EPIndex::PSQTKnight(c2),
-            Bishop => EPIndex::PSQTBishop(c2),
-            Rook   => EPIndex::PSQTRook(c2),
-            Queen  => EPIndex::PSQTQueen(c2),
-            King   => EPIndex::PSQTKing(c2),
+        // pub fn idx_piece<T: Into<Coord>>(pc: Piece, side: Color, c0: T) -> EPIndex {
+        pub fn idx_piece(pc: Piece, side: Color, c0: u8) -> EPIndex {
+            // let c1: Coord = c0.into();
+            // let c1 = if side == White { c1 } else { Coord(c1.0,7 - c1.1) };
+            // let c2 = u8::from(c1);
+
+            let c2 = if side == White { c0 } else { Coord::flip_vertical_int(c0) };
+            match pc {
+                Pawn   => EPIndex::PSQTPawn(c2),
+                Knight => EPIndex::PSQTKnight(c2),
+                Bishop => EPIndex::PSQTBishop(c2),
+                Rook   => EPIndex::PSQTRook(c2),
+                Queen  => EPIndex::PSQTQueen(c2),
+                King   => EPIndex::PSQTKing(c2),
+            }
+        }
+        // #[inline(never)]
+        // pub fn get_psqt<T: Into<Coord>>(&self, pc: Piece, side: Color, c0: T) -> Score {
+        pub fn get_psqt(&self, pc: Piece, side: Color, c0: u8) -> Score {
+            let idx = Self::idx_piece(pc, side, c0);
+            self[idx]
         }
     }
 
-    pub fn get_psqt<T: Into<Coord>>(&self, pc: Piece, side: Color, c0: T) -> Score {
-        let idx = Self::idx_piece(pc, side, c0);
-        self[idx]
-    }
-
-
-    // pub fn get<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
-    //     let c1: Coord = c0.into();
-    //     let c1 = if col == White { c1 } else { Coord(c1.0,7 - c1.1) };
-    //     self[pc][c1]
-    // }
-
-    // pub fn get(&self, idx: EPIndex) -> Score {
-    //     unimplemented!()
-    // }
-    // pub fn set(&mut self, idx: EPIndex, score: Score) {
-    //     unimplemented!()
-    // }
-
 }
 
-// impl Default for EvalParams2 {
-//     fn default() -> Self {
-//         // Self {}
-//         unimplemented!()
-//     }
-// }
-
-// #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize)]
-// pub struct EvalParams {
-//     pub mid:       bool,
-//     pub pawns:     EPPawns,
-//     pub pieces:    EPPieces,
-//     #[serde(skip)]
-//     pub psqt:      PcTables,
-// }
+#[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize)]
+pub struct EvalParams {
+    pub mid:       bool,
+    pub pawns:     EPPawns,
+    pub pieces:    EPPieces,
+    pub psqt:      PcTables,
+}
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new)]
 pub struct EPPieces {
@@ -608,101 +583,101 @@ impl Default for EPPawns {
 //     }
 // }
 
-// pub mod indexing {
-//     use super::*;
+pub mod indexing {
+    use super::*;
 
-//     impl Tunable for EvalParams {
-//         const LEN: usize = 1
-//             + EPPawns::LEN
-//             + EPPieces::LEN
-//             + PcTables::LEN;
+    impl Tunable for EvalParams {
+        const LEN: usize = 1
+            + EPPawns::LEN
+            + EPPieces::LEN
+            + PcTables::LEN;
 
-//         fn to_arr(&self) -> Vec<Score> {
-//             let mut out = vec![if self.mid { 1 } else { 0 }];
-//             out.extend_from_slice(&self.pawns.to_arr());
-//             out.extend_from_slice(&self.pieces.to_arr());
-//             out.extend_from_slice(&self.psqt.to_arr());
-//             out
-//         }
-//         fn from_arr(v: &[Score]) -> Self {
-//             let n0 = 1 + EPPawns::LEN;
-//             let n1 = n0 + EPPieces::LEN;
-//             let n2 = n1 + PcTables::LEN;
-//             Self {
-//                 mid:     v[0] == 1,
-//                 pawns:   EPPawns::from_arr(&v[1..n0]),
-//                 pieces:  EPPieces::from_arr(&v[n0..n1]),
-//                 // psqt:    PcTables::from_arr(&v[n1..n2 + 1]),
-//                 psqt:    PcTables::from_arr(&v[n1..]),
-//             }
-//         }
-//     }
+        fn to_arr(&self) -> Vec<Score> {
+            let mut out = vec![if self.mid { 1 } else { 0 }];
+            out.extend_from_slice(&self.pawns.to_arr());
+            out.extend_from_slice(&self.pieces.to_arr());
+            out.extend_from_slice(&self.psqt.to_arr());
+            out
+        }
+        fn from_arr(v: &[Score]) -> Self {
+            let n0 = 1 + EPPawns::LEN;
+            let n1 = n0 + EPPieces::LEN;
+            let n2 = n1 + PcTables::LEN;
+            Self {
+                mid:     v[0] == 1,
+                pawns:   EPPawns::from_arr(&v[1..n0]),
+                pieces:  EPPieces::from_arr(&v[n0..n1]),
+                // psqt:    PcTables::from_arr(&v[n1..n2 + 1]),
+                psqt:    PcTables::from_arr(&v[n1..]),
+            }
+        }
+    }
 
-//     impl Tunable for EPPawns {
-//         const LEN: usize = 13;
-//         fn to_arr(&self) -> Vec<Score> {
-//             let mut out = vec![self.supported];
-//             out.extend_from_slice(&self.connected_ranks);
-//             out.push(self.blocked_r5);
-//             out.push(self.blocked_r6);
-//             out.push(self.doubled);
-//             out.push(self.isolated);
-//             out.push(self.backward);
-//             out
-//         }
+    impl Tunable for EPPawns {
+        const LEN: usize = 13;
+        fn to_arr(&self) -> Vec<Score> {
+            let mut out = vec![self.supported];
+            out.extend_from_slice(&self.connected_ranks);
+            out.push(self.blocked_r5);
+            out.push(self.blocked_r6);
+            out.push(self.doubled);
+            out.push(self.isolated);
+            out.push(self.backward);
+            out
+        }
 
-//         fn from_arr(v: &[Score]) -> Self {
-//             assert!(v.len() >= Self::LEN);
-//             let mut out = Self::default();
-//             out.supported = v[0];
-//             out.connected_ranks.copy_from_slice(&v[1..8]);
+        fn from_arr(v: &[Score]) -> Self {
+            assert!(v.len() >= Self::LEN);
+            let mut out = Self::default();
+            out.supported = v[0];
+            out.connected_ranks.copy_from_slice(&v[1..8]);
 
-//             out.blocked_r5 = v[8];
-//             out.blocked_r6 = v[9];
+            out.blocked_r5 = v[8];
+            out.blocked_r6 = v[9];
 
-//             out.doubled  = v[10];
-//             out.isolated = v[11];
-//             out.backward = v[12];
+            out.doubled  = v[10];
+            out.isolated = v[11];
+            out.backward = v[12];
 
-//             out
-//         }
-//     }
+            out
+        }
+    }
 
-//     impl Tunable for EPPieces {
-//         const LEN: usize = 2 + EvOutpost::LEN;
-//         fn to_arr(&self) -> Vec<Score> {
-//             let mut out = vec![
-//                 self.rook_open_file[0],
-//                 self.rook_open_file[1],
-//             ];
-//             out.extend_from_slice(&self.outpost.to_arr());
-//             out
-//         }
+    impl Tunable for EPPieces {
+        const LEN: usize = 2 + EvOutpost::LEN;
+        fn to_arr(&self) -> Vec<Score> {
+            let mut out = vec![
+                self.rook_open_file[0],
+                self.rook_open_file[1],
+            ];
+            out.extend_from_slice(&self.outpost.to_arr());
+            out
+        }
 
-//         fn from_arr(v: &[Score]) -> Self {
-//             assert!(v.len() >= Self::LEN);
-//             Self {
-//                 rook_open_file: [v[0],v[1]],
-//                 outpost:        EvOutpost::from_arr(&v[2..]),
-//             }
-//         }
-//     }
+        fn from_arr(v: &[Score]) -> Self {
+            assert!(v.len() >= Self::LEN);
+            Self {
+                rook_open_file: [v[0],v[1]],
+                outpost:        EvOutpost::from_arr(&v[2..]),
+            }
+        }
+    }
 
-//     impl Tunable for EvOutpost {
-//         const LEN: usize = 3;
-//         fn to_arr(&self) -> Vec<Score> {
-//             vec![self.outpost_knight,self.outpost_bishop,self.reachable_knight]
-//         }
+    impl Tunable for EvOutpost {
+        const LEN: usize = 3;
+        fn to_arr(&self) -> Vec<Score> {
+            vec![self.outpost_knight,self.outpost_bishop,self.reachable_knight]
+        }
 
-//         fn from_arr(v: &[Score]) -> Self {
-//             assert!(v.len() >= 3);
-//             Self {
-//                 outpost_knight: v[0],
-//                 outpost_bishop: v[1],
-//                 reachable_knight: v[2],
-//             }
-//         }
-//     }
+        fn from_arr(v: &[Score]) -> Self {
+            assert!(v.len() >= 3);
+            Self {
+                outpost_knight: v[0],
+                outpost_bishop: v[1],
+                reachable_knight: v[2],
+            }
+        }
+    }
 
-// }
+}
 

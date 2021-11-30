@@ -17,60 +17,95 @@ pub struct TxPosition {
     // pub q_score:  Score,
 }
 
-#[cfg(feature = "nope")]
+pub fn texel_optimize_once(
+    ts:                          &Tables,
+    inputs:                      &[TxPosition],
+    mut exhelper:                &mut ExHelper,
+    ignore_weights:              &[bool],
+    count:                       Option<usize>,
+    mid:                         bool,
+    mut best_error:              &mut f64,
+) {
+    let mut arr = if mid {
+        exhelper.cfg.eval_params_mid.to_arr()
+    } else {
+        exhelper.cfg.eval_params_end.to_arr()
+    };
+
+    for n in 0..arr.len() {
+        if let Some(true) = ignore_weights.get(n) {
+            continue;
+        }
+
+        arr[n] = arr[n].checked_add(1).unwrap();
+        if mid {
+            exhelper.cfg.eval_params_mid = EvalParams::from_arr(&arr);
+        } else {
+            exhelper.cfg.eval_params_end = EvalParams::from_arr(&arr);
+        }
+        exhelper.ph_rw.purge_scores();
+
+        let new_error = average_eval_error(ts, &inputs, &exhelper, None);
+
+        if new_error < *best_error {
+            *best_error = new_error;
+        } else {
+            arr[n] = arr[n].checked_sub(2).unwrap();
+            if mid {
+                exhelper.cfg.eval_params_mid = EvalParams::from_arr(&arr);
+            } else {
+                exhelper.cfg.eval_params_end = EvalParams::from_arr(&arr);
+            }
+            exhelper.ph_rw.purge_scores();
+
+            let new_error = average_eval_error(ts, &inputs, &exhelper, None);
+
+            if new_error < *best_error {
+                *best_error = new_error;
+            } else {
+                arr[n] = arr[n].checked_add(1).unwrap();
+                if mid {
+                    exhelper.cfg.eval_params_mid = EvalParams::from_arr(&arr);
+                } else {
+                    exhelper.cfg.eval_params_end = EvalParams::from_arr(&arr);
+                }
+                exhelper.ph_rw.purge_scores();
+            }
+        }
+
+        // let t1 = t0.elapsed().as_secs_f64();
+        // println!("n {} in {:.3} seconds, {:.1}", n, t1, n as f64 / t1);
+    }
+
+}
+
 pub fn texel_optimize(
     ts:                          &Tables,
     inputs:                      &[TxPosition],
     mut exhelper:                &mut ExHelper,
-    ignore_weights:              Vec<bool>,
-    count:                       Option<usize>
+    ignore_weights:              &[bool],
+    count:                       Option<usize>,
 ) -> (EvalParams,EvalParams) {
+
     let mut best_error = average_eval_error(ts, &inputs, &exhelper, None);
 
-    let (mut arr_mid, mut arr_end) =
-        (exhelper.cfg.eval_params_mid.to_arr(),exhelper.cfg.eval_params_end.to_arr());
+    let arr_len = exhelper.cfg.eval_params_mid.to_arr().len();
 
     // eprintln!("arr_mid.len() = {:?}", arr_mid.len());
     let t0 = std::time::Instant::now();
     let mut loops = 0;
     loop {
 
-        for n in 0..arr_mid.len() {
-            if let Some(true) = ignore_weights.get(n) {
-                continue;
-            }
+        texel_optimize_once(
+            ts, inputs, &mut exhelper, ignore_weights, count, true, &mut best_error);
 
-            arr_mid[n] = arr_mid[n].checked_add(1).unwrap();
-            exhelper.cfg.eval_params_mid = EvalParams::from_arr(&arr_mid);
-            exhelper.ph_rw.purge_scores();
-
-            let new_error = average_eval_error(ts, &inputs, &exhelper, None);
-
-            if new_error < best_error {
-                best_error = new_error;
-            } else {
-                arr_mid[n] = arr_mid[n].checked_sub(2).unwrap();
-                exhelper.cfg.eval_params_mid = EvalParams::from_arr(&arr_mid);
-                exhelper.ph_rw.purge_scores();
-                let new_error = average_eval_error(ts, &inputs, &exhelper, None);
-
-                if new_error < best_error {
-                    best_error = new_error;
-                } else {
-                    arr_mid[n] = arr_mid[n].checked_add(1).unwrap();
-                    exhelper.cfg.eval_params_mid = EvalParams::from_arr(&arr_mid);
-                    exhelper.ph_rw.purge_scores();
-                }
-            }
-
-            // let t1 = t0.elapsed().as_secs_f64();
-            // println!("n {} in {:.3} seconds, {:.1}", n, t1, n as f64 / t1);
-        }
+        texel_optimize_once(
+            ts, inputs, &mut exhelper, ignore_weights, count, false, &mut best_error);
 
         loops += 1;
         let t1 = t0.elapsed().as_secs_f64();
         eprintln!("loops = {:>3}, best_error = {:.3}, time: {:.1}s, {:.1} weights/s",
-                  loops, best_error, t1, arr_mid.len() as f64 / t1,
+                  loops, best_error, t1, (arr_len * 2) as f64 / t1,
         );
         if let Some(c) = count { if loops >= c { break; } }
     }
@@ -107,6 +142,12 @@ pub fn average_eval_error(
     let (alpha,beta) = (i32::MIN,i32::MAX);
     let (alpha,beta) = (alpha + 200,beta - 200);
     let mut stats = SearchStats::default();
+
+    // let ev = if mid {
+    //     &exhelper.cfg.eval_params_mid
+    // } else {
+    //     &exhelper.cfg.eval_params_end
+    // };
 
     let sum: f64 = inputs.iter().map(|pos| {
         let r = match pos.result {
