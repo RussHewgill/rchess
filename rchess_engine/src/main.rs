@@ -603,7 +603,8 @@ fn main_tuning() {
     // let path = "/home/me/code/rust/rchess/training_data/test_5.bin";
     // let path = "/home/me/code/rust/rchess/training_data/set1/depth5_games500_4.bin";
     // let path = "/home/me/code/rust/rchess/training_data/depth5_games100_1.bin";
-    let path = "/home/me/code/rust/rchess/training_data/depth5_test_1.bin";
+    // let path = "/home/me/code/rust/rchess/training_data/depth5_test_1.bin";
+    let path = "/home/me/code/rust/rchess/training_data/set2/depth5_games100_1.bin";
 
     // {
     //     let path2 = "/home/me/code/rust/rchess/training_data/set1/depth5_games500_4_fixed.bin";
@@ -751,7 +752,7 @@ fn main_gensfen(count: u64, path: &str) {
 
     let ts = TDBuilder::new()
         .max_depth(5)
-        .time(0.05)
+        .time(0.2)
         .num_threads(num_cpus::get())
         // .num_threads(12)
         // .num_positions(Some(1000))
