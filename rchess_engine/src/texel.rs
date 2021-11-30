@@ -68,8 +68,10 @@ pub fn texel_optimize(
         }
 
         loops += 1;
-        eprintln!("loops = {:>3}, best_error = {:.3}, time: {:.1}",
-                  loops, best_error, t0.elapsed().as_secs_f64());
+        let t1 = t0.elapsed().as_secs_f64();
+        eprintln!("loops = {:>3}, best_error = {:.3}, time: {:.1}s, {:.1} weights/s",
+                  loops, best_error, t1, arr_mid.len() as f64 / t1,
+        );
         if let Some(c) = count { if loops >= c { break; } }
     }
 

@@ -231,7 +231,10 @@ impl Game {
             score += self.score_psqt(ts, ev, White) - self.score_psqt(ts, ev, Black);
         }
 
-        // score += self.score_mobility(ts, White) - self.score_mobility(ts, Black);
+        if cfg!(feature = "mobility_scoring") {
+            score += self.score_mobility(ts, White) - self.score_mobility(ts, Black);
+        }
+
         score += self.score_pieces_mg(ts, ev, White) - self.score_pieces_mg(ts, ev, Black);
         // score += self.score_pawns(ts, ev, ph_rw, White) - self.score_pawns(ts, ev, ph_rw, Black);
 
@@ -257,9 +260,11 @@ impl Game {
             score += self.score_psqt(ts, ev, White) - self.score_psqt(ts, ev, Black);
         }
 
-        // score += self.score_mobility(ts, White) - self.score_mobility(ts, Black);
+        if cfg!(feature = "mobility_scoring") {
+            score += self.score_mobility(ts, White) - self.score_mobility(ts, Black);
+        }
+
         score += self.score_pieces_eg(ts, ev, White) - self.score_pieces_eg(ts, ev, Black);
-        // score += self.score_pawns(ts, ev, ph_rw, White) - self.score_pawns(ts, ev, ph_rw, Black);
 
         let pawns: [Score; 2] = self.score_pawns(ts, ev_mid, ev_end, ph_rw, false);
         score += pawns[0] - pawns[1];
@@ -681,19 +686,33 @@ impl Game {
         mid:          bool,
     ) -> [Score; 2] {
 
-        let mut ph = PHEntry::get_or_insert_pawns(ts, &self, ev_mid, ev_end, ph_rw);
-
-        ph.get_scores(mid)
+        // ph.get_scores(mid)
+        if let Some(ph_rw) = ph_rw {
+            let scores = ph_rw.get_scores(ts, &self, ev_mid, ev_end);
+            scores.get_scores(mid)
+        } else {
+            let mut ph = PHEntry::get_or_insert_pawns(ts, &self, ev_mid, ev_end, None);
+            // let scores = PHScore::generate(ts, g, &ph, ev_mid, ev_end);
+            if mid {
+                let mid_w = self._score_pawns_mut(&ph, &ev_mid, White);
+                let mid_b = self._score_pawns_mut(&ph, &ev_mid, Black);
+                [mid_w, mid_b]
+            } else {
+                let end_w = self._score_pawns_mut(&ph, &ev_end, White);
+                let end_b = self._score_pawns_mut(&ph, &ev_end, Black);
+                [end_w, end_b]
+            }
+        }
     }
 
     /// Take PHEntry without scores and update score for side, phase
     pub fn _score_pawns_mut(
         &self,
         // ts:           &Tables,
-        mut ph:       &mut PHEntry,
+        ph:           &PHEntry,
         ev:           &EvalParams,
         side:         Color,
-    ) {
+    ) -> Score {
         let mut score = 0;
         let pawns = self.get(Pawn, side);
 
@@ -709,7 +728,8 @@ impl Game {
             score += self._pawn_connected_bonus(ev, &ph, sq.into(), side);
         });
 
-        ph.update_score_mut(score, ev.mid, side);
+        // ph.update_score_mut(score, ev.mid, side);
+        score
     }
 
     pub fn gen_ph_entry(&self, ts: &Tables, ev_mid: &EvalParams, ev_end: &EvalParams) -> PHEntry {

@@ -7,6 +7,7 @@ pub use crate::hashing::*;
 // pub use log::{debug, error};
 pub use log::{debug, error, warn, info, trace};
 use evmap_derive::ShallowCopy;
+use derive_new::new;
 
 use serde::{Serialize,Deserialize};
 
@@ -24,7 +25,7 @@ pub enum Color {
     Black,
 }
 
-#[derive(Debug,Default,Hash,Eq,PartialEq,PartialOrd,ShallowCopy,Clone,Copy,Serialize,Deserialize)]
+#[derive(Debug,Default,Hash,Eq,PartialEq,PartialOrd,ShallowCopy,Clone,Copy,Serialize,Deserialize,new)]
 pub struct ByColor<T> {
     pub white:  T,
     pub black:  T,

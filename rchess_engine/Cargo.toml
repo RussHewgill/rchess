@@ -28,6 +28,7 @@ default = [
     "keep_stats",
 
     "positional_scoring",
+    "mobility_scoring",
 
     "syzygy",
 
@@ -52,15 +53,18 @@ backtrace = []
 keep_stats = []
 
 positional_scoring = []
+mobility_scoring = []
 
 syzygy = []
 
 null_pruning = []
 late_move_reduction = []
 history_heuristic = []
+
 qsearch = []
 
 pvs_search = []
+
 negamax_only = []
 
 [dev-dependencies]
