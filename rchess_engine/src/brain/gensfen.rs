@@ -294,11 +294,13 @@ mod td_builder {
             rx:         Receiver<TrainingData>,
         ) {
             let mut out = vec![];
+            let mut file = std::fs::File::create(path).unwrap();
+
             loop {
                 match rx.recv() {
                     Ok(td) => {
                         out.push(td);
-                        match TrainingData::save_all(save_bin, &path, &out) {
+                        match TrainingData::_save_all(save_bin, &mut file, &out) {
                             Ok(_)  => {},
                             Err(e) => {
                                 eprintln!("save_all error = {:?}", e);
@@ -607,6 +609,26 @@ impl TrainingData {
         Ok(out)
     }
 
+    pub fn _save_all(save_bin: bool, mut file: &mut std::fs::File, xs: &Vec<Self>) -> std::io::Result<()> {
+        use std::io::Write;
+
+        if save_bin {
+            match bincode::serialize(&xs) {
+                Ok(buf) => {
+                    file.write_all(&buf)
+                },
+                Err(e) => {
+                    eprintln!("save_all: bincode = {:?}", e);
+                    Ok(())
+                }
+            }
+        } else {
+            // file.write_all(&buf)
+            unimplemented!()
+        }
+
+    }
+
     pub fn save_all<P: AsRef<Path>>(save_bin: bool, path: P, xs: &Vec<Self>) -> std::io::Result<()> {
         use std::io::Write;
         // let mut buf: Vec<u8> = vec![];
@@ -618,9 +640,11 @@ impl TrainingData {
             match bincode::serialize(&xs) {
                 Ok(buf) => {
                     file.write_all(&buf)
+                    // Ok(file)
                 },
                 Err(e) => {
                     eprintln!("save_all: bincode = {:?}", e);
+                    // Ok(file)
                     Ok(())
                 }
             }
