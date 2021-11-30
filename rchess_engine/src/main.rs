@@ -601,9 +601,35 @@ fn main_tuning() {
     let ob = OpeningBook::read_from_file(&ts, "tables/Perfect_2021/BIN/Perfect2021.bin").unwrap();
 
     // let path = "/home/me/code/rust/rchess/training_data/test_5.bin";
-    let path = "/home/me/code/rust/rchess/training_data/set1/depth5_games500_3.bin";
+    // let path = "/home/me/code/rust/rchess/training_data/set1/depth5_games500_4.bin";
+    // let path = "/home/me/code/rust/rchess/training_data/depth5_games100_1.bin";
+    let path = "/home/me/code/rust/rchess/training_data/depth5_test_1.bin";
+
+    // {
+    //     let path2 = "/home/me/code/rust/rchess/training_data/set1/depth5_games500_4_fixed.bin";
+    //     let mut f  = std::fs::File::open(path).unwrap();
+    //     let mut f2 = std::fs::File::create(path2).unwrap();
+    //     let mut n = 0;
+    //     while let Ok(tds) = bincode::deserialize_from(&mut f) {
+    //         let tds: Vec<TrainingData> = tds;
+    //         if tds.len() != 1 {
+    //             eprintln!("tds.len() = {:?}", tds.len());
+    //         }
+    //         for td in tds.into_iter() {
+    //             bincode::serialize_into(&mut f2, &td).unwrap();
+    //         }
+    //         n += 1;
+    //         if n % 100 == 0 {
+    //             eprintln!("n = {:?}", n);
+    //         }
+    //     }
+    //     return;
+    // }
 
     let tds: Vec<TrainingData> = TrainingData::load_all(path).unwrap();
+
+    // let gg = &tds[0];
+    // eprintln!("gg.moves.len() = {:?}", gg.moves.len());
 
     let mut ps: Vec<TxPosition> = vec![];
 
@@ -725,7 +751,7 @@ fn main_gensfen(count: u64, path: &str) {
 
     let ts = TDBuilder::new()
         .max_depth(5)
-        .time(0.2)
+        .time(0.05)
         .num_threads(num_cpus::get())
         // .num_threads(12)
         // .num_positions(Some(1000))

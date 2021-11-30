@@ -268,7 +268,7 @@ mod td_builder {
             let t0 = Instant::now();
 
             crossbeam::scope(|s| {
-                s.spawn(|_| Self::save_listener(save_bin, path, rx.clone()));
+                s.spawn(|_| Self::save_listener(save_bin, count, path, rx.clone()));
 
                 if print {
                     s.spawn(|_| Self::watch_sfen(t0, sfen_n.clone(), rx.clone()));
@@ -290,21 +290,29 @@ mod td_builder {
 
         fn save_listener<P: AsRef<Path>>(
             save_bin:   bool,
+            count:      u64,
             path:       P,
             rx:         Receiver<TrainingData>,
         ) {
-            let mut out = vec![];
+            // let mut out = vec![];
             let mut file = std::fs::File::create(path).unwrap();
+            let mut n = 0;
 
             loop {
                 match rx.recv() {
                     Ok(td) => {
-                        out.push(td);
-                        match TrainingData::_save_all(save_bin, &mut file, &out) {
+                        // out.push(td);
+                        // eprintln!("rx, len out = {:?}", out.len());
+                        eprintln!("rx, len out = {:?}", n);
+                        n += 1;
+                        match TrainingData::save_into(save_bin, &mut file, &td) {
                             Ok(_)  => {},
                             Err(e) => {
                                 eprintln!("save_all error = {:?}", e);
                             },
+                        }
+                        if n >= count {
+                            break;
                         }
                     },
                     // Err(TryRecvError::Empty)    => {
@@ -604,24 +612,40 @@ impl TDEntry {
 impl TrainingData {
 
     pub fn load_all<P: AsRef<Path>>(path: P) -> std::io::Result<Vec<Self>> {
-        let mut b = std::fs::read(path)?;
-        let out: Vec<Self> = bincode::deserialize(&b).unwrap();
+        // let mut b = std::fs::read(path)?;
+        // let out: Vec<Self> = bincode::deserialize(&b).unwrap();
+        let mut f = std::fs::File::open(path)?;
+        let mut out: Vec<Self> = vec![];
+        while let Ok(td) = bincode::deserialize_from(&mut f) {
+            out.push(td);
+        }
+        // let out: Vec<Self> = bincode::deserialize_from(&mut f).unwrap();
         Ok(out)
     }
 
-    pub fn _save_all(save_bin: bool, mut file: &mut std::fs::File, xs: &Vec<Self>) -> std::io::Result<()> {
+    // pub fn _save_all(save_bin: bool, mut file: &mut std::fs::File, xs: &Vec<Self>) -> std::io::Result<()> {
+    pub fn save_into(save_bin: bool, mut file: &mut std::fs::File, xs: &Self) -> std::io::Result<()> {
         use std::io::Write;
 
         if save_bin {
-            match bincode::serialize(&xs) {
-                Ok(buf) => {
-                    file.write_all(&buf)
-                },
-                Err(e) => {
-                    eprintln!("save_all: bincode = {:?}", e);
+
+            match bincode::serialize_into(&mut file, &xs) {
+                Ok(_)  => Ok(()),
+                Err(_) => {
                     Ok(())
-                }
+                },
             }
+
+            // match bincode::serialize(&xs) {
+            //     Ok(buf) => {
+            //         file.write_all(&buf)
+            //     },
+            //     Err(e) => {
+            //         eprintln!("save_all: bincode = {:?}", e);
+            //         Ok(())
+            //     }
+            // }
+
         } else {
             // file.write_all(&buf)
             unimplemented!()
@@ -629,7 +653,8 @@ impl TrainingData {
 
     }
 
-    pub fn save_all<P: AsRef<Path>>(save_bin: bool, path: P, xs: &Vec<Self>) -> std::io::Result<()> {
+    #[cfg(feature = "nope")]
+    fn __save_all<P: AsRef<Path>>(save_bin: bool, path: P, xs: &Vec<Self>) -> std::io::Result<()> {
         use std::io::Write;
         // let mut buf: Vec<u8> = vec![];
 
@@ -660,6 +685,7 @@ impl TrainingData {
 
     }
 
+    #[cfg(feature = "nope")]
     pub fn save<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
         use std::io::Write;
         let b: Vec<u8> = bincode::serialize(&self).unwrap();
@@ -667,6 +693,7 @@ impl TrainingData {
         file.write_all(&b)
     }
 
+    #[cfg(feature = "nope")]
     pub fn load<P: AsRef<Path>>(path: P) -> std::io::Result<Self> {
         use std::io::Write;
         let mut b = std::fs::read(path)?;
