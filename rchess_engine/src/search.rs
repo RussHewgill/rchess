@@ -393,12 +393,17 @@ impl Game {
 /// move_is_legal
 impl Game {
 
-    pub fn move_is_legal(&self, ts: &Tables, m: Move, side: Color) -> bool {
+    pub fn move_is_legal(&self, ts: &Tables, mv: Move, side: Color) -> bool {
 
-        if m.filter_en_passant() {
+        if self.state.side_to_move != side {
+            trace!("non legal move, wrong color? {:?}", mv);
+            return false;
+        }
+
+        if mv.filter_en_passant() {
             if self.state.en_passant.is_none() {
                 return false;
-            } else if let Some(g2) = self.clone()._apply_move_unchecked(&ts, &m, false) {
+            } else if let Some(g2) = self.clone()._apply_move_unchecked(&ts, &mv, false) {
                 let checks = g2.find_checkers(&ts, self.state.side_to_move);
                 return checks.is_empty();
             } else {
@@ -408,24 +413,24 @@ impl Game {
 
         // let side = if self.get_color(White).is_one_at(m.sq_from()) { White } else { Black };
 
-        match m.piece() {
+        match mv.piece() {
             Some(King) => {
-                !self.find_attacks_by_side(&ts, m.sq_to(), !side, true)
+                !self.find_attacks_by_side(&ts, mv.sq_to(), !side, true)
             },
             _ => {
                 let pins = self.get_pins(side);
 
                 // Not pinned
                 // OR moving along pin ray
-                let x = (BitBoard::single(m.sq_from()) & pins).is_empty()
-                    || (ts.aligned(m.sq_from(), m.sq_to(), self.get(King, side).bitscan().into()).0 != 0);
+                let x = (BitBoard::single(mv.sq_from()) & pins).is_empty()
+                    || (ts.aligned(mv.sq_from(), mv.sq_to(), self.get(King, side).bitscan().into()).0 != 0);
 
                 // not in check
                 let x0 = x & self.state.checkers.is_empty();
 
                 x0 && self.state.checkers.is_empty()
-                    || (x && m.sq_to() == self.state.checkers.bitscan().into())
-                    || (x && (BitBoard::single(m.sq_to())
+                    || (x && mv.sq_to() == self.state.checkers.bitscan().into())
+                    || (x && (BitBoard::single(mv.sq_to())
                               & self.state.check_block_mask).is_not_empty())
             },
         }

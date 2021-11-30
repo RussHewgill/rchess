@@ -91,6 +91,12 @@ pub mod util;
 //     }
 // }
 
+// #[macro_export]
+// macro_rules! named_array {
+//     ($name:ident, $( $fields:ident ),* ) => {
+//     };
+// }
+
 #[macro_export]
 macro_rules! builder_field {
     ($field:ident, $field_type:ty) => {

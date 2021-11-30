@@ -587,6 +587,19 @@ fn main_tuning() {
     use rchess_engine_lib::qsearch::*;
     use rchess_engine_lib::pawn_hash_table::*;
 
+    {
+        use rchess_engine_lib::tuning::wat::*;
+
+        let x = Wat::AA;
+
+        // let k: usize = x as usize;
+        // eprintln!("k = {:?}", k);
+
+    }
+
+
+    return;
+
     let ts = Tables::read_from_file_def().unwrap();
 
     let ob = OpeningBook::read_from_file(&ts, "tables/Perfect_2021/BIN/Perfect2021.bin").unwrap();
@@ -1525,6 +1538,8 @@ fn main9() {
     // let fen = "8/6B1/p5p1/Pp4kp/1P5r/5P1Q/4q1PK/8 w - - 0 32";   // Qxh4
     // let fen = "8/8/1p1r1k2/p1pPN1p1/P3KnP1/1P6/8/3R4 b - - 0 1"; // Nxd5
 
+    let fen = "8/8/8/8/8/7p/3k1pr1/7K w - -"; // non legal ??
+
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
 
@@ -1534,7 +1549,7 @@ fn main9() {
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
 
-    // g.last_move = Some(Move::Quiet { from: "G4".into(), to: "G7".into(), pc: Queen });
+    g.last_move = Some(Move::new_capture("D1", "D2", King, Queen));
 
     eprintln!("g = {:?}", g);
 

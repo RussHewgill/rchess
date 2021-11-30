@@ -691,7 +691,17 @@ impl Explorer {
         stats.ph_hits   = self.ph_rw.hits.load(Ordering::Relaxed);
         stats.ph_misses = self.ph_rw.misses.load(Ordering::Relaxed);
 
-        (out,moves,stats)
+        if let Some(res) = out.get_result() {
+            let out = if self.game.move_is_legal(ts, res.mv, self.game.state.side_to_move) {
+                out
+            } else {
+                debug!("best move wasn't legal? {:?}\n{:?}\n{:?}", self.game, self.game.to_fen(), res);
+                ABResults::ABNone
+            };
+            (out,moves,stats)
+        } else {
+            (out,moves,stats)
+        }
     }
 
     fn lazy_smp_listener(

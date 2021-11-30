@@ -348,6 +348,61 @@ mod piece_square_tables {
     }
 }
 
+// #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize)]
+// pub struct EvalParams2()
+
+pub mod wat {
+    use super::Score;
+
+    use rchess_macros::EPIndex;
+
+    #[derive(EPIndex)]
+    pub enum Wat {
+        AA,
+        #[epindex_max(7)]
+        BB(u8),
+    }
+
+}
+
+#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize)]
+pub enum EPIndex {
+    PawnSupported,
+    PawnConnectedRank(u8),
+    PawnBlockedR5,
+    PawnBlockedR6,
+    PawnDoubled,
+    PawnIsolated,
+    PawnBackward,
+    OutpostKnight,
+    OutpostBishop,
+    OutpostReachableKnight,
+    PPRookOpenFile,
+    PPRookHalfOpenFile,
+}
+
+#[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize)]
+pub struct EvalParams2 {
+    mid:     bool,
+    arr:     [Score; 10],
+}
+
+impl Default for EvalParams2 {
+    fn default() -> Self {
+        // Self {}
+        unimplemented!()
+    }
+}
+
+impl EvalParams2 {
+    pub fn get(&self, idx: EPIndex) -> Score {
+        unimplemented!()
+    }
+    pub fn set(&mut self, idx: EPIndex, score: Score) {
+        unimplemented!()
+    }
+}
+
 #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize)]
 pub struct EvalParams {
     pub mid:       bool,
@@ -356,6 +411,7 @@ pub struct EvalParams {
     #[serde(skip)]
     pub psqt:      PcTables,
 }
+
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new)]
 pub struct EPPieces {
     pub rook_open_file:  [Score; 2],
@@ -409,6 +465,9 @@ pub struct EPPawns {
     pub backward:             Score,
 
 }
+
+// unsafe impl std::slice::SliceIndex for EPPawns {
+// }
 
 impl Default for EPPawns {
     fn default() -> Self {

@@ -270,12 +270,16 @@ impl ExHelper {
                 // }
                 stats.leaves += 1;
                 stats.stalemates += 1;
-                let mv = g.last_move.unwrap();
 
-                // TODO: adjust stalemate value when winning/losing
-                // return ABSingle(ABResult::new_empty(-score));
-                // return ABSingle(ABResult::new_single(mv, score));
-                return ABSingle(ABResult::new_single(mv, 0));
+                // let mv = g.last_move.unwrap();
+                if let Some(mv) = g.last_move {
+                    // TODO: adjust stalemate value when winning/losing
+                    // return ABSingle(ABResult::new_empty(-score));
+                    // return ABSingle(ABResult::new_single(mv, score));
+                    return ABSingle(ABResult::new_single(mv, 0));
+                } else {
+                    return ABNone
+                }
             },
             Outcome::Moves(ms)    => ms,
         };

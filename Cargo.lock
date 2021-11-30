@@ -1153,6 +1153,7 @@ dependencies = [
  "rand",
  "rand_distr",
  "rayon",
+ "rchess_macros",
  "regex",
  "ringbuffer",
  "rustc-hash",
@@ -1162,6 +1163,16 @@ dependencies = [
  "simplelog",
  "sprs",
  "zerocopy",
+]
+
+[[package]]
+name = "rchess_macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "synstructure",
 ]
 
 [[package]]
