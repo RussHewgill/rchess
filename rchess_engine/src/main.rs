@@ -708,7 +708,7 @@ fn main_tuning() {
     eprintln!("non_q = {:?}", non_q);
     eprintln!("ps.len() = {:?}", ps.len());
 
-    let k = find_k(&ts, &ps, &exhelper);
+    let k = find_k(&ts, &ps, &exhelper, false);
     eprintln!("k = {:?}", k);
 
     // let k = -0.111f64;
