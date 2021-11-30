@@ -235,12 +235,12 @@ pub fn crit_bench_1(c: &mut Criterion) {
     // hash     = 24.3 us
     // purged   = 230 us
 
-    // group.bench_function("eval wacs all", |b| b.iter(|| {
-    //     let mut k = 0;
-    //     for g in wacs.iter() {
-    //         k += g.sum_evaluate_mg(&ts, &ev_mid, &ev_end, Some(&ph_rw));
-    //     }
-    // }));
+    group.bench_function("eval wacs all", |b| b.iter(|| {
+        let mut k = 0;
+        for g in wacs.iter() {
+            k += g.sum_evaluate_mg(&ts, &ev_mid, &ev_end, Some(&ph_rw));
+        }
+    }));
 
     // group.bench_function("eval material2", |b| b.iter(|| {
     //     let mut k = 0;
@@ -254,12 +254,12 @@ pub fn crit_bench_1(c: &mut Criterion) {
     //         k += g.score_psqt(&ts, &ev_mid, White) - g.score_psqt(&ts, &ev_mid, Black);
     //     }
     // }));
-    group.bench_function("eval mobility", |b| b.iter(|| {
-        let mut k = 0;
-        for g in wacs.iter() {
-            k += g.score_mobility(&ts, White) - g.score_mobility(&ts, Black);
-        }
-    }));
+    // group.bench_function("eval mobility", |b| b.iter(|| {
+    //     let mut k = 0;
+    //     for g in wacs.iter() {
+    //         k += g.score_mobility(&ts, White) - g.score_mobility(&ts, Black);
+    //     }
+    // }));
     // group.bench_function("eval pieces", |b| b.iter(|| {
     //     let mut k = 0;
     //     for g in wacs.iter() {

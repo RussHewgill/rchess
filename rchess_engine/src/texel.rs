@@ -17,7 +17,7 @@ pub struct TxPosition {
     // pub q_score:  Score,
 }
 
-
+#[cfg(feature = "nope")]
 pub fn texel_optimize(
     ts:                          &Tables,
     inputs:                      &[TxPosition],

@@ -287,7 +287,7 @@ impl Game {
     pub fn _score_psqt(&self, ev: &EvalParams, pc: Piece, side: Color) -> Score {
         let pieces = self.get(pc, side);
         pieces.into_iter().map(|sq| {
-            ev.psqt.get(pc, side, sq)
+            ev.get_psqt(pc, side, sq)
         }).sum()
     }
 
@@ -510,7 +510,7 @@ impl Game {
     pub fn outpost_total(&self, ts: &Tables, ev: &EvalParams, side: Color) -> Score {
         let outposts  = self.outpost_squares(ev, side);
         let reachable = self.reachable_outposts(ts, ev, side);
-        outposts + reachable * ev.pieces.outpost.reachable_knight
+        outposts + reachable * ev[EPIndex::OutpostReachableKnight]
     }
 
     pub fn reachable_outposts(&self, ts: &Tables, ev: &EvalParams, side: Color) -> Score {
@@ -529,7 +529,7 @@ impl Game {
             .filter(|&sq| self.outpost_square(ev, sq.into(), side)).count() as Score;
         let b = self.get(Bishop, side).into_iter()
             .filter(|&sq| self.outpost_square(ev, sq.into(), side)).count() as Score;
-        n * ev.pieces.outpost.outpost_knight + b * ev.pieces.outpost.outpost_bishop
+        n * ev[EPIndex::OutpostKnight] + b * ev[EPIndex::OutpostBishop]
     }
 
     pub fn outpost_square(&self, ev: &EvalParams, c0: Coord, side: Color) -> bool {
@@ -567,9 +567,9 @@ impl Game {
             if (BitBoard::mask_file(file) & pawns_own).is_not_empty() {
                 0
             } else if (BitBoard::mask_file(file) & pawns_other).is_not_empty() {
-                ev.pieces.rook_open_file[0]
+                ev[EPIndex::PPRookHalfOpenFile]
             } else {
-                ev.pieces.rook_open_file[1]
+                ev[EPIndex::PPRookOpenFile]
             }
         }).sum()
     }
@@ -720,9 +720,9 @@ impl Game {
         // score += ev.pawns.blocked_r6 * ph.blocked_r6.popcount() as Score;
 
         // score += ev.pawns.doubled_isolated * (ph.doubled_isolated & pawns).popcount() as Score;
-        score += ev.pawns.doubled * (ph.doubled & pawns).popcount() as Score;
-        score += ev.pawns.isolated * (ph.isolated & pawns).popcount() as Score;
-        score += ev.pawns.backward * (ph.backward & pawns).popcount() as Score;
+        score += ev[EPIndex::PawnDoubled] * (ph.doubled & pawns).popcount() as Score;
+        score += ev[EPIndex::PawnIsolated] * (ph.isolated & pawns).popcount() as Score;
+        score += ev[EPIndex::PawnBackward] * (ph.backward & pawns).popcount() as Score;
 
         pawns.into_iter().for_each(|sq| {
             score += self._pawn_connected_bonus(ev, &ph, sq.into(), side);
@@ -776,7 +776,8 @@ impl Game {
         let su2 = ph.supported_2.is_one_at(c0);
         let su = if su2 { 2 } else if su1 { 1 } else { 0 };
 
-        ev.pawns.connected_ranks[rank as usize] * (2 + px - op) + ev.pawns.supported * su
+        // ev.pawns.connected_ranks[rank as usize] * (2 + px - op) + ev.pawns.supported * su
+        ev[EPIndex::PawnConnectedRank(rank as usize)] * (2 + px - op) + ev[EPIndex::PawnSupported] * su
     }
 
     pub fn _pawn_opposed(&self, c0: Coord, side: Color) -> bool {

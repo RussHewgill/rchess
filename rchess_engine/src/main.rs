@@ -587,18 +587,14 @@ fn main_tuning() {
     use rchess_engine_lib::qsearch::*;
     use rchess_engine_lib::pawn_hash_table::*;
 
-    {
-        use rchess_engine_lib::tuning::wat::*;
-
-        let x = Wat::AA;
-
-        // let k: usize = x as usize;
-        // eprintln!("k = {:?}", k);
-
-    }
-
-
-    return;
+    // {
+    //     use rchess_engine_lib::tuning::wat::*;
+    //     let k0 = Wat::PSQTPawn(0);
+    //     let k1 = k0.from_idx();
+    //     eprintln!("k0 = {:?}", k0);
+    //     eprintln!("k1 = {:?}", k1);
+    // }
+    // return;
 
     let ts = Tables::read_from_file_def().unwrap();
 
@@ -668,11 +664,11 @@ fn main_tuning() {
     let error = average_eval_error(&ts, &ps, &exhelper, None);
     eprintln!("error = {:.3}", error);
 
-    let (ev_mid2,ev_end2) = texel_optimize(
-        &ts, &ps, &mut exhelper, vec![], Some(1));
+    // let (ev_mid2,ev_end2) = texel_optimize(
+    //     &ts, &ps, &mut exhelper, vec![], Some(1));
 
-    let error = average_eval_error(&ts, &ps, &exhelper, None);
-    eprintln!("error = {:.3}", error);
+    // let error = average_eval_error(&ts, &ps, &exhelper, None);
+    // eprintln!("error = {:.3}", error);
 
     // let ks = vec![
     //     -1.0,
@@ -1538,7 +1534,7 @@ fn main9() {
     // let fen = "8/6B1/p5p1/Pp4kp/1P5r/5P1Q/4q1PK/8 w - - 0 32";   // Qxh4
     // let fen = "8/8/1p1r1k2/p1pPN1p1/P3KnP1/1P6/8/3R4 b - - 0 1"; // Nxd5
 
-    let fen = "8/8/8/8/8/7p/3k1pr1/7K w - -"; // non legal ??
+    // let fen = "8/8/8/8/8/7p/3k1pr1/7K w - -"; // non legal ??
 
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
