@@ -8,6 +8,8 @@ pub use self::piece_square_tables::*;
 
 // use rchess_macros::EPIndex;
 
+use std::path::Path;
+
 use serde::{Serialize,Deserialize};
 use serde_big_array::BigArray;
 use derive_new::new;
@@ -44,17 +46,17 @@ mod piece_square_tables {
     pub struct PcTables {
         // tables:      [[Score; 64]; 6],
         #[serde(with = "BigArray")]
-        pawn:       [Score; 64],
+        pub pawn:       [Score; 64],
         #[serde(with = "BigArray")]
-        knight:     [Score; 64],
+        pub knight:     [Score; 64],
         #[serde(with = "BigArray")]
-        bishop:     [Score; 64],
+        pub bishop:     [Score; 64],
         #[serde(with = "BigArray")]
-        rook:       [Score; 64],
+        pub rook:       [Score; 64],
         #[serde(with = "BigArray")]
-        queen:      [Score; 64],
+        pub queen:      [Score; 64],
         #[serde(with = "BigArray")]
-        king:       [Score; 64],
+        pub king:       [Score; 64],
     }
 
     impl std::ops::Index<Piece> for PcTables {
@@ -90,20 +92,74 @@ mod piece_square_tables {
         }
     }
 
+    /// print
     impl PcTables {
 
-        pub fn print_table(ss: [Score; 64]) {
+        pub fn map_color(score: Score) -> termcolor::Color {
+            let x = (score.clamp(-127, 127) - 127).abs() as u8;
+
+            // let x = x / 4;
+            let x = x / 6;
+
+            let i = x as f64;
+            let r = (f64::sin(0.024 * i + 0.0) * 127.0 + 128.0).round();
+            let g = (f64::sin(0.024 * i + 2.0) * 127.0 + 128.0).round();
+            let b = (f64::sin(0.024 * i + 4.0) * 127.0 + 128.0).round();
+            let r = r as u8;
+            let g = g as u8;
+            let b = b as u8;
+            termcolor::Color::Rgb(r,g,b)
+        }
+
+        fn _print_table(ss: [Score; 64]) -> std::io::Result<()> {
+            use std::io::{self, Write};
+            use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
+
+            let mut stdout = StandardStream::stdout(ColorChoice::Always);
+
             for y in 0..8 {
                 let y = 7 - y;
                 for x in 0..8 {
                     // println!("(x,y) = ({},{}), coord = {:?}", x, y, Coord(x,y));
                     // print!("{:>3?},", ps.get(Pawn, Coord(x,y)));
                     let s = ss[Coord(x,y)];
-                    print!("{:>3?},", s);
+
+                    stdout.set_color(ColorSpec::new().set_fg(Some(Self::map_color(s))))?;
+                    stdout.flush()?;
+                    write!(&mut stdout, "{:>3?}", s)?;
+
+                    // print!("{:>3?},", s);
                 }
                 println!();
             }
+            Ok(())
         }
+
+        pub fn print_table(&self, pc: Piece) -> std::io::Result<()> {
+            Ok(())
+        }
+
+        pub fn print_tables(&self) -> std::io::Result<()> {
+
+            println!("Pawn: ");
+            Self::_print_table(self.pawn)?;
+            println!("Knight: ");
+            Self::_print_table(self.knight)?;
+            println!("Bishop: ");
+            Self::_print_table(self.bishop)?;
+            println!("Rook: ");
+            Self::_print_table(self.rook)?;
+            println!("Queen: ");
+            Self::_print_table(self.queen)?;
+            println!("King: ");
+            Self::_print_table(self.king)?;
+
+            Ok(())
+        }
+
+    }
+    /// get
+    impl PcTables {
 
         pub fn get<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
             let c1: Coord = c0.into();
@@ -111,32 +167,6 @@ mod piece_square_tables {
             self[pc][c1]
         }
 
-    }
-
-    impl Tunable for PcTables {
-        const LEN: usize = 64 * 6;
-        fn from_arr(v: &[Score]) -> Self {
-            const N: usize = 64;
-            assert!(v.len() >= N * 6);
-            let mut out = Self::empty();
-            out.pawn.copy_from_slice(&v[..N]);
-            out.knight.copy_from_slice(&v[N..N*2]);
-            out.bishop.copy_from_slice(&v[N*2..N*3]);
-            out.rook.copy_from_slice(&v[N*3..N*4]);
-            out.queen.copy_from_slice(&v[N*4..N*5]);
-            out.king.copy_from_slice(&v[N*5..N*6]);
-            out
-        }
-        fn to_arr(&self) -> Vec<Score> {
-            let mut out = vec![];
-            out.extend_from_slice(&self.pawn);
-            out.extend_from_slice(&self.knight);
-            out.extend_from_slice(&self.bishop);
-            out.extend_from_slice(&self.rook);
-            out.extend_from_slice(&self.queen);
-            out.extend_from_slice(&self.king);
-            out
-        }
     }
 
     /// Generate
@@ -186,6 +216,11 @@ mod piece_square_tables {
                 king,
             }
         }
+
+    }
+
+    /// Initial values
+    impl PcTables {
 
         #[allow(clippy::vec_init_then_push)]
         fn old_gen_pawns() -> [Score; 64] {
@@ -346,6 +381,33 @@ mod piece_square_tables {
         }
 
     }
+
+    impl Tunable for PcTables {
+        const LEN: usize = 64 * 6;
+        fn from_arr(v: &[Score]) -> Self {
+            const N: usize = 64;
+            assert!(v.len() >= N * 6);
+            let mut out = Self::empty();
+            out.pawn.copy_from_slice(&v[..N]);
+            out.knight.copy_from_slice(&v[N..N*2]);
+            out.bishop.copy_from_slice(&v[N*2..N*3]);
+            out.rook.copy_from_slice(&v[N*3..N*4]);
+            out.queen.copy_from_slice(&v[N*4..N*5]);
+            out.king.copy_from_slice(&v[N*5..N*6]);
+            out
+        }
+        fn to_arr(&self) -> Vec<Score> {
+            let mut out = vec![];
+            out.extend_from_slice(&self.pawn);
+            out.extend_from_slice(&self.knight);
+            out.extend_from_slice(&self.bishop);
+            out.extend_from_slice(&self.rook);
+            out.extend_from_slice(&self.queen);
+            out.extend_from_slice(&self.king);
+            out
+        }
+    }
+
 }
 
 #[cfg(feature = "nope")]
@@ -421,6 +483,22 @@ pub struct EvalParams {
     pub pawns:     EPPawns,
     pub pieces:    EPPieces,
     pub psqt:      PcTables,
+}
+
+impl EvalParams {
+    pub fn save_evparams<P: AsRef<Path>>(ev_mid: &Self, ev_end: &Self, path: P) -> std::io::Result<()> {
+        use std::io::Write;
+        let b: Vec<u8> = bincode::serialize(&(ev_mid,ev_end)).unwrap();
+        let mut file = std::fs::File::create(path)?;
+        file.write_all(&b)
+    }
+
+    pub fn read_evparams<P: AsRef<Path>>(path: P) -> std::io::Result<(Self,Self)> {
+        use std::io::Write;
+        let mut b = std::fs::read(path)?;
+        let out = bincode::deserialize(&b).unwrap();
+        Ok(out)
+    }
 }
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize,new)]

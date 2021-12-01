@@ -1,4 +1,6 @@
 
+use std::path::Path;
+
 use crate::brain::trainer::TDOutcome;
 use crate::explore::ExHelper;
 use crate::types::*;
@@ -17,6 +19,57 @@ pub struct TxPosition {
     // pub q_score:  Score,
 }
 
+pub fn load_txdata<P: AsRef<Path>>(
+    ts:             &Tables,
+    mut exhelper:   &mut ExHelper,
+    count:          Option<usize>,
+    path:           P,
+) -> std::io::Result<Vec<TxPosition>> {
+    use crate::brain::gensfen::TrainingData;
+    let tds: Vec<TrainingData> = TrainingData::load_all(path)?;
+
+    let mut stats = SearchStats::default();
+
+    let mut ps: Vec<TxPosition> = vec![];
+    let mut n = 0;
+    // let mut non_q = 0;
+
+    for td in tds.into_iter() {
+        let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
+        for mv in td.opening.into_iter() {
+            g = g.make_move_unchecked(&ts, mv).unwrap();
+        }
+
+        for te in td.moves.into_iter() {
+            if let Ok(g2) = g.make_move_unchecked(&ts, te.mv) {
+                g = g2;
+                if !te.skip
+                    && !te.mv.filter_all_captures()
+                    && g.state.checkers.is_empty()
+                    && te.eval.abs() < STALEMATE_VALUE - 100
+                {
+                    let (ev_mid,ev_end) = (&exhelper.cfg.eval_params_mid,&exhelper.cfg.eval_params_end);
+                    let score   = g.sum_evaluate(&ts, &ev_mid, &ev_end, None);
+                    let q_score = exhelper.qsearch_once(&ts, &g, &mut stats);
+                    let q_score = g.state.side_to_move.fold(q_score, -q_score);
+
+                    if score == q_score {
+                        ps.push(TxPosition::new(g.clone(), td.result));
+                    } else {
+                        // non_q += 1;
+                    }
+                }
+            }
+
+        }
+
+        n += 1;
+        if count.map_or(false, |c| n >= c) { break; }
+    }
+
+    Ok(ps)
+}
+
 pub fn texel_optimize_once(
     ts:                          &Tables,
     inputs:                      &[TxPosition],
@@ -26,6 +79,7 @@ pub fn texel_optimize_once(
     mid:                         bool,
     mut best_error:              &mut f64,
     k:                           Option<f64>,
+    delta:                       Score,
 ) {
     let mut arr = if mid {
         exhelper.cfg.eval_params_mid.to_arr()
@@ -94,6 +148,12 @@ pub fn texel_optimize(
 
     let arr_len = exhelper.cfg.eval_params_mid.to_arr().len();
 
+    EvalParams::save_evparams(&exhelper.cfg.eval_params_mid, &exhelper.cfg.eval_params_end, path)
+        .unwrap();
+
+    let mut delta = 1;
+
+    println!("starting texel_optimize...");
     // eprintln!("arr_mid.len() = {:?}", arr_mid.len());
     let t0 = std::time::Instant::now();
     let mut loops = 0;
@@ -101,15 +161,19 @@ pub fn texel_optimize(
         let t1 = std::time::Instant::now();
 
         texel_optimize_once(
-            ts, inputs, &mut exhelper, ignore_weights, count, true, &mut best_error, k);
+            ts, inputs, &mut exhelper, ignore_weights, count, true, &mut best_error, k, delta);
 
         texel_optimize_once(
-            ts, inputs, &mut exhelper, ignore_weights, count, false, &mut best_error, k);
+            ts, inputs, &mut exhelper, ignore_weights, count, false, &mut best_error, k, delta);
+
+        EvalParams::save_evparams(&exhelper.cfg.eval_params_mid, &exhelper.cfg.eval_params_end, path)
+            .unwrap();
 
         loops += 1;
         let t2 = t1.elapsed().as_secs_f64();
-        eprintln!("loops = {:>3}, best_error = {:.3}, time: {:.1}s, {:.2} inputs/weights/s",
-                  loops, best_error, t0.elapsed().as_secs_f64(),
+        eprintln!("loops = {:>3}, best_error = {:.3}, time: {:.1}s / {:.1}s, {:.2} inputs/weights/s",
+                  loops, best_error,
+                  t2, t0.elapsed().as_secs_f64(),
                   inputs.len() as f64 / (arr_len * 2) as f64 / t2,
         );
         if let Some(c) = count { if loops >= c { break; } }
@@ -202,7 +266,7 @@ pub fn average_eval_error(
     //     eprintln!("n = {:?}, xs.len() = {:?}", n, xs.len());
     // }
 
-    let sum: f64 = inputs.par_iter().map(|pos| {
+    let sum: f64 = inputs.par_iter().map(move |pos| {
         let r = match pos.result {
             TDOutcome::Win(White) => 1.0,
             TDOutcome::Win(Black) => 0.0,
@@ -211,9 +275,11 @@ pub fn average_eval_error(
         };
         // let ph_rw = PHTableFactory::new();
         // let ph2 = ph_rw.handle();
+        // let ph2 = exhelper.ph_rw.clone();
         let score = pos.game.sum_evaluate(
             ts, &ev_mid, &ev_end,
             // Some(&ph2),
+            // Some(&exhelper.ph_rw)
             None,
         );
         (r - sigmoid(score as f64, k)).powi(2)
@@ -280,14 +346,4 @@ pub fn average_eval_error(
 
     // unimplemented!()
 }
-
-
-
-
-
-
-
-
-
-
 

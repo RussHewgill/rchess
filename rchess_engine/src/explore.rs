@@ -114,6 +114,16 @@ pub struct ExHelper {
     pub ph_rw:         PHTable,
 }
 
+/// Load EvalParams
+impl ExHelper {
+    pub fn load_evparams<P: AsRef<Path>>(&mut self, path: P) -> std::io::Result<()> {
+        let (ev_mid,ev_end) = EvalParams::read_evparams(path)?;
+        self.cfg.eval_params_mid = ev_mid;
+        self.cfg.eval_params_end = ev_end;
+        Ok(())
+    }
+}
+
 #[derive(Debug,Clone)]
 pub struct ExTracking {
     pub history:      [[[Score; 64]; 64]; 2],

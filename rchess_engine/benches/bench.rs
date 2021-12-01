@@ -179,6 +179,8 @@ pub fn crit_bench_1(c: &mut Criterion) {
     let ts = &_TABLES;
     // let ts    = Tables::new();
 
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
+
     let mut wacs = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
     let mut wacs: Vec<Game> = wacs.into_iter().map(|(fen,_)| {
         Game::from_fen(&ts, &fen).unwrap()
@@ -225,6 +227,22 @@ pub fn crit_bench_1(c: &mut Criterion) {
     let ph_rw = ph_rw.handle();
 
 
+    let mut xs: Vec<f64> = vec![];
+    for _ in 0..10000 {
+        xs.push(rng.gen());
+    }
+
+    group.bench_function("sum", |b| b.iter(|| {
+        let k: f64 = xs.iter().sum();
+    }));
+
+    group.bench_function("sum loop", |b| b.iter(|| {
+        let mut k = 0.0;
+        for x in xs.iter() {
+            k += x;
+        }
+    }));
+
     // Baseline = 118 us
     // material = 1.78 us
     // psqt     = 9.03 us
@@ -235,12 +253,12 @@ pub fn crit_bench_1(c: &mut Criterion) {
     // hash     = 24.3 us
     // purged   = 230 us
 
-    group.bench_function("eval wacs all", |b| b.iter(|| {
-        let mut k = 0;
-        for g in wacs.iter() {
-            k += g.sum_evaluate_mg(&ts, &ev_mid, &ev_end, Some(&ph_rw));
-        }
-    }));
+    // group.bench_function("eval wacs all", |b| b.iter(|| {
+    //     let mut k = 0;
+    //     for g in wacs.iter() {
+    //         k += g.sum_evaluate_mg(&ts, &ev_mid, &ev_end, Some(&ph_rw));
+    //     }
+    // }));
 
     // group.bench_function("eval material2", |b| b.iter(|| {
     //     let mut k = 0;

@@ -467,13 +467,13 @@ impl Game {
         if mv != Move::NullMove {
             match self.get_at(mv.sq_from()) {
                 Some((side,_)) => if self.state.side_to_move != side {
-                    eprintln!("non legal move: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
+                    trace!("non legal move: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
                     // return Err(GameEnd::Error);
                     // panic!();
                     return Err(GameEnd::Error);
                 },
                 None => {
-                    eprintln!("non legal move, no piece?: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
+                    trace!("non legal move, no piece?: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
                     // return Err(GameEnd::Error);
                     // panic!();
                     return Err(GameEnd::Stalemate);

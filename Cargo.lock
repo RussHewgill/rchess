@@ -1161,6 +1161,7 @@ dependencies = [
  "serde_derive",
  "simplelog",
  "sprs",
+ "termcolor",
  "zerocopy",
 ]
 

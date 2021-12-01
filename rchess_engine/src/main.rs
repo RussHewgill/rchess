@@ -64,7 +64,8 @@ fn main() {
         "eval"      => main_eval(),
         "gensfen"   => {
             let count = u64::from_str(&args[2]).unwrap();
-            let path = &args[3];
+            let time = f64::from_str(&args[3]).unwrap();
+            let path = &args[4];
 
             main_gensfen(count, path);
         },
@@ -587,15 +588,6 @@ fn main_tuning() {
     use rchess_engine_lib::qsearch::*;
     use rchess_engine_lib::pawn_hash_table::*;
 
-    // {
-    //     use rchess_engine_lib::tuning::wat::*;
-    //     let k0 = Wat::PSQTPawn(0);
-    //     let k1 = k0.from_idx();
-    //     eprintln!("k0 = {:?}", k0);
-    //     eprintln!("k1 = {:?}", k1);
-    // }
-    // return;
-
     let ts = Tables::read_from_file_def().unwrap();
 
     let ob = OpeningBook::read_from_file(&ts, "tables/Perfect_2021/BIN/Perfect2021.bin").unwrap();
@@ -604,35 +596,9 @@ fn main_tuning() {
     // let path = "/home/me/code/rust/rchess/training_data/set1/depth5_games500_4.bin";
     // let path = "/home/me/code/rust/rchess/training_data/depth5_games100_1.bin";
     // let path = "/home/me/code/rust/rchess/training_data/depth5_test_1.bin";
-    let path = "/home/me/code/rust/rchess/training_data/set2/depth5_games100_1.bin";
+    let path = "/home/me/code/rust/rchess/training_data/set2/depth5_games500_1.bin";
 
-    // {
-    //     let path2 = "/home/me/code/rust/rchess/training_data/set1/depth5_games500_4_fixed.bin";
-    //     let mut f  = std::fs::File::open(path).unwrap();
-    //     let mut f2 = std::fs::File::create(path2).unwrap();
-    //     let mut n = 0;
-    //     while let Ok(tds) = bincode::deserialize_from(&mut f) {
-    //         let tds: Vec<TrainingData> = tds;
-    //         if tds.len() != 1 {
-    //             eprintln!("tds.len() = {:?}", tds.len());
-    //         }
-    //         for td in tds.into_iter() {
-    //             bincode::serialize_into(&mut f2, &td).unwrap();
-    //         }
-    //         n += 1;
-    //         if n % 100 == 0 {
-    //             eprintln!("n = {:?}", n);
-    //         }
-    //     }
-    //     return;
-    // }
-
-    let tds: Vec<TrainingData> = TrainingData::load_all(path).unwrap();
-
-    // let gg = &tds[0];
-    // eprintln!("gg.moves.len() = {:?}", gg.moves.len());
-
-    let mut ps: Vec<TxPosition> = vec![];
+    let evpath = "/home/me/code/rust/rchess/evparams.bin";
 
     let ev_mid = EvalParams::default();
     let mut ev_end = EvalParams::default();
@@ -640,87 +606,42 @@ fn main_tuning() {
     // let mut ev_end = EvalParams::new();
     ev_end.mid = false;
 
-    eprintln!("tds.len() = {:?}", tds.len());
+    // let c0 = PcTables::map_color(-127);
+    // let c1 = PcTables::map_color(0);
+    // let c2 = PcTables::map_color(127);
 
-    let mut stats = SearchStats::default();
-    let ph_rw = PHTableFactory::new();
-    let ph_rw = ph_rw.handle();
+    // eprintln!("c0 = {:?}", c0);
+    // eprintln!("c1 = {:?}", c1);
+    // eprintln!("c2 = {:?}", c2);
+
+    // PcTables::print_table(ss).unwrap();
+
+    // ev_mid.psqt.print_tables().unwrap();
+    // return;
+
+    // EvalParams::save_evparams(&ev_mid, &ev_end, evpath).unwrap();
+
+    let ph_factory = PHTableFactory::new();
+    let ph_rw = ph_factory.handle();
+
     let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
     let mut exhelper = exhelper_once(&g, g.state.side_to_move, &ev_mid, &ev_end, Some(&ph_rw));
 
-    let mut non_q = 0;
+    let ps = load_txdata(&ts, &mut exhelper, Some(1000), path).unwrap();
 
-    // {
-    //     let mut wacs = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
-    //     let mut wacs: Vec<Game> = wacs.into_iter().map(|(fen,_)| {
-    //         Game::from_fen(&ts, &fen).unwrap()
-    //     }).collect();
-    //     // baseline = 1.154
-    //     let t0 = Instant::now();
-    //     for _ in 0..10_000 {
-    //         let mut k = 0;
-    //         for g in wacs.iter() {
-    //             k += g.sum_evaluate_mg(&ts, &ev_mid, &ev_end, Some(&ph_rw));
-    //         }
-    //     }
-    //     println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
-    //     return;
-    // }
-
-    for td in tds.into_iter() {
-        let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
-        for mv in td.opening.into_iter() {
-            g = g.make_move_unchecked(&ts, mv).unwrap();
-        }
-
-        for te in td.moves.into_iter() {
-            g = g.make_move_unchecked(&ts, te.mv).unwrap();
-            if !te.skip
-                && !te.mv.filter_all_captures()
-                && g.state.checkers.is_empty()
-                && te.eval.abs() < STALEMATE_VALUE - 100
-            {
-                // g = g.flip_sides(&ts);
-
-                // helper.game = g;
-                // helper.side = g.state.side_to_move;
-
-                let score   = g.sum_evaluate(&ts, &ev_mid, &ev_end, None);
-                let q_score = exhelper.qsearch_once(&ts, &g, &mut stats);
-                let q_score = g.state.side_to_move.fold(q_score, -q_score);
-
-                // eprintln!("g.to_fen() = {:?}", g.to_fen());
-                // eprintln!("g = {:?}", g);
-                // eprintln!("score = {:?}", score);
-                // eprintln!("q_score = {:?}", q_score);
-                // panic!();
-
-                if score == q_score {
-                    ps.push(TxPosition::new(g.clone(), td.result));
-                } else {
-                    non_q += 1;
-                }
-            }
-
-        }
-    }
-
-    eprintln!("non_q = {:?}", non_q);
     eprintln!("ps.len() = {:?}", ps.len());
 
-    let ps: Vec<TxPosition> = ps[..100].to_vec();
-    eprintln!("ps.len() = {:?}", ps.len());
+    // let ps: Vec<TxPosition> = ps[..1000].to_vec();
+    // eprintln!("ps.len() = {:?}", ps.len());
 
     // let k = find_k(&ts, &ps, &exhelper, false);
     // eprintln!("k = {:?}", k);
 
-    // let k = -0.111f64;
-    let k = 1.0;
+    const K: f64 = -0.111f64;
+    // let k = 1.0;
 
-    let error = average_eval_error(&ts, &ps, &exhelper, Some(k));
+    let error = average_eval_error(&ts, &ps, &exhelper, Some(K));
     eprintln!("error = {:.3}", error);
-
-    let evpath = "/home/me/code/rust/rchess/evparams.bin";
 
     // {
     //     let mut file = std::fs::File::create(evpath).unwrap();
@@ -729,10 +650,12 @@ fn main_tuning() {
     //     return;
     // }
 
-    let (ev_mid2,ev_end2) = texel_optimize(
-        &ts, &ps, &mut exhelper, &vec![], Some(10), Some(k), evpath);
+    let count = 3;
 
-    let error = average_eval_error(&ts, &ps, &exhelper, Some(k));
+    let (ev_mid2,ev_end2) = texel_optimize(
+        &ts, &ps, &mut exhelper, &vec![], Some(count), Some(K), evpath);
+
+    let error = average_eval_error(&ts, &ps, &exhelper, Some(K));
     eprintln!("error = {:.3}", error);
 
     // let ks = vec![

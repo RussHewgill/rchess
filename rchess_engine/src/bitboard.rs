@@ -555,30 +555,30 @@ impl BitBoard {
             },
             D::NE => {
                 self.0.overflowing_shl(9 as u32).0
-                    & (!BitBoard::mask_file(0)).0
+                    & (!MASK_FILES[0]).0
             },
             D::E  => {
                 self.0.overflowing_shl(1 as u32).0
-                    & (!BitBoard::mask_file(0)).0
+                    & (!MASK_FILES[0]).0
             },
             D::SE => {
                 self.0.overflowing_shr(7 as u32).0
-                    & (!BitBoard::mask_file(0)).0
+                    & (!MASK_FILES[0]).0
             },
             D::S  => {
                 self.0.overflowing_shr(8 as u32).0
             },
             D::SW => {
                 self.0.overflowing_shr(9 as u32).0
-                    & (!BitBoard::mask_file(7)).0
+                    & (!MASK_FILES[7]).0
             },
             D::W  => {
                 self.0.overflowing_shr(1 as u32).0
-                    & (!BitBoard::mask_file(7)).0
+                    & (!MASK_FILES[7]).0
             },
             D::NW => {
                 self.0.overflowing_shl(7 as u32).0
-                    & (!BitBoard::mask_file(7)).0
+                    & (!MASK_FILES[7]).0
             },
         };
 
