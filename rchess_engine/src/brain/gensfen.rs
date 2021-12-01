@@ -283,7 +283,7 @@ mod td_builder {
                         .unwrap();
                 }
                 drop(tx);
-            }).unwrap();
+            }).unwrap_or_else(|_| ());
 
             Ok(())
         }
