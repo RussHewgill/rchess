@@ -87,6 +87,7 @@ pub fn texel_optimize(
     ignore_weights:              &[bool],
     count:                       Option<usize>,
     k:                           Option<f64>,
+    path:                        &str,
 ) -> (EvalParams,EvalParams) {
 
     let mut best_error = average_eval_error(ts, &inputs, &exhelper, k);
@@ -97,6 +98,7 @@ pub fn texel_optimize(
     let t0 = std::time::Instant::now();
     let mut loops = 0;
     loop {
+        let t1 = std::time::Instant::now();
 
         texel_optimize_once(
             ts, inputs, &mut exhelper, ignore_weights, count, true, &mut best_error, k);
@@ -105,9 +107,10 @@ pub fn texel_optimize(
             ts, inputs, &mut exhelper, ignore_weights, count, false, &mut best_error, k);
 
         loops += 1;
-        let t1 = t0.elapsed().as_secs_f64();
-        eprintln!("loops = {:>3}, best_error = {:.3}, time: {:.1}s, {:.1} inputs/weights/s",
-                  loops, best_error, t1, inputs.len() as f64 / (arr_len * 2) as f64 / t1,
+        let t2 = t1.elapsed().as_secs_f64();
+        eprintln!("loops = {:>3}, best_error = {:.3}, time: {:.1}s, {:.2} inputs/weights/s",
+                  loops, best_error, t0.elapsed().as_secs_f64(),
+                  inputs.len() as f64 / (arr_len * 2) as f64 / t2,
         );
         if let Some(c) = count { if loops >= c { break; } }
     }
@@ -185,30 +188,94 @@ pub fn average_eval_error(
     //     &exhelper.cfg.eval_params_end
     // };
 
-    let sum: f64 = inputs.iter().map(|pos| {
+    use rayon::prelude::*;
+
+    let ev_mid = &exhelper.cfg.eval_params_mid;
+    let ev_end = &exhelper.cfg.eval_params_end;
+
+    let ph_rw  = &exhelper.ph_rw;
+
+    // let n_cpus = num_cpus::get();
+    let n_cpus = num_cpus::get_physical();
+
+    // for (n,xs) in cs.clone().enumerate() {
+    //     eprintln!("n = {:?}, xs.len() = {:?}", n, xs.len());
+    // }
+
+    let sum: f64 = inputs.par_iter().map(|pos| {
         let r = match pos.result {
             TDOutcome::Win(White) => 1.0,
             TDOutcome::Win(Black) => 0.0,
             TDOutcome::Draw       => 0.5,
             TDOutcome::Stalemate  => 0.5,
         };
-        // let q_score = qsearch_once(&ts, &pos.game, pos.game.state.side_to_move, &ev_mid, &ev_end, ph_rw);
-        // exhelper.game = pos.game.clone();
-        // exhelper.side = pos.game.state.side_to_move;
-
-        // let q_score = exhelper.qsearch(ts, &pos.game, (0,0), (alpha, beta), &mut stats);
-        // let q_score = pos.game.state.side_to_move.fold(q_score, -q_score);
-
+        // let ph_rw = PHTableFactory::new();
+        // let ph2 = ph_rw.handle();
         let score = pos.game.sum_evaluate(
-            ts, &exhelper.cfg.eval_params_mid, &exhelper.cfg.eval_params_end,
-            Some(&exhelper.ph_rw),
-            // None,
+            ts, &ev_mid, &ev_end,
+            // Some(&ph2),
+            None,
         );
-
-        // assert_eq!(score, q_score);
-
         (r - sigmoid(score as f64, k)).powi(2)
     }).sum();
+
+    // let cs = inputs.chunks(inputs.len() / n_cpus);
+    // let sum: f64 = crossbeam::scope(|s| {
+    //     let ph_rw = exhelper.ph_rw.clone();
+    //     let mut hs = vec![];
+    //     for xs in cs {
+    //         let ph2 = ph_rw.clone();
+    //         let h = s.spawn(move |_| {
+    //             xs.iter().map(|pos| {
+    //                 let r = match pos.result {
+    //                     TDOutcome::Win(White) => 1.0,
+    //                     TDOutcome::Win(Black) => 0.0,
+    //                     TDOutcome::Draw       => 0.5,
+    //                     TDOutcome::Stalemate  => 0.5,
+    //                 };
+    //                 let score = pos.game.sum_evaluate(
+    //                     ts, &ev_mid, &ev_end,
+    //                     Some(&ph2),
+    //                     // None,
+    //                 );
+    //                 (r - sigmoid(score as f64, k)).powi(2)
+    //             }).sum::<f64>()
+    //         });
+    //         hs.push(h);
+    //     }
+    //     hs.into_iter().map(|h| {
+    //         h.join().unwrap()
+    //     }).sum()
+    // }).unwrap();
+
+    // let sum: f64 = inputs.iter().map(|pos| {
+    // // let sum: f64 = inputs.par_iter().map(|pos| {
+    //     let r = match pos.result {
+    //         TDOutcome::Win(White) => 1.0,
+    //         TDOutcome::Win(Black) => 0.0,
+    //         TDOutcome::Draw       => 0.5,
+    //         TDOutcome::Stalemate  => 0.5,
+    //     };
+    //     // let q_score = qsearch_once(&ts, &pos.game, pos.game.state.side_to_move, &ev_mid, &ev_end, ph_rw);
+    //     // exhelper.game = pos.game.clone();
+    //     // exhelper.side = pos.game.state.side_to_move;
+
+    //     // let q_score = exhelper.qsearch(ts, &pos.game, (0,0), (alpha, beta), &mut stats);
+    //     // let q_score = pos.game.state.side_to_move.fold(q_score, -q_score);
+
+    //     let score = pos.game.sum_evaluate(
+    //         ts, &ev_mid, &ev_end,
+    //         // Some(&exhelper.ph_rw.clone()),
+    //         // Some(&x),
+    //         Some(&ph_rw),
+    //         // None,
+    //     );
+
+    //     // assert_eq!(score, q_score);
+
+    //     (r - sigmoid(score as f64, k)).powi(2)
+    // }).sum();
+
     sum / inputs.len() as f64
 
     // unimplemented!()

@@ -708,16 +708,29 @@ fn main_tuning() {
     eprintln!("non_q = {:?}", non_q);
     eprintln!("ps.len() = {:?}", ps.len());
 
-    let k = find_k(&ts, &ps, &exhelper, false);
-    eprintln!("k = {:?}", k);
+    let ps: Vec<TxPosition> = ps[..100].to_vec();
+    eprintln!("ps.len() = {:?}", ps.len());
+
+    // let k = find_k(&ts, &ps, &exhelper, false);
+    // eprintln!("k = {:?}", k);
 
     // let k = -0.111f64;
+    let k = 1.0;
 
     let error = average_eval_error(&ts, &ps, &exhelper, Some(k));
     eprintln!("error = {:.3}", error);
 
+    let evpath = "/home/me/code/rust/rchess/evparams.bin";
+
+    // {
+    //     let mut file = std::fs::File::create(evpath).unwrap();
+    //     let xs = (ev_mid,ev_end);
+    //     bincode::serialize_into(&mut file, &xs).unwrap();
+    //     return;
+    // }
+
     let (ev_mid2,ev_end2) = texel_optimize(
-        &ts, &ps, &mut exhelper, &vec![], Some(1), Some(k));
+        &ts, &ps, &mut exhelper, &vec![], Some(10), Some(k), evpath);
 
     let error = average_eval_error(&ts, &ps, &exhelper, Some(k));
     eprintln!("error = {:.3}", error);
@@ -752,6 +765,11 @@ fn main_gensfen(count: u64, path: &str) {
     // let count = 100;
 
     // let path = "/home/me/code/rust/rchess/training_data/test_6.bin";
+
+    if std::path::Path::new(&path).exists() {
+        eprintln!("path exists, exiting");
+        return;
+    }
 
     let ts = TDBuilder::new()
         .max_depth(5)
