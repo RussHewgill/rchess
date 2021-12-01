@@ -12,8 +12,9 @@ use crate::searchstats::*;
 use crate::pawn_hash_table::*;
 
 use derive_new::new;
+use serde::{Serialize,Deserialize};
 
-#[derive(Debug,PartialEq,Clone,new)]
+#[derive(Debug,PartialEq,Clone,Serialize,Deserialize,new)]
 pub struct TxPosition {
     pub game:     Game,
     pub result:   TDOutcome,
@@ -85,11 +86,37 @@ pub fn load_txdata_mult<P: AsRef<Path>>(
 ) -> std::io::Result<Vec<TxPosition>> {
     let mut ps = vec![];
 
+    let t0 = std::time::Instant::now();
     for path in paths.iter() {
         let p = load_txdata(ts, &mut exhelper, None, path)?;
         ps.extend_from_slice(&p);
+
+        let t1 = t0.elapsed().as_secs_f64();
+        debug!("ps.len() = {:?}, t = {:.1}", ps.len(), t1);
     }
     Ok(ps)
+}
+
+impl TxPosition {
+    pub fn save_txdata<P: AsRef<Path>>(
+        path:         P,
+        data:         &[TxPosition],
+    ) -> std::io::Result<()> {
+        use std::io::Write;
+        let mut file = std::fs::File::create(path)?;
+        let buf = bincode::serialize(&data).unwrap();
+        file.write_all(&buf)?;
+        Ok(())
+    }
+
+    pub fn load_txdata<P: AsRef<Path>>(
+        path:         P,
+    ) -> std::io::Result<Vec<TxPosition>> {
+        let mut b = std::fs::read(path)?;
+        let out = bincode::deserialize(&b).unwrap();
+        Ok(out)
+    }
+
 }
 
 pub fn texel_optimize_once(
@@ -173,7 +200,7 @@ pub fn texel_optimize(
     EvalParams::save_evparams(&exhelper.cfg.eval_params_mid, &exhelper.cfg.eval_params_end, path)
         .unwrap();
 
-    let mut delta = 10;
+    let mut delta = 50;
 
     println!("starting texel_optimize...");
     // eprintln!("arr_mid.len() = {:?}", arr_mid.len());

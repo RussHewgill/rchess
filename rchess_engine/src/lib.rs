@@ -42,6 +42,7 @@ pub mod tables;
 pub mod magics;
 pub mod game;
 pub mod parsing;
+pub mod pgn;
 
 pub mod see;
 pub mod qsearch;

@@ -13,13 +13,14 @@ use std::hash::{Hash,Hasher};
 // use arrayvec::ArrayVec;
 use rustc_hash::FxHashMap;
 
+use serde::{Serialize,Deserialize};
+
 // pub use crate::stack_game::*;
 
 pub type Phase = u8;
 
-// #[derive(Default,PartialEq,Clone)]
-// #[derive(Default,PartialEq,Clone,Copy)]
-#[derive(PartialEq,Clone)]
+// #[derive(PartialEq,Clone)]
+#[derive(PartialEq,Clone,Serialize,Deserialize)]
 pub struct Game {
     // pub move_history: Vec<Move>,
     pub state:        GameState,
@@ -36,7 +37,7 @@ pub struct Game {
 }
 
 
-#[derive(Debug,Default,PartialOrd,Clone,Copy)]
+#[derive(Debug,Default,PartialOrd,Clone,Copy,Serialize,Deserialize)]
 pub struct GameState {
     pub side_to_move:       Color,
 
@@ -83,7 +84,7 @@ impl Default for Game {
     }
 }
 
-#[derive(Default,Hash,Eq,Ord,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Default,Hash,Eq,Ord,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize)]
 pub struct Material {
     pub buf:  [[u8; 6]; 2],
 }
@@ -213,7 +214,9 @@ mod castling {
     use crate::types::*;
     use crate::tables::*;
 
-    #[derive(Debug,Hash,Eq,PartialEq,PartialOrd,Clone,Copy)]
+    use serde::{Serialize,Deserialize};
+
+    #[derive(Debug,Hash,Eq,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize)]
     pub struct Castling(u8);
 
     impl Castling {

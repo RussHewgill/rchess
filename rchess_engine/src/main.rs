@@ -592,11 +592,22 @@ fn main_tuning() {
 
     let ob = OpeningBook::read_from_file(&ts, "tables/Perfect_2021/BIN/Perfect2021.bin").unwrap();
 
+    {
+        use rchess_engine_lib::pgn::*;
+
+        let pgn_path = "/home/me/code/rust/rchess/training_data/fics_test.pgn";
+
+        let pgns = parse_pgns(pgn_path).unwrap();
+
+        return;
+    }
+
+
     // let path = "/home/me/code/rust/rchess/training_data/test_5.bin";
     // let path = "/home/me/code/rust/rchess/training_data/set1/depth5_games500_4.bin";
     // let path = "/home/me/code/rust/rchess/training_data/depth5_games100_1.bin";
     // let path = "/home/me/code/rust/rchess/training_data/depth5_test_1.bin";
-    let path = "/home/me/code/rust/rchess/training_data/set2/depth5_games500_1.bin";
+    // let path = "/home/me/code/rust/rchess/training_data/set2/depth5_games500_1.bin";
 
     let evpath = "/home/me/code/rust/rchess/evparams.bin";
 
@@ -627,44 +638,27 @@ fn main_tuning() {
     let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
     let mut exhelper = exhelper_once(&g, g.state.side_to_move, &ev_mid, &ev_end, Some(&ph_rw));
 
-    {
-        let mut paths = vec![];
-        for n in 1..=12 {
-            let p = format!(
-                "/home/me/code/rust/rchess/training_data/set2/depth5_games500_{}.bin", n);
-            paths.push(p);
-        }
+    // let count = 3;
+    // let mut paths = vec![];
+    // for n in 1..=count {
+    //     let p = format!(
+    //         "/home/me/code/rust/rchess/training_data/set2/depth5_games500_{}.bin", n);
+    //     paths.push(p);
+    // }
 
-        let t0 = std::time::Instant::now();
-        let mut tds = vec![];
-        for path in paths.iter() {
-            let td: Vec<TrainingData> = TrainingData::load_all(path).unwrap();
-            tds.extend_from_slice(&td);
-            eprintln!("tds.len() = {:?}", tds.len());
-        }
-        let t1 = t0.elapsed().as_secs_f64();
-
-        let pp = "/home/me/code/rust/rchess/training_data/set2/concat_1.bin";
-
-        TrainingData::save_all(true, pp, &tds).unwrap();
-
-        // let ps = load_txdata_mult(&ts, &mut exhelper, &paths).unwrap();
-
-        println!("finished loading in {:.3} seconds", t1);
-
-        return;
-    }
-
-    let ps = load_txdata(&ts, &mut exhelper, Some(1000), path).unwrap();
+    let path = "/home/me/code/rust/rchess/training_data/set2/depth5_games500_2.bin";
+    // let ps = load_txdata(&ts, &mut exhelper, Some(1000), path).unwrap();
+    let ps = load_txdata(&ts, &mut exhelper, None, path).unwrap();
+    // let ps = load_txdata_mult(&ts, &mut exhelper, &paths).unwrap();
 
     eprintln!("ps.len() = {:?}", ps.len());
 
     // let ps: Vec<TxPosition> = ps[..1000].to_vec();
     // eprintln!("ps.len() = {:?}", ps.len());
 
-    let k = find_k(&ts, &ps, &exhelper, false);
+    // let k = find_k(&ts, &ps, &exhelper, false);
 
-    // let k: f64 = -0.111f64;
+    let k: f64 = -0.1111f64;
     // let k = 1.0;
     eprintln!("k = {:?}", k);
 
