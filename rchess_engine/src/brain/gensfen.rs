@@ -653,8 +653,8 @@ impl TrainingData {
 
     }
 
-    #[cfg(feature = "nope")]
-    fn __save_all<P: AsRef<Path>>(save_bin: bool, path: P, xs: &Vec<Self>) -> std::io::Result<()> {
+    // #[cfg(feature = "nope")]
+    pub fn save_all<P: AsRef<Path>>(save_bin: bool, path: P, xs: &Vec<Self>) -> std::io::Result<()> {
         use std::io::Write;
         // let mut buf: Vec<u8> = vec![];
 

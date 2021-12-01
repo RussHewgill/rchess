@@ -1,6 +1,7 @@
 
 use std::path::Path;
 
+use crate::brain::gensfen::TrainingData;
 use crate::brain::trainer::TDOutcome;
 use crate::explore::ExHelper;
 use crate::types::*;
@@ -25,8 +26,12 @@ pub fn load_txdata<P: AsRef<Path>>(
     count:          Option<usize>,
     path:           P,
 ) -> std::io::Result<Vec<TxPosition>> {
-    use crate::brain::gensfen::TrainingData;
+
+    let t0 = std::time::Instant::now();
     let tds: Vec<TrainingData> = TrainingData::load_all(path)?;
+    let t1 = t0.elapsed().as_secs_f64();
+
+    debug!("finished loading Vec<TrainingData> in {:.3} seconds", t1);
 
     let mut stats = SearchStats::default();
 
@@ -66,7 +71,24 @@ pub fn load_txdata<P: AsRef<Path>>(
         n += 1;
         if count.map_or(false, |c| n >= c) { break; }
     }
+    let t2 = t0.elapsed().as_secs_f64();
 
+    debug!("finished processing Vec<TrainingData> in {:.3} seconds", t2);
+
+    Ok(ps)
+}
+
+pub fn load_txdata_mult<P: AsRef<Path>>(
+    ts:             &Tables,
+    mut exhelper:   &mut ExHelper,
+    paths:          &[P],
+) -> std::io::Result<Vec<TxPosition>> {
+    let mut ps = vec![];
+
+    for path in paths.iter() {
+        let p = load_txdata(ts, &mut exhelper, None, path)?;
+        ps.extend_from_slice(&p);
+    }
     Ok(ps)
 }
 
@@ -92,7 +114,7 @@ pub fn texel_optimize_once(
             continue;
         }
 
-        arr[n] = arr[n].checked_add(1).unwrap();
+        arr[n] = arr[n].checked_add(delta).unwrap();
         if mid {
             exhelper.cfg.eval_params_mid = EvalParams::from_arr(&arr);
         } else {
@@ -105,7 +127,7 @@ pub fn texel_optimize_once(
         if new_error < *best_error {
             *best_error = new_error;
         } else {
-            arr[n] = arr[n].checked_sub(2).unwrap();
+            arr[n] = arr[n].checked_sub(delta * 2).unwrap();
             if mid {
                 exhelper.cfg.eval_params_mid = EvalParams::from_arr(&arr);
             } else {
@@ -118,7 +140,7 @@ pub fn texel_optimize_once(
             if new_error < *best_error {
                 *best_error = new_error;
             } else {
-                arr[n] = arr[n].checked_add(1).unwrap();
+                arr[n] = arr[n].checked_add(delta).unwrap();
                 if mid {
                     exhelper.cfg.eval_params_mid = EvalParams::from_arr(&arr);
                 } else {
@@ -151,7 +173,7 @@ pub fn texel_optimize(
     EvalParams::save_evparams(&exhelper.cfg.eval_params_mid, &exhelper.cfg.eval_params_end, path)
         .unwrap();
 
-    let mut delta = 1;
+    let mut delta = 10;
 
     println!("starting texel_optimize...");
     // eprintln!("arr_mid.len() = {:?}", arr_mid.len());

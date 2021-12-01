@@ -136,6 +136,14 @@ mod piece_square_tables {
         }
 
         pub fn print_table(&self, pc: Piece) -> std::io::Result<()> {
+            match pc {
+                Pawn   => Self::_print_table(self.pawn)?,
+                Knight => Self::_print_table(self.knight)?,
+                Bishop => Self::_print_table(self.bishop)?,
+                Rook   => Self::_print_table(self.rook)?,
+                Queen  => Self::_print_table(self.queen)?,
+                King   => Self::_print_table(self.king)?,
+            }
             Ok(())
         }
 

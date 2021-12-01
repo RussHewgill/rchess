@@ -627,6 +627,34 @@ fn main_tuning() {
     let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
     let mut exhelper = exhelper_once(&g, g.state.side_to_move, &ev_mid, &ev_end, Some(&ph_rw));
 
+    {
+        let mut paths = vec![];
+        for n in 1..=12 {
+            let p = format!(
+                "/home/me/code/rust/rchess/training_data/set2/depth5_games500_{}.bin", n);
+            paths.push(p);
+        }
+
+        let t0 = std::time::Instant::now();
+        let mut tds = vec![];
+        for path in paths.iter() {
+            let td: Vec<TrainingData> = TrainingData::load_all(path).unwrap();
+            tds.extend_from_slice(&td);
+            eprintln!("tds.len() = {:?}", tds.len());
+        }
+        let t1 = t0.elapsed().as_secs_f64();
+
+        let pp = "/home/me/code/rust/rchess/training_data/set2/concat_1.bin";
+
+        TrainingData::save_all(true, pp, &tds).unwrap();
+
+        // let ps = load_txdata_mult(&ts, &mut exhelper, &paths).unwrap();
+
+        println!("finished loading in {:.3} seconds", t1);
+
+        return;
+    }
+
     let ps = load_txdata(&ts, &mut exhelper, Some(1000), path).unwrap();
 
     eprintln!("ps.len() = {:?}", ps.len());
@@ -634,13 +662,13 @@ fn main_tuning() {
     // let ps: Vec<TxPosition> = ps[..1000].to_vec();
     // eprintln!("ps.len() = {:?}", ps.len());
 
-    // let k = find_k(&ts, &ps, &exhelper, false);
-    // eprintln!("k = {:?}", k);
+    let k = find_k(&ts, &ps, &exhelper, false);
 
-    const K: f64 = -0.111f64;
+    // let k: f64 = -0.111f64;
     // let k = 1.0;
+    eprintln!("k = {:?}", k);
 
-    let error = average_eval_error(&ts, &ps, &exhelper, Some(K));
+    let error = average_eval_error(&ts, &ps, &exhelper, Some(k));
     eprintln!("error = {:.3}", error);
 
     // {
@@ -653,9 +681,9 @@ fn main_tuning() {
     let count = 3;
 
     let (ev_mid2,ev_end2) = texel_optimize(
-        &ts, &ps, &mut exhelper, &vec![], Some(count), Some(K), evpath);
+        &ts, &ps, &mut exhelper, &vec![], Some(count), Some(k), evpath);
 
-    let error = average_eval_error(&ts, &ps, &exhelper, Some(K));
+    let error = average_eval_error(&ts, &ps, &exhelper, Some(k));
     eprintln!("error = {:.3}", error);
 
     // let ks = vec![
