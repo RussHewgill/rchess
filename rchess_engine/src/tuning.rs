@@ -516,6 +516,16 @@ pub struct EvalParams {
 }
 
 impl EvalParams {
+
+    pub fn empty() -> Self {
+        let mut out = Self::default();
+        let mut arr_mut = out.to_arr_mut();
+        for v in arr_mut {
+            *v = 0;
+        }
+        out
+    }
+
     pub fn save_evparams<P: AsRef<Path>>(ev_mid: &Self, ev_end: &Self, path: P) -> std::io::Result<()> {
         use std::io::Write;
         let b: Vec<u8> = bincode::serialize(&(ev_mid,ev_end)).unwrap();
@@ -601,9 +611,9 @@ impl Default for EPPawns {
             // passed:               Score,
 
             // doubled_isolated:     10,
-            isolated:             5,
-            backward:             10,
-            doubled:              10,
+            isolated:             -5,
+            backward:             -10,
+            doubled:              -10,
         }
     }
 }
@@ -744,9 +754,9 @@ pub mod indexing {
             out.extend_from_slice(&self.connected_ranks);
             out.push(self.blocked_r5);
             out.push(self.blocked_r6);
-            out.push(self.doubled);
             out.push(self.isolated);
             out.push(self.backward);
+            out.push(self.doubled);
             out
         }
 
@@ -759,9 +769,9 @@ pub mod indexing {
             out.blocked_r5 = v[8];
             out.blocked_r6 = v[9];
 
-            out.doubled  = v[10];
-            out.isolated = v[11];
-            out.backward = v[12];
+            out.isolated = v[10];
+            out.backward = v[11];
+            out.doubled  = v[12];
 
             out
         }

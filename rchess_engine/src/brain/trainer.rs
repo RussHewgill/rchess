@@ -2,6 +2,7 @@
 use crate::explore::*;
 use crate::opening_book::*;
 use crate::tables::*;
+use crate::texel::TxPosition;
 use crate::types::*;
 use crate::evaluate::*;
 use crate::alphabeta::*;
@@ -18,7 +19,9 @@ use rand::{prelude::{StdRng,SliceRandom},Rng,SeedableRng};
 use rand::distributions::{Uniform,uniform::SampleUniform};
 
 impl NNUE {
-    pub fn train(&mut self) {
+    pub fn train(&mut self, tds: Vec<TxPosition>) {
+
+        unimplemented!()
     }
     pub fn train_single(&mut self, g: &Game) {
     }

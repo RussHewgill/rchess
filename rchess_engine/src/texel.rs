@@ -154,7 +154,7 @@ pub fn load_labeled_fens<P: AsRef<Path>>(
     let mut n = 0;
     let mut line = String::new();
 
-    let reg = Regex::new(r##""([^"])"##).unwrap();
+    let reg = Regex::new(r##""([^"]+)-([^"]+)"##).unwrap();
 
     loop {
 
@@ -163,23 +163,30 @@ pub fn load_labeled_fens<P: AsRef<Path>>(
 
         if let Some(game) = Game::from_fen(ts, &line) {
 
-            let res = reg.find(&line).unwrap();
+            let res = reg.captures(&line).unwrap();
 
-            eprintln!("res = {:?}", res);
+            let white = res.get(1).unwrap().as_str();
+            let black = res.get(2).unwrap().as_str();
 
-            // let tx = TxPosition {
-            //     game,
-            //     result,
-            // };
-            // out.push(tx);
+            let result = match (white,black) {
+                ("1/2","1/2") => TDOutcome::Draw,
+                ("1","0")     => TDOutcome::Win(White),
+                ("0","1")     => TDOutcome::Win(Black),
+                _             => panic!("fen win string: {:?}", line),
+            };
+
+            let tx = TxPosition {
+                game,
+                result,
+            };
+            out.push(tx);
 
         }
 
-        // line.clear();
-        // n += 1;
-        // if count.map_or(false, |c| n >= c) { break; }
-
-        break;
+        line.clear();
+        n += 1;
+        if count.map_or(false, |c| n >= c) { break; }
+        // break;
     }
     Ok(out)
 }
@@ -221,14 +228,18 @@ pub fn texel_optimize_once(
         exhelper.cfg.eval_params_end.to_arr()
     };
 
+    let nn = arr.len();
     let mut improved = true;
-    for n in 0..arr.len() {
-        if !improved { break; }
-        improved = false;
+    for n in 1..arr.len() {
+        // if !improved { break; }
+        // improved = false;
 
-        if let Some(true) = ignore_weights.get(n) {
-            continue;
-        }
+        // eprintln!("n = {:>4} / {:>4}, best_error = {:.6}", n, nn, best_error);
+        // eprintln!("n = {:>4} / {:>4}, best_error = {}", n, nn, best_error);
+
+        // if let Some(true) = ignore_weights.get(n) {
+        //     continue;
+        // }
 
         arr[n] = arr[n].checked_add(delta).unwrap();
 
@@ -239,7 +250,7 @@ pub fn texel_optimize_once(
 
         if new_error < *best_error {
             *best_error = new_error;
-            improved = true;
+            // improved = true;
         } else {
             arr[n] = arr[n].checked_sub(delta * 2).unwrap();
             EvalParams::from_arr(&arr).update_exhelper(&mut exhelper, mid);
@@ -249,7 +260,7 @@ pub fn texel_optimize_once(
 
             if new_error < *best_error {
                 *best_error = new_error;
-                improved = true;
+                // improved = true;
             } else {
                 arr[n] = arr[n].checked_add(delta).unwrap();
                 EvalParams::from_arr(&arr).update_exhelper(&mut exhelper, mid);
@@ -296,11 +307,10 @@ pub fn texel_optimize(
         let t1 = std::time::Instant::now();
 
         texel_optimize_once(
-            // ts, inputs, &mut exhelper, &arr_mid_mut, ignore_weights, count, true, &mut best_error, k, delta);
             ts, inputs, &mut exhelper, ignore_weights, count, true, &mut best_error, k, delta);
 
-        // texel_optimize_once(
-        //     ts, inputs, &mut exhelper, ignore_weights, count, false, &mut best_error, k, delta);
+        texel_optimize_once(
+            ts, inputs, &mut exhelper, ignore_weights, count, false, &mut best_error, k, delta);
 
         EvalParams::save_evparams(&exhelper.cfg.eval_params_mid, &exhelper.cfg.eval_params_end, path)
             .unwrap();
@@ -378,22 +388,16 @@ pub fn average_eval_error(
         1.0 / (1.0 + 10.0f64.powf(-k * s / 400.0))
     }
 
-    let (alpha,beta) = (i32::MIN,i32::MAX);
-    let (alpha,beta) = (alpha + 200,beta - 200);
-    let mut stats = SearchStats::default();
-
-    // let ev = if mid {
-    //     &exhelper.cfg.eval_params_mid
-    // } else {
-    //     &exhelper.cfg.eval_params_end
-    // };
+    // let (alpha,beta) = (i32::MIN,i32::MAX);
+    // let (alpha,beta) = (alpha + 200,beta - 200);
+    // let mut stats = SearchStats::default();
 
     use rayon::prelude::*;
 
     let ev_mid = &exhelper.cfg.eval_params_mid;
     let ev_end = &exhelper.cfg.eval_params_end;
 
-    let ph_rw  = &exhelper.ph_rw;
+    // let ph_rw  = &exhelper.ph_rw;
 
     // let n_cpus = num_cpus::get();
     // let n_cpus = num_cpus::get_physical();
