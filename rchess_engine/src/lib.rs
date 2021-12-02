@@ -76,7 +76,7 @@ pub mod searchstats;
 pub mod pruning;
 pub mod move_ordering;
 
-// pub mod lockless_map;
+pub mod lockless_map;
 
 pub mod simd_test;
 

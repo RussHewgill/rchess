@@ -420,7 +420,7 @@ impl Game {
     pub fn move_is_legal(&self, ts: &Tables, mv: Move, side: Color) -> bool {
 
         if self.state.side_to_move != side {
-            trace!("non legal move, wrong color? {:?}", mv);
+            debug!("non legal move, wrong color? {:?}", mv);
             return false;
         }
 

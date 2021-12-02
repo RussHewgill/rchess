@@ -60,6 +60,7 @@ fn main() {
     if args.len() <= 1 { main9(); return; }
     let arg1: &str = &args[1];
     match &arg1[..] {
+        "tt"        => main_tt(),
         "nnue"      => main_nnue(),
         "eval"      => main_eval(),
         "gensfen"   => {
@@ -233,6 +234,120 @@ fn _main() {
     // // main8(); // eval testing
     // main7();
     // // main3(); // read from file and test
+
+}
+
+#[allow(unreachable_code)]
+fn main_tt() {
+    use rchess_engine_lib::lockless_map::*;
+
+    use jemalloc_ctl::{stats, epoch};
+    // epoch::advance().unwrap();
+    // let allocated = stats::allocated::read().unwrap();
+    // let resident = stats::resident::read().unwrap();
+    // println!("{} bytes allocated/{} bytes resident", allocated, resident);
+
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
+    let zb = Zobrist(rng.gen());
+
+    if !true {
+        use std::alloc::{Layout, handle_alloc_error, self};
+        use std::ptr::NonNull;
+        use std::cell::UnsafeCell;
+
+        // let size = 6;
+        // let size = size * std::mem::size_of::<[u8; 2]>();
+
+        // let layout = Layout::from_size_align(size, 2).unwrap();
+
+        // let xs = UnsafeCell::new(unsafe {
+        //     let ptr: *mut u8 = alloc::alloc_zeroed(layout);
+        //     let ptr2: NonNull<[u8; 2]> = match NonNull::new(ptr) {
+        //         Some(p) => p.cast(),
+        //         _       => handle_alloc_error(layout),
+        //     };
+        //     ptr2
+        // });
+
+        // unsafe {
+        //     let arr: *mut [u8; 2] = 
+        //     // let init_entry: *
+        // }
+
+        let mut xs: [u8; 6] = [0, 1, 2, 3, 4, 5];
+        eprintln!("xs = {:?}", xs);
+
+        unsafe {
+            let ptr: *mut u8 = xs.as_mut_ptr();
+            *ptr += 1;
+        }
+        eprintln!("xs = {:?}", xs);
+
+        return;
+    }
+
+    // let tt = TransTable::new(10);
+    // let tt = TransTable::new_num_clusters(1);
+    // let k0 = tt.num_entries();
+    // let k1 = tt.num_clusters();
+    // eprintln!("k0 = {:?}", k0);
+    // eprintln!("k1 = {:?}", k1);
+
+    // let mv0         = Move::new_quiet("E2", "E4", Pawn);
+    // let p0          = PackedMove::convert(mv0);
+    // let p1: [u8; 2] = p0.pack().unwrap();
+
+    // let zb0 = Zobrist(rng.gen());
+    // let zb1 = Zobrist(rng.gen());
+    // let zb2 = Zobrist(rng.gen());
+    // let zb3 = Zobrist(rng.gen());
+
+    // let (found, entry) = tt.probe(&zb0);
+    // eprintln!("found = {:?}", found);
+    // entry.place(zb, p1, 1, Node::PV, 2);
+    // let (found, entry) = tt.probe(&zb1);
+    // eprintln!("found = {:?}", found);
+    // entry.place(zb, p1, 1, Node::PV, 2);
+    // let (found, entry) = tt.probe(&zb2);
+    // eprintln!("found = {:?}", found);
+    // entry.place(zb, p1, 1, Node::PV, 2);
+    // let (found, entry) = tt.probe(&zb3);
+    // eprintln!("found = {:?}", found);
+    // entry.place(zb, p1, 1, Node::PV, 2);
+
+    let fen = STARTPOS;
+    init_logger();
+    let ts = Tables::read_from_file_def().unwrap();
+
+    let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
+
+    let mut g = Game::from_fen(&ts, fen).unwrap();
+
+    let t = 10.0;
+    let n = 40;
+
+    let t0 = std::time::Instant::now();
+    let timesettings = TimeSettings::new_f64(0.0,t);
+    let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
+    ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+    ex.cfg.return_moves = true;
+    ex.cfg.clear_table = false;
+    // ex.cfg.num_threads = Some(6);
+    // ex.cfg.num_threads = Some(1);
+    // ex.cfg.num_threads = None;
+
+    let (res,moves,stats0) = ex.lazy_smp_2(&ts);
+    let t1 = t0.elapsed();
+    let t2 = t1.as_secs_f64();
+
+    let best   = res.get_result().unwrap();
+    let scores = res.get_scores().unwrap_or_default();
+
+    // for m in best.moves.iter() { eprintln!("\t{:?}", m); }
+    // eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
+    eprintln!("\nBest move = {:>8} {:?}", best.score, best.mv);
+    println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
+             stats0.max_depth, t2);
 
 }
 
@@ -1612,7 +1727,7 @@ fn main9() {
     let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
-    // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
     // let fen = "5rk1/pp3pp1/8/4q1N1/6b1/4r3/PP3QP1/5K1R w - - 0 2"; // R h1h8, #4, knight move order?
     // let fen = "r4r1k/2Q5/1p5p/2p2n2/2Pp2R1/PN1Pq3/6PP/R3N2K b - - 0 1"; // #4, Qt N f5g3, slow
@@ -1685,7 +1800,7 @@ fn main9() {
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
 
-    g.last_move = Some(Move::new_capture("D1", "D2", King, Queen));
+    // g.last_move = Some(Move::new_capture("D1", "D2", King, Queen));
 
     eprintln!("g = {:?}", g);
 
@@ -1723,7 +1838,7 @@ fn main9() {
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(6);
-    ex.cfg.num_threads = Some(1);
+    // ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     // let mut only_moves = HashSet::default();

@@ -158,8 +158,8 @@ pub enum Node {
     PV,
     All, // UpperBound
     Cut, // LowerBound
-    Quiet, // XXX: ?
-    Root, // XXX: ??
+    // Quiet, // XXX: ?
+    // Root, // XXX: ??
     // NodeAll(Score), // Score = upper bound
     // NodeCut(Score), // Score = lower bound
 }

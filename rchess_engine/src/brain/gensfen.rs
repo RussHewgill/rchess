@@ -6,7 +6,6 @@ use crate::types::*;
 use crate::evaluate::*;
 use crate::alphabeta::*;
 
-pub use self::packed_move::*;
 pub use self::td_tree::*;
 pub use self::td_builder::*;
 pub use self::sprt::*;
@@ -22,95 +21,6 @@ use rand::distributions::{Uniform,uniform::SampleUniform};
 
 use crossbeam::channel::{Sender,Receiver,RecvError,TryRecvError};
 use std::sync::atomic::{Ordering,AtomicU64};
-
-mod packed_move {
-    use super::*;
-    use packed_struct::prelude::*;
-    pub use packed_struct::PackedStruct;
-
-    // #[derive(Debug,Eq,PartialEq,Clone,Copy,Serialize,Deserialize)]
-    // pub struct PackedMove2 {
-    //     #[serde(serialize_with = "PackedMove2::ser")]
-    //     #[serde(deserialize_with = "PackedMove2::de")]
-    //     mv:   PackedMove,
-    // }
-
-    // impl PackedMove2 {
-    //     pub fn ser<S>(&self, s: S) -> Result<S::Ok, S::Error> where S: serde::Serializer {
-    //         unimplemented!()
-    //     }
-    //     pub fn de<'de, D>(d: D) -> Result<PackedMove, D::Error>
-    //     where D: serde::Deserializer<'de>
-    //     {
-    //         unimplemented!()
-    //     }
-    // }
-
-    #[derive(Debug,Eq,PartialEq,Clone,Copy,PackedStruct,Serialize,Deserialize)]
-    // #[derive(Debug,Eq,PartialEq,Clone,Copy,PackedStruct)]
-    #[packed_struct(bit_numbering = "msb0")]
-    pub struct PackedMove {
-        #[packed_field(bits = "0..6")]
-        _from:   Integer<u8, packed_bits::Bits::<6>>,
-        #[packed_field(bits = "6..12")]
-        _to:     Integer<u8, packed_bits::Bits::<6>>,
-        #[packed_field(bits = "13..15")]
-        _prom:   Integer<u8, packed_bits::Bits::<3>>,
-    }
-
-    impl PackedMove {
-
-        pub fn convert(mv: Move) -> Self {
-            match mv {
-                Move::Promotion { new_piece, .. } | Move::PromotionCapture { new_piece, .. } =>
-                    Self::new(mv.sq_from().into(), mv.sq_to().into(), Some(new_piece)),
-                _ => Self::new(mv.sq_from().into(), mv.sq_to().into(), None),
-            }
-        }
-
-        pub fn from(&self) -> u8 {
-            u8::from(self._from)
-        }
-        pub fn to(&self) -> u8 {
-            u8::from(self._to)
-        }
-        pub fn prom(&self) -> Option<Piece> {
-            Self::convert_to_piece(u8::from(self._prom))
-        }
-
-        pub fn new(from: u8, to: u8, prom: Option<Piece>) -> Self {
-            Self {
-                _from:  from.into(),
-                _to:    to.into(),
-                _prom:  Self::convert_from_piece(prom).into(),
-            }
-        }
-
-        fn convert_from_piece(pc: Option<Piece>) -> u8 {
-            match pc {
-                None         => 0,
-                Some(Knight) => 1,
-                Some(Bishop) => 2,
-                Some(Rook)   => 3,
-                Some(Queen)  => 4,
-                _            => panic!("PackedMove: bad promotion: {:?}", pc),
-            }
-        }
-
-        pub fn convert_to_piece(pc: u8) -> Option<Piece> {
-            match pc {
-                0 => None,
-                1 => Some(Knight),
-                2 => Some(Bishop),
-                3 => Some(Rook),
-                4 => Some(Queen),
-                _ => unimplemented!(),
-            }
-        }
-
-    }
-
-}
 
 mod td_tree {
     use super::*;
