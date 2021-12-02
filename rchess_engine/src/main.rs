@@ -1723,8 +1723,8 @@ fn main9() {
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(6);
-    // ex.cfg.num_threads = Some(1);
-    ex.cfg.num_threads = None;
+    ex.cfg.num_threads = Some(1);
+    // ex.cfg.num_threads = None;
 
     // let mut only_moves = HashSet::default();
     // only_moves.insert(Move::new_quiet("F5", "F1", Rook));
