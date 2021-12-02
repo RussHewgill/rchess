@@ -59,7 +59,10 @@ pub fn process_txdata(
             g = g.make_move_unchecked(&ts, *mv).unwrap();
         }
 
+        // eprintln!("td.moves.len() = {:?}", td.moves.len());
+
         for te in td.moves.iter() {
+            // eprintln!("making move = {:?}", te.mv);
             if let Ok(g2) = g.make_move_unchecked(&ts, te.mv) {
                 g = g2;
                 if !te.skip
@@ -73,11 +76,14 @@ pub fn process_txdata(
                     let q_score = g.state.side_to_move.fold(q_score, -q_score);
 
                     if score == q_score {
+                        // println!("ps.push");
                         ps.push(TxPosition::new(g.clone(), td.result));
                     } else {
                         // non_q += 1;
                     }
                 }
+            } else {
+                // eprintln!("move failed");
             }
 
         }
@@ -132,10 +138,57 @@ impl TxPosition {
 
 }
 
+pub fn load_labeled_fens<P: AsRef<Path>>(
+    ts:             &Tables,
+    mut exhelper:   &mut ExHelper,
+    count:          Option<usize>,
+    path:           P,
+) -> std::io::Result<Vec<TxPosition>> {
+    use regex::Regex;
+    use std::io::{self, BufRead};
+
+    let mut f = std::fs::File::open(path)?;
+    let mut b = std::io::BufReader::new(f);
+
+    let mut out = vec![];
+    let mut n = 0;
+    let mut line = String::new();
+
+    let reg = Regex::new(r##""([^"])"##).unwrap();
+
+    loop {
+
+        let k = b.read_line(&mut line)?;
+        if k == 0 { break; }
+
+        if let Some(game) = Game::from_fen(ts, &line) {
+
+            let res = reg.find(&line).unwrap();
+
+            eprintln!("res = {:?}", res);
+
+            // let tx = TxPosition {
+            //     game,
+            //     result,
+            // };
+            // out.push(tx);
+
+        }
+
+        // line.clear();
+        // n += 1;
+        // if count.map_or(false, |c| n >= c) { break; }
+
+        break;
+    }
+    Ok(out)
+}
+
 pub fn texel_optimize_once(
     ts:                          &Tables,
     inputs:                      &[TxPosition],
     mut exhelper:                &mut ExHelper,
+    // mut arr_mut:                 &Vec<&mut Score>,
     ignore_weights:              &[bool],
     count:                       Option<usize>,
     mid:                         bool,
@@ -143,14 +196,30 @@ pub fn texel_optimize_once(
     k:                           Option<f64>,
     delta:                       Score,
 ) {
-    let mut arr = if mid {
+
+    // let mut arr_mut: Vec<&mut Score> = if mid {
+    //     exhelper.cfg.eval_params_mid.to_arr_mut()
+    // } else {
+    //     exhelper.cfg.eval_params_end.to_arr_mut()
+    // };
+
+    // let xs = arr_mut.into_iter().map(|x| RefCell::new(x))
+
+    // let mut improved = true;
+    // for mut v in arr_mut {
+    //     if !improved { break; }
+    //     improved = false;
+    //     *v = v.checked_add(delta).unwrap();
+    //     exhelper.ph_rw.purge_scores();
+    //     // .update_exhelper(&mut exhelper, mid)
+    //     // let new_error = average_eval_error(ts, &inputs, &exhelper.clone(), None);
+    // }
+
+    let mut arr: Vec<Score> = if mid {
         exhelper.cfg.eval_params_mid.to_arr()
     } else {
         exhelper.cfg.eval_params_end.to_arr()
     };
-
-    // for k in arr.iter_mut() {
-    // }
 
     let mut improved = true;
     for n in 0..arr.len() {
@@ -162,11 +231,8 @@ pub fn texel_optimize_once(
         }
 
         arr[n] = arr[n].checked_add(delta).unwrap();
-        if mid {
-            exhelper.cfg.eval_params_mid = EvalParams::from_arr(&arr);
-        } else {
-            exhelper.cfg.eval_params_end = EvalParams::from_arr(&arr);
-        }
+
+        EvalParams::from_arr(&arr).update_exhelper(&mut exhelper, mid);
         exhelper.ph_rw.purge_scores();
 
         let new_error = average_eval_error(ts, &inputs, &exhelper, None);
@@ -176,11 +242,7 @@ pub fn texel_optimize_once(
             improved = true;
         } else {
             arr[n] = arr[n].checked_sub(delta * 2).unwrap();
-            if mid {
-                exhelper.cfg.eval_params_mid = EvalParams::from_arr(&arr);
-            } else {
-                exhelper.cfg.eval_params_end = EvalParams::from_arr(&arr);
-            }
+            EvalParams::from_arr(&arr).update_exhelper(&mut exhelper, mid);
             exhelper.ph_rw.purge_scores();
 
             let new_error = average_eval_error(ts, &inputs, &exhelper, None);
@@ -190,11 +252,7 @@ pub fn texel_optimize_once(
                 improved = true;
             } else {
                 arr[n] = arr[n].checked_add(delta).unwrap();
-                if mid {
-                    exhelper.cfg.eval_params_mid = EvalParams::from_arr(&arr);
-                } else {
-                    exhelper.cfg.eval_params_end = EvalParams::from_arr(&arr);
-                }
+                EvalParams::from_arr(&arr).update_exhelper(&mut exhelper, mid);
                 exhelper.ph_rw.purge_scores();
             }
         }
@@ -209,13 +267,14 @@ pub fn texel_optimize(
     ts:                          &Tables,
     inputs:                      &[TxPosition],
     mut exhelper:                &mut ExHelper,
+    // exhelper:                    std::rc::Rc<std::cell::RefCell<ExHelper>>,
     ignore_weights:              &[bool],
     count:                       Option<usize>,
     k:                           Option<f64>,
     path:                        &str,
 ) -> (EvalParams,EvalParams) {
 
-    let mut best_error = average_eval_error(ts, &inputs, &exhelper, k);
+    let mut best_error = average_eval_error(ts, &inputs, exhelper, k);
 
     let arr_len = exhelper.cfg.eval_params_mid.to_arr().len();
 
@@ -225,6 +284,10 @@ pub fn texel_optimize(
     // let mut delta = 50;
     let mut delta = 10;
 
+
+    // let arr_end_mut = exhelper.cfg.eval_params_end.to_arr_mut();
+    // let arr_mid_mut = exhelper.cfg.eval_params_mid.to_arr_mut();
+
     println!("starting texel_optimize...");
     // eprintln!("arr_mid.len() = {:?}", arr_mid.len());
     let t0 = std::time::Instant::now();
@@ -233,6 +296,7 @@ pub fn texel_optimize(
         let t1 = std::time::Instant::now();
 
         texel_optimize_once(
+            // ts, inputs, &mut exhelper, &arr_mid_mut, ignore_weights, count, true, &mut best_error, k, delta);
             ts, inputs, &mut exhelper, ignore_weights, count, true, &mut best_error, k, delta);
 
         // texel_optimize_once(
@@ -332,7 +396,7 @@ pub fn average_eval_error(
     let ph_rw  = &exhelper.ph_rw;
 
     // let n_cpus = num_cpus::get();
-    let n_cpus = num_cpus::get_physical();
+    // let n_cpus = num_cpus::get_physical();
 
     // for (n,xs) in cs.clone().enumerate() {
     //     eprintln!("n = {:?}, xs.len() = {:?}", n, xs.len());

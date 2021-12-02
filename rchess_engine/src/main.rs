@@ -593,43 +593,6 @@ fn main_tuning() {
 
     let ob = OpeningBook::read_from_file(&ts, "tables/Perfect_2021/BIN/Perfect2021.bin").unwrap();
 
-    if !true {
-    // let tds = {
-
-        // let pgn_path = "/home/me/code/rust/rchess/training_data/fics_test.pgn";
-        let pgn_path = "./training_data/ficsgamesdb_2020_standard_nomovetimes_233317.pgn";
-        // let pgn_path = "/home/me/code/rust/rchess/training_data/fics_test2.pgn";
-
-        let count = 1000;
-
-        let t0 = Instant::now();
-        let pgns = parse_pgns(pgn_path, Some(count)).unwrap();
-        // let pgns = parse_pgns(pgn_path, None).unwrap();
-
-        println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
-
-        eprintln!("pgns.len() = {:?}", pgns.len());
-
-        let t0 = Instant::now();
-        let tds = process_pgns(&ts, &pgns);
-
-        println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
-
-        // let fen = "6n1/7P/1p6/2p5/2P5/1k1K4/p7/8 w - - 0 1";
-        // let mut g = Game::from_fen(&ts, fen).unwrap();
-        // // let mv0 = "h8=Q";
-        // let mv0 = "hxg8=Q";
-        // let mv = g.convert_from_algebraic(&ts, mv0);
-        // eprintln!("mv = {:?}", mv);
-
-        // eprintln!("g = {:?}", g);
-        // let g2 = g.make_move_unchecked(&ts, mv.unwrap()).unwrap();
-        // eprintln!("g2 = {:?}", g2);
-
-        return;
-        // tds
-    };
-
     // let path = "/home/me/code/rust/rchess/training_data/test_5.bin";
     // let path = "/home/me/code/rust/rchess/training_data/set1/depth5_games500_4.bin";
     // let path = "/home/me/code/rust/rchess/training_data/depth5_games100_1.bin";
@@ -640,7 +603,8 @@ fn main_tuning() {
 
     if !true {
 
-        let ev = EvalParams::default();
+        let mut ev = EvalParams::default();
+
         ev.psqt.print_table(Rook).unwrap();
 
         let (ev_mid,ev_end) = EvalParams::read_evparams(evpath).unwrap();
@@ -689,26 +653,46 @@ fn main_tuning() {
     // }
 
     // let path = "/home/me/code/rust/rchess/training_data/set2/depth5_games500_2.bin";
-    let path = "/home/me/code/rust/rchess/training_data/set2/depth5_games500_3.bin";
+    // let path = "/home/me/code/rust/rchess/training_data/set2/depth5_games500_3.bin";
     // let ps = load_txdata(&ts, &mut exhelper, Some(1000), path).unwrap();
-    let ps = load_txdata(&ts, &mut exhelper, None, path).unwrap();
+    // let ps = load_txdata(&ts, &mut exhelper, None, path).unwrap();
     // let ps = load_txdata_mult(&ts, &mut exhelper, &paths).unwrap();
 
-    // let ps = process_txdata(&ts, &mut exhelper, Some(1000), &tds);
+    // let pgn_path = "./training_data/ficsgamesdb_2020_standard_nomovetimes_233317.pgn";
+    // let pgn_path = "./training_data/fics_test2.pgn";
+    // let pgn_path = "./training_data/fics_test.pgn";
+
+    let fen_path = "./training_data/tuner/quiet-labeled.epd";
+
+    let count = Some(10000);
+    // let count = None;
+
+    // let ps = load_pgns_tx(&ts, &mut exhelper, count, pgn_path).unwrap();
+
+    let ps = load_labeled_fens(&ts, &mut exhelper, count, fen_path).unwrap();
 
     eprintln!("ps.len() = {:?}", ps.len());
 
     // let ps: Vec<TxPosition> = ps[..1000].to_vec();
     // eprintln!("ps.len() = {:?}", ps.len());
 
-    let k = find_k(&ts, &ps, &exhelper, false);
 
-    // let k: f64 = -0.1111f64;
     // let k = 1.0;
+    // let k: f64 = -0.1111f64;
+    let k = find_k(&ts, &ps, &exhelper, false);
     eprintln!("k = {:?}", k);
 
     let error = average_eval_error(&ts, &ps, &exhelper, Some(k));
     eprintln!("error = {:.3}", error);
+
+    // for v in exhelper.cfg.eval_params_mid.psqt.queen.iter_mut() {
+    //     *v += 1000;
+    // }
+
+    // let error = average_eval_error(&ts, &ps, &exhelper, Some(k));
+    // eprintln!("error = {:.3}", error);
+
+    return;
 
     // {
     //     let mut file = std::fs::File::create(evpath).unwrap();

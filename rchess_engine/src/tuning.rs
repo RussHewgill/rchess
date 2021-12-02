@@ -1,5 +1,6 @@
 
 use crate::evaluate::TaperedScore;
+use crate::explore::ExHelper;
 use crate::types::*;
 // use crate::tables::*;
 use crate::evaluate::*;
@@ -9,6 +10,7 @@ pub use self::piece_square_tables::*;
 // use rchess_macros::EPIndex;
 
 use std::path::Path;
+use std::cell::RefCell;
 
 use serde::{Serialize,Deserialize};
 use serde_big_array::BigArray;
@@ -31,6 +33,7 @@ pub trait Tunable {
     fn to_arr(&self) -> Vec<Score>;
     fn from_arr(v: &[Score]) -> Self;
     fn to_arr_mut(&mut self) -> Vec<&mut Score>;
+    fn update_exhelper(&self, exhelper: &mut ExHelper, mid: bool);
 }
 
 mod piece_square_tables {
@@ -89,7 +92,8 @@ mod piece_square_tables {
 
     impl Default for PcTables {
         fn default() -> Self {
-            Self::new_mid()
+            // Self::new_mid()
+            Self::empty()
         }
     }
 
@@ -417,7 +421,20 @@ mod piece_square_tables {
         }
         fn to_arr_mut(&mut self) -> Vec<&mut Score> {
             let mut xs = vec![];
+            xs.extend(self.pawn.iter_mut());
+            xs.extend(self.knight.iter_mut());
+            xs.extend(self.bishop.iter_mut());
+            xs.extend(self.rook.iter_mut());
+            xs.extend(self.queen.iter_mut());
+            xs.extend(self.king.iter_mut());
             xs
+        }
+        fn update_exhelper(&self, exhelper: &mut ExHelper, mid: bool) {
+            if mid {
+                exhelper.cfg.eval_params_mid.psqt = *self;
+            } else {
+                exhelper.cfg.eval_params_end.psqt = *self;
+            }
         }
     }
 
@@ -678,6 +695,7 @@ pub mod indexing {
     use super::*;
 
     impl Tunable for EvalParams {
+
         const LEN: usize = 1
             + EPPawns::LEN
             + EPPieces::LEN
@@ -709,10 +727,18 @@ pub mod indexing {
             xs.extend(self.psqt.to_arr_mut());
             xs
         }
+        fn update_exhelper(&self, exhelper: &mut ExHelper, mid: bool) {
+            if mid {
+                exhelper.cfg.eval_params_mid = *self;
+            } else {
+                exhelper.cfg.eval_params_end = *self;
+            }
+        }
     }
 
     impl Tunable for EPPawns {
         const LEN: usize = 13;
+
         fn to_arr(&self) -> Vec<Score> {
             let mut out = vec![self.supported];
             out.extend_from_slice(&self.connected_ranks);
@@ -750,10 +776,19 @@ pub mod indexing {
             xs.push(&mut self.backward);
             xs
         }
+
+        fn update_exhelper(&self, exhelper: &mut ExHelper, mid: bool) {
+            if mid {
+                exhelper.cfg.eval_params_mid.pawns = *self;
+            } else {
+                exhelper.cfg.eval_params_end.pawns = *self;
+            }
+        }
     }
 
     impl Tunable for EPPieces {
         const LEN: usize = 2 + EvOutpost::LEN;
+
         fn to_arr(&self) -> Vec<Score> {
             let mut out = vec![
                 self.rook_open_file[0],
@@ -772,17 +807,24 @@ pub mod indexing {
         }
 
         fn to_arr_mut(&mut self) -> Vec<&mut Score> {
-            let mut xs = vec![
-                &mut self.rook_open_file[0],
-                &mut self.rook_open_file[1],
-            ];
+            let mut xs = vec![];
+            xs.extend(self.rook_open_file.iter_mut());
             xs.extend(self.outpost.to_arr_mut());
             xs
+        }
+
+        fn update_exhelper(&self, exhelper: &mut ExHelper, mid: bool) {
+            if mid {
+                exhelper.cfg.eval_params_mid.pieces = *self;
+            } else {
+                exhelper.cfg.eval_params_end.pieces = *self;
+            }
         }
     }
 
     impl Tunable for EvOutpost {
         const LEN: usize = 3;
+
         fn to_arr(&self) -> Vec<Score> {
             vec![self.outpost_knight,self.outpost_bishop,self.reachable_knight]
         }
@@ -795,6 +837,7 @@ pub mod indexing {
                 reachable_knight: v[2],
             }
         }
+
         fn to_arr_mut(&mut self) -> Vec<&mut Score> {
             let mut xs = vec![
                 &mut self.outpost_knight,
@@ -802,6 +845,14 @@ pub mod indexing {
                 &mut self.reachable_knight,
             ];
             xs
+        }
+
+        fn update_exhelper(&self, exhelper: &mut ExHelper, mid: bool) {
+            if mid {
+                exhelper.cfg.eval_params_mid.pieces.outpost = *self;
+            } else {
+                exhelper.cfg.eval_params_end.pieces.outpost = *self;
+            }
         }
     }
 

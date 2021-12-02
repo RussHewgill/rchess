@@ -131,7 +131,7 @@ pub fn qsearch_once2(
 /// Quiescence
 impl ExHelper {
 
-    pub fn qsearch_once(
+    pub fn qsearch_once_mut(
         &mut self,
         ts:                       &Tables,
         g:                        &Game,
@@ -141,6 +141,17 @@ impl ExHelper {
         let (alpha,beta) = (alpha + 200,beta - 200);
         self.game = g.clone();
         self.side = g.state.side_to_move;
+        self.qsearch(ts, g, (0,0), (alpha,beta), stats)
+    }
+
+    pub fn qsearch_once(
+        &self,
+        ts:                       &Tables,
+        g:                        &Game,
+        mut stats:                &mut SearchStats,
+    ) -> Score {
+        let (alpha,beta) = (i32::MIN,i32::MAX);
+        let (alpha,beta) = (alpha + 200,beta - 200);
         self.qsearch(ts, g, (0,0), (alpha,beta), stats)
     }
 

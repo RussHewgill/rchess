@@ -1,6 +1,10 @@
 
 use crate::brain::trainer::TDOutcome;
 use crate::brain::trainer::TrainingData;
+use crate::explore::ExHelper;
+use crate::qsearch::exhelper_once;
+use crate::searchstats::SearchStats;
+use crate::texel::TxPosition;
 use crate::types::*;
 use crate::tables::*;
 
@@ -21,6 +25,8 @@ use nom::multi::many_till;
 use nom::sequence::tuple;
 use serde::{Serialize,Deserialize};
 use derive_new::new;
+
+use rayon::prelude::*;
 
 use std::io;
 use std::path::Path;
@@ -55,40 +61,126 @@ impl PGN {
     }
 }
 
-pub fn process_pgns(ts: &Tables, pgns: &[PGN]) -> Vec<TrainingData> {
+// pub fn load_pgns_td<P: AsRef<Path>>(ts: &Tables, path: P, count: Option<usize>)
+//                                  -> io::Result<Vec<TrainingData>> {
+//     let pgns = parse_pgns(path, count)?;
+//     let tds = process_pgns_td(ts, &pgns);
+//     Ok(tds)
+// }
+
+pub fn load_pgns_tx<P: AsRef<Path>>(
+    ts:             &Tables,
+    mut exhelper:   &mut ExHelper,
+    count:          Option<usize>,
+    path:           P,
+) -> io::Result<Vec<TxPosition>> {
+
+    let t0 = std::time::Instant::now();
+    let pgns = parse_pgns(path, count).unwrap();
+    eprintln!("finished 0 in {:.3} seconds", t0.elapsed().as_secs_f64());
+    let t0 = std::time::Instant::now();
+    let ps = process_pgns_tx(&ts, &mut exhelper, count, &pgns);
+    eprintln!("finished 1 in {:.3} seconds", t0.elapsed().as_secs_f64());
+
+    // let pgns = parse_pgns(path, count)?;
+    // let ps = process_pgns_tx(ts, exhelper, count, &pgns);
+    Ok(ps)
+}
+
+pub fn process_pgns_tx(
+    ts:             &Tables,
+    exhelper:       &mut ExHelper,
+    count:          Option<usize>,
+    pgns:           &[PGN]
+) -> Vec<TxPosition> {
     let g0 = Game::from_fen(ts, STARTPOS).unwrap();
     // let mut out = vec![];
 
-    use rayon::prelude::*;
+    let (ev_mid,ev_end) = (&exhelper.cfg.eval_params_mid,&exhelper.cfg.eval_params_end);
 
-    let out: Vec<TrainingData> = pgns.par_iter().map(|pgn| {
+    let out: Vec<TxPosition> = pgns.par_iter().map(|pgn| {
+    // let out: Vec<TxPosition> = pgns.iter().map(|pgn| {
         let mut g = g0.clone();
-        let mut moves = vec![];
-        'inner: for mv0 in pgn.moves.iter() {
+        let mut games = vec![];
+
+        let mut stats = SearchStats::default();
+        let mut exhelper2 = exhelper_once(&g, g.state.side_to_move, &ev_mid, &ev_end, None);
+
+        for mv0 in pgn.moves.iter() {
             let mv0 = mv0.chars().filter(|c| *c != '+' && *c != '#').collect::<String>();
             let mv = g.convert_from_algebraic(ts, &mv0).unwrap();
             if let Ok(g2) = g.make_move_unchecked(ts, mv) {
                 g = g2;
+
+                let moves = g.search_all(&ts);
+
+                if !mv.filter_all_captures()
+                    && g.state.checkers.is_empty()
+                    && !moves.is_end() {
+
+                        let score   = g.sum_evaluate(&ts, &ev_mid, &ev_end, Some(&exhelper2.ph_rw));
+
+                        let q_score = exhelper2.qsearch_once_mut(&ts, &g, &mut stats);
+                        let q_score = g.state.side_to_move.fold(q_score, -q_score);
+
+                        if score == q_score {
+                            // ps.push(TxPosition::new(g.clone(), td.result));
+                            games.push(g.clone());
+                        } else {
+                            // non_q += 1;
+                        }
+
+                }
+
+                // games.push(g.clone());
             } else {
-                // panic!("{:?}\n{:?}\nbad move: {} {:?}", g.to_fen(), g, mv0, mv);
-                break 'inner;
+                eprintln!("{:?}\n{:?}\nbad move: {} {:?}", g.to_fen(), g, mv0, mv);
+                break;
             }
         }
-        let td = TrainingData {
-            opening: vec![],
-            moves,
-            result: pgn.result,
-        };
-        // out.push(td);
-        td
-    }).collect();
+
+        let xs: Vec<TxPosition> = games.into_iter().map(|game| {
+            TxPosition {
+                game,
+                result: pgn.result,
+            }
+        }).collect();
+        xs
+    }).filter(|xs| xs.len() > 0).flatten().collect();
     out
 }
 
-pub fn parse_pgns<P: AsRef<Path>>(
-    path:          P,
-    count:         Option<usize>,
-) -> io::Result<Vec<PGN>> {
+pub fn process_pgns_td(ts: &Tables, pgns: &[PGN]) -> Vec<TrainingData> {
+    let g0 = Game::from_fen(ts, STARTPOS).unwrap();
+
+    // let out: Vec<TrainingData> = pgns.par_iter().map(|pgn| {
+    //     let mut g = g0.clone();
+    //     let mut moves = vec![];
+    //     'inner: for mv0 in pgn.moves.iter() {
+    //         let mv0 = mv0.chars().filter(|c| *c != '+' && *c != '#').collect::<String>();
+    //         let mv = g.convert_from_algebraic(ts, &mv0).unwrap();
+    //         if let Ok(g2) = g.make_move_unchecked(ts, mv) {
+    //             g = g2;
+    //             moves.push(mv);
+    //         } else {
+    //             eprintln!("{:?}\n{:?}\nbad move: {} {:?}", g.to_fen(), g, mv0, mv);
+    //             break 'inner;
+    //         }
+    //     }
+    //     let td = TrainingData {
+    //         opening: vec![],
+    //         moves,
+    //         result: pgn.result,
+    //     };
+    //     // out.push(td);
+    //     td
+    // }).collect();
+    // out
+
+    unimplemented!()
+}
+
+pub fn parse_pgns<P: AsRef<Path>>(path: P, count: Option<usize>) -> io::Result<Vec<PGN>> {
     let mut buf = std::fs::read_to_string(path)?;
 
     // let (_,pgn) = parse_pgn(&buf).unwrap();
