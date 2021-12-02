@@ -349,6 +349,8 @@ fn main_tt() {
     println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
              stats0.max_depth, t2);
 
+    stats0.print(t1);
+
 }
 
 #[cfg(feature = "syzygy")]
