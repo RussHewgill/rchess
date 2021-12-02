@@ -209,6 +209,7 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
     // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
     // let (n,t) = (35,1.0);
+    // let timesettings = TimeSettings::new_f64(0.0,t);
     // let mut g = Game::from_fen(&ts, fen).unwrap();
     // group.bench_function("explore", |b| b.iter(|| {
     //     let ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
@@ -225,23 +226,6 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
     let ph_rw = rchess_engine_lib::pawn_hash_table::PHTableFactory::new();
     let ph_rw = ph_rw.handle();
-
-
-    let mut xs: Vec<f64> = vec![];
-    for _ in 0..10000 {
-        xs.push(rng.gen());
-    }
-
-    group.bench_function("sum", |b| b.iter(|| {
-        let k: f64 = xs.iter().sum();
-    }));
-
-    group.bench_function("sum loop", |b| b.iter(|| {
-        let mut k = 0.0;
-        for x in xs.iter() {
-            k += x;
-        }
-    }));
 
     // Baseline = 118 us
     // material = 1.78 us
@@ -316,7 +300,7 @@ pub fn crit_bench_1(c: &mut Criterion) {
     // }));
 
     // group.bench_function("search_all", |b| b.iter(|| {
-    //     for g in games.iter() {
+    //     for g in wacs.iter() {
     //         let mvs = g.search_all(&ts);
     //     }
     // }));

@@ -526,6 +526,18 @@ impl Iterator for PcIter {
 
 impl Piece {
 
+    pub fn from_char(c: char) -> Self {
+        match c {
+            'P' => Pawn,
+            'N' => Knight,
+            'B' => Bishop,
+            'R' => Rook,
+            'Q' => Queen,
+            'K' => King,
+            _ => panic!("Piece::from_index bad {:?}", c),
+        }
+    }
+
     pub fn from_index(x: u8) -> Self {
         match x {
             0 => Pawn,

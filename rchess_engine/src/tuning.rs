@@ -30,6 +30,7 @@ pub trait Tunable {
     const LEN: usize;
     fn to_arr(&self) -> Vec<Score>;
     fn from_arr(v: &[Score]) -> Self;
+    fn to_arr_mut(&mut self) -> Vec<&mut Score>;
 }
 
 mod piece_square_tables {
@@ -414,6 +415,10 @@ mod piece_square_tables {
             out.extend_from_slice(&self.king);
             out
         }
+        fn to_arr_mut(&mut self) -> Vec<&mut Score> {
+            let mut xs = vec![];
+            xs
+        }
     }
 
 }
@@ -697,6 +702,13 @@ pub mod indexing {
                 psqt:    PcTables::from_arr(&v[n1..]),
             }
         }
+        fn to_arr_mut(&mut self) -> Vec<&mut Score> {
+            let mut xs = vec![];
+            xs.extend(self.pawns.to_arr_mut());
+            xs.extend(self.pieces.to_arr_mut());
+            xs.extend(self.psqt.to_arr_mut());
+            xs
+        }
     }
 
     impl Tunable for EPPawns {
@@ -727,6 +739,17 @@ pub mod indexing {
 
             out
         }
+
+        fn to_arr_mut(&mut self) -> Vec<&mut Score> {
+            let mut xs = vec![&mut self.supported];
+            xs.extend(self.connected_ranks.iter_mut());
+            xs.push(&mut self.blocked_r5);
+            xs.push(&mut self.blocked_r6);
+            xs.push(&mut self.doubled);
+            xs.push(&mut self.isolated);
+            xs.push(&mut self.backward);
+            xs
+        }
     }
 
     impl Tunable for EPPieces {
@@ -747,6 +770,15 @@ pub mod indexing {
                 outpost:        EvOutpost::from_arr(&v[2..]),
             }
         }
+
+        fn to_arr_mut(&mut self) -> Vec<&mut Score> {
+            let mut xs = vec![
+                &mut self.rook_open_file[0],
+                &mut self.rook_open_file[1],
+            ];
+            xs.extend(self.outpost.to_arr_mut());
+            xs
+        }
     }
 
     impl Tunable for EvOutpost {
@@ -762,6 +794,14 @@ pub mod indexing {
                 outpost_bishop: v[1],
                 reachable_knight: v[2],
             }
+        }
+        fn to_arr_mut(&mut self) -> Vec<&mut Score> {
+            let mut xs = vec![
+                &mut self.outpost_knight,
+                &mut self.outpost_bishop,
+                &mut self.reachable_knight,
+            ];
+            xs
         }
     }
 

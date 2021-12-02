@@ -34,19 +34,32 @@ pub fn load_txdata<P: AsRef<Path>>(
 
     debug!("finished loading Vec<TrainingData> in {:.3} seconds", t1);
 
+    let ps = process_txdata(ts, &mut exhelper, count, &tds);
+
+    Ok(ps)
+}
+
+pub fn process_txdata(
+    ts:             &Tables,
+    mut exhelper:   &mut ExHelper,
+    count:          Option<usize>,
+    tds:            &[TrainingData],
+) -> Vec<TxPosition> {
+
     let mut stats = SearchStats::default();
 
     let mut ps: Vec<TxPosition> = vec![];
     let mut n = 0;
     // let mut non_q = 0;
 
-    for td in tds.into_iter() {
+    let t0 = std::time::Instant::now();
+    for td in tds.iter() {
         let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
-        for mv in td.opening.into_iter() {
-            g = g.make_move_unchecked(&ts, mv).unwrap();
+        for mv in td.opening.iter() {
+            g = g.make_move_unchecked(&ts, *mv).unwrap();
         }
 
-        for te in td.moves.into_iter() {
+        for te in td.moves.iter() {
             if let Ok(g2) = g.make_move_unchecked(&ts, te.mv) {
                 g = g2;
                 if !te.skip
@@ -76,7 +89,7 @@ pub fn load_txdata<P: AsRef<Path>>(
 
     debug!("finished processing Vec<TrainingData> in {:.3} seconds", t2);
 
-    Ok(ps)
+    ps
 }
 
 pub fn load_txdata_mult<P: AsRef<Path>>(
@@ -136,7 +149,14 @@ pub fn texel_optimize_once(
         exhelper.cfg.eval_params_end.to_arr()
     };
 
+    // for k in arr.iter_mut() {
+    // }
+
+    let mut improved = true;
     for n in 0..arr.len() {
+        if !improved { break; }
+        improved = false;
+
         if let Some(true) = ignore_weights.get(n) {
             continue;
         }
@@ -153,6 +173,7 @@ pub fn texel_optimize_once(
 
         if new_error < *best_error {
             *best_error = new_error;
+            improved = true;
         } else {
             arr[n] = arr[n].checked_sub(delta * 2).unwrap();
             if mid {
@@ -166,6 +187,7 @@ pub fn texel_optimize_once(
 
             if new_error < *best_error {
                 *best_error = new_error;
+                improved = true;
             } else {
                 arr[n] = arr[n].checked_add(delta).unwrap();
                 if mid {
@@ -200,7 +222,8 @@ pub fn texel_optimize(
     EvalParams::save_evparams(&exhelper.cfg.eval_params_mid, &exhelper.cfg.eval_params_end, path)
         .unwrap();
 
-    let mut delta = 50;
+    // let mut delta = 50;
+    let mut delta = 10;
 
     println!("starting texel_optimize...");
     // eprintln!("arr_mid.len() = {:?}", arr_mid.len());
@@ -212,8 +235,8 @@ pub fn texel_optimize(
         texel_optimize_once(
             ts, inputs, &mut exhelper, ignore_weights, count, true, &mut best_error, k, delta);
 
-        texel_optimize_once(
-            ts, inputs, &mut exhelper, ignore_weights, count, false, &mut best_error, k, delta);
+        // texel_optimize_once(
+        //     ts, inputs, &mut exhelper, ignore_weights, count, false, &mut best_error, k, delta);
 
         EvalParams::save_evparams(&exhelper.cfg.eval_params_mid, &exhelper.cfg.eval_params_end, path)
             .unwrap();

@@ -939,6 +939,153 @@ impl Game {
             _ => unimplemented!(),
         }
     }
+
+    pub fn convert_from_algebraic(&self, ts: &Tables, mv: &str) -> Option<Move> {
+        let bs = mv.as_bytes();
+        let side = self.state.side_to_move;
+        if mv == "O-O" {
+            let from = if side == White { Coord(4,0) } else { Coord(4,7) };
+            let to   = if side == White { Coord(6,0) } else { Coord(6,7) };
+            let rook_from = if side == White { Coord(7,0) } else { Coord(7,7) };
+            let rook_to   = if side == White { Coord(5,0) } else { Coord(5,7) };
+            Some(Move::Castle {
+                from,
+                to,
+                rook_from,
+                rook_to,
+            })
+        } else if mv == "O-O-O" {
+            let from = if side == White { Coord(4,0) } else { Coord(4,7) };
+            let to   = if side == White { Coord(2,0) } else { Coord(2,7) };
+            let rook_from = if side == White { Coord(0,0) } else { Coord(0,7) };
+            let rook_to   = if side == White { Coord(3,0) } else { Coord(3,7) };
+            Some(Move::Castle {
+                from,
+                to,
+                rook_from,
+                rook_to,
+            })
+        } else if bs[0].is_ascii_lowercase() {
+            // pawn move
+            if bs[1] as char == 'x' {
+                // pawn capture
+
+                let to = &bs[2..4];
+
+                let f = to[0] - 97;
+                let r = to[1] - 49;
+
+                let to = Coord(f, r);
+
+                let from = (if side == White { S } else { N }).shift_coord(to).unwrap();
+                let from = Coord(bs[0] - 97,from.rank());
+
+                if self.state.en_passant == Some(to) {
+                    let capture = (if side == White { S } else { N }).shift_coord(to).unwrap();
+                    return Some(Move::EnPassant { from, to, capture });
+                }
+
+                let (_,victim) = self.get_at(to).unwrap_or_else(|| {
+                    panic!("no victim? {:?}\n{:?}\n{:?}", self.to_fen(), self, mv);
+                });
+
+                if bs.get(4) == Some(&('=' as u8)) {
+                    let new_piece = Piece::from_char(bs[5] as char);
+                    Some(Move::PromotionCapture { from, to, new_piece, victim })
+                } else {
+                    Some(Move::new_capture(from, to, Pawn, victim))
+                }
+            } else {
+                let to = &bs[0..2];
+
+                let f = to[0] - 97;
+                let r = to[1] - 49;
+
+                let to = Coord(f, r);
+
+                let from = (if side == White { S } else { N }).shift_coord(to).unwrap();
+
+                if let Some((_,Pawn)) = self.get_at(from) {
+                    if bs.get(2) == Some(&('=' as u8)) {
+                        let new_piece = Piece::from_char(bs[3] as char);
+                        Some(Move::Promotion { from, to, new_piece })
+                    } else {
+                        Some(Move::new_quiet(from, to, Pawn))
+                    }
+                } else {
+                    let from = (if side == White { S } else { N }).shift_coord(from).unwrap();
+                    Some(Move::new_double(from, to))
+                }
+
+            }
+        } else {
+            let pc = match bs[0] as char {
+                'N' => Knight,
+                'B' => Bishop,
+                'R' => Rook,
+                'Q' => Queen,
+                'K' => King,
+                _   => unimplemented!(),
+            };
+
+            let to = if bs[bs.len() - 2] as char == '=' {
+                panic!("non pawn promotion? {:?}\n{:?}\n{:?}", self.to_fen(), self, mv);
+            } else {
+                let to = &bs[bs.len()-2..];
+                let f = to[0] - 97;
+                let r = to[1] - 49;
+                Coord(f, r)
+            };
+
+            let mut mvs = self.search_for_piece(&ts, pc, side, false);
+
+            mvs.retain(|mv| mv.sq_to() == to);
+
+            if mvs.len() == 0 {
+                panic!("wat: {:?}\n{:?}\n,{:?}", self.to_fen(), self, mv);
+            } else if mvs.len() == 1 {
+                Some(mvs[0])
+            } else {
+                let mut cs = vec![];
+                for b in bs.iter() {
+                    match *b as char {
+                        'N' | 'B' | 'R' | 'Q' | 'K' => {},
+                        '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' => cs.push(*b),
+                        'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' => cs.push(*b),
+                        _ => {},
+                    }
+                }
+
+                match cs.len() {
+                    0 | 1 | 2 => panic!("ambigious move: {:?}", mv),
+                    3 => match cs[0] as char {
+                        '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' => {
+                            mvs.retain(|mv| mv.sq_from().rank() == cs[0] - 49);
+                            assert!(mvs.len() == 1);
+                            Some(mvs[0])
+                        },
+                        'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' => {
+                            mvs.retain(|mv| mv.sq_from().file() == cs[0] - 97);
+                            assert!(mvs.len() == 1);
+                            Some(mvs[0])
+                        },
+                        _ => panic!(),
+                    },
+                    4 => {
+                        mvs.retain(|mv| {
+                            (mv.sq_from().rank() == cs[1] - 49)
+                                && (mv.sq_from().file() == cs[0] - 97)
+                        });
+                        assert!(mvs.len() == 1);
+                        Some(mvs[0])
+                    }
+                    _ => panic!(),
+                }
+            }
+        }
+
+    }
+
 }
 
 /// Misc Queries

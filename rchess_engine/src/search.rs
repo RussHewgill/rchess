@@ -205,6 +205,30 @@ impl Game {
         }
     }
 
+    pub fn search_for_piece(&self, ts: &Tables, pc: Piece, side: Color, only_caps: bool) -> Vec<Move> {
+        match pc {
+            Pawn   => {
+                let mut p = self.search_pawns(&ts, side, only_caps).to_vec();
+                let pp = self._search_promotions(&ts, None, side, only_caps);
+                p.extend_from_slice(&pp);
+                p
+            },
+            Knight => self.search_knights(&ts, side, only_caps).to_vec(),
+            Bishop => self.search_sliding(&ts, Bishop, side, only_caps).to_vec(),
+            Rook   => self.search_sliding(&ts, Rook, side, only_caps).to_vec(),
+            Queen  => self.search_sliding(&ts, Queen, side, only_caps).to_vec(),
+            King   => {
+                let mut k = self.search_king(&ts, side, only_caps).to_vec();
+                if !only_caps {
+                    k.extend_from_slice(&self._search_castles(&ts));
+                    k
+                } else {
+                    k
+                }
+            },
+        }
+    }
+
 }
 
 /// Perft
@@ -573,7 +597,7 @@ impl Game {
 impl Game {
 
     // pub fn search_sliding(&self, ts: &Tables, pc: Piece, col: Color, only_caps: bool) -> Vec<Move> {
-    pub fn search_sliding(&self, ts: &Tables, pc: Piece, col: Color, only_caps: bool) -> ArrayVec<Move, 61> {
+    pub fn search_sliding(&self, ts: &Tables, pc: Piece, col: Color, only_caps: bool) -> ArrayVec<Move, 100> {
         // let mut out = vec![];
         let mut out = ArrayVec::new();
         let pieces = self.get(pc, col);
