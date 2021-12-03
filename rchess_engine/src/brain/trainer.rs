@@ -11,6 +11,8 @@ use crate::brain::types::nnue::*;
 
 pub use crate::brain::gensfen::*;
 
+use rayon::prelude::*;
+
 use ndarray as nd;
 use nd::{Array2};
 use ndarray::linalg::Dot;
@@ -18,19 +20,81 @@ use ndarray::linalg::Dot;
 use rand::{prelude::{StdRng,SliceRandom},Rng,SeedableRng};
 use rand::distributions::{Uniform,uniform::SampleUniform};
 
+pub struct NNTrainingParams {
+    pub eta:   i8,
+}
+
+/// Train
 impl NNUE {
+
     pub fn train(&mut self, tds: Vec<TrainingData>) {
 
         // self.init_inputs(g)
 
         unimplemented!()
     }
-    pub fn train_single(&mut self, ts: &Tables, mut rng: &mut StdRng, td: TrainingData) {
-        let g = td.init_opening(&ts);
 
+    pub fn train_single(
+        &mut self,
+        ts:             &Tables,
+        params:         &NNTrainingParams,
+        mut rng:        &mut StdRng,
+        td:             &TrainingData,
+    ) {
+        let mut g = if let Some(g) = td.init_opening(&ts) { g } else { return; };
+
+        self.init_inputs(&g);
+
+        for te in td.moves.iter() {
+            if let Ok(g2) = g.make_move_unchecked(&ts, te.mv) {
+                g = g2;
+                self.update_move(&g, false);
+            } else { break; }
+
+            let k: u8 = rng.gen_range(0..4);
+            if k == 0 {
+                self.backprop(None, te.eval, params.eta);
+            }
+        }
 
         unimplemented!()
     }
+}
+
+/// Error
+impl NNUE {
+
+    pub fn mean_sq_error(
+        &self,
+        ts:             &Tables,
+        tds:            &[TrainingData],
+    ) -> f64 {
+
+        let tds2 = tds.chunks(tds.len() / num_cpus::get())
+            .map(|xs| (self.clone(), xs)).collect::<Vec<_>>();
+
+        let error: f64 = tds2.par_iter().map(|(nn, xs)| {
+            let mut nn = nn.clone();
+            let e: f64 = xs.iter().flat_map(|td| {
+                let mut g = if let Some(g) = td.init_opening(&ts) { g } else { return None; };
+                nn.init_inputs(&g);
+
+                for te in td.moves.iter() {
+                    if let Ok(g2) = g.make_move_unchecked(&ts, te.mv) {
+                        g = g2;
+                        let eval = nn.update_move(&g, true).unwrap();
+
+                    } else { break; }
+                }
+
+                Some(1.0)
+            }).sum();
+            e
+        }).sum();
+
+        unimplemented!()
+    }
+
 }
 
 /// Backprop

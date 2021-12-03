@@ -999,9 +999,10 @@ fn main_gensfen(count: u64, path: &str) {
 
 #[allow(unreachable_code)]
 fn main_nnue_train() {
-
+    let ts = Tables::read_from_file_def().unwrap();
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
+    let nn_path = "./nnue.bin";
     let td_path = "./training_data/ficsgamesdb_2020_standard_tds.bin";
 
     let tds = TrainingData::load_all(td_path).unwrap();
@@ -1012,6 +1013,26 @@ fn main_nnue_train() {
 
 #[allow(unreachable_code)]
 fn main_nnue() {
+    use rchess_engine_lib::brain::*;
+    use rchess_engine_lib::brain::nnue::*;
+    use rchess_engine_lib::brain::types::nnue::*;
+
+    let ts = Tables::read_from_file_def().unwrap();
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
+
+    let nn_path = "./nnue.bin";
+
+    let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
+    let mut g = Game::from_fen(&ts, fen).unwrap();
+
+    let nn = NNUE::new(White, &mut rng);
+
+    nn.save(nn_path).unwrap();
+
+}
+
+#[allow(unreachable_code)]
+fn main_nnue2() {
     use nalgebra as na;
     use na::{SMatrix,SVector,Matrix,Vector,matrix,vector,dmatrix,dvector,DVector,DMatrix};
 
@@ -1832,6 +1853,9 @@ fn main9() {
 
     // let fen = "2r3r1/pp1b4/1bn2pk1/3pP2p/1P5P/5NP1/P1NB1P2/2RKR3 b - - 0 23"; // ??
 
+    // let fen = "6k1/5pp1/3p1n2/3P3Q/5Rn1/P5P1/1PPq2KP/8 w - - 0 1"; // ??
+    let fen = "6k1/5pp1/3p1n2/3P3r/5Rn1/P5PQ/1PP2q1P/7K w - - 0 33"; // ??
+
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
 
@@ -1843,6 +1867,20 @@ fn main9() {
 
     // g.last_move = Some(Move::new_capture("D1", "D2", King, Queen));
 
+    let mvs = vec![
+        "h3h5",
+        "f2e1",
+        "h1g2",
+        "e1d2",
+        "g2g1",
+        "d2e1",
+        "g1g2",
+        "e1d2",
+    ];
+
+    g = g.run_moves(&ts, mvs);
+
+    eprintln!("g.to_fen() = {:?}", g.to_fen());
     eprintln!("g = {:?}", g);
 
     // let hook = std::panic::take_hook();
@@ -1856,7 +1894,7 @@ fn main9() {
     // eprintln!("moves = {:?}", moves);
     // return;
 
-    let mv = Move::Capture { from: "H5".into(), to: "G4".into(), pc: Pawn, victim: Pawn };
+    // let mv = Move::Capture { from: "H5".into(), to: "G4".into(), pc: Pawn, victim: Pawn };
 
     // let t = 10.0;
     let t = 4.0;

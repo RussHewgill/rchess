@@ -1,4 +1,6 @@
 
+use std::path::Path;
+
 use crate::tables::*;
 use crate::types::*;
 use crate::evaluate::*;
@@ -334,3 +336,21 @@ impl NNUE {
     }
 }
 
+/// Save, load
+impl NNUE {
+
+    pub fn save<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
+        use std::io::Write;
+        let b: Vec<u8> = bincode::serialize(&self).unwrap();
+        let mut file = std::fs::File::create(path)?;
+        file.write_all(&b)
+    }
+
+    pub fn load<P: AsRef<Path>>(path: P) -> std::io::Result<Self> {
+        use std::io::Write;
+        let mut b = std::fs::read(path)?;
+        let out: Self = bincode::deserialize(&b).unwrap();
+        Ok(out)
+    }
+
+}

@@ -848,7 +848,7 @@ impl ExHelper {
 
             let res = self.ab_search_single(ts, &mut stats, &mut tracking, depth);
             // debug!("res = {:?}", res);
-            trace!("finished res, id = {}, depth = {}", self.id, depth);
+            // trace!("finished res, id = {}, depth = {}", self.id, depth);
 
             if !self.stop.load(SeqCst) && depth >= self.best_depth.load(SeqCst) {
                 let moves = if self.cfg.return_moves {

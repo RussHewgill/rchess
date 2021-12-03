@@ -217,7 +217,7 @@ impl ExHelper {
                     // return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
                     // trace!("repetition found, last move {:?}", g.last_move);
                     if cfg.root {
-                        return ABNone;
+                        // return ABNone;
                     } else {
                         return ABSingle(ABResult::new_single(g.last_move.unwrap(), 0));
                     }

@@ -842,16 +842,16 @@ impl Game {
     pub fn run_moves(&self, ts: &Tables, moves: Vec<&str>) -> Self {
         let mut g = self.clone();
 
-        // for m in moves.into_iter() {
-        //     let from = &m[0..2];
-        //     let to = &m[2..4];
-        //     let other = &m[4..];
-        //     let mm = g.convert_move(from, to, other).unwrap();
-        //     g = g.make_move_unchecked(&ts, mm).unwrap();
-        // }
+        for m in moves.into_iter() {
+            let from = &m[0..2];
+            let to = &m[2..4];
+            let other = &m[4..];
+            let mm = g.convert_move(from, to, other).unwrap();
+            g = g.make_move_unchecked(&ts, mm).unwrap();
+        }
 
-        // g
-        unimplemented!()
+        g
+        // unimplemented!()
     }
 
     pub fn convert_move(&self, from: &str, to: &str, other: &str) -> Option<Move> {
