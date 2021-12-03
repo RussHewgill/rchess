@@ -357,7 +357,8 @@ impl Explorer {
     //     ((best,scores), stats)
     // }
 
-    pub fn explore(&self, ts: &Tables, _: Option<Depth>)
+    // pub fn explore(&self, ts: &Tables, _: Option<Depth>)
+    pub fn explore(&self, ts: &Tables)
                    // -> (Option<(Move,Score)>,SearchStats) {
                    -> (Option<(Move,ABResult)>,SearchStats) {
 

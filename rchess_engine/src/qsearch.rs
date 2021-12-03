@@ -60,73 +60,73 @@ pub fn exhelper_once(
     helper
 }
 
-pub fn qsearch_once2(
-    ts:       &Tables,
-    g:        &Game,
-    side:     Color,
-    ev_mid:   &EvalParams,
-    ev_end:   &EvalParams,
-    ph_rw:    Option<&PHTable>,
-) -> Score {
+// pub fn qsearch_once2(
+//     ts:       &Tables,
+//     g:        &Game,
+//     side:     Color,
+//     ev_mid:   &EvalParams,
+//     ev_end:   &EvalParams,
+//     ph_rw:    Option<&PHTable>,
+// ) -> Score {
 
-    let mut cfg = ExConfig::default();
-    cfg.eval_params_mid = ev_mid.clone();
-    cfg.eval_params_end = ev_end.clone();
+//     let mut cfg = ExConfig::default();
+//     cfg.eval_params_mid = ev_mid.clone();
+//     cfg.eval_params_end = ev_end.clone();
 
-    let (tt_r, tt_w) = evmap::Options::default()
-        .with_hasher(FxBuildHasher::default())
-        .construct();
-    let tt_rf = tt_w.factory();
-    let tt_w = Arc::new(Mutex::new(tt_w));
+//     let (tt_r, tt_w) = evmap::Options::default()
+//         .with_hasher(FxBuildHasher::default())
+//         .construct();
+//     let tt_rf = tt_w.factory();
+//     let tt_w = Arc::new(Mutex::new(tt_w));
 
-    // let (ph_rf,ph_w) = new_hash_table();
-    let ph_rw = if let Some(t) = ph_rw {
-        t.clone()
-    } else {
-        let ph_rw = PHTableFactory::new();
-        ph_rw.handle()
-    };
+//     // let (ph_rf,ph_w) = new_hash_table();
+//     let ph_rw = if let Some(t) = ph_rw {
+//         t.clone()
+//     } else {
+//         let ph_rw = PHTableFactory::new();
+//         ph_rw.handle()
+//     };
 
-    let (tx,rx): (ExSender,ExReceiver) = crossbeam::channel::unbounded();
+//     let (tx,rx): (ExSender,ExReceiver) = crossbeam::channel::unbounded();
 
-    let stop = Arc::new(AtomicBool::new(false));
-    let best_mate = Arc::new(RwLock::new(None));
-    let best_depth = Arc::new(AtomicU8::new(0));
+//     let stop = Arc::new(AtomicBool::new(false));
+//     let best_mate = Arc::new(RwLock::new(None));
+//     let best_depth = Arc::new(AtomicU8::new(0));
 
-    let helper = ExHelper {
-        id:              0,
-        side,
-        game:            g.clone(),
-        stop,
-        best_mate,
-        #[cfg(feature = "syzygy")]
-        syzygy:          None,
-        cfg,
-        best_depth,
-        tx,
-        tt_r,
-        tt_w,
-        ph_rw,
-    };
+//     let helper = ExHelper {
+//         id:              0,
+//         side,
+//         game:            g.clone(),
+//         stop,
+//         best_mate,
+//         #[cfg(feature = "syzygy")]
+//         syzygy:          None,
+//         cfg,
+//         best_depth,
+//         tx,
+//         tt_r,
+//         tt_w,
+//         ph_rw,
+//     };
 
-    let (alpha,beta) = (i32::MIN,i32::MAX);
-    let (alpha,beta) = (alpha + 200,beta - 200);
-    let mut stats = SearchStats::default();
+//     let (alpha,beta) = (i32::MIN,i32::MAX);
+//     let (alpha,beta) = (alpha + 200,beta - 200);
+//     let mut stats = SearchStats::default();
 
-    let score = helper.qsearch(
-        ts,
-        g,
-        (0,0),
-        (alpha, beta),
-        &mut stats);
+//     let score = helper.qsearch(
+//         ts,
+//         g,
+//         (0,0),
+//         (alpha, beta),
+//         &mut stats);
 
-    if side == Black {
-        -score
-    } else {
-        score
-    }
+//     if side == Black {
+//         -score
+//     } else {
+//         score
+//     }
 
-}
+// }
 
 /// Quiescence
 impl ExHelper {

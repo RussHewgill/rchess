@@ -22,3 +22,5 @@ tables/*
 training_data/*
 *.zst
 reference/*
+h2h.txt
+matrix.csv

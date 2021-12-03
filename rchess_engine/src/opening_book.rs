@@ -2,6 +2,8 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash,Hasher};
 
 use crate::tables::*;
 use crate::types::*;
@@ -307,7 +309,7 @@ type OBMapInit = HashMap<u64, HashMap<(Coord,Coord),u16>>;
 
 #[derive(Debug,Eq,PartialEq,Clone)]
 pub struct OpeningBook {
-    pub map: HashMap<u64, HashMap<(Coord,Coord),(u16,Option<u64>)>>,
+    pub map: HashMap<u64, HashMap<(Coord,Coord),(u8,u16,Option<u64>)>>,
 }
 
 // #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
@@ -413,7 +415,7 @@ impl OpeningBook {
     }
 
     fn init_indices(ts: &Tables, mut xs: OBMapInit) -> Self {
-        let mut xs2: HashMap<u64, HashMap<(Coord,Coord), (u16,Option<u64>)>> = HashMap::default();
+        let mut xs2: HashMap<u64, HashMap<(Coord,Coord), (u8,u16,Option<u64>)>> = HashMap::default();
         let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
         Self::_init_indices(ts, &g, &mut xs, &mut xs2);
         Self { map: xs2 }
@@ -423,7 +425,7 @@ impl OpeningBook {
         ts:       &Tables,
         g:        &Game,
         mut xs:   &mut OBMapInit,
-        mut xs2:  &mut HashMap<u64, HashMap<(Coord,Coord), (u16,Option<u64>)>>
+        mut xs2:  &mut HashMap<u64, HashMap<(Coord,Coord), (u8,u16,Option<u64>)>>
     ) {
 
         if xs.len() == 0 { return; }
@@ -434,23 +436,34 @@ impl OpeningBook {
 
             if ms.len() == 0 { return; }
 
-            let ms = ms.into_iter().map(|((from,to), wt)| {
+            let mut ms = ms.into_iter().map(|((from,to), wt)| {
                 if let Some(mv) = g._convert_move(from, to, "", true) {
                     ((from,to), mv, wt)
                 } else {
                     panic!("bad move convert: {:?}, {:?}", from, to);
                 }
-            });
+            }).collect::<Vec<_>>();
+
+            // ms.sort_by_cached_key(|((from,to),mv,wt)| u8::from(*from) ^ u8::from(*to));
 
             let mut gs = HashMap::default();
 
             let mut gs2 = vec![];
 
+            // let mut n = 0;
             for ((from,to), mv, wt) in ms {
 
                 if let Ok(g2) = g.make_move_unchecked(ts, mv) {
                     let key2 = Self::gen_key(&g2);
-                    gs.insert((from,to), (wt, Some(key2)));
+                    let n = u8::from(from) ^ u8::from(to);
+
+                    let mut s = DefaultHasher::new();
+                    mv.hash(&mut s);
+                    let n: u64 = s.finish();
+                    let n = (0b1111_1111 & n) as u8;
+
+                    gs.insert((from,to), (n, wt, Some(key2)));
+                    // n += 1;
                     gs2.push(g2);
                 }
 
@@ -479,17 +492,19 @@ impl OpeningBook {
 
     pub fn best_moves(&self, g: &Game) -> Option<Vec<(Move, u16)>> {
         let (xs,_) = self._best_moves(g)?;
-        Some(xs.into_iter().map(|(mv,(wt,_))| (mv,wt)).collect())
+        Some(xs.into_iter().map(|(mv,(_,wt,_))| (mv,wt)).collect())
     }
 
-    pub fn _best_moves(&self, g: &Game) -> Option<(Vec<(Move, (u16,Option<u64>))>, u64)> {
+    pub fn _best_moves(&self, g: &Game) -> Option<(Vec<(Move, (u8,u16,Option<u64>))>, u64)> {
         let key = Self::gen_key(g);
 
         let mut ms = self.map.get(&key)?;
 
+        let mut n = 0;
         let ms = ms.iter().map(|((from,to), wt)| {
             if let Some(mv) = g._convert_move(*from, *to, "", true) {
-                (mv, *wt)
+                let k = (mv, *wt);
+                k
             } else {
                 panic!("bad move convert: {:?}, {:?}", from, to);
             }
@@ -560,13 +575,16 @@ impl OBSelection {
         Self::Sequential(VecDeque::default())
     }
 
-    pub fn choose(&mut self, key: u64, ply: usize, mvs: &[(Move, (u16, Option<u64>))]) -> Option<Move> {
+    pub fn choose(&mut self, key: u64, ply: usize, mvs: &[(Move, (u8,u16, Option<u64>))]) -> Option<Move> {
         use self::OBSelection::*;
         if mvs.len() == 0 { return None; }
         match self {
-            BestN(0)  => mvs.iter().max_by_key(|(_,k)| *k).map(|x| x.0),
-            WorstN(0) => mvs.iter().min_by_key(|(_,k)| *k).map(|x| x.0),
+            BestN(0)  => mvs.iter().max_by_key(|(_,k)| k.1).map(|x| x.0),
+            WorstN(0) => mvs.iter().min_by_key(|(_,k)| k.1).map(|x| x.0),
             Random(ref mut rng) => {
+                let mut mvs = mvs.to_vec();
+                // mvs.sort_by_cached_key(|x| x.1.0);
+                mvs.sort_by_cached_key(|x| x.1.0);
                 mvs.choose(rng).map(|x| x.0)
             },
             // Sequential(ref mut stack) => {

@@ -79,10 +79,14 @@ impl NNUE {
                 let mut g = if let Some(g) = td.init_opening(&ts) { g } else { return None; };
                 nn.init_inputs(&g);
 
+                // let mut errs = vec![];
+
                 for te in td.moves.iter() {
                     if let Ok(g2) = g.make_move_unchecked(&ts, te.mv) {
                         g = g2;
                         let eval = nn.update_move(&g, true).unwrap();
+
+                        // errs.push((te.eval - eval).pow)
 
                     } else { break; }
                 }
@@ -187,9 +191,4 @@ impl NNUE {
     }
 
 }
-
-
-
-
-
 

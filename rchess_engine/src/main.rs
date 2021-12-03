@@ -1022,12 +1022,77 @@ fn main_nnue() {
 
     let nn_path = "./nnue.bin";
 
-    let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
-    let mut g = Game::from_fen(&ts, fen).unwrap();
+    // let fen = "r1bqk2r/ppp1nppp/3p1b2/3P4/2B1R3/5N2/PP3PPP/R1BQ2K1 w kq - 0 12";
+    // let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
+    // let mut g = Game::from_fen(&ts, fen).unwrap();
 
-    let nn = NNUE::new(White, &mut rng);
+    let ob = OpeningBook::read_from_file(&ts, "tables/Perfect_2021/BIN/Perfect2021.bin").unwrap();
 
-    nn.save(nn_path).unwrap();
+    let mut s = OBSelection::new_random_seeded(12345);
+    let (mut g,_) = ob.start_game(&ts, None, &mut s).unwrap();
+
+    // let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
+    // let (mut mvs, key) = ob._best_moves(&g).unwrap();
+    // mvs.sort_by_key(|x| x.1.0);
+    // for (mv,(n,wt,_)) in mvs.iter() {
+    //     eprintln!("mv {} = {:?}, wt = {:?}", n, mv, wt);
+    //     // let from = mv.sq_from();
+    //     // let to = mv.sq_to();
+    //     // let from = u8::from(from);
+    //     // let to = u8::from(to);
+    //     // eprintln!("(from,to) = {:?}", (from,to));
+    //     // let k = from ^ to;
+    //     // eprintln!("k = {:?}", k);
+    //     // println!();
+    // }
+
+    // let (mv,_) = mvs.choose(&mut rng).unwrap();
+    // eprintln!("\nmv = {:?}", mv);
+
+    // let mv = s.choose(key, 0, &mvs).unwrap();
+    // eprintln!("mv = {:?}", mv);
+
+    // for (mv,s) in mvs {
+    //     eprintln!("mv = {:?}", mv);
+    // }
+
+    eprintln!("g = {:?}", g);
+    return;
+
+    let mut nn = NNUE::new(White, &mut rng);
+    // nn.save(nn_path).unwrap();
+
+    nn.init_inputs(&g);
+
+    let n = 35;
+    let t = 0.5;
+
+    let timesettings = TimeSettings::new_f64(0.0,t);
+    let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
+    ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+
+    eprintln!("g = {:?}", g);
+
+    return;
+
+    loop {
+        if let (Some((mv,res)),_) = ex.explore(&ts) {
+            if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
+                g = g2;
+                eprintln!("g = {:?}", g);
+
+                let nn_eval = nn.update_move(&g, true).unwrap();
+
+                eprintln!("res.score = {:?}", res.score);
+                eprintln!("nn_eval   = {:?}", nn_eval);
+
+            } else { break; }
+        } else {
+            break;
+        }
+    }
+
+
 
 }
 
@@ -1962,7 +2027,7 @@ fn main9() {
         g2.history.insert(g2.zobrist, 2);
 
         ex.update_game(g2.clone());
-        let (mv,stats) = ex.explore(&ts, None);
+        let (mv,stats) = ex.explore(&ts);
         let (mv,_) = mv.unwrap();
         eprintln!("g2 = {:?}", g2);
         eprintln!("mv = {:?}", mv);
@@ -1980,7 +2045,7 @@ fn main9() {
 
     // loop {
     if !true {
-        let (mv,stats) = ex.explore(&ts, None);
+        let (mv,stats) = ex.explore(&ts);
         // let (mv,_) = mv.unwrap();
 
         match mv.map(|(m,_)| g.make_move_unchecked(&ts, m)) {
@@ -2145,7 +2210,7 @@ fn main_sts(sts: Option<u64>) {
 
         let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
 
-        let (m0,stats) = ex.explore(&ts, None);
+        let (m0,stats) = ex.explore(&ts);
 
         let mv = m0.clone().unwrap().0.to_algebraic(&g);
         let mv0 = m[0].replace("+", "");
@@ -2511,7 +2576,7 @@ fn main_wac(num: Option<u64>, send_url: bool) {
         // let e = g.evaluate(&ts);
         // let (_,e_sf) = stockfish_eval(&fen, false).unwrap();
 
-        let (m0,stats) = ex.explore(&ts, None);
+        let (m0,stats) = ex.explore(&ts);
 
         // let g = g.flip_sides(&ts);
         // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
@@ -2674,7 +2739,7 @@ fn main5() {
     let ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, timesettings);
 
     let t1 = std::time::Instant::now();
-    let (mv1,stats1) = ex1.explore(&ts, None);
+    let (mv1,stats1) = ex1.explore(&ts);
     // let (mv1,stats1) = ex1.explore(&ts, n, false);
     eprintln!("mv1 = {:?}, (c6c4)", mv1.unwrap());
     stats1.print(t1.elapsed());
@@ -2682,7 +2747,7 @@ fn main5() {
     print!("\n");
 
     let t2 = std::time::Instant::now();
-    let (mv2,stats2) = ex2.explore(&ts, None);
+    let (mv2,stats2) = ex2.explore(&ts);
     // let (mv2,stats2) = ex2.explore(&ts, n, false);
     eprintln!("mv2 = {:?}, (f3f5)", mv2.unwrap());
     stats2.print(t2.elapsed());
