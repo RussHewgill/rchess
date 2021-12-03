@@ -56,15 +56,14 @@ impl NNUE {
             if let Ok(g2) = g.make_move_unchecked(&ts, te.mv) {
                 g = g2;
                 self.update_move(&g, false);
-                self.backprop(None, te.eval, params.eta);
             } else {
                 break;
             }
 
-            // let k: u8 = rng.gen_range(0..4);
-            // if k == 0 {
-            //     self.backprop(None, te.eval, params.eta);
-            // }
+            let k: u8 = rng.gen_range(0..10);
+            if k == 0 {
+                self.backprop(None, te.eval, params.eta);
+            }
 
         }
 

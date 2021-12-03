@@ -817,7 +817,6 @@ fn main_tuning() {
 
     eprintln!("ps.len() = {:?}", ps.len());
 
-
     // let ps: Vec<TxPosition> = ps[..1000].to_vec();
     // eprintln!("ps.len() = {:?}", ps.len());
 
@@ -827,7 +826,7 @@ fn main_tuning() {
     // let k = find_k(&ts, &ps, &exhelper, false);
     eprintln!("k = {:?}", k);
 
-    let (ev_mid0,ev_end0) = EvalParams::read_evparams(evpath).unwrap();
+    // let (ev_mid0,ev_end0) = EvalParams::read_evparams(evpath).unwrap();
 
     // let pc = Pawn;
     // ev_mid.psqt.print_table(pc).unwrap();
@@ -839,7 +838,7 @@ fn main_tuning() {
     // let k1 = ev_mid0.pawns;
     // eprintln!("k1 = {:?}", k1);
 
-    return;
+    // return;
 
     // let error = average_eval_error(&ts, &ps, &exhelper, Some(k));
     // eprintln!("error = {:.5}", error);
@@ -1010,59 +1009,28 @@ fn main_nnue_train() {
     let nn_path = "./nnue.bin";
     let td_path = "./training_data/ficsgamesdb_2020_standard_tds.bin";
 
-    let count = Some(1);
+    let count = Some(10);
 
-    // let tds = TrainingData::load_all(td_path, count).unwrap();
-    // eprintln!("tds.len() = {:?}", tds.len());
+    let tds = TrainingData::load_all(td_path, count).unwrap();
+    eprintln!("tds.len() = {:?}", tds.len());
 
     let mut nn = NNUE::new(White, &mut rng);
 
-    let fen1 = "r1bqk2r/ppp1nppp/3p1b2/3P4/2B1R3/5N2/PP3PPP/R1BQ2K1 w kq - 0 12"; // opening
-    let mut g1 = Game::from_fen(&ts, fen1).unwrap();
-
-    let fen2 = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
-    let mut g2 = Game::from_fen(&ts, fen2).unwrap();
-
-    let e0 = nn.run_fresh(&g1);
-    eprintln!("e0 = {:?}", e0);
-    let e1 = nn.run_fresh(&g2);
-    eprintln!("e1 = {:?}", e1);
-
-    for n in 0..1000 {
-        let pred1 = nn.backprop(Some(&g1), 500, 10);
-        let pred2 = nn.backprop(Some(&g2), -10, 10);
-        if n % 50 == 0 {
-            let pred1 = nn.run_fresh(&g1);
-            let pred2 = nn.run_fresh(&g2);
-            eprintln!("preds {:>5} = {:>6?}, {:>6?}", n, pred1, pred2);
-        }
-    }
-    nn.save(nn_path).unwrap();
-
-    let e0 = nn.run_fresh(&g1);
-    eprintln!("e0 = {:?}", e0);
-
-    let e1 = nn.run_fresh(&g2);
-    eprintln!("e1 = {:?}", e1);
-
-    // let e1 = nn.run_fresh(&g);
-    // eprintln!("e1 = {:?}", e1);
-
-    // let e2 = nn.run_fresh(&g);
-    // eprintln!("e2 = {:?}", e2);
-
-    return;
-
-    // let err = nn.mean_sq_error(&ts, &tds);
-    // eprintln!("err 0 = {:?}", err);
+    let err = nn.mean_sq_error(&ts, &tds);
+    eprintln!("err 0 = {:?}", err);
 
     let params = NNTrainingParams::new(10);
 
     for n in 0..1000 {
-        // nn.train(&ts, &params, &mut rng, &tds);
+        let t0 = std::time::Instant::now();
+        nn.train(&ts, &params, &mut rng, &tds);
+        let t1 = t0.elapsed().as_secs_f64();
+        eprintln!("finished {} in {:.3} seconds", n, t1);
 
-        // let err = nn.mean_sq_error(&ts, &tds);
-        // eprintln!("err {:>3} = {:?}", n, err);
+        if n > 0 && n % 50 == 0 {
+            let err = nn.mean_sq_error(&ts, &tds);
+            eprintln!("err {:>3} = {:?}", n, err);
+        }
     }
 
 }
