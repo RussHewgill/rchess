@@ -79,11 +79,13 @@ impl NNUE {
     }
 
     /// Called AFTER game has had move applied
-    pub fn update_move(&mut self, g: &Game) -> i32 {
+    pub fn update_move(&mut self, g: &Game, run: bool) -> Option<i32> {
         let mv = match g.last_move {
             None => {
                 debug!("No previous move, running fresh");
-                return self.run_fresh(&g);
+                return if run {
+                    Some(self.run_fresh(&g))
+                } else { None }
                 // unimplemented!()
             },
             Some(mv) => mv,
@@ -97,12 +99,18 @@ impl NNUE {
 
         if mv.piece() == Some(King) {
             trace!("king move, running fresh");
-            return self.run_fresh(&g);
+            return if run {
+                Some(self.run_fresh(&g))
+            } else { None }
         }
 
         self._update_move(&g, mv);
 
-        self.run_partial()
+        if run {
+            Some(self.run_partial())
+        } else {
+            None
+        }
 
     }
 
