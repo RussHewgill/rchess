@@ -743,73 +743,8 @@ fn main_tuning() {
     let mut ev_end = EvalParams::empty();
     ev_end.mid = false;
 
-    // load and preprocess ficsgamesdb_2020_standard_nomovetimes_233317.pgn
-    if true {
-        // let pgn_path = "./training_data/ficsgamesdb_2020_standard_nomovetimes_233317.pgn";
-        let pgn_path = "./training_data/fics_test2.pgn";
-
-        let out_path = "./training_data/ficsgamesdb_2020_standard_tds.bin";
-
-        // let count = Some(1000);
-        // let count = Some(2000);
-        // let count = None;
-
-        // let t0 = std::time::Instant::now();
-        // let pgns = parse_pgns(pgn_path, count).unwrap();
-        // eprintln!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
-        // eprintln!("pgns.len() = {:?}", pgns.len());
-
-        // let t0 = std::time::Instant::now();
-        // let tds = process_pgns_td(&ts, &(ev_mid,ev_end), &pgns);
-        // eprintln!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
-        // eprintln!("tds.len() = {:?}", tds.len());
-
-        // let mut file = std::fs::File::create(out_path).unwrap();
-        // for td in tds.iter() {
-        //     TrainingData::save_into(true, &mut file, td).unwrap();
-        // }
-
-        crossbeam::scope(|s| {
-
-            let (tx,rx)           = crossbeam_channel::unbounded();
-            let (tx_save,rx_save) = crossbeam_channel::unbounded();
-
-            let tx2 = tx.clone();
-            s.spawn(|_| {
-                parse_pgns_par(pgn_path, None, tx2).unwrap();
-            });
-
-            let rx2 = rx.clone();
-            let tx_save2 = tx_save.clone();
-            s.spawn(|_| {
-                process_pgns_td_par(&ts, &(ev_mid,ev_end), rx2, tx_save2);
-            });
-
-            let rx_save2 = rx_save.clone();
-            s.spawn(move |_| {
-                let mut file = std::fs::File::create(out_path).unwrap();
-                loop {
-                    match rx_save2.recv() {
-                        Ok(td) => {
-                            TrainingData::save_into(true, &mut file, &td).unwrap();
-                        },
-                        Err(e) => {
-                            eprintln!("breaking save loop, e = {:?}", e);
-                            break;
-                        },
-                    }
-                }
-            });
-
-        }).unwrap();
-
-
-        return;
-    }
-
-
     // filter quiet TrainingData
-    if true {
+    if !true {
         let path = "/home/me/code/rust/rchess/training_data/set2/depth5_games500_1.bin";
         let path2 = &format!("{}-tmp", path);
 
@@ -830,7 +765,6 @@ fn main_tuning() {
 
         return;
     }
-
 
     // let c0 = PcTables::map_color(-127);
     // let c1 = PcTables::map_color(0);
@@ -1060,6 +994,19 @@ fn main_gensfen(count: u64, path: &str) {
         .do_explore(&ts, &ob, count, true, rng, true, path)
         .unwrap();
     println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+
+}
+
+#[allow(unreachable_code)]
+fn main_nnue_train() {
+
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
+
+    let td_path = "./training_data/ficsgamesdb_2020_standard_tds.bin";
+
+    let tds = TrainingData::load_all(td_path).unwrap();
+
+
 
 }
 

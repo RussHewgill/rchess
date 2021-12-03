@@ -280,9 +280,46 @@ pub fn _process_pgn_td(
     td
 }
 
-pub fn process_pgns_td_par(
+pub fn process_pgns_td_par<P: AsRef<Path> + Send>(
     ts:               &Tables,
     (ev_mid,ev_end):  &(EvalParams,EvalParams),
+    pgn_path:        P,
+    out_path:        P,
+) {
+    crossbeam::scope(|s| {
+
+        let (tx,rx)           = crossbeam_channel::unbounded();
+        let (tx_save,rx_save) = crossbeam_channel::unbounded();
+
+        s.spawn(|_| {
+            parse_pgns_par(pgn_path, None, tx).unwrap();
+        });
+
+        s.spawn(|_| {
+            _process_pgns_td_par(&ts, (ev_mid,ev_end), rx, tx_save);
+        });
+
+        s.spawn(move |_| {
+            let mut file = std::fs::File::create(out_path).unwrap();
+            loop {
+                match rx_save.recv() {
+                    Ok(td) => {
+                        TrainingData::save_into(true, &mut file, &td).unwrap();
+                    },
+                    Err(e) => {
+                        eprintln!("breaking save loop, e = {:?}", e);
+                        break;
+                    },
+                }
+            }
+        });
+
+    }).unwrap();
+}
+
+pub fn _process_pgns_td_par(
+    ts:               &Tables,
+    (ev_mid,ev_end):  (&EvalParams,&EvalParams),
     rx:               Receiver<PGN>,
     tx_save:          Sender<TrainingData>,
 ) {
