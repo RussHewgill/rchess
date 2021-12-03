@@ -56,6 +56,8 @@ pub mod nnue {
     pub const NNUE_L3: usize     = 32;
     pub const NNUE_OUTPUT: usize = 32;
 
+    pub const NNUE_SCALE_OUTPUT: Score = 16;
+
     #[derive(Debug,Clone,PartialEq,Serialize,Deserialize)]
     pub struct NNUE {
 

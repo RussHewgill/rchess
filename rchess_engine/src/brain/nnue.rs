@@ -185,7 +185,11 @@ impl NNUE {
         z_out += &self.biases_4;
         // let act_out = z_out.map(|x| (*x / 64).clamp(0, 127) as i8);
 
+        // const SQRT_I32MAX: i32 = 46340;
+
         let pred = z_out[(0,0)];
+        let pred = pred / NNUE_SCALE_OUTPUT;
+        // let pred = pred.clamp(-SQRT_I32MAX, SQRT_I32MAX);
 
         (pred, ((act1,act2,act3), (z1, z2, z3, z_out)))
     }

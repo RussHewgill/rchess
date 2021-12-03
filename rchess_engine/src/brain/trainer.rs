@@ -11,6 +11,7 @@ use crate::brain::types::nnue::*;
 
 pub use crate::brain::gensfen::*;
 
+use derive_new::new;
 use rayon::prelude::*;
 
 use ndarray as nd;
@@ -20,6 +21,7 @@ use ndarray::linalg::Dot;
 use rand::{prelude::{StdRng,SliceRandom},Rng,SeedableRng};
 use rand::distributions::{Uniform,uniform::SampleUniform};
 
+#[derive(Debug,Clone,Copy,new)]
 pub struct NNTrainingParams {
     pub eta:   i8,
 }
@@ -27,11 +29,16 @@ pub struct NNTrainingParams {
 /// Train
 impl NNUE {
 
-    pub fn train(&mut self, tds: Vec<TrainingData>) {
-
-        // self.init_inputs(g)
-
-        unimplemented!()
+    pub fn train(
+        &mut self,
+        ts:             &Tables,
+        params:         &NNTrainingParams,
+        mut rng:        &mut StdRng,
+        tds:            &[TrainingData],
+    ) {
+        for td in tds.iter() {
+            self.train_single(ts, params, rng, td);
+        }
     }
 
     pub fn train_single(
@@ -49,15 +56,19 @@ impl NNUE {
             if let Ok(g2) = g.make_move_unchecked(&ts, te.mv) {
                 g = g2;
                 self.update_move(&g, false);
-            } else { break; }
-
-            let k: u8 = rng.gen_range(0..4);
-            if k == 0 {
                 self.backprop(None, te.eval, params.eta);
+            } else {
+                break;
             }
+
+            // let k: u8 = rng.gen_range(0..4);
+            // if k == 0 {
+            //     self.backprop(None, te.eval, params.eta);
+            // }
+
         }
 
-        unimplemented!()
+        // unimplemented!()
     }
 }
 
@@ -68,35 +79,41 @@ impl NNUE {
         &self,
         ts:             &Tables,
         tds:            &[TrainingData],
-    ) -> f64 {
+    ) -> u64 {
 
-        let tds2 = tds.chunks(tds.len() / num_cpus::get())
+        let n = tds.len() / num_cpus::get_physical();
+
+        let tds2 = tds.chunks(n.max(1))
             .map(|xs| (self.clone(), xs)).collect::<Vec<_>>();
 
-        let error: f64 = tds2.par_iter().map(|(nn, xs)| {
+        let error = tds2.par_iter().flat_map(|(nn, xs)| {
             let mut nn = nn.clone();
-            let e: f64 = xs.iter().flat_map(|td| {
-                let mut g = if let Some(g) = td.init_opening(&ts) { g } else { return None; };
+            let mut errs = vec![];
+
+            for td in xs.iter() {
+                let mut g = if let Some(g) = td.init_opening(&ts) { g } else { break; };
                 nn.init_inputs(&g);
-
-                // let mut errs = vec![];
-
                 for te in td.moves.iter() {
                     if let Ok(g2) = g.make_move_unchecked(&ts, te.mv) {
                         g = g2;
                         let eval = nn.update_move(&g, true).unwrap();
-
-                        // errs.push((te.eval - eval).pow)
-
+                        errs.push((te.eval as i64 - eval as i64).pow(2) as u64)
                     } else { break; }
                 }
+            }
+            // unimplemented!()
+            errs
+        });
 
-                Some(1.0)
-            }).sum();
-            e
-        }).sum();
+        let error = error.collect::<Vec<_>>();
 
-        unimplemented!()
+        let n = error.len() as u64;
+        let sum: u64 = error.iter().sum();
+
+        // let (n,sum) = error.into_iter().fold((0usize,0u64), |(n,acc), e| (n+1, acc + e));
+
+        sum / n
+        // unimplemented!()
     }
 
 }

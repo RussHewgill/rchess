@@ -622,13 +622,16 @@ impl TDEntry {
 /// Load, Save
 impl TrainingData {
 
-    pub fn load_all<P: AsRef<Path>>(path: P) -> std::io::Result<Vec<Self>> {
+    pub fn load_all<P: AsRef<Path>>(path: P, count: Option<usize>) -> std::io::Result<Vec<Self>> {
         // let mut b = std::fs::read(path)?;
         // let out: Vec<Self> = bincode::deserialize(&b).unwrap();
         let mut f = std::fs::File::open(path)?;
         let mut out: Vec<Self> = vec![];
+        let mut n = 0;
         while let Ok(td) = bincode::deserialize_from(&mut f) {
             out.push(td);
+            n += 1;
+            if count.map_or(false, |c| n >= c) { break; }
         }
         // let out: Vec<Self> = bincode::deserialize_from(&mut f).unwrap();
         Ok(out)

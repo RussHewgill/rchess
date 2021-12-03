@@ -63,6 +63,7 @@ fn main() {
     match &arg1[..] {
         "tt"        => main_tt(),
         "nnue"      => main_nnue(),
+        "train"     => main_nnue_train(),
         "eval"      => main_eval(),
         "gensfen"   => {
             let count = u64::from_str(&args[2]).unwrap();
@@ -752,7 +753,7 @@ fn main_tuning() {
         eprintln!("path2 = {:?}", path2);
 
         let t0 = std::time::Instant::now();
-        let tds = TrainingData::load_all(path).unwrap();
+        let tds = TrainingData::load_all(path, None).unwrap();
         eprintln!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
 
         eprintln!("tds.len() = {:?}", tds.len());
@@ -999,15 +1000,70 @@ fn main_gensfen(count: u64, path: &str) {
 
 #[allow(unreachable_code)]
 fn main_nnue_train() {
+    use rchess_engine_lib::brain::*;
+    use rchess_engine_lib::brain::nnue::*;
+    use rchess_engine_lib::brain::types::nnue::*;
+
     let ts = Tables::read_from_file_def().unwrap();
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
     let nn_path = "./nnue.bin";
     let td_path = "./training_data/ficsgamesdb_2020_standard_tds.bin";
 
-    let tds = TrainingData::load_all(td_path).unwrap();
+    let count = Some(1);
 
+    // let tds = TrainingData::load_all(td_path, count).unwrap();
+    // eprintln!("tds.len() = {:?}", tds.len());
 
+    let mut nn = NNUE::new(White, &mut rng);
+
+    let fen1 = "r1bqk2r/ppp1nppp/3p1b2/3P4/2B1R3/5N2/PP3PPP/R1BQ2K1 w kq - 0 12"; // opening
+    let mut g1 = Game::from_fen(&ts, fen1).unwrap();
+
+    let fen2 = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
+    let mut g2 = Game::from_fen(&ts, fen2).unwrap();
+
+    let e0 = nn.run_fresh(&g1);
+    eprintln!("e0 = {:?}", e0);
+    let e1 = nn.run_fresh(&g2);
+    eprintln!("e1 = {:?}", e1);
+
+    for n in 0..1000 {
+        let pred1 = nn.backprop(Some(&g1), 500, 10);
+        let pred2 = nn.backprop(Some(&g2), -10, 10);
+        if n % 50 == 0 {
+            let pred1 = nn.run_fresh(&g1);
+            let pred2 = nn.run_fresh(&g2);
+            eprintln!("preds {:>5} = {:>6?}, {:>6?}", n, pred1, pred2);
+        }
+    }
+    nn.save(nn_path).unwrap();
+
+    let e0 = nn.run_fresh(&g1);
+    eprintln!("e0 = {:?}", e0);
+
+    let e1 = nn.run_fresh(&g2);
+    eprintln!("e1 = {:?}", e1);
+
+    // let e1 = nn.run_fresh(&g);
+    // eprintln!("e1 = {:?}", e1);
+
+    // let e2 = nn.run_fresh(&g);
+    // eprintln!("e2 = {:?}", e2);
+
+    return;
+
+    // let err = nn.mean_sq_error(&ts, &tds);
+    // eprintln!("err 0 = {:?}", err);
+
+    let params = NNTrainingParams::new(10);
+
+    for n in 0..1000 {
+        // nn.train(&ts, &params, &mut rng, &tds);
+
+        // let err = nn.mean_sq_error(&ts, &tds);
+        // eprintln!("err {:>3} = {:?}", n, err);
+    }
 
 }
 
@@ -1031,63 +1087,57 @@ fn main_nnue() {
     let mut s = OBSelection::new_random_seeded(12345);
     let (mut g,_) = ob.start_game(&ts, None, &mut s).unwrap();
 
-    // let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
-    // let (mut mvs, key) = ob._best_moves(&g).unwrap();
-    // mvs.sort_by_key(|x| x.1.0);
-    // for (mv,(n,wt,_)) in mvs.iter() {
-    //     eprintln!("mv {} = {:?}, wt = {:?}", n, mv, wt);
-    //     // let from = mv.sq_from();
-    //     // let to = mv.sq_to();
-    //     // let from = u8::from(from);
-    //     // let to = u8::from(to);
-    //     // eprintln!("(from,to) = {:?}", (from,to));
-    //     // let k = from ^ to;
-    //     // eprintln!("k = {:?}", k);
-    //     // println!();
-    // }
-
-    // let (mv,_) = mvs.choose(&mut rng).unwrap();
-    // eprintln!("\nmv = {:?}", mv);
-
-    // let mv = s.choose(key, 0, &mvs).unwrap();
-    // eprintln!("mv = {:?}", mv);
-
-    // for (mv,s) in mvs {
-    //     eprintln!("mv = {:?}", mv);
-    // }
-
-    eprintln!("g = {:?}", g);
-    return;
+    // let fen = "7k/4pp2/8/8/8/8/4PP2/7K w - - 0 1";
+    let fen = "4k3/4p3/8/8/8/8/4P3/4K3 w - - 0 1";
+    let mut g = Game::from_fen(&ts, fen).unwrap();
 
     let mut nn = NNUE::new(White, &mut rng);
+    // let mut nn = NNUE::new(Black, &mut rng);
     // nn.save(nn_path).unwrap();
 
-    nn.init_inputs(&g);
-
     let n = 35;
-    let t = 0.5;
+    let t = 0.2;
 
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
     ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
 
+    eprintln!("g.to_fen() = {:?}", g.to_fen());
     eprintln!("g = {:?}", g);
 
-    return;
+    // init_logger();
+
+    nn.init_inputs(&g);
+
+    let mut m0 = Score::MIN;
+    let mut m1 = Score::MAX;
 
     loop {
         if let (Some((mv,res)),_) = ex.explore(&ts) {
             if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
                 g = g2;
+                ex.update_game(g.clone());
                 eprintln!("g = {:?}", g);
 
                 let nn_eval = nn.update_move(&g, true).unwrap();
 
+                m0 = m0.max(nn_eval);
+                m1 = m1.min(nn_eval);
+
                 eprintln!("res.score = {:?}", res.score);
                 eprintln!("nn_eval   = {:?}", nn_eval);
 
-            } else { break; }
+                // eprintln!("(m0,m1) = {:?}", (m0,m1));
+
+                // let err = (res.score - nn_eval).checked_pow(2).unwrap();
+                // eprintln!("err = {:?}", err);
+
+            } else {
+                println!("wat 0: {:?}", mv);
+                break;
+            }
         } else {
+            println!("wat 1");
             break;
         }
     }

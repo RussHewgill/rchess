@@ -29,7 +29,7 @@ pub fn load_txdata<P: AsRef<Path>>(
 ) -> std::io::Result<Vec<TxPosition>> {
 
     let t0 = std::time::Instant::now();
-    let tds: Vec<TrainingData> = TrainingData::load_all(path)?;
+    let tds: Vec<TrainingData> = TrainingData::load_all(path, count)?;
     let t1 = t0.elapsed().as_secs_f64();
 
     debug!("finished loading Vec<TrainingData> in {:.3} seconds", t1);
