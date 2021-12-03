@@ -102,6 +102,35 @@ pub enum Prune {
 /// Negamax AB
 impl ExHelper {
 
+    // pub fn check_tt_negamax(
+    //     &self,
+    //     ts:             &Tables,
+    //     g:              &Game,
+    //     zb:             &Zobrist,
+    //     depth:          Depth,
+    //     mut stats:      &mut SearchStats,
+    // ) -> Option<(SICanUse,SearchInfo)> {
+    //     let (found,entry) = TransTable::global().probe(zb);
+    //     if found {
+    //         let si = SearchInfo {
+    //             best_move:      PackedMove::unpack(&entry.best_move).unwrap().convert_to_move(ts, g),
+    //             depth_searched: entry.depth_searched,
+    //             node_type:      entry.node_type,
+    //             score:          entry.score,
+    //         };
+    //         if entry.depth_searched >= depth {
+    //             stats.tt_hits += 1;
+    //             Some((SICanUse::UseScore, si))
+    //         } else {
+    //             stats.tt_halfmiss += 1;
+    //             Some((SICanUse::UseOrdering, si))
+    //         }
+    //     } else {
+    //         stats.tt_misses += 1;
+    //         None
+    //     }
+    // }
+
     /// returns (can_use, SearchInfo)
     pub fn check_tt_negamax(
         &self,
@@ -186,7 +215,7 @@ impl ExHelper {
                     let score = -STALEMATE_VALUE + ply as Score;
                     // return ABSingle(ABResult::new_single(g.last_move.unwrap(), -score));
                     // return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
-                    trace!("repetition found, last move {:?}", g.last_move);
+                    // trace!("repetition found, last move {:?}", g.last_move);
                     if cfg.root {
                         return ABNone;
                     } else {
@@ -671,6 +700,7 @@ impl ExHelper {
                     self.tt_insert_deepest(
                         g.zobrist,
                         SearchInfo::new(
+                            // ts, g,
                             res.mv,
                             // res.moves.clone().into(),
                             // res.moves.len() as u8,

@@ -115,6 +115,7 @@ pub enum SICanUse {
 // #[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
 pub struct SearchInfo {
     pub best_move:          Move,
+    // pub best_move:          (u8,u8),
     pub depth_searched:     Depth,
     // pub score:              Score,
     pub node_type:          Node,
@@ -256,13 +257,25 @@ impl SearchInfo {
     // pub fn new(mv: Move, moves: Vec<Move>, depth_searched: Depth, node_type: Node, score: Score) -> Self {
     //     let moves = VMoves::from_vec(moves).into();
     pub fn new(
+        // ts:                 &Tables,
+        // g:                  &Game,
         best_move:          Move,
         // moves:              Vec<Move>,
         depth_searched:     Depth,
         node_type:          Node,
         score:              Score,
     ) -> Self {
+
+        // let packed_move = PackedMove::convert_from_move(best_move).pack().unwrap();
+        // let packed_move = (packed_move[0],packed_move[1]);
+
+        // let mv = [packed_move.0, packed_move.1];
+
+        // let mv = PackedMove::unpack(&mv).unwrap().convert_to_move(ts, g);
+        // assert_eq!(best_move, mv);
+
         Self {
+            // best_move: packed_move,
             best_move,
             depth_searched,
             node_type,

@@ -1,6 +1,9 @@
 
+use crate::evmap_tables;
 use crate::explore::*;
 use crate::opening_book::*;
+use crate::pawn_hash_table::PHTableFactory;
+use crate::qsearch::exhelper_once;
 use crate::tables::*;
 use crate::types::*;
 use crate::evaluate::*;
@@ -21,6 +24,7 @@ use rand::distributions::{Uniform,uniform::SampleUniform};
 
 use crossbeam::channel::{Sender,Receiver,RecvError,TryRecvError};
 use std::sync::atomic::{Ordering,AtomicU64};
+use rayon::prelude::*;
 
 mod td_tree {
     use super::*;
@@ -487,6 +491,103 @@ impl TrainingData {
     //     Ok(())
     // }
 
+}
+
+/// Init opening
+impl TrainingData {
+    pub fn init_opening(&self, ts: &Tables) -> Option<Game> {
+        let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
+        for mv in self.opening.iter() {
+            if let Ok(g2) = g.make_move_unchecked(&ts, *mv) {
+                g = g2;
+            } else {
+                return None;
+            }
+        }
+        Some(g)
+    }
+}
+
+/// Filter only quiet positions
+impl TrainingData {
+
+    pub fn filter_quiet(
+        ts:               &Tables,
+        (ev_mid,ev_end):  &(EvalParams,EvalParams),
+        tds:              Vec<TrainingData>,
+    ) -> Vec<TrainingData> {
+
+        let ncpus = num_cpus::get();
+        let g = Game::start_pos(ts);
+
+        let ph_factory = PHTableFactory::new();
+
+        let tds = tds.chunks(tds.len() / ncpus).map(|xs| {
+            let ph_rw = ph_factory.handle();
+            let exhelper = exhelper_once(&g, White, ev_mid, ev_end, Some(&ph_rw));
+            (exhelper, xs)
+        }).collect::<Vec<(ExHelper, &[TrainingData])>>();
+
+        let out = tds.into_par_iter().map(|(exhelper,xs)| {
+            // let out = xs.iter().filter(|td| td._filter_quiet(ts, &exhelper, &mut stats));
+            let mut xs: Vec<TrainingData> = xs.to_vec();
+            xs.iter_mut().for_each(|td| {
+                td._filter_quiet(ts, &exhelper)
+            });
+            xs
+        }).flatten().collect::<Vec<_>>();
+
+        out
+    }
+
+    pub fn _filter_quiet(
+        &mut self,
+        ts:               &Tables,
+        exhelper:         &ExHelper,
+    ) {
+        let mut stats = SearchStats::default();
+
+        let mut g = if let Some(g) = self.init_opening(ts) { g } else { return; };
+
+        let (ev_mid,ev_end) = (&exhelper.cfg.eval_params_mid,&exhelper.cfg.eval_params_end);
+
+        let mut done = false;
+        for mut te in self.moves.iter_mut() {
+
+            if done {
+                te.skip = true;
+                continue;
+            }
+
+            if let Ok(g2) = g.make_move_unchecked(&ts, te.mv) {
+                g = g2;
+
+                if te.skip
+                    || te.mv.filter_all_captures()
+                    || !g.state.checkers.is_empty() {
+                        te.skip = true;
+                    } else {
+
+                        let score   = g.sum_evaluate(&ts, &ev_mid, &ev_end, None);
+                        let q_score = exhelper.qsearch_once(&ts, &g, &mut stats);
+                        let q_score = g.state.side_to_move.fold(q_score, -q_score);
+
+                        if score != q_score {
+                            te.skip = true;
+                        } else if score.abs() > STALEMATE_VALUE - 100 {
+                            te.skip = true;
+                            done = true;
+                        }
+                    }
+
+
+            } else {
+                // panic!("bad move: {:?}\n{:?},{:?}", g.to_fen(), g, te.mv);
+                break;
+            }
+        }
+
+    }
 }
 
 #[derive(Debug,Eq,PartialEq,Clone,Copy,Serialize,Deserialize)]

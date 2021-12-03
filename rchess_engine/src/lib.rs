@@ -99,6 +99,17 @@ pub mod util;
 // }
 
 #[macro_export]
+macro_rules! timer {
+    ($e:block) => {
+        let t0 = std::time::Instant::now();
+        let tmp = $e
+        let t1 = t0.elapsed().as_secs_f64();
+        debug!("finished in {:.3} seconds", t1);
+        tmp
+    };
+}
+
+#[macro_export]
 macro_rules! builder_field {
     ($field:ident, $field_type:ty) => {
         pub fn $field(mut self, $field: $field_type) -> Self {

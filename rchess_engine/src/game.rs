@@ -936,7 +936,7 @@ impl Game {
                 }
             },
             (None,None) => None,
-            _ => unimplemented!(),
+            _ => panic!("_convert_move: from: {:?}, to: {:?}, other: {:?}\n{:?}", from, to, other, self),
         }
     }
 
@@ -1196,6 +1196,10 @@ impl Game {
 
 /// creation
 impl Game {
+
+    pub fn start_pos(ts:  &Tables) -> Self {
+        Game::from_fen(ts, STARTPOS).unwrap()
+    }
 
     // pub fn empty() -> Game {
     //     // Game {

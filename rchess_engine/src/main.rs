@@ -26,6 +26,7 @@ use std::str::FromStr;
 
 use itertools::Itertools;
 
+use rchess_engine_lib::timer;
 use rchess_engine_lib::explore::*;
 use rchess_engine_lib::opening_book::*;
 use rchess_engine_lib::qsearch::*;
@@ -333,8 +334,10 @@ fn main_tt() {
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(6);
-    // ex.cfg.num_threads = Some(1);
+    ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
+
+    debug!("ex.cfg.num_threads = {:?}", ex.cfg.num_threads);
 
     let (res,moves,stats0) = ex.lazy_smp_2(&ts);
     let t1 = t0.elapsed();
@@ -739,6 +742,95 @@ fn main_tuning() {
     let ev_mid = EvalParams::empty();
     let mut ev_end = EvalParams::empty();
     ev_end.mid = false;
+
+    // load and preprocess ficsgamesdb_2020_standard_nomovetimes_233317.pgn
+    if true {
+        // let pgn_path = "./training_data/ficsgamesdb_2020_standard_nomovetimes_233317.pgn";
+        let pgn_path = "./training_data/fics_test2.pgn";
+
+        let out_path = "./training_data/ficsgamesdb_2020_standard_tds.bin";
+
+        // let count = Some(1000);
+        // let count = Some(2000);
+        // let count = None;
+
+        // let t0 = std::time::Instant::now();
+        // let pgns = parse_pgns(pgn_path, count).unwrap();
+        // eprintln!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+        // eprintln!("pgns.len() = {:?}", pgns.len());
+
+        // let t0 = std::time::Instant::now();
+        // let tds = process_pgns_td(&ts, &(ev_mid,ev_end), &pgns);
+        // eprintln!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+        // eprintln!("tds.len() = {:?}", tds.len());
+
+        // let mut file = std::fs::File::create(out_path).unwrap();
+        // for td in tds.iter() {
+        //     TrainingData::save_into(true, &mut file, td).unwrap();
+        // }
+
+        crossbeam::scope(|s| {
+
+            let (tx,rx)           = crossbeam_channel::unbounded();
+            let (tx_save,rx_save) = crossbeam_channel::unbounded();
+
+            let tx2 = tx.clone();
+            s.spawn(|_| {
+                parse_pgns_par(pgn_path, None, tx2).unwrap();
+            });
+
+            let rx2 = rx.clone();
+            let tx_save2 = tx_save.clone();
+            s.spawn(|_| {
+                process_pgns_td_par(&ts, &(ev_mid,ev_end), rx2, tx_save2);
+            });
+
+            let rx_save2 = rx_save.clone();
+            s.spawn(move |_| {
+                let mut file = std::fs::File::create(out_path).unwrap();
+                loop {
+                    match rx_save2.recv() {
+                        Ok(td) => {
+                            TrainingData::save_into(true, &mut file, &td).unwrap();
+                        },
+                        Err(e) => {
+                            eprintln!("breaking save loop, e = {:?}", e);
+                            break;
+                        },
+                    }
+                }
+            });
+
+        }).unwrap();
+
+
+        return;
+    }
+
+
+    // filter quiet TrainingData
+    if true {
+        let path = "/home/me/code/rust/rchess/training_data/set2/depth5_games500_1.bin";
+        let path2 = &format!("{}-tmp", path);
+
+        eprintln!("path = {:?}", path);
+        eprintln!("path2 = {:?}", path2);
+
+        let t0 = std::time::Instant::now();
+        let tds = TrainingData::load_all(path).unwrap();
+        eprintln!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+
+        eprintln!("tds.len() = {:?}", tds.len());
+
+        let t0 = std::time::Instant::now();
+        let tds2 = TrainingData::filter_quiet(&ts, &(ev_mid,ev_end), tds);
+        eprintln!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+
+        eprintln!("tds2.len() = {:?}", tds2.len());
+
+        return;
+    }
+
 
     // let c0 = PcTables::map_color(-127);
     // let c1 = PcTables::map_color(0);
@@ -1943,41 +2035,6 @@ fn main9() {
              stats0.max_depth, t2);
 
     let tt_r = ex.tt_rf.handle();
-
-    if !true {
-        let s0 = std::mem::size_of::<Zobrist>();
-        let s1 = std::mem::size_of::<SearchInfo>();
-
-        eprintln!("s0 = {:?}", s0);
-        eprintln!("s1 = {:?}", s1);
-
-        let mut m0: HashMap<Zobrist, SearchInfo> = HashMap::default();
-
-        let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
-        for _ in 0..1000 {
-            let c0 = Coord::from(rng.gen::<u8>());
-            let c1 = Coord::from(rng.gen::<u8>());
-            let si = SearchInfo::new(Move::new_quiet(c0, c1, Pawn), 1, Node::PV, 2);
-            let zb = Zobrist(rng.gen());
-            m0.insert(zb, si);
-        }
-
-        let k = m0.capacity();
-
-        let s2 = std::mem::size_of_val(&k);
-        // let size0 = k * (s0 + s1) + s2;
-        let size0 = k * s0;
-        let size1 = k * s1;
-
-        eprintln!("size0 = {:?}", size0);
-        eprintln!("size1 = {:?}", size1);
-
-        let b: Vec<u8> = bincode::serialize(&m0).unwrap();
-
-        eprintln!("b.len() = {:?}", b.len());
-
-        return;
-    }
 
     println!();
     for (n,mv) in moves.iter().enumerate() {

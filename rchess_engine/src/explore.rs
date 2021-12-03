@@ -325,6 +325,10 @@ impl Explorer {
             // eprintln!();
 
             let mv = si.best_move;
+
+            // let mv = [mv.0, mv.1];
+            // let mv = PackedMove::unpack(&mv).unwrap().convert_to_move(ts, &g2);
+
             moves.push(mv);
 
             g2 = g2.make_move_unchecked(&ts, mv).unwrap();
@@ -591,6 +595,8 @@ impl Explorer {
             let max_threads = 6;
             max_threads
         };
+
+        debug!("lazy_smp_2 max_threads = {:?}", max_threads);
 
         if self.cfg.clear_table {
             debug!("clearing tt");

@@ -1,13 +1,15 @@
 
-use crate::brain::trainer::TDOutcome;
-use crate::brain::trainer::TrainingData;
+use crate::brain::trainer::*;
 use crate::explore::ExHelper;
+use crate::evaluate::*;
+use crate::pawn_hash_table::PHTableFactory;
 use crate::qsearch::exhelper_once;
 use crate::searchstats::SearchStats;
 use crate::texel::TxPosition;
 use crate::types::*;
 use crate::tables::*;
 
+use crossbeam_channel::{Sender,Receiver};
 use nom::bytes::streaming::take_till;
 use nom::bytes::streaming::take_while;
 use nom::bytes::streaming::take_while1;
@@ -150,34 +152,196 @@ pub fn process_pgns_tx(
     out
 }
 
-pub fn process_pgns_td(ts: &Tables, pgns: &[PGN]) -> Vec<TrainingData> {
+pub fn process_pgns_td(
+    ts:               &Tables,
+    (ev_mid,ev_end):  &(EvalParams,EvalParams),
+    pgns:             &[PGN]
+) -> Vec<TrainingData> {
     let g0 = Game::from_fen(ts, STARTPOS).unwrap();
 
-    // let out: Vec<TrainingData> = pgns.par_iter().map(|pgn| {
-    //     let mut g = g0.clone();
-    //     let mut moves = vec![];
-    //     'inner: for mv0 in pgn.moves.iter() {
-    //         let mv0 = mv0.chars().filter(|c| *c != '+' && *c != '#').collect::<String>();
-    //         let mv = g.convert_from_algebraic(ts, &mv0).unwrap();
-    //         if let Ok(g2) = g.make_move_unchecked(ts, mv) {
-    //             g = g2;
-    //             moves.push(mv);
-    //         } else {
-    //             eprintln!("{:?}\n{:?}\nbad move: {} {:?}", g.to_fen(), g, mv0, mv);
-    //             break 'inner;
-    //         }
-    //     }
-    //     let td = TrainingData {
-    //         opening: vec![],
-    //         moves,
-    //         result: pgn.result,
-    //     };
-    //     // out.push(td);
-    //     td
-    // }).collect();
-    // out
+    let ncpus = num_cpus::get();
+    let ph_factory = PHTableFactory::new();
 
-    unimplemented!()
+    let pgns2 = pgns.chunks(pgns.len() / ncpus).map(|xs| {
+        let ph_rw = ph_factory.handle();
+        let exhelper = exhelper_once(&g0, White, ev_mid, ev_end, Some(&ph_rw));
+        (exhelper.clone(), xs)
+    }).collect::<Vec<(ExHelper, &[PGN])>>();
+
+    let out: Vec<TrainingData> = pgns2.into_par_iter().map(|(exhelper, xs)| {
+        let mut stats = SearchStats::default();
+
+        xs.into_iter().map(|pgn| {
+
+            let mut g = g0.clone();
+            let mut moves = vec![];
+            'inner: for mv0 in pgn.moves.iter() {
+                let mv0 = mv0.chars().filter(|c| *c != '+' && *c != '#').collect::<String>();
+                let mv = g.convert_from_algebraic(ts, &mv0).unwrap();
+                if let Ok(g2) = g.make_move_unchecked(ts, mv) {
+                    g = g2;
+
+                    let (skip,score) = {
+                        if mv.filter_all_captures()
+                            || !g.state.checkers.is_empty()
+                            {
+                                (true, 0)
+                            } else {
+                                let score   = g.sum_evaluate(&ts, &ev_mid, &ev_end, None);
+                                let q_score = exhelper.qsearch_once(&ts, &g, &mut stats);
+                                let q_score = g.state.side_to_move.fold(q_score, -q_score);
+
+                                if score == q_score {
+                                    (false,score)
+                                } else if score.abs() > STALEMATE_VALUE - 100 {
+                                    (true, 0)
+                                } else {
+                                    (true, 0)
+                                }
+                            }
+                    };
+
+                    let te = TDEntry {
+                        mv,
+                        eval:  score,
+                        skip,
+                    };
+
+                    moves.push(te);
+                } else {
+                    eprintln!("{:?}\n{:?}\nbad move: {} {:?}", g.to_fen(), g, mv0, mv);
+                    break 'inner;
+                }
+            }
+            let td = TrainingData {
+                opening: vec![],
+                moves,
+                result: pgn.result,
+            };
+            td
+        }).collect::<Vec<_>>()
+    }).flatten().collect();
+    out
+}
+
+pub fn _process_pgn_td(
+    ts:               &Tables,
+    g0:               &Game,
+    exhelper:         &ExHelper,
+    pgn:              &PGN,
+) -> TrainingData {
+    let mut g = g0.clone();
+    let mut moves = vec![];
+    let mut stats = SearchStats::default();
+    let (ev_mid,ev_end) = (&exhelper.cfg.eval_params_mid,&exhelper.cfg.eval_params_end);
+    'inner: for mv0 in pgn.moves.iter() {
+        let mv0 = mv0.chars().filter(|c| *c != '+' && *c != '#').collect::<String>();
+        let mv = g.convert_from_algebraic(ts, &mv0).unwrap();
+        if let Ok(g2) = g.make_move_unchecked(ts, mv) {
+            g = g2;
+
+            let (skip,score) = {
+                if mv.filter_all_captures()
+                    || !g.state.checkers.is_empty()
+                    {
+                        (true, 0)
+                    } else {
+                        let score   = g.sum_evaluate(&ts, &ev_mid, &ev_end, None);
+                        let q_score = exhelper.qsearch_once(&ts, &g, &mut stats);
+                        let q_score = g.state.side_to_move.fold(q_score, -q_score);
+
+                        if score == q_score {
+                            (false,score)
+                        } else if score.abs() > STALEMATE_VALUE - 100 {
+                            (true, 0)
+                        } else {
+                            (true, 0)
+                        }
+                    }
+            };
+
+            let te = TDEntry {
+                mv,
+                eval:  score,
+                skip,
+            };
+
+            moves.push(te);
+        } else {
+            eprintln!("{:?}\n{:?}\nbad move: {} {:?}", g.to_fen(), g, mv0, mv);
+            break 'inner;
+        }
+    }
+    let td = TrainingData {
+        opening: vec![],
+        moves,
+        result: pgn.result,
+    };
+    td
+}
+
+pub fn process_pgns_td_par(
+    ts:               &Tables,
+    (ev_mid,ev_end):  &(EvalParams,EvalParams),
+    rx:               Receiver<PGN>,
+    tx_save:          Sender<TrainingData>,
+) {
+    let g0 = Game::from_fen(ts, STARTPOS).unwrap();
+
+    let ncpus = num_cpus::get();
+    let ph_factory = PHTableFactory::new();
+    let ph_rw = ph_factory.handle();
+    let exhelper = exhelper_once(&g0, White, ev_mid, ev_end, Some(&ph_rw));
+
+    loop {
+        match rx.recv() {
+            Ok(pgn) => {
+                let td = _process_pgn_td(ts, &g0, &exhelper, &pgn);
+                tx_save.send(td).unwrap();
+            },
+            Err(e) => {
+                eprintln!("breaking process_pgns_td_par, e = {:?}", e);
+                break;
+            },
+        }
+    }
+}
+
+pub fn parse_pgns_par<P: AsRef<Path>>(
+    path:            P,
+    count:           Option<usize>,
+    tx:              Sender<PGN>,
+) -> io::Result<()> {
+    let mut buf = std::fs::read_to_string(path)?;
+
+    let mut ss: &str = &buf;
+    let mut n = 0;
+
+    loop {
+        // eprintln!("ss = {}", ss);
+        // println!("wat 0");
+        match parse_pgn(&ss) {
+            Ok((s,pgn)) => {
+                // eprintln!("pgn = {:?}", pgn);
+                // pgns.push(pgn);
+                tx.send(pgn).unwrap();
+                ss = s;
+            }
+            Err(nom::Err::Incomplete(_)) => {
+                eprintln!("Incomplete = {}", ss);
+                break;
+            },
+            Err(e) => {
+                eprintln!("e = {:?}\n{}", e, ss);
+                break;
+            }
+        }
+
+        n += 1;
+        if count.map_or(false, |c| n >= c) { break; }
+    }
+
+    Ok(())
 }
 
 pub fn parse_pgns<P: AsRef<Path>>(path: P, count: Option<usize>) -> io::Result<Vec<PGN>> {

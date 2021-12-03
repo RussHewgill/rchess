@@ -19,11 +19,17 @@ use rand::{prelude::{StdRng,SliceRandom},Rng,SeedableRng};
 use rand::distributions::{Uniform,uniform::SampleUniform};
 
 impl NNUE {
-    pub fn train(&mut self, tds: Vec<TxPosition>) {
+    pub fn train(&mut self, tds: Vec<TrainingData>) {
+
+        // self.init_inputs(g)
 
         unimplemented!()
     }
-    pub fn train_single(&mut self, g: &Game) {
+    pub fn train_single(&mut self, ts: &Tables, mut rng: &mut StdRng, td: TrainingData) {
+        let g = td.init_opening(&ts);
+
+
+        unimplemented!()
     }
 }
 

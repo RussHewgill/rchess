@@ -106,6 +106,8 @@ impl Move {
 
 mod packed_move {
     use super::*;
+    use crate::tables::Tables;
+
     use packed_struct::prelude::*;
     pub use packed_struct::PackedStruct;
 
@@ -143,7 +145,18 @@ mod packed_move {
 
     impl PackedMove {
 
-        pub fn convert(mv: Move) -> Self {
+        pub fn convert_to_move(&self, ts: &Tables, g: &Game) -> Move {
+            let from = self.from().into();
+            let to   = self.to().into();
+
+            // TODO: other move, castle, ep etc
+            let other = "";
+            let mv = g._convert_move(from, to, other, false);
+            mv.unwrap()
+            // unimplemented!()
+        }
+
+        pub fn convert_from_move(mv: Move) -> Self {
             let flag = match mv {
                 Move::Promotion { .. } | Move::PromotionCapture { .. } => 1,
                 Move::EnPassant { .. }                                 => 2,
