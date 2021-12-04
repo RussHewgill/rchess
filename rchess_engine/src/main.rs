@@ -793,8 +793,8 @@ fn main_tuning() {
 
     let fen_path = "./training_data/tuner/quiet-labeled.epd";
 
-    let count = Some(1000);
-    // let count = None;
+    // let count = Some(1000);
+    let count = None; // 725 k
 
     let ps = load_labeled_fens(&ts, &mut exhelper, count, fen_path).unwrap();
 
@@ -806,8 +806,11 @@ fn main_tuning() {
     // let k = find_k(&ts, &ps, &exhelper, false);
     eprintln!("k = {:?}", k);
 
+    let t0 = std::time::Instant::now();
     let error = average_eval_error(&ts, &ps, &exhelper, Some(k));
     eprintln!("error = {:.5}", error);
+    let t1 = t0.elapsed().as_secs_f64();
+    eprintln!("finished one eval_error in {:.3} seconds", t1);
 
     if std::path::Path::new(&evpath).exists() {
         // std::fs::rename(&path, &format!("{}", path))?;
@@ -818,7 +821,12 @@ fn main_tuning() {
     let count = 10;
 
     let (ev_mid2,ev_end2) = texel_optimize(
-        &ts, &ps, &mut exhelper, &vec![], Some(count), Some(k),
+        &ts,
+        &ps,
+        &mut exhelper,
+        &vec![],
+        Some(count),
+        Some(k),
         evpath);
 
     let error = average_eval_error(&ts, &ps, &exhelper, Some(k));

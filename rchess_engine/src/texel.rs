@@ -12,6 +12,7 @@ use crate::searchstats::*;
 use crate::pawn_hash_table::*;
 
 use derive_new::new;
+use rand::prelude::SliceRandom;
 use serde::{Serialize,Deserialize};
 
 #[derive(Debug,PartialEq,Clone,Serialize,Deserialize,new)]
@@ -305,6 +306,8 @@ pub fn texel_optimize(
     let mut loops = 0;
     loop {
         let t1 = std::time::Instant::now();
+
+        // let inputs_slice = inputs.choose_multiple(&mut rng, )
 
         texel_optimize_once(
             ts, inputs, &mut exhelper, ignore_weights, count, true, &mut best_error, k, delta);
