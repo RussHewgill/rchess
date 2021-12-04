@@ -312,8 +312,11 @@ pub fn texel_optimize(
         texel_optimize_once(
             ts, inputs, &mut exhelper, ignore_weights, count, false, &mut best_error, k, delta);
 
-        EvalParams::save_evparams(&exhelper.cfg.eval_params_mid, &exhelper.cfg.eval_params_end, path)
-            .unwrap();
+        EvalParams::save_evparams(
+            &exhelper.cfg.eval_params_mid,
+            &exhelper.cfg.eval_params_end,
+            path,
+        ).unwrap();
 
         loops += 1;
         let t2 = t1.elapsed().as_secs_f64();

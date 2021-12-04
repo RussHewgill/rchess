@@ -94,8 +94,8 @@ mod piece_square_tables {
 
     impl Default for PcTables {
         fn default() -> Self {
-            // Self::new_mid()
-            Self::empty()
+            Self::new_mid()
+            // Self::empty()
         }
     }
 
@@ -527,6 +527,20 @@ impl EvalParams {
         }
         out
     }
+
+    // pub fn save_evparams_bak<P: AsRef<Path> + AsRef<std::ffi::OsStr>>(
+    //     ev_mid: &Self,
+    //     ev_end: &Self,
+    //     path:   P,
+    // ) -> std::io::Result<()> {
+    //     use std::io::Write;
+    //     if std::path::Path::new(&path).exists() {
+    //         std::fs::rename(&path, &format!("{}", path))?;
+    //     }
+    //     let b: Vec<u8> = bincode::serialize(&(ev_mid,ev_end)).unwrap();
+    //     let mut file = std::fs::File::create(path)?;
+    //     file.write_all(&b)
+    // }
 
     pub fn save_evparams<P: AsRef<Path>>(ev_mid: &Self, ev_end: &Self, path: P) -> std::io::Result<()> {
         use std::io::Write;

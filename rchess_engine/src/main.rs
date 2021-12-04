@@ -738,11 +738,23 @@ fn main_tuning() {
         return;
     }
 
-    // let ev_mid = EvalParams::default();
-    // let mut ev_end = EvalParams::default();
-    let ev_mid = EvalParams::empty();
-    let mut ev_end = EvalParams::empty();
+    let ev_mid = EvalParams::default();
+    let mut ev_end = EvalParams::default();
+    // let ev_mid = EvalParams::empty();
+    // let mut ev_end = EvalParams::empty();
     ev_end.mid = false;
+
+    // EvalParams::save_evparams(&ev_mid, &ev_end, evpath).unwrap();
+    // return;
+
+    // let ev0 = EvalParams::default();
+    // ev0.psqt.print_table(Knight).unwrap();
+    // println!();
+
+    // let (ev_mid,ev_end) = EvalParams::read_evparams(evpath).unwrap();
+
+    // ev_mid.psqt.print_table(Knight).unwrap();
+    // return;
 
     // filter quiet TrainingData
     if !true {
@@ -767,20 +779,11 @@ fn main_tuning() {
         return;
     }
 
-    // let c0 = PcTables::map_color(-127);
-    // let c1 = PcTables::map_color(0);
-    // let c2 = PcTables::map_color(127);
+    // let pgn_path = "./training_data/ficsgamesdb_2020_standard_nomovetimes_233317.pgn";
+    // let pgn_path = "./training_data/fics_test2.pgn";
+    // let pgn_path = "./training_data/fics_test.pgn";
 
-    // eprintln!("c0 = {:?}", c0);
-    // eprintln!("c1 = {:?}", c1);
-    // eprintln!("c2 = {:?}", c2);
-
-    // PcTables::print_table(ss).unwrap();
-
-    // ev_mid.psqt.print_tables().unwrap();
-    // return;
-
-    // EvalParams::save_evparams(&ev_mid, &ev_end, evpath).unwrap();
+    // let ps = load_pgns_tx(&ts, &mut exhelper, count, pgn_path).unwrap();
 
     let ph_factory = PHTableFactory::new();
     let ph_rw = ph_factory.handle();
@@ -788,37 +791,14 @@ fn main_tuning() {
     let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
     let mut exhelper = exhelper_once(&g, g.state.side_to_move, &ev_mid, &ev_end, Some(&ph_rw));
 
-    // let count = 3;
-    // let mut paths = vec![];
-    // for n in 1..=count {
-    //     let p = format!(
-    //         "/home/me/code/rust/rchess/training_data/set2/depth5_games500_{}.bin", n);
-    //     paths.push(p);
-    // }
-
-    // let path = "/home/me/code/rust/rchess/training_data/set2/depth5_games500_2.bin";
-    // let path = "/home/me/code/rust/rchess/training_data/set2/depth5_games500_3.bin";
-    // let ps = load_txdata(&ts, &mut exhelper, Some(1000), path).unwrap();
-    // let ps = load_txdata(&ts, &mut exhelper, None, path).unwrap();
-    // let ps = load_txdata_mult(&ts, &mut exhelper, &paths).unwrap();
-
-    // let pgn_path = "./training_data/ficsgamesdb_2020_standard_nomovetimes_233317.pgn";
-    // let pgn_path = "./training_data/fics_test2.pgn";
-    // let pgn_path = "./training_data/fics_test.pgn";
-
     let fen_path = "./training_data/tuner/quiet-labeled.epd";
 
-    let count = Some(10000);
+    let count = Some(1000);
     // let count = None;
-
-    // let ps = load_pgns_tx(&ts, &mut exhelper, count, pgn_path).unwrap();
 
     let ps = load_labeled_fens(&ts, &mut exhelper, count, fen_path).unwrap();
 
     eprintln!("ps.len() = {:?}", ps.len());
-
-    // let ps: Vec<TxPosition> = ps[..1000].to_vec();
-    // eprintln!("ps.len() = {:?}", ps.len());
 
     let k = 1.0;
     // let k: f64 = -0.1111f64;
@@ -826,144 +806,23 @@ fn main_tuning() {
     // let k = find_k(&ts, &ps, &exhelper, false);
     eprintln!("k = {:?}", k);
 
-    // let (ev_mid0,ev_end0) = EvalParams::read_evparams(evpath).unwrap();
+    let error = average_eval_error(&ts, &ps, &exhelper, Some(k));
+    eprintln!("error = {:.5}", error);
 
-    // let pc = Pawn;
-    // ev_mid.psqt.print_table(pc).unwrap();
-    // println!();
-    // ev_mid0.psqt.print_table(pc).unwrap();
-
-    // let k0 = ev_mid.pawns;
-    // eprintln!("k0 = {:?}", k0);
-    // let k1 = ev_mid0.pawns;
-    // eprintln!("k1 = {:?}", k1);
-
-    // return;
-
-    // let error = average_eval_error(&ts, &ps, &exhelper, Some(k));
-    // eprintln!("error = {:.5}", error);
-
-    if !true {
-        fn sigmoid(s: f64, k: f64) -> f64 {
-            1.0 / (1.0 + 10.0f64.powf(-k * s / 400.0))
-        }
-
-        let pos = &ps[4];
-        let mut g = pos.game.clone();
-
-        eprintln!("pos.game.to_fen() = {:?}", g.to_fen());
-        eprintln!("pos.game = {:?}", g);
-        eprintln!("pos.result = {:?}", pos.result);
-
-        // exhelper.cfg.eval_params_end.
-
-        for v in exhelper.cfg.eval_params_mid.psqt.rook.iter_mut() {
-            *v += 1000;
-        }
-
-        let ev_mid = &exhelper.cfg.eval_params_mid;
-        let ev_end = &exhelper.cfg.eval_params_end;
-
-        let r = match pos.result {
-            TDOutcome::Win(White) => 1.0,
-            TDOutcome::Win(Black) => 0.0,
-            TDOutcome::Draw       => 0.5,
-            TDOutcome::Stalemate  => 0.5,
-        };
-
-        let score = g.sum_evaluate(
-            &ts, &ev_mid, &ev_end,
-            // Some(&ph2),
-            // Some(&exhelper.ph_rw)
-            None,
-        );
-
-        let s = (r - sigmoid(score as f64, k)).powi(2);
-        eprintln!("score = {:?}", score);
-        eprintln!("s = {:?}", s);
-    }
-
-    if !true {
-
-        let mut arr = exhelper.cfg.eval_params_mid.to_arr();
-
-        // for (n,v) in arr[1..15].iter().enumerate() {
-        //     eprintln!("{} = {:?}", n, v);
-        // }
-
-        let n = 1;
-
-        let k0 = arr[n];
-        eprintln!("k0 = {:?}", k0);
-
-        let mut best_error = average_eval_error(&ts, &ps, &exhelper, Some(k));
-
-        arr[n] += 1;
-        EvalParams::from_arr(&arr).update_exhelper(&mut exhelper, true);
-
-        let new_error = average_eval_error(&ts, &ps, &exhelper, Some(k));
-
-        eprintln!("best_error = {:?}", best_error);
-        eprintln!("new_error = {:?}", new_error);
-
-        if new_error < best_error {
-            println!("wat 0");
-        } else {
-            println!("wat 1");
-
-            arr[n] -= 2;
-            EvalParams::from_arr(&arr).update_exhelper(&mut exhelper, true);
-
-            let new_error2 = average_eval_error(&ts, &ps, &exhelper, Some(k));
-            eprintln!("new_error 2 = {:?}", new_error);
-
-            if new_error2 < best_error {
-                println!("wat 2");
-            } else {
-                println!("wat 3");
-            }
-
-        }
-
+    if std::path::Path::new(&evpath).exists() {
+        // std::fs::rename(&path, &format!("{}", path))?;
+        eprintln!("evparams.bin already exists, exiting");
         return;
     }
 
-    let error = average_eval_error(&ts, &ps, &exhelper, Some(k));
-    eprintln!("error = {:.5}", error);
-
-    // return;
-
-    // {
-    //     let mut file = std::fs::File::create(evpath).unwrap();
-    //     let xs = (ev_mid,ev_end);
-    //     bincode::serialize_into(&mut file, &xs).unwrap();
-    //     return;
-    // }
-
-    let count = 100;
+    let count = 10;
 
     let (ev_mid2,ev_end2) = texel_optimize(
-        &ts, &ps, &mut exhelper, &vec![], Some(count), Some(k), evpath);
+        &ts, &ps, &mut exhelper, &vec![], Some(count), Some(k),
+        evpath);
 
     let error = average_eval_error(&ts, &ps, &exhelper, Some(k));
     eprintln!("error = {:.5}", error);
-
-    // let ks = vec![
-    //     -1.0,
-    //     -0.5,
-    //     0.1,
-    //     0.5,
-    //     1.0,
-    //     2.0,
-    //     10.0,
-    // ];
-
-    // let k = 1.0;
-
-    // for k in ks.iter() {
-    //     let error = average_eval_error(&ts, &ev_mid, &ev_end, ps.clone(), *k);
-    //     eprintln!("error, k = {:.2} = {:?}", k, error);
-    // }
 
 }
 
@@ -2010,7 +1869,7 @@ fn main9() {
     // let fen = "6k1/5pp1/3p1n2/3P3r/5Rn1/P5PQ/1PP2q1P/7K w - - 0 33"; // ??
 
     // let fen = "r1b1k2r/ppppnppp/2n2q2/2b5/3NP3/2P1B3/PP3PPP/RN1QKB1R w KQkq - 0 1";
-    let fen = "6k1/3q1pp1/pp5p/1r5n/8/1P3PP1/PQ4BP/2R3K1 w - - 0 1"; // killer test
+    // let fen = "6k1/3q1pp1/pp5p/1r5n/8/1P3PP1/PQ4BP/2R3K1 w - - 0 1"; // killer test
 
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
