@@ -1047,13 +1047,28 @@ fn main_nnue() {
 
     {
         use rchess_engine_lib::brain::networks2::*;
+        use rchess_engine_lib::brain::autodiff::*;
 
-        let x0 = Dual::new(3, 4);
-        let x1 = Dual::new(1, 2);
+        // fn f(x: f32) -> f32 {
+        //     // 3.0 * x + 2.0
+        //     5. * x * x + 4. * x + 1.
+        // }
 
-        let k = x0 + x1;
+        // let k0 = f(2.0);
+        // eprintln!("k0 = {:?}", k0);
 
-        eprintln!("k = {:?}", k);
+        // let d = Dual::new(4.0, 1.0);
+        // let d1 = d * Dual::constant(3.0);
+        // let d2 = d1 + Dual::constant(2.0);
+
+        // eprintln!("d1 = {:?}", d1);
+
+        // eprintln!("d2 = {:?}", d2);
+
+        // let x0 = Dual::new(3, 4);
+        // let x1 = Dual::new(1, 2);
+        // let k = x0 * x1;
+        // eprintln!("k = {:?}", k);
 
         return;
     }
