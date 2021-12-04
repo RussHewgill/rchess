@@ -106,6 +106,7 @@ macro_rules! timer {
         let tmp = $e
         let t1 = t0.elapsed().as_secs_f64();
         debug!("finished in {:.3} seconds", t1);
+        eprintln!("finished in {:.3} seconds", t1);
         tmp
     };
 }

@@ -5,8 +5,10 @@ pub mod nnue;
 pub mod matrix;
 pub mod trainer;
 pub mod gensfen;
-pub mod accumulator;
+// pub mod accumulator;
 pub mod binpack;
+pub mod networks2;
+pub mod autodiff;
 
 use crate::types::*;
 use crate::brain::types::*;

@@ -1045,6 +1045,19 @@ fn main_nnue() {
     let ts = Tables::read_from_file_def().unwrap();
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
+    {
+        use rchess_engine_lib::brain::networks2::*;
+
+        let x0 = Dual::new(3, 4);
+        let x1 = Dual::new(1, 2);
+
+        let k = x0 + x1;
+
+        eprintln!("k = {:?}", k);
+
+        return;
+    }
+
     let nn_path = "./nnue.bin";
 
     // let fen = "r1bqk2r/ppp1nppp/3p1b2/3P4/2B1R3/5N2/PP3PPP/R1BQ2K1 w kq - 0 12";
@@ -1073,7 +1086,8 @@ fn main_nnue() {
     let fen2 = "4k3/2nppp2/8/8/8/8/3PPP2/4K3 w - - 0 1"; // enemy knight
     let fen3 = "4k3/3ppp2/8/8/8/8/2NPPP2/4K3 w - - 0 1"; // + knight
 
-    let corrects = vec![0.0, -0.5, 0.5];
+    // let corrects = vec![0.0, -0.5, 0.5];
+    let corrects = vec![0, -500, 500];
 
     let mut g1 = Game::from_fen(&ts, fen1).unwrap();
     let mut g2 = Game::from_fen(&ts, fen2).unwrap();
@@ -1088,13 +1102,8 @@ fn main_nnue() {
     // let mut ex2 = ex1.clone();
     // ex2.update_game(g2.clone());
 
-    // let mut nn = NNUE::new(White, &mut rng);
+    let mut nn = NNUE::new(White, &mut rng);
     // let mut nn = NNUE::new(Black, &mut rng);
-
-    use rchess_engine_lib::brain::accumulator::*;
-
-    let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
-    let mut nn = NNUE3::new((0.0, 1.0), &mut rng);
 
     // nn.save(nn_path).unwrap();
 
@@ -1104,12 +1113,12 @@ fn main_nnue() {
     let e1 = nn.run_fresh(&g1);
     let e2 = nn.run_fresh(&g2);
     let e3 = nn.run_fresh(&g3);
-    eprintln!("e1,e2,e3 = {:.3}, {:.3}, {:.3}", e1, e2, e3);
+    eprintln!("e1,e2,e3 = {:>8}, {:>8}, {:>8}", e1, e2, e3);
 
     // let mut m0 = Score::MIN;
     // let mut m1 = Score::MAX;
 
-    let eta = 0.1;
+    let eta = 10;
 
     let t0 = std::time::Instant::now();
     for n in 0..500 {
