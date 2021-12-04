@@ -104,10 +104,10 @@ pub fn _load_tt<P: AsRef<Path>>(path: P) -> std::io::Result<HashMap<Zobrist,Sear
     Ok(out)
 }
 
-#[derive(Debug,Eq,PartialEq,Clone,Copy)]
+#[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
 pub enum SICanUse {
     UseScore,
-    UseOrdering
+    UseOrdering,
 }
 
 // #[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone)]
@@ -257,8 +257,6 @@ impl SearchInfo {
     // pub fn new(mv: Move, moves: Vec<Move>, depth_searched: Depth, node_type: Node, score: Score) -> Self {
     //     let moves = VMoves::from_vec(moves).into();
     pub fn new(
-        // ts:                 &Tables,
-        // g:                  &Game,
         best_move:          Move,
         // moves:              Vec<Move>,
         depth_searched:     Depth,

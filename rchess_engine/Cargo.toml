@@ -35,6 +35,7 @@ default = [
     # "null_pruning",
     "late_move_reduction",
     # "history_heuristic",
+    # "killer_moves",
 
     "qsearch",
 
@@ -60,6 +61,7 @@ syzygy = []
 null_pruning = []
 late_move_reduction = []
 history_heuristic = []
+killer_moves = []
 
 qsearch = []
 

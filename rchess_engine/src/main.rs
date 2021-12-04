@@ -1937,7 +1937,10 @@ fn main9() {
     // let fen = "2r3r1/pp1b4/1bn2pk1/3pP2p/1P5P/5NP1/P1NB1P2/2RKR3 b - - 0 23"; // ??
 
     // let fen = "6k1/5pp1/3p1n2/3P3Q/5Rn1/P5P1/1PPq2KP/8 w - - 0 1"; // ??
-    let fen = "6k1/5pp1/3p1n2/3P3r/5Rn1/P5PQ/1PP2q1P/7K w - - 0 33"; // ??
+    // let fen = "6k1/5pp1/3p1n2/3P3r/5Rn1/P5PQ/1PP2q1P/7K w - - 0 33"; // ??
+
+    // let fen = "r1b1k2r/ppppnppp/2n2q2/2b5/3NP3/2P1B3/PP3PPP/RN1QKB1R w KQkq - 0 1";
+    let fen = "6k1/3q1pp1/pp5p/1r5n/8/1P3PP1/PQ4BP/2R3K1 w - - 0 1"; // killer test
 
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
@@ -1983,8 +1986,8 @@ fn main9() {
     // let t = 0.5;
     // let t = 0.3;
 
-    let n = 35;
-    // let n = 5;
+    // let n = 35;
+    let n = 6;
 
     // let t0 = std::time::Instant::now();
     // // println!("g = {:?}", g);
@@ -1999,7 +2002,7 @@ fn main9() {
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(6);
-    // ex.cfg.num_threads = Some(1);
+    ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     // let mut only_moves = HashSet::default();

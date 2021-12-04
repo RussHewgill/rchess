@@ -9,8 +9,9 @@ use crate::evaluate::*;
 use rayon::prelude::*;
 
 use std::cmp::Ordering;
+use evmap_derive::ShallowCopy;
 
-#[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
+#[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 pub enum OrdMove {
     Hash,
     KillerMate,
@@ -18,8 +19,8 @@ pub enum OrdMove {
     Prom,
     /// GoodCapture = QxQ (119), RxR (118), NxB (117), BxB (116), BxN (115) and pxp (114).
     GoodCapture,
-    KillerMove1,
-    KillerMove2,
+    KillerMove,
+    // KillerMove(u8),
     CaptureGoodSee(i8),
     // Capture(u8),
     CaptureEvenSee,
@@ -64,18 +65,6 @@ impl ExHelper {
         }
         // TODO: killer mate
 
-        // match mv {
-        //     &Move::PromotionCapture { .. }            => return PromCapture,
-        //     &Move::Promotion { new_piece: Queen, .. } => return Prom,
-        //     &Move::Promotion { .. }                   => return PromMinor,
-        //     &Move::EnPassant { .. }                   => return GoodCapture,
-        //     &Move::Capture { pc, victim, .. }         => {
-        //         return CaptureEvenSee;
-        //     },
-        //     &Move::Castle { .. }                      => return Castle,
-        //     _                                         => {},
-        // }
-
         match mv {
             &Move::PromotionCapture { .. }            => return PromCapture,
             &Move::Promotion { new_piece: Queen, .. } => return Prom,
@@ -104,7 +93,15 @@ impl ExHelper {
             _                                 => {},
         }
 
-        // TODO: killer move
+        #[cfg(feature = "killer_moves")]
+        {
+            let x = tracking.killers.get(g.state.side_to_move, ply, mv);
+            if x > 0 { return KillerMove; }
+        }
+
+        #[cfg(feature = "history_heuristic")]
+        {
+        }
 
         Other
     }

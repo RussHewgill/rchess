@@ -668,6 +668,11 @@ impl ExHelper {
                             ply as Score * ply as Score;
                     }
 
+                    #[cfg(feature = "killer_moves")]
+                    if !mv.filter_all_captures() {
+                        tracking.killers.increment(g.state.side_to_move, ply, &mv);
+                    }
+
                     if moves_searched == 0 {
                         stats!(stats.beta_cut_first.0 += 1);
                     } else {

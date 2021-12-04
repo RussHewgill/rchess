@@ -128,7 +128,9 @@ impl ExHelper {
 #[derive(Debug,Clone)]
 pub struct ExTracking {
     pub history:      [[[Score; 64]; 64]; 2],
-    pub killers:      [[u8; 64]; 64],
+    pub killers:      KillerMoves,
+    // pub pvs:          Vec<Vec<Move>>,
+    // pub killers:      [[u8; 64]; 64],
     // pub killers_1:    Vec<Move>,
     // pub killers_2:    Vec<Move>,
 }
@@ -137,7 +139,8 @@ impl ExTracking {
     fn new() -> Self {
         Self {
             history:      [[[0; 64]; 64]; 2],
-            killers:      [[0; 64]; 64],
+            // killers:      [[0; 64]; 64],
+            killers:      KillerMoves::default(),
             // killers_1:    ArrayVec::new(),
             // killers_2:    ArrayVec::new(),
             // killers_1:    vec![],
