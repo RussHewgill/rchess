@@ -426,16 +426,16 @@ impl ExHelper {
 
         #[cfg(feature = "futility_pruning")]
         let can_futility_prune = if depth <= 3
+        // let can_futility_prune = if depth == 1
             && !is_pv_node
             && g.state.checkers.is_empty()
             && alpha < STALEMATE_VALUE - 100 {
                 let static_eval = self.cfg.evaluate(ts, g, &self.ph_rw);
-                static_eval + (200 * depth as Score) <= alpha
+                static_eval + (FUTILITY_MARGIN * depth as Score) <= alpha
             } else { false };
 
         let mut moves_searched = 0;
         let mut val = i32::MIN + 200;
-        // let mut val: (Option<(Zobrist,Move,ABResult)>,i32) = (None,val);
         let mut val: (Option<(Zobrist,ABResult,bool)>,i32) = (None,val);
         let mut list = vec![];
 
@@ -460,7 +460,8 @@ impl ExHelper {
             } else { continue 'outer; };
 
             #[cfg(feature = "futility_pruning")]
-            if can_futility_prune {
+            if moves_searched > 0 && can_futility_prune {
+            // if can_futility_prune {
                 if g2.state.checkers.is_empty()
                     && !mv.filter_all_captures()
                     && !mv.filter_promotion() {

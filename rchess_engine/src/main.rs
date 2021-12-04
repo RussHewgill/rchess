@@ -1045,7 +1045,7 @@ fn main_nnue() {
     let ts = Tables::read_from_file_def().unwrap();
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
-    {
+    if !true {
         use rchess_engine_lib::brain::networks2::*;
         use rchess_engine_lib::brain::autodiff::*;
 
