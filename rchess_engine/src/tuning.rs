@@ -28,6 +28,8 @@ pub static QS_RECAPS_ONLY: Depth = 5;
 
 pub static NULL_PRUNE_MIN_DEPTH: Depth = 2;
 
+// pub static FUTILITY_MARGINS: [Score; 4] = [0, ]
+
 pub trait Tunable {
     const LEN: usize;
     fn to_arr(&self) -> Vec<Score>;

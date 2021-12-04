@@ -406,9 +406,6 @@ impl ExHelper {
                 }
         }
 
-        // /// MVV LVA move ordering
-        // order_mvv_lva(&mut moves);
-
         // /// History Heuristic ordering
         // #[cfg(feature = "history_heuristic")]
         // order_moves_history(&tracking.history[g.state.side_to_move], &mut moves);
@@ -420,25 +417,24 @@ impl ExHelper {
                 (mv,zb,tt)
             }).collect();
 
-        // /// Move Ordering
-        // order_searchinfo(&mut gs[..]);
-
         self.order_moves(ts, g, ply, &mut tracking, &mut gs[..]);
-
-        // // XXX: debug
-        // let xs = gs.iter().map(|x| {
-        //     let k = Self::order_score_move(ts, g, ply, tracking, x);
-        //     (k,*x)
-        // }).collect::<Vec<_>>();
-        // for (k,(mv,_,tt)) in xs.into_iter() {
-        //     eprintln!("{:?} = {:?}, {:?}", k, mv, tt);
-        // }
-        // panic!();
 
         let mut node_type = Node::All;
 
         let mut search_pv = true;
         let mut skip_pv   = false;
+        #[cfg(feature = "futility_pruning")]
+        let mut can_futility_prune = false;
+
+        if depth <= 3
+            && !is_pv_node
+            && g.state.checkers.is_empty()
+            && alpha < STALEMATE_VALUE - 100 {
+                let static_eval = self.cfg.evaluate(ts, g, &self.ph_rw);
+                if static_eval + (200 * depth as Score) <= alpha {
+                    can_futility_prune = true;
+                }
+            }
 
         let mut moves_searched = 0;
         let mut val = i32::MIN + 200;
@@ -448,14 +444,14 @@ impl ExHelper {
 
         'outer: for (mv,zb0,tt) in gs.into_iter() {
 
-            match g.get_at(mv.sq_from()) {
-                None => {
-                    eprintln!("ab_search 0: non legal move, no piece?: {:?}\n{:?}\n{:?}",
-                              mv, g.to_fen(), g);
-                    panic!();
-                },
-                _ => {},
-            }
+            // match g.get_at(mv.sq_from()) {
+            //     None => {
+            //         eprintln!("ab_search 0: non legal move, no piece?: {:?}\n{:?}\n{:?}",
+            //                   mv, g.to_fen(), g);
+            //         panic!();
+            //     },
+            //     _ => {},
+            // }
 
             // if self.best_mate.read().is_some() {
             //     trace!("halting {}, mate", cfg.max_depth);
@@ -465,6 +461,16 @@ impl ExHelper {
             let g2 = if let Ok(g2) = g._make_move_unchecked(ts, mv, Some(zb0)) {
                 g2
             } else { continue 'outer; };
+
+            #[cfg(feature = "futility_pruning")]
+            if can_futility_prune {
+                if g2.state.checkers.is_empty()
+                    && !mv.filter_all_captures()
+                    && !mv.filter_promotion() {
+                        stats.fut_prunes += 1;
+                        continue;
+                    }
+            }
 
             let zb = g2.zobrist;
             assert_eq!(zb, zb0);
