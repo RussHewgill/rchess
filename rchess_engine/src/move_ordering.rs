@@ -40,9 +40,20 @@ impl ExHelper {
         tracking:     &ExTracking,
         mut gs:       &mut [(Move,Zobrist,Option<(SICanUse,SearchInfo)>)],
     ) {
+
+        #[cfg(feature = "killer_moves")]
+        {
+            let killers = tracking.killers.get(g.state.side_to_move,ply);
+            gs.sort_by_cached_key(|x| {
+                Self::order_score_move(ts, g, ply, tracking, x, &killers)
+            });
+        }
+
+        #[cfg(not(feature = "killer_moves"))]
         gs.sort_by_cached_key(|x| {
             Self::order_score_move(ts, g, ply, tracking, x)
         });
+
         // gs.reverse();
     }
 
@@ -52,6 +63,8 @@ impl ExHelper {
         ply:          Depth,
         tracking:     &ExTracking,
         (mv,zb,mtt):  &(Move,Zobrist,Option<(SICanUse,SearchInfo)>),
+        #[cfg(feature = "killer_moves")]
+        killers:      &(Option<Move>,Option<Move>),
     ) -> OrdMove {
         use self::OrdMove::*;
 
@@ -94,10 +107,16 @@ impl ExHelper {
         }
 
         #[cfg(feature = "killer_moves")]
-        {
-            let x = tracking.killers.get(g.state.side_to_move, ply, mv);
-            if x > 0 { return KillerMove; }
+        if Some(*mv) == killers.0 || Some(*mv) == killers.0 {
+            return KillerMove;
         }
+
+
+        // #[cfg(feature = "killer_moves")]
+        // {
+        //     let x = tracking.killers.get(g.state.side_to_move, ply, mv);
+        //     if x > 0 { return KillerMove; }
+        // }
 
         #[cfg(feature = "history_heuristic")]
         {

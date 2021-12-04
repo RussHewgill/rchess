@@ -184,7 +184,7 @@ fn main() -> std::io::Result<()> {
                         parse_go(&mut explorer, params.clone().collect());
 
                         // let m = explorer.lock().unwrap().explore(&ts, depth).unwrap();
-                        let (m,stats) = explorer.explore(&ts, None);
+                        let (m,stats) = explorer.explore(&ts);
                         debug!("m = {:?}", m);
                         let (mv,score) = m.unwrap();
 

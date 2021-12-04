@@ -670,7 +670,8 @@ impl ExHelper {
 
                     #[cfg(feature = "killer_moves")]
                     if !mv.filter_all_captures() {
-                        tracking.killers.increment(g.state.side_to_move, ply, &mv);
+                        // tracking.killers.increment(g.state.side_to_move, ply, &mv);
+                        tracking.killers.store(g.state.side_to_move, ply, mv);
                     }
 
                     if moves_searched == 0 {
