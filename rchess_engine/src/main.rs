@@ -2051,13 +2051,13 @@ fn main9() {
 
     // let mv = Move::Capture { from: "H5".into(), to: "G4".into(), pc: Pawn, victim: Pawn };
 
-    // let t = 10.0;
-    let t = 4.0;
+    let t = 10.0;
+    // let t = 4.0;
     // let t = 0.5;
     // let t = 0.3;
 
-    // let n = 35;
-    let n = 6;
+    let n = 35;
+    // let n = 6;
 
     // let t0 = std::time::Instant::now();
     // // println!("g = {:?}", g);
@@ -2072,7 +2072,7 @@ fn main9() {
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(6);
-    ex.cfg.num_threads = Some(1);
+    // ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     // let mut only_moves = HashSet::default();

@@ -12,12 +12,12 @@ cutechess-cli \
     -tournament gauntlet \
     -concurrency 1 \
     -pgnout out_pgn.pgn \
-    -engine conf=rchess st=1.0 timemargin=100 \
-    -engine conf=stockfish st=1.0 timemargin=20 \
+    -engine conf=rchess st=0.5 timemargin=100 \
+    -engine conf=stockfish st=0.5 timemargin=20 \
     -each proto=uci \
     -openings file=tables/openings-10ply-100k.pgn policy=round \
     -repeat \
-    -rounds 100 \
+    -rounds 10 \
     -games 2 \
     -draw movenumber=40 movecount=4 score=8 \
     -resign movecount=4 score=500
