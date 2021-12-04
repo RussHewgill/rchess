@@ -55,6 +55,7 @@ pub mod tuning;
 pub mod texel;
 pub mod hashing;
 pub mod trans_table;
+pub mod killer_moves;
 
 pub mod opening_book;
 #[cfg(feature = "syzygy")]

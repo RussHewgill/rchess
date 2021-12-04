@@ -8,6 +8,7 @@ use crate::pruning::*;
 use crate::alphabeta::*;
 use crate::opening_book::*;
 use crate::pawn_hash_table::*;
+use crate::killer_moves::*;
 
 #[cfg(feature = "syzygy")]
 use crate::syzygy::SyzygyTB;

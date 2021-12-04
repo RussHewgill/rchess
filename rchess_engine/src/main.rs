@@ -1950,18 +1950,17 @@ fn main9() {
 
     // g.last_move = Some(Move::new_capture("D1", "D2", King, Queen));
 
-    let mvs = vec![
-        "h3h5",
-        "f2e1",
-        "h1g2",
-        "e1d2",
-        "g2g1",
-        "d2e1",
-        "g1g2",
-        "e1d2",
-    ];
-
-    g = g.run_moves(&ts, mvs);
+    // let mvs = vec![
+    //     "h3h5",
+    //     "f2e1",
+    //     "h1g2",
+    //     "e1d2",
+    //     "g2g1",
+    //     "d2e1",
+    //     "g1g2",
+    //     "e1d2",
+    // ];
+    // g = g.run_moves(&ts, mvs);
 
     eprintln!("g.to_fen() = {:?}", g.to_fen());
     eprintln!("g = {:?}", g);
