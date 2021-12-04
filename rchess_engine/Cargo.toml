@@ -36,7 +36,7 @@ default = [
     "late_move_reduction",
     # "history_heuristic",
     "killer_moves",
-    "futility_pruning",
+    # "futility_pruning",
 
     "qsearch",
 

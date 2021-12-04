@@ -1040,6 +1040,7 @@ fn main_nnue() {
     use rchess_engine_lib::brain::*;
     use rchess_engine_lib::brain::nnue::*;
     use rchess_engine_lib::brain::types::nnue::*;
+    use rchess_engine_lib::brain::types::*;
 
     let ts = Tables::read_from_file_def().unwrap();
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
@@ -1052,65 +1053,109 @@ fn main_nnue() {
 
     let ob = OpeningBook::read_from_file(&ts, "tables/Perfect_2021/BIN/Perfect2021.bin").unwrap();
 
-    let mut s = OBSelection::new_random_seeded(12345);
-    let (mut g,_) = ob.start_game(&ts, None, &mut s).unwrap();
+    // let mut s = OBSelection::new_random_seeded(12345);
+    // let (mut g,_) = ob.start_game(&ts, None, &mut s).unwrap();
 
-    // let fen = "7k/4pp2/8/8/8/8/4PP2/7K w - - 0 1";
-    let fen = "4k3/4p3/8/8/8/8/4P3/4K3 w - - 0 1";
-    let mut g = Game::from_fen(&ts, fen).unwrap();
+    // // let fen = "7k/4pp2/8/8/8/8/4PP2/7K w - - 0 1";
+    // let fen = "4k3/4p3/8/8/8/8/4P3/4K3 w - - 0 1";
+    // let mut g = Game::from_fen(&ts, fen).unwrap();
+    // eprintln!("g.to_fen() = {:?}", g.to_fen());
+    // eprintln!("g = {:?}", g);
 
-    let mut nn = NNUE::new(White, &mut rng);
-    // let mut nn = NNUE::new(Black, &mut rng);
-    // nn.save(nn_path).unwrap();
+    // let fen1 = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
+    // let fen2 = "r1bqk2r/ppp1nppp/3p1b2/3P4/2B1R3/5N2/PP3PPP/R1BQ2K1 w kq - 0 12";
+
+    // let fen1 = "r1bqk2r/ppp1nppp/3p1b2/3P4/2B1R3/5N2/PP3PPP/R1BQ2K1 w kq - 0 12"; // base
+    // let fen2 = "r1bqk2r/ppp1nppp/3p1b2/3P4/2B1R3/8/PP3PPP/R1BQ2K1 w kq - 0 12"; // no knight
+    // let fen3 = "r1bqk2r/ppp1nppp/3p1b2/3P4/2B1R3/2N2N2/PP3PPP/R1BQ2K1 w kq - 0 12"; // extra knight
+
+    let fen1 = "4k3/3ppp2/8/8/8/8/3PPP2/4K3 w - - 0 1"; // base
+    let fen2 = "4k3/2nppp2/8/8/8/8/3PPP2/4K3 w - - 0 1"; // enemy knight
+    let fen3 = "4k3/3ppp2/8/8/8/8/2NPPP2/4K3 w - - 0 1"; // + knight
+
+    let corrects = vec![0.0, -0.5, 0.5];
+
+    let mut g1 = Game::from_fen(&ts, fen1).unwrap();
+    let mut g2 = Game::from_fen(&ts, fen2).unwrap();
+    let mut g3 = Game::from_fen(&ts, fen3).unwrap();
 
     let n = 35;
     let t = 0.2;
 
-    let timesettings = TimeSettings::new_f64(0.0,t);
-    let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
-    ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+    // let timesettings = TimeSettings::new_f64(0.0,t);
+    // let mut ex1 = Explorer::new(g1.state.side_to_move, g1.clone(), n, timesettings);
+    // ex1.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+    // let mut ex2 = ex1.clone();
+    // ex2.update_game(g2.clone());
 
-    eprintln!("g.to_fen() = {:?}", g.to_fen());
-    eprintln!("g = {:?}", g);
+    // let mut nn = NNUE::new(White, &mut rng);
+    // let mut nn = NNUE::new(Black, &mut rng);
+
+    use rchess_engine_lib::brain::accumulator::*;
+
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
+    let mut nn = NNUE3::new((0.0, 1.0), &mut rng);
+
+    // nn.save(nn_path).unwrap();
 
     // init_logger();
 
-    nn.init_inputs(&g);
+    // nn.init_inputs(&g);
+    let e1 = nn.run_fresh(&g1);
+    let e2 = nn.run_fresh(&g2);
+    let e3 = nn.run_fresh(&g3);
+    eprintln!("e1,e2,e3 = {:.3}, {:.3}, {:.3}", e1, e2, e3);
 
-    let mut m0 = Score::MIN;
-    let mut m1 = Score::MAX;
+    // let mut m0 = Score::MIN;
+    // let mut m1 = Score::MAX;
 
-    loop {
-        if let (Some((mv,res)),_) = ex.explore(&ts) {
-            if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
-                g = g2;
-                ex.update_game(g.clone());
-                eprintln!("g = {:?}", g);
+    let eta = 0.1;
 
-                let nn_eval = nn.update_move(&g, true).unwrap();
+    let t0 = std::time::Instant::now();
+    for n in 0..500 {
+        nn.backprop(Some(&g1), corrects[0], eta);
+        nn.backprop(Some(&g2), corrects[1], eta);
+        nn.backprop(Some(&g3), corrects[2], eta);
 
-                m0 = m0.max(nn_eval);
-                m1 = m1.min(nn_eval);
-
-                eprintln!("res.score = {:?}", res.score);
-                eprintln!("nn_eval   = {:?}", nn_eval);
-
-                // eprintln!("(m0,m1) = {:?}", (m0,m1));
-
-                // let err = (res.score - nn_eval).checked_pow(2).unwrap();
-                // eprintln!("err = {:?}", err);
-
-            } else {
-                println!("wat 0: {:?}", mv);
-                break;
-            }
-        } else {
-            println!("wat 1");
-            break;
+        if n % 50 == 0 {
+            let e1 = nn.run_fresh(&g1);
+            let e2 = nn.run_fresh(&g2);
+            let e3 = nn.run_fresh(&g3);
+            eprintln!("e1,e2,e3 = {:>8?}, {:>8?}, {:>8?}", e1, e2, e3);
         }
+
     }
+    let t1 = t0.elapsed().as_secs_f64();
+    eprintln!("finished in {:.3} seconds", t1);
 
+    let e1 = nn.run_fresh(&g1);
+    let e2 = nn.run_fresh(&g2);
+    let e3 = nn.run_fresh(&g3);
+    eprintln!("e1,e2,e3 = {:>8?}, {:>8?}, {:>8?}", e1, e2, e3);
 
+    // loop {
+    //     if let (Some((mv,res)),_) = ex.explore(&ts) {
+    //         if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
+    //             g = g2;
+    //             ex.update_game(g.clone());
+    //             eprintln!("g = {:?}", g);
+    //             let nn_eval = nn.update_move(&g, true).unwrap();
+    //             m0 = m0.max(nn_eval);
+    //             m1 = m1.min(nn_eval);
+    //             eprintln!("res.score = {:?}", res.score);
+    //             eprintln!("nn_eval   = {:?}", nn_eval);
+    //             // eprintln!("(m0,m1) = {:?}", (m0,m1));
+    //             // let err = (res.score - nn_eval).checked_pow(2).unwrap();
+    //             // eprintln!("err = {:?}", err);
+    //         } else {
+    //             println!("wat 0: {:?}", mv);
+    //             break;
+    //         }
+    //     } else {
+    //         println!("wat 1");
+    //         break;
+    //     }
+    // }
 
 }
 
@@ -1494,6 +1539,7 @@ fn main_nn() {
 
     let lr = 0.1;
     // let mut nn = Network::new(2);
+    use rchess_engine_lib::brain::types::g_networks::*;
     let mut nn0 = Network::new_range(1, (0.,1.));
 
     // let mut nn = DNetwork::<f32,2,1>::new_range(vec![2,3,1], (0.,1.));

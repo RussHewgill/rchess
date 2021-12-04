@@ -5,12 +5,13 @@ pub mod nnue;
 pub mod matrix;
 pub mod trainer;
 pub mod gensfen;
-// pub mod accumulator;
+pub mod accumulator;
 pub mod binpack;
 
 use crate::types::*;
 use crate::brain::types::*;
 use crate::brain::matrix::*;
+use crate::brain::types::g_networks::*;
 
 use ndarray::prelude::*;
 
@@ -108,6 +109,7 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
         (pred,activations,zs)
     }
 
+    /// doesn't work ??
     fn backprop_mut(
         &mut self,
         inputs:         Vec<&DVector<f32>>,
@@ -375,14 +377,14 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
 
     fn act_fn(x: f32) -> f32 {
         // x.tanh()
-        // sigmoid(x)
-        Self::relu(x)
+        sigmoid(x)
+        // Self::relu(x)
     }
 
     fn act_fn_d(x: f32) -> f32 {
         // 1.0 - x.tanh().powi(2)
-        // sigmoid_deriv(x)
-        Self::relu_d(x)
+        sigmoid_deriv(x)
+        // Self::relu_d(x)
     }
 
     // fn cost_fn_delta(z: f32, a: f32, y: f32)

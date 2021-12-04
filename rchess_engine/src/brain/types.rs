@@ -95,7 +95,6 @@ pub mod nnue {
     impl NNUE {
 
         fn def_inputs() -> CsMat<i8> {
-            // sprs::CsMat::empty(sprs::CSC, NNUE_INPUT)
             sprs::CsMat::zero((NNUE_INPUT,1)).into_csc()
         }
 
@@ -191,7 +190,7 @@ pub mod nnue {
 
 }
 
-pub mod nnue2 {
+mod nnue2 {
 
     use crate::tables::*;
     use crate::types::*;
@@ -471,7 +470,6 @@ where T: nalgebra::Scalar + PartialEq + Serialize,
     pub biases:        Vec<DVector<T>>,
 }
 
-// impl<const IS: usize, const HS: usize, const OS: usize> DNetwork<f32,IS,HS,OS> {
 impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
     pub fn new(sizes: Vec<usize>) -> Self {
         Self::_new(sizes, (0.0, 1.0), Some(18105974836011991331))
@@ -531,106 +529,107 @@ impl<const IS: usize, const OS: usize> DNetwork<f32,IS,OS> {
 
 }
 
-// pub type GMatrix<T,const R: usize,const C: usize> = na::OMatrix<T,Const<R>,Const<C>>;
-// pub type GVector<T,const D: usize> = na::OMatrix<T,Const<D>,na::U1>;
+pub mod g_networks {
+    use super::*;
 
-// #[derive(Debug,Clone,PartialEq,Serialize,Deserialize)]
-#[derive(Debug,Clone,Serialize,Deserialize)]
-pub struct GNetwork<T, const IS: usize, const HS: usize, const OS: usize>
-where T: nalgebra::Scalar + PartialEq + Serialize,
-{
-    pub n_hidden:         usize,
+    #[derive(Debug,Clone,Serialize,Deserialize)]
+    pub struct GNetwork<T, const IS: usize, const HS: usize, const OS: usize>
+    where T: nalgebra::Scalar + PartialEq + Serialize,
+    {
+        pub n_hidden:         usize,
 
-    pub weights_in:       SMatrix<T, HS, IS>,
-    pub weights:          Vec<SMatrix<T, HS, HS>>,
-    pub weights_out:      SMatrix<T, OS, HS>,
+        pub weights_in:       SMatrix<T, HS, IS>,
+        pub weights:          Vec<SMatrix<T, HS, HS>>,
+        pub weights_out:      SMatrix<T, OS, HS>,
 
-    pub biases_in:        SVector<T, HS>,
-    pub biases:           Vec<SVector<T, HS>>,
-    pub biases_out:       SVector<T, OS>,
+        pub biases_in:        SVector<T, HS>,
+        pub biases:           Vec<SVector<T, HS>>,
+        pub biases_out:       SVector<T, OS>,
 
-}
+    }
 
-impl<T, const IS: usize, const HS: usize, const OS: usize> GNetwork<T,IS,HS,OS>
-where T: nalgebra::Scalar + PartialEq + Serialize + DeserializeOwned
-{
-    pub fn write_to_file(&self, path: &str, backup: Option<&str>) -> std::io::Result<()> {
-        use std::io::Write;
-        let b: Vec<u8> = bincode::serialize(&self).unwrap();
-        if let Some(backup) = backup {
-            std::fs::rename(path, backup)?;
+    impl<T, const IS: usize, const HS: usize, const OS: usize> GNetwork<T,IS,HS,OS>
+    where T: nalgebra::Scalar + PartialEq + Serialize + DeserializeOwned
+    {
+        pub fn write_to_file(&self, path: &str, backup: Option<&str>) -> std::io::Result<()> {
+            use std::io::Write;
+            let b: Vec<u8> = bincode::serialize(&self).unwrap();
+            if let Some(backup) = backup {
+                std::fs::rename(path, backup)?;
+            }
+            let mut f = std::fs::File::create(&path)?;
+            f.write_all(&b)
         }
-        let mut f = std::fs::File::create(&path)?;
-        f.write_all(&b)
-    }
 
-    pub fn read_from_file(path: &str) -> std::io::Result<Self> {
-        let f = std::fs::read(&path)?;
-        let nn: Self = bincode::deserialize(&f).unwrap();
-        Ok(nn)
-    }
-}
-
-// pub type Network = GNetwork<f32, 2, 3, 1>;
-pub type Network = GNetwork<f32, 2, 3, 1>;
-
-pub type MNNetwork = GNetwork<f32, 784, 16, 10>;
-
-impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
-
-    pub fn new(n_hidden: usize) -> Self {
-        Self::_new(n_hidden, (0.0, 1.0), Some(18105974836011991331))
-    }
-
-    pub fn new_range(n_hidden: usize, mm: (f32,f32)) -> Self {
-        Self::_new(n_hidden, mm, Some(18105974836011991331))
-    }
-
-    pub fn _new(n_hidden: usize, mm: (f32,f32), seed: Option<u64>) -> Self {
-        assert!(n_hidden > 0);
-
-        let mut rng: StdRng = if let Some(seed) = seed {
-            // SeedableRng::seed_from_u64(18105974836011991331)
-            SeedableRng::seed_from_u64(seed)
-        } else {
-            // SeedableRng::seed_from_u64(18105974836011991331)
-            let mut r = rand::thread_rng();
-            SeedableRng::from_rng(r).unwrap()
-        };
-
-        // let dist = Uniform::new(0.0f32,1.0);
-        let dist = Uniform::new(mm.0,mm.1);
-
-        let weights_in = SMatrix::<f32,HS,IS>::from_distribution(&dist, &mut rng);
-        let mut weights = vec![];
-        (0..n_hidden-1).for_each(|x| {
-            let a = SMatrix::<f32,HS,HS>::from_distribution(&dist, &mut rng);
-            weights.push(a);
-        });
-        let weights_out = SMatrix::<f32,OS,HS>::from_distribution(&dist, &mut rng);
-
-        let biases_in = SVector::<f32,HS>::from_distribution(&dist, &mut rng);
-        let mut biases = vec![];
-        (0..n_hidden-1).for_each(|x| {
-            let a = SVector::<f32,HS>::from_distribution(&dist, &mut rng);
-            biases.push(a);
-        });
-        let biases_out = SVector::<f32,OS>::from_distribution(&dist, &mut rng);
-
-        Self {
-            n_hidden,
-
-            weights_in,
-            weights,
-            weights_out,
-
-            biases_in,
-            biases,
-            biases_out,
+        pub fn read_from_file(path: &str) -> std::io::Result<Self> {
+            let f = std::fs::read(&path)?;
+            let nn: Self = bincode::deserialize(&f).unwrap();
+            Ok(nn)
         }
     }
+
+    // pub type Network = GNetwork<f32, 2, 3, 1>;
+    pub type Network = GNetwork<f32, 2, 3, 1>;
+
+    pub type MNNetwork = GNetwork<f32, 784, 16, 10>;
+
+    impl<const IS: usize, const HS: usize, const OS: usize> GNetwork<f32,IS,HS,OS> {
+
+        pub fn new(n_hidden: usize) -> Self {
+            Self::_new(n_hidden, (0.0, 1.0), Some(18105974836011991331))
+        }
+
+        pub fn new_range(n_hidden: usize, mm: (f32,f32)) -> Self {
+            Self::_new(n_hidden, mm, Some(18105974836011991331))
+        }
+
+        pub fn _new(n_hidden: usize, mm: (f32,f32), seed: Option<u64>) -> Self {
+            assert!(n_hidden > 0);
+
+            let mut rng: StdRng = if let Some(seed) = seed {
+                // SeedableRng::seed_from_u64(18105974836011991331)
+                SeedableRng::seed_from_u64(seed)
+            } else {
+                // SeedableRng::seed_from_u64(18105974836011991331)
+                let mut r = rand::thread_rng();
+                SeedableRng::from_rng(r).unwrap()
+            };
+
+            // let dist = Uniform::new(0.0f32,1.0);
+            let dist = Uniform::new(mm.0,mm.1);
+
+            let weights_in = SMatrix::<f32,HS,IS>::from_distribution(&dist, &mut rng);
+            let mut weights = vec![];
+            (0..n_hidden-1).for_each(|x| {
+                let a = SMatrix::<f32,HS,HS>::from_distribution(&dist, &mut rng);
+                weights.push(a);
+            });
+            let weights_out = SMatrix::<f32,OS,HS>::from_distribution(&dist, &mut rng);
+
+            let biases_in = SVector::<f32,HS>::from_distribution(&dist, &mut rng);
+            let mut biases = vec![];
+            (0..n_hidden-1).for_each(|x| {
+                let a = SVector::<f32,HS>::from_distribution(&dist, &mut rng);
+                biases.push(a);
+            });
+            let biases_out = SVector::<f32,OS>::from_distribution(&dist, &mut rng);
+
+            Self {
+                n_hidden,
+
+                weights_in,
+                weights,
+                weights_out,
+
+                biases_in,
+                biases,
+                biases_out,
+            }
+        }
+    }
 }
 
+#[cfg(feature = "nope")]
 mod network2 {
 
     use ndarray::prelude::*;

@@ -423,18 +423,15 @@ impl ExHelper {
 
         let mut search_pv = true;
         let mut skip_pv   = false;
-        #[cfg(feature = "futility_pruning")]
-        let mut can_futility_prune = false;
 
-        if depth <= 3
+        #[cfg(feature = "futility_pruning")]
+        let can_futility_prune = if depth <= 3
             && !is_pv_node
             && g.state.checkers.is_empty()
             && alpha < STALEMATE_VALUE - 100 {
                 let static_eval = self.cfg.evaluate(ts, g, &self.ph_rw);
-                if static_eval + (200 * depth as Score) <= alpha {
-                    can_futility_prune = true;
-                }
-            }
+                static_eval + (200 * depth as Score) <= alpha
+            } else { false };
 
         let mut moves_searched = 0;
         let mut val = i32::MIN + 200;
