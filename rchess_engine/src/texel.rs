@@ -203,6 +203,7 @@ pub fn texel_optimize_once(
     mut best_error:              &mut f64,
     k:                           Option<f64>,
     delta:                       Score,
+    print:                       bool,
 ) {
 
     // let mut arr_mut: Vec<&mut Score> = if mid {
@@ -271,11 +272,12 @@ pub fn texel_optimize_once(
         }
 
 
-        if n % (nn / 10) == 0 {
+        if print && n % (nn / 10) == 0 {
             let t1 = t0.elapsed().as_secs_f64();
             eprintln!("texel_optimize {} in {:.3} seconds, {:.2} loops/sec", n, t1, n as f64 / t1);
             eprintln!("best_error = {:.5}", best_error);
         }
+
     }
 
 }
@@ -305,6 +307,9 @@ pub fn texel_optimize(
     // let arr_end_mut = exhelper.cfg.eval_params_end.to_arr_mut();
     // let arr_mid_mut = exhelper.cfg.eval_params_mid.to_arr_mut();
 
+    let print = false;
+    // let print = true;
+
     println!("starting texel_optimize...");
     // eprintln!("arr_mid.len() = {:?}", arr_mid.len());
     let t0 = std::time::Instant::now();
@@ -315,10 +320,10 @@ pub fn texel_optimize(
         // let inputs_slice = inputs.choose_multiple(&mut rng, )
 
         texel_optimize_once(
-            ts, inputs, &mut exhelper, ignore_weights, count, true, &mut best_error, k, delta);
+            ts, inputs, &mut exhelper, ignore_weights, count, true, &mut best_error, k, delta, print);
 
         texel_optimize_once(
-            ts, inputs, &mut exhelper, ignore_weights, count, false, &mut best_error, k, delta);
+            ts, inputs, &mut exhelper, ignore_weights, count, false, &mut best_error, k, delta, print);
 
         EvalParams::save_evparams(
             &exhelper.cfg.eval_params_mid,
@@ -395,6 +400,7 @@ pub fn average_eval_error(
 
     // const K: f64 = 1.0;
 
+    #[inline]
     fn sigmoid(s: f64, k: f64) -> f64 {
         1.0 / (1.0 + 10.0f64.powf(-k * s / 400.0))
     }

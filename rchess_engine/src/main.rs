@@ -793,16 +793,16 @@ fn main_tuning() {
 
     let fen_path = "./training_data/tuner/quiet-labeled.epd";
 
-    // let count = Some(1000);
+    // let count = Some(100000);
     let count = None; // 725 k
 
     let ps = load_labeled_fens(&ts, &mut exhelper, count, fen_path).unwrap();
 
     eprintln!("ps.len() = {:?}", ps.len());
 
-    // let k = 1.0;
+    let k = 1.0;
     // let k: f64 = -0.1111f64;
-    let k = 1.3;
+    // let k = 1.3;
     // let k = find_k(&ts, &ps, &exhelper, true);
     eprintln!("k = {:?}", k);
 
@@ -818,7 +818,7 @@ fn main_tuning() {
         return;
     }
 
-    let count = 10;
+    let count = 1000;
 
     let (ev_mid2,ev_end2) = texel_optimize(
         &ts,
