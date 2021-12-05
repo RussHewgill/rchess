@@ -738,11 +738,11 @@ fn main_tuning() {
         return;
     }
 
-    let ev_mid = EvalParams::default();
-    let mut ev_end = EvalParams::default();
-    // let ev_mid = EvalParams::empty();
-    // let mut ev_end = EvalParams::empty();
-    ev_end.mid = false;
+    // let ev_mid = EvalParams::default();
+    // let mut ev_end = EvalParams::default();
+    // // let ev_mid = EvalParams::empty();
+    // // let mut ev_end = EvalParams::empty();
+    // ev_end.mid = false;
 
     // EvalParams::save_evparams(&ev_mid, &ev_end, evpath).unwrap();
     // return;
@@ -751,7 +751,7 @@ fn main_tuning() {
     // ev0.psqt.print_table(Knight).unwrap();
     // println!();
 
-    // let (ev_mid,ev_end) = EvalParams::read_evparams(evpath).unwrap();
+    let (ev_mid,ev_end) = EvalParams::read_evparams(evpath).unwrap();
 
     // ev_mid.psqt.print_table(Knight).unwrap();
     // return;
@@ -813,8 +813,8 @@ fn main_tuning() {
     eprintln!("finished one eval_error in {:.3} seconds", t1);
 
     if std::path::Path::new(&evpath).exists() {
-        // std::fs::rename(&path, &format!("{}", path))?;
-        eprintln!("evparams.bin already exists, exiting");
+        std::fs::rename(&evpath, &format!("{}.bak", evpath)).unwrap();
+        eprintln!("evparams.bin already exists, renaming to evparams.bin.bak");
         return;
     }
 
