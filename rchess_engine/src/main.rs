@@ -723,18 +723,23 @@ fn main_tuning() {
 
     let evpath = "/home/me/code/rust/rchess/evparams.bin";
 
-    if !true {
+    if true {
 
-        let mut ev = EvalParams::default();
-
-        ev.psqt.print_table(Rook).unwrap();
+        // let mut ev = EvalParams::default();
+        // ev.psqt.print_table(Rook).unwrap();
+        // println!();
 
         let (ev_mid,ev_end) = EvalParams::read_evparams(evpath).unwrap();
-        println!();
 
-        eprintln!("ev == ev_mid = {:?}", ev == ev_mid);
+        for pc in Piece::iter_pieces() {
+            eprintln!("{:?}", pc);
+            // ev_mid.psqt.print_table(pc).unwrap();
+            ev_end.psqt.print_table(pc).unwrap();
+            println!();
+        }
+        // ev_mid.psqt.print_table(Rook).unwrap();
 
-        ev_mid.psqt.print_table(Rook).unwrap();
+        // eprintln!("ev == ev_mid = {:?}", ev == ev_mid);
 
         return;
     }
@@ -1338,15 +1343,70 @@ fn main_nn() {
 
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
-    const IS: usize = 769;
-    const OS: usize = 1;
-    const HL: usize = 1;
+    // const IS: usize = 769;
+    // const OS: usize = 1;
+    // const HL: usize = 1;
 
     // let hidden_sizes = vec![128];
     // let mut nn = NNUE3::<f32,IS,OS,HL>::new(hidden_sizes, &mut rng);
     // // eprintln!("nn.weights.len() = {:?}", nn.weights.len());
     // eprintln!("nn.activations[0].shape() = {:?}", nn.activations[0].shape());
 
+    use rchess_engine_lib::brain::sf_compat::*;
+    // let mut nn = read_nnue(&path);
+
+    _main_nn().unwrap();
+
+}
+
+#[allow(unreachable_code)]
+fn _main_nn() -> std::io::Result<()> {
+
+    use std::io;
+    use io::Read;
+    use std::path::Path;
+
+    use byteorder::{ReadBytesExt, LittleEndian};
+
+    // let path = "./nn-c3ca321c51c9.nnue";
+    let path = "./nn-cdf1785602d6.nnue";
+
+    // let c0 = Coord::from("E1");
+    // let k: u8 = c0.into();
+    // eprintln!("k = {:?}", k);
+    // let k0 = orient(k, Black, Coord::from("E2").into());
+    // let k0 = Coord::from(k0);
+    // eprintln!("k0 = {:?}", k0);
+    // return Ok(());
+
+    let mut f = std::fs::File::open(path)?;
+    let mut rdr = io::BufReader::new(f);
+
+    let version   = rdr.read_u32::<LittleEndian>()?;
+    eprintln!("version = {:#8x}", version);
+
+    let hashvalue = rdr.read_u32::<LittleEndian>()?;
+    eprintln!("hashvalue = {:#8x}", hashvalue);
+
+    let size      = rdr.read_u32::<LittleEndian>()?;
+    eprintln!("size = {:?}", size);
+
+    let mut desc = vec![0u8; size as usize];
+    rdr.read_exact(&mut desc)?;
+    let desc = String::from_utf8_lossy(&desc);
+    eprintln!("desc = {:?}", desc);
+
+    let header = rdr.read_u32::<LittleEndian>()?;
+    eprintln!("header = {:#8x}", header);
+
+    let dims_in = 64 * (11 * 64) / 2;
+    // let dims_half = 
+    // let dims_out = dims_half * 2;
+
+    let mut biases = vec![0u8; 0];
+    rdr.read_exact(&mut biases)?;
+
+    Ok(())
 }
 
 #[allow(unreachable_code)]
