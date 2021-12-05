@@ -274,7 +274,7 @@ pub fn texel_optimize_once(
         if n % (nn / 10) == 0 {
             let t1 = t0.elapsed().as_secs_f64();
             eprintln!("texel_optimize {} in {:.3} seconds, {:.2} loops/sec", n, t1, n as f64 / t1);
-            eprintln!("best_error = {:?}", best_error);
+            eprintln!("best_error = {:.5}", best_error);
         }
     }
 
