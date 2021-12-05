@@ -676,7 +676,7 @@ impl Game {
 
         if kingside {
             // let rook: Coord = if col == White { "H1".into() } else { "H8".into() };
-            let rook: Coord = if col == White { Coord(7,0) } else { Coord(7,7) };
+            let rook: Coord = if col == White { Coord::new_const(7,0) } else { Coord::new_const(7,7) };
             if let Some((_,Rook)) = self.get_at(rook) {
                 let between = ts.between_exclusive(king, rook);
 
@@ -691,8 +691,8 @@ impl Game {
                     if go {
                         // let to = if col == White { "G1".into() } else { "G8".into() };
                         // let rook_to = if col == White { "F1".into() } else { "F8".into() };
-                        let to = if col == White { Coord(6,0) } else { Coord(6,7) };
-                        let rook_to = if col == White { Coord(5,0) } else { Coord(5,7) };
+                        let to = if col == White { Coord::new_const(6,0) } else { Coord::new_const(6,7) };
+                        let rook_to = if col == White { Coord::new_const(5,0) } else { Coord::new_const(5,7) };
                         out.push(Move::Castle { from: king, to, rook_from: rook, rook_to });
                     }
                 }
@@ -701,7 +701,7 @@ impl Game {
         }
         if queenside {
             // let rook: Coord = if col == White { "A1".into() } else { "A8".into() };
-            let rook: Coord = if col == White { Coord(0,0) } else { Coord(0,7) };
+            let rook: Coord = if col == White { Coord::new_const(0,0) } else { Coord::new_const(0,7) };
             if let Some((_,Rook)) = self.get_at(rook) {
                 let between = ts.between_exclusive(king, rook);
 
@@ -720,8 +720,8 @@ impl Game {
                     if go {
                         // let to      = if col == White { "C1".into() } else { "C8".into() };
                         // let rook_to = if col == White { "D1".into() } else { "D8".into() };
-                        let to      = if col == White { Coord(2,0) } else { Coord(2,7) };
-                        let rook_to = if col == White { Coord(3,0) } else { Coord(3,7) };
+                        let to      = if col == White { Coord::new_const(2,0) } else { Coord::new_const(2,7) };
+                        let rook_to = if col == White { Coord::new_const(3,0) } else { Coord::new_const(3,7) };
                         out.push(Move::Castle { from: king, to, rook_from: rook, rook_to });
                     }
                 }
@@ -774,7 +774,7 @@ impl Game {
 
         let p0 = self.get(King, col).bitscan();
         // if p0 == 64 { return vec![]; }
-        if p0 == 64 { return out; }
+        // if p0 == 64 { return out; }
         let moves = *ts.get_king(p0);
 
         let oc = self.all_occupied();
@@ -934,9 +934,8 @@ impl Game {
             }
         }
 
-        for p0 in ps.into_iter() {
-            let f  = BitBoard::index_bit(p0);
-            let bb = BitBoard::empty().flip(f);
+        for f in ps.into_iter() {
+            let bb = BitBoard::single(f);
             let mut cs = (bb.shift_dir(dw) & self.get_color(!side))
                 | (bb.shift_dir(de) & self.get_color(!side));
             while cs.0 != 0 {
@@ -1009,9 +1008,8 @@ impl Game {
             });
         }
 
-        ps.into_iter().for_each(|p0| {
-            let f  = BitBoard::index_bit(p0);
-            let bb = BitBoard::empty().flip(f);
+        ps.into_iter().for_each(|f| {
+            let bb = BitBoard::single(f);
             let mut cs = (bb.shift_dir(dw) & self.get_color(!col))
                 | (bb.shift_dir(de) & self.get_color(!col));
             while cs.0 != 0 {
@@ -1100,9 +1098,8 @@ impl Game {
             });
         }
 
-        ps.into_iter().for_each(|p0| {
-            let f  = BitBoard::index_bit(p0);
-            let bb = BitBoard::empty().flip(f);
+        ps.into_iter().for_each(|f| {
+            let bb = BitBoard::single(f);
             let mut cs = (bb.shift_dir(dw) & self.get_color(!col))
                 | (bb.shift_dir(de) & self.get_color(!col));
             while cs.0 != 0 {

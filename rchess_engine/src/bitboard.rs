@@ -10,7 +10,7 @@ use evmap_derive::ShallowCopy;
 pub struct BitBoard(pub u64);
 
 impl Iterator for BitBoard {
-    type Item = u8;
+    type Item = Coord;
     fn next(&mut self) -> Option<Self::Item> {
         if self.is_empty() {
             None
@@ -91,11 +91,12 @@ impl BitBoard {
         b.is_not_empty()
     }
 
-    pub fn get(&self, c: Coord) -> bool {
-        let p = Self::index_square(c);
-        let k = (self.0 >> p) & 1;
-        k == 1
-    }
+    // pub fn get(&self, c: Coord) -> bool {
+    //     // let p = Self::index_square(c);
+    //     let p = c.inner();
+    //     let k = (self.0 >> p) & 1;
+    //     k == 1
+    // }
 
 }
 
@@ -131,13 +132,15 @@ impl BitBoard {
     }
 
     pub fn flip(&self, c: Coord) -> Self {
-        let p = Self::index_square(c);
+        // let p = Self::index_square(c);
+        let p = c.inner();
         let k = 1u64.overflowing_shl(p as u32).0;
         BitBoard(self.0 | k)
     }
 
     pub fn flip_mut(&mut self, c: Coord) {
-        let p = Self::index_square(c);
+        // let p = Self::index_square(c);
+        let p = c.inner();
         // eprintln!("c, p = {:?}, {:?}", c, p);
         // let k = 1 << p;
         let k = 1u64.overflowing_shl(p as u32).0;
@@ -232,7 +235,7 @@ impl BitBoard {
         }
     }
 
-    pub fn bitscan_safe(&self) -> Option<u8> {
+    pub fn bitscan_safe(&self) -> Option<Coord> {
         if self.is_empty() {
             None
         } else {
@@ -240,10 +243,11 @@ impl BitBoard {
         }
     }
 
-    pub fn bitscan(&self) -> u8 {
+    pub fn bitscan(&self) -> Coord {
         // Bitscan Forward
         // self.0.leading_zeros()
-        self.0.trailing_zeros() as u8
+        // self.0.trailing_zeros() as u8
+        Coord::new_int(self.0.trailing_zeros() as u8)
 
         // // XXX: No Improvement
         // std::intrinsics::cttz(self.0) as u8
@@ -251,38 +255,39 @@ impl BitBoard {
     }
 
     pub fn bitscan_isolate(&self) -> Self {
-        let x = self.bitscan() as u32;
-        Self::single(x.into())
+        // let x = self.bitscan() as u32;
+        // Self::single(x.into())
+        Self::single(self.bitscan())
     }
 
-    pub fn bitscan_rev_isolate(&self) -> Self {
-        let x = self.bitscan_rev() as u32;
-        Self::single(x.into())
-    }
+    // pub fn bitscan_rev_isolate(&self) -> Self {
+    //     let x = self.bitscan_rev() as u32;
+    //     Self::single(x.into())
+    // }
 
-    pub fn bitscan_reset(&self) -> (Self, u8) {
+    pub fn bitscan_reset(&self) -> (Self, Coord) {
         let x = self.bitscan();
         // (*self & BitBoard(self.0.overflowing_sub(1).0),x)
-        (*self & !Self::single((x as u32).into()),x)
+        (*self & !Self::single((x).into()),x)
     }
 
-    pub fn bitscan_reset_mut(&mut self) -> u8 {
+    pub fn bitscan_reset_mut(&mut self) -> Coord {
         let (b,x) = self.bitscan_reset();
         *self = b;
         x
     }
 
-    pub fn bitscan_rev(&self) -> u8 {
+    pub fn bitscan_rev(&self) -> Coord {
         // Bitscan Reverse
-        63 - self.0.leading_zeros() as u8
+        Coord::new_int(63 - self.0.leading_zeros() as u8)
     }
 
-    pub fn bitscan_rev_reset(&self) -> (Self, u8) {
+    pub fn bitscan_rev_reset(&self) -> (Self, Coord) {
         let x = self.bitscan_rev();
-        (*self & !Self::single((x as u32).into()),x)
+        (*self & !Self::single((x).into()),x)
     }
 
-    pub fn bitscan_rev_reset_mut(&mut self) -> u8 {
+    pub fn bitscan_rev_reset_mut(&mut self) -> Coord {
         let (b,x) = self.bitscan_rev_reset();
         *self = b;
         x
@@ -388,41 +393,46 @@ impl BitBoard {
     // pub fn rank<T: Into<Coord>>(sq: T) -> u8 {
     // }
 
-    pub fn relative_rank<T: Into<u8>>(side: Color, sq: T) -> u8 {
+    pub fn relative_rank(side: Color, sq: Coord) -> u8 {
         match side {
-            White => Self::index_rank(sq.into()),
-            Black => 7 - Self::index_rank(sq.into()),
+            // White => Self::index_rank(sq.into()),
+            // Black => 7 - Self::index_rank(sq.into()),
+            White => sq.rank(),
+            Black => 7 - sq.rank(),
         }
     }
 
-    pub fn relative_square<T: Into<u8> + Copy>(side: Color, sq: T) -> u8 {
-        Self::_index_square(Self::relative_rank(side, sq), Self::index_file(sq.into()))
+    // pub fn relative_square<T: Into<u8> + Copy>(side: Color, sq: T) -> u8 {
+    //     Self::_index_square(Self::relative_rank(side, sq), Self::index_file(sq.into()))
+    // }
+    pub fn relative_square(side: Color, sq: Coord) -> Coord {
+        Coord::new(Self::relative_rank(side, sq), sq.file())
     }
 
-    pub fn index_square(c: Coord) -> u8 {
-        // Little Endian Rank File Mapping
-        // Least Significant File Mapping
-        // let p = c.0 as u8 + 8 * c.1 as u8;
-        // p
-        c.inner()
-    }
+    // pub fn index_square(c: Coord) -> u8 {
+    //     // Little Endian Rank File Mapping
+    //     // Least Significant File Mapping
+    //     // let p = c.0 as u8 + 8 * c.1 as u8;
+    //     // p
+    //     c.inner()
+    // }
 
-    pub fn _index_square(rank: u8, file: u8) -> u8 {
-        rank * 8 + file
-    }
+    // pub fn _index_square(rank: u8, file: u8) -> u8 {
+    //     rank * 8 + file
+    // }
 
-    pub fn index_bit<T: Into<u8> + Copy>(s: T) -> Coord {
-        Coord::new(Self::index_file(s.into()) as u8,Self::index_rank(s.into()) as u8)
-        // Coord
-    }
+    // pub fn index_bit<T: Into<u8> + Copy>(s: T) -> Coord {
+    //     Coord::new(Self::index_file(s.into()) as u8,Self::index_rank(s.into()) as u8)
+    //     // Coord
+    // }
 
-    pub fn index_rank(s: u8) -> u8 {
-        s >> 3
-    }
+    // pub fn index_rank(s: u8) -> u8 {
+    //     s >> 3
+    // }
 
-    pub fn index_file(s: u8) -> u8 {
-        s & 7
-    }
+    // pub fn index_file(s: u8) -> u8 {
+    //     s & 7
+    // }
 
 }
 

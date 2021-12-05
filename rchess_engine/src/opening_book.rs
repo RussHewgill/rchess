@@ -244,8 +244,8 @@ impl ABKEntry {
         let b1 = buf[1];
         assert!(b0 < 64);
         assert!(b1 < 64);
-        let from      = BitBoard::index_bit(b0);
-        let to        = BitBoard::index_bit(b1);
+        let from      = Coord::new_int(b0);
+        let to        = Coord::new_int(b1);
         let promotion = buf[2] as i8;
         let priority  = buf[3];
 

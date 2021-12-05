@@ -37,7 +37,7 @@ impl Zobrist {
         for &side in [White,Black].iter() {
             g.get(Pawn, side).into_iter()
                 .for_each(|sq| {
-                    out ^= ts.zobrist_tables.get_piece(Pawn, side)[sq as usize];
+                    out ^= ts.zobrist_tables.get_piece(Pawn, side)[sq.inner() as usize];
                 });
         }
 
@@ -52,7 +52,7 @@ impl Zobrist {
             for pc in Piece::iter_pieces() {
                 let b = g.get(pc,col);
                 for sq in b.into_iter() {
-                    out ^= zb.get_piece(pc, col)[sq as usize];
+                    out ^= zb.get_piece(pc, col)[sq.inner() as usize];
                 }
             }
         }

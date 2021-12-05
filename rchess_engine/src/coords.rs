@@ -1,6 +1,7 @@
 
 use crate::types::*;
 use crate::tables::*;
+pub use self::impls::*;
 
 use evmap_derive::ShallowCopy;
 
@@ -31,9 +32,12 @@ pub enum D {
 pub struct Coord(u8);
 
 impl Coord {
-    pub fn new_u8(x: u8) -> Self {
-        assert!(x < 64);
-        Self(x)
+
+    pub fn new_int<T: PrimInt + AsPrimitive<u8>>(sq: T) -> Self {
+        // assert!(x < 64);
+        // Self(x.into())
+        let x: u8 = sq.as_();
+        Coord::new_int(x)
     }
 
     pub fn new(file: u8, rank: u8) -> Self {
@@ -54,6 +58,14 @@ impl Coord {
         (self.file(), self.rank())
     }
 
+    // pub fn 
+
+}
+
+impl std::convert::From<&str> for Coord {
+    fn from(sq: &str) -> Self {
+        Coord::from_str(sq).unwrap()
+    }
 }
 
 // pub type PackedCoords = Integer<u8, packed_bits::Bits::<6>>;
@@ -158,56 +170,109 @@ impl Coord {
 
 }
 
-impl std::convert::From<u32> for Coord {
-    fn from(sq: u32) -> Self {
-        // assert!(sq < 64);
-        BitBoard::index_bit(sq as u8)
+use num_traits::{AsPrimitive,PrimInt};
+
+mod impls {
+    use super::*;
+
+    macro_rules! impl_conv {
+        ($t:ty) => {
+            impl std::convert::From<$t> for Coord {
+                fn from(sq: $t) -> Self {
+                    // assert!(sq < 64);
+                    Coord(sq as u8)
+                }
+            }
+            impl std::convert::From<Coord> for $t {
+            // impl std::convert::From<Coord> for usize {
+                fn from(c: Coord) -> Self {
+                    // assert!(sq < 64);
+                    // Coord(sq as u8)
+                    c.inner() as $t
+                }
+            }
+        };
     }
+
+    impl_conv!(usize);
+    impl_conv!(u8);
+    impl_conv!(u32);
+
 }
 
-impl std::convert::From<u16> for Coord {
-    fn from(sq: u16) -> Self {
-        // assert!(sq < 64);
-        BitBoard::index_bit(sq as u8)
-    }
-}
+// impl<T: PrimInt + AsPrimitive<u8>> std::convert::From<T> for Coord {
+//     fn from(sq: T) -> Self {
+//         // assert!(sq < 64);
+//         // let x: u8 = sq.as_();
+//         // Coord::new_int(x)
+//         // BitBoard::index_bit(sq)
+//         Coord::new_int(sq)
+//     }
+// }
 
-impl std::convert::From<u8> for Coord {
-    fn from(sq: u8) -> Self {
-        // assert!(sq < 64);
-        BitBoard::index_bit(sq)
-    }
-}
+// impl std::convert::From<usize> for Coord {
+//     fn from(sq: usize) -> Self {
+//         // assert!(sq < 64);
+//         BitBoard::index_bit(sq as u8)
+//     }
+// }
 
-impl std::convert::From<Coord> for u32 {
-    fn from(c: Coord) -> Self {
-        BitBoard::index_square(c) as u32
-    }
-}
+// impl std::convert::From<Coord> for usize {
+//     fn from(c: Coord) -> Self {
+//         BitBoard::index_square(c) as usize
+//     }
+// }
 
-impl std::convert::From<Coord> for u16 {
-    fn from(c: Coord) -> Self {
-        BitBoard::index_square(c) as u16
-    }
-}
+// impl std::convert::From<u32> for Coord {
+//     fn from(sq: u32) -> Self {
+//         // assert!(sq < 64);
+//         BitBoard::index_bit(sq as u8)
+//     }
+// }
 
-impl std::convert::From<Coord> for u8 {
-    fn from(c: Coord) -> Self {
-        BitBoard::index_square(c)
-    }
-}
+// impl std::convert::From<u16> for Coord {
+//     fn from(sq: u16) -> Self {
+//         // assert!(sq < 64);
+//         BitBoard::index_bit(sq as u8)
+//     }
+// }
 
-impl std::convert::From<Coord> for usize {
-    fn from(c: Coord) -> Self {
-        BitBoard::index_square(c) as usize
-    }
-}
+// impl std::convert::From<u8> for Coord {
+//     fn from(sq: u8) -> Self {
+//         // assert!(sq < 64);
+//         BitBoard::index_bit(sq)
+//     }
+// }
 
-impl std::convert::From<usize> for Coord {
-    fn from(sq: usize) -> Self {
-        BitBoard::index_bit(sq as u8)
-    }
-}
+// impl std::convert::From<Coord> for u32 {
+//     fn from(c: Coord) -> Self {
+//         BitBoard::index_square(c) as u32
+//     }
+// }
+
+// impl std::convert::From<Coord> for u16 {
+//     fn from(c: Coord) -> Self {
+//         BitBoard::index_square(c) as u16
+//     }
+// }
+
+// impl std::convert::From<Coord> for u8 {
+//     fn from(c: Coord) -> Self {
+//         BitBoard::index_square(c)
+//     }
+// }
+
+// impl std::convert::From<Coord> for usize {
+//     fn from(c: Coord) -> Self {
+//         BitBoard::index_square(c) as usize
+//     }
+// }
+
+// impl std::convert::From<usize> for Coord {
+//     fn from(sq: usize) -> Self {
+//         BitBoard::index_bit(sq as u8)
+//     }
+// }
 
 impl D {
 
@@ -373,12 +438,6 @@ impl std::fmt::Debug for Coord {
         // f.write_str(&format!("Coord({}{})", r, self.1+1))?;
         f.write_str(&format!("{}{}", r, self.rank()+1))?;
         Ok(())
-    }
-}
-
-impl std::convert::From<&str> for Coord {
-    fn from(sq: &str) -> Self {
-        Coord::from_str(sq).unwrap()
     }
 }
 

@@ -49,7 +49,7 @@ fn build_from_fen(
         for (sq,x) in rank.iter().zip(0..8) {
             match sq {
                 Some((p,c)) => {
-                    out.insert_piece_mut_unchecked_nohash(Coord(x,y), *p, *c);
+                    out.insert_piece_mut_unchecked_nohash(Coord::new(x,y), *p, *c);
                 },
                 None => {},
             }
