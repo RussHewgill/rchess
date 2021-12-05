@@ -68,6 +68,7 @@ pub fn _gen_magics(bishop: bool)
     // let n1b = vec![
     // ];
 
+    println!("wat 0");
     for sq in 0u8..64 {
     // for sq in 0u8..1 {
         // let c0: Coord = "B7".into();
@@ -75,7 +76,8 @@ pub fn _gen_magics(bishop: bool)
         // eprintln!("sq = {:?}", sq);
         // eprintln!("c0 = {:?}", c0);
 
-        let c0: Coord = sq.into();
+        // let c0: Coord = sq.into();
+        let c0 = Coord::new_int(sq);
 
         let edges: BitBoard =
             ((BitBoard::mask_rank(0) | BitBoard::mask_rank(7)) & !BitBoard::mask_rank(c0.rank()))

@@ -37,7 +37,7 @@ impl Coord {
         // assert!(x < 64);
         // Self(x.into())
         let x: u8 = sq.as_();
-        Coord::new_int(x)
+        Coord(x)
     }
 
     pub fn new(file: u8, rank: u8) -> Self {

@@ -2960,10 +2960,10 @@ fn main_perft(depth: Option<u64>) {
     // let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
     let fen = STARTPOS;
 
-    // let fen2 = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
-    // let fen3 = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
-    // let fen4 = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
-    // let fen5 = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  "; // Position 5
+    let fen2 = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
+    let fen3 = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
+    let fen4 = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
+    let fen5 = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8  "; // Position 5
 
     // let fen = "r3k2r/p1p1qpb1/bn1ppnp1/3PN3/1p2P3/2N4Q/PPPBBPPP/R3K2R w KQkq - 0 2";
 
@@ -2976,8 +2976,17 @@ fn main_perft(depth: Option<u64>) {
 
     let fens = vec![fen,fen2,fen3,fen4,fen5];
 
+    let k0 = 0u8;
+
+    // eprintln!("k0 = {:?}", k0);
+    // let k1 = Coord::new_int(k0);
+    // eprintln!("k1 = {:?}", k1);
+
+    // let ts = Tables::new();
+    let ts = Tables::read_from_file_def().unwrap();
+
+    println!("starting");
     for (k,fen) in fens.iter().enumerate() {
-        let ts = Tables::read_from_file_def().unwrap();
         let mut g = Game::from_fen(&ts, fen).unwrap();
 
         println!("fen #{}:", k + 1);
