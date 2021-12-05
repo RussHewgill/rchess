@@ -4,6 +4,8 @@ use crate::tables::*;
 use crate::brain::types::nnue::{NNUE_INPUT,NNUE_L2,NNUE_L3,NNUE_OUTPUT};
 use crate::brain::types::*;
 
+pub use self::gradient::*;
+
 use arrayvec::ArrayVec;
 use itertools::Itertools;
 use na::DVector;
@@ -18,88 +20,94 @@ use rand::prelude::StdRng;
 use serde::{Serialize,Deserialize};
 use serde_big_array::BigArray;
 
-#[derive(Debug,Clone,PartialEq,Serialize,Deserialize)]
-pub struct NNUE3 {
-    // #[serde(skip,default = "NNUE3::def_inputs")]
-    // pub inputs:       CsMat<i8>,
-    // pub inputs:       Array2<f32>, // 769,1
-    pub inputs:       na::DVector<f32>,
-    pub nn:           DNetwork<f32, 769, 1>,
-}
+// use num_
 
-/// Construction
-impl NNUE3 {
-    pub const INPUT_SIZE: usize = 769;
+mod old2 {
 
-    pub fn new(mm: (f32,f32), mut rng: &mut StdRng) -> Self {
-        Self {
-            // inputs:    Self::def_inputs(),
-            // inputs:    Array2::zeros((Self::INPUT_SIZE,1)),
-            inputs:    na::DVector::<f32>::zeros(Self::INPUT_SIZE),
-            nn:        DNetwork::_new_rng(vec![769,128,1], mm, &mut rng),
-        }
+    #[derive(Debug,Clone,PartialEq,Serialize,Deserialize)]
+    pub struct NNUE3 {
+        // #[serde(skip,default = "NNUE3::def_inputs")]
+        // pub inputs:       CsMat<i8>,
+        // pub inputs:       Array2<f32>, // 769,1
+        pub inputs:       na::DVector<f32>,
+        pub nn:           DNetwork<f32, 769, 1>,
     }
 
-    // fn def_inputs() -> CsMat<i8> {
-    //     sprs::CsMat::zero((Self::INPUT_SIZE,1)).into_csc()
-    // }
+    /// Construction
+    impl NNUE3 {
+        pub const INPUT_SIZE: usize = 769;
 
-}
-
-/// Run
-impl NNUE3 {
-
-    pub fn run_fresh(&mut self, g: &Game) -> f32 {
-        self.init_inputs(g);
-        self.run_partial()
-    }
-
-    pub fn run_partial(&self) -> f32 {
-        let out = self.nn.run(&self.inputs);
-        out[(0,0)]
-    }
-}
-
-/// Backprop
-impl NNUE3 {
-    pub fn backprop(&mut self, g: Option<&Game>, correct: f32, eta: f32) {
-        if let Some(g) = g { self.init_inputs(g); }
-
-        let ins: Vec<(DVector<f32>,DVector<f32>)> = vec![
-            (self.inputs.clone(), DVector::from_vec(vec![correct]))
-        ];
-        self.nn.backprop_mut_matrix(&ins, eta);
-    }
-}
-
-/// Increment
-impl NNUE3 {
-}
-
-/// Inputs
-impl NNUE3 {
-
-    pub fn init_inputs(&mut self, g: &Game) {
-        self.inputs.fill(0.0);
-        for side in [White,Black] {
-            for pc in Piece::iter_pieces() {
-                g.get(pc, side).into_iter().for_each(|sq| {
-                    let idx = Self::make_index(side, pc, sq);
-                    // self.inputs[(idx,1)] = 1.0;
-                    self.inputs[idx] = 1.0;
-                });
+        pub fn new(mm: (f32,f32), mut rng: &mut StdRng) -> Self {
+            Self {
+                // inputs:    Self::def_inputs(),
+                // inputs:    Array2::zeros((Self::INPUT_SIZE,1)),
+                inputs:    na::DVector::<f32>::zeros(Self::INPUT_SIZE),
+                nn:        DNetwork::_new_rng(vec![769,128,1], mm, &mut rng),
             }
         }
-        if g.state.side_to_move == White {
-            self.inputs[Self::INPUT_SIZE - 1] = 1.0;
+
+        // fn def_inputs() -> CsMat<i8> {
+        //     sprs::CsMat::zero((Self::INPUT_SIZE,1)).into_csc()
+        // }
+
+    }
+
+    /// Run
+    impl NNUE3 {
+
+        pub fn run_fresh(&mut self, g: &Game) -> f32 {
+            self.init_inputs(g);
+            self.run_partial()
+        }
+
+        pub fn run_partial(&self) -> f32 {
+            let out = self.nn.run(&self.inputs);
+            out[(0,0)]
         }
     }
 
-    pub fn make_index(side: Color, pc: Piece, c0: u8) -> usize {
-        let pc = pc.index();
-        let pc = if side == White { pc } else { pc + 6 };
-        pc as usize * 64 + c0 as usize
+    /// Backprop
+    impl NNUE3 {
+        pub fn backprop(&mut self, g: Option<&Game>, correct: f32, eta: f32) {
+            if let Some(g) = g { self.init_inputs(g); }
+
+            let ins: Vec<(DVector<f32>,DVector<f32>)> = vec![
+                (self.inputs.clone(), DVector::from_vec(vec![correct]))
+            ];
+            self.nn.backprop_mut_matrix(&ins, eta);
+        }
     }
+
+    /// Increment
+    impl NNUE3 {
+    }
+
+    /// Inputs
+    impl NNUE3 {
+
+        pub fn init_inputs(&mut self, g: &Game) {
+            self.inputs.fill(0.0);
+            for side in [White,Black] {
+                for pc in Piece::iter_pieces() {
+                    g.get(pc, side).into_iter().for_each(|sq| {
+                        let idx = Self::make_index(side, pc, sq);
+                        // self.inputs[(idx,1)] = 1.0;
+                        self.inputs[idx] = 1.0;
+                    });
+                }
+            }
+            if g.state.side_to_move == White {
+                self.inputs[Self::INPUT_SIZE - 1] = 1.0;
+            }
+        }
+
+        pub fn make_index(side: Color, pc: Piece, c0: u8) -> usize {
+            let pc = pc.index();
+            let pc = if side == White { pc } else { pc + 6 };
+            pc as usize * 64 + c0 as usize
+        }
+    }
+
 }
 
 mod old {

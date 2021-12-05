@@ -9,6 +9,7 @@ pub mod gensfen;
 pub mod binpack;
 pub mod networks2;
 pub mod autodiff;
+pub mod sf_compat;
 
 use crate::types::*;
 use crate::brain::types::*;

@@ -25,3 +25,5 @@ reference/*
 h2h.txt
 matrix.csv
 *.orig
+paramsets/*
+*.nnue

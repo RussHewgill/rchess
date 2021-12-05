@@ -62,6 +62,7 @@ fn main() {
     let arg1: &str = &args[1];
     match &arg1[..] {
         "tt"        => main_tt(),
+        "nn"        => main_nn(),
         "nnue"      => main_nnue(),
         "train"     => main_nnue_train(),
         "eval"      => main_eval(),
@@ -1333,6 +1334,23 @@ fn main_nnue2() {
 
 #[allow(unreachable_code)]
 fn main_nn() {
+    use rchess_engine_lib::brain::networks2::*;
+
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
+
+    const IS: usize = 769;
+    const OS: usize = 1;
+    const HL: usize = 1;
+
+    // let hidden_sizes = vec![128];
+    // let mut nn = NNUE3::<f32,IS,OS,HL>::new(hidden_sizes, &mut rng);
+    // // eprintln!("nn.weights.len() = {:?}", nn.weights.len());
+    // eprintln!("nn.activations[0].shape() = {:?}", nn.activations[0].shape());
+
+}
+
+#[allow(unreachable_code)]
+fn main_nn2() {
     // use ndarray::prelude::*;
 
     use nalgebra::{SMatrix,SVector,Matrix,Vector,matrix,vector,dmatrix,dvector,DVector,DMatrix};
