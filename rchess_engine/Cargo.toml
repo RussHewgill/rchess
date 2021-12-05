@@ -30,7 +30,7 @@ default = [
     "positional_scoring",
     "mobility_scoring",
 
-    "syzygy",
+    # "syzygy",
 
     # "null_pruning",
     "late_move_reduction",

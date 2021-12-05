@@ -173,15 +173,15 @@ impl BitBoard {
     pub fn mask_between(ts: &Tables, c0: Coord, c1: Coord) -> BitBoard {
     // pub fn obstructed(&self, ts: &Tables, c0: Coord, c1: Coord) -> BitBoard {
 
-        let Coord(x0,y0) = c0;
-        let Coord(x1,y1) = c1;
+        let (x0,y0) = c0.to_rankfile();
+        let (x1,y1) = c1.to_rankfile();
 
         if x0 == x1 {
             // File
             let (x0,x1) = (x0.min(x1),x0.max(x1));
             let (y0,y1) = (y0.min(y1),y0.max(y1));
-            let b0 = BitBoard::single(Coord(x0,y0));
-            let b1 = BitBoard::single(Coord(x1,y1));
+            let b0 = BitBoard::single(Coord::new(x0,y0));
+            let b1 = BitBoard::single(Coord::new(x1,y1));
             let b = BitBoard(2 * b1.0 - b0.0);
             let m = BitBoard::mask_file(x0.into());
             (b & m) & !(b0 | b1)
@@ -189,16 +189,16 @@ impl BitBoard {
             // Rank
             let (x0,x1) = (x0.min(x1),x0.max(x1));
             let (y0,y1) = (y0.min(y1),y0.max(y1));
-            let b0 = BitBoard::single(Coord(x0,y0));
-            let b1 = BitBoard::single(Coord(x1,y1));
+            let b0 = BitBoard::single(Coord::new(x0,y0));
+            let b1 = BitBoard::single(Coord::new(x1,y1));
             let b = BitBoard(2 * b1.0 - b0.0);
             let m = BitBoard::mask_rank(y0.into());
             (b & m) & !(b0 | b1)
         // } else if (x1 - x0) == (y1 - y0) {
         } else if (x1 as i64 - x0 as i64).abs() == (y1 as i64 - y0 as i64).abs() {
             // Diagonal
-            let b0 = BitBoard::single(Coord(x0,y0));
-            let b1 = BitBoard::single(Coord(x1,y1));
+            let b0 = BitBoard::single(Coord::new(x0,y0));
+            let b1 = BitBoard::single(Coord::new(x1,y1));
             // let b = BitBoard::new(&[Coord(x0,y0),Coord(x1,y1)])
 
             let (bb0,bb1) = (b0.0.min(b1.0),b0.0.max(b1.0));
@@ -402,8 +402,9 @@ impl BitBoard {
     pub fn index_square(c: Coord) -> u8 {
         // Little Endian Rank File Mapping
         // Least Significant File Mapping
-        let p = c.0 as u8 + 8 * c.1 as u8;
-        p
+        // let p = c.0 as u8 + 8 * c.1 as u8;
+        // p
+        c.inner()
     }
 
     pub fn _index_square(rank: u8, file: u8) -> u8 {
@@ -411,7 +412,7 @@ impl BitBoard {
     }
 
     pub fn index_bit<T: Into<u8> + Copy>(s: T) -> Coord {
-        Coord(Self::index_file(s.into()) as u8,Self::index_rank(s.into()) as u8)
+        Coord::new(Self::index_file(s.into()) as u8,Self::index_rank(s.into()) as u8)
         // Coord
     }
 

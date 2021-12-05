@@ -68,7 +68,7 @@ impl Zobrist {
         out ^= zb.castling[Black][b as usize];
 
         if let Some(ep) = g.state.en_passant {
-            out ^= zb.en_passant[ep.0 as usize];
+            out ^= zb.en_passant[ep.file() as usize];
         }
 
         Zobrist(out)
@@ -132,14 +132,14 @@ impl Zobrist {
                     }
                     (White, Rook) => {
                         self = self.update_castling(&ts, castling);
-                        if from == Coord(7,0) { castling.set_king(White,false); };
-                        if from == Coord(0,0) { castling.set_queen(White,false); };
+                        if from == Coord::new_const(7,0) { castling.set_king(White,false); };
+                        if from == Coord::new_const(0,0) { castling.set_queen(White,false); };
                         self.update_castling(&ts, castling)
                     },
                     (Black, Rook) => {
                         self = self.update_castling(&ts, castling);
-                        if from == Coord(7,7) { castling.set_king(Black,false); };
-                        if from == Coord(0,7) { castling.set_queen(Black,false); };
+                        if from == Coord::new_const(7,7) { castling.set_king(Black,false); };
+                        if from == Coord::new_const(0,7) { castling.set_queen(Black,false); };
                         self.update_castling(&ts, castling)
                     },
                     _              => self,
@@ -178,7 +178,7 @@ impl Zobrist {
     #[must_use]
     pub fn update_ep(&self, ts: &Tables, c0: Coord) -> Self {
         let mut out = self.0;
-        out ^= ts.zobrist_tables.en_passant[c0.0 as usize];
+        out ^= ts.zobrist_tables.en_passant[c0.file() as usize];
         Self(out)
     }
 

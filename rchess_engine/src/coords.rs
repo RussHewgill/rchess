@@ -27,7 +27,34 @@ pub enum D {
 // #[derive(Eq,Ord,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 #[derive(Serialize,Deserialize,Eq,Ord,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 // #[derive(Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
-pub struct Coord(pub u8, pub u8);
+// pub struct Coord(pub u8, pub u8);
+pub struct Coord(u8);
+
+impl Coord {
+    pub fn new_u8(x: u8) -> Self {
+        assert!(x < 64);
+        Self(x)
+    }
+
+    pub fn new(file: u8, rank: u8) -> Self {
+        assert!(file < 8);
+        assert!(rank < 8);
+        Self(file + 8 * rank)
+    }
+
+    pub const fn new_const(file: u8, rank: u8) -> Self {
+        Self(file + 8 * rank)
+    }
+
+    pub fn inner(&self) -> u8 {
+        self.0
+    }
+
+    pub fn to_rankfile(&self) -> (u8,u8) {
+        (self.file(), self.rank())
+    }
+
+}
 
 // pub type PackedCoords = Integer<u8, packed_bits::Bits::<6>>;
 
@@ -66,10 +93,12 @@ impl<T> std::ops::IndexMut<Coord> for [T; 64] {
 impl Coord {
 
     pub fn file(self) -> u8 {
-        self.0
+        // self.0
+        self.0 & 7
     }
     pub fn rank(self) -> u8 {
-        self.1
+        // self.1
+        self.0 >> 3
     }
 
     pub fn mask_file(self) -> BitBoard {
@@ -99,10 +128,10 @@ impl Coord {
     }
 
     pub fn flip_vertical(self) -> Self {
-        Coord(self.0, 7 - self.1)
+        Coord::new(self.file(), 7 - self.rank())
     }
     pub fn flip_horizontal(self) -> Self {
-        Coord(7 - self.0, self.1)
+        Coord::new(7 - self.file(), self.rank())
     }
 }
 
@@ -113,11 +142,11 @@ impl Coord {
     }
 
     pub fn file_dist(&self, c1: Coord) -> u8 {
-        (self.0 as i8 - c1.0 as i8).abs() as u8
+        (self.file() as i8 - c1.file() as i8).abs() as u8
     }
 
     pub fn rank_dist(&self, c1: Coord) -> u8 {
-        (self.1 as i8 - c1.1 as i8).abs() as u8
+        (self.rank() as i8 - c1.rank() as i8).abs() as u8
     }
 
     pub fn square_dist(&self, c1: Coord) -> u8 {
@@ -271,46 +300,47 @@ impl D {
 
     }
 
-    pub fn shift_coord(&self, Coord(x0,y0): Coord) -> Option<Coord> {
+    pub fn shift_coord(&self, x: Coord) -> Option<Coord> {
+        let (x0,y0) = (x.file(),x.rank());
         match *self {
             N => {
                 if y0 >= 7 { None } else {
-                    Some(Coord(x0,y0+1))
+                    Some(Coord::new(x0,y0+1))
                 }
             },
             NE => {
                 if (y0 >= 7) | (x0 >= 7) { None } else {
-                    Some(Coord(x0+1,y0+1))
+                    Some(Coord::new(x0+1,y0+1))
                 }
             },
             E => {
                 if x0 >= 7 { None } else {
-                    Some(Coord(x0+1,y0))
+                    Some(Coord::new(x0+1,y0))
                 }
             },
             NW => {
                 if (y0 >= 7) | (x0 == 0) { None } else {
-                    Some(Coord(x0-1,y0+1))
+                    Some(Coord::new(x0-1,y0+1))
                 }
             },
             S => {
                 if y0 == 0 { None } else {
-                    Some(Coord(x0,y0-1))
+                    Some(Coord::new(x0,y0-1))
                 }
             },
             SE => {
                 if (y0 == 0) | (x0 >= 7) { None } else {
-                    Some(Coord(x0+1,y0-1))
+                    Some(Coord::new(x0+1,y0-1))
                 }
             },
             SW => {
                 if (y0 == 0) | (x0 == 0) { None } else {
-                    Some(Coord(x0-1,y0-1))
+                    Some(Coord::new(x0-1,y0-1))
                 }
             },
             W => {
                 if x0 == 0 { None } else {
-                    Some(Coord(x0-1,y0))
+                    Some(Coord::new(x0-1,y0))
                 }
             },
         }
@@ -339,9 +369,9 @@ impl std::ops::Not for D {
 impl std::fmt::Debug for Coord {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let letters: [char; 8] = ['a','b','c','d','e','f','g','h'];
-        let r = letters[self.0 as usize];
+        let r = letters[self.file() as usize];
         // f.write_str(&format!("Coord({}{})", r, self.1+1))?;
-        f.write_str(&format!("{}{}", r, self.1+1))?;
+        f.write_str(&format!("{}{}", r, self.rank()+1))?;
         Ok(())
     }
 }
@@ -371,7 +401,7 @@ impl FromStr for Coord {
         assert!(x < 8);
         assert!(y < 8);
 
-        Ok(Coord(x as u8,y))
+        Ok(Coord::new(x as u8,y))
 
         // let coords: Vec<&str> = s.trim_matches(|p| p == '(' || p == ')' )
         //     .split(',')
@@ -387,16 +417,16 @@ impl FromStr for Coord {
 
 fn test_directions() {
 
-    let b = BitBoard::new(&[Coord(1,1)]);
+    let b = BitBoard::new(&[Coord::new(1,1)]);
 
-    assert_eq!(b.shift_dir(D::E), BitBoard::new(&[Coord(2,1)]));
-    assert_eq!(b.shift_dir(D::W), BitBoard::new(&[Coord(0,1)]));
-    assert_eq!(b.shift_dir(D::N), BitBoard::new(&[Coord(1,2)]));
-    assert_eq!(b.shift_dir(D::S), BitBoard::new(&[Coord(1,0)]));
-    assert_eq!(b.shift_dir(D::NE), BitBoard::new(&[Coord(2,2)]));
-    assert_eq!(b.shift_dir(D::NW), BitBoard::new(&[Coord(0,2)]));
-    assert_eq!(b.shift_dir(D::SE), BitBoard::new(&[Coord(2,0)]));
-    assert_eq!(b.shift_dir(D::SW), BitBoard::new(&[Coord(0,0)]));
+    assert_eq!(b.shift_dir(D::E), BitBoard::new(&[Coord::new(2,1)]));
+    assert_eq!(b.shift_dir(D::W), BitBoard::new(&[Coord::new(0,1)]));
+    assert_eq!(b.shift_dir(D::N), BitBoard::new(&[Coord::new(1,2)]));
+    assert_eq!(b.shift_dir(D::S), BitBoard::new(&[Coord::new(1,0)]));
+    assert_eq!(b.shift_dir(D::NE), BitBoard::new(&[Coord::new(2,2)]));
+    assert_eq!(b.shift_dir(D::NW), BitBoard::new(&[Coord::new(0,2)]));
+    assert_eq!(b.shift_dir(D::SE), BitBoard::new(&[Coord::new(2,0)]));
+    assert_eq!(b.shift_dir(D::SW), BitBoard::new(&[Coord::new(0,0)]));
 
     // let b = BitBoard::new(&vec![Coord(0,0)]);
     // assert_eq!(b.shift(D::W), BitBoard::new(&vec![]));

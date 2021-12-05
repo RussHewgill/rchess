@@ -716,14 +716,14 @@ impl Game {
                     }
                     (White, Rook) => {
                         if calc_zb { x.zobrist = x.zobrist.update_castling(&ts, x.state.castling); }
-                        if from == Coord(7,0) { x.state.castling.set_king(White,false); };
-                        if from == Coord(0,0) { x.state.castling.set_queen(White,false); };
+                        if from == Coord::new_const(7,0) { x.state.castling.set_king(White,false); };
+                        if from == Coord::new_const(0,0) { x.state.castling.set_queen(White,false); };
                         if calc_zb { x.zobrist = x.zobrist.update_castling(&ts, x.state.castling); }
                     },
                     (Black, Rook) => {
                         if calc_zb { x.zobrist = x.zobrist.update_castling(&ts, x.state.castling); }
-                        if from == Coord(7,7) { x.state.castling.set_king(Black,false); };
-                        if from == Coord(0,7) { x.state.castling.set_queen(Black,false); };
+                        if from == Coord::new_const(7,7) { x.state.castling.set_king(Black,false); };
+                        if from == Coord::new_const(0,7) { x.state.castling.set_queen(Black,false); };
                         if calc_zb { x.zobrist = x.zobrist.update_castling(&ts, x.state.castling); }
                     },
                     _              => {},
@@ -867,21 +867,21 @@ impl Game {
                 let cc = if col == White { 7 } else { 0 };
                 if (pc == King) & (from.file_dist(to) == 2) {
                     // Queenside
-                    let (rook_from,rook_to) = if to.0 == 2 {
+                    let (rook_from,rook_to) = if to.file() == 2 {
                         (0,3)
-                    } else if to.0 == 6 {
+                    } else if to.file() == 6 {
                         (7,5)
                     } else {
                         panic!("bad castle?");
                     };
                     let r = if col == White { 0 } else { 7 };
-                    let (rook_from,rook_to) = (Coord(rook_from,r),Coord(rook_to,r));
+                    let (rook_from,rook_to) = (Coord::new(rook_from,r),Coord::new(rook_to,r));
                     Some(Move::Castle { from, to, rook_from, rook_to })
                 } else if pc == Pawn && Some(to) == self.state.en_passant {
                     let capture = if col == White { S.shift_coord(to).unwrap() }
                         else { N.shift_coord(to).unwrap() };
                     Some(Move::EnPassant { from, to, capture })
-                } else if (pc == Pawn) && (to.1 == cc) {
+                } else if (pc == Pawn) && (to.rank() == cc) {
                     // XXX: bad
                     let new_piece = Queen;
                     Some(Move::Promotion { from, to, new_piece })
@@ -895,22 +895,22 @@ impl Game {
                 if col0 == col1 {
                     if ob_castle && pc0 == King && pc1 == Rook && col0 == col1 {
 
-                        let king_to = match to {
-                            Coord(0,0) => Coord(2,0),
-                            Coord(7,0) => Coord(6,0),
-                            Coord(0,7) => Coord(2,7),
-                            Coord(7,7) => Coord(6,7),
+                        let king_to = match to.to_rankfile() {
+                            (0,0) => Coord::new_const(2,0),
+                            (7,0) => Coord::new_const(6,0),
+                            (0,7) => Coord::new_const(2,7),
+                            (7,7) => Coord::new_const(6,7),
                             _          =>
                                 panic!("polyglot castle king_to ??: ({:?},{:?})",
                                        from, to,
                                 ),
                         };
                         let rook_from = to;
-                        let rook_to   = match to {
-                            Coord(0,0) => Coord(3,0),
-                            Coord(7,0) => Coord(5,0),
-                            Coord(0,7) => Coord(0,7),
-                            Coord(7,7) => Coord(0,7),
+                        let rook_to   = match to.to_rankfile() {
+                            (0,0) => Coord::new_const(3,0),
+                            (7,0) => Coord::new_const(5,0),
+                            (0,7) => Coord::new_const(0,7),
+                            (7,7) => Coord::new_const(0,7),
                             _          =>
                                 panic!("polyglot castle rook_to ??: ({:?},{:?})",
                                     from, to,
@@ -927,7 +927,7 @@ impl Game {
                 }
 
                 let cc = if col0 == White { 7 } else { 0 };
-                if (pc0 == Pawn) & (to.1 == cc) {
+                if (pc0 == Pawn) & (to.rank() == cc) {
                     let (_,victim) = self.get_at(to).unwrap();
                     Some(Move::PromotionCapture { from, to, new_piece: Queen, victim })
                 } else {
@@ -944,10 +944,10 @@ impl Game {
         let bs = mv.as_bytes();
         let side = self.state.side_to_move;
         if mv == "O-O" {
-            let from = if side == White { Coord(4,0) } else { Coord(4,7) };
-            let to   = if side == White { Coord(6,0) } else { Coord(6,7) };
-            let rook_from = if side == White { Coord(7,0) } else { Coord(7,7) };
-            let rook_to   = if side == White { Coord(5,0) } else { Coord(5,7) };
+            let from = if side == White { Coord::new_const(4,0) } else { Coord::new_const(4,7) };
+            let to   = if side == White { Coord::new_const(6,0) } else { Coord::new_const(6,7) };
+            let rook_from = if side == White { Coord::new_const(7,0) } else { Coord::new_const(7,7) };
+            let rook_to   = if side == White { Coord::new_const(5,0) } else { Coord::new_const(5,7) };
             Some(Move::Castle {
                 from,
                 to,
@@ -955,10 +955,10 @@ impl Game {
                 rook_to,
             })
         } else if mv == "O-O-O" {
-            let from = if side == White { Coord(4,0) } else { Coord(4,7) };
-            let to   = if side == White { Coord(2,0) } else { Coord(2,7) };
-            let rook_from = if side == White { Coord(0,0) } else { Coord(0,7) };
-            let rook_to   = if side == White { Coord(3,0) } else { Coord(3,7) };
+            let from = if side == White { Coord::new_const(4,0) } else { Coord::new_const(4,7) };
+            let to   = if side == White { Coord::new_const(2,0) } else { Coord::new_const(2,7) };
+            let rook_from = if side == White { Coord::new_const(0,0) } else { Coord::new_const(0,7) };
+            let rook_to   = if side == White { Coord::new_const(3,0) } else { Coord::new_const(3,7) };
             Some(Move::Castle {
                 from,
                 to,
@@ -975,10 +975,10 @@ impl Game {
                 let f = to[0] - 97;
                 let r = to[1] - 49;
 
-                let to = Coord(f, r);
+                let to = Coord::new(f, r);
 
                 let from = (if side == White { S } else { N }).shift_coord(to).unwrap();
-                let from = Coord(bs[0] - 97,from.rank());
+                let from = Coord::new(bs[0] - 97,from.rank());
 
                 if self.state.en_passant == Some(to) {
                     let capture = (if side == White { S } else { N }).shift_coord(to).unwrap();
@@ -1001,7 +1001,7 @@ impl Game {
                 let f = to[0] - 97;
                 let r = to[1] - 49;
 
-                let to = Coord(f, r);
+                let to = Coord::new(f, r);
 
                 let from = (if side == White { S } else { N }).shift_coord(to).unwrap();
 
@@ -1034,7 +1034,7 @@ impl Game {
                 let to = &bs[bs.len()-2..];
                 let f = to[0] - 97;
                 let r = to[1] - 49;
-                Coord(f, r)
+                Coord::new(f, r)
             };
 
             let mut mvs = self.search_for_piece(&ts, pc, side, false);
@@ -1347,7 +1347,8 @@ impl Game {
 
 }
 
-pub fn square_color(Coord(x,y): Coord) -> Color {
+pub fn square_color(c0: Coord) -> Color {
+    let (x,y) = c0.to_rankfile();
     if y % 2 == 0 {
         if x % 2 == 0 {
             Black
@@ -1374,7 +1375,7 @@ impl Game {
             let y = 7-y0;
 
             let pieces = (0..8)
-                .map(|x| self.get_at(Coord(x,y)));
+                .map(|x| self.get_at(Coord::new(x,y)));
                 // .collect::<Vec<Option<(Color,Piece)>>>();
 
             let mut n = 0;
@@ -1549,10 +1550,10 @@ impl std::fmt::Debug for Game {
             let mut line = String::new();
             line.push_str(&format!("{}  ", y + 1));
             for x in 0..8 {
-                let ch: char = match self.get_at(Coord(x,y)) {
+                let ch: char = match self.get_at(Coord::new(x,y)) {
                     Some((c,p)) => p.print(c),
                     None        => {
-                        let c = square_color(Coord(x,y));
+                        let c = square_color(Coord::new(x,y));
                         c.print()
                     },
                 };

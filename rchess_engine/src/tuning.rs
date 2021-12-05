@@ -130,7 +130,7 @@ mod piece_square_tables {
                 for x in 0..8 {
                     // println!("(x,y) = ({},{}), coord = {:?}", x, y, Coord(x,y));
                     // print!("{:>3?},", ps.get(Pawn, Coord(x,y)));
-                    let s = ss[Coord(x,y)];
+                    let s = ss[Coord::new(x,y)];
 
                     stdout.set_color(ColorSpec::new().set_fg(Some(Self::map_color(s))))?;
                     stdout.flush()?;
@@ -179,7 +179,7 @@ mod piece_square_tables {
 
         pub fn get<T: Into<Coord>>(&self, pc: Piece, col: Color, c0: T) -> Score {
             let c1: Coord = c0.into();
-            let c1 = if col == White { c1 } else { Coord(c1.0,7 - c1.1) };
+            let c1 = if col == White { c1 } else { Coord::new(c1.file(),7 - c1.rank()) };
             self[pc][c1]
         }
 
@@ -237,59 +237,6 @@ mod piece_square_tables {
 
     /// Initial values
     impl PcTables {
-
-        #[allow(clippy::vec_init_then_push)]
-        fn old_gen_pawns() -> [Score; 64] {
-            // let mut out = [0; 64];
-            let mut scores: Vec<(&str,Score)> = vec![];
-
-            // Castles
-            scores.push(("A2",5));
-            scores.push(("B2",10));
-            scores.push(("C2",10));
-
-            // Castle holes
-            scores.push(("A3",5));
-            scores.push(("B3",-5));
-            scores.push(("C3",-10));
-
-            // King/Queen Pawns
-            scores.push(("D2",-20));
-
-            // Center pawns
-            scores.push(("D4",20));
-
-            // Rank 5 pawns
-            scores.push(("A5",5));
-            scores.push(("B5",5));
-            scores.push(("C5",10));
-            scores.push(("D5",25));
-
-            // Rank 6 pawns
-            scores.push(("A6",10));
-            scores.push(("B6",10));
-            scores.push(("C6",20));
-            scores.push(("D6",30));
-
-            // Rank 7 pawns
-            scores.push(("A7",50));
-            scores.push(("B7",50));
-            scores.push(("C7",50));
-            scores.push(("D7",50));
-
-            let mut out = [0; 64];
-
-            for (c,s) in scores.into_iter() {
-                let c0: Coord = c.into();
-                let sq: usize = c0.into();
-                out[sq] = s;
-                let c1 = Coord(7-c0.0,c0.1);
-                let sq: usize = c1.into();
-                out[sq] = s;
-            }
-            // Self::transform_arr(out)
-            out
-        }
 
         fn gen_pawns() -> [Score; 64] {
             Self::transform_arr([
@@ -390,7 +337,7 @@ mod piece_square_tables {
             let mut out = [0; 64];
             for y in 0..8 {
                 for x in 0..8 {
-                    out[Coord(x,7 - y)] = xs[Coord(x,y)];
+                    out[Coord::new(x,7 - y)] = xs[Coord::new(x,y)];
                 }
             }
             out
