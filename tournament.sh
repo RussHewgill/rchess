@@ -22,12 +22,15 @@ done
 # echo $time
 # echo $games
 
+ENGINE2=rchess_prev
+# ENGINE2=stockfish
+
 cutechess-cli \
     -tournament gauntlet \
     -concurrency 1 \
     -pgnout out_pgn.pgn \
     -engine conf=rchess st=$time timemargin=50 \
-    -engine conf=stockfish st=$time timemargin=50 \
+    -engine conf=$ENGINE2 st=$time timemargin=50 \
     -each proto=uci \
     -openings file=tables/openings-10ply-100k.pgn policy=round \
     -repeat \
@@ -35,6 +38,6 @@ cutechess-cli \
     -games 2 \
     -draw movenumber=40 movecount=4 score=8 \
     -resign movecount=4 score=500 \
-    -sprt elo0=0 elo1=10 alpha=0.05 beta=0.05
+    -sprt elo0=0 elo1=50 alpha=0.05 beta=0.05
 
 

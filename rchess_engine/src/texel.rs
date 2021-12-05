@@ -307,8 +307,8 @@ pub fn texel_optimize(
     // let arr_end_mut = exhelper.cfg.eval_params_end.to_arr_mut();
     // let arr_mid_mut = exhelper.cfg.eval_params_mid.to_arr_mut();
 
-    let print = false;
-    // let print = true;
+    // let print = false;
+    let print = true;
 
     println!("starting texel_optimize...");
     // eprintln!("arr_mid.len() = {:?}", arr_mid.len());

@@ -5,6 +5,11 @@
         "protocol": "uci"
     },
     {
+        "name": "rchess_prev",
+        "command": "/home/me/code/rust/rchess/target/release/rchess_uci_prev",
+        "protocol": "uci"
+    },
+    {
         "name": "stockfish",
         "command": "/usr/bin/stockfish",
         "protocol": "uci",

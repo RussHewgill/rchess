@@ -23,12 +23,12 @@ const PS_B_QUEEN: usize  = 9 * SQUARE_NB;
 const PS_KING: usize     = 10 * SQUARE_NB;
 const PS_NB: usize       = 11 * SQUARE_NB;
 
-const PIECE_SQ_INDEX: [[usize; 16]; 2] = [
-    [ PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_KING, PS_NONE,
-      PS_NONE, PS_B_PAWN, PS_B_KNIGHT, PS_B_BISHOP, PS_B_ROOK, PS_B_QUEEN, PS_KING, PS_NONE,
+const PIECE_SQ_INDEX: [[[usize; 8]; 2]; 2] = [
+    [ [PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_KING, PS_NONE],
+      [PS_NONE, PS_B_PAWN, PS_B_KNIGHT, PS_B_BISHOP, PS_B_ROOK, PS_B_QUEEN, PS_KING, PS_NONE],
     ],
-    [ PS_NONE, PS_B_PAWN, PS_B_KNIGHT, PS_B_BISHOP, PS_B_ROOK, PS_B_QUEEN, PS_KING, PS_NONE,
-      PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_KING, PS_NONE,
+    [ [PS_NONE, PS_B_PAWN, PS_B_KNIGHT, PS_B_BISHOP, PS_B_ROOK, PS_B_QUEEN, PS_KING, PS_NONE],
+      [PS_NONE, PS_W_PAWN, PS_W_KNIGHT, PS_W_BISHOP, PS_W_ROOK, PS_W_QUEEN, PS_KING, PS_NONE],
     ],
 ];
 
@@ -63,8 +63,8 @@ fn _read_nnue(mut f: std::fs::File) -> io::Result<()> {
     unimplemented!()
 }
 
-fn orient(king_sq: u8, side: Color, sq: u8) -> u8 {
-    let p = side.fold(0, 1);
+fn orient(king_sq: u8, persp: Color, sq: u8) -> u8 {
+    let p = persp.fold(0, 1);
     const A8: u64 = 56;
     const H1: u64 = 7;
     let x = if Coord::from(king_sq).file() < 4 { 1 } else { 0 };
@@ -72,21 +72,20 @@ fn orient(king_sq: u8, side: Color, sq: u8) -> u8 {
     out as u8
 }
 
-pub fn make_index_half_ka_v2(king_sq: u8, side: Color, sq: u8) -> usize {
-    let o_king_sq = orient(king_sq, side, sq);
+pub fn make_index_half_ka_v2(king_sq: u8, persp: Color, pc: Piece, side: Color, sq: u8) -> usize {
+    let o_king_sq = orient(king_sq, persp, sq);
 
     // const WID: [usize; 8] = [0, ]
 
-    // let pidx = if side == White {
-    // } else {
-    // };
+    let pidx = PIECE_SQ_INDEX[side][persp][pc.index() + 1];
 
     let pc_nb = KING_BUCKETS[o_king_sq as usize];
     assert!(pc_nb > 0);
     let pc_nb = PS_NB * pc_nb as usize;
 
-    // orient(king_sq, side, sq)
-    //     + pidx
+    orient(king_sq, persp, sq) as usize
+        + pidx
+        + pc_nb
 
     // Square o_ksq = orient(perspective, ksq, ksq);
     // IndexType(
@@ -94,6 +93,6 @@ pub fn make_index_half_ka_v2(king_sq: u8, side: Color, sq: u8) -> usize {
     //         + PieceSquareIndex[perspective][pc]
     //         + PS_NB * KingBuckets[o_ksq]);
 
-    unimplemented!()
+    // unimplemented!()
 }
 

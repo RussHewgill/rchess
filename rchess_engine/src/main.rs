@@ -1374,10 +1374,46 @@ fn _main_nn() -> std::io::Result<()> {
     // let c0 = Coord::from("E1");
     // let k: u8 = c0.into();
     // eprintln!("k = {:?}", k);
+
     // let k0 = orient(k, Black, Coord::from("E2").into());
     // let k0 = Coord::from(k0);
     // eprintln!("k0 = {:?}", k0);
-    // return Ok(());
+
+    use rchess_engine_lib::brain::sf_compat::*;
+
+    // let king_sq: u8 = Coord::from("E1").into();
+    // let side = White;
+    // let pc = Pawn;
+    // let sq: u8 = Coord::from("E2").into();
+
+    let persp = White;
+    let mut xs: HashSet<usize> = HashSet::default();
+
+    for side in [White,Black] {
+        for pc in Piece::iter_pieces() {
+            for king_sq in 0..64 {
+                for sq in 0..64 {
+                    let idx = make_index_half_ka_v2(king_sq, persp, pc, side, sq);
+                    if xs.contains(&idx) {
+                        panic!();
+                    }
+                    xs.insert(idx);
+                }
+            }
+        }
+    }
+
+    eprintln!("xs.len() = {:?}", xs.len());
+
+    let max = xs.iter().max().unwrap();
+    let min = xs.iter().min().unwrap();
+
+    eprintln!("(max,min) = {:?}", (max,min));
+
+    // let idx = make_index_half_ka_v2(king_sq, persp, pc, side, sq);
+    // eprintln!("idx = {:?}", idx);
+
+    return Ok(());
 
     let mut f = std::fs::File::open(path)?;
     let mut rdr = io::BufReader::new(f);
