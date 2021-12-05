@@ -62,7 +62,7 @@ impl NNUE {
 
             let k: u8 = rng.gen_range(0..10);
             if k == 0 {
-                self.backprop(None, te.eval, params.eta);
+                self.backprop(None, te.eval as i32, params.eta);
             }
 
         }

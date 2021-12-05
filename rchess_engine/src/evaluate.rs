@@ -6,16 +6,18 @@ use crate::pawn_hash_table::*;
 
 pub use self::tapered::TaperedScore;
 
-use nalgebra::Quaternion;
 use serde::{Serialize,Deserialize};
 
 pub type Score = i32;
+// pub type Score = i16;
 
 pub static CHECKMATE_VALUE: Score = 100_000_000;
 pub static STALEMATE_VALUE: Score = 20_000_000;
+// pub static CHECKMATE_VALUE: Score = 32000;
+// pub static STALEMATE_VALUE: Score = 31000;
 
-pub fn convert_from_score(s: Score) -> i8 {
-    const K: Score = 16909320;
+pub fn convert_from_score(s: i32) -> i8 {
+    const K: i32 = 16909320;
     (s / K) as i8
 }
 
@@ -345,9 +347,10 @@ impl Game {
         ((mid * (256 - p)) + (end * p)) / 256
     }
 
+    #[cfg(feature = "nope")]
     fn _game_phase(&self) -> u8 {
-        const MIDGAME_LIMIT: i32 = 15258;
-        const ENDGAME_LIMIT: i32 = 3915;
+        const MIDGAME_LIMIT: Score = 15258;
+        const ENDGAME_LIMIT: Score = 3915;
 
         const NON_PAWN: [Piece; 4] = [Knight,Bishop,Rook,Queen];
 
@@ -415,24 +418,24 @@ impl Game {
 }
 
 impl Piece {
-    pub fn score_basic(&self) -> i32 {
+    pub fn score_basic(&self) -> Score {
         match self {
             Pawn   => 100,
             Knight => 300,
             Bishop => 300,
             Rook   => 500,
             Queen  => 900,
-            King   => 1000000,
+            King   => 32001,
         }
     }
-    pub fn score(&self) -> i32 {
+    pub fn score(&self) -> Score {
         match self {
             Pawn   => 100,
             Knight => 320,
             Bishop => 330,
             Rook   => 500,
             Queen  => 900,
-            King   => 1000000,
+            King   => 32001,
         }
     }
 }
@@ -450,14 +453,14 @@ impl Game {
                 let rs = self.get(Rook, side);
 
                 // let n = rs.popcount() as i32;
-                let n = self.state.material.buf[side][Rook.index()] as i32;
+                let n = self.state.material.buf[side][Rook.index()] as Score;
                 let s = Rook.score() * n;
                 s
             },
             // Knight => {},
             Bishop => {
                 // let n = self.get(Bishop, side).popcount() as i32;
-                let n = self.state.material.buf[side][Bishop.index()] as i32;
+                let n = self.state.material.buf[side][Bishop.index()] as Score;
                 let s = if n > 1 {
                     // 2 bishops = 0.5 pawn
                     Bishop.score() * n + 50
@@ -468,7 +471,7 @@ impl Game {
             },
             _      => {
                 // let s = pc.score() * self.get(pc, side).popcount() as i32;
-                let n = self.state.material.buf[side][pc.index()] as i32;
+                let n = self.state.material.buf[side][pc.index()] as Score;
                 let s = pc.score() * n;
                 s
             },

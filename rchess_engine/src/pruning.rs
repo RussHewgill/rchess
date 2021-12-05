@@ -17,7 +17,8 @@ impl ExHelper {
         mut cfg:            ABConfig,
         depth:              Depth,
         ply:                Depth,
-        (alpha,beta):       (i32,i32),
+        // (alpha,beta):       (i32,i32),
+        (alpha,beta):       (Score,Score),
         mut stats:          &mut SearchStats,
         mut tracking:       &mut ExTracking,
     ) -> bool {

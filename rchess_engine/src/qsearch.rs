@@ -137,7 +137,7 @@ impl ExHelper {
         g:                        &Game,
         mut stats:                &mut SearchStats,
     ) -> Score {
-        let (alpha,beta) = (i32::MIN,i32::MAX);
+        let (alpha,beta) = (Score::MIN,Score::MAX);
         let (alpha,beta) = (alpha + 200,beta - 200);
         self.game = g.clone();
         self.side = g.state.side_to_move;
@@ -150,7 +150,7 @@ impl ExHelper {
         g:                        &Game,
         mut stats:                &mut SearchStats,
     ) -> Score {
-        let (alpha,beta) = (i32::MIN,i32::MAX);
+        let (alpha,beta) = (Score::MIN,Score::MAX);
         let (alpha,beta) = (alpha + 200,beta - 200);
         self.qsearch(ts, g, (0,0), (alpha,beta), stats)
     }
@@ -165,7 +165,7 @@ impl ExHelper {
         ts:                       &Tables,
         g:                        &Game,
         (ply,qply):               (Depth,Depth),
-        (mut alpha, mut beta):    (i32,i32),
+        (mut alpha, mut beta):    (Score,Score),
         mut stats:                &mut SearchStats,
     ) -> Score {
         // trace!("qsearch, {:?} to move, ply {}, a/b: {:?},{:?}",
@@ -229,7 +229,7 @@ impl ExHelper {
                             },
                             Outcome::Checkmate(c) => {
                                 // trace!("qsearch checkmate {:?}: ply {}, {}\n{:?}", c, ply, qply, g);
-                                let score = 100_000_000 - ply as Score;
+                                let score = CHECKMATE_VALUE - ply as Score;
 
                                 // if g.state.side_to_move == Black {
                                 //     return -score;

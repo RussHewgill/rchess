@@ -170,7 +170,7 @@ impl ExHelper {
         let mut cfg = ABConfig::new_depth(depth);
         cfg.root = true;
 
-        let (alpha,beta) = (i32::MIN,i32::MAX);
+        let (alpha,beta) = (Score::MIN,Score::MAX);
         let (alpha,beta) = (alpha + 200,beta - 200);
 
         let mut g = self.game.clone();
@@ -200,7 +200,8 @@ impl ExHelper {
         depth:                   Depth,
         ply:                     Depth,
         mut stop_counter:        &mut u16,
-        (mut alpha, mut beta):   (i32,i32),
+        // (mut alpha, mut beta):   (i32,i32),
+        (mut alpha, mut beta):   (Score,Score),
         mut stats:               &mut SearchStats,
         mut tracking:            &mut ExTracking,
     ) -> ABResults {
@@ -437,8 +438,8 @@ impl ExHelper {
             } else { false };
 
         let mut moves_searched = 0;
-        let mut val = i32::MIN + 200;
-        let mut val: (Option<(Zobrist,ABResult,bool)>,i32) = (None,val);
+        let mut val = Score::MIN + 200;
+        let mut val: (Option<(Zobrist,ABResult,bool)>,Score) = (None,val);
         let mut list = vec![];
 
         'outer: for (mv,zb0,tt) in gs.into_iter() {

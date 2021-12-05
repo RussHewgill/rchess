@@ -2062,7 +2062,7 @@ fn main9() {
     // let t = 0.3;
 
     // let n = 35;
-    let n = 6;
+    let n = 7;
 
     // let t0 = std::time::Instant::now();
     // // println!("g = {:?}", g);
