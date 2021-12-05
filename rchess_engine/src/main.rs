@@ -2976,11 +2976,9 @@ fn main_perft(depth: Option<u64>) {
 
     let fens = vec![fen,fen2,fen3,fen4,fen5];
 
-    let k0 = 0u8;
-
+    // let k0 = 0u8;
     // eprintln!("k0 = {:?}", k0);
     // let k1 = Coord::new_int(k0);
-    // eprintln!("k1 = {:?}", k1);
 
     // let ts = Tables::new();
     let ts = Tables::read_from_file_def().unwrap();
