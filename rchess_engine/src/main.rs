@@ -815,7 +815,7 @@ fn main_tuning() {
     if std::path::Path::new(&evpath).exists() {
         std::fs::rename(&evpath, &format!("{}.bak", evpath)).unwrap();
         eprintln!("evparams.bin already exists, renaming to evparams.bin.bak");
-        return;
+        // return;
     }
 
     let count = 1000;
