@@ -28,7 +28,8 @@ pub static QS_RECAPS_ONLY: Depth = 5;
 
 pub static NULL_PRUNE_MIN_DEPTH: Depth = 2;
 
-pub static FUTILITY_MARGIN: Score = 200;
+// pub static FUTILITY_MARGIN: Score = 200;
+pub static FUTILITY_MARGIN: Score = 300;
 
 pub trait Tunable {
     const LEN: usize;

@@ -98,8 +98,16 @@ fn main() -> std::io::Result<()> {
 
     // let evpath = "/home/me/code/rust/rchess/evparams.bin";
     // let (ev_mid,ev_end) = EvalParams::read_evparams(evpath).unwrap();
-    // explorer.cfg.eval_params_mid = ev_mid;
-    // explorer.cfg.eval_params_end = ev_end;
+
+    // let mut ev_mid = EvalParams::empty();
+    // let mut ev_end = EvalParams::empty();
+    let mut ev_mid = EvalParams::default();
+    let mut ev_end = EvalParams::default();
+    ev_mid.mid = true;
+    ev_end.mid = false;
+
+    explorer.cfg.eval_params_mid = ev_mid;
+    explorer.cfg.eval_params_end = ev_end;
 
     let mut g0 = Game::from_fen(&ts, STARTPOS).unwrap();
 

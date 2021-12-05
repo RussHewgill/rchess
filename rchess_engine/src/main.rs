@@ -723,7 +723,7 @@ fn main_tuning() {
 
     let evpath = "/home/me/code/rust/rchess/evparams.bin";
 
-    if true {
+    if !true {
 
         // let mut ev = EvalParams::default();
         // ev.psqt.print_table(Rook).unwrap();
@@ -744,10 +744,11 @@ fn main_tuning() {
         return;
     }
 
-    // let ev_mid = EvalParams::default();
-    // let mut ev_end = EvalParams::default();
-    // // let ev_mid = EvalParams::empty();
-    // // let mut ev_end = EvalParams::empty();
+    // // let mut ev_mid = EvalParams::default();
+    // // let mut ev_end = EvalParams::default();
+    // let mut ev_mid = EvalParams::empty();
+    // let mut ev_end = EvalParams::empty();
+    // ev_mid.mid = true;
     // ev_end.mid = false;
 
     // EvalParams::save_evparams(&ev_mid, &ev_end, evpath).unwrap();
@@ -818,13 +819,15 @@ fn main_tuning() {
     let t1 = t0.elapsed().as_secs_f64();
     eprintln!("finished one eval_error in {:.3} seconds", t1);
 
-    if std::path::Path::new(&evpath).exists() {
-        std::fs::rename(&evpath, &format!("{}.bak", evpath)).unwrap();
-        eprintln!("evparams.bin already exists, renaming to evparams.bin.bak");
-        // return;
-    }
+    // return;
 
-    let count = 1000;
+    // if std::path::Path::new(&evpath).exists() {
+    //     std::fs::rename(&evpath, &format!("{}.bak", evpath)).unwrap();
+    //     eprintln!("evparams.bin already exists, renaming to evparams.bin.bak");
+    //     // return;
+    // }
+
+    let count = 10;
 
     let (ev_mid2,ev_end2) = texel_optimize(
         &ts,
@@ -1381,39 +1384,46 @@ fn _main_nn() -> std::io::Result<()> {
 
     use rchess_engine_lib::brain::sf_compat::*;
 
+    let persp = White;
+
     // let king_sq: u8 = Coord::from("E1").into();
+    // // let king_sq: u8 = Coord::from("D1").into();
     // let side = White;
     // let pc = Pawn;
     // let sq: u8 = Coord::from("E2").into();
+    // let k0 = orient(king_sq, persp, king_sq);
+    // let k0 = Coord::from(k0);
+    // eprintln!("k0 = {:?}", k0);
 
-    let persp = White;
-    let mut xs: HashSet<usize> = HashSet::default();
+    // let k0 = 64 * (11 * 64 / 2);
+    // eprintln!("k0 = {:?}", k0);
 
-    for side in [White,Black] {
-        for pc in Piece::iter_pieces() {
-            for king_sq in 0..64 {
-                for sq in 0..64 {
-                    let idx = make_index_half_ka_v2(king_sq, persp, pc, side, sq);
-                    if xs.contains(&idx) {
-                        panic!();
-                    }
-                    xs.insert(idx);
-                }
-            }
-        }
-    }
-
-    eprintln!("xs.len() = {:?}", xs.len());
-
-    let max = xs.iter().max().unwrap();
-    let min = xs.iter().min().unwrap();
-
-    eprintln!("(max,min) = {:?}", (max,min));
+    // let mut xs: HashSet<usize> = HashSet::default();
+    // let mut dups = 0;
+    // for side in [White,Black] {
+    //     for pc in Piece::iter_pieces() {
+    //         for king_sq in 0..64 {
+    //             for sq in 0..64 {
+    //                 let idx = make_index_half_ka_v2(king_sq, persp, pc, side, sq);
+    //                 if xs.contains(&idx) {
+    //                     // panic!();
+    //                     dups += 1;
+    //                 }
+    //                 xs.insert(idx);
+    //             }
+    //         }
+    //     }
+    // }
+    // eprintln!("dups = {:?}", dups);
+    // eprintln!("xs.len() = {:?}", xs.len());
+    // let max = xs.iter().max().unwrap();
+    // let min = xs.iter().min().unwrap();
+    // eprintln!("(max,min) = {:?}", (max,min));
 
     // let idx = make_index_half_ka_v2(king_sq, persp, pc, side, sq);
     // eprintln!("idx = {:?}", idx);
 
-    return Ok(());
+    // return Ok(());
 
     let mut f = std::fs::File::open(path)?;
     let mut rdr = io::BufReader::new(f);
@@ -1433,14 +1443,28 @@ fn _main_nn() -> std::io::Result<()> {
     eprintln!("desc = {:?}", desc);
 
     let header = rdr.read_u32::<LittleEndian>()?;
-    eprintln!("header = {:#8x}", header);
+    eprintln!("feature_trans hash = {:#8x}", header);
 
     let dims_in = 64 * (11 * 64) / 2;
-    // let dims_half = 
-    // let dims_out = dims_half * 2;
+    let dims_half = 1024;
 
-    let mut biases = vec![0u8; 0];
-    rdr.read_exact(&mut biases)?;
+    // let layers = vec![dims_in, 520, ];
+
+    // let mut biases = vec![0u8; dims_half];
+    // rdr.read_exact(&mut biases)?;
+    // let mut weights = vec![0u8; dims_half * dims_in];
+    // rdr.read_exact(&mut weights)?;
+    // let mut psqt_weights = vec![0u8; 8 * dims_in];
+    // rdr.read_exact(&mut psqt_weights)?;
+
+    // for i in 0..8 {
+    //     // let b = rdr.read_u32::<LittleEndian>()?;
+    // }
+
+    // let mut s = String::new();
+    // let end = rdr.read_to_string(&mut s)?;
+
+    // eprintln!("end = {:?}", end);
 
     Ok(())
 }
@@ -2037,8 +2061,8 @@ fn main9() {
     // let t = 0.5;
     // let t = 0.3;
 
-    let n = 35;
-    // let n = 6;
+    // let n = 35;
+    let n = 6;
 
     // let t0 = std::time::Instant::now();
     // // println!("g = {:?}", g);

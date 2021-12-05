@@ -318,6 +318,7 @@ impl ExHelper {
             moves.retain(|mv| !self.cfg.blocked_moves.contains(&mv));
         }
 
+        /// Enter Qsearch
         if depth == 0 {
             // if !self.tt_r.contains_key(&g.zobrist) {
             // }
@@ -425,13 +426,14 @@ impl ExHelper {
         let mut skip_pv   = false;
 
         #[cfg(feature = "futility_pruning")]
-        let can_futility_prune = if depth <= 3
-        // let can_futility_prune = if depth == 1
+        // let can_futility_prune = if depth <= 3
+        let can_futility_prune = if depth == 1
             && !is_pv_node
             && g.state.checkers.is_empty()
             && alpha < STALEMATE_VALUE - 100 {
                 let static_eval = self.cfg.evaluate(ts, g, &self.ph_rw);
-                static_eval + (FUTILITY_MARGIN * depth as Score) <= alpha
+                // static_eval + (FUTILITY_MARGIN * depth as Score) <= alpha
+                static_eval + FUTILITY_MARGIN <= alpha
             } else { false };
 
         let mut moves_searched = 0;

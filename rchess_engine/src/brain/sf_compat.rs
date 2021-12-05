@@ -6,6 +6,7 @@ use std::path::Path;
 
 use byteorder::{ReadBytesExt, LittleEndian};
 
+const HALF_DIMS: usize = 1024;
 
 const SQUARE_NB: usize = 64;
 
@@ -63,36 +64,29 @@ fn _read_nnue(mut f: std::fs::File) -> io::Result<()> {
     unimplemented!()
 }
 
-fn orient(king_sq: u8, persp: Color, sq: u8) -> u8 {
+pub fn orient(king_sq: u8, persp: Color, sq: u8) -> u8 {
     let p = persp.fold(0, 1);
+
     const A8: u64 = 56;
     const H1: u64 = 7;
+
     let x = if Coord::from(king_sq).file() < 4 { 1 } else { 0 };
+
     let out = sq as u64 ^ (p * A8) ^ (x * H1);
+
     out as u8
 }
 
 pub fn make_index_half_ka_v2(king_sq: u8, persp: Color, pc: Piece, side: Color, sq: u8) -> usize {
-    let o_king_sq = orient(king_sq, persp, sq);
-
-    // const WID: [usize; 8] = [0, ]
-
+    let o_king_sq = orient(king_sq, persp, king_sq);
     let pidx = PIECE_SQ_INDEX[side][persp][pc.index() + 1];
 
     let pc_nb = KING_BUCKETS[o_king_sq as usize];
-    assert!(pc_nb > 0);
+    // assert!(pc_nb > 0);
     let pc_nb = PS_NB * pc_nb as usize;
 
     orient(king_sq, persp, sq) as usize
         + pidx
         + pc_nb
-
-    // Square o_ksq = orient(perspective, ksq, ksq);
-    // IndexType(
-    //     orient(perspective, s, ksq)
-    //         + PieceSquareIndex[perspective][pc]
-    //         + PS_NB * KingBuckets[o_ksq]);
-
-    // unimplemented!()
 }
 

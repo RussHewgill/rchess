@@ -202,7 +202,8 @@ pub fn texel_optimize_once(
     mid:                         bool,
     mut best_error:              &mut f64,
     k:                           Option<f64>,
-    delta:                       Score,
+    // delta:                       Score,
+    mut deltas:                  &mut [Score],
     print:                       bool,
 ) {
 
@@ -244,6 +245,7 @@ pub fn texel_optimize_once(
         //     continue;
         // }
 
+        let delta = deltas[n];
         arr[n] = arr[n].checked_add(delta).unwrap();
 
         EvalParams::from_arr(&arr).update_exhelper(&mut exhelper, mid);
@@ -253,6 +255,7 @@ pub fn texel_optimize_once(
 
         if new_error < *best_error {
             *best_error = new_error;
+            deltas[n] = (deltas[n] / 2).max(1);
             // improved = true;
         } else {
             arr[n] = arr[n].checked_sub(delta * 2).unwrap();
@@ -263,11 +266,13 @@ pub fn texel_optimize_once(
 
             if new_error < *best_error {
                 *best_error = new_error;
+                deltas[n] = (deltas[n] / 2).max(1);
                 // improved = true;
             } else {
                 arr[n] = arr[n].checked_add(delta).unwrap();
                 EvalParams::from_arr(&arr).update_exhelper(&mut exhelper, mid);
                 exhelper.ph_rw.purge_scores();
+                deltas[n] = (deltas[n] * 2).min(100);
             }
         }
 
@@ -310,6 +315,9 @@ pub fn texel_optimize(
     // let print = false;
     let print = true;
 
+    let mut deltas_mid = vec![50; arr_len];
+    let mut deltas_end = vec![50; arr_len];
+
     println!("starting texel_optimize...");
     // eprintln!("arr_mid.len() = {:?}", arr_mid.len());
     let t0 = std::time::Instant::now();
@@ -320,10 +328,14 @@ pub fn texel_optimize(
         // let inputs_slice = inputs.choose_multiple(&mut rng, )
 
         texel_optimize_once(
-            ts, inputs, &mut exhelper, ignore_weights, count, true, &mut best_error, k, delta, print);
+            // ts, inputs, &mut exhelper, ignore_weights, count, true, &mut best_error, k, delta, print);
+            ts, inputs, &mut exhelper, ignore_weights, count, true,
+            &mut best_error, k, &mut deltas_mid, print);
 
         texel_optimize_once(
-            ts, inputs, &mut exhelper, ignore_weights, count, false, &mut best_error, k, delta, print);
+            // ts, inputs, &mut exhelper, ignore_weights, count, false, &mut best_error, k, delta, print);
+            ts, inputs, &mut exhelper, ignore_weights, count, false,
+            &mut best_error, k, &mut deltas_end, print);
 
         EvalParams::save_evparams(
             &exhelper.cfg.eval_params_mid,
