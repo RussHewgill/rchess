@@ -800,10 +800,10 @@ fn main_tuning() {
 
     eprintln!("ps.len() = {:?}", ps.len());
 
-    let k = 1.0;
+    // let k = 1.0;
     // let k: f64 = -0.1111f64;
-    // let k = 1.302;
-    // let k = find_k(&ts, &ps, &exhelper, false);
+    let k = 1.3;
+    // let k = find_k(&ts, &ps, &exhelper, true);
     eprintln!("k = {:?}", k);
 
     let t0 = std::time::Instant::now();

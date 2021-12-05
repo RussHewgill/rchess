@@ -229,6 +229,7 @@ pub fn texel_optimize_once(
         exhelper.cfg.eval_params_end.to_arr()
     };
 
+    let t0 = std::time::Instant::now();
     let nn = arr.len();
     let mut improved = true;
     for n in 1..arr.len() {
@@ -269,8 +270,12 @@ pub fn texel_optimize_once(
             }
         }
 
-        // let t1 = t0.elapsed().as_secs_f64();
-        // println!("n {} in {:.3} seconds, {:.1}", n, t1, n as f64 / t1);
+
+        if n % (nn / 10) == 0 {
+            let t1 = t0.elapsed().as_secs_f64();
+            eprintln!("texel_optimize {} in {:.3} seconds, {:.2} loops/sec", n, t1, n as f64 / t1);
+            eprintln!("best_error = {:?}", best_error);
+        }
     }
 
 }
