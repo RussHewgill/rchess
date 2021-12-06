@@ -6,6 +6,8 @@
 
 #![feature(core_intrinsics)]
 #![feature(backtrace,backtrace_frames)]
+// #![feature(generic_const_exprs)]
+
 
 #![allow(clippy::all)]
 
@@ -1423,46 +1425,68 @@ fn _main_nn() -> std::io::Result<()> {
 
     // return Ok(());
 
-    let mut f = std::fs::File::open(path)?;
-    let mut rdr = io::BufReader::new(f);
+    // let s0 = std::mem::size_of::<usize>();
+    // eprintln!("s0 = {:?}", s0);
 
-    let version   = rdr.read_u32::<LittleEndian>()?;
-    eprintln!("version = {:#8x}", version);
+    // return Ok(());
 
-    let hashvalue = rdr.read_u32::<LittleEndian>()?;
-    eprintln!("hashvalue = {:#8x}", hashvalue);
+    if !true {
+        let mut f = std::fs::File::open(path)?;
+        let mut rdr = io::BufReader::new(f);
 
-    let size      = rdr.read_u32::<LittleEndian>()?;
-    eprintln!("size = {:?}", size);
+        let version   = rdr.read_u32::<LittleEndian>()?;
+        eprintln!("version = {:#8x}", version);
 
-    let mut desc = vec![0u8; size as usize];
-    rdr.read_exact(&mut desc)?;
-    let desc = String::from_utf8_lossy(&desc);
-    eprintln!("desc = {:?}", desc);
+        let hashvalue = rdr.read_u32::<LittleEndian>()?;
+        eprintln!("hashvalue = {:#8x}", hashvalue);
 
-    let header = rdr.read_u32::<LittleEndian>()?;
-    eprintln!("feature_trans hash = {:#8x}", header);
+        let size      = rdr.read_u32::<LittleEndian>()?;
+        eprintln!("size = {:?}", size);
 
-    let dims_in = 64 * (11 * 64) / 2;
-    let dims_half = 1024;
+        let mut desc = vec![0u8; size as usize];
+        rdr.read_exact(&mut desc)?;
+        let desc = String::from_utf8_lossy(&desc);
+        eprintln!("desc = {:?}", desc);
 
-    // let layers = vec![dims_in, 520, ];
+        let mut ft = NNFeatureTrans::new();
 
-    // let mut biases = vec![0u8; dims_half];
-    // rdr.read_exact(&mut biases)?;
-    // let mut weights = vec![0u8; dims_half * dims_in];
-    // rdr.read_exact(&mut weights)?;
-    // let mut psqt_weights = vec![0u8; 8 * dims_in];
-    // rdr.read_exact(&mut psqt_weights)?;
+        let mut layers: Vec<Layer3> = {
+            let layer0 = Layer0::new();
+            let layer1 = Layer1::new(NNAffine::new(layer0));
+            let layer2 = Layer2::new(NNAffine::new(layer1));
+            let layer3 = Layer3::new(layer2);
 
-    // for i in 0..8 {
-    //     // let b = rdr.read_u32::<LittleEndian>()?;
-    // }
+            vec![layer3.clone(); 8]
+            // vec![NNFeatureTrans::new(layer3); 8]
+        };
 
-    // let mut s = String::new();
-    // let end = rdr.read_to_string(&mut s)?;
+        ft.read_parameters(&mut rdr)?;
+
+        for (n,mut layer) in layers.iter_mut().enumerate() {
+            // eprintln!("layer = {:?}", n);
+            layer.read_parameters(&mut rdr)?;
+        }
+    }
+
+    let mut nn = NNUE4::read_nnue(path).unwrap();
+
+    // let k0 = layers[0].size();
+    // eprintln!("k0 = {:?}", k0);
+
+    // let mut r = rdr.get_mut();
+    // let mut xs = vec![];
+    // let end = r.read_to_end(&mut xs)?;
 
     // eprintln!("end = {:?}", end);
+
+    {
+        let ts = Tables::read_from_file_def().unwrap();
+
+        let fen = STARTPOS;
+        let mut g = Game::from_fen(&ts, fen).unwrap();
+
+        return Ok(());
+    }
 
     Ok(())
 }

@@ -7,6 +7,8 @@
 #![feature(core_intrinsics)]
 #![feature(label_break_value)]
 // #![feature(backtrace,backtrace_frames)]
+// #![feature(generic_const_exprs)]
+
 
 #![allow(
     // clippy::all,
@@ -70,6 +72,7 @@ pub mod pawn_hash_table;
 pub mod evmap_tables;
 
 pub mod brain;
+pub mod sf_compat;
 
 // #[macro_use]
 pub mod searchstats;
