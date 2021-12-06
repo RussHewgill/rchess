@@ -306,7 +306,7 @@ pub fn texel_optimize(
         .unwrap();
 
     // let mut delta = 50;
-    let mut delta = 10;
+    // let mut delta = 10;
 
 
     // let arr_end_mut = exhelper.cfg.eval_params_end.to_arr_mut();

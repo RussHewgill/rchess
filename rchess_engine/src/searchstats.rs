@@ -231,9 +231,9 @@ mod ss {
             // let n_root = tt_r2.iter().filter(|(_,sis)| {
             //     sis.iter().next().unwrap().node_type == Node::Root});
 
-            debug!("n_pv   = {:?}", n_pv.collect::<Vec<_>>().len());
-            debug!("n_cut  = {:?}", n_cut.collect::<Vec<_>>().len());
-            debug!("n_all  = {:?}", n_all.collect::<Vec<_>>().len());
+            debug!("n_pv   = {:?}", n_pv.count());
+            debug!("n_cut  = {:?}", n_cut.count());
+            debug!("n_all  = {:?}", n_all.count());
             // debug!("n_root = {:?}", n_root.collect::<Vec<_>>().len());
         }
 
