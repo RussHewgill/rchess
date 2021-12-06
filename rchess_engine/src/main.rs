@@ -1355,7 +1355,7 @@ fn main_nn() {
     // // eprintln!("nn.weights.len() = {:?}", nn.weights.len());
     // eprintln!("nn.activations[0].shape() = {:?}", nn.activations[0].shape());
 
-    use rchess_engine_lib::brain::sf_compat::*;
+    use rchess_engine_lib::sf_compat::*;
     // let mut nn = read_nnue(&path);
 
     _main_nn().unwrap();
@@ -1371,9 +1371,6 @@ fn _main_nn() -> std::io::Result<()> {
 
     use byteorder::{ReadBytesExt, LittleEndian};
 
-    // let path = "./nn-c3ca321c51c9.nnue";
-    let path = "./nn-cdf1785602d6.nnue";
-
     // let c0 = Coord::from("E1");
     // let k: u8 = c0.into();
     // eprintln!("k = {:?}", k);
@@ -1382,7 +1379,7 @@ fn _main_nn() -> std::io::Result<()> {
     // let k0 = Coord::from(k0);
     // eprintln!("k0 = {:?}", k0);
 
-    use rchess_engine_lib::brain::sf_compat::*;
+    use rchess_engine_lib::sf_compat::*;
 
     let persp = White;
 
@@ -1430,43 +1427,8 @@ fn _main_nn() -> std::io::Result<()> {
 
     // return Ok(());
 
-    if !true {
-        let mut f = std::fs::File::open(path)?;
-        let mut rdr = io::BufReader::new(f);
-
-        let version   = rdr.read_u32::<LittleEndian>()?;
-        eprintln!("version = {:#8x}", version);
-
-        let hashvalue = rdr.read_u32::<LittleEndian>()?;
-        eprintln!("hashvalue = {:#8x}", hashvalue);
-
-        let size      = rdr.read_u32::<LittleEndian>()?;
-        eprintln!("size = {:?}", size);
-
-        let mut desc = vec![0u8; size as usize];
-        rdr.read_exact(&mut desc)?;
-        let desc = String::from_utf8_lossy(&desc);
-        eprintln!("desc = {:?}", desc);
-
-        let mut ft = NNFeatureTrans::new();
-
-        let mut layers: Vec<Layer3> = {
-            let layer0 = Layer0::new();
-            let layer1 = Layer1::new(NNAffine::new(layer0));
-            let layer2 = Layer2::new(NNAffine::new(layer1));
-            let layer3 = Layer3::new(layer2);
-
-            vec![layer3.clone(); 8]
-            // vec![NNFeatureTrans::new(layer3); 8]
-        };
-
-        ft.read_parameters(&mut rdr)?;
-
-        for (n,mut layer) in layers.iter_mut().enumerate() {
-            // eprintln!("layer = {:?}", n);
-            layer.read_parameters(&mut rdr)?;
-        }
-    }
+    let path = "./nn-cdf1785602d6.nnue";
+    // let path = "./nn-3475407dc199.nnue";
 
     let mut nn = NNUE4::read_nnue(path).unwrap();
 
@@ -1482,8 +1444,25 @@ fn _main_nn() -> std::io::Result<()> {
     {
         let ts = Tables::read_from_file_def().unwrap();
 
-        let fen = STARTPOS;
-        let mut g = Game::from_fen(&ts, fen).unwrap();
+        // let fen = STARTPOS;
+        let fen1 = "4k3/3ppp2/8/8/8/8/3PPP2/4K3 w - - 0 1"; // base
+        let fen2 = "4k3/3ppp2/8/8/8/8/2NPPP2/4K3 w - - 0 1"; // +1 knight
+        let fen3 = "4k3/2nppp2/8/8/8/8/3PPP2/4K3 w - - 0 1"; // -1 knight
+
+        let mut g1 = Game::from_fen(&ts, fen1).unwrap();
+        let mut g2 = Game::from_fen(&ts, fen2).unwrap();
+        let mut g3 = Game::from_fen(&ts, fen3).unwrap();
+
+        eprintln!("evaling");
+
+        let eval1 = nn.evaluate(&g1, false);
+        eprintln!("eval 1 = {:?}", eval1);
+
+        let eval2 = nn.evaluate(&g1, false);
+        eprintln!("eval 2 = {:?}", eval2);
+
+        let eval3 = nn.evaluate(&g1, false);
+        eprintln!("eval 3 = {:?}", eval3);
 
         return Ok(());
     }

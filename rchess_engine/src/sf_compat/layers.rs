@@ -24,11 +24,12 @@ pub trait NNLayer {
     const SIZE_INPUT: usize;
 
     const SELF_BUFFER_SIZE: usize;
+    const BUFFER_SIZE: usize;
 
     const HASH: u32;
 
     // fn propogate(&self, input: &[u8]) -> Vec<Self::OutputType>;
-    fn propogate(&self, input: &[u8], output: &mut [Self::OutputType]);
+    fn propagate(&self, input: &[u8], output: &mut [Self::OutputType]);
 
     fn size(&self) -> usize;
 
@@ -59,13 +60,14 @@ mod nn_input {
         const SIZE_INPUT: usize = OS;
 
         const SELF_BUFFER_SIZE: usize = OS;
+        const BUFFER_SIZE: usize = 0;
 
         const HASH: u32 = 0xEC42E90D ^ Self::SIZE_OUTPUT as u32;
 
         fn size(&self) -> usize { self.buf.len() }
 
         // fn propogate(&self, input: &[u8]) -> Vec<Self::OutputType> {
-        fn propogate(&self, input: &[u8], output: &mut [Self::OutputType]) {
+        fn propagate(&self, input: &[u8], output: &mut [Self::OutputType]) {
             // self.buf.to_vec()
             // assert!(input.len() == output.len());
             assert_eq!(input.len(), Self::SELF_BUFFER_SIZE);
@@ -173,6 +175,8 @@ mod nn_affine {
         const SELF_BUFFER_SIZE: usize =
             ceil_to_multiple(Self::SIZE_OUTPUT * std::mem::size_of::<Self::OutputType>(), CACHE_LINE_SIZE);
 
+        const BUFFER_SIZE: usize = Prev::BUFFER_SIZE + Self::SELF_BUFFER_SIZE;
+
         const HASH: u32 = {
             let mut hash = 0xCC03DAE4;
             hash += Self::SIZE_OUTPUT as u32;
@@ -187,7 +191,7 @@ mod nn_affine {
                 + self.weights.len() * std::mem::size_of_val(&self.weights[0])
         }
 
-        fn propogate(&self, input: &[u8], output: &mut [Self::OutputType]) {
+        fn propagate(&self, input: &[u8], output: &mut [Self::OutputType]) {
 
             // assert_eq!(input.len(), Self::SELF_BUFFER_SIZE);
             // assert_eq!(output.len(), Self::SELF_BUFFER_SIZE);
@@ -261,12 +265,14 @@ mod nn_relu {
         const SELF_BUFFER_SIZE: usize =
             ceil_to_multiple(Self::SIZE_OUTPUT * std::mem::size_of::<Self::OutputType>(), CACHE_LINE_SIZE);
 
+        const BUFFER_SIZE: usize = Prev::BUFFER_SIZE + Self::SELF_BUFFER_SIZE;
+
         const HASH: u32 = 0x538D24C7 + Prev::HASH;
 
         fn size(&self) -> usize { self.prev.size() }
 
         // fn propogate(&self, input: &[u8]) -> Vec<Self::OutputType> {
-        fn propogate(&self, input: &[u8], output: &mut [Self::OutputType]) {
+        fn propagate(&self, input: &[u8], output: &mut [Self::OutputType]) {
 
             assert_eq!(input.len(), Self::SELF_BUFFER_SIZE);
             // assert_eq!(output.len(), Self::SELF_BUFFER_SIZE);
@@ -274,7 +280,7 @@ mod nn_relu {
 
             let mut input2 = vec![Self::InputType::zero(); Self::SIZE_INPUT];
             let mut input2: &mut [Self::InputType] = &mut input2[..];
-            self.prev.propogate(&input, input2);
+            self.prev.propagate(&input, input2);
 
             // TODO: AVX2 magic
 
