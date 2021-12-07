@@ -22,10 +22,12 @@ impl NNAccum {
 
 impl NNAccum {
 
-    pub fn append_active(&mut self, g: &Game, persp: Color, mut active: &mut Vec<usize>) {
+    pub fn append_active(g: &Game, persp: Color, mut active: &mut Vec<usize>) {
         let king_sq = g.get(King,persp).bitscan();
+
         for side in [White,Black] {
             for pc in Piece::iter_pieces() {
+                // if side == persp && pc == King { continue; }
                 g.get(pc,side).into_iter().for_each(|sq| {
                     let idx = super::NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
                     active.push(idx);

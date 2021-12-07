@@ -1381,17 +1381,6 @@ fn _main_nn() -> std::io::Result<()> {
 
     use rchess_engine_lib::sf_compat::*;
 
-    let persp = White;
-
-    // let king_sq: u8 = Coord::from("E1").into();
-    // // let king_sq: u8 = Coord::from("D1").into();
-    // let side = White;
-    // let pc = Pawn;
-    // let sq: u8 = Coord::from("E2").into();
-    // let k0 = orient(king_sq, persp, king_sq);
-    // let k0 = Coord::from(k0);
-    // eprintln!("k0 = {:?}", k0);
-
     // let k0 = 64 * (11 * 64 / 2);
     // eprintln!("k0 = {:?}", k0);
 
@@ -1427,10 +1416,15 @@ fn _main_nn() -> std::io::Result<()> {
 
     // return Ok(());
 
-    let path = "./nn-cdf1785602d6.nnue";
-    // let path = "./nn-3475407dc199.nnue";
+    // let path = "./nn-3475407dc199.nnue"; // wrong hash?
+
+    // let path = "./nn-cdf1785602d6.nnue";
+    let path = "./nn-13406b1dcbe0.nnue";
 
     let mut nn = NNUE4::read_nnue(path).unwrap();
+
+    // let h = NNUE4::HASH;
+    // eprintln!("hash = {:#8x}", h);
 
     // let k0 = layers[0].size();
     // eprintln!("k0 = {:?}", k0);
@@ -1441,28 +1435,75 @@ fn _main_nn() -> std::io::Result<()> {
 
     // eprintln!("end = {:?}", end);
 
+    let persp = White;
+
+    let king_sq = Coord::from("E1");
+    // let king_sq: u8 = Coord::from("D1").into();
+    let side = White;
+    let pc = Pawn;
+    let sq = Coord::from("E1");
+
+    // let k0 = NNUE4::orient(king_sq, persp, king_sq);
+    // eprintln!("k0 = {:?}", k0);
+
+    // let idx = NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
+    // eprintln!("idx = {:?}", idx);
+
+    let mut nn2 = &nn.layers[0];
+
+    // eprintln!("nn2.biases.len() = {:?}", nn2.biases.len());
+    // eprintln!("nn2.weights.len() = {:?}", nn2.weights.len());
+
+    // let bs = nn2.biases.iter().filter(|x| **x == 0).count();
+    // eprintln!("bs = {:?}", bs);
+    // let ws = nn2.weights.iter().filter(|x| **x == 0).count();
+    // eprintln!("ws = {:?}", ws);
+
+    // return Ok(());
+
     {
         let ts = Tables::read_from_file_def().unwrap();
 
-        // let fen = STARTPOS;
-        let fen1 = "4k3/3ppp2/8/8/8/8/3PPP2/4K3 w - - 0 1"; // base
-        let fen2 = "4k3/3ppp2/8/8/8/8/2NPPP2/4K3 w - - 0 1"; // +1 knight
-        let fen3 = "4k3/2nppp2/8/8/8/8/3PPP2/4K3 w - - 0 1"; // -1 knight
+        // // let fen = STARTPOS;
+        // let fen1 = "4k3/3ppp2/8/8/8/8/3PPP2/4K3 w - - 0 1"; // base
+        // let fen2 = "4k3/3ppp2/8/8/8/8/2NPPP2/4K3 w - - 0 1"; // +1 knight
+        // let fen3 = "4k3/2nppp2/8/8/8/8/3PPP2/4K3 w - - 0 1"; // -1 knight
+        // let mut g1 = Game::from_fen(&ts, fen1).unwrap();
+        // let mut g2 = Game::from_fen(&ts, fen2).unwrap();
+        // let mut g3 = Game::from_fen(&ts, fen3).unwrap();
 
-        let mut g1 = Game::from_fen(&ts, fen1).unwrap();
-        let mut g2 = Game::from_fen(&ts, fen2).unwrap();
-        let mut g3 = Game::from_fen(&ts, fen3).unwrap();
+        // let fen = "4k3/3ppp2/8/8/8/8/2NPPP2/4K3 w - - 0 1"; // +1 knight
+        let fen = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1";
+        let mut g = Game::from_fen(&ts, fen).unwrap();
 
         eprintln!("evaling");
 
-        let eval1 = nn.evaluate(&g1, false);
-        eprintln!("eval 1 = {:?}", eval1);
+        // let eval1 = nn.evaluate(&g1, false);
+        // eprintln!("eval 1 = {:?}", eval1);
 
-        let eval2 = nn.evaluate(&g1, false);
-        eprintln!("eval 2 = {:?}", eval2);
+        // let eval2 = nn.evaluate(&g1, false);
+        // eprintln!("eval 2 = {:?}", eval2);
 
-        let eval3 = nn.evaluate(&g1, false);
-        eprintln!("eval 3 = {:?}", eval3);
+        // let eval3 = nn.evaluate(&g1, false);
+        // eprintln!("eval 3 = {:?}", eval3);
+
+        let (psqt,positional,bucket) = nn.trace_eval(&g, false);
+
+        for i in 0..8 {
+            let x0 = psqt[i];
+            let x1 = positional[i];
+
+            // // PawnValueEg   = 208,
+            // let x0 = (x0 as f64).abs() / 208.0;
+            // let x1 = (x1 as f64).abs() / 208.0;
+
+            if i == bucket {
+                eprintln!("{} = {:>3}, {:>3}  <- this bucket used", i, x0, x1);
+            } else {
+                // eprintln!("{} = {:.2}, {:.2}", i, x0, x1);
+                eprintln!("{} = {:>3}, {:>3}", i, x0, x1);
+            }
+        }
 
         return Ok(());
     }

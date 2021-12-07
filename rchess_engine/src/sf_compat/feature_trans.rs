@@ -31,6 +31,8 @@ impl NNFeatureTrans {
     const PSQT_BUCKETS: usize = 8;
     const LAYER_STACKS: usize = 8;
 
+    pub const HASH: u32 = 0x7f234cb8 ^ Self::DIMS_OUT as u32;
+
     pub fn new() -> Self {
         Self {
             // nn,
@@ -70,6 +72,7 @@ impl NNFeatureTrans {
         self.update_accum(g, Black);
 
         let persps: [Color; 2] = [g.state.side_to_move, !g.state.side_to_move];
+        // let persps: [Color; 2] = [!g.state.side_to_move, g.state.side_to_move];
 
         let accum      = &mut self.accum.accum;
         let psqt_accum = &mut self.accum.psqt;
@@ -89,19 +92,24 @@ impl NNFeatureTrans {
 
     pub fn update_accum(&mut self, g: &Game, persp: Color) {
 
-        // eprintln!("self.biases.len() = {:?}", self.biases.len());
-        // let k = HALF_DIMS * std::mem::size_of::<i16>();
-        // eprintln!("k = {:?}", k);
-
-        // assert!(self.biases.len() == HALF_DIMS * std::mem::size_of::<i16>());
+        assert!(self.biases.len() == self.accum.accum[persp].len());
         self.accum.accum[persp].copy_from_slice(&self.biases);
 
-        for k in 0..Self::PSQT_BUCKETS {
-            self.accum.psqt[persp][k] = 0;
-        }
-
         let mut active = vec![];
-        self.accum.append_active(g, persp, &mut active);
+        // self.accum.append_active(g, persp, &mut active);
+        NNAccum::append_active(g, persp, &mut active);
+
+        // for k in 0..Self::PSQT_BUCKETS {
+        //     self.accum.psqt[persp][k] = 0;
+        // }
+        self.accum.psqt[persp].fill(0);
+
+        // let mut xs = std::collections::HashSet::<usize>::default();
+        // for a in active.iter() {
+        //     xs.insert(*a);
+        // }
+        // eprintln!("xs.len() = {:?}", xs.len());
+        // eprintln!("active.len() = {:?}", active.len());
 
         for idx in active.into_iter() {
             let offset = HALF_DIMS * idx;

@@ -66,6 +66,11 @@ pub struct NNUE4 {
     pub layers:  Vec<Layer3>,
 }
 
+/// Misc, Consts
+impl NNUE4 {
+    pub const HASH: u32 = NNFeatureTrans::HASH ^ Layer3::HASH;
+}
+
 /// Read from file
 impl NNUE4 {
 
@@ -132,6 +137,38 @@ impl NNUE4 {
 
 /// Evaluate
 impl NNUE4 {
+
+    pub fn trace_eval(&mut self, g: &Game, adjusted: bool) -> ([Score; 8], [Score; 8],usize) {
+
+        let mut out_psqt       = [0; 8];
+        let mut out_positional = [0; 8];
+        let correct_bucket = (g.state.material.count() as usize - 1) / 4;
+
+        for bucket in 0..8 {
+            let mut transformed = [0; HALF_DIMS * 2];
+            let psqt = self.ft.transform(&g, &mut transformed, bucket);
+
+            let mut pos_buf = [0u8; Layer3::BUFFER_SIZE]; // XXX: 320 ??
+            self.layers[bucket].propagate(&transformed, &mut pos_buf);
+            let positional = pos_buf[0] as Score;
+
+            // for (n,p) in pos_buf.iter().enumerate() {
+            //     if *p != 0 {
+            //         eprintln!("{} = {:?}", n, p);
+            //     }
+            // }
+
+            out_psqt[bucket] = psqt / OUTPUT_SCALE;
+            out_positional[bucket] = positional as i32 / OUTPUT_SCALE;
+
+            // out_psqt[bucket] = psqt;
+            // out_positional[bucket] = positional as i32;
+
+        }
+
+        (out_psqt,out_positional,correct_bucket)
+    }
+
     pub fn evaluate(&mut self, g: &Game, adjusted: bool) -> Score {
         let bucket = (g.state.material.count() as usize - 1) / 4;
 
@@ -139,7 +176,6 @@ impl NNUE4 {
         let psqt = self.ft.transform(g, &mut transformed, bucket);
 
         let mut pos_buf = [0u8; Layer3::BUFFER_SIZE]; // XXX: 320 ??
-        // eprintln!("buffer.len() = {:?}", pos_buf.len());
         self.layers[bucket].propagate(&transformed, &mut pos_buf);
         let positional = pos_buf[0] as Score;
 
@@ -176,7 +212,9 @@ impl NNUE4 {
 
     pub fn make_index_half_ka_v2(king_sq: Coord, persp: Color, pc: Piece, side: Color, sq: Coord) -> usize {
         let o_king_sq = Self::orient(king_sq, persp, king_sq);
+
         let pidx = PIECE_SQ_INDEX[side][persp][pc.index() + 1];
+        // let pidx = PIECE_SQ_INDEX[persp][side][pc.index() + 1];
 
         let pc_nb = KING_BUCKETS[o_king_sq.inner() as usize];
         // assert!(pc_nb > 0);

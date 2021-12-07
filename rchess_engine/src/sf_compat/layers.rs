@@ -98,12 +98,12 @@ mod nn_affine {
 
     #[derive(Debug,PartialEq,Clone)]
     pub struct NNAffine<Prev: NNLayer, const OS: usize> {
-        prev:    Prev,
+        pub prev:    Prev,
         // biases:  Array2<u8>,
         // weights: Array2<u8>,
-        biases:  [i32; OS],
+        pub biases:  [i32; OS],
         // biases:  [u8; OS],
-        weights: Vec<u8>,
+        pub weights: Vec<u8>,
     }
 
     /// Consts
@@ -131,10 +131,15 @@ mod nn_affine {
 
     impl<Prev: NNLayer, const OS: usize> NNAffine<Prev, OS> {
 
+        fn _get_weight_index(idx: usize) -> usize {
+            (idx / 4) % (Self::SIZE_INPUT_PADDED / 4) * (Self::SIZE_OUTPUT * 4)
+                + idx / Self::SIZE_INPUT_PADDED * 4
+                + idx % 4
+        }
+
         fn get_weight_index(idx: usize) -> usize {
 
             // const IndexType smallBlock = (i / SmallBlockSize) % NumSmallBlocksInBigBlock;
-
             let small_block = (idx / Self::SMALL_BLOCK_SIZE)
                 % Self::NUM_SMALL_BLOCKS_PER_BIG_BLOCK;
 
@@ -220,12 +225,14 @@ mod nn_affine {
                 self.biases[i] = x;
             }
 
-            self.weights = vec![0; OS * Self::SIZE_INPUT_PADDED];
+            let size = Self::SIZE_INPUT_PADDED * Self::SIZE_OUTPUT;
+            self.weights = vec![0; size];
 
-            for i in 0..Self::SIZE_INPUT_PADDED * Self::SIZE_OUTPUT {
+            for i in 0..size {
                 // eprintln!("i = {:?}", i);
                 let x = rdr.read_u8()?;
-                self.weights[Self::get_weight_index(i)] = x;
+                // self.weights[Self::get_weight_index(i)] = x;
+                self.weights[i] = x;
             }
 
             Ok(())
