@@ -28,8 +28,8 @@ pub trait NNLayer {
 
     const HASH: u32;
 
-    // fn propogate(&self, input: &[u8]) -> Vec<Self::OutputType>;
-    fn propagate(&self, input: &[u8], output: &mut [Self::OutputType]);
+    // fn propagate(&self, trans_features: &[u8], output: &mut [Self::OutputType]);
+    fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType>;
 
     fn size(&self) -> usize;
 
@@ -71,12 +71,12 @@ mod nn_input {
         fn size(&self) -> usize { self.buf.len() }
 
         // fn propogate(&self, input: &[u8]) -> Vec<Self::OutputType> {
-        fn propagate(&self, input: &[u8], output: &mut [Self::OutputType]) {
+        fn propagate(&self, trans_features: &[u8], output: &mut [Self::OutputType]) {
             // self.buf.to_vec()
             // assert!(input.len() == output.len());
-            assert_eq!(input.len(), Self::SELF_BUFFER_SIZE);
+            assert_eq!(trans_features.len(), Self::SELF_BUFFER_SIZE);
             assert_eq!(output.len(), Self::SELF_BUFFER_SIZE);
-            output.copy_from_slice(&input);
+            output.copy_from_slice(&trans_features);
         }
 
         fn read_parameters(&mut self, rdr: &mut BufReader<File>) -> io::Result<()> {
@@ -99,7 +99,7 @@ mod nn_input {
 mod nn_affine {
     use super::*;
     use byteorder::WriteBytesExt;
-    use num_traits::Num;
+    use num_traits::{Num,Zero};
 
     #[derive(Debug,PartialEq,Clone)]
     pub struct NNAffine<Prev: NNLayer, const OS: usize> {
@@ -114,13 +114,16 @@ mod nn_affine {
     /// Consts
     impl<Prev: NNLayer, const OS: usize> NNAffine<Prev, OS> {
 
-        /// AVX2
-        const INPUT_SIMD_WIDTH: usize = 32;
-        const MAX_NUM_OUTPUT_REGS: usize = 8;
+        // /// AVX2
+        // const INPUT_SIMD_WIDTH: usize = 32;
+        // const MAX_NUM_OUTPUT_REGS: usize = 8;
 
         // /// AVX
         // const INPUT_SIMD_WIDTH: usize = 16;
         // const MAX_NUM_OUTPUT_REGS: usize = 8;
+
+        const INPUT_SIMD_WIDTH: usize = 1;
+        const MAX_NUM_OUTPUT_REGS: usize = 1;
 
         const NUM_OUTPUT_REGS: usize  = if OS > Self::MAX_NUM_OUTPUT_REGS {
             Self::MAX_NUM_OUTPUT_REGS } else { OS };
@@ -178,11 +181,11 @@ mod nn_affine {
 
     impl<Prev: NNLayer, const OS: usize> NNLayer for NNAffine<Prev, OS> {
         type InputType = Prev::OutputType;
-        type OutputType = u8;
+        type OutputType = u32;
         const SIZE_OUTPUT: usize = OS;
         const SIZE_INPUT: usize = Prev::SIZE_OUTPUT;
 
-        const SELF_BUFFER_SIZE: usize =
+        const SELF_BUFFER_SIZE: usize = // 64
             ceil_to_multiple(Self::SIZE_OUTPUT * std::mem::size_of::<Self::OutputType>(), CACHE_LINE_SIZE);
 
         const BUFFER_SIZE: usize = Prev::BUFFER_SIZE + Self::SELF_BUFFER_SIZE;
@@ -201,11 +204,23 @@ mod nn_affine {
                 + self.weights.len() * std::mem::size_of_val(&self.weights[0])
         }
 
-        fn propagate(&self, input: &[u8], output: &mut [Self::OutputType]) {
+        fn propagate(&self, trans_features: &[u8], mut output: &mut [Self::OutputType]) {
+
+            eprintln!("affine propagate");
 
             // assert_eq!(input.len(), Self::SELF_BUFFER_SIZE);
             // assert_eq!(output.len(), Self::SELF_BUFFER_SIZE);
             // assert_eq!(output.len(), Self::SIZE_OUTPUT);
+
+            // let mut input = vec![Self::InputType::zero(); Self::SIZE_INPUT];
+            // self.prev.propagate(&trans_features, &mut input);
+
+            let mut xs: &mut [Self::OutputType] = &mut output[Self::SELF_BUFFER_SIZE..];
+
+            // self.prev.propagate(&trans_features, xs);
+
+            // self.prev.propagate(&input, &mut output[Self::SELF_BUFFER_SIZE..]);
+            // self.prev.propagate(&input, &mut output);
 
             for i in 0..Self::SIZE_OUTPUT {
                 let offset = i * Self::SIZE_INPUT_PADDED;
@@ -213,7 +228,9 @@ mod nn_affine {
                 let mut sum = self.biases[i];
 
                 for j in 0..Self::SIZE_INPUT {
-                    sum += self.weights[offset + j] as i32 * input[j] as i32;
+                    // sum += self.weights[offset + j] as i32 * input[j] as i32;
+                    let x: i32 = NumCast::from(input[j]).unwrap();
+                    sum += self.weights[offset + j] as i32 * x;
                 }
 
                 output[i] = sum as u8;
@@ -295,15 +312,18 @@ mod nn_relu {
         fn size(&self) -> usize { self.prev.size() }
 
         // fn propogate(&self, input: &[u8]) -> Vec<Self::OutputType> {
-        fn propagate(&self, input: &[u8], output: &mut [Self::OutputType]) {
+        fn propagate(&self, trans_features: &[u8], output: &mut [Self::OutputType]) {
 
-            assert_eq!(input.len(), Self::SELF_BUFFER_SIZE);
-            // assert_eq!(output.len(), Self::SELF_BUFFER_SIZE);
-            assert_eq!(output.len(), Self::SIZE_OUTPUT_PADDED);
+            // assert_eq!(input.len(), Self::SELF_BUFFER_SIZE);
+            // // assert_eq!(output.len(), Self::SELF_BUFFER_SIZE);
+            // assert_eq!(output.len(), Self::SIZE_OUTPUT_PADDED);
 
-            let mut input2 = vec![Self::InputType::zero(); Self::SIZE_INPUT];
-            let mut input2: &mut [Self::InputType] = &mut input2[..];
-            self.prev.propagate(&input, input2);
+            // TODO: 
+            eprintln!("fix this");
+
+            // let mut input2 = vec![Self::InputType::zero(); Self::SIZE_INPUT];
+            // let mut input2: &mut [Self::InputType] = &mut input2[..];
+            // self.prev.propagate(&input, input2);
 
             // TODO: AVX2 magic
 

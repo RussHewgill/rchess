@@ -1418,10 +1418,35 @@ fn _main_nn() -> std::io::Result<()> {
 
     // let path = "./nn-3475407dc199.nnue"; // wrong hash?
 
-    // let path = "./nn-cdf1785602d6.nnue";
-    let path = "./nn-13406b1dcbe0.nnue";
+    // let path = "nn-cdf1785602d6.nnue";
+    // let path = "nn-13406b1dcbe0.nnue";
+    let path = "nn-63376713ba63.nnue";
 
     let mut nn = NNUE4::read_nnue(path).unwrap();
+
+    // let ws   = &nn.ft.weights;
+    // let bs   = &nn.ft.biases;
+    // let psqt = &nn.ft.psqt_weights;
+    // eprintln!("ws.len()   = {:?}", ws.len());
+    // eprintln!("bs.len()   = {:?}", bs.len());
+    // eprintln!("psqt.len() = {:?}", psqt.len());
+    // // let ws0   = ws[0];
+    // // let bs0   = bs[0];
+    // // let psqt0 = psqt[0];
+    // eprintln!("ws[0] = {:?}", ws[0]);
+    // eprintln!("ws[1] = {:?}", ws[1]);
+    // eprintln!("ws[2] = {:?}", ws[2]);
+    // eprintln!("ws[-1] = {:?}", ws[ws.len()-1]);
+    // eprintln!("ws[-1] = {:?}", ws[ws.len()-2]);
+    // eprintln!("ws[-2] = {:?}", ws[ws.len()-3]);
+
+    // eprintln!("bs[0] = {:?}", bs0);
+    // eprintln!("psqt[0] = {:?}", psqt0);
+
+    // let b0 = bs.iter().filter(|x| **x == -103).count();
+    // eprintln!("b0 = {:?}", b0);
+
+    // return Ok(());
 
     // let path2 = "test_nn.nnue";
     // nn.write_nnue(path2).unwrap();
@@ -1442,21 +1467,90 @@ fn _main_nn() -> std::io::Result<()> {
 
     // eprintln!("end = {:?}", end);
 
-    let persp = White;
+    if !true {
+        let persp = White;
+        let king_sq = Coord::from("E1");
+        // let o_king_sq = NNUE4::orient(king_sq, persp, king_sq);
+        // eprintln!("o_king_sq = {:?}", o_king_sq);
+        {
+            let side = White;
+            let pc = King;
+            let sq = Coord::from("E1");
+            let idx = NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
+            let x = 22468;
+            eprintln!("idx 1 = {:?}, idx == {}, {}", idx, x, x == idx);
+        }
+        {
+            let side = White;
+            let pc = Pawn;
+            let sq = Coord::from("E2");
+            let idx = NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
+            let x = 21836;
+            eprintln!("idx 0 = {:?}, idx == {}, {}", idx, x, x == idx);
+        }
+        {
+            let side = Black;
+            let pc = King;
+            let sq = Coord::from("E8");
+            let idx = NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
+            let x = 22524;
+            eprintln!("idx 2 = {:?}, idx == {}, {}", idx, x, x == idx);
+        }
+    }
 
-    let king_sq = Coord::from("E1");
-    // let king_sq: u8 = Coord::from("D1").into();
-    let side = White;
-    let pc = Pawn;
-    let sq = Coord::from("E1");
+    if !true {
+        let persp = Black;
+        let king_sq = Coord::from("E8");
+        // let o_king_sq = NNUE4::orient(king_sq, persp, king_sq);
+        // eprintln!("o_king_sq = {:?}", o_king_sq);
+        {
+            let side = White;
+            let pc = King;
+            let sq = Coord::from("E1");
+            let idx = NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
+            let x = 22524;
+            eprintln!("idx 1 = {:?}, idx == {}, {}", idx, x, x == idx);
+        }
+        {
+            let side = White;
+            let pc = Pawn;
+            let sq = Coord::from("E2");
+            let idx = NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
+            let x = 21940;
+            eprintln!("idx 0 = {:?}, idx == {}, {}", idx, x, x == idx);
+        }
+        {
+            let side = Black;
+            let pc = King;
+            let sq = Coord::from("E8");
+            let idx = NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
+            let x = 22468;
+            eprintln!("idx 2 = {:?}, idx == {}, {}", idx, x, x == idx);
+        }
+    }
 
-    // let k0 = NNUE4::orient(king_sq, persp, king_sq);
-    // eprintln!("k0 = {:?}", k0);
+    // let persp = Black;
 
-    // let idx = NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
+    // // let king_sq = Coord::from("E1");
+    // let king_sq = Coord::from("E8");
+
+    // // let side = White;
+    // let side = Black;
+
+    // // let pc = Pawn;
+    // let pc = King;
+
+    // // let sq = Coord::from("E2");
+    // let sq = Coord::from("E1");
+    // // let sq = Coord::from("E8");
+
+    // eprintln!("sq = {:?}", sq);
+    // eprintln!("sq.inner() = {:?}", sq.inner());
+
+    // let idx = NNUE4::make_index_half_ka_v2(o_king_sq, persp, pc, side, sq);
     // eprintln!("idx = {:?}", idx);
 
-    let mut nn2 = &nn.layers[0];
+    // let mut nn2 = &nn.layers[0];
 
     // eprintln!("nn2.biases.len() = {:?}", nn2.biases.len());
     // eprintln!("nn2.weights.len() = {:?}", nn2.weights.len());
@@ -1494,7 +1588,47 @@ fn _main_nn() -> std::io::Result<()> {
         // let eval3 = nn.evaluate(&g1, false);
         // eprintln!("eval 3 = {:?}", eval3);
 
+
+        const HALF_DIMS: usize = 1024;
+        let mut transformed = [0; HALF_DIMS * 2];
+
+        // nn.ft.transform(&g, &mut output, bucket)
+
+        // let persps: [Color; 2] = [g.state.side_to_move, !g.state.side_to_move];
+        // let mut xs = HashSet::<usize>::default();
+        // eprintln!("transformed.len() = {:?}", transformed.len());
+        // for p in 0..2 {
+        //     let offset = HALF_DIMS * p;
+        //     for j in 0..HALF_DIMS {
+        //         // let mut sum = accum[persps[p]][j];
+        //         // output[offset + j] = sum.clamp(0, 127) as u8;
+        //         xs.insert(offset + j);
+        //     }
+        // }
+        // eprintln!("xs.len() = {:?}", xs.len());
+        // let max = xs.iter().max().unwrap();
+        // let min = xs.iter().min().unwrap();
+        // eprintln!("(max,min) = {:?}", (max,min));
+        // return Ok(());
+
+        let v = nn.evaluate2(&g, false);
+
+        eprintln!("\nv = {:?}", v);
+
+        return Ok(());
+
         let (psqt,positional,bucket) = nn.trace_eval(&g, false);
+
+        // let mut vs = HashMap::<(Piece,Coord),Score>::default();
+        // let base = nn.evaluate2(&g, false);
+        // println!("NNUE Piece Values");
+        // for (pc,c0) in g.iter_side_pieces(White) {
+        //     if pc == King { continue; }
+        //     let g2 = g.delete_piece_mut_unchecked(&ts, c0, pc, White, true);
+        //     let eval = nn.evaluate2(&g, false);
+        //     let v = base - eval;
+        //     eprintln!("{:?} at {:?} = {:?}", pc, c0, v);
+        // }
 
         for i in 0..8 {
             let x0 = psqt[i];

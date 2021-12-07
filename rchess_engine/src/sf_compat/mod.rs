@@ -112,18 +112,18 @@ impl NNUE4 {
         let mut rdr = io::BufReader::new(f);
 
         let version   = rdr.read_u32::<LittleEndian>()?;
-        eprintln!("version = {:#8x}", version);
+        // eprintln!("version = {:#8x}", version);
 
         let hashvalue = rdr.read_u32::<LittleEndian>()?;
-        eprintln!("hashvalue = {:#8x}", hashvalue);
+        // eprintln!("hashvalue = {:#8x}", hashvalue);
 
         let size      = rdr.read_u32::<LittleEndian>()?;
-        eprintln!("size = {:?}", size);
+        // eprintln!("size = {:?}", size);
 
         let mut desc = vec![0u8; size as usize];
         rdr.read_exact(&mut desc)?;
         let desc = String::from_utf8_lossy(&desc);
-        eprintln!("desc = {:?}", desc);
+        // eprintln!("desc = {:?}", desc);
 
         let mut ft = NNFeatureTrans::new();
         ft.read_parameters(&mut rdr)?;
@@ -170,10 +170,14 @@ impl NNUE4 {
         let correct_bucket = (g.state.material.count() as usize - 1) / 4;
 
         for bucket in 0..8 {
-            let mut transformed = [0; HALF_DIMS * 2];
+
+            let mut transformed = [0; HALF_DIMS * 2]; // 2048
             let psqt = self.ft.transform(&g, &mut transformed, bucket);
 
             let mut pos_buf = [0u8; Layer3::BUFFER_SIZE]; // XXX: 320 ??
+
+            // eprintln!("pos_buf.len() = {:?}", pos_buf.len());
+
             self.layers[bucket].propagate(&transformed, &mut pos_buf);
             let positional = pos_buf[0] as Score;
 
@@ -194,6 +198,21 @@ impl NNUE4 {
         (out_psqt,out_positional,correct_bucket)
     }
 
+    pub fn evaluate2(&mut self, g: &Game, adjusted: bool) -> Score {
+        let (out_psqt,out_positional,correct_bucket) = self.trace_eval(g, adjusted);
+        let psqt = out_psqt[correct_bucket];
+        let positional = out_positional[correct_bucket];
+
+        // TODO: if adjusted
+        if adjusted {
+            unimplemented!()
+        } else {
+            (psqt + positional) / OUTPUT_SCALE
+            // unimplemented!()
+        }
+    }
+
+    // TODO: check for correctness with trace_eval
     pub fn evaluate(&mut self, g: &Game, adjusted: bool) -> Score {
         let bucket = (g.state.material.count() as usize - 1) / 4;
 
@@ -238,8 +257,8 @@ impl NNUE4 {
     pub fn make_index_half_ka_v2(king_sq: Coord, persp: Color, pc: Piece, side: Color, sq: Coord) -> usize {
         let o_king_sq = Self::orient(king_sq, persp, king_sq);
 
-        let pidx = PIECE_SQ_INDEX[side][persp][pc.index() + 1];
-        // let pidx = PIECE_SQ_INDEX[persp][side][pc.index() + 1];
+        // let pidx = PIECE_SQ_INDEX[side][persp][pc.index() + 1];
+        let pidx = PIECE_SQ_INDEX[persp][side][pc.index() + 1];
 
         let pc_nb = KING_BUCKETS[o_king_sq.inner() as usize];
         // assert!(pc_nb > 0);

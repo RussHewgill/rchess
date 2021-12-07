@@ -13,11 +13,11 @@ use byteorder::{ReadBytesExt, LittleEndian, WriteBytesExt};
 
 #[derive(Debug,PartialEq,Clone)]
 pub struct NNFeatureTrans {
-    biases:         Vec<i16>,
-    weights:        Vec<i16>,
-    psqt_weights:   Vec<i32>,
+    pub biases:         Vec<i16>,
+    pub weights:        Vec<i16>,
+    pub psqt_weights:   Vec<i32>,
 
-    accum:          NNAccum,
+    pub accum:          NNAccum,
 
 }
 
@@ -81,6 +81,9 @@ impl NNFeatureTrans {
 impl NNFeatureTrans {
 
     pub fn transform(&mut self, g: &Game, output: &mut [u8], bucket: usize) -> Score {
+
+        eprintln!("FT transform");
+
         self.update_accum(g, White);
         self.update_accum(g, Black);
 
@@ -127,13 +130,30 @@ impl NNFeatureTrans {
         for idx in active.into_iter() {
             let offset = HALF_DIMS * idx;
 
+            // eprintln!("idx = {:?}", idx);
+            // eprintln!("offset = {:?}", offset);
+
+            let mut x = 0;
+            let mut y = 0;
+
+            // eprintln!("self.weights[offset] = {:?}", self.weights[offset]);
+
             for j in 0..HALF_DIMS {
                 self.accum.accum[persp][j] += self.weights[offset + j];
+                x ^= self.weights[offset + j];
             }
+
+            // eprintln!("self.psqt_weights[idx * Self::PSQT_BUCKETS] = {:?}",
+            //           self.psqt_weights[idx * Self::PSQT_BUCKETS]);
 
             for k in 0..Self::PSQT_BUCKETS {
                 self.accum.psqt[persp][k] += self.psqt_weights[idx * Self::PSQT_BUCKETS + k];
+                y ^= self.psqt_weights[idx * Self::PSQT_BUCKETS + k];
             }
+
+            // eprintln!("x = {:?}", x);
+            // eprintln!("y = {:?}", y);
+            // eprintln!();
 
         }
     }

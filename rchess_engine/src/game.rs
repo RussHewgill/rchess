@@ -756,13 +756,13 @@ impl Game {
 /// Insertion and Deletion of Pieces
 impl Game {
 
-    fn move_piece_mut_unchecked<T: Into<Coord>>(
+    pub fn move_piece_mut_unchecked<T: Into<Coord>>(
         &mut self, ts: &Tables, from: T, to: T, pc: Piece, side: Color, calc_zb: bool) {
         self._delete_piece_mut_unchecked(&ts, from, pc, side, false, calc_zb);
         self._insert_piece_mut_unchecked(&ts, to, pc, side, false, calc_zb);
     }
 
-    fn delete_piece_mut_unchecked<T: Into<Coord>>(
+    pub fn delete_piece_mut_unchecked<T: Into<Coord>>(
         &mut self, ts: &Tables, at: T, pc: Piece, side: Color, calc_zb: bool) {
         self._delete_piece_mut_unchecked(&ts, at, pc, side, true, calc_zb);
     }
@@ -1091,8 +1091,13 @@ impl Game {
 /// Misc Queries
 impl Game {
 
-    // pub fn iter_all_pieces(&self, side: Color) -> impl Iterator<Item = Piece> {
-    pub fn iter_all_pieces(&self, side: Color) -> Vec<(Piece,Coord)> {
+    pub fn iter_all_pieces(&self) -> Vec<(Piece,Coord)> {
+        let mut out = self.iter_side_pieces(White);
+        out.append(&mut self.iter_side_pieces(Black));
+        out
+    }
+
+    pub fn iter_side_pieces(&self, side: Color) -> Vec<(Piece,Coord)> {
         let mut out = vec![];
         for pc in Piece::iter_pieces() {
             self.get(pc, side).into_iter().for_each(|sq| {
