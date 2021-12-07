@@ -5,11 +5,11 @@ use crate::types::*;
 use super::HALF_DIMS;
 use super::accumulator::NNAccum;
 
-use std::io::{self, Read,BufReader};
+use std::io::{self, Read,BufReader, BufWriter};
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::{ReadBytesExt, LittleEndian};
+use byteorder::{ReadBytesExt, LittleEndian, WriteBytesExt};
 
 #[derive(Debug,PartialEq,Clone)]
 pub struct NNFeatureTrans {
@@ -59,6 +59,19 @@ impl NNFeatureTrans {
             *x = rdr.read_i32::<LittleEndian>()?;
         }
 
+        Ok(())
+    }
+
+    pub fn write_parameters(&self, mut w: &mut BufWriter<File>) -> io::Result<()> {
+        for x in self.biases.iter() {
+            w.write_i16::<LittleEndian>(*x)?;
+        }
+        for x in self.weights.iter() {
+            w.write_i16::<LittleEndian>(*x)?;
+        }
+        for x in self.psqt_weights.iter() {
+            w.write_i32::<LittleEndian>(*x)?;
+        }
         Ok(())
     }
 

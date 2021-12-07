@@ -3,7 +3,7 @@ pub use self::nn_input::NNInput;
 pub use self::nn_affine::NNAffine;
 pub use self::nn_relu::NNClippedRelu;
 
-use std::io::{self, Read,BufReader};
+use std::io::{self, Read,BufReader, BufWriter};
 use std::fs::File;
 use std::path::Path;
 
@@ -34,6 +34,10 @@ pub trait NNLayer {
     fn size(&self) -> usize;
 
     fn read_parameters(&mut self, rdr: &mut BufReader<File>) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn write_parameters(&self, w: &mut BufWriter<File>) -> io::Result<()> {
         Ok(())
     }
 
@@ -94,6 +98,7 @@ mod nn_input {
 /// Affine
 mod nn_affine {
     use super::*;
+    use byteorder::WriteBytesExt;
     use num_traits::Num;
 
     #[derive(Debug,PartialEq,Clone)]
@@ -238,6 +243,17 @@ mod nn_affine {
             Ok(())
         }
 
+        fn write_parameters(&self, mut w: &mut BufWriter<File>) -> io::Result<()> {
+            self.prev.write_parameters(&mut w)?;
+            for b in self.biases.iter() {
+                w.write_i32::<LittleEndian>(*b)?;
+            }
+            for wt in self.weights.iter() {
+                w.write_u8(*wt)?;
+            }
+            Ok(())
+        }
+
     }
 }
 
@@ -315,7 +331,14 @@ mod nn_relu {
             // println!("wat NNRelu, Size = {:?}", Self::SIZE_INPUT);
             Ok(out)
         }
+
+        fn write_parameters(&self, mut w: &mut BufWriter<File>) -> io::Result<()> {
+            self.prev.write_parameters(&mut w)?;
+            Ok(())
+        }
+
     }
+
 }
 
 

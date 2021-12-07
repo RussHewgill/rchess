@@ -27,3 +27,4 @@ matrix.csv
 *.orig
 paramsets/*
 *.nnue
+c_testing/test

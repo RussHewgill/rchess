@@ -10,11 +10,11 @@ pub use self::layers::{NNAffine,NNClippedRelu,NNInput,NNLayer};
 use crate::evaluate::Score;
 use crate::types::*;
 
-use std::io::{self, Read,BufReader};
+use std::io::{self,Read,BufReader,Write,BufWriter};
 use std::fs::File;
 use std::path::Path;
 
-use byteorder::{ReadBytesExt, LittleEndian};
+use byteorder::{ReadBytesExt, LittleEndian, WriteBytesExt};
 
 pub type Layer0 = NNInput<{HALF_DIMS * 2}>;
 pub type Layer1 = NNClippedRelu<NNAffine<Layer0, 8>>;
@@ -71,8 +71,33 @@ impl NNUE4 {
     pub const HASH: u32 = NNFeatureTrans::HASH ^ Layer3::HASH;
 }
 
-/// Read from file
+/// Read, write from file
 impl NNUE4 {
+
+    pub fn write_nnue<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        let mut f = std::fs::File::create(path)?;
+        let mut w = io::BufWriter::new(f);
+
+        let version   = 0x7af32f20;
+        let hashvalue = NNUE4::HASH;
+        let size = 75;
+        let desc: &[u8] = b"Network trained with the https://github.com/glinscott/nnue-pytorch trainer.";
+
+        w.write_u32::<LittleEndian>(version)?;
+        w.write_u32::<LittleEndian>(hashvalue)?;
+        w.write_u32::<LittleEndian>(size)?;
+
+        assert_eq!(desc.len(), size as usize);
+        w.write(&desc)?;
+
+        self.ft.write_parameters(&mut w)?;
+
+        for layer in self.layers.iter() {
+            layer.write_parameters(&mut w)?;
+        }
+
+        Ok(())
+    }
 
     pub fn read_nnue<P: AsRef<Path>>(path: P) -> io::Result<Self> {
         let mut f = std::fs::File::open(path)?;

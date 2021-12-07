@@ -1423,6 +1423,13 @@ fn _main_nn() -> std::io::Result<()> {
 
     let mut nn = NNUE4::read_nnue(path).unwrap();
 
+    // let path2 = "test_nn.nnue";
+    // nn.write_nnue(path2).unwrap();
+    // println!("===");
+    // let mut nn2 = NNUE4::read_nnue(path2).unwrap();
+    // eprintln!("nn == nn2 = {:?}", nn == nn2);
+    // return Ok(());
+
     // let h = NNUE4::HASH;
     // eprintln!("hash = {:#8x}", h);
 
