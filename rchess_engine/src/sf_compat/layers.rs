@@ -9,16 +9,18 @@ use std::path::Path;
 
 use byteorder::{ReadBytesExt, LittleEndian};
 
-use num_traits::{Num,PrimInt,NumCast};
+use num_traits::{Num,PrimInt,NumCast,AsPrimitive};
 
 const CACHE_LINE_SIZE: usize = 64;
-const WEIGHT_SCALE_BITS: usize = 6;
+const WEIGHT_SCALE_BITS: u32 = 6;
 
 pub trait NNLayer {
     // type InputType: Num + Copy + std::ops::Shr;
     // type OutputType: Num + Copy + std::ops::Shr;
-    type InputType: PrimInt + NumCast;
-    type OutputType: PrimInt + NumCast;
+    // type InputType: PrimInt + NumCast;
+    // type OutputType: PrimInt + NumCast;
+    type InputType: PrimInt + NumCast + AsPrimitive<i32>;
+    type OutputType: PrimInt + NumCast + AsPrimitive<i32>;
 
     const SIZE_OUTPUT: usize;
     const SIZE_INPUT: usize;
@@ -52,7 +54,8 @@ mod nn_input {
     use super::*;
     use num_traits::Num;
 
-    #[derive(Debug,PartialEq,Clone,Copy)]
+    // #[derive(Debug,PartialEq,Clone,Copy)]
+    #[derive(Debug,Eq,PartialEq,PartialOrd,Ord,Clone)]
     pub struct NNInput<const OS: usize> {
         buf:   [u8; OS],
     }
@@ -70,13 +73,14 @@ mod nn_input {
 
         fn size(&self) -> usize { self.buf.len() }
 
-        // fn propogate(&self, input: &[u8]) -> Vec<Self::OutputType> {
-        fn propagate(&self, trans_features: &[u8], output: &mut [Self::OutputType]) {
+        // fn propagate(&self, trans_features: &[u8], output: &mut [Self::OutputType]) {
+        fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType> {
             // self.buf.to_vec()
             // assert!(input.len() == output.len());
             assert_eq!(trans_features.len(), Self::SELF_BUFFER_SIZE);
-            assert_eq!(output.len(), Self::SELF_BUFFER_SIZE);
-            output.copy_from_slice(&trans_features);
+            // assert_eq!(output.len(), Self::SELF_BUFFER_SIZE);
+            // output.copy_from_slice(&trans_features);
+            trans_features.to_vec()
         }
 
         fn read_parameters(&mut self, rdr: &mut BufReader<File>) -> io::Result<()> {
@@ -101,7 +105,8 @@ mod nn_affine {
     use byteorder::WriteBytesExt;
     use num_traits::{Num,Zero};
 
-    #[derive(Debug,PartialEq,Clone)]
+    // #[derive(Debug,PartialEq,Clone)]
+    #[derive(Debug,Eq,PartialEq,PartialOrd,Ord,Clone)]
     pub struct NNAffine<Prev: NNLayer, const OS: usize> {
         pub prev:    Prev,
         // biases:  Array2<u8>,
@@ -181,9 +186,12 @@ mod nn_affine {
 
     impl<Prev: NNLayer, const OS: usize> NNLayer for NNAffine<Prev, OS> {
         type InputType = Prev::OutputType;
-        type OutputType = u32;
+        type OutputType = i32;
         const SIZE_OUTPUT: usize = OS;
         const SIZE_INPUT: usize = Prev::SIZE_OUTPUT;
+
+        // static_assert(std::is_same<InputType, std::uint8_t>::value, "");
+        // static_assert(std::is_same<InputType, std::uint8_t>::value, "");
 
         const SELF_BUFFER_SIZE: usize = // 64
             ceil_to_multiple(Self::SIZE_OUTPUT * std::mem::size_of::<Self::OutputType>(), CACHE_LINE_SIZE);
@@ -204,42 +212,54 @@ mod nn_affine {
                 + self.weights.len() * std::mem::size_of_val(&self.weights[0])
         }
 
-        fn propagate(&self, trans_features: &[u8], mut output: &mut [Self::OutputType]) {
+        // fn propagate(&self, trans_features: &[u8], mut output: &mut [Self::OutputType]) {
+        fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType> {
 
-            eprintln!("affine propagate");
+            // eprintln!("affine propagate");
+            // eprintln!("NNAffine InputType = {:?}", std::any::type_name::<Self::InputType>());
 
-            // assert_eq!(input.len(), Self::SELF_BUFFER_SIZE);
-            // assert_eq!(output.len(), Self::SELF_BUFFER_SIZE);
-            // assert_eq!(output.len(), Self::SIZE_OUTPUT);
+            let input: Vec<Self::InputType> = self.prev.propagate(trans_features);
+            assert_eq!(input.len(), Self::SIZE_INPUT_PADDED);
 
-            // let mut input = vec![Self::InputType::zero(); Self::SIZE_INPUT];
-            // self.prev.propagate(&trans_features, &mut input);
+            let mut output = vec![0; Self::SIZE_OUTPUT];
 
-            let mut xs: &mut [Self::OutputType] = &mut output[Self::SELF_BUFFER_SIZE..];
-
-            // self.prev.propagate(&trans_features, xs);
-
-            // self.prev.propagate(&input, &mut output[Self::SELF_BUFFER_SIZE..]);
-            // self.prev.propagate(&input, &mut output);
+            // let mut k: i32 = 0;
 
             for i in 0..Self::SIZE_OUTPUT {
+
                 let offset = i * Self::SIZE_INPUT_PADDED;
 
-                let mut sum = self.biases[i];
+                // eprintln!("i = {:?}", i);
+                // eprintln!("offset = {:?}", offset);
+
+                let mut sum: i32 = self.biases[i];
 
                 for j in 0..Self::SIZE_INPUT {
                     // sum += self.weights[offset + j] as i32 * input[j] as i32;
-                    let x: i32 = NumCast::from(input[j]).unwrap();
-                    sum += self.weights[offset + j] as i32 * x;
+                    // let x: i32 = NumCast::from(input[j]).unwrap();
+                    let x: i32 = input[j].as_();
+                    let x0 = self.weights[offset + j] as i32 * x;
+                    // eprintln!("x0 = {:?}", x0);
+                    sum += x0;
+                    // k ^= x0;
                 }
 
-                output[i] = sum as u8;
+                output[i] = sum as Self::OutputType;
             }
+
+            // eprintln!("k affine = {:?}", k);
+
+            output
         }
 
         fn read_parameters(&mut self, mut rdr: &mut BufReader<File>) -> io::Result<()> {
             self.prev.read_parameters(&mut rdr)?;
             // println!("wat NNAffine, OS = {:?}", OS);
+
+            // eprintln!("Affine Read");
+            // eprintln!("Self::SIZE_INPUT = {:?}", Self::SIZE_INPUT);
+            // eprintln!("Self::SIZE_OUTPUT = {:?}", Self::SIZE_OUTPUT);
+            // eprintln!("Self::SIZE_INPUT_PADDED = {:?}", Self::SIZE_INPUT_PADDED);
 
             for i in 0..Self::SIZE_OUTPUT {
                 let x = rdr.read_i32::<LittleEndian>()?;
@@ -265,8 +285,12 @@ mod nn_affine {
             for b in self.biases.iter() {
                 w.write_i32::<LittleEndian>(*b)?;
             }
-            for wt in self.weights.iter() {
-                w.write_u8(*wt)?;
+            // for wt in self.weights.iter() {
+            //     w.write_u8(*wt)?;
+            // }
+            for i in 0..Self::SIZE_OUTPUT * Self::SIZE_INPUT_PADDED {
+                let wt = self.weights[Self::get_weight_index(i)];
+                w.write_u8(wt)?;
             }
             Ok(())
         }
@@ -280,7 +304,8 @@ mod nn_relu {
     use num_traits::{Num,Zero,NumCast,AsPrimitive};
     // use num_traits::{Num,Zero};
 
-    #[derive(Debug,PartialEq,Clone,Copy)]
+    // #[derive(Debug,PartialEq,Clone,Copy)]
+    #[derive(Debug,Eq,PartialEq,PartialOrd,Ord,Clone)]
     pub struct NNClippedRelu<Prev: NNLayer> {
         prev:    Prev,
     }
@@ -302,6 +327,8 @@ mod nn_relu {
         const SIZE_OUTPUT: usize = Prev::SIZE_OUTPUT;
         const SIZE_INPUT: usize  = Prev::SIZE_OUTPUT;
 
+        // static_assert(std::is_same<InputType, std::int32_t>::value, ""); 
+
         const SELF_BUFFER_SIZE: usize =
             ceil_to_multiple(Self::SIZE_OUTPUT * std::mem::size_of::<Self::OutputType>(), CACHE_LINE_SIZE);
 
@@ -311,39 +338,43 @@ mod nn_relu {
 
         fn size(&self) -> usize { self.prev.size() }
 
-        // fn propogate(&self, input: &[u8]) -> Vec<Self::OutputType> {
-        fn propagate(&self, trans_features: &[u8], output: &mut [Self::OutputType]) {
+        // fn propagate(&self, trans_features: &[u8], output: &mut [Self::OutputType]) {
+        fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType> {
 
-            // assert_eq!(input.len(), Self::SELF_BUFFER_SIZE);
-            // // assert_eq!(output.len(), Self::SELF_BUFFER_SIZE);
-            // assert_eq!(output.len(), Self::SIZE_OUTPUT_PADDED);
-
-            // TODO: 
-            eprintln!("fix this");
+            // eprintln!("relu propagate");
+            // eprintln!("NNRelu InputType = {:?}", std::any::type_name::<Self::InputType>());
 
             // let mut input2 = vec![Self::InputType::zero(); Self::SIZE_INPUT];
             // let mut input2: &mut [Self::InputType] = &mut input2[..];
             // self.prev.propagate(&input, input2);
+
+            let input: Vec<Self::InputType> = self.prev.propagate(trans_features);
+            assert_eq!(input.len(), Self::SIZE_INPUT);
+
+            let mut output = vec![0; Self::SIZE_OUTPUT_PADDED];
 
             // TODO: AVX2 magic
 
             let start = 0;
 
             for i in start..Self::SIZE_INPUT {
-                let x0 = input2[i] >> WEIGHT_SCALE_BITS;
-                let x1: Self::InputType = NumCast::from(127u8).unwrap();
-                let x2: Self::InputType = NumCast::from(0u8).unwrap();
-                let x = x2.max(x1.min(x0));
-                output[i] = NumCast::from(x).unwrap();
+                // let x0: i32 = NumCast::from(input[i]).unwrap();
+
+                let x0: i32 = input[i].as_();
+                let x1 = (x0.overflowing_shr(WEIGHT_SCALE_BITS).0).clamp(0, 127);
+                // output[i] = NumCast::from(x1).unwrap();
+                output[i] = x1.as_();
             }
 
-            // Affine transform layers expect that there is at least
-            // ceil_to_multiple(OutputDimensions, 32) initialized values.
-            // We cannot do this in the affine transform because it requires
-            // preallocating space here.
-            for i in Self::SIZE_OUTPUT..Self::SIZE_OUTPUT_PADDED {
-                output[i] = Zero::zero();
-            }
+            // // Affine transform layers expect that there is at least
+            // // ceil_to_multiple(OutputDimensions, 32) initialized values.
+            // // We cannot do this in the affine transform because it requires
+            // // preallocating space here.
+            // for i in Self::SIZE_OUTPUT..Self::SIZE_OUTPUT_PADDED {
+            //     output[i] = Zero::zero();
+            // }
+
+            output
         }
 
         fn read_parameters(&mut self, mut rdr: &mut BufReader<File>) -> io::Result<()> {

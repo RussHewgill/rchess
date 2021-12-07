@@ -1422,7 +1422,63 @@ fn _main_nn() -> std::io::Result<()> {
     // let path = "nn-13406b1dcbe0.nnue";
     let path = "nn-63376713ba63.nnue";
 
+    let path2 = "test_nn.nnue";
+    // let path2 = "nn_sf.nnue";
+
+    use std::io::{BufReader,Write,BufWriter};
+
+    // let mut f1 = std::fs::File::open(path)?;
+    // let mut f2 = std::fs::File::open(path2)?;
+    // let mut xs1 = vec![];
+    // let mut xs2 = vec![];
+    // f1.read_to_end(&mut xs1)?;
+    // f2.read_to_end(&mut xs2)?;
+    // eprintln!("xs1.len() = {:?}", xs1.len());
+    // eprintln!("xs2.len() = {:?}", xs2.len());
+
+    // for (n,(x,y)) in xs1.iter().zip(xs2.iter()).enumerate() {
+    //     if x != y {
+    //         eprintln!("n = {:?}", n);
+    //         eprintln!("x = {:?}", x);
+    //         eprintln!("y = {:?}", y);
+    //         panic!();
+    //     }
+    // }
+    // println!("wat 0");
+
     let mut nn = NNUE4::read_nnue(path).unwrap();
+
+    // let k0 = nn.ft.weights.len();
+    // let k1 = nn.ft.psqt_weights.len();
+    // eprintln!("k0 = {:?}", k0);
+    // eprintln!("k1 = {:?}", k1);
+
+    // let mut n = 0;
+
+    // loop {
+    //     let x1 = f1.read_u32::<LittleEndian>()?;
+    //     let x2 = f2.read_u32::<LittleEndian>()?;
+    //     if x1 != x2 {
+    //         eprintln!("n = {:?}", n);
+    //         eprintln!("x1 = {:?}", x1);
+    //         eprintln!("x2 = {:?}", x2);
+    //         panic!();
+    //     }
+    //     n += 1;
+    //     if n % 100000 == 0 {
+    //         eprintln!("n = {:?}", n);
+    //     }
+    // }
+
+    // return Ok(());
+
+    // nn.write_nnue(path2).unwrap();
+    // println!("===");
+
+    // let mut nn2 = NNUE4::read_nnue(path2).unwrap();
+    // eprintln!("nn == nn2 = {:?}", nn == nn2);
+
+    // return Ok(());
 
     // let ws   = &nn.ft.weights;
     // let bs   = &nn.ft.biases;
@@ -1446,13 +1502,9 @@ fn _main_nn() -> std::io::Result<()> {
     // let b0 = bs.iter().filter(|x| **x == -103).count();
     // eprintln!("b0 = {:?}", b0);
 
-    // return Ok(());
+    // let ws0 = nn.layers[0].weights[10];
+    // eprintln!("ws0 = {:?}", ws0);
 
-    // let path2 = "test_nn.nnue";
-    // nn.write_nnue(path2).unwrap();
-    // println!("===");
-    // let mut nn2 = NNUE4::read_nnue(path2).unwrap();
-    // eprintln!("nn == nn2 = {:?}", nn == nn2);
     // return Ok(());
 
     // let h = NNUE4::HASH;
@@ -1611,10 +1663,8 @@ fn _main_nn() -> std::io::Result<()> {
         // eprintln!("(max,min) = {:?}", (max,min));
         // return Ok(());
 
-        let v = nn.evaluate2(&g, false);
-
+        let v = nn.evaluate(&g, false);
         eprintln!("\nv = {:?}", v);
-
         return Ok(());
 
         let (psqt,positional,bucket) = nn.trace_eval(&g, false);
@@ -1634,15 +1684,16 @@ fn _main_nn() -> std::io::Result<()> {
             let x0 = psqt[i];
             let x1 = positional[i];
 
-            // // PawnValueEg   = 208,
-            // let x0 = (x0 as f64).abs() / 208.0;
-            // let x1 = (x1 as f64).abs() / 208.0;
+            // PawnValueEg   = 208,
+            let x0 = (x0 as f64).abs() / 208.0;
+            let x1 = (x1 as f64).abs() / 208.0;
 
             if i == bucket {
-                eprintln!("{} = {:>3}, {:>3}  <- this bucket used", i, x0, x1);
+                // eprintln!("{} = {:>3}, {:>3}  <- this bucket used", i, x0, x1);
+                eprintln!("{} = {:.2}, {:.2}  <- this bucket used", i, x0, x1);
             } else {
-                // eprintln!("{} = {:.2}, {:.2}", i, x0, x1);
-                eprintln!("{} = {:>3}, {:>3}", i, x0, x1);
+                eprintln!("{} = {:.2}, {:.2}", i, x0, x1);
+                // eprintln!("{} = {:>3}, {:>3}", i, x0, x1);
             }
         }
 

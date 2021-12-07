@@ -60,7 +60,7 @@ const KING_BUCKETS: [i8; 64] = [
     -1, -1, -1, -1, 3, 2, 1, 0
 ];
 
-#[derive(Debug,PartialEq,Clone)]
+#[derive(Debug,Eq,PartialEq,PartialOrd,Ord,Clone)]
 pub struct NNUE4 {
     pub ft:      NNFeatureTrans,
     pub layers:  Vec<Layer3>,
@@ -93,6 +93,7 @@ impl NNUE4 {
         self.ft.write_parameters(&mut w)?;
 
         for layer in self.layers.iter() {
+            w.write_u32::<LittleEndian>(Self::HASH)?;
             layer.write_parameters(&mut w)?;
         }
 
@@ -139,14 +140,19 @@ impl NNUE4 {
         };
 
         for (n,mut layer) in layers.iter_mut().enumerate() {
+
+            let hash = rdr.read_u32::<LittleEndian>()?;
+            assert_eq!(hash, Layer3::HASH);
+
             // eprintln!("layer = {:?}", n);
             layer.read_parameters(&mut rdr)?;
         }
 
         // let mut r = rdr.get_mut();
-        // let mut xs = vec![];
-        // let end = r.read_to_end(&mut xs)?;
+        let mut xs = vec![];
+        let end = rdr.read_to_end(&mut xs)?;
         // eprintln!("end = {:?}", end);
+        assert!(end == 0);
 
         Ok((ft,layers))
     }
@@ -174,11 +180,11 @@ impl NNUE4 {
             let mut transformed = [0; HALF_DIMS * 2]; // 2048
             let psqt = self.ft.transform(&g, &mut transformed, bucket);
 
-            let mut pos_buf = [0u8; Layer3::BUFFER_SIZE]; // XXX: 320 ??
+            // let mut pos_buf = [0u8; Layer3::BUFFER_SIZE]; // XXX: 320 ??
+            // // eprintln!("pos_buf.len() = {:?}", pos_buf.len());
+            // self.layers[bucket].propagate(&transformed, &mut pos_buf);
 
-            // eprintln!("pos_buf.len() = {:?}", pos_buf.len());
-
-            self.layers[bucket].propagate(&transformed, &mut pos_buf);
+            let pos_buf: Vec<i32> = self.layers[bucket].propagate(&transformed);
             let positional = pos_buf[0] as Score;
 
             // for (n,p) in pos_buf.iter().enumerate() {
@@ -198,19 +204,18 @@ impl NNUE4 {
         (out_psqt,out_positional,correct_bucket)
     }
 
-    pub fn evaluate2(&mut self, g: &Game, adjusted: bool) -> Score {
-        let (out_psqt,out_positional,correct_bucket) = self.trace_eval(g, adjusted);
-        let psqt = out_psqt[correct_bucket];
-        let positional = out_positional[correct_bucket];
-
-        // TODO: if adjusted
-        if adjusted {
-            unimplemented!()
-        } else {
-            (psqt + positional) / OUTPUT_SCALE
-            // unimplemented!()
-        }
-    }
+    // pub fn evaluate2(&mut self, g: &Game, adjusted: bool) -> Score {
+    //     let (out_psqt,out_positional,correct_bucket) = self.trace_eval(g, adjusted);
+    //     let psqt = out_psqt[correct_bucket];
+    //     let positional = out_positional[correct_bucket];
+    //     // TODO: if adjusted
+    //     if adjusted {
+    //         unimplemented!()
+    //     } else {
+    //         (psqt + positional) / OUTPUT_SCALE
+    //         // unimplemented!()
+    //     }
+    // }
 
     // TODO: check for correctness with trace_eval
     pub fn evaluate(&mut self, g: &Game, adjusted: bool) -> Score {
@@ -219,13 +224,18 @@ impl NNUE4 {
         let mut transformed = [0; HALF_DIMS * 2];
         let psqt = self.ft.transform(g, &mut transformed, bucket);
 
-        let mut pos_buf = [0u8; Layer3::BUFFER_SIZE]; // XXX: 320 ??
-        self.layers[bucket].propagate(&transformed, &mut pos_buf);
+        // let mut pos_buf = [0u8; Layer3::BUFFER_SIZE]; // XXX: 320 ??
+        // self.layers[bucket].propagate(&transformed, &mut pos_buf);
+
+        let pos_buf = self.layers[bucket].propagate(&transformed);
         let positional = pos_buf[0] as Score;
 
         // for (n,p) in pos_buf.iter().enumerate() {
         //     eprintln!("{:>5} = {:?}", n, p);
         // }
+
+        eprintln!("psqt       = {:?}", psqt);
+        eprintln!("positional = {:?}", positional);
 
         // TODO: if adjusted
         if adjusted {

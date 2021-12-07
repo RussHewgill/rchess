@@ -2,7 +2,8 @@
 use crate::types::*;
 
 
-#[derive(Debug,PartialEq,Clone,Copy)]
+// #[derive(Debug,PartialEq,Clone,Copy)]
+#[derive(Debug,Eq,PartialEq,PartialOrd,Ord,Clone)]
 pub struct NNAccum {
     pub accum:      [[i16; 1024]; 2], // TransformedFeatureDimensions = 1024
     pub psqt:       [[i32; 8]; 2],    // PSQTBuckets = 8
