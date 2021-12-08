@@ -31,11 +31,15 @@ pub trait NNLayer {
 
     const HASH: u32;
 
-    fn propagate(&self, trans_features: &[u8], output: &mut [Self::OutputType]);
+    // fn propagate(&mut self, trans_features: &[u8], output: &mut [Self::OutputType]);
+    fn propagate(&mut self, trans_features: &[u8]);
     // fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType>;
     // fn propagate(&self, trans_features: &[u8]) -> ArrayVec<Self::OutputType, {Self::BUFFER_SIZE}>;
 
     fn size(&self) -> usize;
+
+    fn get_buf(&self) -> &[Self::OutputType];
+    fn get_buf_mut(&mut self) -> &mut [Self::OutputType];
 
     fn read_parameters(&mut self, rdr: &mut BufReader<File>) -> io::Result<()> {
         Ok(())
@@ -75,15 +79,24 @@ mod nn_input {
 
         fn size(&self) -> usize { self.buf.len() }
 
-        fn propagate(&self, trans_features: &[u8], output: &mut [Self::OutputType]) {
+        fn get_buf(&self) -> &[Self::OutputType] {
+            &self.buf
+        }
+        fn get_buf_mut(&mut self) -> &mut [Self::OutputType] {
+            &mut self.buf
+        }
+
+        // fn propagate(&mut self, trans_features: &[u8], output: &mut [Self::OutputType]) {
+        fn propagate(&mut self, trans_features: &[u8]) {
         // fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType> {
             // assert!(input.len() == output.len());
             assert_eq!(trans_features.len(), Self::SELF_BUFFER_SIZE);
 
             // trans_features.to_vec()
 
-            assert_eq!(output.len(), Self::SELF_BUFFER_SIZE);
-            output.copy_from_slice(&trans_features);
+            // assert_eq!(output.len(), Self::SELF_BUFFER_SIZE);
+            // output.copy_from_slice(&trans_features);
+            self.buf.copy_from_slice(&trans_features);
         }
 
         fn read_parameters(&mut self, rdr: &mut BufReader<File>) -> io::Result<()> {
@@ -117,6 +130,9 @@ mod nn_affine {
         pub biases:  [i32; OS],
         // biases:  [u8; OS],
         pub weights: Vec<i8>,
+
+        // pub buffer:  [i32; OS],
+        pub buffer:  [<NNAffine<Prev,OS> as NNLayer>::OutputType; OS],
     }
 
     /// Consts
@@ -182,6 +198,8 @@ mod nn_affine {
                 prev,
                 biases:  [0; OS],
                 weights: vec![0; OS * Self::SIZE_INPUT],
+                // buffer:  [Self::OutputType::zero(); OS]
+                buffer:  [0; OS]
             }
         }
 
@@ -215,7 +233,17 @@ mod nn_affine {
                 + self.weights.len() * std::mem::size_of_val(&self.weights[0])
         }
 
-        fn propagate(&self, trans_features: &[u8], mut output: &mut [Self::OutputType]) {
+        fn get_buf(&self) -> &[Self::OutputType] {
+            &self.buffer
+            // unimplemented!()
+        }
+        fn get_buf_mut(&mut self) -> &mut [Self::OutputType] {
+            &mut self.buffer
+            // unimplemented!()
+        }
+
+        // fn propagate(&mut self, trans_features: &[u8], mut output: &mut [Self::OutputType]) {
+        fn propagate(&mut self, trans_features: &[u8]) {
         // fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType> {
 
             // eprintln!("affine propagate");
@@ -226,8 +254,19 @@ mod nn_affine {
             // let mut input = ArrayVec::new
             // let input2: ArrayVec<Self::InputType, {Self::SIZE_INPUT_PADDED}> = ArrayVec::new();
 
-            let mut input: Vec<Self::InputType> = vec![Self::InputType::zero(); Self::SIZE_INPUT_PADDED];
-            self.prev.propagate(trans_features, &mut input);
+            // let mut input = [Self::InputType::zero(); Self::SIZE_INPUT_PADDED];
+            // let mut input = [Self::InputType::zero(); OS];
+
+            // eprintln!("OS = {:?}", OS);
+            // eprintln!("Self::SIZE_INPUT_PADDED = {:?}", Self::SIZE_INPUT_PADDED);
+
+            // let mut input: Vec<Self::InputType> = vec![Self::InputType::zero(); Self::SIZE_INPUT_PADDED];
+            // self.prev.propagate(trans_features, &mut input);
+
+            // self.prev.propagate(trans_features, &mut input);
+
+            self.prev.propagate(trans_features);
+            let input = self.prev.get_buf();
 
             // let input: Vec<Self::InputType> = self.prev.propagate(trans_features);
             // assert_eq!(input.len(), Self::SIZE_INPUT_PADDED);
@@ -244,12 +283,15 @@ mod nn_affine {
                 let mut sum: i32 = self.biases[i];
 
                 for j in 0..Self::SIZE_INPUT {
+                    // let x: i32 = input[j].as_();
                     let x: i32 = input[j].as_();
                     let x0 = self.weights[offset + j] as i32 * x;
                     sum += x0;
                 }
 
-                output[i] = sum as Self::OutputType;
+                // output[i] = sum as Self::OutputType;
+                // self.buffer[i] = sum as Self::OutputType;
+                self.buffer[i] = sum as i32;
             }
 
             // output
@@ -309,22 +351,24 @@ mod nn_relu {
 
     // #[derive(Debug,PartialEq,Clone,Copy)]
     #[derive(Debug,Eq,PartialEq,PartialOrd,Ord,Clone)]
-    pub struct NNClippedRelu<Prev: NNLayer> {
+    pub struct NNClippedRelu<Prev: NNLayer, const OS: usize> {
         prev:    Prev,
+        buf:     [u8; OS],
     }
 
-    impl<Prev: NNLayer> NNClippedRelu<Prev> {
+    impl<Prev: NNLayer, const OS: usize> NNClippedRelu<Prev, OS> {
 
         const SIZE_OUTPUT_PADDED: usize = ceil_to_multiple(Self::SIZE_OUTPUT, 32);
 
         pub fn new(prev: Prev) -> Self {
             Self {
                 prev,
+                buf:  [0; OS],
             }
         }
     }
 
-    impl<Prev: NNLayer> NNLayer for NNClippedRelu<Prev> {
+    impl<Prev: NNLayer, const OS: usize> NNLayer for NNClippedRelu<Prev, OS> {
         type InputType = Prev::OutputType;
         type OutputType = u8;
         const SIZE_OUTPUT: usize = Prev::SIZE_OUTPUT;
@@ -341,19 +385,29 @@ mod nn_relu {
 
         fn size(&self) -> usize { self.prev.size() }
 
-        fn propagate(&self, trans_features: &[u8], output: &mut [Self::OutputType]) {
+        fn get_buf(&self) -> &[Self::OutputType] {
+            &self.buf
+        }
+        fn get_buf_mut(&mut self) -> &mut [Self::OutputType] {
+            &mut self.buf
+        }
+
+        // fn propagate(&mut self, trans_features: &[u8], output: &mut [Self::OutputType]) {
+        fn propagate(&mut self, trans_features: &[u8]) {
         // fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType> {
 
             // eprintln!("relu propagate");
             // eprintln!("NNRelu InputType = {:?}", std::any::type_name::<Self::InputType>());
 
-            let mut input: Vec<Self::InputType> = vec![Self::InputType::zero(); Self::SIZE_INPUT];
-            self.prev.propagate(trans_features, &mut input);
+            // let mut input: Vec<Self::InputType> = vec![Self::InputType::zero(); Self::SIZE_INPUT];
+            // self.prev.propagate(trans_features, &mut input);
 
             // let input: Vec<Self::InputType> = self.prev.propagate(trans_features);
             // assert_eq!(input.len(), Self::SIZE_INPUT);
 
+            self.prev.propagate(trans_features);
             // let mut output = vec![0; Self::SIZE_OUTPUT_PADDED];
+            let input = self.prev.get_buf();
 
             // TODO: AVX2 magic
 
@@ -365,7 +419,8 @@ mod nn_relu {
                 let x0: i32 = input[i].as_();
                 let x1 = (x0.overflowing_shr(WEIGHT_SCALE_BITS).0).clamp(0, 127);
                 // output[i] = NumCast::from(x1).unwrap();
-                output[i] = x1.as_();
+                // output[i] = x1.as_();
+                self.buf[i] = x1.as_();
             }
 
             // // Affine transform layers expect that there is at least

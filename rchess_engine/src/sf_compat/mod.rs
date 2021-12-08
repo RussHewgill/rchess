@@ -17,8 +17,8 @@ use std::path::Path;
 use byteorder::{ReadBytesExt, LittleEndian, WriteBytesExt};
 
 pub type Layer0 = NNInput<{HALF_DIMS * 2}>;
-pub type Layer1 = NNClippedRelu<NNAffine<Layer0, 8>>;
-pub type Layer2 = NNClippedRelu<NNAffine<Layer1, 32>>;
+pub type Layer1 = NNClippedRelu<NNAffine<Layer0, 8>, 8>;
+pub type Layer2 = NNClippedRelu<NNAffine<Layer1, 32>, 32>;
 pub type Layer3 = NNAffine<Layer2, 1>;
 
 const HALF_DIMS: usize = 1024;
@@ -180,11 +180,13 @@ impl NNUE4 {
             let mut transformed = [0; HALF_DIMS * 2]; // 2048
             let psqt = self.ft.transform(&g, &mut transformed, bucket, true);
 
-            let mut pos_buf = [0; Layer3::BUFFER_SIZE]; // XXX: 320 ??
-            // eprintln!("pos_buf.len() = {:?}", pos_buf.len());
-            self.layers[bucket].propagate(&transformed, &mut pos_buf);
+            // let mut pos_buf = [0; Layer3::BUFFER_SIZE]; // XXX: 320 ??
+            // // eprintln!("pos_buf.len() = {:?}", pos_buf.len());
+            // self.layers[bucket].propagate(&transformed, &mut pos_buf);
 
             // let pos_buf: Vec<i32> = self.layers[bucket].propagate(&transformed);
+            self.layers[bucket].propagate(&transformed);
+            let pos_buf = self.layers[bucket].get_buf();
             let positional = pos_buf[0] as Score;
 
             // for (n,p) in pos_buf.iter().enumerate() {
@@ -228,12 +230,14 @@ impl NNUE4 {
         let mut transformed = [0; HALF_DIMS * 2];
         let psqt = self.ft.transform(g, &mut transformed, bucket, refresh);
 
-        // let mut pos_buf = [0; Layer3::BUFFER_SIZE]; // ?? 384
-        let mut pos_buf = [0; Layer3::SIZE_OUTPUT]; // 1
-        // eprintln!("pos_buf.len() = {:?}", pos_buf.len());
-        self.layers[bucket].propagate(&transformed, &mut pos_buf);
+        // // let mut pos_buf = [0; Layer3::BUFFER_SIZE]; // ?? 384
+        // let mut pos_buf = [0; Layer3::SIZE_OUTPUT]; // 1
+        // // eprintln!("pos_buf.len() = {:?}", pos_buf.len());
+        // self.layers[bucket].propagate(&transformed, &mut pos_buf);
 
         // let pos_buf = self.layers[bucket].propagate(&transformed);
+        self.layers[bucket].propagate(&transformed);
+        let pos_buf = self.layers[bucket].get_buf();
         let positional = pos_buf[0] as Score;
 
         // for (n,p) in pos_buf.iter().enumerate() {
