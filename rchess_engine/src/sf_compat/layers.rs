@@ -113,7 +113,7 @@ mod nn_affine {
         // weights: Array2<u8>,
         pub biases:  [i32; OS],
         // biases:  [u8; OS],
-        pub weights: Vec<u8>,
+        pub weights: Vec<i8>,
     }
 
     /// Consts
@@ -224,6 +224,11 @@ mod nn_affine {
             let mut output = vec![0; Self::SIZE_OUTPUT];
 
             // let mut k: i32 = 0;
+            let x0 = self.weights[0];
+            let x1 = self.weights[Self::SIZE_INPUT_PADDED * (Self::SIZE_OUTPUT - 1) + Self::SIZE_INPUT - 1];
+
+            // eprintln!("weights[0] = {:?}", x0);
+            // eprintln!("weights[SIZE_INPUT_PADDED * (SIZE_OUTPUT - 1) + SIZE_INPUT - 1] = {:?}", x1);
 
             for i in 0..Self::SIZE_OUTPUT {
 
@@ -272,7 +277,7 @@ mod nn_affine {
 
             for i in 0..size {
                 // eprintln!("i = {:?}", i);
-                let x = rdr.read_u8()?;
+                let x = rdr.read_i8()?;
                 // self.weights[Self::get_weight_index(i)] = x;
                 self.weights[i] = x;
             }
@@ -290,7 +295,7 @@ mod nn_affine {
             // }
             for i in 0..Self::SIZE_OUTPUT * Self::SIZE_INPUT_PADDED {
                 let wt = self.weights[Self::get_weight_index(i)];
-                w.write_u8(wt)?;
+                w.write_i8(wt)?;
             }
             Ok(())
         }

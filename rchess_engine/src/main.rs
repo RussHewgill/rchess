@@ -1371,52 +1371,9 @@ fn _main_nn() -> std::io::Result<()> {
 
     use byteorder::{ReadBytesExt, LittleEndian};
 
-    // let c0 = Coord::from("E1");
-    // let k: u8 = c0.into();
-    // eprintln!("k = {:?}", k);
-
-    // let k0 = orient(k, Black, Coord::from("E2").into());
-    // let k0 = Coord::from(k0);
-    // eprintln!("k0 = {:?}", k0);
-
     use rchess_engine_lib::sf_compat::*;
 
-    // let k0 = 64 * (11 * 64 / 2);
-    // eprintln!("k0 = {:?}", k0);
-
-    // let mut xs: HashSet<usize> = HashSet::default();
-    // let mut dups = 0;
-    // for side in [White,Black] {
-    //     for pc in Piece::iter_pieces() {
-    //         for king_sq in 0..64 {
-    //             for sq in 0..64 {
-    //                 let idx = make_index_half_ka_v2(king_sq, persp, pc, side, sq);
-    //                 if xs.contains(&idx) {
-    //                     // panic!();
-    //                     dups += 1;
-    //                 }
-    //                 xs.insert(idx);
-    //             }
-    //         }
-    //     }
-    // }
-    // eprintln!("dups = {:?}", dups);
-    // eprintln!("xs.len() = {:?}", xs.len());
-    // let max = xs.iter().max().unwrap();
-    // let min = xs.iter().min().unwrap();
-    // eprintln!("(max,min) = {:?}", (max,min));
-
-    // let idx = make_index_half_ka_v2(king_sq, persp, pc, side, sq);
-    // eprintln!("idx = {:?}", idx);
-
     // return Ok(());
-
-    // let s0 = std::mem::size_of::<usize>();
-    // eprintln!("s0 = {:?}", s0);
-
-    // return Ok(());
-
-    // let path = "./nn-3475407dc199.nnue"; // wrong hash?
 
     // let path = "nn-cdf1785602d6.nnue";
     // let path = "nn-13406b1dcbe0.nnue";
@@ -1427,97 +1384,7 @@ fn _main_nn() -> std::io::Result<()> {
 
     use std::io::{BufReader,Write,BufWriter};
 
-    // let mut f1 = std::fs::File::open(path)?;
-    // let mut f2 = std::fs::File::open(path2)?;
-    // let mut xs1 = vec![];
-    // let mut xs2 = vec![];
-    // f1.read_to_end(&mut xs1)?;
-    // f2.read_to_end(&mut xs2)?;
-    // eprintln!("xs1.len() = {:?}", xs1.len());
-    // eprintln!("xs2.len() = {:?}", xs2.len());
-
-    // for (n,(x,y)) in xs1.iter().zip(xs2.iter()).enumerate() {
-    //     if x != y {
-    //         eprintln!("n = {:?}", n);
-    //         eprintln!("x = {:?}", x);
-    //         eprintln!("y = {:?}", y);
-    //         panic!();
-    //     }
-    // }
-    // println!("wat 0");
-
     let mut nn = NNUE4::read_nnue(path).unwrap();
-
-    // let k0 = nn.ft.weights.len();
-    // let k1 = nn.ft.psqt_weights.len();
-    // eprintln!("k0 = {:?}", k0);
-    // eprintln!("k1 = {:?}", k1);
-
-    // let mut n = 0;
-
-    // loop {
-    //     let x1 = f1.read_u32::<LittleEndian>()?;
-    //     let x2 = f2.read_u32::<LittleEndian>()?;
-    //     if x1 != x2 {
-    //         eprintln!("n = {:?}", n);
-    //         eprintln!("x1 = {:?}", x1);
-    //         eprintln!("x2 = {:?}", x2);
-    //         panic!();
-    //     }
-    //     n += 1;
-    //     if n % 100000 == 0 {
-    //         eprintln!("n = {:?}", n);
-    //     }
-    // }
-
-    // return Ok(());
-
-    // nn.write_nnue(path2).unwrap();
-    // println!("===");
-
-    // let mut nn2 = NNUE4::read_nnue(path2).unwrap();
-    // eprintln!("nn == nn2 = {:?}", nn == nn2);
-
-    // return Ok(());
-
-    // let ws   = &nn.ft.weights;
-    // let bs   = &nn.ft.biases;
-    // let psqt = &nn.ft.psqt_weights;
-    // eprintln!("ws.len()   = {:?}", ws.len());
-    // eprintln!("bs.len()   = {:?}", bs.len());
-    // eprintln!("psqt.len() = {:?}", psqt.len());
-    // // let ws0   = ws[0];
-    // // let bs0   = bs[0];
-    // // let psqt0 = psqt[0];
-    // eprintln!("ws[0] = {:?}", ws[0]);
-    // eprintln!("ws[1] = {:?}", ws[1]);
-    // eprintln!("ws[2] = {:?}", ws[2]);
-    // eprintln!("ws[-1] = {:?}", ws[ws.len()-1]);
-    // eprintln!("ws[-1] = {:?}", ws[ws.len()-2]);
-    // eprintln!("ws[-2] = {:?}", ws[ws.len()-3]);
-
-    // eprintln!("bs[0] = {:?}", bs0);
-    // eprintln!("psqt[0] = {:?}", psqt0);
-
-    // let b0 = bs.iter().filter(|x| **x == -103).count();
-    // eprintln!("b0 = {:?}", b0);
-
-    // let ws0 = nn.layers[0].weights[10];
-    // eprintln!("ws0 = {:?}", ws0);
-
-    // return Ok(());
-
-    // let h = NNUE4::HASH;
-    // eprintln!("hash = {:#8x}", h);
-
-    // let k0 = layers[0].size();
-    // eprintln!("k0 = {:?}", k0);
-
-    // let mut r = rdr.get_mut();
-    // let mut xs = vec![];
-    // let end = r.read_to_end(&mut xs)?;
-
-    // eprintln!("end = {:?}", end);
 
     if !true {
         let persp = White;
@@ -1580,39 +1447,6 @@ fn _main_nn() -> std::io::Result<()> {
             eprintln!("idx 2 = {:?}, idx == {}, {}", idx, x, x == idx);
         }
     }
-
-    // let persp = Black;
-
-    // // let king_sq = Coord::from("E1");
-    // let king_sq = Coord::from("E8");
-
-    // // let side = White;
-    // let side = Black;
-
-    // // let pc = Pawn;
-    // let pc = King;
-
-    // // let sq = Coord::from("E2");
-    // let sq = Coord::from("E1");
-    // // let sq = Coord::from("E8");
-
-    // eprintln!("sq = {:?}", sq);
-    // eprintln!("sq.inner() = {:?}", sq.inner());
-
-    // let idx = NNUE4::make_index_half_ka_v2(o_king_sq, persp, pc, side, sq);
-    // eprintln!("idx = {:?}", idx);
-
-    // let mut nn2 = &nn.layers[0];
-
-    // eprintln!("nn2.biases.len() = {:?}", nn2.biases.len());
-    // eprintln!("nn2.weights.len() = {:?}", nn2.weights.len());
-
-    // let bs = nn2.biases.iter().filter(|x| **x == 0).count();
-    // eprintln!("bs = {:?}", bs);
-    // let ws = nn2.weights.iter().filter(|x| **x == 0).count();
-    // eprintln!("ws = {:?}", ws);
-
-    // return Ok(());
 
     {
         let ts = Tables::read_from_file_def().unwrap();

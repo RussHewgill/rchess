@@ -13,6 +13,9 @@ use crate::killer_moves::*;
 #[cfg(feature = "syzygy")]
 use crate::syzygy::SyzygyTB;
 
+#[cfg(feature = "nnue")]
+use crate::sf_compat::NNUE4;
+
 pub use crate::move_ordering::*;
 pub use crate::timer::*;
 pub use crate::trans_table::*;
@@ -50,6 +53,9 @@ pub struct Explorer {
     #[cfg(feature = "syzygy")]
     pub syzygy:        Option<Arc<SyzygyTB>>,
     pub opening_book:  Option<Arc<OpeningBook>>,
+
+    #[cfg(feature = "nnue")]
+    pub nnue:          Option<NNUE4>,
 
     pub tt_rf:         TTReadFactory,
     pub tt_w:          TTWrite,
@@ -101,6 +107,8 @@ pub struct ExHelper {
 
     #[cfg(feature = "syzygy")]
     pub syzygy:          Option<Arc<SyzygyTB>>,
+    #[cfg(feature = "nnue")]
+    pub nnue:          Option<NNUE4>,
 
     pub cfg:             ExConfig,
 
@@ -171,6 +179,9 @@ impl Explorer {
 
             #[cfg(feature = "syzygy")]
             syzygy:          self.syzygy.clone(),
+
+            #[cfg(feature = "nnue")]
+            nnue:            self.nnue.clone(),
 
             best_depth,
             tx,
@@ -260,6 +271,9 @@ impl Explorer {
             syzygy:         None,
             opening_book:   None,
 
+            #[cfg(feature = "nnue")]
+            nnue:           None,
+
             tt_rf,
             tt_w,
 
@@ -284,6 +298,15 @@ impl Explorer {
     pub fn update_game(&mut self, g: Game) {
         self.side = g.state.side_to_move;
         self.game = g;
+    }
+
+    pub fn load_nnue<P: AsRef<Path>>(&mut self, path: P) -> std::io::Result<()> {
+        #[cfg(feature = "nnue")]
+        {
+            let mut nn = NNUE4::read_nnue(path)?;
+            self.nnue = Some(nn);
+            Ok(())
+        }
     }
 
     pub fn load_syzygy<P: AsRef<Path>>(&mut self, dir: P) -> std::io::Result<()> {

@@ -1,4 +1,5 @@
 
+use crate::sf_compat::NNUE4;
 use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
@@ -17,6 +18,7 @@ pub fn exhelper_once(
     ev_mid:   &EvalParams,
     ev_end:   &EvalParams,
     ph_rw:    Option<&PHTable>,
+    nnue:     Option<NNUE4>,
 ) -> ExHelper {
     let mut cfg = ExConfig::default();
     cfg.eval_params_mid = ev_mid.clone();
@@ -49,6 +51,8 @@ pub fn exhelper_once(
         best_mate,
         #[cfg(feature = "syzygy")]
         syzygy:          None,
+        #[cfg(feature = "nnue")]
+        nnue,
         cfg,
         best_depth,
         tx,
@@ -171,10 +175,8 @@ impl ExHelper {
         // trace!("qsearch, {:?} to move, ply {}, a/b: {:?},{:?}",
         //        g.state.side_to_move, ply, alpha, beta);
 
-        // let stand_pat = g.evaluate(&ts).sum();
-        // let stand_pat = g.sum_evaluate(&self.cfg.eval_params, ts);
         let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
-        // let stand_pat = if self.side == Black { stand_pat } else { -stand_pat };
+
         let stand_pat = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
 
         if self.stop.load(SeqCst) {

@@ -234,8 +234,8 @@ impl NNUE4 {
         //     eprintln!("{:>5} = {:?}", n, p);
         // }
 
-        eprintln!("psqt       = {:?}", psqt);
-        eprintln!("positional = {:?}", positional);
+        // eprintln!("psqt       = {:?}", psqt);
+        // eprintln!("positional = {:?}", positional);
 
         // TODO: if adjusted
         if adjusted {

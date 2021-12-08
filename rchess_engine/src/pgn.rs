@@ -106,7 +106,7 @@ pub fn process_pgns_tx(
         let mut games = vec![];
 
         let mut stats = SearchStats::default();
-        let mut exhelper2 = exhelper_once(&g, g.state.side_to_move, &ev_mid, &ev_end, None);
+        let mut exhelper2 = exhelper_once(&g, g.state.side_to_move, &ev_mid, &ev_end, None, None);
 
         for mv0 in pgn.moves.iter() {
             let mv0 = mv0.chars().filter(|c| *c != '+' && *c != '#').collect::<String>();
@@ -164,7 +164,7 @@ pub fn process_pgns_td(
 
     let pgns2 = pgns.chunks(pgns.len() / ncpus).map(|xs| {
         let ph_rw = ph_factory.handle();
-        let exhelper = exhelper_once(&g0, White, ev_mid, ev_end, Some(&ph_rw));
+        let exhelper = exhelper_once(&g0, White, ev_mid, ev_end, Some(&ph_rw), None);
         (exhelper.clone(), xs)
     }).collect::<Vec<(ExHelper, &[PGN])>>();
 
@@ -328,7 +328,7 @@ pub fn _process_pgns_td_par(
     let ncpus = num_cpus::get();
     let ph_factory = PHTableFactory::new();
     let ph_rw = ph_factory.handle();
-    let exhelper = exhelper_once(&g0, White, ev_mid, ev_end, Some(&ph_rw));
+    let exhelper = exhelper_once(&g0, White, ev_mid, ev_end, Some(&ph_rw), None);
 
     loop {
         match rx.recv() {

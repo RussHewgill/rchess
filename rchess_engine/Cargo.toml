@@ -31,6 +31,7 @@ default = [
     "mobility_scoring",
 
     # "syzygy",
+    "nnue",
 
     # "null_pruning",
     "late_move_reduction",
@@ -58,6 +59,7 @@ positional_scoring = []
 mobility_scoring = []
 
 syzygy = []
+nnue = []
 
 null_pruning = []
 late_move_reduction = []

@@ -524,7 +524,7 @@ impl TrainingData {
 
         let tds = tds.chunks(tds.len() / ncpus).map(|xs| {
             let ph_rw = ph_factory.handle();
-            let exhelper = exhelper_once(&g, White, ev_mid, ev_end, Some(&ph_rw));
+            let exhelper = exhelper_once(&g, White, ev_mid, ev_end, Some(&ph_rw), None);
             (exhelper, xs)
         }).collect::<Vec<(ExHelper, &[TrainingData])>>();
 
