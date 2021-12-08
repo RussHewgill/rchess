@@ -4,10 +4,10 @@
 #![allow(unused_mut)]
 #![allow(unused_doc_comments)]
 
-#![feature(core_intrinsics)]
+// #![feature(core_intrinsics)]
 #![feature(backtrace,backtrace_frames)]
 // #![feature(generic_const_exprs)]
-
+#![feature(portable_simd)]
 
 #![allow(clippy::all)]
 
@@ -67,6 +67,7 @@ fn main() {
         "nn"        => main_nn(),
         "nnue"      => main_nnue(),
         "train"     => main_nnue_train(),
+        "simd"      => main_simd(),
         "eval"      => main_eval(),
         "gensfen"   => {
             let count = u64::from_str(&args[2]).unwrap();
@@ -454,40 +455,13 @@ fn main_simd() {
     let dist0 = Uniform::new(0,1);
     let dist1 = Uniform::new(i16::MIN,i16::MAX);
 
-    // let mut x = nd::Array2::<i16>::zeros((R,C));
-    // let mut y = nd::Array2::<i16>::zeros((R,C));
-    // for _ in 0..1024*256/10 {
-    //     let a = rng.gen_range(0..R);
-    //     let b = rng.gen_range(0..C);
-    //     x[(a,b)] = rng.gen_range(i16::MIN..i16::MAX);
-    //     let a = rng.gen_range(0..R);
-    //     let b = rng.gen_range(0..C);
-    //     y[(a,b)] = rng.gen_range(i16::MIN..i16::MAX);
-    // }
+    // let weights = 
 
-    // const R: usize = 1024;
-    // const C: usize = 256;
-    const R: usize = 1024;
-    const C: usize = 16;
+    use std::simd::*;
 
-    eprintln!("size = {:?}", R * C);
-
-    let x = nd::Array2::<i16>::random_using((R,C), dist1, &mut rng);
-    let y = nd::Array2::<i16>::random_using((C,R), dist1, &mut rng);
-
-    let result: nd::Array2<i16> = x.dot(&y); // 0.127, 1024, 1024
-    eprintln!("result.shape() = {:?}", result.shape());
-
-    let result: nd::Array2<i16> = y.dot(&x); // 0.849, 16, 16
-    eprintln!("result.shape() = {:?}", result.shape());
-
-    // println!("starting...");
-    // let t0 = Instant::now();
-    // for _ in 0..10 {
-    //     // let result: nd::Array2<i16> = x.dot(&y); // 0.127
-    //     let result: nd::Array2<i16> = y.dot(&x); // 0.849
-    // }
-    // println!("finished in {:.3} seconds", t0.elapsed().as_secs_f64());
+    // let a = f32x4::splat(10.0);
+    // let b = f32x4::from_array([1.0, 2.0, 3., 4.]);
+    // eprintln!("a + b = {:?}", a + b);
 
 }
 
@@ -1468,31 +1442,29 @@ fn _main_nn() -> std::io::Result<()> {
 
         // return Ok(());
 
-        let fen1 = "4k3/3np3/8/8/8/8/3NP3/4K3 b - - 0 1";
-        let fen2 = "4k3/4p3/5n2/8/8/8/3NP3/4K3 w - - 1 2"; // after Qt N d7f6
-        let fen3 = "4k3/4p3/5n2/8/8/1N6/4P3/4K3 b - - 2 2"; // after Qt N d2b3
-        let mut g1 = Game::from_fen(&ts, fen1).unwrap();
-        let mut g2 = Game::from_fen(&ts, fen2).unwrap();
-        let mut g3 = Game::from_fen(&ts, fen3).unwrap();
+        // let fen1 = "4k3/3np3/8/8/8/8/3NP3/4K3 b - - 0 1";
+        // let fen2 = "4k3/4p3/5n2/8/8/8/3NP3/4K3 w - - 1 2"; // after Qt N d7f6
+        // let fen3 = "4k3/4p3/5n2/8/8/1N6/4P3/4K3 b - - 2 2"; // after Qt N d2b3
+        // let mut g1 = Game::from_fen(&ts, fen1).unwrap();
+        // let mut g2 = Game::from_fen(&ts, fen2).unwrap();
+        // let mut g3 = Game::from_fen(&ts, fen3).unwrap();
 
         // let g = g.flip_sides(&ts);
 
-        let mv1 = Move::new_quiet("D7", "F6", Knight);
-        let mv2 = Move::new_quiet("D2", "B3", Knight);
-
-        nn.ft.update_accum(&g1, White, false);
-        nn.ft.update_accum(&g1, Black, false);
+        // let mv1 = Move::new_quiet("D7", "F6", Knight);
+        // let mv2 = Move::new_quiet("D2", "B3", Knight);
+        // nn.ft.update_accum(&g1, White, false);
+        // nn.ft.update_accum(&g1, Black, false);
 
         // let v1 = nn.evaluate(&g1, false, true);
         // eprintln!("v1 = {:?}", v1); // -22
 
-        nn.ft.accum.needs_refresh = [false; 2];
+        // nn.ft.accum.needs_refresh = [false; 2];
+        // nn.ft.make_move(&g1, mv1);
+        // nn.ft.make_move(&g2, mv2);
 
-        nn.ft.make_move(&g1, mv1);
-        nn.ft.make_move(&g2, mv2);
-
-        let v = nn.evaluate(&g3, false, false);
-        eprintln!("v = {:?}", v);
+        // let v = nn.evaluate(&g3, false, false);
+        // eprintln!("v = {:?}", v);
 
         // let v1 = nn.evaluate(&g1, false, true);
         // let v2 = nn.evaluate(&g2, false, true);
@@ -1501,12 +1473,58 @@ fn _main_nn() -> std::io::Result<()> {
         // eprintln!("v2 = {:?}", v2); // -22
         // eprintln!("v3 = {:?}", v3); // -10
 
-        return Ok(());
-
         // let fen = "4k3/3ppp2/8/8/8/8/2NPPP2/4K3 w - - 0 1"; // +1 knight
         // let fen = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1";
-        let fen = "8/8/8/8/8/8/8/8 w - - 0 1";
+        // let fen = "8/8/8/8/8/8/8/8 w - - 0 1";
+        let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
         let mut g = Game::from_fen(&ts, fen).unwrap();
+
+        // // d6b4 -> -599
+        // let v = nn.evaluate(&g, false, false);
+        // eprintln!("v = {:?}", v);
+
+        // let mut vs = vec![];
+        // for n in 0..32 {
+        //     vs.push(n);
+        // }
+
+        // let mut x: i64 = 0;
+        // let n0 = 1 << 
+
+        let a0 = u8::MAX as u16 + 1;
+
+        let b0 = u8::MAX;
+        let b1 = 1u8;
+
+        // let c = i64::
+
+        // let mut c = unsafe {
+            // let cs = [b1,b0];
+            std::mem::transmute(e)
+        // };
+
+        return Ok(());
+
+        let mut tfs = vec![];
+        for bucket in 0..8 {
+            nn.ft.accum.needs_refresh = [true; 2];
+            let mut transformed = [0; HALF_DIMS * 2];
+            let psqt = nn.ft.transform(&g, &mut transformed, bucket, true);
+            tfs.push(transformed);
+        }
+
+        println!("starting");
+        let t0 = std::time::Instant::now();
+        for n in 0..50000 {
+            for bucket in 0..8 {
+                nn.layers[bucket].propagate(&tfs[bucket]);
+            }
+            // let _ = nn.trace_eval(&g, false);
+        }
+        let t1 = t0.elapsed().as_secs_f64();
+        eprintln!("finished in {:.3} seconds", t1);
+
+        return Ok(());
 
         // eprintln!("g.to_fen() = {:?}", g.to_fen());
         // eprintln!("g = {:?}", g);

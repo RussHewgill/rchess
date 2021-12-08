@@ -15,11 +15,12 @@ use num_traits::{Num,PrimInt,NumCast,AsPrimitive};
 const CACHE_LINE_SIZE: usize = 64;
 const WEIGHT_SCALE_BITS: u32 = 6;
 
+const MAX_SIMD_WIDTH: usize = 32;
+
+/// AVX2
+const SIMD_WIDTH: usize = 32;
+
 pub trait NNLayer {
-    // type InputType: Num + Copy + std::ops::Shr;
-    // type OutputType: Num + Copy + std::ops::Shr;
-    // type InputType: PrimInt + NumCast;
-    // type OutputType: PrimInt + NumCast;
     type InputType: PrimInt + NumCast + AsPrimitive<i32>;
     type OutputType: PrimInt + NumCast + AsPrimitive<i32>;
 
@@ -32,9 +33,9 @@ pub trait NNLayer {
     const HASH: u32;
 
     // fn propagate(&mut self, trans_features: &[u8], output: &mut [Self::OutputType]);
-    fn propagate(&mut self, trans_features: &[u8]);
     // fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType>;
     // fn propagate(&self, trans_features: &[u8]) -> ArrayVec<Self::OutputType, {Self::BUFFER_SIZE}>;
+    fn propagate(&mut self, trans_features: &[u8]);
 
     fn size(&self) -> usize;
 
@@ -60,7 +61,6 @@ mod nn_input {
     use super::*;
     use num_traits::Num;
 
-    // #[derive(Debug,PartialEq,Clone,Copy)]
     #[derive(Debug,Eq,PartialEq,PartialOrd,Ord,Clone)]
     pub struct NNInput<const OS: usize> {
         buf:   [u8; OS],
@@ -91,16 +91,10 @@ mod nn_input {
         // fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType> {
             // assert!(input.len() == output.len());
             assert_eq!(trans_features.len(), Self::SELF_BUFFER_SIZE);
-
-            // trans_features.to_vec()
-
-            // assert_eq!(output.len(), Self::SELF_BUFFER_SIZE);
-            // output.copy_from_slice(&trans_features);
             self.buf.copy_from_slice(&trans_features);
         }
 
         fn read_parameters(&mut self, rdr: &mut BufReader<File>) -> io::Result<()> {
-            // println!("wat NNInput");
             Ok(())
         }
     }
@@ -138,16 +132,32 @@ mod nn_affine {
     /// Consts
     impl<Prev: NNLayer, const OS: usize> NNAffine<Prev, OS> {
 
-        // /// AVX2
-        // const INPUT_SIMD_WIDTH: usize = 32;
-        // const MAX_NUM_OUTPUT_REGS: usize = 8;
+        /// AVX2
+        const INPUT_SIMD_WIDTH: usize = 32;
+        const MAX_NUM_OUTPUT_REGS: usize = 8;
 
         // /// AVX
         // const INPUT_SIMD_WIDTH: usize = 16;
         // const MAX_NUM_OUTPUT_REGS: usize = 8;
 
-        const INPUT_SIMD_WIDTH: usize = 1;
-        const MAX_NUM_OUTPUT_REGS: usize = 1;
+        // const INPUT_SIMD_WIDTH: usize = 16;
+        // const MAX_NUM_OUTPUT_REGS: usize = 8;
+
+        // const INPUT_SIMD_WIDTH: usize = {
+        //     // #[cfg(feature = "null_pruning")]
+        //     if is_x86_feature_detected!("avx2") {
+        //         32
+        //     } else {
+        //         1
+        //     }
+        // };
+        // const MAX_NUM_OUTPUT_REGS: usize = {
+        //     if is_x86_feature_detected!("avx2") {
+        //         8
+        //     } else {
+        //         1
+        //     }
+        // };
 
         const NUM_OUTPUT_REGS: usize  = if OS > Self::MAX_NUM_OUTPUT_REGS {
             Self::MAX_NUM_OUTPUT_REGS } else { OS };
@@ -156,6 +166,8 @@ mod nn_affine {
 
         const NUM_SMALL_BLOCKS_PER_BIG_BLOCK: usize = Self::BIG_BLOCK_SIZE / Self::SMALL_BLOCK_SIZE;
         const NUM_SMALL_BLOCKS_PER_OUTPUT: usize = Self::SIZE_INPUT_PADDED / Self::SMALL_BLOCK_SIZE;
+
+        const NUM_BIG_BLOCKS: usize = Self::SIZE_OUTPUT / Self::NUM_OUTPUT_REGS;
 
         const SIZE_INPUT_PADDED: usize = ceil_to_multiple(Self::SIZE_INPUT, 32);
 
@@ -205,6 +217,168 @@ mod nn_affine {
 
     }
 
+    /// Approach 1:
+    ///   - used when the PaddedInputDimensions >= 128
+    ///   - uses AVX512 if possible
+    ///   - processes inputs in batches of 2*InputSimdWidth
+    ///   - so in batches of 128 for AVX512
+    ///   - the weight blocks of size InputSimdWidth are transposed such that
+    ///     access is sequential
+    ///   - N columns of the weight matrix are processed a time, where N
+    ///     depends on the architecture (the amount of registers)
+    ///   - accumulate + hadd is used
+    impl<Prev: NNLayer, const OS: usize> NNAffine<Prev, OS> {
+
+        // const INPUT_SIMD_WIDTH: usize = 32; // AVX2
+        // const MAX_NUM_OUTPUT_REGS: usize = 8; // AVX2
+
+        pub fn _m256i_from_slice(s: &[u8]) -> core::arch::x86_64::__m256i {
+            use std::convert::TryInto;
+            use core::arch::x86_64::*;
+            assert!(s.len() >= 32);
+            let x0: i64 = i64::from_ne_bytes(s[0..8].try_into().unwrap());
+            let x1: i64 = i64::from_ne_bytes(s[8..16].try_into().unwrap());
+            let x2: i64 = i64::from_ne_bytes(s[16..24].try_into().unwrap());
+            let x3: i64 = i64::from_ne_bytes(s[24..32].try_into().unwrap());
+            unsafe { _mm256_set_epi64x(x0,x1,x2,x3) }
+        }
+
+        pub fn _propagate_avx2(&mut self, trans_features: &[u8]) {
+            // use std::simd::*;
+            use core::arch::x86_64::*;
+
+            // using acc_vec_t = __m256i;
+            // using bias_vec_t = __m128i;
+            // using weight_vec_t = __m256i;
+            // using in_vec_t = __m256i;
+            // #define vec_zero _mm256_setzero_si256()
+            // #define vec_add_dpbusd_32x2 Simd::m256_add_dpbusd_epi32x2
+            // #define vec_hadd Simd::m256_hadd
+            // #define vec_haddx4 Simd::m256_haddx4
+
+
+            self.prev.propagate(trans_features);
+            let input: &[<NNAffine<Prev,OS> as NNLayer>::InputType] = self.prev.get_buf();
+            // let input: &[u8] = self.prev.get_buf();
+
+            assert!(Self::SIZE_OUTPUT % Self::NUM_OUTPUT_REGS == 0);
+            assert!(input.len() % 32 == 0);
+
+            // XXX: Safe until I change the Prev::InputType
+            let input: &[u8] = unsafe {
+                let ptr = input.as_ptr();
+                let ptr2 = ptr as *const u8;
+                std::slice::from_raw_parts(ptr2, input.len())
+            };
+
+            // type InVec = u8x32;
+
+            use std::convert::TryInto;
+
+            let ins: Vec<__m256i> = input.chunks_exact(32).map(|s| {
+                Self::_m256i_from_slice(s)
+            }).collect();
+
+            for big_block in 0..Self::NUM_BIG_BLOCKS {
+                let mut acc = vec![unsafe { _mm256_setzero_si256() }; Self::NUM_OUTPUT_REGS];
+
+                let mut small_block = 0;
+                while small_block < Self::NUM_SMALL_BLOCKS_PER_OUTPUT {
+
+                    let in0: __m256i = ins[small_block + 0];
+                    let in1: __m256i = ins[small_block + 1];
+
+                    let offset = big_block * Self::BIG_BLOCK_SIZE
+                        + small_block * Self::SMALL_BLOCK_SIZE * Self::NUM_OUTPUT_REGS;
+
+                    for k in 0..Self::NUM_OUTPUT_REGS {
+
+                        let s = &self.weights[offset + k..];
+                        let s: &[u8] = unsafe { &*(s as *const _ as *const [u8]) };
+
+                        let b0 = Self::_m256i_from_slice(s);
+                        let b1 = Self::_m256i_from_slice(&s[Self::NUM_OUTPUT_REGS..]);
+
+                        // let b0: i8x32 = i8x32::from_slice(&self.weights[offset + k..]);
+                        // let b1: i8x32 = i8x32::from_slice(&self.weights[offset + k + Self::NUM_OUTPUT_REGS..]);
+
+                        // let zero: __m256i = _mm256_setzero_si256();
+                        // let offsets = _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
+
+                        // __m256i product0 = _mm256_maddubs_epi16(a0, b0);
+                        // let product0 = in0 * b0;
+
+                        unsafe {
+                            let mut product0 = _mm256_maddubs_epi16(in0, b0);
+                            let product1 = _mm256_maddubs_epi16(in1, b1);
+
+                            product0 = _mm256_adds_epi16(product0, product1);
+                            product0 = _mm256_adds_epi16(product0, _mm256_set1_epi16(1));
+
+                            acc[k] = _mm256_add_epi32(acc[k], product0);
+                        };
+
+                    }
+
+                    small_block += 2;
+                }
+
+                if Self::NUM_OUTPUT_REGS % 4 == 0 {
+
+                    let output_vec: Vec<__m256i> = unimplemented!();
+
+                    for k in 0..Self::NUM_OUTPUT_REGS {
+                        let idx = (big_block * Self::NUM_OUTPUT_REGS + k) / 4;
+
+                        let mut sum0 = acc[k+0];
+                        let sum1 = acc[k+1];
+                        let mut sum2 = acc[k+2];
+                        let sum3 = acc[k+3];
+
+                        unsafe {
+                            sum0 = _mm256_hadd_epi32(sum0, sum1);
+                            sum2 = _mm256_hadd_epi32(sum2, sum3);
+
+                            sum0 = _mm256_hadd_epi32(sum0, sum2);
+
+                            // __m128i sum128lo = _mm256_castsi256_si128(sum0);
+                            // __m128i sum128hi = _mm256_extracti128_si256(sum0, 1);
+
+                            let sum128lo = _mm256_castsi256_si128(sum0);
+                            let sum128hi = _mm256_extracti128_si256(sum0, 1);
+
+                            // output_vec[idx] = _mm_add_epi32(_mm_add_epi32(sum128lo, sum128hi), bias);
+                            unimplemented!()
+                        }
+
+                        // m256_haddx4
+
+                    }
+                }
+
+            }
+
+            // let input = InVec::from_slice(&input);
+
+            // let input
+
+            unimplemented!()
+        }
+
+    }
+
+    /// Approach 2:
+    ///   - used when the PaddedInputDimensions < 128
+    ///   - does not use AVX512
+    ///   - expected use-case is for when PaddedInputDimensions == 32 and InputDimensions <= 32.
+    ///   - that's why AVX512 is hard to implement
+    ///   - expected use-case is small layers
+    ///   - not optimized as well as the approach 1
+    ///   - inputs are processed in chunks of 4, weights are respectively transposed
+    ///   - accumulation happens directly to int32s
+    impl<Prev: NNLayer, const OS: usize> NNAffine<Prev, OS> {
+    }
+
     impl<Prev: NNLayer, const OS: usize> NNLayer for NNAffine<Prev, OS> {
         type InputType = Prev::OutputType;
         type OutputType = i32;
@@ -235,46 +409,35 @@ mod nn_affine {
 
         fn get_buf(&self) -> &[Self::OutputType] {
             &self.buffer
-            // unimplemented!()
         }
         fn get_buf_mut(&mut self) -> &mut [Self::OutputType] {
             &mut self.buffer
-            // unimplemented!()
         }
 
-        // fn propagate(&mut self, trans_features: &[u8], mut output: &mut [Self::OutputType]) {
+        // #[cfg(feature = "nope")]
         fn propagate(&mut self, trans_features: &[u8]) {
-        // fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType> {
+            self._propagate_avx2(trans_features);
+        }
+
+        #[cfg(feature = "nope")]
+        fn propagate(&mut self, trans_features: &[u8]) {
 
             // eprintln!("affine propagate");
             // eprintln!("NNAffine InputType = {:?}", std::any::type_name::<Self::InputType>());
 
-            // let mut input: [Self::InputType; Self::SIZE_INPUT_PADDED] =
-            //     [Self::InputType::zero(); Self::SIZE_INPUT_PADDED];
-            // let mut input = ArrayVec::new
-            // let input2: ArrayVec<Self::InputType, {Self::SIZE_INPUT_PADDED}> = ArrayVec::new();
-
-            // let mut input = [Self::InputType::zero(); Self::SIZE_INPUT_PADDED];
-            // let mut input = [Self::InputType::zero(); OS];
-
-            // eprintln!("OS = {:?}", OS);
-            // eprintln!("Self::SIZE_INPUT_PADDED = {:?}", Self::SIZE_INPUT_PADDED);
-
-            // let mut input: Vec<Self::InputType> = vec![Self::InputType::zero(); Self::SIZE_INPUT_PADDED];
-            // self.prev.propagate(trans_features, &mut input);
-
-            // self.prev.propagate(trans_features, &mut input);
-
             self.prev.propagate(trans_features);
             let input = self.prev.get_buf();
 
-            // let input: Vec<Self::InputType> = self.prev.propagate(trans_features);
-            // assert_eq!(input.len(), Self::SIZE_INPUT_PADDED);
-
-            // let mut output = vec![0; Self::SIZE_OUTPUT];
+            // let input: &[u8] = unsafe {
+            //     let ptr = input.as_ptr();
+            //     let ptr2 = ptr as *const u8;
+            //     std::slice::from_raw_parts(ptr2, input.len())
+            // };
 
             let x0 = self.weights[0];
             let x1 = self.weights[Self::SIZE_INPUT_PADDED * (Self::SIZE_OUTPUT - 1) + Self::SIZE_INPUT - 1];
+
+            // eprintln!("Self::SIZE_INPUT_PADDED = {:?}", Self::SIZE_INPUT_PADDED);
 
             for i in 0..Self::SIZE_OUTPUT {
 
@@ -283,18 +446,13 @@ mod nn_affine {
                 let mut sum: i32 = self.biases[i];
 
                 for j in 0..Self::SIZE_INPUT {
-                    // let x: i32 = input[j].as_();
                     let x: i32 = input[j].as_();
                     let x0 = self.weights[offset + j] as i32 * x;
                     sum += x0;
                 }
-
-                // output[i] = sum as Self::OutputType;
-                // self.buffer[i] = sum as Self::OutputType;
                 self.buffer[i] = sum as i32;
             }
 
-            // output
         }
 
         fn read_parameters(&mut self, mut rdr: &mut BufReader<File>) -> io::Result<()> {
@@ -360,6 +518,8 @@ mod nn_relu {
 
         const SIZE_OUTPUT_PADDED: usize = ceil_to_multiple(Self::SIZE_OUTPUT, 32);
 
+        const NUM_CHUNKS: usize = Prev::SIZE_OUTPUT / SIMD_WIDTH;
+
         pub fn new(prev: Prev) -> Self {
             Self {
                 prev,
@@ -392,46 +552,44 @@ mod nn_relu {
             &mut self.buf
         }
 
-        // fn propagate(&mut self, trans_features: &[u8], output: &mut [Self::OutputType]) {
         fn propagate(&mut self, trans_features: &[u8]) {
-        // fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType> {
 
             // eprintln!("relu propagate");
             // eprintln!("NNRelu InputType = {:?}", std::any::type_name::<Self::InputType>());
 
-            // let mut input: Vec<Self::InputType> = vec![Self::InputType::zero(); Self::SIZE_INPUT];
-            // self.prev.propagate(trans_features, &mut input);
-
-            // let input: Vec<Self::InputType> = self.prev.propagate(trans_features);
-            // assert_eq!(input.len(), Self::SIZE_INPUT);
-
             self.prev.propagate(trans_features);
-            // let mut output = vec![0; Self::SIZE_OUTPUT_PADDED];
             let input = self.prev.get_buf();
 
             // TODO: AVX2 magic
 
+            use std::simd::*;
+
+            // let start = unsafe {
+            //     use core::arch::x86_64::*;
+            //     // use std::simd;
+            //     if Self::SIZE_INPUT % SIMD_WIDTH == 0 {
+            //         // const ZERO: __m256i = _mm256_setzero_si256();
+            //         let zero: __m256i = _mm256_setzero_si256();
+            //         let offsets = _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
+            //         // for i in 0..Self::NUM_CHUNKS {
+            //         //     let words0 = _mm256_srai_epi16(_mm256_packs_epi32(
+            //         //         _mm256_load_si256()
+            //         //         ));
+            //         // }
+            //     } else {
+            //     }
+            //     0
+            // };
+
             let start = 0;
 
             for i in start..Self::SIZE_INPUT {
-                // let x0: i32 = NumCast::from(input[i]).unwrap();
 
                 let x0: i32 = input[i].as_();
                 let x1 = (x0.overflowing_shr(WEIGHT_SCALE_BITS).0).clamp(0, 127);
-                // output[i] = NumCast::from(x1).unwrap();
-                // output[i] = x1.as_();
                 self.buf[i] = x1.as_();
             }
 
-            // // Affine transform layers expect that there is at least
-            // // ceil_to_multiple(OutputDimensions, 32) initialized values.
-            // // We cannot do this in the affine transform because it requires
-            // // preallocating space here.
-            // for i in Self::SIZE_OUTPUT..Self::SIZE_OUTPUT_PADDED {
-            //     output[i] = Zero::zero();
-            // }
-
-            // output
         }
 
         fn read_parameters(&mut self, mut rdr: &mut BufReader<File>) -> io::Result<()> {

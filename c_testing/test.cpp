@@ -97,7 +97,7 @@ int main2() {
 
 
 
-    std::cout << "x = " << x << std::endl;
+    //std::cout << "x = " << x << std::endl;
 
     return 0;
 

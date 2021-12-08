@@ -7,8 +7,7 @@
 #![feature(core_intrinsics)]
 #![feature(label_break_value)]
 // #![feature(backtrace,backtrace_frames)]
-// #![feature(generic_const_exprs)]
-
+#![feature(portable_simd)]
 
 #![allow(
     // clippy::all,
