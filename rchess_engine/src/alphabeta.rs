@@ -99,6 +99,18 @@ pub enum Prune {
     NullMove,
 }
 
+/// Make move, increment NNUE
+impl ExHelper {
+    pub fn make_move(&self, ts: &Tables, g: &Game, mv: Move, zb0: Zobrist) -> Option<Game> {
+        if let Ok(g2) = g._make_move_unchecked(ts, mv, Some(zb0)) {
+
+            // TODO: push NNUE
+
+            Some(g2)
+        } else { None }
+    }
+}
+
 /// Negamax AB
 impl ExHelper {
 
@@ -458,7 +470,11 @@ impl ExHelper {
             //     return ABNone;
             // }
 
-            let g2 = if let Ok(g2) = g._make_move_unchecked(ts, mv, Some(zb0)) {
+            // let g2 = if let Ok(g2) = g._make_move_unchecked(ts, mv, Some(zb0)) {
+            //     g2
+            // } else { continue 'outer; };
+
+            let g2 = if let Some(g2) = self.make_move(ts, g, mv, zb0) {
                 g2
             } else { continue 'outer; };
 

@@ -178,13 +178,13 @@ impl NNUE4 {
         for bucket in 0..8 {
 
             let mut transformed = [0; HALF_DIMS * 2]; // 2048
-            let psqt = self.ft.transform(&g, &mut transformed, bucket);
+            let psqt = self.ft.transform(&g, &mut transformed, bucket, true);
 
-            // let mut pos_buf = [0u8; Layer3::BUFFER_SIZE]; // XXX: 320 ??
-            // // eprintln!("pos_buf.len() = {:?}", pos_buf.len());
-            // self.layers[bucket].propagate(&transformed, &mut pos_buf);
+            let mut pos_buf = [0; Layer3::BUFFER_SIZE]; // XXX: 320 ??
+            // eprintln!("pos_buf.len() = {:?}", pos_buf.len());
+            self.layers[bucket].propagate(&transformed, &mut pos_buf);
 
-            let pos_buf: Vec<i32> = self.layers[bucket].propagate(&transformed);
+            // let pos_buf: Vec<i32> = self.layers[bucket].propagate(&transformed);
             let positional = pos_buf[0] as Score;
 
             // for (n,p) in pos_buf.iter().enumerate() {
@@ -218,16 +218,22 @@ impl NNUE4 {
     // }
 
     // TODO: check for correctness with trace_eval
-    pub fn evaluate(&mut self, g: &Game, adjusted: bool) -> Score {
-        let bucket = (g.state.material.count() as usize - 1) / 4;
+    pub fn evaluate(&mut self, g: &Game, adjusted: bool, refresh: bool) -> Score {
+
+        let c = g.state.material.count();
+        let bucket = (c as usize - 1) / 4;
+        // let bucket = if c == 0 { 0 } else { (c as usize - 1) / 4 };
+        // eprintln!("bucket = {:?}", bucket);
 
         let mut transformed = [0; HALF_DIMS * 2];
-        let psqt = self.ft.transform(g, &mut transformed, bucket);
+        let psqt = self.ft.transform(g, &mut transformed, bucket, refresh);
 
-        // let mut pos_buf = [0u8; Layer3::BUFFER_SIZE]; // XXX: 320 ??
-        // self.layers[bucket].propagate(&transformed, &mut pos_buf);
+        // let mut pos_buf = [0; Layer3::BUFFER_SIZE]; // ?? 384
+        let mut pos_buf = [0; Layer3::SIZE_OUTPUT]; // 1
+        // eprintln!("pos_buf.len() = {:?}", pos_buf.len());
+        self.layers[bucket].propagate(&transformed, &mut pos_buf);
 
-        let pos_buf = self.layers[bucket].propagate(&transformed);
+        // let pos_buf = self.layers[bucket].propagate(&transformed);
         let positional = pos_buf[0] as Score;
 
         // for (n,p) in pos_buf.iter().enumerate() {
@@ -237,9 +243,13 @@ impl NNUE4 {
         // eprintln!("psqt       = {:?}", psqt);
         // eprintln!("positional = {:?}", positional);
 
+        const RMB: Score = Rook.score() - Bishop.score();
+        const DELTA: Score = 7;
+
         // TODO: if adjusted
-        if adjusted {
-            unimplemented!()
+        if adjusted
+            && (g.state.material.non_pawn_value(White) - g.state.material.non_pawn_value(Black)) <= RMB {
+            ((128 - DELTA) * psqt + (128 + DELTA) * positional) / 128 / OUTPUT_SCALE
         } else {
             (psqt + positional) / OUTPUT_SCALE
             // unimplemented!()

@@ -169,6 +169,19 @@ impl Material {
         self.buf[White][pc] + self.buf[Black][pc]
     }
 
+    pub fn non_pawn_value_both(&self) -> Score {
+        self.non_pawn_value(White) + self.non_pawn_value(Black)
+    }
+
+    pub fn non_pawn_value(&self, side: Color) -> Score {
+        const PCS: [Piece; 4] = [Knight,Bishop,Rook,Queen];
+        let mut sum = 0;
+        for pc in PCS {
+            sum += self.get(pc, side) as Score * pc.score();
+        }
+        sum
+    }
+
     pub fn min_like_man(&self) -> u8 {
         let c0 = Piece::iter_pieces()
             .map(|pc| self.buf[Black][pc.index()]);

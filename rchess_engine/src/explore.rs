@@ -21,6 +21,7 @@ pub use crate::timer::*;
 pub use crate::trans_table::*;
 pub use crate::searchstats::*;
 
+use std::cell::RefCell;
 use std::path::Path;
 use std::collections::{VecDeque,HashMap,HashSet};
 use std::hash::BuildHasher;
@@ -108,7 +109,8 @@ pub struct ExHelper {
     #[cfg(feature = "syzygy")]
     pub syzygy:          Option<Arc<SyzygyTB>>,
     #[cfg(feature = "nnue")]
-    pub nnue:          Option<NNUE4>,
+    // pub nnue:          Option<NNUE4>,
+    pub nnue:          Option<RefCell<NNUE4>>,
 
     pub cfg:             ExConfig,
 
@@ -181,7 +183,7 @@ impl Explorer {
             syzygy:          self.syzygy.clone(),
 
             #[cfg(feature = "nnue")]
-            nnue:            self.nnue.clone(),
+            nnue:            self.nnue.clone().map(|x| RefCell::new(x)),
 
             best_depth,
             tx,

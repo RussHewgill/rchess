@@ -797,7 +797,7 @@ fn main_tuning() {
     let ph_rw = ph_factory.handle();
 
     let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
-    let mut exhelper = exhelper_once(&g, g.state.side_to_move, &ev_mid, &ev_end, Some(&ph_rw));
+    let mut exhelper = exhelper_once(&g, g.state.side_to_move, &ev_mid, &ev_end, Some(&ph_rw), None);
 
     let fen_path = "./training_data/tuner/quiet-labeled.epd";
 
@@ -1459,11 +1459,58 @@ fn _main_nn() -> std::io::Result<()> {
         // let mut g2 = Game::from_fen(&ts, fen2).unwrap();
         // let mut g3 = Game::from_fen(&ts, fen3).unwrap();
 
+        // // let fen = "4k3/3ppp2/8/8/8/8/2NPPP2/4K3 w - - 0 1"; // +1 knight
+        // // let fen = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1";
+        // let fen = "8/8/8/8/8/8/8/8 w - - 0 1";
+        // let mut g = Game::from_fen(&ts, fen).unwrap();
+        // let v = nn.evaluate(&g, false);
+        // eprintln!("v = {:?}", v);
+
+        // return Ok(());
+
+        let fen1 = "4k3/3np3/8/8/8/8/3NP3/4K3 b - - 0 1";
+        let fen2 = "4k3/4p3/5n2/8/8/8/3NP3/4K3 w - - 1 2"; // after Qt N d7f6
+        let fen3 = "4k3/4p3/5n2/8/8/1N6/4P3/4K3 b - - 2 2"; // after Qt N d2b3
+        let mut g1 = Game::from_fen(&ts, fen1).unwrap();
+        let mut g2 = Game::from_fen(&ts, fen2).unwrap();
+        let mut g3 = Game::from_fen(&ts, fen3).unwrap();
+
+        // let g = g.flip_sides(&ts);
+
+        let mv1 = Move::new_quiet("D7", "F6", Knight);
+        let mv2 = Move::new_quiet("D2", "B3", Knight);
+
+        nn.ft.update_accum(&g1, White, false);
+        nn.ft.update_accum(&g1, Black, false);
+
+        // let v1 = nn.evaluate(&g1, false, true);
+        // eprintln!("v1 = {:?}", v1); // -22
+
+        nn.ft.accum.needs_refresh = [false; 2];
+
+        nn.ft.make_move(&g1, mv1);
+        nn.ft.make_move(&g2, mv2);
+
+        let v = nn.evaluate(&g3, false, false);
+        eprintln!("v = {:?}", v);
+
+        // let v1 = nn.evaluate(&g1, false, true);
+        // let v2 = nn.evaluate(&g2, false, true);
+        // let v3 = nn.evaluate(&g3, false, true);
+        // eprintln!("v1 = {:?}", v1); // -22
+        // eprintln!("v2 = {:?}", v2); // -22
+        // eprintln!("v3 = {:?}", v3); // -10
+
+        return Ok(());
+
         // let fen = "4k3/3ppp2/8/8/8/8/2NPPP2/4K3 w - - 0 1"; // +1 knight
-        let fen = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1";
+        // let fen = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1";
+        let fen = "8/8/8/8/8/8/8/8 w - - 0 1";
         let mut g = Game::from_fen(&ts, fen).unwrap();
 
-        eprintln!("evaling");
+        // eprintln!("g.to_fen() = {:?}", g.to_fen());
+        // eprintln!("g = {:?}", g);
+        // eprintln!("evaling");
 
         // let eval1 = nn.evaluate(&g1, false);
         // eprintln!("eval 1 = {:?}", eval1);
@@ -1478,28 +1525,18 @@ fn _main_nn() -> std::io::Result<()> {
         const HALF_DIMS: usize = 1024;
         let mut transformed = [0; HALF_DIMS * 2];
 
-        // nn.ft.transform(&g, &mut output, bucket)
+        // let mut exhelper = exhelper_once(
+        //     &g, g.state.side_to_move, &ev_mid, &ev_end, Some(&ph_rw), None);
+        // let eval = exhelper.cfg.evaluate(&ts, &g, None);
 
-        // let persps: [Color; 2] = [g.state.side_to_move, !g.state.side_to_move];
-        // let mut xs = HashSet::<usize>::default();
-        // eprintln!("transformed.len() = {:?}", transformed.len());
-        // for p in 0..2 {
-        //     let offset = HALF_DIMS * p;
-        //     for j in 0..HALF_DIMS {
-        //         // let mut sum = accum[persps[p]][j];
-        //         // output[offset + j] = sum.clamp(0, 127) as u8;
-        //         xs.insert(offset + j);
-        //     }
-        // }
-        // eprintln!("xs.len() = {:?}", xs.len());
-        // let max = xs.iter().max().unwrap();
-        // let min = xs.iter().min().unwrap();
-        // eprintln!("(max,min) = {:?}", (max,min));
+        // let (ev_mid,ev_end) = EvalParams::new_mid_end();
+        // let eval = g.sum_evaluate(&ts, &ev_mid, &ev_end, None);
+
+        // eprintln!("\neval = {:?}", eval);
+
+        // let v = nn.evaluate(&g, false);
+        // eprintln!("\nv = {:?}", v);
         // return Ok(());
-
-        let v = nn.evaluate(&g, false);
-        eprintln!("\nv = {:?}", v);
-        return Ok(());
 
         let (psqt,positional,bucket) = nn.trace_eval(&g, false);
 
@@ -2123,8 +2160,8 @@ fn main9() {
 
     // let mv = Move::Capture { from: "H5".into(), to: "G4".into(), pc: Pawn, victim: Pawn };
 
-    let t = 10.0;
-    // let t = 4.0;
+    // let t = 10.0;
+    let t = 5.0;
     // let t = 0.5;
     // let t = 0.3;
 
@@ -2146,6 +2183,8 @@ fn main9() {
     // ex.cfg.num_threads = Some(6);
     // ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
+
+    ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
     // let mut only_moves = HashSet::default();
     // only_moves.insert(Move::new_quiet("F5", "F1", Rook));

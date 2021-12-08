@@ -467,6 +467,14 @@ pub struct EvalParams {
 
 impl EvalParams {
 
+    pub fn new_mid_end() -> (Self,Self) {
+        let mut ev_mid = Self::default();
+        let mut ev_end = Self::default();
+        ev_mid.mid = true;
+        ev_end.mid = false;
+        (ev_mid,ev_end)
+    }
+
     pub fn empty() -> Self {
         let mut out = Self::default();
         let mut arr_mut = out.to_arr_mut();

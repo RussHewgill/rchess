@@ -96,15 +96,12 @@ fn main() -> std::io::Result<()> {
 
     // explorer.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap_or_default();
 
+    explorer.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+
     // let evpath = "/home/me/code/rust/rchess/evparams.bin";
     // let (ev_mid,ev_end) = EvalParams::read_evparams(evpath).unwrap();
 
-    // let mut ev_mid = EvalParams::empty();
-    // let mut ev_end = EvalParams::empty();
-    let mut ev_mid = EvalParams::default();
-    let mut ev_end = EvalParams::default();
-    ev_mid.mid = true;
-    ev_end.mid = false;
+    let (ev_mid,ev_end) = EvalParams::new_mid_end();
 
     explorer.cfg.eval_params_mid = ev_mid;
     explorer.cfg.eval_params_end = ev_end;

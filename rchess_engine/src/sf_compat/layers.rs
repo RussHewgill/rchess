@@ -7,6 +7,7 @@ use std::io::{self, Read,BufReader, BufWriter};
 use std::fs::File;
 use std::path::Path;
 
+use arrayvec::ArrayVec;
 use byteorder::{ReadBytesExt, LittleEndian};
 
 use num_traits::{Num,PrimInt,NumCast,AsPrimitive};
@@ -30,8 +31,9 @@ pub trait NNLayer {
 
     const HASH: u32;
 
-    // fn propagate(&self, trans_features: &[u8], output: &mut [Self::OutputType]);
-    fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType>;
+    fn propagate(&self, trans_features: &[u8], output: &mut [Self::OutputType]);
+    // fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType>;
+    // fn propagate(&self, trans_features: &[u8]) -> ArrayVec<Self::OutputType, {Self::BUFFER_SIZE}>;
 
     fn size(&self) -> usize;
 
@@ -73,14 +75,15 @@ mod nn_input {
 
         fn size(&self) -> usize { self.buf.len() }
 
-        // fn propagate(&self, trans_features: &[u8], output: &mut [Self::OutputType]) {
-        fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType> {
-            // self.buf.to_vec()
+        fn propagate(&self, trans_features: &[u8], output: &mut [Self::OutputType]) {
+        // fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType> {
             // assert!(input.len() == output.len());
             assert_eq!(trans_features.len(), Self::SELF_BUFFER_SIZE);
-            // assert_eq!(output.len(), Self::SELF_BUFFER_SIZE);
-            // output.copy_from_slice(&trans_features);
-            trans_features.to_vec()
+
+            // trans_features.to_vec()
+
+            assert_eq!(output.len(), Self::SELF_BUFFER_SIZE);
+            output.copy_from_slice(&trans_features);
         }
 
         fn read_parameters(&mut self, rdr: &mut BufReader<File>) -> io::Result<()> {
@@ -212,49 +215,44 @@ mod nn_affine {
                 + self.weights.len() * std::mem::size_of_val(&self.weights[0])
         }
 
-        // fn propagate(&self, trans_features: &[u8], mut output: &mut [Self::OutputType]) {
-        fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType> {
+        fn propagate(&self, trans_features: &[u8], mut output: &mut [Self::OutputType]) {
+        // fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType> {
 
             // eprintln!("affine propagate");
             // eprintln!("NNAffine InputType = {:?}", std::any::type_name::<Self::InputType>());
 
-            let input: Vec<Self::InputType> = self.prev.propagate(trans_features);
-            assert_eq!(input.len(), Self::SIZE_INPUT_PADDED);
+            // let mut input: [Self::InputType; Self::SIZE_INPUT_PADDED] =
+            //     [Self::InputType::zero(); Self::SIZE_INPUT_PADDED];
+            // let mut input = ArrayVec::new
+            // let input2: ArrayVec<Self::InputType, {Self::SIZE_INPUT_PADDED}> = ArrayVec::new();
 
-            let mut output = vec![0; Self::SIZE_OUTPUT];
+            let mut input: Vec<Self::InputType> = vec![Self::InputType::zero(); Self::SIZE_INPUT_PADDED];
+            self.prev.propagate(trans_features, &mut input);
 
-            // let mut k: i32 = 0;
+            // let input: Vec<Self::InputType> = self.prev.propagate(trans_features);
+            // assert_eq!(input.len(), Self::SIZE_INPUT_PADDED);
+
+            // let mut output = vec![0; Self::SIZE_OUTPUT];
+
             let x0 = self.weights[0];
             let x1 = self.weights[Self::SIZE_INPUT_PADDED * (Self::SIZE_OUTPUT - 1) + Self::SIZE_INPUT - 1];
-
-            // eprintln!("weights[0] = {:?}", x0);
-            // eprintln!("weights[SIZE_INPUT_PADDED * (SIZE_OUTPUT - 1) + SIZE_INPUT - 1] = {:?}", x1);
 
             for i in 0..Self::SIZE_OUTPUT {
 
                 let offset = i * Self::SIZE_INPUT_PADDED;
 
-                // eprintln!("i = {:?}", i);
-                // eprintln!("offset = {:?}", offset);
-
                 let mut sum: i32 = self.biases[i];
 
                 for j in 0..Self::SIZE_INPUT {
-                    // sum += self.weights[offset + j] as i32 * input[j] as i32;
-                    // let x: i32 = NumCast::from(input[j]).unwrap();
                     let x: i32 = input[j].as_();
                     let x0 = self.weights[offset + j] as i32 * x;
-                    // eprintln!("x0 = {:?}", x0);
                     sum += x0;
-                    // k ^= x0;
                 }
 
                 output[i] = sum as Self::OutputType;
             }
 
-            // eprintln!("k affine = {:?}", k);
-
-            output
+            // output
         }
 
         fn read_parameters(&mut self, mut rdr: &mut BufReader<File>) -> io::Result<()> {
@@ -343,20 +341,19 @@ mod nn_relu {
 
         fn size(&self) -> usize { self.prev.size() }
 
-        // fn propagate(&self, trans_features: &[u8], output: &mut [Self::OutputType]) {
-        fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType> {
+        fn propagate(&self, trans_features: &[u8], output: &mut [Self::OutputType]) {
+        // fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType> {
 
             // eprintln!("relu propagate");
             // eprintln!("NNRelu InputType = {:?}", std::any::type_name::<Self::InputType>());
 
-            // let mut input2 = vec![Self::InputType::zero(); Self::SIZE_INPUT];
-            // let mut input2: &mut [Self::InputType] = &mut input2[..];
-            // self.prev.propagate(&input, input2);
+            let mut input: Vec<Self::InputType> = vec![Self::InputType::zero(); Self::SIZE_INPUT];
+            self.prev.propagate(trans_features, &mut input);
 
-            let input: Vec<Self::InputType> = self.prev.propagate(trans_features);
-            assert_eq!(input.len(), Self::SIZE_INPUT);
+            // let input: Vec<Self::InputType> = self.prev.propagate(trans_features);
+            // assert_eq!(input.len(), Self::SIZE_INPUT);
 
-            let mut output = vec![0; Self::SIZE_OUTPUT_PADDED];
+            // let mut output = vec![0; Self::SIZE_OUTPUT_PADDED];
 
             // TODO: AVX2 magic
 
@@ -379,7 +376,7 @@ mod nn_relu {
             //     output[i] = Zero::zero();
             // }
 
-            output
+            // output
         }
 
         fn read_parameters(&mut self, mut rdr: &mut BufReader<File>) -> io::Result<()> {

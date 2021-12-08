@@ -8,6 +8,7 @@ use crate::tuning::*;
 use crate::pawn_hash_table::*;
 use crate::evmap_tables::*;
 
+use std::cell::RefCell;
 use std::sync::atomic::AtomicU8;
 use std::sync::atomic::Ordering::SeqCst;
 use parking_lot::{Mutex,RwLock};
@@ -52,7 +53,8 @@ pub fn exhelper_once(
         #[cfg(feature = "syzygy")]
         syzygy:          None,
         #[cfg(feature = "nnue")]
-        nnue,
+        // nnue: nnue.map(|x| RefCell::new(x.clone())),
+        nnue: nnue.map(|x| RefCell::new(x)),
         cfg,
         best_depth,
         tx,
@@ -175,9 +177,16 @@ impl ExHelper {
         // trace!("qsearch, {:?} to move, ply {}, a/b: {:?},{:?}",
         //        g.state.side_to_move, ply, alpha, beta);
 
-        let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
-
-        let stand_pat = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
+        let stand_pat = if let Some(nnue) = &self.nnue {
+            // let mut nn: &mut NNUE4 = nnue.borrow_mut();
+            let mut nn = nnue.borrow_mut();
+            let v = nn.evaluate(&g, true, false);
+            v
+            // unimplemented!()
+        } else {
+            let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
+            if g.state.side_to_move == Black { -stand_pat } else { stand_pat }
+        };
 
         if self.stop.load(SeqCst) {
             return stand_pat;

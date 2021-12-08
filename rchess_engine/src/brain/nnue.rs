@@ -148,7 +148,8 @@ impl NNUE {
             Move::PromotionCapture { from, to, new_piece, victim } => {
                 self.update_delete_piece(king_sq_own,king_sq_other, Pawn, from, side);
                 self.update_insert_piece(king_sq_own,king_sq_other, new_piece, to, side);
-                self.update_delete_piece(king_sq_own,king_sq_other, victim, to, side);
+                // self.update_delete_piece(king_sq_own,king_sq_other, victim, to, side);
+                self.update_delete_piece(king_sq_own,king_sq_other, victim, to, !side); // XXX: ??
             },
             Move::NullMove => {},
         }

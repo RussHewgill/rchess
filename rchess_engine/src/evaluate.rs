@@ -418,7 +418,7 @@ impl Game {
 }
 
 impl Piece {
-    pub fn score_basic(&self) -> Score {
+    pub const fn score_basic(&self) -> Score {
         match self {
             Pawn   => 100,
             Knight => 300,
@@ -428,7 +428,7 @@ impl Piece {
             King   => 32001,
         }
     }
-    pub fn score(&self) -> Score {
+    pub const fn score(&self) -> Score {
         match self {
             Pawn   => 100,
             Knight => 320,
