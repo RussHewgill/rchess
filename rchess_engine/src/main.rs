@@ -1543,11 +1543,141 @@ fn _main_nn() -> std::io::Result<()> {
         // let w2 = ws2[(2,0)];
         // eprintln!("(w0,w1,w2) = {:?}", (w0,w1,w2));
 
-        let xs = [1,2,0,0];
+        // use core::arch::x86_64::*;
+        use std::simd::*;
+        use rchess_engine_lib::simd_utils::*;
 
-        let k = u32::from_ne_bytes(xs).unwrap();
+        use rchess_engine_lib::simd_test::*;
 
-        eprintln!("k = {:?}", k);
+        let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
+
+        const IS: usize = 1024;
+        const OS: usize = 8;
+
+        let input: [i8; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
+        let weights: Vec<i8>  = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
+        let biases: [i32; OS] = array_init::array_init(|_| rng.gen_range(-100..100));
+        let mut output = [0i32; OS];
+
+        // simd_mm_0::<IS,OS>(&input, &weights, &biases, &mut output);
+
+        SIMD_01::<IS,OS>::simd_mm(&input, &weights, &biases, &mut output);
+
+        eprintln!("output[0] = {:?}", output[0]); // -482
+        let sum: i32 = output.iter().sum();
+        eprintln!("sum = {:?}", sum); // -2055
+
+        return Ok(());
+
+        use std::arch::x86_64::*;
+        use rchess_engine_lib::simd_utils::x86_64::*;
+        use rchess_engine_lib::simd_utils::x86_64::conversions::*;
+
+        let xs0: [u8; 64] = array_init::array_init(|x| x as u8);
+        // let xs0 = (0u8..64).collect::<Vec<_>>();
+        // let xs1 = (0i8..32).collect::<Vec<_>>();
+        // let xs = (0i64..32).collect::<Vec<_>>();
+
+        let xs1: &[__m256i] = unsafe {
+            let ptr = xs0.as_ptr() as *const __m256i;
+            std::slice::from_raw_parts(ptr, xs0.len() / 32)
+        };
+
+        let k0 = xs1[0];
+
+        let mut xs2: [u8; 32] = [0; 32];
+
+        unsafe {
+            let mut ptr: *mut u8 = xs2.as_mut_ptr();
+            let mut ptr = ptr as *mut __m256i;
+            _mm256_storeu_si256(ptr, k0);
+        };
+
+        eprintln!("xs2 = {:?}", xs2);
+
+        // let mut xs0 = [0u8; 32];
+        // let mut xs1 = [0i8; 32];
+        // xs0[0] = 1;
+        // xs1[0] = 1;
+
+        // let xs1: &[__m128i] = unsafe {
+        //     let ptr = xs0.as_ptr() as *const __m128i;
+        //     std::slice::from_raw_parts(ptr, 4)
+        // };
+        // eprintln!("xs1[0] = {:?}", xs1[0]);
+        // let k0 = build_m128i_from_slice(&xs0);
+        // eprintln!("k0 = {:?}", k0);
+
+        // let xs1: &[u8x16] = unsafe {
+        //     let ptr = xs0.as_ptr() as *const u8x16;
+        //     std::slice::from_raw_parts(ptr, 4)
+        // };
+        // eprintln!("xs1[0] = {:?}", xs1[1]);
+        // let k0 = u8x16::from_slice(&xs0[16..]);
+        // eprintln!("k0 = {:?}", k0);
+
+        // let k0 = u8x32::from_slice(&xs0);
+        // eprintln!("k0 = {:?}", k0);
+
+        // let k0 = build_m256i_from_slice(&xs0);
+        // let k1 = i8x32::from_slice(&xs1);
+        // let k2 = __m256i::simd_from(k1);
+
+        // let k0 = build_m256i_from_slice(&xs0);
+
+        // let k0 = u8x32::from_slice(&xs0);
+        // let k1 = __m256i::simd_from(k0);
+
+        // let k1 = build_m256i_from_slice(&xs0);
+        // let k2 = u8x32::simd_from(k1);
+        // let k3 = __m256i::simd_from(k2);
+        // let k4 = u8x32::simd_from(k3);
+
+        // // eprintln!("k0 = {:?}", k0);
+        // eprintln!("k1 = {:?}", k1);
+        // eprintln!("k2 = {:?}", k2);
+        // eprintln!("k3 = {:?}", k3);
+        // eprintln!("k4 = {:?}", k4);
+
+        // eprintln!("k1 == k3 = {:?}", k1 == k3);
+        // eprintln!("k2 == k4 = {:?}", k2 == k4);
+
+        // let k1: __m256i = __m256i::simd_from(k0);
+        // eprintln!("k1 = {:?}", k1);
+
+        // let a = u8x32::splat(1);
+
+        let ws = &nn.layers[0].prev.prev.prev.prev.weights;
+
+        // eprintln!("ws.len() = {:?}", ws.len());
+        // let k0 = ws.iter().filter(|x| **x > 127 || **x < -127).count();
+        // eprintln!("k0 = {:?}", k0);
+
+        // let k0 = unsafe { _mm256_set_epi64x(xs[0],xs[1],xs[2],xs[3]) };
+        // let k0 = build_m256i_from_slice(&xs);
+
+        // eprintln!("k0 = {:?}", k0);
+
+        // let k1 = k0 + a;
+        // eprintln!("k1 = {:?}", k1);
+
+        // let xs2: &[i64] = &xs;
+        // let xs3: &[__m256i] = unsafe {
+        //     unimplemented!()
+        // };
+
+        // eprintln!("xs3[0] = {:?}", xs3[0]);
+
+        // let k0 = unsafe { _mm256_set_epi64x(1,2,3,4) };
+        // eprintln!("k0 = {:?}", k0);
+        // let k1 = unsafe {
+        //     // _mm256_extract_epi8::<0>(k0)
+        //     _mm256_extract_epi32::<6>(k0)
+        //     // _mm256_extracti128_si256::<1>(k0)
+        // };
+        // eprintln!("k1 = {:?}", k1);
+        // let k2 = k1.to_ne_bytes();
+        // eprintln!("k2 = {:?}", k2);
 
         return Ok(());
 

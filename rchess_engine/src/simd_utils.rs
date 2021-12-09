@@ -1,29 +1,109 @@
 
-use std::convert::TryInto;
 
-use core::arch::x86_64::*;
+pub mod x86_64 {
+    use std::convert::TryInto;
+    use core::arch::x86_64::*;
 
+    pub fn build_m256i_from_slice(s: &[u8]) -> __m256i {
+        assert!(s.len() >= 32);
+        let x0: i64 = i64::from_ne_bytes(s[0..8].try_into().unwrap());
+        let x1: i64 = i64::from_ne_bytes(s[8..16].try_into().unwrap());
+        let x2: i64 = i64::from_ne_bytes(s[16..24].try_into().unwrap());
+        let x3: i64 = i64::from_ne_bytes(s[24..32].try_into().unwrap());
+        unsafe { _mm256_set_epi64x(x0,x1,x2,x3) }
+    }
 
-pub fn m256i_from_slice(s: &[u8]) -> __m256i {
-    assert!(s.len() >= 32);
-    let x0: i64 = i64::from_ne_bytes(s[0..8].try_into().unwrap());
-    let x1: i64 = i64::from_ne_bytes(s[8..16].try_into().unwrap());
-    let x2: i64 = i64::from_ne_bytes(s[16..24].try_into().unwrap());
-    let x3: i64 = i64::from_ne_bytes(s[24..32].try_into().unwrap());
-    unsafe { _mm256_set_epi64x(x0,x1,x2,x3) }
+    pub fn build_m128i_from_slice(s: &[u8]) -> __m128i {
+        assert!(s.len() >= 16);
+        let x0: i64 = i64::from_ne_bytes(s[0..8].try_into().unwrap());
+        let x1: i64 = i64::from_ne_bytes(s[8..16].try_into().unwrap());
+        unsafe { _mm_set_epi64x(x0,x1) }
+    }
+
+    pub mod conversions {
+        use core::arch::x86_64::*;
+        use std::simd::*;
+
+        use super::build_m256i_from_slice;
+
+        // pub trait FromSIMD<const WIDTH: usize> {
+
+        // macro_rules! impl_simd_from {
+        //     ($t0:ty, $t1:ty) => {
+        //         impl ConvertSIMD<$t0> for $t1 {
+        //             fn from(sq: $t0) -> Self {
+        //                 unimplemented!()
+        //             }
+        //         }
+        //         impl ConvertSIMD<$t1> for $t0 {
+        //             // impl std::convert::From<Coord> for usize {
+        //             fn from(c: $t1) -> Self {
+        //                 unimplemented!()
+        //             }
+        //         }
+        //     };
+        // }
+
+        pub trait ConvertSIMD<T> {
+            fn simd_from(a: T) -> Self;
+        }
+
+        impl ConvertSIMD<__m256i> for u8x32 {
+            fn simd_from(a: __m256i) -> Self {
+                let mut xs = [0u8; 32];
+                unsafe {
+                    let mut ptr: *mut u8 = xs.as_mut_ptr();
+                    let mut ptr = ptr as *mut __m256i;
+                    _mm256_storeu_si256(ptr, a);
+                }
+                Self::from_array(xs)
+            }
+        }
+
+        impl ConvertSIMD<u8x32> for __m256i {
+            fn simd_from(a: u8x32) -> Self {
+                unsafe {
+                    let ptr = a.as_array();
+                    let ptr = ptr.as_ptr() as *const __m256i;
+                    _mm256_loadu_si256(ptr)
+                }
+            }
+        }
+
+        impl ConvertSIMD<i8x32> for __m256i {
+            fn simd_from(a: i8x32) -> Self {
+                unsafe {
+                    let ptr = a.as_array();
+                    let ptr = ptr.as_ptr() as *const __m256i;
+                    _mm256_loadu_si256(ptr)
+                }
+            }
+        }
+
+        // impl std::convert::From<__m256i> for i8x32 {
+        //     fn from(a: __m256i) -> Self {
+        //         unimplemented!()
+        //     }
+        // }
+
+    }
+
 }
 
-pub fn m128i_from_slice(s: &[u8]) -> __m256i {
-    assert!(s.len() >= 32);
-    let x0: i64 = i64::from_ne_bytes(s[0..8].try_into().unwrap());
-    let x1: i64 = i64::from_ne_bytes(s[8..16].try_into().unwrap());
-    let x2: i64 = i64::from_ne_bytes(s[16..24].try_into().unwrap());
-    let x3: i64 = i64::from_ne_bytes(s[24..32].try_into().unwrap());
-    unsafe { _mm256_set_epi64x(x0,x1,x2,x3) }
+pub mod std_simd {
+    use std::simd::*;
+
+    pub fn cast_slice_to_i8x32(xs: &[i8]) -> &[i8x32] {
+        assert!(xs.len() >= 32);
+        // assert!(xs.len() % 32 == 0);
+        unsafe {
+            let ptr = xs.as_ptr();
+            let ptr = ptr as *const i8x32;
+            std::slice::from_raw_parts(ptr, xs.len() / 32)
+        }
+    }
+
 }
-
-
-
 
 
 

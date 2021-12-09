@@ -95,7 +95,10 @@ inline IndexType make_index(Color perspective, Square s, Piece pc, Square ksq) {
 
 int main() {
 
-    std::uint16_t xs[16] = { 1, 2, 3, 4 };
+    //std::uint16_t xs[16] = { 1, 2, 3, 4 };
+    //int* xs[16] = { 1, 2, 3, 4 };
+
+    alignas(64) int xs[16] = { 1, 2, 3, 4 };
 
     std::uint32_t* ys = reinterpret_cast<std::uint32_t*>(xs);
 

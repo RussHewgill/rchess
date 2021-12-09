@@ -124,7 +124,7 @@ mod nn_affine {
         pub prev:    Prev,
 
         pub biases:  [i32; OS],
-        pub weights: Vec<i8>,
+        pub weights: Vec<i8>, // IS * SIZE_INPUT
 
         pub buffer:  [<NNAffine<Prev,OS> as NNLayer>::OutputType; OS],
     }
@@ -236,7 +236,8 @@ mod nn_affine {
 
         // #[cfg(feature = "nope")]
         pub fn _propagate_avx2(&mut self, trans_features: &[u8]) {
-            use crate::simd_utils::*;
+            use crate::simd_utils::x86_64::*;
+            use crate::simd_utils::std_simd::*;
 
             // use std::simd::*;
             use core::arch::x86_64::*;
@@ -270,7 +271,7 @@ mod nn_affine {
             use std::convert::TryInto;
 
             let ins: Vec<__m256i> = input.chunks_exact(32).map(|s| {
-                m256i_from_slice(s)
+                build_m256i_from_slice(s)
             }).collect();
 
             for big_block in 0..Self::NUM_BIG_BLOCKS {
@@ -290,8 +291,8 @@ mod nn_affine {
                         let s = &self.weights[offset + k..];
                         let s: &[u8] = unsafe { &*(s as *const _ as *const [u8]) };
 
-                        let b0 = m256i_from_slice(s);
-                        let b1 = m256i_from_slice(&s[Self::NUM_OUTPUT_REGS..]);
+                        let b0 = build_m256i_from_slice(s);
+                        let b1 = build_m256i_from_slice(&s[Self::NUM_OUTPUT_REGS..]);
 
                         // let b0: i8x32 = i8x32::from_slice(&self.weights[offset + k..]);
                         // let b1: i8x32 = i8x32::from_slice(&self.weights[offset + k + Self::NUM_OUTPUT_REGS..]);
@@ -330,6 +331,12 @@ mod nn_affine {
                     // let output_vec: [__m128i; ]
                     let output_vec: Vec<__m128i> = vec![];
 
+                    // let s: &[u8] = unsafe { &*(s as *const _ as *const [u8]) };
+
+                    // let bias_vec: &[__m128] = unsafe {
+                    //     &*(&self.weights as *const _ as *const [__m128])
+                    // };
+
                     for k in 0..Self::NUM_OUTPUT_REGS {
                         let idx = (big_block * Self::NUM_OUTPUT_REGS + k) / 4;
 
@@ -345,7 +352,6 @@ mod nn_affine {
                             sum0 = _mm256_hadd_epi32(sum0, sum2);
 
                             let sum128lo = _mm256_castsi256_si128(sum0);
-                            // let sum128hi = _mm256_extracti128_si256(sum0, 1);
                             let sum128hi = _mm256_extracti128_si256::<1>(sum0);
 
                             // let out = _mm_add_epi32(_mm_add_epi32(sum128lo, sum128hi), bias);
@@ -456,13 +462,13 @@ mod nn_affine {
             &mut self.buffer
         }
 
-        // #[cfg(feature = "nope")]
+        #[cfg(feature = "nope")]
         fn propagate(&mut self, trans_features: &[u8]) { self._propagate_avx2(trans_features); }
 
         #[cfg(feature = "nope")]
         fn propagate(&mut self, trans_features: &[u8]) { self._propagate_ndarray(trans_features); }
 
-        #[cfg(feature = "nope")]
+        // #[cfg(feature = "nope")]
         fn propagate(&mut self, trans_features: &[u8]) {
 
             // eprintln!("affine propagate");
@@ -489,9 +495,17 @@ mod nn_affine {
                 let mut sum: i32 = self.biases[i];
 
                 for j in 0..Self::SIZE_INPUT {
-                    let x: i32 = input[j].as_();
-                    let x0 = self.weights[offset + j] as i32 * x;
-                    sum += x0;
+
+                    if let Some(x) = input.get(j) {
+                        let x: i32 = x.as_();
+                        let x0 = self.weights[offset + j] as i32 * x;
+                        sum += x0;
+                    }
+
+                    // let x: i32 = input[j].as_();
+                    // let x0 = self.weights[offset + j] as i32 * x;
+                    // sum += x0;
+
                 }
                 self.buffer[i] = sum as i32;
             }
@@ -534,9 +548,9 @@ mod nn_affine {
             //     w.write_u8(*wt)?;
             // }
             for i in 0..Self::SIZE_OUTPUT * Self::SIZE_INPUT_PADDED {
-                // let wt = self.weights[Self::get_weight_index(i)];
-                // w.write_i8(wt)?;
-                unimplemented!()
+                let wt = self.weights[Self::get_weight_index(i)];
+                w.write_i8(wt)?;
+                // unimplemented!()
             }
             Ok(())
         }
@@ -605,7 +619,7 @@ mod nn_relu {
 
             // TODO: AVX2 magic
 
-            use std::simd::*;
+            // use std::simd::*;
 
             // let start = unsafe {
             //     use core::arch::x86_64::*;

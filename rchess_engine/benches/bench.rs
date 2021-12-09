@@ -152,19 +152,19 @@ pub fn crit_bench_simd(c: &mut Criterion) {
         simd_mm_0::<IS,OS>(black_box(&input), &weights, &biases, &mut output);
     }));
 
-    // group.bench_function("SIMD mm 1", |b| b.iter(|| {
-    //     // simd_mm_1::<IS,OS>(black_box(&input), &weights, &biases, &mut output);
-    //     SIMD_01::<IS,OS>::simd_mm(black_box(&input), &weights, &biases, &mut output);
-    // }));
-
-    group.bench_function("SIMD ndarray mm 0", |b| b.iter(|| {
-        simd_nd_mm_0::<IS,OS>(
-            black_box(&input),
-            &weights,
-            &biases,
-            &mut output,
-        );
+    group.bench_function("SIMD mm 1", |b| b.iter(|| {
+        simd_mm_1::<IS,OS>(black_box(&input), &weights, &biases, &mut output);
+        // SIMD_01::<IS,OS>::simd_mm(black_box(&input), &weights, &biases, &mut output);
     }));
+
+    // group.bench_function("SIMD ndarray mm 0", |b| b.iter(|| {
+    //     simd_nd_mm_0::<IS,OS>(
+    //         black_box(&input),
+    //         &weights,
+    //         &biases,
+    //         &mut output,
+    //     );
+    // }));
 
     use ndarray as nd;
     use nd::{Array2,ArrayView2,ArrayViewMut2,ShapeBuilder};
