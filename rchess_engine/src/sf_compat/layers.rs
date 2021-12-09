@@ -234,7 +234,7 @@ mod nn_affine {
         // const INPUT_SIMD_WIDTH: usize = 32; // AVX2
         // const MAX_NUM_OUTPUT_REGS: usize = 8; // AVX2
 
-        // #[cfg(feature = "nope")]
+        #[cfg(feature = "nope")]
         pub fn _propagate_avx2(&mut self, trans_features: &[u8]) {
             use crate::simd_utils::x86_64::*;
             use crate::simd_utils::std_simd::*;
@@ -494,19 +494,29 @@ mod nn_affine {
 
                 let mut sum: i32 = self.biases[i];
 
-                for j in 0..Self::SIZE_INPUT {
+                // for j in 0..Self::SIZE_INPUT {
+                //     // if let Some(x) = input.get(j) {
+                //     //     let x: i32 = x.as_();
+                //     //     let x0 = self.weights[offset + j] as i32 * x;
+                //     //     sum += x0;
+                //     // }
+                //     let x: i32 = input[j].as_();
+                //     let x0 = self.weights[offset + j] as i32 * x;
+                //     sum += x0;
+                // }
 
-                    if let Some(x) = input.get(j) {
-                        let x: i32 = x.as_();
-                        let x0 = self.weights[offset + j] as i32 * x;
-                        sum += x0;
-                    }
-
-                    // let x: i32 = input[j].as_();
-                    // let x0 = self.weights[offset + j] as i32 * x;
-                    // sum += x0;
-
+                for (j,x) in input.iter().enumerate() {
+                    let x: i32 = x.as_();
+                    let x0 = self.weights[offset + j] as i32 * x;
+                    sum += x0;
                 }
+
+                // for (x,w) in input.iter().zip(self.weights[offset..].iter()) {
+                //     let x: i32 = x.as_();
+                //     let x0 = *w as i32 * x;
+                //     sum += x0;
+                // }
+
                 self.buffer[i] = sum as i32;
             }
 

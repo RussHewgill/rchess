@@ -148,11 +148,14 @@ impl NNFeatureTrans {
         self.make_move_add(persp, king_sq, pc, side, to);
     }
 
+    // XXX: No op
+    #[inline(always)]
     pub fn make_move(&mut self, g: &Game, mv: Move) {
-        self._make_move(g, White, mv);
-        self._make_move(g, Black, mv);
+        // self._make_move(g, White, mv);
+        // self._make_move(g, Black, mv);
     }
 
+    #[inline(always)]
     pub fn _make_move(&mut self, g: &Game, persp: Color, mv: Move) {
         let king_sq = g.get(King,persp).bitscan();
         let side = g.state.side_to_move;
@@ -193,14 +196,20 @@ impl NNFeatureTrans {
 /// Update Accum
 impl NNFeatureTrans {
 
-    pub fn accum_pop(&mut self, persp: Color) {
+    #[inline(always)]
+    pub fn accum_pop(&mut self) {}
+
+    #[inline(always)]
+    pub fn _accum_pop(&mut self) {
         if let Some(delta) = self.accum.stack.pop() {
             match delta {
                 NNDelta::Add(d_add)    => {
-                    self.accum_add(persp, d_add, false);
+                    self.accum_add(White, d_add, false);
+                    self.accum_add(Black, d_add, false);
                 },
                 NNDelta::Remove(d_rem) => {
-                    self.accum_rem(persp, d_rem, false);
+                    self.accum_rem(White, d_rem, false);
+                    self.accum_rem(Black, d_rem, false);
                 },
             }
         }
@@ -233,29 +242,31 @@ impl NNFeatureTrans {
         }
     }
 
-    pub fn apply_deltas(&mut self, persp: Color) {
+    // pub fn apply_deltas(&mut self, persp: Color) {
 
-        let rems = self.accum.deltas_rem.clone();
-        let adds = self.accum.deltas_add.clone();
-        self.accum.deltas_rem.clear();
-        self.accum.deltas_add.clear();
+    //     let rems = self.accum.deltas_rem.clone();
+    //     let adds = self.accum.deltas_add.clone();
+    //     self.accum.deltas_rem.clear();
+    //     self.accum.deltas_add.clear();
 
-        for d_rem in rems.into_iter() {
-            self.accum_rem(persp, d_rem, true);
-        }
-        for d_add in adds.into_iter() {
-            self.accum_add(persp, d_add, true);
-        }
+    //     for d_rem in rems.into_iter() {
+    //         self.accum_rem(persp, d_rem, true);
+    //     }
+    //     for d_add in adds.into_iter() {
+    //         self.accum_add(persp, d_add, true);
+    //     }
 
-    }
+    // }
 
+    #[inline(always)]
     pub fn update_accum(&mut self, g: &Game, persp: Color, refresh: bool) {
 
-        if self.accum.needs_refresh[persp] {
+        // if self.accum.needs_refresh[persp] {
+        if true {
             // full refresh
-            if !refresh {
-                self.accum.needs_refresh[persp] = false;
-            }
+            // if !refresh {
+            //     self.accum.needs_refresh[persp] = false;
+            // }
 
             assert!(self.biases.len() == self.accum.accum[persp].len());
             self.accum.accum[persp].copy_from_slice(&self.biases);
@@ -279,7 +290,7 @@ impl NNFeatureTrans {
             }
         } else {
             // incremental
-            self.apply_deltas(persp);
+            // self.apply_deltas(persp);
         }
 
     }

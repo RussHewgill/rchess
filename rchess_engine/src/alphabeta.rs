@@ -101,14 +101,26 @@ pub enum Prune {
 
 /// Make move, increment NNUE
 impl ExHelper {
-    pub fn make_move(&self, ts: &Tables, g: &Game, mv: Move, zb0: Zobrist) -> Option<Game> {
-        if let Ok(g2) = g._make_move_unchecked(ts, mv, Some(zb0)) {
+    pub fn make_move(&self, ts: &Tables, g: &Game, mv: Move, zb0: Option<Zobrist>) -> Option<Game> {
+        if let Ok(g2) = g._make_move_unchecked(ts, mv, zb0) {
 
-            // TODO: push NNUE
+            // push NNUE
+            if let Some(nnue) = &self.nnue {
+                let mut nn = nnue.borrow_mut();
+                nn.ft.make_move(g, mv);
+            }
 
             Some(g2)
         } else { None }
     }
+
+    pub fn pop_nnue(&self) {
+        if let Some(nnue) = &self.nnue {
+            let mut nn = nnue.borrow_mut();
+            nn.ft.accum_pop();
+        }
+    }
+
 }
 
 /// Negamax AB
@@ -474,7 +486,7 @@ impl ExHelper {
             //     g2
             // } else { continue 'outer; };
 
-            let g2 = if let Some(g2) = self.make_move(ts, g, mv, zb0) {
+            let g2 = if let Some(g2) = self.make_move(ts, g, mv, Some(zb0)) {
                 g2
             } else { continue 'outer; };
 
@@ -485,6 +497,7 @@ impl ExHelper {
                     && !mv.filter_all_captures()
                     && !mv.filter_promotion() {
                         stats.fut_prunes += 1;
+                        self.pop_nnue();
                         continue;
                     }
             }
@@ -639,7 +652,10 @@ impl ExHelper {
                                     ABPrune(beta, prune) => {
                                         panic!("ABPrune 1");
                                     },
-                                    ABNone       => break 'outer,
+                                    ABNone       => {
+                                        self.pop_nnue();
+                                        break 'outer;
+                                    }
                                 }
                             }
 
@@ -651,11 +667,15 @@ impl ExHelper {
                         ABPrune(beta, prune) => {
                             // panic!("ABPrune 2");
                             // trace!("ABPrune 2: {:?} {:?}", beta, prune);
+                            self.pop_nnue();
                             continue 'outer;
                         },
                         // ABList(_, _) => break 'outer,
                         ABList(_, _) => panic!("found ABList when not root?"),
-                        ABNone       => break 'outer,
+                        ABNone       => {
+                            self.pop_nnue();
+                            break 'outer;
+                        }
                     }
 
                 },
@@ -703,6 +723,7 @@ impl ExHelper {
                         stats!(stats.beta_cut_first.1 += 1);
                     }
 
+                    self.pop_nnue();
                     break;
                 }
             }

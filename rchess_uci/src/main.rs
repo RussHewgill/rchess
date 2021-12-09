@@ -21,6 +21,7 @@ use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
 use std::sync::mpsc::TryRecvError;
 use std::{thread, time};
+use std::cell::RefCell;
 
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool,Ordering};
@@ -192,6 +193,10 @@ fn main() -> std::io::Result<()> {
                     "go"         => {
 
                         debug!("explorer going: ");
+
+                        if let Some(ref mut nnue) = explorer.nnue {
+                            nnue.ft.accum.needs_refresh = [true; 2];
+                        }
 
                         parse_go(&mut explorer, params.clone().collect());
 

@@ -52,8 +52,6 @@ pub fn exhelper_once(
         best_mate,
         #[cfg(feature = "syzygy")]
         syzygy:          None,
-        #[cfg(feature = "nnue")]
-        // nnue: nnue.map(|x| RefCell::new(x.clone())),
         nnue: nnue.map(|x| RefCell::new(x)),
         cfg,
         best_depth,
@@ -180,10 +178,12 @@ impl ExHelper {
         let stand_pat = if let Some(nnue) = &self.nnue {
             // let mut nn: &mut NNUE4 = nnue.borrow_mut();
             let mut nn = nnue.borrow_mut();
-            // let v = nn.evaluate(&g, true, false);
 
-            nn.ft.accum.needs_refresh = [true; 2];
-            let v = nn.evaluate(&g, true, true); // XXX: slow, always refresh
+            let v = nn.evaluate(&g, true, false);
+
+            // nn.ft.accum.needs_refresh = [true; 2];
+            // let v = nn.evaluate(&g, true, true); // XXX: slow, always refresh
+
             v
             // unimplemented!()
         } else {
@@ -290,7 +290,8 @@ impl ExHelper {
         // for (mv,g2) in ms {
         for mv in moves.into_iter() {
 
-            if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
+            // if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
+            if let Some(g2) = self.make_move(ts, g, mv, None) {
 
                 // trace!("qsearch: mv = {:?}, g = {:?}\n, g2 = {:?}", mv, g, g2);
                 // trace!("qsearch: mv = {:?}", mv);
@@ -300,6 +301,7 @@ impl ExHelper {
                         // trace!("fen = {}", g.to_fen());
                         // trace!("qsearch: SEE negative: {} {:?}", see, g);
                         // trace!("qsearch: SEE negative: {}", see);
+                        self.pop_nnue();
                         continue;
                     }
                 }
@@ -308,6 +310,7 @@ impl ExHelper {
 
                 if score >= beta && allow_stand_pat {
                     // trace!("qsearch returning beta 1: {:?}", beta);
+                    self.pop_nnue();
                     return beta; // fail hard
                     // return stand_pat; // fail soft
                 }
@@ -316,6 +319,7 @@ impl ExHelper {
                     alpha = score;
                 }
 
+                self.pop_nnue();
             }
 
         }

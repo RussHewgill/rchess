@@ -12,8 +12,6 @@ use crate::killer_moves::*;
 
 #[cfg(feature = "syzygy")]
 use crate::syzygy::SyzygyTB;
-
-#[cfg(feature = "nnue")]
 use crate::sf_compat::NNUE4;
 
 pub use crate::move_ordering::*;
@@ -55,7 +53,6 @@ pub struct Explorer {
     pub syzygy:        Option<Arc<SyzygyTB>>,
     pub opening_book:  Option<Arc<OpeningBook>>,
 
-    #[cfg(feature = "nnue")]
     pub nnue:          Option<NNUE4>,
 
     pub tt_rf:         TTReadFactory,
@@ -108,8 +105,6 @@ pub struct ExHelper {
 
     #[cfg(feature = "syzygy")]
     pub syzygy:          Option<Arc<SyzygyTB>>,
-    #[cfg(feature = "nnue")]
-    // pub nnue:          Option<NNUE4>,
     pub nnue:          Option<RefCell<NNUE4>>,
 
     pub cfg:             ExConfig,
@@ -182,7 +177,6 @@ impl Explorer {
             #[cfg(feature = "syzygy")]
             syzygy:          self.syzygy.clone(),
 
-            #[cfg(feature = "nnue")]
             nnue:            self.nnue.clone().map(|x| RefCell::new(x)),
 
             best_depth,
@@ -273,7 +267,6 @@ impl Explorer {
             syzygy:         None,
             opening_book:   None,
 
-            #[cfg(feature = "nnue")]
             nnue:           None,
 
             tt_rf,
@@ -307,8 +300,8 @@ impl Explorer {
         {
             let mut nn = NNUE4::read_nnue(path)?;
             self.nnue = Some(nn);
-            Ok(())
         }
+        Ok(())
     }
 
     pub fn load_syzygy<P: AsRef<Path>>(&mut self, dir: P) -> std::io::Result<()> {

@@ -18,9 +18,10 @@ pub struct NNAccum {
     // pub computed:   [bool; 2],
     // pub deltas:     ArrayVec<NNDelta, 9>, // 3 moves
 
-    pub deltas_add:      ArrayVec<usize, 6>, // 2 moves
-    pub deltas_rem:      ArrayVec<usize, 6>, // 2 moves
-    pub stack:           ArrayVec<NNDelta, 300>,
+    // pub deltas_add:      ArrayVec<usize, 6>, // 2 moves
+    // pub deltas_rem:      ArrayVec<usize, 6>, // 2 moves
+    // pub stack:           ArrayVec<NNDelta, 300>,
+    pub stack:           Vec<NNDelta>,
 
     pub needs_refresh:   [bool; 2],
 }
@@ -31,9 +32,10 @@ impl NNAccum {
         Self {
             accum:            [[0; 1024]; 2],
             psqt:             [[0; 8]; 2],
-            deltas_add:       ArrayVec::default(),
-            deltas_rem:       ArrayVec::default(),
-            stack:            ArrayVec::default(),
+            // deltas_add:       ArrayVec::default(),
+            // deltas_rem:       ArrayVec::default(),
+            // stack:            ArrayVec::default(),
+            stack:            Vec::with_capacity(1024),
             needs_refresh:    [true; 2],
         }
     }
@@ -41,30 +43,30 @@ impl NNAccum {
 
 impl NNAccum {
 
-    pub fn push_delta_move(
-        &mut self,
-        persp:      Color,
-        king_sq:    Coord,
-        pc:         Piece,
-        side:       Color,
-        from:       Coord,
-        to:         Coord,
-    ) {
-        self.push_delta_rem(persp, king_sq, pc, side, from);
-        self.push_delta_add(persp, king_sq, pc, side, to);
-    }
+    // pub fn push_delta_move(
+    //     &mut self,
+    //     persp:      Color,
+    //     king_sq:    Coord,
+    //     pc:         Piece,
+    //     side:       Color,
+    //     from:       Coord,
+    //     to:         Coord,
+    // ) {
+    //     self.push_delta_rem(persp, king_sq, pc, side, from);
+    //     self.push_delta_add(persp, king_sq, pc, side, to);
+    // }
 
-    pub fn push_delta_add(
-        &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) {
-        let idx = super::NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
-        self.deltas_add.push(idx);
-    }
+    // pub fn push_delta_add(
+    //     &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) {
+    //     let idx = super::NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
+    //     self.deltas_add.push(idx);
+    // }
 
-    pub fn push_delta_rem(
-        &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) {
-        let idx = super::NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
-        self.deltas_rem.push(idx);
-    }
+    // pub fn push_delta_rem(
+    //     &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) {
+    //     let idx = super::NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
+    //     self.deltas_rem.push(idx);
+    // }
 
     // pub fn refresh(&mut self, g: &Game, persp: Color) {
     //     self.psqt[persp].fill(0);
