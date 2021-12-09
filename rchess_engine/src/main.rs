@@ -1543,7 +1543,13 @@ fn _main_nn() -> std::io::Result<()> {
         // let w2 = ws2[(2,0)];
         // eprintln!("(w0,w1,w2) = {:?}", (w0,w1,w2));
 
-        // return Ok(());
+        let xs = [1,2,0,0];
+
+        let k = u32::from_ne_bytes(xs).unwrap();
+
+        eprintln!("k = {:?}", k);
+
+        return Ok(());
 
         // let mut tfs = vec![];
         // for bucket in 0..8 {
@@ -1553,9 +1559,12 @@ fn _main_nn() -> std::io::Result<()> {
         //     tfs.push(transformed);
         // }
 
+        // baseline =  50_000 = 0.42
+        // baseline = 100_000 = 0.962
+
         println!("starting");
         let t0 = std::time::Instant::now();
-        for n in 0..50000 {
+        for n in 0..100000 {
             // for bucket in 0..8 {
             //     nn.layers[bucket].propagate(&tfs[bucket]);
             // }
