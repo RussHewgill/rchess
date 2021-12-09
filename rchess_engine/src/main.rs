@@ -451,13 +451,69 @@ fn main_simd() {
     use ndarray_rand::RandomExt;
     use rand::distributions::{Uniform,uniform::SampleUniform};
 
-    let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
-    let dist0 = Uniform::new(0,1);
-    let dist1 = Uniform::new(i16::MIN,i16::MAX);
+    use rchess_engine_lib::sf_compat::layers::ceil_to_multiple;
 
-    // let weights = 
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
+    // let dist0 = Uniform::new(0,1);
+    // let dist1 = Uniform::new(i16::MIN,i16::MAX);
+
+    const OS: usize = 8;
+    const IS: usize = 1024;
+    const ISP: usize = ceil_to_multiple(IS, 32);
+
+    let input: [u8; ISP] = array_init::array_init(|_| rng.gen_range(0..2));
+    let weights: Vec<i8> = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
+    let biases: [i32; OS] = array_init::array_init(|_| rng.gen_range(-100..100));
+
+    // let input: [i32; ISP] = array_init::array_init(|_| rng.gen_range(0..2));
+    // let weights: Vec<i32> = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
+    // let biases: [i32; OS] = array_init::array_init(|_| rng.gen_range(-100..100));
+
+    let mut buffer = [0i32; OS];
 
     use std::simd::*;
+
+    use nd::ShapeBuilder;
+
+    for i in 0..OS {
+        let offset = i * ISP;
+        let mut sum = biases[i];
+        // let mut sum = 0;
+        for j in 0..IS {
+            let x = input[j] as i32;
+            sum += weights[offset + j] as i32 * x;
+        }
+        buffer[i] = sum;
+    }
+    eprintln!("buffer[0] = {:?}", buffer[0]);
+    let s0: i32 = buffer.iter().sum();
+    eprintln!("s0 = {:?}", s0);
+    eprintln!("buffer = {:?}", buffer);
+    eprintln!();
+    eprintln!("biases = {:?}", biases);
+
+    let input: nd::Array2<u8> = nd::Array2::from_shape_vec((ISP, 1), input.to_vec()).unwrap();
+    let weights: nd::Array2<i8> = nd::Array2::from_shape_vec((IS,OS).f(), weights).unwrap();
+    let biases: nd::Array2<i32> = nd::Array2::from_shape_vec((OS, 1), biases.to_vec()).unwrap();
+    let weights = weights.reversed_axes();
+
+    let input   = input.map(|x| *x as i32);
+    let weights = weights.map(|x| *x as i32);
+    let biases  = biases.map(|x| *x as i32);
+    let result = weights.dot(&input);
+    let result = result + &biases;
+
+    eprintln!("result = {}", result.t());
+    eprintln!("result.shape() = {:?}", result.shape());
+    eprintln!("result[(0,0)] = {:?}", result[(0,0)]);
+    eprintln!("result.sum() = {:?}", result.sum());
+
+    // use std::collections::hash_map::DefaultHasher;
+    // use std::hash::{Hash, Hasher};
+    // let mut s = DefaultHasher::new();
+    // (&buffer).hash(&mut s);
+    // let hash = s.finish();
+    // eprintln!("hash = {:?}", hash);
 
     // let a = f32x4::splat(10.0);
     // let b = f32x4::from_array([1.0, 2.0, 3., 4.]);
@@ -1442,15 +1498,6 @@ fn _main_nn() -> std::io::Result<()> {
 
         // return Ok(());
 
-        // let fen1 = "4k3/3np3/8/8/8/8/3NP3/4K3 b - - 0 1";
-        // let fen2 = "4k3/4p3/5n2/8/8/8/3NP3/4K3 w - - 1 2"; // after Qt N d7f6
-        // let fen3 = "4k3/4p3/5n2/8/8/1N6/4P3/4K3 b - - 2 2"; // after Qt N d2b3
-        // let mut g1 = Game::from_fen(&ts, fen1).unwrap();
-        // let mut g2 = Game::from_fen(&ts, fen2).unwrap();
-        // let mut g3 = Game::from_fen(&ts, fen3).unwrap();
-
-        // let g = g.flip_sides(&ts);
-
         // let mv1 = Move::new_quiet("D7", "F6", Knight);
         // let mv2 = Move::new_quiet("D2", "B3", Knight);
         // nn.ft.update_accum(&g1, White, false);
@@ -1483,43 +1530,38 @@ fn _main_nn() -> std::io::Result<()> {
         // let v = nn.evaluate(&g, false, false);
         // eprintln!("v = {:?}", v);
 
-        // let mut vs = vec![];
-        // for n in 0..32 {
-        //     vs.push(n);
+        // let ws = &nn.layers[0].prev.prev.weights;
+        // eprintln!("ws.len() = {:?}", ws.len());
+        // let w0 = ws[0];
+        // let w1 = ws[1];
+        // let w2 = ws[2];
+        // eprintln!("(w0,w1,w2) = {:?}", (w0,w1,w2));
+        // let ws2 = ndarray::Array2::from_shape_vec((1024,1), ws.to_vec()).unwrap();
+        // eprintln!("ws2.shape() = {:?}", ws2.shape());
+        // let w0 = ws2[(0,0)];
+        // let w1 = ws2[(1,0)];
+        // let w2 = ws2[(2,0)];
+        // eprintln!("(w0,w1,w2) = {:?}", (w0,w1,w2));
+
+        // return Ok(());
+
+        // let mut tfs = vec![];
+        // for bucket in 0..8 {
+        //     nn.ft.accum.needs_refresh = [true; 2];
+        //     let mut transformed = [0; HALF_DIMS * 2];
+        //     let psqt = nn.ft.transform(&g, &mut transformed, bucket, true);
+        //     tfs.push(transformed);
         // }
-
-        // let mut x: i64 = 0;
-        // let n0 = 1 << 
-
-        let a0 = u8::MAX as u16 + 1;
-
-        let b0 = u8::MAX;
-        let b1 = 1u8;
-
-        // let c = i64::
-
-        // let mut c = unsafe {
-            // let cs = [b1,b0];
-            std::mem::transmute(e)
-        // };
-
-        return Ok(());
-
-        let mut tfs = vec![];
-        for bucket in 0..8 {
-            nn.ft.accum.needs_refresh = [true; 2];
-            let mut transformed = [0; HALF_DIMS * 2];
-            let psqt = nn.ft.transform(&g, &mut transformed, bucket, true);
-            tfs.push(transformed);
-        }
 
         println!("starting");
         let t0 = std::time::Instant::now();
         for n in 0..50000 {
-            for bucket in 0..8 {
-                nn.layers[bucket].propagate(&tfs[bucket]);
-            }
+            // for bucket in 0..8 {
+            //     nn.layers[bucket].propagate(&tfs[bucket]);
+            // }
             // let _ = nn.trace_eval(&g, false);
+            nn.ft.accum.needs_refresh = [true; 2];
+            let _ = nn.evaluate(&g, false, true);
         }
         let t1 = t0.elapsed().as_secs_f64();
         eprintln!("finished in {:.3} seconds", t1);

@@ -60,7 +60,7 @@ const KING_BUCKETS: [i8; 64] = [
     -1, -1, -1, -1, 3, 2, 1, 0
 ];
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Ord,Clone)]
+#[derive(Debug,Eq,PartialEq,Clone)]
 pub struct NNUE4 {
     pub ft:      NNFeatureTrans,
     pub layers:  Vec<Layer3>,

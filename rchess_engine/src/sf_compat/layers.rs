@@ -7,6 +7,9 @@ use std::io::{self, Read,BufReader, BufWriter};
 use std::fs::File;
 use std::path::Path;
 
+use ndarray as nd;
+use nd::{Array2,ShapeBuilder};
+
 use arrayvec::ArrayVec;
 use byteorder::{ReadBytesExt, LittleEndian};
 
@@ -37,7 +40,7 @@ pub trait NNLayer {
     // fn propagate(&self, trans_features: &[u8]) -> ArrayVec<Self::OutputType, {Self::BUFFER_SIZE}>;
     fn propagate(&mut self, trans_features: &[u8]);
 
-    fn size(&self) -> usize;
+    // fn size(&self) -> usize;
 
     fn get_buf(&self) -> &[Self::OutputType];
     fn get_buf_mut(&mut self) -> &mut [Self::OutputType];
@@ -52,7 +55,7 @@ pub trait NNLayer {
 
 }
 
-const fn ceil_to_multiple(n: usize, base: usize) -> usize {
+pub const fn ceil_to_multiple(n: usize, base: usize) -> usize {
     (n + base - 1) / base * base
 }
 
@@ -77,7 +80,7 @@ mod nn_input {
 
         const HASH: u32 = 0xEC42E90D ^ Self::SIZE_OUTPUT as u32;
 
-        fn size(&self) -> usize { self.buf.len() }
+        // fn size(&self) -> usize { self.buf.len() }
 
         fn get_buf(&self) -> &[Self::OutputType] {
             &self.buf
@@ -116,16 +119,15 @@ mod nn_affine {
     use num_traits::{Num,Zero};
 
     // #[derive(Debug,PartialEq,Clone)]
-    #[derive(Debug,Eq,PartialEq,PartialOrd,Ord,Clone)]
+    #[derive(Debug,Eq,PartialEq,Clone)]
     pub struct NNAffine<Prev: NNLayer, const OS: usize> {
         pub prev:    Prev,
-        // biases:  Array2<u8>,
-        // weights: Array2<u8>,
-        pub biases:  [i32; OS],
-        // biases:  [u8; OS],
-        pub weights: Vec<i8>,
 
-        // pub buffer:  [i32; OS],
+        pub biases:  [i32; OS],
+        pub weights: Vec<i8>,
+        // pub biases:  Array2<i32>,
+        // pub weights: Array2<i32>,
+
         pub buffer:  [<NNAffine<Prev,OS> as NNLayer>::OutputType; OS],
     }
 
@@ -208,8 +210,13 @@ mod nn_affine {
         pub fn new(prev: Prev) -> Self {
             Self {
                 prev,
+
                 biases:  [0; OS],
                 weights: vec![0; OS * Self::SIZE_INPUT],
+
+                // biases:  Array2::zeros((OS,1)),
+                // weights: Array2::zeros((OS * Self::SIZE_INPUT,1)),
+
                 // buffer:  [Self::OutputType::zero(); OS]
                 buffer:  [0; OS]
             }
@@ -243,6 +250,7 @@ mod nn_affine {
             unsafe { _mm256_set_epi64x(x0,x1,x2,x3) }
         }
 
+        #[cfg(feature = "nope")]
         pub fn _propagate_avx2(&mut self, trans_features: &[u8]) {
             // use std::simd::*;
             use core::arch::x86_64::*;
@@ -365,6 +373,52 @@ mod nn_affine {
             unimplemented!()
         }
 
+        #[cfg(feature = "nope")]
+        pub fn _propagate_ndarray(&mut self, trans_features: &[u8]) {
+
+            self.prev.propagate(trans_features);
+            let input: &[<NNAffine<Prev,OS> as NNLayer>::InputType] = self.prev.get_buf();
+
+            // assert!(Self::SIZE_OUTPUT % Self::NUM_OUTPUT_REGS == 0);
+            // assert!(input.len() % 32 == 0);
+
+            let input2 = &input[0..input.len() / 32];
+
+            // let input: nd::ArrayView2<<NNAffine<Prev,OS> as NNLayer>::InputType> = unsafe {
+            //     let ptr = input.as_ptr();
+            //     nd::ArrayView2::from_shape_ptr((Self::SIZE_INPUT,1), ptr)
+            // };
+
+            eprintln!("input.len() = {:?}", input.len());
+            // eprintln!("Self::SIZE_INPUT_PADDED = {:?}", Self::SIZE_INPUT_PADDED);
+
+            // let v = input.to_vec();
+            let mut v = vec![<NNAffine<Prev,OS> as NNLayer>::InputType::zero(); Self::SIZE_INPUT_PADDED];
+            v[..input.len()].copy_from_slice(&input);
+
+            let input = nd::Array2::from_shape_vec((Self::SIZE_INPUT_PADDED,1), v).unwrap();
+            let input = input.map(|x| (*x).as_());
+
+            eprintln!("input.shape() = {:?}", input.shape());
+
+            // let input: Array2<i32> = input.map(|x| NumCast::from(*x).unwrap());
+
+            // let input: nd::ArrayView2<i32> = input.map(|x| (*x).as_());
+
+            // let input = Array2::from_shape_vec((IS,1), input.to_vec())
+
+            eprintln!("self.weights.shape() = {:?}", self.weights.shape());
+
+            let result = self.weights.dot(&input) + &self.biases;
+
+            let x = result.is_standard_layout();
+            eprintln!("x = {:?}", x);
+
+            self.buffer.copy_from_slice(result.as_slice().unwrap());
+
+            // unimplemented!()
+        }
+
     }
 
     /// Approach 2:
@@ -401,11 +455,11 @@ mod nn_affine {
             hash
         };
 
-        fn size(&self) -> usize {
-            self.prev.size()
-                + self.biases.len() * std::mem::size_of_val(&self.biases[0])
-                + self.weights.len() * std::mem::size_of_val(&self.weights[0])
-        }
+        // fn size(&self) -> usize {
+        //     self.prev.size()
+        //         + self.biases.len() * std::mem::size_of_val(&self.biases[0])
+        //         + self.weights.len() * std::mem::size_of_val(&self.weights[0])
+        // }
 
         fn get_buf(&self) -> &[Self::OutputType] {
             &self.buffer
@@ -414,12 +468,13 @@ mod nn_affine {
             &mut self.buffer
         }
 
-        // #[cfg(feature = "nope")]
-        fn propagate(&mut self, trans_features: &[u8]) {
-            self._propagate_avx2(trans_features);
-        }
+        #[cfg(feature = "nope")]
+        fn propagate(&mut self, trans_features: &[u8]) { self._propagate_avx2(trans_features); }
 
         #[cfg(feature = "nope")]
+        fn propagate(&mut self, trans_features: &[u8]) { self._propagate_ndarray(trans_features); }
+
+        // #[cfg(feature = "nope")]
         fn propagate(&mut self, trans_features: &[u8]) {
 
             // eprintln!("affine propagate");
@@ -434,8 +489,8 @@ mod nn_affine {
             //     std::slice::from_raw_parts(ptr2, input.len())
             // };
 
-            let x0 = self.weights[0];
-            let x1 = self.weights[Self::SIZE_INPUT_PADDED * (Self::SIZE_OUTPUT - 1) + Self::SIZE_INPUT - 1];
+            // let x0 = self.weights[0];
+            // let x1 = self.weights[Self::SIZE_INPUT_PADDED * (Self::SIZE_OUTPUT - 1) + Self::SIZE_INPUT - 1];
 
             // eprintln!("Self::SIZE_INPUT_PADDED = {:?}", Self::SIZE_INPUT_PADDED);
 
@@ -464,21 +519,33 @@ mod nn_affine {
             // eprintln!("Self::SIZE_OUTPUT = {:?}", Self::SIZE_OUTPUT);
             // eprintln!("Self::SIZE_INPUT_PADDED = {:?}", Self::SIZE_INPUT_PADDED);
 
+            // biases:  [0; OS],
+            // let mut biases: Vec<i32> = vec![0; OS];
+
             for i in 0..Self::SIZE_OUTPUT {
                 let x = rdr.read_i32::<LittleEndian>()?;
-                // let x = rdr.read_u8()?;
                 self.biases[i] = x;
+                // biases[i] = x;
             }
 
+            // self.biases = Array2::from_shape_vec((OS,1), biases).unwrap();
+
             let size = Self::SIZE_INPUT_PADDED * Self::SIZE_OUTPUT;
+
             self.weights = vec![0; size];
+            // let mut weights = vec![0; size];
 
             for i in 0..size {
                 // eprintln!("i = {:?}", i);
                 let x = rdr.read_i8()?;
                 // self.weights[Self::get_weight_index(i)] = x;
                 self.weights[i] = x;
+                // weights[i] = x as i32;
             }
+
+            // let ws = Array2::from_shape_vec((Self::SIZE_INPUT_PADDED, Self::SIZE_OUTPUT).f(), weights)
+            //     .unwrap();
+            // self.weights = ws.reversed_axes();
 
             Ok(())
         }
@@ -492,8 +559,9 @@ mod nn_affine {
             //     w.write_u8(*wt)?;
             // }
             for i in 0..Self::SIZE_OUTPUT * Self::SIZE_INPUT_PADDED {
-                let wt = self.weights[Self::get_weight_index(i)];
-                w.write_i8(wt)?;
+                // let wt = self.weights[Self::get_weight_index(i)];
+                // w.write_i8(wt)?;
+                unimplemented!()
             }
             Ok(())
         }
@@ -510,8 +578,8 @@ mod nn_relu {
     // #[derive(Debug,PartialEq,Clone,Copy)]
     #[derive(Debug,Eq,PartialEq,PartialOrd,Ord,Clone)]
     pub struct NNClippedRelu<Prev: NNLayer, const OS: usize> {
-        prev:    Prev,
-        buf:     [u8; OS],
+        pub prev:    Prev,
+        buf:         [u8; OS],
     }
 
     impl<Prev: NNLayer, const OS: usize> NNClippedRelu<Prev, OS> {
@@ -543,7 +611,7 @@ mod nn_relu {
 
         const HASH: u32 = 0x538D24C7 + Prev::HASH;
 
-        fn size(&self) -> usize { self.prev.size() }
+        // fn size(&self) -> usize { self.prev.size() }
 
         fn get_buf(&self) -> &[Self::OutputType] {
             &self.buf
