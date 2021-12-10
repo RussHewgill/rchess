@@ -510,14 +510,19 @@ fn main_simd() {
     // eprintln!("result 1 = {:?}", result);
     // return;
 
-    // let t0 = Instant::now();
-    // for _ in 0..500_000 {
-    //     simd_mm_0::<IS,OS>(&input, &weights, &biases, &mut output);
-    // }
-    // let t1 = t0.elapsed().as_secs_f64();
-    // eprintln!("finished in {:.3} seconds", t1);
-    // let sum: i32 = output.iter().sum();
-    // eprintln!("sum = {:?}", sum); // -2055
+    // const NUM_RUNS: usize = 1_000_000;
+    const NUM_RUNS: usize = 500_000;
+
+    let t0 = Instant::now();
+    for _ in 0..NUM_RUNS {
+        simd_mm_0::<IS,OS>(&input, &weights, &biases, &mut output);
+    }
+    let t1 = t0.elapsed().as_secs_f64();
+    eprintln!("finished in {:.3} seconds", t1);
+    let sum: i32 = output.iter().sum();
+    eprintln!("sum = {:?}", sum); // -2055
+
+    // return;
 
     let mut weights2 = [[0; IS]; OS];
     for i in 0..OS {
@@ -541,8 +546,9 @@ fn main_simd() {
     // simd_nd_mm_3::<IS,OS>(&input, &weights, &biases, &mut output);
 
     let t0 = Instant::now();
-    for _ in 0..500_000 {
+    for _ in 0..NUM_RUNS {
         simd_mm_2::<IS,OS>(&input, &weights2, &biases, &mut output);
+        // simd_mm_2::<IS,OS>(&input, &weights, &biases, &mut output);
     }
     let t1 = t0.elapsed().as_secs_f64();
     eprintln!("finished in {:.3} seconds", t1);
@@ -1606,186 +1612,45 @@ fn _main_nn() -> std::io::Result<()> {
         let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
         let mut g = Game::from_fen(&ts, fen).unwrap();
 
-        // // d6b4 -> -599
-        // let v = nn.evaluate(&g, false, false);
-        // eprintln!("v = {:?}", v);
+        // d6b4 -> -599
+        let v = nn.evaluate(&g, false, false);
+        eprintln!("v = {:?}", v);
 
-        // let ws = &nn.layers[0].prev.prev.weights;
-        // eprintln!("ws.len() = {:?}", ws.len());
-        // let w0 = ws[0];
-        // let w1 = ws[1];
-        // let w2 = ws[2];
-        // eprintln!("(w0,w1,w2) = {:?}", (w0,w1,w2));
-        // let ws2 = ndarray::Array2::from_shape_vec((1024,1), ws.to_vec()).unwrap();
-        // eprintln!("ws2.shape() = {:?}", ws2.shape());
-        // let w0 = ws2[(0,0)];
-        // let w1 = ws2[(1,0)];
-        // let w2 = ws2[(2,0)];
-        // eprintln!("(w0,w1,w2) = {:?}", (w0,w1,w2));
+        type LayerX = NNAffine<Layer0, 8>;
+        let ws: &LayerX = &nn.layers[0].prev.prev.prev.prev;
 
-        // use core::arch::x86_64::*;
-        use std::simd::*;
-        use rchess_engine_lib::simd_utils::*;
+        let xs = vec![
+            0,
+            8,
+            32,
+            40,
+            64,
+        ];
 
-        use rchess_engine_lib::simd_test::*;
-
-        let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
-
-        const IS: usize = 1024;
-        const OS: usize = 8;
-
-        let input: [i8; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
-        let weights: Vec<i8>  = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
-        let biases: [i32; OS] = array_init::array_init(|_| rng.gen_range(-100..100));
-        let mut output = [0i32; OS];
-
-        // simd_mm_0::<IS,OS>(&input, &weights, &biases, &mut output);
-
-        SIMD_01::<IS,OS>::simd_mm(&input, &weights, &biases, &mut output);
-
-        eprintln!("output[0] = {:?}", output[0]); // -482
-        let sum: i32 = output.iter().sum();
-        eprintln!("sum = {:?}", sum); // -2055
-
-        return Ok(());
-
-        use std::arch::x86_64::*;
-        use rchess_engine_lib::simd_utils::x86_64::*;
-        use rchess_engine_lib::simd_utils::x86_64::conversions::*;
-
-        let xs0: [u8; 64] = array_init::array_init(|x| x as u8);
-        // let xs0 = (0u8..64).collect::<Vec<_>>();
-        // let xs1 = (0i8..32).collect::<Vec<_>>();
-        // let xs = (0i64..32).collect::<Vec<_>>();
-
-        let xs1: &[__m256i] = unsafe {
-            let ptr = xs0.as_ptr() as *const __m256i;
-            std::slice::from_raw_parts(ptr, xs0.len() / 32)
-        };
-
-        let k0 = xs1[0];
-
-        let mut xs2: [u8; 32] = [0; 32];
-
-        unsafe {
-            let mut ptr: *mut u8 = xs2.as_mut_ptr();
-            let mut ptr = ptr as *mut __m256i;
-            _mm256_storeu_si256(ptr, k0);
-        };
-
-        eprintln!("xs2 = {:?}", xs2);
-
-        // let mut xs0 = [0u8; 32];
-        // let mut xs1 = [0i8; 32];
-        // xs0[0] = 1;
-        // xs1[0] = 1;
-
-        // let xs1: &[__m128i] = unsafe {
-        //     let ptr = xs0.as_ptr() as *const __m128i;
-        //     std::slice::from_raw_parts(ptr, 4)
-        // };
-        // eprintln!("xs1[0] = {:?}", xs1[0]);
-        // let k0 = build_m128i_from_slice(&xs0);
-        // eprintln!("k0 = {:?}", k0);
-
-        // let xs1: &[u8x16] = unsafe {
-        //     let ptr = xs0.as_ptr() as *const u8x16;
-        //     std::slice::from_raw_parts(ptr, 4)
-        // };
-        // eprintln!("xs1[0] = {:?}", xs1[1]);
-        // let k0 = u8x16::from_slice(&xs0[16..]);
-        // eprintln!("k0 = {:?}", k0);
-
-        // let k0 = u8x32::from_slice(&xs0);
-        // eprintln!("k0 = {:?}", k0);
-
-        // let k0 = build_m256i_from_slice(&xs0);
-        // let k1 = i8x32::from_slice(&xs1);
-        // let k2 = __m256i::simd_from(k1);
-
-        // let k0 = build_m256i_from_slice(&xs0);
-
-        // let k0 = u8x32::from_slice(&xs0);
-        // let k1 = __m256i::simd_from(k0);
-
-        // let k1 = build_m256i_from_slice(&xs0);
-        // let k2 = u8x32::simd_from(k1);
-        // let k3 = __m256i::simd_from(k2);
-        // let k4 = u8x32::simd_from(k3);
-
-        // // eprintln!("k0 = {:?}", k0);
-        // eprintln!("k1 = {:?}", k1);
-        // eprintln!("k2 = {:?}", k2);
-        // eprintln!("k3 = {:?}", k3);
-        // eprintln!("k4 = {:?}", k4);
-
-        // eprintln!("k1 == k3 = {:?}", k1 == k3);
-        // eprintln!("k2 == k4 = {:?}", k2 == k4);
-
-        // let k1: __m256i = __m256i::simd_from(k0);
-        // eprintln!("k1 = {:?}", k1);
-
-        // let a = u8x32::splat(1);
-
-        let ws = &nn.layers[0].prev.prev.prev.prev.weights;
-
-        // eprintln!("ws.len() = {:?}", ws.len());
-        // let k0 = ws.iter().filter(|x| **x > 127 || **x < -127).count();
-        // eprintln!("k0 = {:?}", k0);
-
-        // let k0 = unsafe { _mm256_set_epi64x(xs[0],xs[1],xs[2],xs[3]) };
-        // let k0 = build_m256i_from_slice(&xs);
-
-        // eprintln!("k0 = {:?}", k0);
-
-        // let k1 = k0 + a;
-        // eprintln!("k1 = {:?}", k1);
-
-        // let xs2: &[i64] = &xs;
-        // let xs3: &[__m256i] = unsafe {
-        //     unimplemented!()
-        // };
-
-        // eprintln!("xs3[0] = {:?}", xs3[0]);
-
-        // let k0 = unsafe { _mm256_set_epi64x(1,2,3,4) };
-        // eprintln!("k0 = {:?}", k0);
-        // let k1 = unsafe {
-        //     // _mm256_extract_epi8::<0>(k0)
-        //     _mm256_extract_epi32::<6>(k0)
-        //     // _mm256_extracti128_si256::<1>(k0)
-        // };
-        // eprintln!("k1 = {:?}", k1);
-        // let k2 = k1.to_ne_bytes();
-        // eprintln!("k2 = {:?}", k2);
-
-        return Ok(());
-
-        // let mut tfs = vec![];
-        // for bucket in 0..8 {
-        //     nn.ft.accum.needs_refresh = [true; 2];
-        //     let mut transformed = [0; HALF_DIMS * 2];
-        //     let psqt = nn.ft.transform(&g, &mut transformed, bucket, true);
-        //     tfs.push(transformed);
+        // for x in xs.iter() {
+        //     let k0 = LayerX::get_weight_index(*x);
+        //     eprintln!("k0 = {:?}", k0);
         // }
+
+        return Ok(());
 
         // baseline =  50_000 = 0.42
         // baseline = 100_000 = 0.962
 
-        println!("starting");
-        let t0 = std::time::Instant::now();
-        for n in 0..100000 {
-            // for bucket in 0..8 {
-            //     nn.layers[bucket].propagate(&tfs[bucket]);
-            // }
-            // let _ = nn.trace_eval(&g, false);
-            nn.ft.accum.needs_refresh = [true; 2];
-            let _ = nn.evaluate(&g, false, true);
-        }
-        let t1 = t0.elapsed().as_secs_f64();
-        eprintln!("finished in {:.3} seconds", t1);
+        // println!("starting");
+        // let t0 = std::time::Instant::now();
+        // for n in 0..100000 {
+        //     // for bucket in 0..8 {
+        //     //     nn.layers[bucket].propagate(&tfs[bucket]);
+        //     // }
+        //     // let _ = nn.trace_eval(&g, false);
+        //     nn.ft.accum.needs_refresh = [true; 2];
+        //     let _ = nn.evaluate(&g, false, true);
+        // }
+        // let t1 = t0.elapsed().as_secs_f64();
+        // eprintln!("finished in {:.3} seconds", t1);
 
-        return Ok(());
+        // return Ok(());
 
         // eprintln!("g.to_fen() = {:?}", g.to_fen());
         // eprintln!("g = {:?}", g);

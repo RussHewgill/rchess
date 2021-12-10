@@ -17,6 +17,8 @@ use byteorder::{ReadBytesExt, LittleEndian, WriteBytesExt};
 #[derive(Debug,Eq,PartialEq,PartialOrd,Ord,Clone)]
 pub struct NNFeatureTrans {
     pub biases:         Vec<i16>, // 1024
+
+    // pub weights:        [i16; Self::DIMS_IN * HALF_DIMS], // stack overflows
     pub weights:        Vec<i16>, // 1024 * INPUT = 23068672
     pub psqt_weights:   Vec<i32>, // INPUT * PSQT_BUCKETS = 180224
 
@@ -41,6 +43,7 @@ impl NNFeatureTrans {
             // nn,
             biases:         vec![0; HALF_DIMS],
             weights:        vec![0; HALF_DIMS * Self::DIMS_IN],
+            // weights:        [0; HALF_DIMS * Self::DIMS_IN],
             psqt_weights:   vec![0; Self::DIMS_IN * Self::PSQT_BUCKETS],
 
             accum:          NNAccum::new(),
@@ -242,8 +245,11 @@ impl NNFeatureTrans {
         //     *a += self.weights[offset + k];
         // });
 
+        let mut accum = &mut self.accum.accum[persp][..HALF_DIMS];
+        let mut weights = &mut self.weights[offset..offset + HALF_DIMS];
+
         for j in 0..HALF_DIMS {
-            self.accum.accum[persp][j] += self.weights[offset + j];
+            accum[j] += weights[j];
         }
         for k in 0..Self::PSQT_BUCKETS {
             self.accum.psqt[persp][k] += self.psqt_weights[d_add * Self::PSQT_BUCKETS + k];

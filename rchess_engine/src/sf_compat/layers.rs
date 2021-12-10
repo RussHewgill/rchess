@@ -136,12 +136,12 @@ mod nn_affine {
         const INPUT_SIMD_WIDTH: usize = 32;
         const MAX_NUM_OUTPUT_REGS: usize = 8;
 
-        // /// AVX
+        // /// sse ?
         // const INPUT_SIMD_WIDTH: usize = 16;
         // const MAX_NUM_OUTPUT_REGS: usize = 8;
 
-        // const INPUT_SIMD_WIDTH: usize = 16;
-        // const MAX_NUM_OUTPUT_REGS: usize = 8;
+        // const INPUT_SIMD_WIDTH: usize = 1;
+        // const MAX_NUM_OUTPUT_REGS: usize = 1;
 
         // const INPUT_SIMD_WIDTH: usize = {
         //     // #[cfg(feature = "null_pruning")]
@@ -175,13 +175,26 @@ mod nn_affine {
 
     impl<Prev: NNLayer, const OS: usize> NNAffine<Prev, OS> {
 
-        fn _get_weight_index(idx: usize) -> usize {
+        // XXX: fix
+        pub fn get_weight_index(idx: usize) -> usize {
+            if Self::INPUT_SIMD_WIDTH == 1 {
+                idx
+            } else if Self::SIZE_INPUT_PADDED >= 128 {
+                // Self::_get_weight_index(idx)
+                idx
+            } else {
+                // Self::_get_weight_index_scrambled(idx)
+                idx
+            }
+        }
+
+        pub fn _get_weight_index_scrambled(idx: usize) -> usize {
             (idx / 4) % (Self::SIZE_INPUT_PADDED / 4) * (Self::SIZE_OUTPUT * 4)
                 + idx / Self::SIZE_INPUT_PADDED * 4
                 + idx % 4
         }
 
-        fn get_weight_index(idx: usize) -> usize {
+        pub fn _get_weight_index(idx: usize) -> usize {
 
             // const IndexType smallBlock = (i / SmallBlockSize) % NumSmallBlocksInBigBlock;
             let small_block = (idx / Self::SMALL_BLOCK_SIZE)
@@ -419,6 +432,58 @@ mod nn_affine {
             // unimplemented!()
         }
 
+        pub fn _propagate_avx2_small(&mut self, trans_features: &[u8]) {
+            self.prev.propagate(trans_features);
+            let input = self.prev.get_buf();
+
+            for i in 0..Self::SIZE_OUTPUT {
+                let offset = i * Self::SIZE_INPUT_PADDED;
+                let mut sum: i32 = self.biases[i];
+                for (j,x) in input.iter().enumerate() {
+                    let x: i32 = x.as_();
+                    let x0 = self.weights[offset + j] as i32 * x;
+                    sum += x0;
+                }
+                self.buffer[i] = sum as i32;
+            }
+        }
+
+        // #[cfg(feature = "nope")]
+        pub fn _propagate_avx2_large(&mut self, trans_features: &[u8]) {
+            self.prev.propagate(trans_features);
+            let input = self.prev.get_buf();
+
+            // assert!(input.len() == Self::SIZE_INPUT_PADDED);
+            assert!(input.len() == Self::SIZE_INPUT);
+
+            // // Safe as long as InputType is u8
+            // let input: &[u8] = unsafe {
+            //     let ptr = input.as_ptr() as *const u8;
+            //     std::slice::from_raw_parts(ptr, input.len())
+            // };
+
+            // use safe_arch::*;
+
+            // assert_eq!(input.len() % 32, 0);
+
+            // let xs: Vec<m256i> = input.array_chunks::<32>()
+            //     .map(|&a| m256i::from(a))
+            //     .collect();
+
+            for i in 0..Self::SIZE_OUTPUT {
+                let offset = i * Self::SIZE_INPUT_PADDED;
+                let mut sum: i32 = self.biases[i];
+                for (j,x) in input.iter().enumerate() {
+                    let x: i32 = x.as_();
+                    let x0 = self.weights[offset + j] as i32 * x;
+                    sum += x0;
+                }
+                self.buffer[i] = sum as i32;
+            }
+
+        }
+
+
     }
 
     /// Approach 2:
@@ -431,6 +496,7 @@ mod nn_affine {
     ///   - inputs are processed in chunks of 4, weights are respectively transposed
     ///   - accumulation happens directly to int32s
     impl<Prev: NNLayer, const OS: usize> NNAffine<Prev, OS> {
+
     }
 
     impl<Prev: NNLayer, const OS: usize> NNLayer for NNAffine<Prev, OS> {
@@ -462,13 +528,19 @@ mod nn_affine {
             &mut self.buffer
         }
 
-        #[cfg(feature = "nope")]
-        fn propagate(&mut self, trans_features: &[u8]) { self._propagate_avx2(trans_features); }
+        // #[cfg(feature = "nope")]
+        fn propagate(&mut self, trans_features: &[u8]) {
+            if Self::SIZE_INPUT_PADDED >= 128 {
+                self._propagate_avx2_large(trans_features);
+            } else {
+                self._propagate_avx2_small(trans_features);
+            }
+        }
 
         #[cfg(feature = "nope")]
         fn propagate(&mut self, trans_features: &[u8]) { self._propagate_ndarray(trans_features); }
 
-        // #[cfg(feature = "nope")]
+        #[cfg(feature = "nope")]
         fn propagate(&mut self, trans_features: &[u8]) {
 
             // eprintln!("affine propagate");
@@ -476,6 +548,7 @@ mod nn_affine {
 
             self.prev.propagate(trans_features);
             let input = self.prev.get_buf();
+            // let input = &input[..Self::SIZE_INPUT];
 
             // let input: &[u8] = unsafe {
             //     let ptr = input.as_ptr();
@@ -488,11 +561,21 @@ mod nn_affine {
 
             // eprintln!("Self::SIZE_INPUT_PADDED = {:?}", Self::SIZE_INPUT_PADDED);
 
+            // assert!(self.biases.len() >= Self::SIZE_OUTPUT);
+            // assert!(self.weights.len() >= Self::SIZE_OUTPUT * Self::SIZE_INPUT_PADDED);
+
+            // let input: &[u8] = unsafe {
+            //     let ptr = input.as_ptr();
+            //     let ptr = ptr as *const u8;
+            //     std::slice::from_raw_parts(ptr, input.len())
+            // };
+
             for i in 0..Self::SIZE_OUTPUT {
 
                 let offset = i * Self::SIZE_INPUT_PADDED;
 
                 let mut sum: i32 = self.biases[i];
+                // let mut sum: i32 = unsafe { *self.biases.get_unchecked(i) }; // no benefit
 
                 // for j in 0..Self::SIZE_INPUT {
                 //     // if let Some(x) = input.get(j) {
@@ -508,6 +591,7 @@ mod nn_affine {
                 for (j,x) in input.iter().enumerate() {
                     let x: i32 = x.as_();
                     let x0 = self.weights[offset + j] as i32 * x;
+                    // let x0 = unsafe { *self.weights.get_unchecked(offset + j) } as i32 * x;
                     sum += x0;
                 }
 

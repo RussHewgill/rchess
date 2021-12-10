@@ -62,16 +62,10 @@ mod wat {
     use super::*;
 
     pub fn simd_mm_0<const IS: usize, const OS: usize>(
-        // input:             &[i8],
-        // weights:           &[i8],
-        // biases:            &[i32],
-        // mut output:        &mut [i32]
-        // input:             &[i8; IS],
-        // weights:           &[i8],
-        input:             &[i32; IS],
+        input:             &[i32],
         weights:           &[i32],
-        biases:            &[i32; OS],
-        mut output:        &mut [i32; OS],
+        biases:            &[i32],
+        mut output:        &mut [i32],
     ) {
 
         let input      = &input[0..IS];
@@ -82,10 +76,17 @@ mod wat {
         for i in 0..OS {
             let offset = i * IS;
             let mut sum: i32 = biases[i];
+
             for j in 0..IS {
                 let x: i32 = input[j] as i32;
                 sum += weights[offset + j] as i32 * x;
             }
+
+            // for (j,x) in input.iter().enumerate() {
+            //     // let x: i32 = *x as i32;
+            //     sum += weights[offset + j] as i32 * x;
+            // }
+
             output[i] = sum;
         }
 
@@ -93,17 +94,18 @@ mod wat {
 
     /// C_ij is the dot of A(row i) and B(col j)
     pub fn simd_mm_2<const IS: usize, const OS: usize>(
-        // input:             &[i32],
+        input:             &[i32],
         // weights:           &[i32],
-        // biases:            &[i32],
-        // mut output:        &mut [i32],
-        input:             &[i32; IS],
         weights:           &[[i32; IS]; OS],
-        // weights:           &[i32],
-        biases:            &[i32; OS],
-        mut output:        &mut [i32; OS]
+        biases:            &[i32],
+        mut output:        &mut [i32]
     ) {
         use std::simd::*;
+
+        let input      = &input[0..IS];
+        // let weights    = &weights[0..IS * OS];
+        let biases     = &biases[0..OS];
+        let mut output = &mut output[0..OS];
 
         // shape input   = 1024, 1
         // shape weights = 8, 1024
@@ -112,14 +114,24 @@ mod wat {
 
             // let x = input[i];
 
-            // let mut sum = 0;
+            let mut sum = 0;
+            // let mut sum: i32 = biases[i];
+
+            for k in 0..IS {
+                let x = input[k];
+                sum += weights[i][k] * x;
+            }
+
             // for k in 0..IS {
             //     sum += input[k] * weights[i][k];
             // }
 
-            let sum = dot_product(input, &weights[i]);
+            // let sum = dot_product(input, &weights[i..i+IS]);
+            // let sum = dot_product(input, &weights[i]);
 
             output[i] = biases[i] + sum;
+            // output[i] = sum;
+
         }
 
     }
