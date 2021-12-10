@@ -8,6 +8,7 @@
 #![feature(backtrace,backtrace_frames)]
 // #![feature(generic_const_exprs)]
 #![feature(portable_simd)]
+#![feature(array_chunks)]
 
 #![allow(clippy::all)]
 
@@ -1611,6 +1612,32 @@ fn _main_nn() -> std::io::Result<()> {
         // let fen = "8/8/8/8/8/8/8/8 w - - 0 1";
         let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
         let mut g = Game::from_fen(&ts, fen).unwrap();
+
+        use safe_arch::*;
+
+        // let xs: [u8; 32] = array_init::array_init(|x| x as u8);
+        // let xs: [i8; 32] = array_init::array_init(|x| x as i8);
+        let xs: [u8; 64] = array_init::array_init(|x| x as u8);
+        // let xs: [i8; 1024] = array_init::array_init(|x| x as i8);
+        // let xs: [i32; 1024] = array_init::array_init(|x| x as i32);
+        // let xs: [i32; 32] = array_init::array_init(|x| x as i32);
+
+        // let xs2: Vec<m256i> = xs.array_chunks::<32>()
+        //     .map(|&a| m256i::from(a))
+        //     .collect();
+
+        // let xs1: &[u8] = &xs;
+        // let xs2: &[m256i] = unsafe {
+        //     let ptr = xs1.as_ptr();
+        //     let ptr = ptr as *const u8 as *const m256i;
+        //     std::slice::from_raw_parts(ptr, xs1.len() / 32)
+        // };
+
+        // let k0: [u8; 32] = bytemuck::cast(xs2[0]);
+
+        // eprintln!("k0 = {:?}", k0);
+
+        // return Ok(());
 
         // d6b4 -> -599
         let v = nn.evaluate(&g, false, false);

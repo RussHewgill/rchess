@@ -180,8 +180,8 @@ mod nn_affine {
             if Self::INPUT_SIMD_WIDTH == 1 {
                 idx
             } else if Self::SIZE_INPUT_PADDED >= 128 {
-                // Self::_get_weight_index(idx)
-                idx
+                Self::_get_weight_index(idx)
+                // idx
             } else {
                 // Self::_get_weight_index_scrambled(idx)
                 idx
@@ -456,33 +456,148 @@ mod nn_affine {
             // assert!(input.len() == Self::SIZE_INPUT_PADDED);
             assert!(input.len() == Self::SIZE_INPUT);
 
-            // // Safe as long as InputType is u8
-            // let input: &[u8] = unsafe {
-            //     let ptr = input.as_ptr() as *const u8;
-            //     std::slice::from_raw_parts(ptr, input.len())
+            // Safe as long as InputType is u8
+            let input2: &[u8] = unsafe {
+                let ptr = input.as_ptr() as *const u8;
+                std::slice::from_raw_parts(ptr, input.len())
+            };
+
+            use safe_arch::*;
+
+            assert_eq!(input.len() % 32, 0);
+
+            let input_vec: Vec<m256i> = input2.array_chunks::<32>()
+                .map(|&a| m256i::from(a))
+                .collect();
+
+            // // XXX: Segfault?
+            // let input_vec: &[m256i] = unsafe {
+            //     let ptr = input2.as_ptr();
+            //     let ptr = ptr as *const i8 as *const m256i;
+            //     std::slice::from_raw_parts(ptr, input.len() / 32)
             // };
 
-            // use safe_arch::*;
+            // let k0 = input_vec[0];
+            // eprintln!("k0 = {:?}", k0);
 
-            // assert_eq!(input.len() % 32, 0);
+            for big_block in 0..Self::NUM_BIG_BLOCKS {
 
-            // let xs: Vec<m256i> = input.array_chunks::<32>()
-            //     .map(|&a| m256i::from(a))
-            //     .collect();
+                let mut acc = vec![m256i::default(); Self::NUM_OUTPUT_REGS];
 
-            for i in 0..Self::SIZE_OUTPUT {
-                let offset = i * Self::SIZE_INPUT_PADDED;
-                let mut sum: i32 = self.biases[i];
-                for (j,x) in input.iter().enumerate() {
-                    let x: i32 = x.as_();
-                    let x0 = self.weights[offset + j] as i32 * x;
-                    sum += x0;
+                for small_block in (0..Self::NUM_SMALL_BLOCKS_PER_OUTPUT/2).map(|x| x*2) {
+
+                    let w_offset = big_block * Self::BIG_BLOCK_SIZE
+                        + small_block * Self::SMALL_BLOCK_SIZE * Self::NUM_OUTPUT_REGS;
+
+                    let weight_vec = &self.weights[w_offset..w_offset + Self::NUM_OUTPUT_REGS * 2 + 32];
+
+                    let in0 = input_vec[small_block + 0];
+                    let in1 = input_vec[small_block + 1];
+
+                    for k in 0..Self::NUM_OUTPUT_REGS {
+                        let b0 = Self::slice_i8_to_m256i(&weight_vec[k..k+32]);
+                        let b1 = Self::slice_i8_to_m256i(
+                            &weight_vec[k+Self::NUM_OUTPUT_REGS..k+Self::NUM_OUTPUT_REGS+32]);
+                        Self::m256_add_dpbusd_epi32x2(&mut acc[k], in0, b0, in1, b1)
+                    }
+
                 }
-                self.buffer[i] = sum as i32;
+
+                let bias_vec: &[m128i] = unsafe {
+                    let ptr = self.biases.as_ptr();
+                    let ptr = ptr as *const m128i;
+                    std::slice::from_raw_parts(ptr, self.biases.len() / 4)
+                };
+
+                // let bias_vec: Vec<m128i> = self.biases.array_chunks::<4>()
+                //     .map(|&x| m128i::from(x))
+                //     .collect();
+
+                let output_vec: &mut [m128i] = unsafe {
+                    let ptr = self.buffer.as_mut_ptr();
+                    let ptr = ptr as *mut m128i;
+                    std::slice::from_raw_parts_mut(ptr, self.buffer.len() / 4)
+                };
+
+                for k in (0..Self::NUM_OUTPUT_REGS/4).map(|x| x * 4) {
+                    let idx = (big_block * Self::NUM_OUTPUT_REGS + k) / 4;
+                    output_vec[idx] = Self::m256_haddx4(acc[k+0],acc[k+1],acc[k+2],acc[k+2],bias_vec[idx]);
+                }
+
             }
+
+            // eprintln!("input.len() = {:?}", input.len());
+            // eprintln!("input2.len() = {:?}", input2.len());
+
+            // for i in 0..Self::SIZE_OUTPUT {
+            //     let offset = i * Self::SIZE_INPUT_PADDED;
+            //     let mut sum: i32 = self.biases[i];
+            //     for (j,x) in input.iter().enumerate() {
+            //         let x: i32 = x.as_();
+            //         let x0 = self.weights[offset + j] as i32 * x;
+            //         sum += x0;
+            //     }
+            //     self.buffer[i] = sum as i32;
+            // }
 
         }
 
+        pub fn slice_i8_to_m256i(xs: &[i8]) -> safe_arch::m256i {
+            assert!(xs.len() >= 32);
+            use safe_arch::*;
+            let k0: m256i = unsafe {
+                let ptr = xs.get_unchecked(..32).as_ptr();
+                let ptr = ptr as *const u8 as *const std::arch::x86_64::__m256i;
+                let x = std::arch::x86_64::_mm256_loadu_si256(ptr);
+                m256i(x)
+            };
+            k0
+        }
+
+        pub fn slice_u8_to_m256i(xs: &[u8]) -> safe_arch::m256i {
+            assert!(xs.len() >= 32);
+            use safe_arch::*;
+            let k0: m256i = unsafe {
+                let ptr = xs.get_unchecked(..32).as_ptr();
+                let ptr = ptr as *const std::arch::x86_64::__m256i;
+                let x = std::arch::x86_64::_mm256_loadu_si256(ptr);
+                m256i(x)
+            };
+            k0
+        }
+
+        fn m256_add_dpbusd_epi32x2(
+            mut acc: &mut safe_arch::m256i,
+            a0: safe_arch::m256i, b0: safe_arch::m256i,
+            a1: safe_arch::m256i, b1: safe_arch::m256i,
+        ) {
+            use safe_arch::*;
+            let mut product0 = mul_u8i8_add_horizontal_saturating_m256i(a0, b0);
+            let product1 = mul_u8i8_add_horizontal_saturating_m256i(a1, b1);
+            product0 = add_saturating_i16_m256i(product0, product1);
+            product0 = mul_i16_horizontal_add_m256i(product0, set_splat_i16_m256i(1));
+            *acc = add_i32_m256i(*acc, product0);
+        }
+
+        fn m256_haddx4(
+            mut sum0: safe_arch::m256i,
+            sum1:     safe_arch::m256i,
+            mut sum2: safe_arch::m256i,
+            sum3:     safe_arch::m256i,
+            bias:     safe_arch::m128i
+        ) -> safe_arch::m128i {
+            use safe_arch::*;
+
+            sum0 = add_horizontal_i32_m256i(sum0, sum1);
+            sum2 = add_horizontal_i32_m256i(sum2, sum3);
+
+            sum0 = add_horizontal_i32_m256i(sum0, sum2);
+
+            let sum128lo = cast_to_m128i_from_m256i(sum0);
+            let sum128hi = extract_m128i_m256i::<1>(sum0);
+
+            add_i32_m128i(add_i32_m128i(sum128lo, sum128hi), bias)
+        }
 
     }
 
