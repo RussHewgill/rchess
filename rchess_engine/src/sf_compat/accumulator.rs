@@ -21,7 +21,7 @@ pub struct NNAccum {
     // pub deltas_add:      ArrayVec<usize, 6>, // 2 moves
     // pub deltas_rem:      ArrayVec<usize, 6>, // 2 moves
     // pub stack:           ArrayVec<NNDelta, 300>,
-    pub stack:           Vec<NNDelta>,
+    // pub stack:           Vec<NNDelta>,
 
     pub needs_refresh:   [bool; 2],
 }
@@ -35,7 +35,7 @@ impl NNAccum {
             // deltas_add:       ArrayVec::default(),
             // deltas_rem:       ArrayVec::default(),
             // stack:            ArrayVec::default(),
-            stack:            Vec::with_capacity(1024),
+            // stack:            Vec::with_capacity(1024),
             needs_refresh:    [true; 2],
         }
     }

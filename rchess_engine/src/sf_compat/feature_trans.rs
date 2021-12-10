@@ -199,21 +199,21 @@ impl NNFeatureTrans {
     #[inline(always)]
     pub fn accum_pop(&mut self) {}
 
-    #[inline(always)]
-    pub fn _accum_pop(&mut self) {
-        if let Some(delta) = self.accum.stack.pop() {
-            match delta {
-                NNDelta::Add(d_add)    => {
-                    self.accum_add(White, d_add, false);
-                    self.accum_add(Black, d_add, false);
-                },
-                NNDelta::Remove(d_rem) => {
-                    self.accum_rem(White, d_rem, false);
-                    self.accum_rem(Black, d_rem, false);
-                },
-            }
-        }
-    }
+    // #[inline(always)]
+    // pub fn _accum_pop(&mut self) {
+    //     if let Some(delta) = self.accum.stack.pop() {
+    //         match delta {
+    //             NNDelta::Add(d_add)    => {
+    //                 self.accum_add(White, d_add, false);
+    //                 self.accum_add(Black, d_add, false);
+    //             },
+    //             NNDelta::Remove(d_rem) => {
+    //                 self.accum_rem(White, d_rem, false);
+    //                 self.accum_rem(Black, d_rem, false);
+    //             },
+    //         }
+    //     }
+    // }
 
     pub fn accum_add(&mut self, persp: Color, d_add: usize, push: bool) {
         let offset = HALF_DIMS * d_add;
@@ -223,9 +223,9 @@ impl NNFeatureTrans {
         for k in 0..Self::PSQT_BUCKETS {
             self.accum.psqt[persp][k] += self.psqt_weights[d_add * Self::PSQT_BUCKETS + k];
         }
-        if push {
-            self.accum.stack.push(NNDelta::Remove(d_add));
-        }
+        // if push {
+        //     self.accum.stack.push(NNDelta::Remove(d_add));
+        // }
     }
 
     pub fn accum_rem(&mut self, persp: Color, d_rem: usize, push: bool) {
@@ -237,9 +237,9 @@ impl NNFeatureTrans {
             self.accum.psqt[persp][k] -= self.psqt_weights[d_rem * Self::PSQT_BUCKETS + k];
         }
         // TODO: for mut p in self.accum.psqt.iter_mut()
-        if push {
-            self.accum.stack.push(NNDelta::Add(d_rem));
-        }
+        // if push {
+        //     self.accum.stack.push(NNDelta::Add(d_rem));
+        // }
     }
 
     // pub fn apply_deltas(&mut self, persp: Color) {
