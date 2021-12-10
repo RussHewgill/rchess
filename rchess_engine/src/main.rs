@@ -28,7 +28,7 @@ use std::str::FromStr;
 
 use itertools::Itertools;
 
-use rchess_engine_lib::timer;
+use rchess_engine_lib::{timer, eprint_self};
 use rchess_engine_lib::explore::*;
 use rchess_engine_lib::opening_book::*;
 use rchess_engine_lib::qsearch::*;
@@ -460,13 +460,17 @@ fn main_simd() {
     const OS: usize = 8;
     const IS: usize = 1024;
 
-    // let input: [i8; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
-    // let weights: Vec<i8>  = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
-    let input: [i32; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
-    let weights: Vec<i32>  = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
+    let input: [i8; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
+    let weights: Vec<i8>  = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
+    // let input: [i32; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
+    // let weights: Vec<i32>  = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
 
-    let biases: [i32; OS] = array_init::array_init(|_| rng.gen_range(-100..100));
-    let mut output        = [0i32; OS];
+    let input: [i32; IS] = array_init::array_init(|k| input[k] as i32);
+    let weights: Vec<i32> = weights.into_iter().map(|x| x as i32).collect();
+
+    // let biases: [i32; OS] = array_init::array_init(|_| rng.gen_range(-100..100));
+    let biases     = [0i32; OS];
+    let mut output = [0i32; OS];
 
     // let input: [i32; ISP] = array_init::array_init(|_| rng.gen_range(0..2));
     // let weights: Vec<i32> = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
@@ -475,23 +479,73 @@ fn main_simd() {
 
     use rchess_engine_lib::simd_test::*;
 
+    // let x: [i32; 4] = array_init::array_init(|_| rng.gen_range(0..2));
+    // let a: [i32; 4*4] = array_init::array_init(|_| rng.gen_range(-10..10));
+    // let mut a2: [[i32; 4]; 4] = [[0; 4]; 4];
+    // for x in 0..4 {
+    //     for y in 0..4 {
+    //         // let k0 = x + y * 4;
+    //         let k1 = y + x * 4;
+    //         a2[x][y] = a[k1]
+    //     }
+    // }
+    // let b: [i32; 4] = [0; 4];
+    // let mut result = [0i32; 4];
+
+    // // eprintln!("x = {:?}", x);
+    // // eprint_self!(&a[0..4]);
+    // // eprint_self!(&a[4..8]);
+    // // eprint_self!(&a[8..12]);
+    // // eprint_self!(&a[12..16]);
+    // // eprintln!();
+    // // eprint_self!(&a2[0]);
+    // // eprint_self!(&a2[1]);
+    // // eprint_self!(&a2[2]);
+    // // eprint_self!(&a2[3]);
+    // // eprintln!();
+    // // correct = [-10, 11, -9, -19]
+    // simd_mm_0::<4,4>(&x,&a,&b,&mut result);
+    // eprintln!("result 0 = {:?}", result);
+    // simd_mm_2::<4,4>(&x,&a2,&b,&mut result);
+    // eprintln!("result 1 = {:?}", result);
+    // return;
+
     // let t0 = Instant::now();
     // for _ in 0..500_000 {
     //     simd_mm_0::<IS,OS>(&input, &weights, &biases, &mut output);
     // }
     // let t1 = t0.elapsed().as_secs_f64();
     // eprintln!("finished in {:.3} seconds", t1);
+    // let sum: i32 = output.iter().sum();
+    // eprintln!("sum = {:?}", sum); // -2055
 
-    // simd_mm_2::<IS,OS>(&input, &weights, &biases, &mut output);
+    let mut weights2 = [[0; IS]; OS];
+    for i in 0..OS {
+        let offset = i * IS;
+        weights2[i].copy_from_slice(&weights[offset..offset+IS]);
+    }
 
-    simd_nd_mm_3::<IS,OS>(&input, &weights, &biases, &mut output);
+    // eprintln!("weights[0..8] = {:?}", &weights[0..8]);
+    // eprintln!("weights[-8..] = {:?}", &weights[weights.len() - 8..]);
+    // eprint_self!(&weights2[0][0..8]);
+    // eprint_self!(&weights2[OS-1][IS - 8 ..]);
 
-    // let t0 = Instant::now();
-    // for _ in 0..500_000 {
-    //     simd_mm_2::<IS,OS>(&input, &weights, &biases, &mut output);
-    // }
-    // let t1 = t0.elapsed().as_secs_f64();
-    // eprintln!("finished in {:.3} seconds", t1);
+    // simd_mm_0::<IS,OS>(&input, &weights, &biases, &mut output);
+    // let sum: i32 = output.iter().sum();
+    // eprintln!("sum = {:?}", sum); // -2055
+
+    // simd_mm_2::<IS,OS>(&input, &weights2, &biases, &mut output);
+    // let sum: i32 = output.iter().sum();
+    // eprintln!("sum = {:?}", sum); // -2055
+
+    // simd_nd_mm_3::<IS,OS>(&input, &weights, &biases, &mut output);
+
+    let t0 = Instant::now();
+    for _ in 0..500_000 {
+        simd_mm_2::<IS,OS>(&input, &weights2, &biases, &mut output);
+    }
+    let t1 = t0.elapsed().as_secs_f64();
+    eprintln!("finished in {:.3} seconds", t1);
 
     eprintln!("output[0..8] = {:?}", &output[0..8]); // -482, -165, -278
     let sum: i32 = output.iter().sum();

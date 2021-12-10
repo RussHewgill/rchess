@@ -57,75 +57,96 @@ pub fn simd_1(dst: &mut [f32], src: &[f32], gain_l: f32, gain_r: f32) {
 
 }
 
-pub fn simd_mm_0<const IS: usize, const OS: usize>(
-    input:             &[i8],
-    weights:           &[i8],
-    biases:            &[i32],
-    mut output:        &mut [i32]
-) {
+pub use wat::*;
+mod wat {
+    use super::*;
 
-    let input      = &input[0..IS];
-    let weights    = &weights[0..IS * OS];
-    let biases     = &biases[0..OS];
-    let mut output = &mut output[0..OS];
+    pub fn simd_mm_0<const IS: usize, const OS: usize>(
+        // input:             &[i8],
+        // weights:           &[i8],
+        // biases:            &[i32],
+        // mut output:        &mut [i32]
+        // input:             &[i8; IS],
+        // weights:           &[i8],
+        input:             &[i32; IS],
+        weights:           &[i32],
+        biases:            &[i32; OS],
+        mut output:        &mut [i32; OS],
+    ) {
 
-    for i in 0..OS {
-        let offset = i * IS;
-        let mut sum = biases[i];
-        for j in 0..IS {
-            let x = input[j] as i32;
-            sum += weights[offset + j] as i32 * x;
+        let input      = &input[0..IS];
+        let weights    = &weights[0..IS * OS];
+        let biases     = &biases[0..OS];
+        let mut output = &mut output[0..OS];
+
+        for i in 0..OS {
+            let offset = i * IS;
+            let mut sum: i32 = biases[i];
+            for j in 0..IS {
+                let x: i32 = input[j] as i32;
+                sum += weights[offset + j] as i32 * x;
+            }
+            output[i] = sum;
         }
-        output[i] = sum;
-    }
-}
 
-/// C_ij is the dot of A(row i) and B(col j)
-pub fn simd_mm_2<const IS: usize, const OS: usize>(
-    // input:             &[i8],
-    // weights:           &[i8],
-    input:             &[i32],
-    weights:           &[i32],
-    biases:            &[i32],
-    mut output:        &mut [i32]
-) {
-    use std::simd::*;
-
-    // shape input   = 1024, 1
-    // shape weights = 8, 1024
-
-    for i in 0..OS {
-
-        // let sum = dot_product(&weights[i..i+1024], input);
-
-        // let sum = dot_product(&weights[]);
-
-        // output[i] = sum;
     }
 
-}
+    /// C_ij is the dot of A(row i) and B(col j)
+    pub fn simd_mm_2<const IS: usize, const OS: usize>(
+        // input:             &[i32],
+        // weights:           &[i32],
+        // biases:            &[i32],
+        // mut output:        &mut [i32],
+        input:             &[i32; IS],
+        weights:           &[[i32; IS]; OS],
+        // weights:           &[i32],
+        biases:            &[i32; OS],
+        mut output:        &mut [i32; OS]
+    ) {
+        use std::simd::*;
 
-pub fn dot_product(a: &[i32], b: &[i32]) -> i32 {
-    use std::simd::*;
+        // shape input   = 1024, 1
+        // shape weights = 8, 1024
 
-    assert_eq!(a.len(), b.len());
-    assert!(a.len() % 4 == 0);
+        for i in 0..OS {
 
-    let mut sum = a.array_chunks::<4>()
-        .map(|&x| i32x4::from_array(x))
-        .zip(b.array_chunks::<4>().map(|&y| i32x4::from_array(y)))
-        .map(|(a,b)| (a * b).horizontal_sum())
-        .sum();
+            // let x = input[i];
 
-    // let mut sum = a.array_chunks::<4>()
-    //     .map(|&x| i32x4::from_array(x))
-    //     .zip(b.array_chunks::<4>().map(|&y| i32x4::from_array(y)))
-    //     .map(|(a,b)| a * b)
-    //     // .fold(i32x4::splat(0), std::ops::Add)
-    //     .sum::<i32x4>()
-    //     .horizontal_sum();
+            // let mut sum = 0;
+            // for k in 0..IS {
+            //     sum += input[k] * weights[i][k];
+            // }
 
-    sum
+            let sum = dot_product(input, &weights[i]);
+
+            output[i] = biases[i] + sum;
+        }
+
+    }
+
+    pub fn dot_product(a: &[i32], b: &[i32]) -> i32 {
+        use std::simd::*;
+
+        assert_eq!(a.len(), b.len());
+        assert!(a.len() % 4 == 0);
+
+        // let mut sum = a.array_chunks::<4>()
+        //     .map(|&x| i32x4::from_array(x))
+        //     .zip(b.array_chunks::<4>().map(|&y| i32x4::from_array(y)))
+        //     .map(|(a,b)| (a * b).horizontal_sum())
+        //     .sum();
+
+        let mut sum = a.array_chunks::<4>()
+            .map(|&x| i32x4::from_array(x))
+            .zip(b.array_chunks::<4>().map(|&y| i32x4::from_array(y)))
+            .map(|(a,b)| a * b)
+            // .fold(i32x4::splat(0), std::ops::Add)
+            .sum::<i32x4>()
+            .horizontal_sum();
+
+        sum
+    }
+
 }
 
 // pub fn simd_mm_1<const IS: usize, const OS: usize>(
