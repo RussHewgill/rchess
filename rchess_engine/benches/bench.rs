@@ -143,17 +143,22 @@ pub fn crit_bench_simd(c: &mut Criterion) {
     const IS: usize = 1024;
     const OS: usize = 8;
 
-    let input: [u8; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
+    let input: [i8; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
     let weights: Vec<i8>  = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
     let biases: [i32; OS] = array_init::array_init(|_| rng.gen_range(-100..100));
     let mut output = [0i32; OS];
 
-    group.bench_function("SIMD mm 0", |b| b.iter(|| {
-        simd_mm_0::<IS,OS>(black_box(&input), &weights, &biases, &mut output);
-    }));
+    // group.bench_function("SIMD mm 0", |b| b.iter(|| {
+    //     simd_mm_0::<IS,OS>(black_box(&input), &weights, &biases, &mut output);
+    // }));
 
-    group.bench_function("SIMD mm 1", |b| b.iter(|| {
-        simd_mm_1::<IS,OS>(black_box(&input), &weights, &biases, &mut output);
+    // group.bench_function("SIMD mm 1", |b| b.iter(|| {
+    //     simd_mm_1::<IS,OS>(black_box(&input), &weights, &biases, &mut output);
+    //     // SIMD_01::<IS,OS>::simd_mm(black_box(&input), &weights, &biases, &mut output);
+    // }));
+
+    group.bench_function("SIMD mm 2", |b| b.iter(|| {
+        simd_mm_2::<IS,OS>(black_box(&input), &weights, &biases, &mut output);
         // SIMD_01::<IS,OS>::simd_mm(black_box(&input), &weights, &biases, &mut output);
     }));
 
@@ -166,24 +171,24 @@ pub fn crit_bench_simd(c: &mut Criterion) {
     //     );
     // }));
 
-    use ndarray as nd;
-    use nd::{Array2,ArrayView2,ArrayViewMut2,ShapeBuilder};
+    // use ndarray as nd;
+    // use nd::{Array2,ArrayView2,ArrayViewMut2,ShapeBuilder};
 
-    let input: nd::Array2<u8> = nd::Array2::from_shape_vec((IS, 1), input.to_vec()).unwrap();
-    let weights: nd::Array2<i8> = nd::Array2::from_shape_vec((IS,OS).f(), weights).unwrap();
-    let weights = weights.reversed_axes();
-    let biases: nd::Array2<i32> = nd::Array2::from_shape_vec((OS, 1), biases.to_vec()).unwrap();
+    // let input: nd::Array2<i8> = nd::Array2::from_shape_vec((IS, 1), input.to_vec()).unwrap();
+    // let weights: nd::Array2<i8> = nd::Array2::from_shape_vec((IS,OS).f(), weights).unwrap();
+    // let weights = weights.reversed_axes();
+    // let biases: nd::Array2<i32> = nd::Array2::from_shape_vec((OS, 1), biases.to_vec()).unwrap();
 
-    let mut result = nd::Array2::<i32>::zeros((OS,1));
+    // let mut result = nd::Array2::<i32>::zeros((OS,1));
 
-    group.bench_function("SIMD ndarray mm 1", |b| b.iter(|| {
-        simd_nd_mm_1::<IS,OS>(
-            black_box(input.view()),
-            weights.view(),
-            biases.view(),
-            &mut result,
-        );
-    }));
+    // group.bench_function("SIMD ndarray mm 1", |b| b.iter(|| {
+    //     simd_nd_mm_1::<IS,OS>(
+    //         black_box(input.view()),
+    //         weights.view(),
+    //         biases.view(),
+    //         &mut result,
+    //     );
+    // }));
 
     group.finish();
 }

@@ -223,8 +223,25 @@ impl NNFeatureTrans {
         }
     }
 
+    #[inline(always)]
     pub fn accum_add(&mut self, persp: Color, d_add: usize, push: bool) {
         let offset = HALF_DIMS * d_add;
+
+        // assert!(self.weights.len() >= self.accum.accum[persp].len() + offset);
+
+        // let accum = &self.accum.accum;
+
+        // self.accum.accum[persp].iter_mut().zip(self.weights[offset..offset + accum.len()].iter()).for_each(|(a,w)| {
+
+        // self.accum.accum[persp].iter_mut().zip(self.weights[offset..].iter()).for_each(|(a,w)| {
+        //     *a += w;
+        // });
+
+        // self.accum.accum[persp].iter_mut().enumerate().for_each(|(k,a)| {
+        //     // if let Some(offset)
+        //     *a += self.weights[offset + k];
+        // });
+
         for j in 0..HALF_DIMS {
             self.accum.accum[persp][j] += self.weights[offset + j];
         }
@@ -236,6 +253,7 @@ impl NNFeatureTrans {
         // }
     }
 
+    #[inline(always)]
     pub fn accum_rem(&mut self, persp: Color, d_rem: usize, push: bool) {
         let offset = HALF_DIMS * d_rem;
         for j in 0..HALF_DIMS {

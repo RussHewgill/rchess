@@ -1,6 +1,9 @@
 
 use std::arch::x86_64::{__m256i,__m128i};
 
+use ndarray as nd;
+use nd::{Array2,ArrayView2,ArrayViewMut2,ShapeBuilder};
+
 pub fn simd_0(dst: &mut [f32], src: &[f32], gain_l: f32, gain_r: f32) {
     for i in 0..src.len() {
         dst[i * 2 + 0] = src[i] * gain_l;
@@ -75,6 +78,54 @@ pub fn simd_mm_0<const IS: usize, const OS: usize>(
         }
         output[i] = sum;
     }
+}
+
+/// C_ij is the dot of A(row i) and B(col j)
+pub fn simd_mm_2<const IS: usize, const OS: usize>(
+    // input:             &[i8],
+    // weights:           &[i8],
+    input:             &[i32],
+    weights:           &[i32],
+    biases:            &[i32],
+    mut output:        &mut [i32]
+) {
+    use std::simd::*;
+
+    // shape input   = 1024, 1
+    // shape weights = 8, 1024
+
+    for i in 0..OS {
+
+        // let sum = dot_product(&weights[i..i+1024], input);
+
+        // let sum = dot_product(&weights[]);
+
+        // output[i] = sum;
+    }
+
+}
+
+pub fn dot_product(a: &[i32], b: &[i32]) -> i32 {
+    use std::simd::*;
+
+    assert_eq!(a.len(), b.len());
+    assert!(a.len() % 4 == 0);
+
+    let mut sum = a.array_chunks::<4>()
+        .map(|&x| i32x4::from_array(x))
+        .zip(b.array_chunks::<4>().map(|&y| i32x4::from_array(y)))
+        .map(|(a,b)| (a * b).horizontal_sum())
+        .sum();
+
+    // let mut sum = a.array_chunks::<4>()
+    //     .map(|&x| i32x4::from_array(x))
+    //     .zip(b.array_chunks::<4>().map(|&y| i32x4::from_array(y)))
+    //     .map(|(a,b)| a * b)
+    //     // .fold(i32x4::splat(0), std::ops::Add)
+    //     .sum::<i32x4>()
+    //     .horizontal_sum();
+
+    sum
 }
 
 // pub fn simd_mm_1<const IS: usize, const OS: usize>(
@@ -306,22 +357,25 @@ impl<const IS: usize, const OS: usize> SIMD_01<IS,OS> {
 
 }
 
-use ndarray as nd;
-use nd::{Array2,ArrayView2,ArrayViewMut2,ShapeBuilder};
-
 pub fn simd_nd_mm_0<const IS: usize, const OS: usize>(
-    input:             &[u8],
+    input:             &[i8],
     weights:           &[i8],
     biases:            &[i32],
     mut output:        &mut [i32]
 ) {
-    let input: nd::Array2<u8> = nd::Array2::from_shape_vec((IS, 1), input.to_vec()).unwrap();
+    let input: nd::Array2<i8> = nd::Array2::from_shape_vec((IS, 1), input.to_vec()).unwrap();
     let weights: nd::Array2<i8> = nd::Array2::from_shape_vec((IS,OS).f(), weights.to_vec()).unwrap();
     let weights = weights.reversed_axes();
     let biases: nd::Array2<i32> = nd::Array2::from_shape_vec((OS, 1), biases.to_vec()).unwrap();
+
+    eprintln!("input.shape() = {:?}", input.shape());     // 1024, 1
+    eprintln!("weights.shape() = {:?}", weights.shape()); // 8, 1024
+    eprintln!("biases.shape() = {:?}", biases.shape());   // 8, 1
+
     let input   = input.map(|x| *x as i32);
     let weights = weights.map(|x| *x as i32);
     let biases  = biases.map(|x| *x as i32);
+
     let result = weights.dot(&input) + &biases;
     output.copy_from_slice(result.as_slice().unwrap());
 }
@@ -337,3 +391,38 @@ pub fn simd_nd_mm_1<const IS: usize, const OS: usize>(
     let biases  = biases.map(|x| *x as i32);
     *result = weights.dot(&input) + &biases;
 }
+
+pub fn simd_nd_mm_3<const IS: usize, const OS: usize>(
+    input:             &[i32],
+    weights:           &[i32],
+    biases:            &[i32],
+    mut output:        &mut [i32]
+) {
+    let input: nd::Array2<i32> = nd::Array2::from_shape_vec((IS, 1), input.to_vec()).unwrap();
+    let weights: nd::Array2<i32> = nd::Array2::from_shape_vec((IS,OS).f(), weights.to_vec()).unwrap();
+    let weights = weights.reversed_axes();
+    let biases: nd::Array2<i32> = nd::Array2::from_shape_vec((OS, 1), biases.to_vec()).unwrap();
+
+    // eprintln!("input.shape() = {:?}", input.shape());     // 1024, 1
+    // eprintln!("weights.shape() = {:?}", weights.shape()); // 8, 1024
+    // eprintln!("biases.shape() = {:?}", biases.shape());   // 8, 1
+
+    let input   = input.map(|x| *x as i32);
+    let weights = weights.map(|x| *x as i32);
+    let biases  = biases.map(|x| *x as i32);
+
+    for i in 0..OS {
+        let row = weights.row(i);
+        let col = input.column(0);
+        // eprintln!("row.shape() = {:?}", row.shape());
+        // eprintln!("col.shape() = {:?}", col.shape());
+        let sum = row.dot(&col);
+        output[i] = sum;
+    }
+
+
+    // let result = weights.dot(&input) + &biases;
+    // output.copy_from_slice(result.as_slice().unwrap());
+}
+
+

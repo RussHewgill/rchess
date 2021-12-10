@@ -8,6 +8,7 @@
 #![feature(label_break_value)]
 // #![feature(backtrace,backtrace_frames)]
 #![feature(portable_simd)]
+#![feature(array_chunks)]
 
 #![allow(
     // clippy::all,

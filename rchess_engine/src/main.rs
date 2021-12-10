@@ -459,54 +459,80 @@ fn main_simd() {
 
     const OS: usize = 8;
     const IS: usize = 1024;
-    const ISP: usize = ceil_to_multiple(IS, 32);
 
-    let input: [u8; ISP] = array_init::array_init(|_| rng.gen_range(0..2));
-    let weights: Vec<i8> = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
+    // let input: [i8; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
+    // let weights: Vec<i8>  = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
+    let input: [i32; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
+    let weights: Vec<i32>  = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
+
     let biases: [i32; OS] = array_init::array_init(|_| rng.gen_range(-100..100));
+    let mut output        = [0i32; OS];
 
     // let input: [i32; ISP] = array_init::array_init(|_| rng.gen_range(0..2));
     // let weights: Vec<i32> = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
     // let biases: [i32; OS] = array_init::array_init(|_| rng.gen_range(-100..100));
 
-    let mut buffer = [0i32; OS];
+
+    use rchess_engine_lib::simd_test::*;
+
+    // let t0 = Instant::now();
+    // for _ in 0..500_000 {
+    //     simd_mm_0::<IS,OS>(&input, &weights, &biases, &mut output);
+    // }
+    // let t1 = t0.elapsed().as_secs_f64();
+    // eprintln!("finished in {:.3} seconds", t1);
+
+    // simd_mm_2::<IS,OS>(&input, &weights, &biases, &mut output);
+
+    simd_nd_mm_3::<IS,OS>(&input, &weights, &biases, &mut output);
+
+    // let t0 = Instant::now();
+    // for _ in 0..500_000 {
+    //     simd_mm_2::<IS,OS>(&input, &weights, &biases, &mut output);
+    // }
+    // let t1 = t0.elapsed().as_secs_f64();
+    // eprintln!("finished in {:.3} seconds", t1);
+
+    eprintln!("output[0..8] = {:?}", &output[0..8]); // -482, -165, -278
+    let sum: i32 = output.iter().sum();
+    eprintln!("sum = {:?}", sum); // -2055
 
     use std::simd::*;
 
     use nd::ShapeBuilder;
 
-    for i in 0..OS {
-        let offset = i * ISP;
-        let mut sum = biases[i];
-        // let mut sum = 0;
-        for j in 0..IS {
-            let x = input[j] as i32;
-            sum += weights[offset + j] as i32 * x;
-        }
-        buffer[i] = sum;
-    }
-    eprintln!("buffer[0] = {:?}", buffer[0]);
-    let s0: i32 = buffer.iter().sum();
-    eprintln!("s0 = {:?}", s0);
-    eprintln!("buffer = {:?}", buffer);
-    eprintln!();
-    eprintln!("biases = {:?}", biases);
+    // for i in 0..OS {
+    //     let offset = i * ISP;
+    //     let mut sum = biases[i];
+    //     // let mut sum = 0;
+    //     for j in 0..IS {
+    //         let x = input[j] as i32;
+    //         sum += weights[offset + j] as i32 * x;
+    //     }
+    //     buffer[i] = sum;
+    // }
+    // eprintln!("buffer[0] = {:?}", buffer[0]);
+    // let s0: i32 = buffer.iter().sum();
+    // eprintln!("s0 = {:?}", s0);
+    // eprintln!("buffer = {:?}", buffer);
+    // eprintln!();
+    // eprintln!("biases = {:?}", biases);
 
-    let input: nd::Array2<u8> = nd::Array2::from_shape_vec((ISP, 1), input.to_vec()).unwrap();
-    let weights: nd::Array2<i8> = nd::Array2::from_shape_vec((IS,OS).f(), weights).unwrap();
-    let biases: nd::Array2<i32> = nd::Array2::from_shape_vec((OS, 1), biases.to_vec()).unwrap();
-    let weights = weights.reversed_axes();
+    // let input: nd::Array2<u8> = nd::Array2::from_shape_vec((ISP, 1), input.to_vec()).unwrap();
+    // let weights: nd::Array2<i8> = nd::Array2::from_shape_vec((IS,OS).f(), weights).unwrap();
+    // let biases: nd::Array2<i32> = nd::Array2::from_shape_vec((OS, 1), biases.to_vec()).unwrap();
+    // let weights = weights.reversed_axes();
 
-    let input   = input.map(|x| *x as i32);
-    let weights = weights.map(|x| *x as i32);
-    let biases  = biases.map(|x| *x as i32);
-    let result = weights.dot(&input);
-    let result = result + &biases;
+    // let input   = input.map(|x| *x as i32);
+    // let weights = weights.map(|x| *x as i32);
+    // let biases  = biases.map(|x| *x as i32);
+    // let result = weights.dot(&input);
+    // let result = result + &biases;
 
-    eprintln!("result = {}", result.t());
-    eprintln!("result.shape() = {:?}", result.shape());
-    eprintln!("result[(0,0)] = {:?}", result[(0,0)]);
-    eprintln!("result.sum() = {:?}", result.sum());
+    // eprintln!("result = {}", result.t());
+    // eprintln!("result.shape() = {:?}", result.shape());
+    // eprintln!("result[(0,0)] = {:?}", result[(0,0)]);
+    // eprintln!("result.sum() = {:?}", result.sum());
 
     // use std::collections::hash_map::DefaultHasher;
     // use std::hash::{Hash, Hasher};
