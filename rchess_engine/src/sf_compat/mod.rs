@@ -178,7 +178,8 @@ impl NNUE4 {
         for bucket in 0..8 {
 
             let mut transformed = [0; HALF_DIMS * 2]; // 2048
-            let psqt = self.ft.transform(&g, &mut transformed, bucket, true);
+            // let psqt = self.ft.transform(&g, &mut transformed, bucket, true);
+            let psqt = self.ft.transform(&g, &mut transformed, bucket);
 
             // let mut pos_buf = [0; Layer3::BUFFER_SIZE]; // XXX: 320 ??
             // // eprintln!("pos_buf.len() = {:?}", pos_buf.len());
@@ -220,7 +221,7 @@ impl NNUE4 {
     // }
 
     // TODO: check for correctness with trace_eval
-    pub fn evaluate(&mut self, g: &Game, adjusted: bool, refresh: bool) -> Score {
+    pub fn evaluate(&mut self, g: &Game, adjusted: bool, _: bool) -> Score {
 
         let c = g.state.material.count();
         let bucket = (c as usize - 1) / 4;
@@ -228,7 +229,8 @@ impl NNUE4 {
         // eprintln!("bucket = {:?}", bucket);
 
         let mut transformed = [0; HALF_DIMS * 2];
-        let psqt = self.ft.transform(g, &mut transformed, bucket, refresh);
+        // let psqt = self.ft.transform(g, &mut transformed, bucket, refresh);
+        let psqt = self.ft.transform(g, &mut transformed, bucket);
 
         // // let mut pos_buf = [0; Layer3::BUFFER_SIZE]; // ?? 384
         // let mut pos_buf = [0; Layer3::SIZE_OUTPUT]; // 1

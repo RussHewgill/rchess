@@ -94,12 +94,15 @@ impl NNFeatureTrans {
 /// Transform
 impl NNFeatureTrans {
 
-    pub fn transform(&mut self, g: &Game, output: &mut [u8], bucket: usize, refresh: bool) -> Score {
+    // pub fn transform(&mut self, g: &Game, output: &mut [u8], bucket: usize, refresh: bool) -> Score {
+    pub fn transform(&mut self, g: &Game, output: &mut [u8], bucket: usize) -> Score {
 
         // eprintln!("FT transform");
 
-        self.update_accum(g, White, refresh);
-        self.update_accum(g, Black, refresh);
+        // self.update_accum(g, White, refresh);
+        // self.update_accum(g, Black, refresh);
+        self.update_accum(g, White, true);
+        self.update_accum(g, Black, true);
 
         let persps: [Color; 2] = [g.state.side_to_move, !g.state.side_to_move];
         // let persps: [Color; 2] = [!g.state.side_to_move, g.state.side_to_move];
@@ -130,21 +133,21 @@ impl NNFeatureTrans {
 /// Directly Apply Moves
 impl NNFeatureTrans {
 
-    #[cfg(feature = "nope")]
+    // #[cfg(feature = "nope")]
     pub fn make_move_add(
         &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) {
         let d_add = super::NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
         self.accum_add(persp, d_add, true);
     }
 
-    #[cfg(feature = "nope")]
+    // #[cfg(feature = "nope")]
     pub fn make_move_rem(
         &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) {
         let d_rem = super::NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
         self.accum_rem(persp, d_rem, true);
     }
 
-    #[cfg(feature = "nope")]
+    // #[cfg(feature = "nope")]
     pub fn make_move_move(
         &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, from: Coord, to: Coord) {
         self.make_move_rem(persp, king_sq, pc, side, from);
@@ -154,12 +157,12 @@ impl NNFeatureTrans {
     // XXX: No op
     #[inline(always)]
     pub fn make_move(&mut self, g: &Game, mv: Move) {
-        // self._make_move(g, White, mv);
-        // self._make_move(g, Black, mv);
+        self._make_move(g, White, mv);
+        self._make_move(g, Black, mv);
     }
 
     #[inline(always)]
-    #[cfg(feature = "nope")]
+    // #[cfg(feature = "nope")]
     pub fn _make_move(&mut self, g: &Game, persp: Color, mv: Move) {
         let king_sq = g.get(King,persp).bitscan();
         let side = g.state.side_to_move;
@@ -266,30 +269,34 @@ impl NNFeatureTrans {
     #[inline(always)]
     pub fn update_accum(&mut self, g: &Game, persp: Color, refresh: bool) {
 
-        // if self.accum.needs_refresh[persp] {
+        if self.accum.needs_refresh[persp] {
 
-        // // full refresh
-        // if !refresh {
-        //     self.accum.needs_refresh[persp] = false;
-        // }
+            self.accum.needs_refresh[persp] = false;
 
-        assert!(self.biases.len() == self.accum.accum[persp].len());
-        self.accum.accum[persp].copy_from_slice(&self.biases);
+            // // full refresh
+            // if !refresh {
+            //     self.accum.needs_refresh[persp] = false;
+            // }
 
-        let mut active = ArrayVec::default();
-        NNAccum::append_active(g, persp, &mut active);
+            assert!(self.biases.len() == self.accum.accum[persp].len());
+            self.accum.accum[persp].copy_from_slice(&self.biases);
 
-        self.accum.psqt[persp].fill(0);
+            let mut active = ArrayVec::default();
+            NNAccum::append_active(g, persp, &mut active);
 
-        for idx in active.into_iter() {
-            let offset = HALF_DIMS * idx;
+            self.accum.psqt[persp].fill(0);
 
-            for j in 0..HALF_DIMS {
-                self.accum.accum[persp][j] += self.weights[offset + j];
-            }
+            for idx in active.into_iter() {
+                let offset = HALF_DIMS * idx;
 
-            for k in 0..Self::PSQT_BUCKETS {
-                self.accum.psqt[persp][k] += self.psqt_weights[idx * Self::PSQT_BUCKETS + k];
+                for j in 0..HALF_DIMS {
+                    self.accum.accum[persp][j] += self.weights[offset + j];
+                }
+
+                for k in 0..Self::PSQT_BUCKETS {
+                    self.accum.psqt[persp][k] += self.psqt_weights[idx * Self::PSQT_BUCKETS + k];
+                }
+
             }
 
         }

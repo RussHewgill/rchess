@@ -179,10 +179,10 @@ impl ExHelper {
             // let mut nn: &mut NNUE4 = nnue.borrow_mut();
             let mut nn = nnue.borrow_mut();
 
-            // let v = nn.evaluate(&g, true, false);
+            let v = nn.evaluate(&g, true, false);
 
-            nn.ft.accum.needs_refresh = [true; 2];
-            let v = nn.evaluate(&g, true, true); // XXX: slow, always refresh
+            // nn.ft.accum.needs_refresh = [true; 2];
+            // let v = nn.evaluate(&g, true, true); // XXX: slow, always refresh
 
             v
             // unimplemented!()

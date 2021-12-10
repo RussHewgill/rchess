@@ -118,10 +118,8 @@ impl ExHelper {
     }
 
     #[inline(always)]
-    pub fn pop_nnue(&self) {}
-
-    #[inline(always)]
-    pub fn _pop_nnue(&self) {
+    pub fn pop_nnue(&self) {
+        #[cfg(feature = "nnue")]
         if let Some(nnue) = &self.nnue {
             let mut nn = nnue.borrow_mut();
             nn.ft.accum_pop();
