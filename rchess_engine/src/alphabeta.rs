@@ -101,10 +101,13 @@ pub enum Prune {
 
 /// Make move, increment NNUE
 impl ExHelper {
+
+    #[inline(always)]
     pub fn make_move(&self, ts: &Tables, g: &Game, mv: Move, zb0: Option<Zobrist>) -> Option<Game> {
         if let Ok(g2) = g._make_move_unchecked(ts, mv, zb0) {
 
             // push NNUE
+            #[cfg(feature = "nnue")]
             if let Some(nnue) = &self.nnue {
                 let mut nn = nnue.borrow_mut();
                 nn.ft.make_move(g, mv);
@@ -114,7 +117,11 @@ impl ExHelper {
         } else { None }
     }
 
-    pub fn pop_nnue(&self) {
+    #[inline(always)]
+    pub fn pop_nnue(&self) {}
+
+    #[inline(always)]
+    pub fn _pop_nnue(&self) {
         if let Some(nnue) = &self.nnue {
             let mut nn = nnue.borrow_mut();
             nn.ft.accum_pop();

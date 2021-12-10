@@ -88,7 +88,7 @@ impl NNUE4 {
         w.write_u32::<LittleEndian>(size)?;
 
         assert_eq!(desc.len(), size as usize);
-        w.write(&desc)?;
+        w.write_all(&desc)?;
 
         self.ft.write_parameters(&mut w)?;
 
@@ -135,7 +135,7 @@ impl NNUE4 {
             let layer2 = Layer2::new(NNAffine::new(layer1));
             let layer3 = Layer3::new(layer2);
 
-            vec![layer3.clone(); 8]
+            vec![layer3; 8]
             // vec![NNFeatureTrans::new(layer3); 8]
         };
 
@@ -260,6 +260,7 @@ impl NNUE4 {
         }
 
     }
+
 }
 
 /// Index

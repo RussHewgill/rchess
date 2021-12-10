@@ -130,18 +130,21 @@ impl NNFeatureTrans {
 /// Directly Apply Moves
 impl NNFeatureTrans {
 
+    #[cfg(feature = "nope")]
     pub fn make_move_add(
         &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) {
         let d_add = super::NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
         self.accum_add(persp, d_add, true);
     }
 
+    #[cfg(feature = "nope")]
     pub fn make_move_rem(
         &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) {
         let d_rem = super::NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
         self.accum_rem(persp, d_rem, true);
     }
 
+    #[cfg(feature = "nope")]
     pub fn make_move_move(
         &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, from: Coord, to: Coord) {
         self.make_move_rem(persp, king_sq, pc, side, from);
@@ -156,6 +159,7 @@ impl NNFeatureTrans {
     }
 
     #[inline(always)]
+    #[cfg(feature = "nope")]
     pub fn _make_move(&mut self, g: &Game, persp: Color, mv: Move) {
         let king_sq = g.get(King,persp).bitscan();
         let side = g.state.side_to_move;
@@ -199,21 +203,22 @@ impl NNFeatureTrans {
     #[inline(always)]
     pub fn accum_pop(&mut self) {}
 
-    // #[inline(always)]
-    // pub fn _accum_pop(&mut self) {
-    //     if let Some(delta) = self.accum.stack.pop() {
-    //         match delta {
-    //             NNDelta::Add(d_add)    => {
-    //                 self.accum_add(White, d_add, false);
-    //                 self.accum_add(Black, d_add, false);
-    //             },
-    //             NNDelta::Remove(d_rem) => {
-    //                 self.accum_rem(White, d_rem, false);
-    //                 self.accum_rem(Black, d_rem, false);
-    //             },
-    //         }
-    //     }
-    // }
+    #[inline(always)]
+    #[cfg(feature = "nope")]
+    pub fn accum_pop(&mut self) {
+        if let Some(delta) = self.accum.stack.pop() {
+            match delta {
+                NNDelta::Add(d_add)    => {
+                    self.accum_add(White, d_add, false);
+                    self.accum_add(Black, d_add, false);
+                },
+                NNDelta::Remove(d_rem) => {
+                    self.accum_rem(White, d_rem, false);
+                    self.accum_rem(Black, d_rem, false);
+                },
+            }
+        }
+    }
 
     pub fn accum_add(&mut self, persp: Color, d_add: usize, push: bool) {
         let offset = HALF_DIMS * d_add;
@@ -262,35 +267,31 @@ impl NNFeatureTrans {
     pub fn update_accum(&mut self, g: &Game, persp: Color, refresh: bool) {
 
         // if self.accum.needs_refresh[persp] {
-        if true {
-            // full refresh
-            // if !refresh {
-            //     self.accum.needs_refresh[persp] = false;
-            // }
 
-            assert!(self.biases.len() == self.accum.accum[persp].len());
-            self.accum.accum[persp].copy_from_slice(&self.biases);
+        // // full refresh
+        // if !refresh {
+        //     self.accum.needs_refresh[persp] = false;
+        // }
 
-            let mut active = ArrayVec::default();
-            NNAccum::append_active(g, persp, &mut active);
+        assert!(self.biases.len() == self.accum.accum[persp].len());
+        self.accum.accum[persp].copy_from_slice(&self.biases);
 
-            self.accum.psqt[persp].fill(0);
+        let mut active = ArrayVec::default();
+        NNAccum::append_active(g, persp, &mut active);
 
-            for idx in active.into_iter() {
-                let offset = HALF_DIMS * idx;
+        self.accum.psqt[persp].fill(0);
 
-                for j in 0..HALF_DIMS {
-                    self.accum.accum[persp][j] += self.weights[offset + j];
-                }
+        for idx in active.into_iter() {
+            let offset = HALF_DIMS * idx;
 
-                for k in 0..Self::PSQT_BUCKETS {
-                    self.accum.psqt[persp][k] += self.psqt_weights[idx * Self::PSQT_BUCKETS + k];
-                }
-
+            for j in 0..HALF_DIMS {
+                self.accum.accum[persp][j] += self.weights[offset + j];
             }
-        } else {
-            // incremental
-            // self.apply_deltas(persp);
+
+            for k in 0..Self::PSQT_BUCKETS {
+                self.accum.psqt[persp][k] += self.psqt_weights[idx * Self::PSQT_BUCKETS + k];
+            }
+
         }
 
     }

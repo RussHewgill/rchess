@@ -2333,13 +2333,6 @@ fn main9() {
 
     // let mvs = vec![
     //     "h3h5",
-    //     "f2e1",
-    //     "h1g2",
-    //     "e1d2",
-    //     "g2g1",
-    //     "d2e1",
-    //     "g1g2",
-    //     "e1d2",
     // ];
     // g = g.run_moves(&ts, mvs);
 
@@ -2353,10 +2346,6 @@ fn main9() {
     //     hook(panicinfo)
     // }));
 
-    // let moves = g.search_all(&ts);
-    // eprintln!("moves = {:?}", moves);
-    // return;
-
     // let mv = Move::Capture { from: "H5".into(), to: "G4".into(), pc: Pawn, victim: Pawn };
 
     // let t = 10.0;
@@ -2366,12 +2355,6 @@ fn main9() {
 
     // let n = 35;
     let n = 7;
-
-    // let t0 = std::time::Instant::now();
-    // // println!("g = {:?}", g);
-    // let ((best, scores),stats0,(tt_r,tt_w)) = go(&ts, n, g.clone(), t);
-    // let t1 = t0.elapsed();
-    // let t2 = t1.as_secs_f64();
 
     let t0 = std::time::Instant::now();
     let timesettings = TimeSettings::new_f64(0.0,t);
