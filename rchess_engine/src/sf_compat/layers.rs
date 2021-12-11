@@ -448,7 +448,27 @@ mod nn_affine {
             }
         }
 
-        // #[cfg(feature = "nope")]
+        pub fn _propagate_avx2_large(&mut self, trans_features: &[u8]) {
+            self.prev.propagate(trans_features);
+            let input = self.prev.get_buf();
+            // assert!(input.len() == Self::SIZE_INPUT);
+            let input = &input[0..Self::SIZE_INPUT];
+            let input2: &[u8] = unsafe {
+                let ptr = input.as_ptr() as *const u8;
+                std::slice::from_raw_parts(ptr, input.len())
+            };
+            // inputs  = 2048, 1: u8
+            // weights = 8, 2048: i8
+
+            assert_eq!(input.len() % 32, 0);
+
+            for block in 0..Self::SIZE_INPUT {
+
+            }
+
+        }
+
+        #[cfg(feature = "nope")]
         pub fn _propagate_avx2_large(&mut self, trans_features: &[u8]) {
             self.prev.propagate(trans_features);
             let input = self.prev.get_buf();

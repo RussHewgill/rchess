@@ -461,13 +461,32 @@ fn main_simd() {
     const OS: usize = 8;
     const IS: usize = 1024;
 
-    let input: [i8; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
+    let input: [u8; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
     let weights: Vec<i8>  = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
     // let input: [i32; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
     // let weights: Vec<i32>  = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
 
-    let input: [i32; IS] = array_init::array_init(|k| input[k] as i32);
-    let weights: Vec<i32> = weights.into_iter().map(|x| x as i32).collect();
+    let weights2 = {
+        let mut weights2 = [[0; IS]; OS];
+        for i in 0..OS {
+            let offset = i * IS;
+            weights2[i].copy_from_slice(&weights[offset..offset+IS]);
+        }
+        weights2
+    };
+
+    let weights3 = {
+        let mut ws3 = [[0; OS]; IS];
+        for x in 0..OS {
+            for y in 0..IS {
+                ws3[x][y] = weights2[y][x];
+            }
+        }
+        ws3
+    };
+
+    // let input: [i32; IS] = array_init::array_init(|k| input[k] as i32);
+    // let weights: Vec<i32> = weights.into_iter().map(|x| x as i32).collect();
 
     // let biases: [i32; OS] = array_init::array_init(|_| rng.gen_range(-100..100));
     let biases     = [0i32; OS];
@@ -477,8 +496,33 @@ fn main_simd() {
     // let weights: Vec<i32> = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
     // let biases: [i32; OS] = array_init::array_init(|_| rng.gen_range(-100..100));
 
-
     use rchess_engine_lib::simd_test::*;
+
+    // const NUM_RUNS: usize = 1_000_000;
+    const NUM_RUNS: usize = 500_000;
+
+    use safe_arch::*;
+    use rchess_engine_lib::simd_utils::safe_arch::*;
+
+    let t0 = Instant::now();
+    for _ in 0..NUM_RUNS {
+        simd_mm_0::<IS,OS>(&input, &weights, &biases, &mut output);
+    }
+    let t1 = t0.elapsed().as_secs_f64();
+    eprintln!("finished in {:.3} seconds", t1);
+    eprintln!("sum = {:?}", output.iter().sum::<i32>()); // -2055
+    output.fill(0);
+
+    let t0 = Instant::now();
+    for _ in 0..NUM_RUNS {
+        // simd_mm_2::<IS,OS>(&input, &weights2, &biases, &mut output);
+        simd_mm_2::<IS,OS>(&input, &weights3, &biases, &mut output);
+    }
+    let t1 = t0.elapsed().as_secs_f64();
+    eprintln!("finished in {:.3} seconds", t1);
+    eprintln!("sum = {:?}", output.iter().sum::<i32>()); // -2055
+
+    return;
 
     // let x: [i32; 4] = array_init::array_init(|_| rng.gen_range(0..2));
     // let a: [i32; 4*4] = array_init::array_init(|_| rng.gen_range(-10..10));
@@ -511,25 +555,16 @@ fn main_simd() {
     // eprintln!("result 1 = {:?}", result);
     // return;
 
-    // const NUM_RUNS: usize = 1_000_000;
-    const NUM_RUNS: usize = 500_000;
-
-    let t0 = Instant::now();
-    for _ in 0..NUM_RUNS {
-        simd_mm_0::<IS,OS>(&input, &weights, &biases, &mut output);
-    }
-    let t1 = t0.elapsed().as_secs_f64();
-    eprintln!("finished in {:.3} seconds", t1);
-    let sum: i32 = output.iter().sum();
-    eprintln!("sum = {:?}", sum); // -2055
+    // let t0 = Instant::now();
+    // for _ in 0..NUM_RUNS {
+    //     simd_mm_0::<IS,OS>(&input, &weights, &biases, &mut output);
+    // }
+    // let t1 = t0.elapsed().as_secs_f64();
+    // eprintln!("finished in {:.3} seconds", t1);
+    // let sum: i32 = output.iter().sum();
+    // eprintln!("sum = {:?}", sum); // -2055
 
     // return;
-
-    let mut weights2 = [[0; IS]; OS];
-    for i in 0..OS {
-        let offset = i * IS;
-        weights2[i].copy_from_slice(&weights[offset..offset+IS]);
-    }
 
     // eprintln!("weights[0..8] = {:?}", &weights[0..8]);
     // eprintln!("weights[-8..] = {:?}", &weights[weights.len() - 8..]);
@@ -546,17 +581,17 @@ fn main_simd() {
 
     // simd_nd_mm_3::<IS,OS>(&input, &weights, &biases, &mut output);
 
-    let t0 = Instant::now();
-    for _ in 0..NUM_RUNS {
-        simd_mm_2::<IS,OS>(&input, &weights2, &biases, &mut output);
-        // simd_mm_2::<IS,OS>(&input, &weights, &biases, &mut output);
-    }
-    let t1 = t0.elapsed().as_secs_f64();
-    eprintln!("finished in {:.3} seconds", t1);
+    // let t0 = Instant::now();
+    // for _ in 0..NUM_RUNS {
+    //     simd_mm_2::<IS,OS>(&input, &weights2, &biases, &mut output);
+    //     // simd_mm_2::<IS,OS>(&input, &weights, &biases, &mut output);
+    // }
+    // let t1 = t0.elapsed().as_secs_f64();
+    // eprintln!("finished in {:.3} seconds", t1);
 
-    eprintln!("output[0..8] = {:?}", &output[0..8]); // -482, -165, -278
-    let sum: i32 = output.iter().sum();
-    eprintln!("sum = {:?}", sum); // -2055
+    // eprintln!("output[0..8] = {:?}", &output[0..8]); // -482, -165, -278
+    // let sum: i32 = output.iter().sum();
+    // eprintln!("sum = {:?}", sum); // -2055
 
     use std::simd::*;
 
@@ -1637,27 +1672,12 @@ fn _main_nn() -> std::io::Result<()> {
 
         // eprintln!("k0 = {:?}", k0);
 
-        // return Ok(());
-
         // d6b4 -> -599
         let v = nn.evaluate(&g, false, false);
         eprintln!("v = {:?}", v);
 
         type LayerX = NNAffine<Layer0, 8>;
         let ws: &LayerX = &nn.layers[0].prev.prev.prev.prev;
-
-        let xs = vec![
-            0,
-            8,
-            32,
-            40,
-            64,
-        ];
-
-        // for x in xs.iter() {
-        //     let k0 = LayerX::get_weight_index(*x);
-        //     eprintln!("k0 = {:?}", k0);
-        // }
 
         return Ok(());
 

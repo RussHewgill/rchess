@@ -105,6 +105,31 @@ pub mod std_simd {
 
 }
 
+pub mod safe_arch {
+    use safe_arch::*;
 
+    pub fn slice_to_m256i_u8(xs: &[u8]) -> m256i {
+        m256i::from(slice_to_array_u8(xs))
+    }
+
+    pub fn slice_to_m256i_i8(xs: &[i8]) -> m256i {
+        m256i::from(slice_to_array_i8(xs))
+    }
+
+    pub fn slice_to_array_u8(xs: &[u8]) -> [u8; 32] {
+        let xs = &xs[0..32];
+        let mut out = [0; 32];
+        out.copy_from_slice(xs);
+        out
+    }
+
+    pub fn slice_to_array_i8(xs: &[i8]) -> [i8; 32] {
+        let xs = &xs[0..32];
+        let mut out = [0; 32];
+        out.copy_from_slice(xs);
+        out
+    }
+
+}
 
 

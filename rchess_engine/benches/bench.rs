@@ -148,6 +148,10 @@ pub fn crit_bench_simd(c: &mut Criterion) {
     let biases: [i32; OS] = array_init::array_init(|_| rng.gen_range(-100..100));
     let mut output = [0i32; OS];
 
+    // group.bench_function("dot prod 0", |b| b.iter(|| {
+    //     dot_product1(black_box(&a), b)
+    // }));
+
     // group.bench_function("SIMD mm 0", |b| b.iter(|| {
     //     simd_mm_0::<IS,OS>(black_box(&input), &weights, &biases, &mut output);
     // }));
@@ -157,10 +161,10 @@ pub fn crit_bench_simd(c: &mut Criterion) {
     //     // SIMD_01::<IS,OS>::simd_mm(black_box(&input), &weights, &biases, &mut output);
     // }));
 
-    group.bench_function("SIMD mm 2", |b| b.iter(|| {
-        simd_mm_2::<IS,OS>(black_box(&input), &weights, &biases, &mut output);
-        // SIMD_01::<IS,OS>::simd_mm(black_box(&input), &weights, &biases, &mut output);
-    }));
+    // group.bench_function("SIMD mm 2", |b| b.iter(|| {
+    //     simd_mm_2::<IS,OS>(black_box(&input), &weights, &biases, &mut output);
+    //     // SIMD_01::<IS,OS>::simd_mm(black_box(&input), &weights, &biases, &mut output);
+    // }));
 
     // group.bench_function("SIMD ndarray mm 0", |b| b.iter(|| {
     //     simd_nd_mm_0::<IS,OS>(

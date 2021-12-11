@@ -62,8 +62,9 @@ mod wat {
     use super::*;
 
     pub fn simd_mm_0<const IS: usize, const OS: usize>(
-        input:             &[i32],
-        weights:           &[i32],
+        // input:             &[i32],
+        input:             &[u8],
+        weights:           &[i8],
         biases:            &[i32],
         mut output:        &mut [i32],
     ) {
@@ -80,6 +81,7 @@ mod wat {
             for j in 0..IS {
                 let x: i32 = input[j] as i32;
                 sum += weights[offset + j] as i32 * x;
+                // sum += weights[i][k] as i32 * x;
             }
 
             // for (j,x) in input.iter().enumerate() {
@@ -94,21 +96,45 @@ mod wat {
 
     /// C_ij is the dot of A(row i) and B(col j)
     pub fn simd_mm_2<const IS: usize, const OS: usize>(
-        input:             &[i32],
+        input:             &[u8],
         // weights:           &[i32],
-        weights:           &[[i32; IS]; OS],
+        // weights:           &[[i8; IS]; OS],
+        weights:           &[[i8; OS]; IS],
         biases:            &[i32],
         mut output:        &mut [i32]
     ) {
-        use std::simd::*;
+        // use std::simd::*;
+        use safe_arch::*;
+        use crate::simd_utils::safe_arch::*;
 
         let input      = &input[0..IS];
         // let weights    = &weights[0..IS * OS];
         let biases     = &biases[0..OS];
         let mut output = &mut output[0..OS];
 
-        // shape input   = 1024, 1
-        // shape weights = 8, 1024
+        // shape input   = 2048, 1
+        // shape weights = 8, 2048
+
+        // let 
+
+        // let bias_vec: &[m256i] = unsafe {
+        //     let ptr = biases.as_ptr();
+        //     let ptr = ptr as *const m128i;
+        //     std::slice::from_raw_parts(ptr, self.biases.len() / 4)
+        // };
+
+        // let bias_vec: &[m128i] = unsafe {
+        //     let ptr = self.biases.as_ptr();
+        //     let ptr = ptr as *const m128i;
+        //     std::slice::from_raw_parts(ptr, self.biases.len() / 4)
+        // };
+
+        // for block in 0..IS/32 {
+        //     let offset = block * 32;
+        //     // let mut sum: m256i = slice_to_m256i_u8(&input[offset..offset+32]);
+        //     // sum = 
+        // }
+
 
         for i in 0..OS {
 
@@ -118,8 +144,8 @@ mod wat {
             // let mut sum: i32 = biases[i];
 
             for k in 0..IS {
-                let x = input[k];
-                sum += weights[i][k] * x;
+                let x = input[k] as i32;
+                sum += weights[k][i] as i32 * x;
             }
 
             // for k in 0..IS {
@@ -129,30 +155,43 @@ mod wat {
             // let sum = dot_product(input, &weights[i..i+IS]);
             // let sum = dot_product(input, &weights[i]);
 
-            output[i] = biases[i] + sum;
+            // output[i] = biases[i] + sum;
             // output[i] = sum;
 
         }
 
     }
 
-    pub fn dot_product(a: &[i32], b: &[i32]) -> i32 {
+    pub fn dot_product0(a: &[i32], b: &[i32]) -> i32 {
+
+        unimplemented!()
+    }
+
+    pub fn dot_product1(a: &[i32], b: &[i32]) -> i32 {
         use std::simd::*;
 
         assert_eq!(a.len(), b.len());
         assert!(a.len() % 4 == 0);
 
-        // let mut sum = a.array_chunks::<4>()
-        //     .map(|&x| i32x4::from_array(x))
-        //     .zip(b.array_chunks::<4>().map(|&y| i32x4::from_array(y)))
-        //     .map(|(a,b)| (a * b).horizontal_sum())
-        //     .sum();
+        let mut sum = a.array_chunks::<4>()
+            .map(|&x| i32x4::from_array(x))
+            .zip(b.array_chunks::<4>().map(|&y| i32x4::from_array(y)))
+            .map(|(a,b)| (a * b).horizontal_sum())
+            .sum();
+
+        sum
+    }
+
+    pub fn dot_product2(a: &[i32], b: &[i32]) -> i32 {
+        use std::simd::*;
+
+        assert_eq!(a.len(), b.len());
+        assert!(a.len() % 4 == 0);
 
         let mut sum = a.array_chunks::<4>()
             .map(|&x| i32x4::from_array(x))
             .zip(b.array_chunks::<4>().map(|&y| i32x4::from_array(y)))
             .map(|(a,b)| a * b)
-            // .fold(i32x4::splat(0), std::ops::Add)
             .sum::<i32x4>()
             .horizontal_sum();
 
