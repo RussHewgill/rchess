@@ -98,8 +98,8 @@ mod wat {
     pub fn simd_mm_2<const IS: usize, const OS: usize>(
         input:             &[u8],
         // weights:           &[i32],
-        // weights:           &[[i8; IS]; OS],
-        weights:           &[[i8; OS]; IS],
+        weights:           &[[i8; IS]; OS],
+        // weights:           &[[i8; OS]; IS], // slower?
         biases:            &[i32],
         mut output:        &mut [i32]
     ) {
@@ -115,8 +115,6 @@ mod wat {
         // shape input   = 2048, 1
         // shape weights = 8, 2048
 
-        // let 
-
         // let bias_vec: &[m256i] = unsafe {
         //     let ptr = biases.as_ptr();
         //     let ptr = ptr as *const m128i;
@@ -129,36 +127,114 @@ mod wat {
         //     std::slice::from_raw_parts(ptr, self.biases.len() / 4)
         // };
 
-        // for block in 0..IS/32 {
-        //     let offset = block * 32;
-        //     // let mut sum: m256i = slice_to_m256i_u8(&input[offset..offset+32]);
-        //     // sum = 
-        // }
-
-
         for i in 0..OS {
+            // output[i] = biases[i] + dot_product2(&input, &weights[i]);
 
-            // let x = input[i];
+            // let mut acc = vec![];
 
-            let mut sum = 0;
-            // let mut sum: i32 = biases[i];
-
-            for k in 0..IS {
-                let x = input[k] as i32;
-                sum += weights[k][i] as i32 * x;
-            }
-
-            // for k in 0..IS {
-            //     sum += input[k] * weights[i][k];
+            // for k in 0..IS/32 {
+            //     let offset = k * 32;
+            //     let input_chunk = slice_to_m256i_u8(&input[offset..]);
+            //     let weight_chunk = slice_to_m256i_i8(&weights[i][offset..]);
+            //     let input_chunk = shr_imm_i16_m256i::<8>(unpack_low_i8_m256i(input_chunk,input_chunk));
+            //     let weight_chunk = shr_imm_i16_m256i::<8>(unpack_low_i8_m256i(weight_chunk,weight_chunk));
+            //     let x = mul_i16_keep_low_m256i(input_chunk, weight_chunk);
+            //     acc.push(x);
             // }
 
-            // let sum = dot_product(input, &weights[i..i+IS]);
-            // let sum = dot_product(input, &weights[i]);
+            // let mut sum = m256i::default();
+            // let cs = acc.chunks_exact(2);
+            // for a in cs.remainder() {
+            //     sum = add_i32_m256i(sum, *a);
+            // }
+            // for a in cs {
+            //     let x = add_horizontal_i16_m256i(a[0],a[1]);
+            //     sum = add_i32_m256i(sum, x);
+            // }
 
-            // output[i] = biases[i] + sum;
-            // output[i] = sum;
+            // let mut x = 0;
+            // x += extract_i32_from_m256i::<0>(sum);
+            // x += extract_i32_from_m256i::<1>(sum);
+            // x += extract_i32_from_m256i::<2>(sum);
+            // x += extract_i32_from_m256i::<3>(sum);
+            // x += extract_i32_from_m256i::<4>(sum);
+            // x += extract_i32_from_m256i::<5>(sum);
+            // x += extract_i32_from_m256i::<6>(sum);
+            // x += extract_i32_from_m256i::<7>(sum);
+
+            let input2 = input.into_iter().map(|x| *x as i32).collect::<Vec<_>>();
+            let weights2 = weights[i].iter().map(|x| *x as i32).collect::<Vec<_>>();
+
+            let x = dot_product2(&input2, &weights2);
+
+            output[i] = biases[i] + x;
+        }
+
+        // for i in 0..OS {
+        if !true {
+            let i = 0;
+            let offset = i * OS;
+
+            let mut sum_lo = m256i::from([biases[i],0,0,0,0,0,0,0]);
+            let mut sum_hi = m256i::default();
+
+            let row = &weights[i];
+
+            for k in 0..IS/32 {
+                let row_k = slice_to_m256i_i8(&row[k*32..]);
+                let input_k = slice_to_m256i_u8(&input[k*32..]);
+
+                let ex_row_lo = shr_imm_i16_m256i::<8>(unpack_low_i8_m256i(row_k, row_k));
+                let ex_row_hi = shr_imm_i16_m256i::<8>(unpack_high_i8_m256i(row_k, row_k));
+
+                let ex_input_lo = unpack_low_i8_m256i(input_k, zeroed_m256i());
+                let ex_input_hi = unpack_high_i8_m256i(input_k, zeroed_m256i());
+
+                let prod_lo = mul_i16_horizontal_add_m256i(ex_row_lo, ex_input_lo);
+                let prod_hi = mul_i16_horizontal_add_m256i(ex_row_hi, ex_input_hi);
+
+                sum_lo = add_i32_m256i(sum_lo, prod_lo);
+                sum_hi = add_i32_m256i(sum_hi, prod_hi);
+            }
+
+            let sum = add_i32_m256i(sum_hi, sum_lo);
+
+            let res: [i32; 8] = sum.into();
+            eprintln!("res = {:?}", res);
+
+            let sum_lo = cast_to_m128i_from_m256i(sum);
+            let sum_hi = extract_m128i_m256i::<1>(sum);
+
+            let sum2 = add_i32_m128i(sum_lo, sum_hi);
+
+            let hi = unpack_high_i32_m128i(sum2, sum2);
+            let sum = add_i32_m128i(hi, sum2);
+            let sum = get_i32_from_m128i_s(sum);
+
+            output[i] = sum;
+
+            // let sum_hi_64 = shuffle_ai_f64_all_m128i::<0b01_00_11_10>(sum);
+
+            // output[i] = extract_i32_from_m256i(a)
+
+            // let sum = add_horizontal_i32_m256i(a, b)
+
+            // output[i] = extract_i32_from_m256i::<0>(sum);
 
         }
+
+        // for i in 0..OS {
+        //     let mut sum = 0;
+        //     for k in 0..IS {
+        //         let x = input[k] as i32;
+        //         // sum += weights[k][i] as i32 * x;
+        //         sum += weights[i][k] as i32 * x;
+        //     }
+        //     // let sum = dot_product(input, &weights[i..i+IS]);
+        //     // let sum = dot_product(input, &weights[i]);
+        //     output[i] = biases[i] + sum;
+        //     // output[i] = sum;
+        // }
 
     }
 

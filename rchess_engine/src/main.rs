@@ -479,7 +479,8 @@ fn main_simd() {
         let mut ws3 = [[0; OS]; IS];
         for x in 0..OS {
             for y in 0..IS {
-                ws3[x][y] = weights2[y][x];
+                let k = weights2[x][y];
+                ws3[y][x] = k;
             }
         }
         ws3
@@ -498,11 +499,78 @@ fn main_simd() {
 
     use rchess_engine_lib::simd_test::*;
 
-    // const NUM_RUNS: usize = 1_000_000;
-    const NUM_RUNS: usize = 500_000;
-
     use safe_arch::*;
     use rchess_engine_lib::simd_utils::safe_arch::*;
+
+
+    let xs: [u8; 32] = array_init::array_init(|x| x as u8);
+    let xs2: [i8; 32] = array_init::array_init(|x| x as i8);
+    // let xs2: [i8; 32] = array_init::array_init(|x| 32 + x as i8);
+
+    // let mut xs: [u8; 32] = array_init::array_init(|x| 0);
+    // let mut xs2: [i8; 32] = array_init::array_init(|x| 0);
+
+    // let mut sum = 0;
+    // for i in 0..32 {
+    //     sum += xs2[i] as i32 * xs[i] as i32;
+    // }
+    // eprintln!("sum = {:?}", sum);
+
+    let k0 = m256i::from(xs);
+    // let k1 = m256i::from(xs2);
+
+    // let res0 = unpack_low_i8_m256i(k0, k0);
+    // // eprintln!("res0 = {:?}", bytemuck::cast::<m256i,[i8;32]>(res0));
+    // let res0 = shr_imm_i16_m256i::<8>(res0);
+    // let res1 = mul_i16_keep_low_m256i(res0,res0);
+    // eprintln!("res1 = {:?}", bytemuck::cast::<m256i,[i16;16]>(res1));
+
+    // return;
+
+    // let res0 = mul_u8i8_add_horizontal_saturating_m256i(k0, k1);
+    // let res1 = mul_i16_horizontal_add_m256i(res0, set_splat_i16_m256i(1));
+
+    // let res2 = add_horizontal_i32_m256i(res0, m256i::default());
+
+    // let res1 = m128i::from([123,0,0,0]);
+    // // let res1 = set_i32_m128i_s(123);
+    // eprintln!("res1 = {:?}", bytemuck::cast::<m128i,[i32;4]>(res1));
+
+    // eprintln!("res1 = {:?}", bytemuck::cast::<m256i,[i32;8]>(res1));
+    // eprintln!("res2 = {:?}", bytemuck::cast::<m256i,[i32;8]>(res2));
+
+    // let k1 = m256i::default();
+    // let k2 = set_splat_i16_m256i(1);
+
+    // let res0 = mul_u8i8_add_horizontal_saturating_m256i(k0, k1);
+
+    // let res: [i16; 16] = res0.into();
+    // eprintln!("res0 = {:?}", res);
+
+    // let res1 = mul_i16_horizontal_add_m256i(res0, set_splat_i16_m256i(1));
+
+    // let res: [i16; 16] = res1.into();
+    // eprintln!("res1 = {:?}", res);
+
+    // xs0:  a, b, c, d     u8, input
+    // xs1:  e, f, g, h     i8, weights
+
+    // 1:    i0 = a * e, i1 = b * f   i16
+    // 2:    i0 + i1
+
+    // res:  j0 = (a*e) + (b*f), j1 = (c*g) + (d*h)
+
+    // res:  (j0 * j1) + (j2 * j3)
+
+
+    // let k4: [i8;32] = result1.into();
+    // eprintln!("k4 = {:?}", k4);
+
+    // return;
+
+    // const NUM_RUNS: usize = 1_000_000;
+    // const NUM_RUNS: usize = 500_000;
+    const NUM_RUNS: usize = 500_000;
 
     let t0 = Instant::now();
     for _ in 0..NUM_RUNS {
@@ -513,13 +581,21 @@ fn main_simd() {
     eprintln!("sum = {:?}", output.iter().sum::<i32>()); // -2055
     output.fill(0);
 
+    // simd_mm_0::<IS,OS>(&input, &weights, &biases, &mut output);
+    // eprintln!("output = {:?}", output);
+    // eprintln!("sum = {:?}", output.iter().sum::<i32>()); // -2055
+
+    // simd_mm_2::<IS,OS>(&input, &weights2, &biases, &mut output);
+
     let t0 = Instant::now();
     for _ in 0..NUM_RUNS {
-        // simd_mm_2::<IS,OS>(&input, &weights2, &biases, &mut output);
-        simd_mm_2::<IS,OS>(&input, &weights3, &biases, &mut output);
+        simd_mm_2::<IS,OS>(&input, &weights2, &biases, &mut output);
+        // simd_mm_2::<IS,OS>(&input, &weights3, &biases, &mut output);
     }
     let t1 = t0.elapsed().as_secs_f64();
     eprintln!("finished in {:.3} seconds", t1);
+
+    eprintln!("output = {:?}", output);
     eprintln!("sum = {:?}", output.iter().sum::<i32>()); // -2055
 
     return;

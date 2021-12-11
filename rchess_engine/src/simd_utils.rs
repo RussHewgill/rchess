@@ -108,22 +108,31 @@ pub mod std_simd {
 pub mod safe_arch {
     use safe_arch::*;
 
+    /// Overflows to negative
+    pub fn mul_u8_m256i(a: m256i, b: m256i) -> m256i {
+        let even = mul_i16_keep_low_m256i(a, b);
+        let odd  = mul_i16_keep_low_m256i(shr_imm_u16_m256i::<8>(a), shr_imm_u16_m256i::<8>(b));
+        let result = bitand_m256i(even, set_splat_i16_m256i(0xFF));
+        let result = bitor_m256i(shl_imm_u16_m256i::<8>(odd), result);
+        result
+    }
+
     pub fn slice_to_m256i_u8(xs: &[u8]) -> m256i {
-        m256i::from(slice_to_array_u8(xs))
+        m256i::from(slice_to_array_u8_32(xs))
     }
 
     pub fn slice_to_m256i_i8(xs: &[i8]) -> m256i {
-        m256i::from(slice_to_array_i8(xs))
+        m256i::from(slice_to_array_i8_32(xs))
     }
 
-    pub fn slice_to_array_u8(xs: &[u8]) -> [u8; 32] {
+    pub fn slice_to_array_u8_32(xs: &[u8]) -> [u8; 32] {
         let xs = &xs[0..32];
         let mut out = [0; 32];
         out.copy_from_slice(xs);
         out
     }
 
-    pub fn slice_to_array_i8(xs: &[i8]) -> [i8; 32] {
+    pub fn slice_to_array_i8_32(xs: &[i8]) -> [i8; 32] {
         let xs = &xs[0..32];
         let mut out = [0; 32];
         out.copy_from_slice(xs);
