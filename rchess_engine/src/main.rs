@@ -513,6 +513,61 @@ fn main_simd() {
     let ys1: [i32; N] = array_init::array_init(|x| xs1[x] as i32);
     let ys2: [i32; N] = array_init::array_init(|x| xs2[x] as i32);
 
+
+    // let xs1: [u8; N] = array_init::array_init(|x| rng.gen_range(0..10));
+    // let xs1: [u8; 16] = array_init::array_init(|x| rng.gen_range(0..10));
+
+    let xs1: [u8; 2048] = array_init::array_init(|x| rng.gen_range(0..10));
+
+    // let xs1: [u8; 512 + 256 + 64 + 32 + 0] = array_init::array_init(|x| rng.gen_range(0..10));
+    // // XXX: slice: 865 = segfault, 864 fine
+
+    // let xs1: [u8; 512 + 128 + 64 + 32 + 1] = array_init::array_init(|x| rng.gen_range(0..10));
+    // // // XXX: array: 737 = segfault, 736 fine
+
+    let xs: &[u8] = &xs1;
+
+    // let k = std::mem::align_of_val(&xs);
+    // eprintln!("k = {:?}", k);
+
+    let mut res1 = [0; 16];
+    res1.copy_from_slice(&xs1[0..16]);
+    let res1 = m128i::from(res1);
+    eprintln!("res1 = {:?}", bytemuck::cast::<m128i,[i8;16]>(res1));
+
+    // #[repr(align(16))]
+    // struct Wrapper<'a>(&'a [u8]);
+
+    // let a: &[m128i] = unsafe {
+
+    //     // let xs = Wrapper(xs);
+    //     // std::mem::transmute(xs)
+
+    //     // let ptr = xs.as_ptr() as *const m128i;
+    //     // std::slice::from_raw_parts(ptr, 1)
+
+    //     // let (a,b,c) = xs.align_to::<m128i>();
+    //     // eprintln!("a.len() = {:?}", a.len());
+    //     // eprintln!("b.len() = {:?}", b.len());
+    //     // eprintln!("c.len() = {:?}", c.len());
+    //     // b
+
+    // };
+
+    let k0 = std::mem::align_of_val(&xs);
+    eprintln!("k0 = {:?}", k0);
+
+    let a = slice_u8_to_m128i(&xs);
+
+    // let a: &[m128i] = unsafe {
+    //     std::mem::transmute(xs)
+    // };
+
+    let res0 = a[0];
+    eprintln!("res0 = {:?}", bytemuck::cast::<m128i,[i8;16]>(res0));
+
+    return;
+
     let mut res = 0;
     timer!({
         for _ in 0..K {
@@ -2354,7 +2409,7 @@ fn main9() {
     let fen = "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1"; // b6f2, #-4
     // let fen = "6k1/6pp/3q4/5p2/QP1pB3/4P1P1/4KPP1/2r5 w - - 0 2"; // a4e8, #3
     // let fen = "r1bq2rk/pp3pbp/2p1p1pQ/7P/3P4/2PB1N2/PP3PPR/2KR4 w Kq - 0 1"; // WAC.004, #2, Q cap h6h7
-    // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
     // let fen = "5rk1/pp3pp1/8/4q1N1/6b1/4r3/PP3QP1/5K1R w - - 0 2"; // R h1h8, #4, knight move order?
     // let fen = "r4r1k/2Q5/1p5p/2p2n2/2Pp2R1/PN1Pq3/6PP/R3N2K b - - 0 1"; // #4, Qt N f5g3, slow
@@ -2459,7 +2514,7 @@ fn main9() {
     // let t = 0.3;
 
     // let n = 35;
-    let n = 8;
+    let n = 7;
 
     let t0 = std::time::Instant::now();
     let timesettings = TimeSettings::new_f64(0.0,t);

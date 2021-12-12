@@ -11,6 +11,7 @@ use crate::syzygy::{SyzygyTB, Wdl, Dtz};
 use crate::stats;
 
 pub use ABResults::*;
+use arrayvec::ArrayVec;
 
 use std::collections::VecDeque;
 
@@ -442,6 +443,7 @@ impl ExHelper {
         // order_moves_history(&tracking.history[g.state.side_to_move], &mut moves);
 
         let mut gs: Vec<(Move,Zobrist,Option<(SICanUse,SearchInfo)>)> = moves.into_iter()
+        // let mut gs: ArrayVec<(Move,Zobrist,Option<(SICanUse,SearchInfo)>),256> = moves.into_iter()
             .map(|mv| {
                 let zb = g.zobrist.update_move_unchecked(ts, g, mv);
                 let tt = self.check_tt_negamax(&ts, &zb, depth, &mut stats);

@@ -108,6 +108,37 @@ pub mod std_simd {
 pub mod safe_arch {
     use safe_arch::*;
 
+    #[repr(align(16))]
+    struct Wrapper<'a>(&'a [u8]);
+
+    pub fn slice_u8_to_m256i(xs: &[u8]) -> &[m256i] {
+        let xs = Wrapper(xs);
+        unsafe { std::mem::transmute(xs) }
+    }
+
+    pub fn slice_u8_to_m128i(xs: &[u8]) -> &[m128i] {
+
+        let s0 = std::mem::size_of::<u8>();
+        let s1 = std::mem::size_of::<m128i>();
+
+        eprintln!("s0 = {:?}", s0);
+        eprintln!("s1 = {:?}", s1);
+
+        let k0 = std::mem::align_of_val(&xs);
+        eprintln!("k0 = {:?}", k0);
+
+        assert_eq!((xs.len() * s0) % s1, 0);
+
+        // let len = xs.len() / 16;
+        let len = (xs.len() * s0) / s1;
+
+        unsafe {
+            // let xs = Wrapper(xs);
+            // std::mem::transmute(xs)
+            std::slice::from_raw_parts(xs.as_ptr() as *const m128i, len)
+        }
+    }
+
     /// Overflows to negative
     pub fn mul_u8_m256i(a: m256i, b: m256i) -> m256i {
         let even = mul_i16_keep_low_m256i(a, b);

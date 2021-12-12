@@ -143,13 +143,32 @@ pub fn crit_bench_simd(c: &mut Criterion) {
     const IS: usize = 1024;
     const OS: usize = 8;
 
-    let input: [i8; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
-    let weights: Vec<i8>  = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
-    let biases: [i32; OS] = array_init::array_init(|_| rng.gen_range(-100..100));
-    let mut output = [0i32; OS];
+    // let input: [i8; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
+    // let weights: Vec<i8>  = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
+    // let biases: [i32; OS] = array_init::array_init(|_| rng.gen_range(-100..100));
+    // let mut output = [0i32; OS];
+
+    const N: usize = 2048;
+    let xs1: [u8; N] = array_init::array_init(|x| rng.gen_range(0..2));
+    let xs2: [i8; N] = array_init::array_init(|x| rng.gen_range(-10..10));
+
+    let ys1: [i32; N] = array_init::array_init(|x| xs1[x] as i32);
+    let ys2: [i32; N] = array_init::array_init(|x| xs2[x] as i32);
+
+    group.bench_function("dot prod basic", |b| b.iter(|| {
+        let x = dot_product_basic(black_box(&xs1), &xs2);
+    }));
 
     // group.bench_function("dot prod 0", |b| b.iter(|| {
-    //     dot_product1(black_box(&a), b)
+    //     dot_product0(black_box(&xs1), &xs2)
+    // }));
+
+    // group.bench_function("dot prod 1", |b| b.iter(|| {
+    //     dot_product1(black_box(&ys1), &ys2)
+    // }));
+
+    // group.bench_function("dot prod 2", |b| b.iter(|| {
+    //     dot_product2(black_box(&ys1), &ys2)
     // }));
 
     // group.bench_function("SIMD mm 0", |b| b.iter(|| {

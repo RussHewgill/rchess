@@ -165,6 +165,7 @@ impl NNFeatureTrans {
         self.reset_accum(g);
     }
 
+    /// Noticable speed up
     #[inline(always)]
     // #[cfg(feature = "nope")]
     pub fn make_move(&mut self, g: &Game, mv: Move) {
@@ -254,7 +255,10 @@ impl NNFeatureTrans {
             accum[j] += weights[j];
         }
         for k in 0..Self::PSQT_BUCKETS {
-            self.accum.psqt[persp][k] += self.psqt_weights[d_add * Self::PSQT_BUCKETS + k];
+            // self.accum.psqt[persp][k] += self.psqt_weights[d_add * Self::PSQT_BUCKETS + k];
+            if let Some(x) = self.psqt_weights.get(d_add * Self::PSQT_BUCKETS + k) {
+                self.accum.psqt[persp][k] += *x;
+            }
         }
         if push {
             self.accum.stack_delta.push(NNDelta::Remove(d_add));
@@ -264,11 +268,19 @@ impl NNFeatureTrans {
     #[inline(always)]
     pub fn accum_rem(&mut self, persp: Color, d_rem: usize, push: bool) {
         let offset = HALF_DIMS * d_rem;
+
+        let mut accum = &mut self.accum.accum[persp][..HALF_DIMS];
+        let mut weights = &mut self.weights[offset..offset + HALF_DIMS];
+
         for j in 0..HALF_DIMS {
-            self.accum.accum[persp][j] -= self.weights[offset + j];
+            // self.accum.accum[persp][j] -= self.weights[offset + j];
+            accum[j] -= weights[j];
         }
         for k in 0..Self::PSQT_BUCKETS {
-            self.accum.psqt[persp][k] -= self.psqt_weights[d_rem * Self::PSQT_BUCKETS + k];
+            // self.accum.psqt[persp][k] -= self.psqt_weights[d_rem * Self::PSQT_BUCKETS + k];
+            if let Some(x) = self.psqt_weights.get(d_rem * Self::PSQT_BUCKETS + k) {
+                self.accum.psqt[persp][k] -= *x;
+            }
         }
         // TODO: for mut p in self.accum.psqt.iter_mut()
         if push {

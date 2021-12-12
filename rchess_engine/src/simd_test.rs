@@ -209,6 +209,20 @@ mod wat {
         use safe_arch::*;
         use crate::simd_utils::safe_arch::*;
 
+        let a: &[m128i] = unsafe {
+            let ptr = input.as_ptr() as *const m128i;
+            std::slice::from_raw_parts(ptr, input.len())
+        };
+
+        // convert_to_i16_m256i_from_lower8_u8_m128i(a)
+
+    }
+
+    #[cfg(feature = "nope")]
+    pub fn dot_product0(a: &[u8], b: &[i8]) -> i32 {
+        use safe_arch::*;
+        use crate::simd_utils::safe_arch::*;
+
         assert_eq!(a.len(), b.len());
         assert!(a.len() % 32 == 0);
 
