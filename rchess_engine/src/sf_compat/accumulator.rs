@@ -7,6 +7,13 @@ use crate::types::*;
 pub enum NNDelta {
     Add(usize),
     Remove(usize),
+    Copy,
+}
+
+#[derive(Debug,Eq,PartialEq,PartialOrd,Ord,Clone,Copy)]
+pub struct NNAccumData {
+    pub accum:           [[i16; 1024]; 2], // TransformedFeatureDimensions = 1024
+    pub psqt:            [[i32; 8]; 2],    // PSQTBuckets = 8
 }
 
 // #[derive(Debug,PartialEq,Clone,Copy)]
@@ -23,6 +30,9 @@ pub struct NNAccum {
     // pub stack:           ArrayVec<NNDelta, 300>,
     // pub stack:           Vec<NNDelta>,
 
+    pub stack_delta:        Vec<NNDelta>,
+    pub stack_copies:       Vec<NNAccumData>,
+
     pub needs_refresh:   [bool; 2],
 }
 
@@ -35,45 +45,42 @@ impl NNAccum {
             // deltas_add:       ArrayVec::default(),
             // deltas_rem:       ArrayVec::default(),
             // stack:            ArrayVec::default(),
-            // stack:            Vec::with_capacity(1024),
-            // stack:            vec![],
+
+            stack_delta:      Vec::with_capacity(1024),
+            stack_copies:     Vec::with_capacity(1024),
+
             needs_refresh:    [true; 2],
         }
     }
 }
 
+/// Delta
 impl NNAccum {
 
-    // pub fn push_delta_move(
-    //     &mut self,
-    //     persp:      Color,
-    //     king_sq:    Coord,
-    //     pc:         Piece,
-    //     side:       Color,
-    //     from:       Coord,
-    //     to:         Coord,
-    // ) {
-    //     self.push_delta_rem(persp, king_sq, pc, side, from);
-    //     self.push_delta_add(persp, king_sq, pc, side, to);
-    // }
+    fn make_copy(&self) -> NNAccumData {
+        NNAccumData {
+            accum:  self.accum,
+            psqt:   self.psqt,
+        }
+    }
 
-    // pub fn push_delta_add(
-    //     &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) {
-    //     let idx = super::NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
-    //     self.deltas_add.push(idx);
-    // }
+    pub fn push_copy(&mut self) {
+        let delta = self.make_copy();
+        self.stack_delta.push(NNDelta::Copy);
+        self.stack_copies.push(delta);
+    }
 
-    // pub fn push_delta_rem(
-    //     &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) {
-    //     let idx = super::NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
-    //     self.deltas_rem.push(idx);
-    // }
+    pub fn pop_prev(&mut self) {
+        if let Some(prev) = self.stack_copies.pop() {
+            self.accum = prev.accum;
+            self.psqt  = prev.psqt;
+        }
+    }
 
-    // pub fn refresh(&mut self, g: &Game, persp: Color) {
-    //     self.psqt[persp].fill(0);
-    //     let mut active = ArrayVec::default();
-    //     Self::append_active(g, persp, &mut active);
-    // }
+}
+
+/// Append Active
+impl NNAccum {
 
     pub fn append_active(g: &Game, persp: Color, mut active: &mut ArrayVec<usize, 32>) {
         let king_sq = g.get(King,persp).bitscan();

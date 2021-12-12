@@ -100,7 +100,7 @@ impl NNFeatureTrans {
     // pub fn transform(&mut self, g: &Game, output: &mut [u8], bucket: usize, refresh: bool) -> Score {
     pub fn transform(&mut self, g: &Game, output: &mut [u8], bucket: usize) -> Score {
 
-        let output = &mut output[..HALF_DIMS*2];
+        // let output = &mut output[..HALF_DIMS*2];
 
         // eprintln!("FT transform");
 
@@ -160,14 +160,16 @@ impl NNFeatureTrans {
     }
 
     #[inline(always)]
+    #[cfg(feature = "nope")]
     pub fn make_move(&mut self, g: &Game, mv: Move) {
         self.reset_accum(g);
     }
 
     #[inline(always)]
-    #[cfg(feature = "nope")]
+    // #[cfg(feature = "nope")]
     pub fn make_move(&mut self, g: &Game, mv: Move) {
-        if mv.piece() == King {
+        if mv.piece() == Some(King) {
+            self.accum.push_copy();
             self.reset_accum(g);
         } else {
             self._make_move(g, White, mv);
@@ -176,7 +178,7 @@ impl NNFeatureTrans {
     }
 
     #[inline(always)]
-    #[cfg(feature = "nope")]
+    // #[cfg(feature = "nope")]
     pub fn _make_move(&mut self, g: &Game, persp: Color, mv: Move) {
         let king_sq = g.get(King,persp).bitscan();
         let side = g.state.side_to_move;
@@ -218,43 +220,32 @@ impl NNFeatureTrans {
 impl NNFeatureTrans {
 
     #[inline(always)]
-    pub fn accum_pop(&mut self) {}
-
-    #[inline(always)]
     #[cfg(feature = "nope")]
     pub fn accum_pop(&mut self) {
-        if let Some(delta) = self.accum.stack.pop() {
-            match delta {
-                NNDelta::Add(d_add)    => {
-                    self.accum_add(White, d_add, false);
-                    self.accum_add(Black, d_add, false);
-                },
-                NNDelta::Remove(d_rem) => {
-                    self.accum_rem(White, d_rem, false);
-                    self.accum_rem(Black, d_rem, false);
-                },
-            }
+    }
+
+    #[inline(always)]
+    // #[cfg(feature = "nope")]
+    pub fn accum_pop(&mut self) {
+        match self.accum.stack_delta.pop() {
+            Some(NNDelta::Copy)        => {
+                self.accum.pop_prev();
+            },
+            Some(NNDelta::Add(d_add))    => {
+                self.accum_add(White, d_add, false);
+                self.accum_add(Black, d_add, false);
+            },
+            Some(NNDelta::Remove(d_rem)) => {
+                self.accum_rem(White, d_rem, false);
+                self.accum_rem(Black, d_rem, false);
+            },
+            None                       => panic!("NNFeatureTrans, accum_pop empty stack?"),
         }
     }
 
     #[inline(always)]
     pub fn accum_add(&mut self, persp: Color, d_add: usize, push: bool) {
         let offset = HALF_DIMS * d_add;
-
-        // assert!(self.weights.len() >= self.accum.accum[persp].len() + offset);
-
-        // let accum = &self.accum.accum;
-
-        // self.accum.accum[persp].iter_mut().zip(self.weights[offset..offset + accum.len()].iter()).for_each(|(a,w)| {
-
-        // self.accum.accum[persp].iter_mut().zip(self.weights[offset..].iter()).for_each(|(a,w)| {
-        //     *a += w;
-        // });
-
-        // self.accum.accum[persp].iter_mut().enumerate().for_each(|(k,a)| {
-        //     // if let Some(offset)
-        //     *a += self.weights[offset + k];
-        // });
 
         let mut accum = &mut self.accum.accum[persp][..HALF_DIMS];
         let mut weights = &mut self.weights[offset..offset + HALF_DIMS];
@@ -265,9 +256,9 @@ impl NNFeatureTrans {
         for k in 0..Self::PSQT_BUCKETS {
             self.accum.psqt[persp][k] += self.psqt_weights[d_add * Self::PSQT_BUCKETS + k];
         }
-        // if push {
-        //     self.accum.stack.push(NNDelta::Remove(d_add));
-        // }
+        if push {
+            self.accum.stack_delta.push(NNDelta::Remove(d_add));
+        }
     }
 
     #[inline(always)]
@@ -280,9 +271,9 @@ impl NNFeatureTrans {
             self.accum.psqt[persp][k] -= self.psqt_weights[d_rem * Self::PSQT_BUCKETS + k];
         }
         // TODO: for mut p in self.accum.psqt.iter_mut()
-        // if push {
-        //     self.accum.stack.push(NNDelta::Add(d_rem));
-        // }
+        if push {
+            self.accum.stack_delta.push(NNDelta::Add(d_rem));
+        }
     }
 
     // pub fn apply_deltas(&mut self, persp: Color) {
@@ -300,6 +291,9 @@ impl NNFeatureTrans {
 
     // #[inline(always)]
     pub fn reset_accum(&mut self, g: &Game) {
+        self._update_accum(g, White);
+        self._update_accum(g, Black);
+        self.accum.needs_refresh = [false; 2];
     }
 
     // #[inline(always)]

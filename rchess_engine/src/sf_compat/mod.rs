@@ -207,19 +207,6 @@ impl NNUE4 {
         (out_psqt,out_positional,correct_bucket)
     }
 
-    // pub fn evaluate2(&mut self, g: &Game, adjusted: bool) -> Score {
-    //     let (out_psqt,out_positional,correct_bucket) = self.trace_eval(g, adjusted);
-    //     let psqt = out_psqt[correct_bucket];
-    //     let positional = out_positional[correct_bucket];
-    //     // TODO: if adjusted
-    //     if adjusted {
-    //         unimplemented!()
-    //     } else {
-    //         (psqt + positional) / OUTPUT_SCALE
-    //         // unimplemented!()
-    //     }
-    // }
-
     // TODO: check for correctness with trace_eval
     pub fn evaluate(&mut self, g: &Game, adjusted: bool, _: bool) -> Score {
 
