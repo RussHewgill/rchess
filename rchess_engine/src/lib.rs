@@ -10,20 +10,20 @@
 #![feature(portable_simd)]
 #![feature(array_chunks)]
 
-#![allow(
-    // clippy::all,
-    clippy::restriction,
-    clippy::pedantic,
-    clippy::nursery,
-    clippy::cargo,
-    clippy::complexity,
-    // clippy::correctness,
-    clippy::nursery,
-    // clippy::restriction,
-    clippy::style,
-    // clippy::suspicious,
-    // clippy::perf,
-)]
+// #![allow(
+//     // clippy::all,
+//     // clippy::restriction,
+//     // clippy::pedantic,
+//     // clippy::nursery,
+//     // clippy::cargo,
+//     // clippy::complexity,
+//     // clippy::correctness,
+//     // clippy::nursery,
+//     // clippy::restriction,
+//     // clippy::style,
+//     // clippy::suspicious,
+//     // clippy::perf,
+// )]
 
 // #![warn(
 //     clippy::perf,

@@ -78,12 +78,12 @@ impl ExHelper {
         }
         // TODO: killer mate
 
-        match mv {
-            &Move::PromotionCapture { .. }            => return PromCapture,
-            &Move::Promotion { new_piece: Queen, .. } => return Prom,
-            &Move::Promotion { .. }                   => return PromMinor,
-            &Move::EnPassant { .. }                   => return GoodCapture,
-            &Move::Capture { pc, victim, .. } => match (pc,victim) {
+        match *mv {
+            Move::PromotionCapture { .. }            => return PromCapture,
+            Move::Promotion { new_piece: Queen, .. } => return Prom,
+            Move::Promotion { .. }                   => return PromMinor,
+            Move::EnPassant { .. }                   => return GoodCapture,
+            Move::Capture { pc, victim, .. } => match (pc,victim) {
                 (Queen,Queen)   => return GoodCapture,
                 (Rook,Rook)     => return GoodCapture,
                 (Knight,Bishop) => return GoodCapture,
@@ -102,7 +102,7 @@ impl ExHelper {
                     }
                 },
             }
-            &Move::Castle { .. } => return Castle,
+            Move::Castle { .. } => return Castle,
             _                                 => {},
         }
 
@@ -182,7 +182,7 @@ pub fn _order_mvv_lva(a: &Move, b: &Move) -> std::cmp::Ordering {
         },
         (Some(_), None)      => Ordering::Less,
         (None, Some(_))      => Ordering::Greater,
-        _                    => a.cmp(&b).reverse(),
+        _                    => a.cmp(b).reverse(),
     }
 
 }

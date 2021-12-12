@@ -40,11 +40,11 @@ impl ExHelper {
             // pms.push_back((g.zobrist,mv));
 
             if let ABResults::ABSingle(mut res) = self._ab_search_negamax(
-                &ts, &g2, cfg,
+                ts, &g2, cfg,
                 depth - 1 - r, ply + 1, &mut stop_counter,
                 (-beta, -beta + 1),
                 // (-beta, -alpha), // XXX: doesn't work
-                &mut stats, &mut tracking,
+                stats, tracking,
             ) {
 
                 // res.moves.push_front(mv);

@@ -2427,8 +2427,6 @@ fn main9() {
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
 
-    let fen = STARTPOS;
-
     // eprintln!("correct = {:?}", correct);
 
     eprintln!("fen = {:?}", fen);
@@ -2455,7 +2453,8 @@ fn main9() {
     // let mv = Move::Capture { from: "H5".into(), to: "G4".into(), pc: Pawn, victim: Pawn };
 
     // let t = 10.0;
-    let t = 6.0;
+    // let t = 6.0;
+    let t = 2.0;
     // let t = 0.5;
     // let t = 0.3;
 

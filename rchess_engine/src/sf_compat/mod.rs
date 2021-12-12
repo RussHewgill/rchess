@@ -88,7 +88,7 @@ impl NNUE4 {
         w.write_u32::<LittleEndian>(size)?;
 
         assert_eq!(desc.len(), size as usize);
-        w.write_all(&desc)?;
+        w.write_all(desc)?;
 
         self.ft.write_parameters(&mut w)?;
 
@@ -179,7 +179,7 @@ impl NNUE4 {
 
             let mut transformed = [0; HALF_DIMS * 2]; // 2048
             // let psqt = self.ft.transform(&g, &mut transformed, bucket, true);
-            let psqt = self.ft.transform(&g, &mut transformed, bucket);
+            let psqt = self.ft.transform(g, &mut transformed, bucket);
 
             // let mut pos_buf = [0; Layer3::BUFFER_SIZE]; // XXX: 320 ??
             // // eprintln!("pos_buf.len() = {:?}", pos_buf.len());

@@ -266,7 +266,7 @@ mod ss {
         }
 
         fn print_ebf2(&self, full: bool) {
-            let mut arr = self.nodes_arr.clone();
+            let mut arr = self.nodes_arr;
             let k = arr.0.len();
             let dmax = self.max_depth as usize;
             // let mut arr2 = &mut arr[1..((self.max_depth as usize) + 1)];

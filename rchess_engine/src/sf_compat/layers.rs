@@ -94,7 +94,7 @@ mod nn_input {
         // fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType> {
             // assert!(input.len() == output.len());
             assert_eq!(trans_features.len(), Self::SELF_BUFFER_SIZE);
-            self.buf.copy_from_slice(&trans_features);
+            self.buf.copy_from_slice(trans_features);
         }
 
         fn read_parameters(&mut self, rdr: &mut BufReader<File>) -> io::Result<()> {
@@ -712,7 +712,7 @@ mod nn_affine {
             let input = self.prev.get_buf();
             let input = &input[..Self::SIZE_INPUT];
 
-            // let input: &[u8] = unsafe {
+            // let input: &[u8] = unsafe { // no benefit
             //     let ptr = input.as_ptr();
             //     let ptr2 = ptr as *const u8;
             //     std::slice::from_raw_parts(ptr2, input.len())
@@ -738,7 +738,8 @@ mod nn_affine {
 
                 for (j,x) in input.iter().enumerate() {
                     let x: i32 = x.as_();
-                    let x0 = self.weights[offset + j] as i32 * x;
+                    let x0 = self.weights[offset + j] as i32 * x; 
+                    // let x0 = self.weights[offset + j] as i32 * *x as i32; // no benefit
                     // let x0 = unsafe { *self.weights.get_unchecked(offset + j) } as i32 * x;
                     sum += x0;
                 }
@@ -755,7 +756,7 @@ mod nn_affine {
         }
 
         fn read_parameters(&mut self, mut rdr: &mut BufReader<File>) -> io::Result<()> {
-            self.prev.read_parameters(&mut rdr)?;
+            self.prev.read_parameters(rdr)?;
             // println!("wat NNAffine, OS = {:?}", OS);
 
             // eprintln!("Affine Read");
@@ -782,7 +783,7 @@ mod nn_affine {
         }
 
         fn write_parameters(&self, mut w: &mut BufWriter<File>) -> io::Result<()> {
-            self.prev.write_parameters(&mut w)?;
+            self.prev.write_parameters(w)?;
             for b in self.biases.iter() {
                 w.write_i32::<LittleEndian>(*b)?;
             }
@@ -865,42 +866,30 @@ mod nn_relu {
 
             // use std::simd::*;
 
-            // let start = unsafe {
-            //     use core::arch::x86_64::*;
-            //     // use std::simd;
-            //     if Self::SIZE_INPUT % SIMD_WIDTH == 0 {
-            //         // const ZERO: __m256i = _mm256_setzero_si256();
-            //         let zero: __m256i = _mm256_setzero_si256();
-            //         let offsets = _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
-            //         // for i in 0..Self::NUM_CHUNKS {
-            //         //     let words0 = _mm256_srai_epi16(_mm256_packs_epi32(
-            //         //         _mm256_load_si256()
-            //         //         ));
-            //         // }
-            //     } else {
-            //     }
-            //     0
-            // };
-
             let start = 0;
 
-            for i in start..Self::SIZE_INPUT {
-
-                let x0: i32 = input[i].as_();
+            for (i,x) in input.iter().enumerate() {
+                let x0: i32 = x.as_();
                 let x1 = (x0.overflowing_shr(WEIGHT_SCALE_BITS).0).clamp(0, 127);
                 self.buf[i] = x1.as_();
             }
 
+            // for i in start..Self::SIZE_INPUT {
+            //     let x0: i32 = input[i].as_();
+            //     let x1 = (x0.overflowing_shr(WEIGHT_SCALE_BITS).0).clamp(0, 127);
+            //     self.buf[i] = x1.as_();
+            // }
+
         }
 
         fn read_parameters(&mut self, mut rdr: &mut BufReader<File>) -> io::Result<()> {
-            let out = self.prev.read_parameters(&mut rdr)?;
+            let out = self.prev.read_parameters(rdr)?;
             // println!("wat NNRelu, Size = {:?}", Self::SIZE_INPUT);
             Ok(out)
         }
 
         fn write_parameters(&self, mut w: &mut BufWriter<File>) -> io::Result<()> {
-            self.prev.write_parameters(&mut w)?;
+            self.prev.write_parameters(w)?;
             Ok(())
         }
 
