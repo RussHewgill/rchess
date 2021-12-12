@@ -1788,8 +1788,8 @@ fn _main_nn() -> std::io::Result<()> {
         eprintln!("v = {:?}", v);
         eprintln!("v == -599 = {:?}", v == -599);
 
-        type LayerX = NNAffine<Layer0, 8>;
-        let ws: &LayerX = &nn.layers[0].prev.prev.prev.prev;
+        // type LayerX = NNAffine<Layer0, 8>;
+        // let ws: &LayerX = &nn.layers[0].prev.prev.prev.prev;
 
         return Ok(());
 
@@ -2454,7 +2454,7 @@ fn main9() {
 
     // let t = 10.0;
     // let t = 6.0;
-    let t = 2.0;
+    let t = 4.0;
     // let t = 0.5;
     // let t = 0.3;
 

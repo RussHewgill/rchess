@@ -100,12 +100,14 @@ impl NNFeatureTrans {
     // pub fn transform(&mut self, g: &Game, output: &mut [u8], bucket: usize, refresh: bool) -> Score {
     pub fn transform(&mut self, g: &Game, output: &mut [u8], bucket: usize) -> Score {
 
+        let output = &mut output[..HALF_DIMS*2];
+
         // eprintln!("FT transform");
 
         // self.update_accum(g, White, refresh);
         // self.update_accum(g, Black, refresh);
-        self.update_accum(g, White, true);
-        self.update_accum(g, Black, true);
+        self.update_accum(g, White);
+        self.update_accum(g, Black);
 
         let persps: [Color; 2] = [g.state.side_to_move, !g.state.side_to_move];
         // let persps: [Color; 2] = [!g.state.side_to_move, g.state.side_to_move];
@@ -115,14 +117,14 @@ impl NNFeatureTrans {
 
         let psqt = (psqt_accum[persps[0]][bucket] - psqt_accum[persps[1]][bucket]) / 2;
 
-        let mut x = 0;
+        // let mut x = 0;
 
         for p in 0..2 {
             let offset = HALF_DIMS * p;
-            for j in 0..HALF_DIMS {
-                let mut sum = accum[persps[p]][j];
-                x ^= sum.clamp(0, 127) as u8;
-                output[offset + j] = sum.clamp(0, 127) as u8;
+            for k in 0..HALF_DIMS {
+                let mut sum = accum[persps[p]][k];
+                // x ^= sum.clamp(0, 127) as u8;
+                output[offset + k] = sum.clamp(0, 127) as u8;
             }
         }
 
@@ -157,15 +159,24 @@ impl NNFeatureTrans {
         self.make_move_add(persp, king_sq, pc, side, to);
     }
 
-    // XXX: No op
     #[inline(always)]
     pub fn make_move(&mut self, g: &Game, mv: Move) {
-        self._make_move(g, White, mv);
-        self._make_move(g, Black, mv);
+        self.reset_accum(g);
     }
 
     #[inline(always)]
-    // #[cfg(feature = "nope")]
+    #[cfg(feature = "nope")]
+    pub fn make_move(&mut self, g: &Game, mv: Move) {
+        if mv.piece() == King {
+            self.reset_accum(g);
+        } else {
+            self._make_move(g, White, mv);
+            self._make_move(g, Black, mv);
+        }
+    }
+
+    #[inline(always)]
+    #[cfg(feature = "nope")]
     pub fn _make_move(&mut self, g: &Game, persp: Color, mv: Move) {
         let king_sq = g.get(King,persp).bitscan();
         let side = g.state.side_to_move;
@@ -275,57 +286,51 @@ impl NNFeatureTrans {
     }
 
     // pub fn apply_deltas(&mut self, persp: Color) {
-
     //     let rems = self.accum.deltas_rem.clone();
     //     let adds = self.accum.deltas_add.clone();
     //     self.accum.deltas_rem.clear();
     //     self.accum.deltas_add.clear();
-
     //     for d_rem in rems.into_iter() {
     //         self.accum_rem(persp, d_rem, true);
     //     }
     //     for d_add in adds.into_iter() {
     //         self.accum_add(persp, d_add, true);
     //     }
-
     // }
 
-    #[inline(always)]
-    pub fn update_accum(&mut self, g: &Game, persp: Color, refresh: bool) {
-
-        if self.accum.needs_refresh[persp] {
-
-            self.accum.needs_refresh[persp] = false;
-
-            // // full refresh
-            // if !refresh {
-            //     self.accum.needs_refresh[persp] = false;
-            // }
-
-            assert!(self.biases.len() == self.accum.accum[persp].len());
-            self.accum.accum[persp].copy_from_slice(&self.biases);
-
-            let mut active = ArrayVec::default();
-            NNAccum::append_active(g, persp, &mut active);
-
-            self.accum.psqt[persp].fill(0);
-
-            for idx in active.into_iter() {
-                let offset = HALF_DIMS * idx;
-
-                for j in 0..HALF_DIMS {
-                    self.accum.accum[persp][j] += self.weights[offset + j];
-                }
-
-                for k in 0..Self::PSQT_BUCKETS {
-                    self.accum.psqt[persp][k] += self.psqt_weights[idx * Self::PSQT_BUCKETS + k];
-                }
-
-            }
-
-        }
-
+    // #[inline(always)]
+    pub fn reset_accum(&mut self, g: &Game) {
     }
+
+    // #[inline(always)]
+    pub fn update_accum(&mut self, g: &Game, persp: Color) {
+        if self.accum.needs_refresh[persp] {
+            self.accum.needs_refresh[persp] = false;
+            self._update_accum(g, persp);
+        }
+    }
+
+    // #[inline(always)]
+    pub fn _update_accum(&mut self, g: &Game, persp: Color) {
+        assert!(self.biases.len() == self.accum.accum[persp].len());
+        self.accum.accum[persp].copy_from_slice(&self.biases);
+
+        let mut active = ArrayVec::default();
+        NNAccum::append_active(g, persp, &mut active);
+
+        self.accum.psqt[persp].fill(0);
+
+        for idx in active.into_iter() {
+            let offset = HALF_DIMS * idx;
+            for j in 0..HALF_DIMS {
+                self.accum.accum[persp][j] += self.weights[offset + j];
+            }
+            for k in 0..Self::PSQT_BUCKETS {
+                self.accum.psqt[persp][k] += self.psqt_weights[idx * Self::PSQT_BUCKETS + k];
+            }
+        }
+    }
+
 }
 
 

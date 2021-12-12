@@ -120,17 +120,17 @@ mod nn_affine {
 
     // #[derive(Debug,PartialEq,Clone)]
     #[derive(Debug,Eq,PartialEq,Clone)]
-    pub struct NNAffine<Prev: NNLayer, const OS: usize> {
+    pub struct NNAffine<Prev: NNLayer, const OS: usize, const IS: usize> {
         pub prev:    Prev,
 
         pub biases:  [i32; OS],
         pub weights: Vec<i8>, // IS * SIZE_INPUT
 
-        pub buffer:  [<NNAffine<Prev,OS> as NNLayer>::OutputType; OS],
+        pub buffer:  [<NNAffine<Prev,OS,IS> as NNLayer>::OutputType; OS],
     }
 
     /// Consts
-    impl<Prev: NNLayer, const OS: usize> NNAffine<Prev, OS> {
+    impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
 
         /// AVX2
         const INPUT_SIMD_WIDTH: usize = 32;
@@ -173,7 +173,7 @@ mod nn_affine {
 
     }
 
-    impl<Prev: NNLayer, const OS: usize> NNAffine<Prev, OS> {
+    impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
 
         // XXX: fix
         pub fn get_weight_index(idx: usize) -> usize {
@@ -242,7 +242,7 @@ mod nn_affine {
     ///   - N columns of the weight matrix are processed a time, where N
     ///     depends on the architecture (the amount of registers)
     ///   - accumulate + hadd is used
-    impl<Prev: NNLayer, const OS: usize> NNAffine<Prev, OS> {
+    impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
 
         // const INPUT_SIMD_WIDTH: usize = 32; // AVX2
         // const MAX_NUM_OUTPUT_REGS: usize = 8; // AVX2
@@ -657,15 +657,16 @@ mod nn_affine {
     ///   - not optimized as well as the approach 1
     ///   - inputs are processed in chunks of 4, weights are respectively transposed
     ///   - accumulation happens directly to int32s
-    impl<Prev: NNLayer, const OS: usize> NNAffine<Prev, OS> {
+    impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
 
     }
 
-    impl<Prev: NNLayer, const OS: usize> NNLayer for NNAffine<Prev, OS> {
+    impl<Prev: NNLayer, const OS: usize, const IS: usize> NNLayer for NNAffine<Prev,OS,IS> {
         type InputType = Prev::OutputType;
         type OutputType = i32;
         const SIZE_OUTPUT: usize = OS;
-        const SIZE_INPUT: usize = Prev::SIZE_OUTPUT;
+        // const SIZE_INPUT: usize = Prev::SIZE_OUTPUT;
+        const SIZE_INPUT: usize = IS;
 
         // static_assert(std::is_same<InputType, std::uint8_t>::value, "");
         // static_assert(std::is_same<InputType, std::uint8_t>::value, "");
@@ -738,12 +739,13 @@ mod nn_affine {
 
                 for (j,x) in input.iter().enumerate() {
                     let x: i32 = x.as_();
-                    let x0 = self.weights[offset + j] as i32 * x; 
+                    let x0 = self.weights[offset + j] as i32 * x;
                     // let x0 = self.weights[offset + j] as i32 * *x as i32; // no benefit
                     // let x0 = unsafe { *self.weights.get_unchecked(offset + j) } as i32 * x;
                     sum += x0;
                 }
 
+                // // for (x,w) in input.iter().zip(self.weights[offset..offset+input.len()].iter()) {
                 // for (x,w) in input.iter().zip(self.weights[offset..].iter()) {
                 //     let x: i32 = x.as_();
                 //     let x0 = *w as i32 * x;

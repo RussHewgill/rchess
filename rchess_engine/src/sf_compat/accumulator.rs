@@ -36,6 +36,7 @@ impl NNAccum {
             // deltas_rem:       ArrayVec::default(),
             // stack:            ArrayVec::default(),
             // stack:            Vec::with_capacity(1024),
+            // stack:            vec![],
             needs_refresh:    [true; 2],
         }
     }
