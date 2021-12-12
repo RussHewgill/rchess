@@ -502,6 +502,41 @@ fn main_simd() {
     use safe_arch::*;
     use rchess_engine_lib::simd_utils::safe_arch::*;
 
+    const N: usize = 2048;
+    const K: usize = 1_000_000;
+
+    let xs1: [u8; N] = array_init::array_init(|x| rng.gen_range(0..2));
+    let xs2: [i8; N] = array_init::array_init(|x| rng.gen_range(-10..10));
+    // let xs1: [u8; 32] = array_init::array_init(|x| rng.gen_range(0..2));
+    // let xs2: [i8; 32] = array_init::array_init(|x| rng.gen_range(-10..10));
+
+    let ys1: [i32; N] = array_init::array_init(|x| xs1[x] as i32);
+    let ys2: [i32; N] = array_init::array_init(|x| xs2[x] as i32);
+
+    let mut res = 0;
+    timer!({
+        for _ in 0..K {
+            res = dot_product_basic(&xs1, &xs2);
+        }});
+    eprintln!("res = {:?}", res);
+
+    let t0 = Instant::now();
+    for _ in 0..K {
+        res = dot_product2(&ys1, &ys2);
+    }
+    eprintln!("res = {:?}", res);
+    let t1 = t0.elapsed().as_secs_f64();
+    eprintln!("finished in {:.3} seconds", t1);
+
+    let t0 = Instant::now();
+    for _ in 0..K {
+        res = dot_product0(&xs1, &xs2);
+    }
+    eprintln!("res = {:?}", res);
+    let t1 = t0.elapsed().as_secs_f64();
+    eprintln!("finished in {:.3} seconds", t1);
+
+    return;
 
     let xs: [u8; 32] = array_init::array_init(|x| x as u8);
     let xs2: [i8; 32] = array_init::array_init(|x| x as i8);
@@ -1751,6 +1786,7 @@ fn _main_nn() -> std::io::Result<()> {
         // d6b4 -> -599
         let v = nn.evaluate(&g, false, false);
         eprintln!("v = {:?}", v);
+        eprintln!("v == -599 = {:?}", v == -599);
 
         type LayerX = NNAffine<Layer0, 8>;
         let ws: &LayerX = &nn.layers[0].prev.prev.prev.prev;
@@ -2390,6 +2426,8 @@ fn main9() {
 
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
+
+    let fen = STARTPOS;
 
     // eprintln!("correct = {:?}", correct);
 

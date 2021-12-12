@@ -127,49 +127,6 @@ mod wat {
         //     std::slice::from_raw_parts(ptr, self.biases.len() / 4)
         // };
 
-        for i in 0..OS {
-            // output[i] = biases[i] + dot_product2(&input, &weights[i]);
-
-            // let mut acc = vec![];
-
-            // for k in 0..IS/32 {
-            //     let offset = k * 32;
-            //     let input_chunk = slice_to_m256i_u8(&input[offset..]);
-            //     let weight_chunk = slice_to_m256i_i8(&weights[i][offset..]);
-            //     let input_chunk = shr_imm_i16_m256i::<8>(unpack_low_i8_m256i(input_chunk,input_chunk));
-            //     let weight_chunk = shr_imm_i16_m256i::<8>(unpack_low_i8_m256i(weight_chunk,weight_chunk));
-            //     let x = mul_i16_keep_low_m256i(input_chunk, weight_chunk);
-            //     acc.push(x);
-            // }
-
-            // let mut sum = m256i::default();
-            // let cs = acc.chunks_exact(2);
-            // for a in cs.remainder() {
-            //     sum = add_i32_m256i(sum, *a);
-            // }
-            // for a in cs {
-            //     let x = add_horizontal_i16_m256i(a[0],a[1]);
-            //     sum = add_i32_m256i(sum, x);
-            // }
-
-            // let mut x = 0;
-            // x += extract_i32_from_m256i::<0>(sum);
-            // x += extract_i32_from_m256i::<1>(sum);
-            // x += extract_i32_from_m256i::<2>(sum);
-            // x += extract_i32_from_m256i::<3>(sum);
-            // x += extract_i32_from_m256i::<4>(sum);
-            // x += extract_i32_from_m256i::<5>(sum);
-            // x += extract_i32_from_m256i::<6>(sum);
-            // x += extract_i32_from_m256i::<7>(sum);
-
-            let input2 = input.into_iter().map(|x| *x as i32).collect::<Vec<_>>();
-            let weights2 = weights[i].iter().map(|x| *x as i32).collect::<Vec<_>>();
-
-            let x = dot_product2(&input2, &weights2);
-
-            output[i] = biases[i] + x;
-        }
-
         // for i in 0..OS {
         if !true {
             let i = 0;
@@ -238,9 +195,67 @@ mod wat {
 
     }
 
-    pub fn dot_product0(a: &[i32], b: &[i32]) -> i32 {
+    pub fn dot_product_basic(a: &[u8], b: &[i8]) -> i32 {
+        assert_eq!(a.len(), b.len());
+        assert!(a.len() % 32 == 0);
+        let mut sum = 0;
+        for i in 0..a.len() {
+            sum += a[i] as i32 * b[i] as i32;
+        }
+        sum
+    }
 
-        unimplemented!()
+    pub fn dot_product0(a: &[u8], b: &[i8]) -> i32 {
+        use safe_arch::*;
+        use crate::simd_utils::safe_arch::*;
+
+        assert_eq!(a.len(), b.len());
+        assert!(a.len() % 32 == 0);
+
+        let mut acc = vec![m256i::default(); a.len() / 32];
+
+        for i in 0..a.len() / 32 {
+            let offset = i * 32;
+
+            let a0 = &a[offset..offset + 32];
+            let b0 = &b[offset..offset + 32];
+
+            let a0 = slice_to_m256i_u8(&a0);
+            let b0 = slice_to_m256i_i8(&b0);
+
+            let prod0 = mul_u8i8_add_horizontal_saturating_m256i(a0, b0);
+
+            acc[i] = prod0;
+
+        }
+
+        let mut sum = m256i::default();
+        for a in acc.into_iter() {
+            sum = add_i16_m256i(sum, a);
+        }
+
+        let x = mul_i16_horizontal_add_m256i(sum, set_splat_i16_m256i(1));
+
+        let x = add_horizontal_i32_m256i(x, m256i::default());
+
+        let x: [i32; 8] = x.into();
+        // let x: [i16; 16] = x.into();
+
+        // eprintln!("x = {:?}", x);
+
+        let out = x.iter().sum();
+
+        // let mut out = 0;
+        // out += x[0];
+        // out += x[2];
+        // out += x[4];
+        // out += x[6];
+
+        // let mut x = 0;
+        // extract_i32_imm_m128i::<0>(sum);
+
+        out
+        // unimplemented!()
     }
 
     pub fn dot_product1(a: &[i32], b: &[i32]) -> i32 {

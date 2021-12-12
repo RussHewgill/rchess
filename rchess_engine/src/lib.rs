@@ -106,12 +106,14 @@ pub mod util;
 #[macro_export]
 macro_rules! timer {
     ($e:block) => {
-        let t0 = std::time::Instant::now();
-        let tmp = $e
-        let t1 = t0.elapsed().as_secs_f64();
-        debug!("finished in {:.3} seconds", t1);
-        eprintln!("finished in {:.3} seconds", t1);
-        tmp
+        {
+            let t0 = std::time::Instant::now();
+            let tmp = $e;
+            let t1 = t0.elapsed().as_secs_f64();
+            debug!("finished in {:.3} seconds", t1);
+            eprintln!("finished in {:.3} seconds", t1);
+            tmp
+        }
     };
 }
 

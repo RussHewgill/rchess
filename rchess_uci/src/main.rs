@@ -198,7 +198,7 @@ fn main() -> std::io::Result<()> {
                             nnue.ft.accum.needs_refresh = [true; 2];
                         }
 
-                        parse_go(&mut explorer, params.clone().collect());
+                        // parse_go(&mut explorer, params.clone().collect());
 
                         // let m = explorer.lock().unwrap().explore(&ts, depth).unwrap();
                         let (m,stats) = explorer.explore(&ts);

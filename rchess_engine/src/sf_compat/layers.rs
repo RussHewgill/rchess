@@ -180,8 +180,8 @@ mod nn_affine {
             if Self::INPUT_SIMD_WIDTH == 1 {
                 idx
             } else if Self::SIZE_INPUT_PADDED >= 128 {
-                Self::_get_weight_index(idx)
-                // idx
+                // Self::_get_weight_index(idx)
+                idx
             } else {
                 // Self::_get_weight_index_scrambled(idx)
                 idx
@@ -432,6 +432,7 @@ mod nn_affine {
             // unimplemented!()
         }
 
+        #[cfg(feature = "nope")]
         pub fn _propagate_avx2_small(&mut self, trans_features: &[u8]) {
             self.prev.propagate(trans_features);
             let input = self.prev.get_buf();
@@ -448,6 +449,7 @@ mod nn_affine {
             }
         }
 
+        #[cfg(feature = "nope")]
         pub fn _propagate_avx2_large(&mut self, trans_features: &[u8]) {
             self.prev.propagate(trans_features);
             let input = self.prev.get_buf();
@@ -462,9 +464,8 @@ mod nn_affine {
 
             assert_eq!(input.len() % 32, 0);
 
-            for block in 0..Self::SIZE_INPUT {
-
-            }
+            // for block in 0..Self::SIZE_INPUT {
+            // }
 
         }
 
@@ -500,27 +501,48 @@ mod nn_affine {
             // let k0 = input_vec[0];
             // eprintln!("k0 = {:?}", k0);
 
+            let weight_vec: &[m256i] = unsafe {
+                let ptr = self.weights.as_ptr();
+                let ptr = ptr as *const m256i;
+                std::slice::from_raw_parts(ptr, self.weights.len() / 32)
+            };
+
             for big_block in 0..Self::NUM_BIG_BLOCKS {
 
                 let mut acc = vec![m256i::default(); Self::NUM_OUTPUT_REGS];
 
-                for small_block in (0..Self::NUM_SMALL_BLOCKS_PER_OUTPUT/2).map(|x| x*2) {
+                // for small_block in (0..Self::NUM_SMALL_BLOCKS_PER_OUTPUT/2).map(|x| x*2) {
+                let mut small_block = 0;
+                while small_block < Self::NUM_SMALL_BLOCKS_PER_OUTPUT {
 
                     let w_offset = big_block * Self::BIG_BLOCK_SIZE
                         + small_block * Self::SMALL_BLOCK_SIZE * Self::NUM_OUTPUT_REGS;
+                    let w_offset = w_offset / 32;
 
-                    let weight_vec = &self.weights[w_offset..w_offset + Self::NUM_OUTPUT_REGS * 2 + 32];
+                    use crate::eprint_self;
+
+                    eprint_self!(Self::BIG_BLOCK_SIZE); // 16384
+                    eprint_self!(Self::SMALL_BLOCK_SIZE); // 32
+                    eprint_self!(Self::NUM_SMALL_BLOCKS_PER_BIG_BLOCK); // 512
+                    eprint_self!(Self::NUM_SMALL_BLOCKS_PER_OUTPUT); // 64
+
+                    // eprintln!("w_offset = {:?}", w_offset);
 
                     let in0 = input_vec[small_block + 0];
                     let in1 = input_vec[small_block + 1];
 
                     for k in 0..Self::NUM_OUTPUT_REGS {
-                        let b0 = Self::slice_i8_to_m256i(&weight_vec[k..k+32]);
-                        let b1 = Self::slice_i8_to_m256i(
-                            &weight_vec[k+Self::NUM_OUTPUT_REGS..k+Self::NUM_OUTPUT_REGS+32]);
+                        // let b0 = Self::slice_i8_to_m256i(&weight_vec[k..k+32]);
+                        // let b1 = Self::slice_i8_to_m256i(
+                        //     &weight_vec[k+Self::NUM_OUTPUT_REGS..k+Self::NUM_OUTPUT_REGS+32]);
+
+                        let b0 = weight_vec[k];
+                        let b1 = weight_vec[k + Self::NUM_OUTPUT_REGS];
+
                         Self::m256_add_dpbusd_epi32x2(&mut acc[k], in0, b0, in1, b1)
                     }
 
+                    small_block += 2
                 }
 
                 let bias_vec: &[m128i] = unsafe {
@@ -535,13 +557,18 @@ mod nn_affine {
 
                 let output_vec: &mut [m128i] = unsafe {
                     let ptr = self.buffer.as_mut_ptr();
-                    let ptr = ptr as *mut m128i;
+                    let ptr = ptr as *mut _ as *mut m128i;
                     std::slice::from_raw_parts_mut(ptr, self.buffer.len() / 4)
                 };
 
                 for k in (0..Self::NUM_OUTPUT_REGS/4).map(|x| x * 4) {
                     let idx = (big_block * Self::NUM_OUTPUT_REGS + k) / 4;
                     output_vec[idx] = Self::m256_haddx4(acc[k+0],acc[k+1],acc[k+2],acc[k+2],bias_vec[idx]);
+                    // let sum = Self::m256_haddx4(acc[k+0],acc[k+1],acc[k+2],acc[k+2],bias_vec[idx]);
+                    // self.buffer[k+0] = extract_i32_imm_m128i::<0>(sum);
+                    // self.buffer[k+1] = extract_i32_imm_m128i::<1>(sum);
+                    // self.buffer[k+2] = extract_i32_imm_m128i::<2>(sum);
+                    // self.buffer[k+3] = extract_i32_imm_m128i::<3>(sum);
                 }
 
             }
@@ -562,29 +589,29 @@ mod nn_affine {
 
         }
 
-        pub fn slice_i8_to_m256i(xs: &[i8]) -> safe_arch::m256i {
-            assert!(xs.len() >= 32);
-            use safe_arch::*;
-            let k0: m256i = unsafe {
-                let ptr = xs.get_unchecked(..32).as_ptr();
-                let ptr = ptr as *const u8 as *const std::arch::x86_64::__m256i;
-                let x = std::arch::x86_64::_mm256_loadu_si256(ptr);
-                m256i(x)
-            };
-            k0
-        }
+        // pub fn slice_i8_to_m256i(xs: &[i8]) -> safe_arch::m256i {
+        //     assert!(xs.len() >= 32);
+        //     use safe_arch::*;
+        //     let k0: m256i = unsafe {
+        //         let ptr = xs.get_unchecked(..32).as_ptr();
+        //         let ptr = ptr as *const u8 as *const std::arch::x86_64::__m256i;
+        //         let x = std::arch::x86_64::_mm256_loadu_si256(ptr);
+        //         m256i(x)
+        //     };
+        //     k0
+        // }
 
-        pub fn slice_u8_to_m256i(xs: &[u8]) -> safe_arch::m256i {
-            assert!(xs.len() >= 32);
-            use safe_arch::*;
-            let k0: m256i = unsafe {
-                let ptr = xs.get_unchecked(..32).as_ptr();
-                let ptr = ptr as *const std::arch::x86_64::__m256i;
-                let x = std::arch::x86_64::_mm256_loadu_si256(ptr);
-                m256i(x)
-            };
-            k0
-        }
+        // pub fn slice_u8_to_m256i(xs: &[u8]) -> safe_arch::m256i {
+        //     assert!(xs.len() >= 32);
+        //     use safe_arch::*;
+        //     let k0: m256i = unsafe {
+        //         let ptr = xs.get_unchecked(..32).as_ptr();
+        //         let ptr = ptr as *const std::arch::x86_64::__m256i;
+        //         let x = std::arch::x86_64::_mm256_loadu_si256(ptr);
+        //         m256i(x)
+        //     };
+        //     k0
+        // }
 
         fn m256_add_dpbusd_epi32x2(
             mut acc: &mut safe_arch::m256i,
@@ -593,10 +620,10 @@ mod nn_affine {
         ) {
             use safe_arch::*;
             let mut product0 = mul_u8i8_add_horizontal_saturating_m256i(a0, b0);
-            let product1 = mul_u8i8_add_horizontal_saturating_m256i(a1, b1);
-            product0 = add_saturating_i16_m256i(product0, product1);
-            product0 = mul_i16_horizontal_add_m256i(product0, set_splat_i16_m256i(1));
-            *acc = add_i32_m256i(*acc, product0);
+            let product1     = mul_u8i8_add_horizontal_saturating_m256i(a1, b1);
+            product0         = add_saturating_i16_m256i(product0, product1);
+            product0         = mul_i16_horizontal_add_m256i(product0, set_splat_i16_m256i(1));
+            *acc             = add_i32_m256i(*acc, product0);
         }
 
         fn m256_haddx4(
@@ -663,7 +690,7 @@ mod nn_affine {
             &mut self.buffer
         }
 
-        // #[cfg(feature = "nope")]
+        #[cfg(feature = "nope")]
         fn propagate(&mut self, trans_features: &[u8]) {
             if Self::SIZE_INPUT_PADDED >= 128 {
                 self._propagate_avx2_large(trans_features);
@@ -675,7 +702,7 @@ mod nn_affine {
         #[cfg(feature = "nope")]
         fn propagate(&mut self, trans_features: &[u8]) { self._propagate_ndarray(trans_features); }
 
-        #[cfg(feature = "nope")]
+        // #[cfg(feature = "nope")]
         fn propagate(&mut self, trans_features: &[u8]) {
 
             // eprintln!("affine propagate");
@@ -683,26 +710,12 @@ mod nn_affine {
 
             self.prev.propagate(trans_features);
             let input = self.prev.get_buf();
-            // let input = &input[..Self::SIZE_INPUT];
+            let input = &input[..Self::SIZE_INPUT];
 
             // let input: &[u8] = unsafe {
             //     let ptr = input.as_ptr();
             //     let ptr2 = ptr as *const u8;
             //     std::slice::from_raw_parts(ptr2, input.len())
-            // };
-
-            // let x0 = self.weights[0];
-            // let x1 = self.weights[Self::SIZE_INPUT_PADDED * (Self::SIZE_OUTPUT - 1) + Self::SIZE_INPUT - 1];
-
-            // eprintln!("Self::SIZE_INPUT_PADDED = {:?}", Self::SIZE_INPUT_PADDED);
-
-            // assert!(self.biases.len() >= Self::SIZE_OUTPUT);
-            // assert!(self.weights.len() >= Self::SIZE_OUTPUT * Self::SIZE_INPUT_PADDED);
-
-            // let input: &[u8] = unsafe {
-            //     let ptr = input.as_ptr();
-            //     let ptr = ptr as *const u8;
-            //     std::slice::from_raw_parts(ptr, input.len())
             // };
 
             for i in 0..Self::SIZE_OUTPUT {
@@ -761,8 +774,8 @@ mod nn_affine {
 
             for i in 0..size {
                 let x = rdr.read_i8()?;
-                self.weights[Self::get_weight_index(i)] = x;
-                // self.weights[i] = x;
+                // self.weights[Self::get_weight_index(i)] = x;
+                self.weights[i] = x;
             }
 
             Ok(())
@@ -777,7 +790,8 @@ mod nn_affine {
             //     w.write_u8(*wt)?;
             // }
             for i in 0..Self::SIZE_OUTPUT * Self::SIZE_INPUT_PADDED {
-                let wt = self.weights[Self::get_weight_index(i)];
+                // let wt = self.weights[Self::get_weight_index(i)];
+                let wt = self.weights[i];
                 w.write_i8(wt)?;
                 // unimplemented!()
             }
@@ -785,6 +799,7 @@ mod nn_affine {
         }
 
     }
+
 }
 
 /// Clipped Relu
