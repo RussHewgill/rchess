@@ -121,6 +121,23 @@ pub mod safe_arch {
         *acc             = add_i32_m256i(*acc, product0);
     }
 
+    pub fn m256_hadd(
+        sum:     safe_arch::m256i,
+        bias:    i32
+    ) -> i32 {
+
+        const _MM_PERM_BADC: i32 = 0x4E;
+        const _MM_PERM_CDAB: i32 = 0xB1;
+
+        let sum128lo = cast_to_m128i_from_m256i(sum);
+        let sum128hi = extract_m128i_m256i::<1>(sum);
+        let mut sum128 = add_i32_m128i(sum128lo,sum128hi);
+        sum128 = add_i32_m128i(sum128, shuffle_ai_f32_all_m128i::<_MM_PERM_BADC>(sum128));
+        sum128 = add_i32_m128i(sum128, shuffle_ai_f32_all_m128i::<_MM_PERM_CDAB>(sum128));
+
+        get_i32_from_m128i_s(sum128) + bias
+    }
+
     pub fn m256_haddx4(
         mut sum0: safe_arch::m256i,
         sum1:     safe_arch::m256i,

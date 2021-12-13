@@ -244,11 +244,11 @@ impl Tables {
 
     pub fn _new(magics: bool) -> Self {
         debug!("Generating Tables: magics: {}", magics);
-        println!("wat 0");
+        // println!("wat 0");
         let rook_moves   = Self::gen_rooks();
-        println!("wat 1");
+        // println!("wat 1");
         let bishop_moves = Self::gen_bishops();
-        println!("wat 2");
+        // println!("wat 2");
 
         let (magics_rook, table_rook) = if magics {
             _gen_magics(false).unwrap_err()

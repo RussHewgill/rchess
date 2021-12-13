@@ -369,7 +369,40 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
 }
 
-criterion_group!(benches, crit_bench_simd);
+pub fn crit_bench_nnue(c: &mut Criterion) {
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
+
+    let mut group = c.benchmark_group("group");
+
+    group.warm_up_time(Duration::from_secs_f64(1.0));
+
+    group.sample_size(100);
+    group.measurement_time(Duration::from_secs_f64(4.));
+
+    let ts = Tables::read_from_file_def().unwrap();
+
+    use rchess_engine_lib::sf_compat::*;
+
+    let path = "../nn-63376713ba63.nnue";
+    let mut nn = NNUE4::read_nnue(path).unwrap();
+
+    let mut wacs = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
+    let mut wacs: Vec<Game> = wacs.into_iter().map(|(fen,_)| {
+        Game::from_fen(&ts, &fen).unwrap()
+    }).collect();
+
+    group.bench_function("nnue eval", |b| b.iter(|| {
+        for g in wacs.iter() {
+            nn.ft.accum.needs_refresh = [true; 2];
+            let v = nn.evaluate(black_box(&g), false, false);
+        }
+    }));
+
+    group.finish();
+}
+
+criterion_group!(benches, crit_bench_nnue);
+// criterion_group!(benches, crit_bench_simd);
 // criterion_group!(benches, crit_bench_1);
 // criterion_group!(benches, crit_bench_2);
 criterion_main!(benches);

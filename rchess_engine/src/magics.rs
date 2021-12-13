@@ -68,7 +68,7 @@ pub fn _gen_magics(bishop: bool)
     // let n1b = vec![
     // ];
 
-    println!("wat 0");
+    // println!("wat 0");
     for sq in 0u8..64 {
     // for sq in 0u8..1 {
         // let c0: Coord = "B7".into();

@@ -9,6 +9,7 @@
 // #![feature(backtrace,backtrace_frames)]
 #![feature(portable_simd)]
 #![feature(array_chunks)]
+#![feature(asm)]
 
 // #![allow(
 //     // clippy::all,

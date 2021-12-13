@@ -9,6 +9,7 @@
 // #![feature(generic_const_exprs)]
 #![feature(portable_simd)]
 #![feature(array_chunks)]
+#![feature(asm)]
 
 #![allow(clippy::all)]
 
@@ -58,6 +59,7 @@ use rand::distributions::{Uniform,uniform::SampleUniform};
 
 use std::time::{Instant,Duration};
 
+// #[cfg(feature = "nope")]
 fn main() {
 
     let args: Vec<String> = std::env::args().collect();
@@ -572,20 +574,32 @@ fn main_simd() {
         std::slice::from_raw_parts(ptr, ws1.len() / 32)
     };
 
-    let sum0 = m256i::from([1u8; 32]);
-    let sum1 = sum0;
-    let sum2 = m256i::from([0u8; 32]);
-    let sum3 = sum2;
+    let a0 = m256i::from([1i32; 8]);
+    let a1 = m256i::from([0i32; 8]);
 
-    let bias = m128i::from([0u8; 16]);
-
-    let res0 = add_horizontal_i32_m256i(sum0, sum1);
+    let b0 = m256i::from([1i32; 8]);
+    let b1 = m256i::from([0i32; 8]);
 
     // let res0 = m256_haddx4(sum0, sum0, sum1, sum1, bias);
 
+    // let mut res0 = m256i::from([0i32; 8]);
+    // m256_add_dpbusd_epi32x2(&mut res0, a0, b0, a1, b1);
+
+    let product0 = mul_u8i8_add_horizontal_saturating_m256i(a0, b0);
+    let product1 = mul_u8i8_add_horizontal_saturating_m256i(a1, b1);
+
+    let res0 = add_saturating_i16_m256i(product0, product1);
+    eprintln!("res0 = {:?}", bytemuck::cast::<m256i,[i16;16]>(res0));
+
+    let res0 = mul_i16_horizontal_add_m256i(product0, set_splat_i16_m256i(1));
+    eprintln!("res0 = {:?}", bytemuck::cast::<m256i,[i32;8]>(res0));
+
+
     // let res0 = a[0];
     // eprintln!("res0 = {:?}", bytemuck::cast::<m128i,[i8;16]>(res0));
-    eprintln!("res0 = {:?}", bytemuck::cast::<m128i,[i8;16]>(res0));
+    // eprintln!("res1 = {:?}", bytemuck::cast::<m128i,[i8;16]>(res1));
+    // eprintln!("res0 = {:?}", bytemuck::cast::<m256i,[i16;16]>(res0));
+    // eprintln!("res1 = {:?}", bytemuck::cast::<m256i,[i16;16]>(res1));
 
     return;
 
@@ -1819,6 +1833,8 @@ fn _main_nn() -> std::io::Result<()> {
         // let xs: [i8; 1024] = array_init::array_init(|x| x as i8);
         // let xs: [i32; 1024] = array_init::array_init(|x| x as i32);
         // let xs: [i32; 32] = array_init::array_init(|x| x as i32);
+
+        // nn.ft.reset_accum(&g);
 
         // d6b4 -> -599
         let v = nn.evaluate(&g, false, false);
