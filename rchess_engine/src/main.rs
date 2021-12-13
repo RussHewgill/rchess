@@ -1844,9 +1844,12 @@ fn _main_nn() -> std::io::Result<()> {
         nn2.ft.make_move(&g2, mv1);
         // nn2.ft.reset_accum(&g2);
 
-        nn2.ft.accum.needs_refresh = [false; 2];
-        let v2 = nn2.evaluate(&g2, false, false);
-        eprintln!("v2 = {:?}", v2);
+        let g3 = g2.make_move_unchecked(&ts, mv2).unwrap();
+        nn2.ft.make_move(&g3, mv2);
+
+        // nn2.ft.accum.needs_refresh = [false; 2];
+        // let v2 = nn2.evaluate(&g2, false, false);
+        // eprintln!("v2 = {:?}", v2);
 
         // let fen0 = "r4rk1/4npp1/1p1q2b1/1B6/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1";
         // let g0 = Game::from_fen(&ts, fen0).unwrap();
@@ -1854,9 +1857,9 @@ fn _main_nn() -> std::io::Result<()> {
         // let v0 = nn2.evaluate(&g0, false, false);
         // eprintln!("v0 = {:?}", v0);
 
-        for x in nn2.ft.accum.stack_delta.iter() {
-            eprintln!("x = {:?}", x);
-        }
+        // for x in nn2.ft.accum.stack_delta.iter() {
+        //     eprintln!("x = {:?}", x);
+        // }
 
         // nn2.ft.reset_accum(&g);
 
@@ -1883,11 +1886,12 @@ fn _main_nn() -> std::io::Result<()> {
         // nn2.ft.accum_rem(Black, idx0, false);
 
         // nn2.ft.accum.needs_refresh = [false; 2];
-        nn2.ft.accum_pop();
+        // nn2.ft.accum_pop();
+        // nn2.ft.accum_pop();
         // nn2.ft.accum.needs_refresh = [false; 2];
-        let v3 = nn2.evaluate(&g, false, false);
+        let v3 = nn2.evaluate(&g3, false, false);
         eprintln!("v3 = {:?}", v3);
-        eprintln!("v3 == -599 = {:?}", v3 == -599);
+        // eprintln!("v3 == -599 = {:?}", v3 == -599);
 
         // let g3 = g2.make_move_unchecked(&ts, mv2).unwrap();
         // nn2.ft.make_move(&g3, mv2);
@@ -1897,11 +1901,8 @@ fn _main_nn() -> std::io::Result<()> {
 
         // nn2.make_mov
 
-        // let fen0 = "r4rk1/4npp1/1p1q2b1/1B6/1B1P2Q1/P7/5PP1/R3K2R b KQ - 0 2";
         // let fen0 = "r4rk1/4npp1/1p1q2b1/1B6/1B1p2Q1/P3P3/5PP1/R3K2R w KQ - 0 2";
-        // let fen0 = "r4rk1/4npp1/1p1q2b1/1B6/1B1Pp1Q1/P3P3/5PP1/R3K2R w KQ - 0 2";
-        // let fen0 = "r4rk1/4npp1/1p1q2b1/1B1P4/1B2p1Q1/P3P3/5PP1/R3K2R b KQ - 0 2";
-        let fen0 = "r4rk1/4npp1/1p1q2b1/1B6/1B1p2Q1/P3P3/5PP1/R3K2R w KQ - 0 2";
+        let fen0 = "r4rk1/4npp1/1p1q2b1/1B6/1B1P2Q1/P7/5PP1/R3K2R b KQ - 0 2";
         let mut g0 = Game::from_fen(&ts, fen0).unwrap();
 
         nn.ft.reset_accum(&g0);

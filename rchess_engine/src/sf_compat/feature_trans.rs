@@ -195,7 +195,7 @@ impl NNFeatureTrans {
         let mut out = ArrayVec::new();
 
         let king_sq = g.get(King,persp).bitscan();
-        let side = g.state.side_to_move;
+        let side = !g.state.side_to_move;
         match mv {
             Move::Quiet { from, to, pc } => {
                 let a = self.make_move_move(persp, king_sq, pc, side, from, to);
