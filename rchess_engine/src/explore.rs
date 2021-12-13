@@ -293,7 +293,8 @@ impl Explorer {
     pub fn update_game(&mut self, g: Game) {
         #[cfg(feature = "nnue")]
         if let Some(ref mut nnue) = self.nnue {
-            nnue.ft.accum.needs_refresh = [true; 2];
+            // nnue.ft.accum.needs_refresh = [true; 2];
+            nnue.ft.reset_accum(&g);
         }
         self.side = g.state.side_to_move;
         self.game = g;

@@ -179,7 +179,20 @@ impl ExHelper {
             // let mut nn: &mut NNUE4 = nnue.borrow_mut();
             let mut nn = nnue.borrow_mut();
 
+            let mut nn2 = nn.clone();
+            nn2.ft.reset_accum(g);
+            let v2 = nn2.evaluate(g, true, false);
+
             let v = nn.evaluate(&g, true, false);
+
+            // assert_eq!(v, v2);
+            if v != v2 {
+                eprintln!("g.to_fen() = {:?}", g.to_fen());
+                eprintln!("g = {:?}", g);
+                eprintln!("v  = {:?}", v);
+                eprintln!("v2 = {:?}", v2);
+                panic!("v != v2");
+            }
 
             // nn.ft.accum.needs_refresh = [true; 2];
             // let v = nn.evaluate(&g, true, true); // XXX: slow, always refresh

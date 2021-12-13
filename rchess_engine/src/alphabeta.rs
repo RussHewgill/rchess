@@ -111,7 +111,7 @@ impl ExHelper {
             #[cfg(feature = "nnue")]
             if let Some(nnue) = &self.nnue {
                 let mut nn = nnue.borrow_mut();
-                nn.ft.make_move(g, mv);
+                nn.ft.make_move(&g2, mv);
             }
 
             Some(g2)

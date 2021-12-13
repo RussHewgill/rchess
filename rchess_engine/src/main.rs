@@ -1827,14 +1827,88 @@ fn _main_nn() -> std::io::Result<()> {
 
         use safe_arch::*;
 
-        // let xs: [u8; 32] = array_init::array_init(|x| x as u8);
-        // let xs: [i8; 32] = array_init::array_init(|x| x as i8);
-        // let xs: [u8; 64] = array_init::array_init(|x| x as u8);
-        // let xs: [i8; 1024] = array_init::array_init(|x| x as i8);
-        // let xs: [i32; 1024] = array_init::array_init(|x| x as i32);
-        // let xs: [i32; 32] = array_init::array_init(|x| x as i32);
+        let mut nn2 = nn.clone();
+        nn2.ft.reset_accum(&g);
+        let v0 = nn2.evaluate(&g, false, false);
+        eprintln!("v0 = {:?}", v0);
 
-        // nn.ft.reset_accum(&g);
+        let mv1 = Move::new_capture("e5", "d4", Pawn, Pawn);
+        let mv2 = Move::new_capture("e3", "d4", Pawn, Pawn);
+        // let mv1 = Move::new_quiet("e5", "e4", Pawn);
+        // let mv2 = Move::new_quiet("d4", "d5", Pawn);
+
+        let g2 = g.make_move_unchecked(&ts, mv1).unwrap();
+
+        // nn2.ft._update_accum(&g2, White);
+        // nn2.ft._update_accum(&g2, Black);
+        nn2.ft.make_move(&g2, mv1);
+        // nn2.ft.reset_accum(&g2);
+
+        nn2.ft.accum.needs_refresh = [false; 2];
+        let v2 = nn2.evaluate(&g2, false, false);
+        eprintln!("v2 = {:?}", v2);
+
+        // let fen0 = "r4rk1/4npp1/1p1q2b1/1B6/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1";
+        // let g0 = Game::from_fen(&ts, fen0).unwrap();
+        // nn2.ft.reset_accum(&g0);
+        // let v0 = nn2.evaluate(&g0, false, false);
+        // eprintln!("v0 = {:?}", v0);
+
+        for x in nn2.ft.accum.stack_delta.iter() {
+            eprintln!("x = {:?}", x);
+        }
+
+        // nn2.ft.reset_accum(&g);
+
+        // nn2.ft.accum.stack_delta.clear();
+        // use rchess_engine_lib::sf_compat::accumulator::NNDelta;
+        // let mut xs = arrayvec::ArrayVec::<NNDelta,8>::new();
+        // let idx0 = NNUE4::make_index_half_ka_v2("E1".into(), White, Pawn, Black, "E5".into());
+        // // let idx1 = NNUE4::make_index_half_ka_v2("E1".into(), White, Pawn, White, "D4".into());
+        // // let idx2 = NNUE4::make_index_half_ka_v2("E1".into(), White, Pawn, Black, "D4".into());
+        // xs.push(NNDelta::Remove(idx0,White));
+        // // xs.push(NNDelta::Remove(idx1));
+        // // xs.push(NNDelta::Add(idx2));
+        // let idx0 = NNUE4::make_index_half_ka_v2("G8".into(), Black, Pawn, Black, "E5".into());
+        // // let idx1 = NNUE4::make_index_half_ka_v2("G8".into(), Black, Pawn, White, "D4".into());
+        // // let idx2 = NNUE4::make_index_half_ka_v2("G8".into(), Black, Pawn, Black, "D4".into());
+        // xs.push(NNDelta::Remove(idx0,Black));
+        // // xs.push(NNDelta::Remove(idx1));
+        // // xs.push(NNDelta::Add(idx2));
+        // nn2.ft.accum.stack_delta.push(xs);
+
+        // let idx0 = NNUE4::make_index_half_ka_v2("E1".into(), White, Pawn, Black, "E5".into());
+        // nn2.ft.accum_rem(White, idx0, false);
+        // let idx0 = NNUE4::make_index_half_ka_v2("G8".into(), Black, Pawn, Black, "E5".into());
+        // nn2.ft.accum_rem(Black, idx0, false);
+
+        // nn2.ft.accum.needs_refresh = [false; 2];
+        nn2.ft.accum_pop();
+        // nn2.ft.accum.needs_refresh = [false; 2];
+        let v3 = nn2.evaluate(&g, false, false);
+        eprintln!("v3 = {:?}", v3);
+        eprintln!("v3 == -599 = {:?}", v3 == -599);
+
+        // let g3 = g2.make_move_unchecked(&ts, mv2).unwrap();
+        // nn2.ft.make_move(&g3, mv2);
+        // nn2.ft.accum.needs_refresh = [false; 2];
+        // let v3 = nn2.evaluate(&g3, false, false);
+        // eprintln!("v3 = {:?}", v3);
+
+        // nn2.make_mov
+
+        // let fen0 = "r4rk1/4npp1/1p1q2b1/1B6/1B1P2Q1/P7/5PP1/R3K2R b KQ - 0 2";
+        // let fen0 = "r4rk1/4npp1/1p1q2b1/1B6/1B1p2Q1/P3P3/5PP1/R3K2R w KQ - 0 2";
+        // let fen0 = "r4rk1/4npp1/1p1q2b1/1B6/1B1Pp1Q1/P3P3/5PP1/R3K2R w KQ - 0 2";
+        // let fen0 = "r4rk1/4npp1/1p1q2b1/1B1P4/1B2p1Q1/P3P3/5PP1/R3K2R b KQ - 0 2";
+        let fen0 = "r4rk1/4npp1/1p1q2b1/1B6/1B1p2Q1/P3P3/5PP1/R3K2R w KQ - 0 2";
+        let mut g0 = Game::from_fen(&ts, fen0).unwrap();
+
+        nn.ft.reset_accum(&g0);
+        let v = nn.evaluate(&g0, false, false);
+        eprintln!("v = {:?}", v);
+
+        return Ok(());
 
         // d6b4 -> -599
         let v = nn.evaluate(&g, false, false);
@@ -2507,12 +2581,13 @@ fn main9() {
 
     // let t = 10.0;
     // let t = 6.0;
-    let t = 4.0;
+    // let t = 4.0;
+    let t = 1.0;
     // let t = 0.5;
     // let t = 0.3;
 
-    // let n = 35;
-    let n = 7;
+    let n = 35;
+    // let n = 7;
 
     let t0 = std::time::Instant::now();
     let timesettings = TimeSettings::new_f64(0.0,t);
@@ -2612,9 +2687,25 @@ fn main9() {
         }
     }
 
+    ex.update_game(g.clone());
     let (res,moves,stats0) = ex.lazy_smp_2(&ts);
     let t1 = t0.elapsed();
     let t2 = t1.as_secs_f64();
+    println!("wat 0");
+
+    let fen = games_wac(1);
+    let g = Game::from_fen(&ts, &fen).unwrap();
+    ex.update_game(g.clone());
+    let (res,moves,stats0) = ex.lazy_smp_2(&ts);
+    println!("wat 1");
+
+    let fen = games_wac(2);
+    let g = Game::from_fen(&ts, &fen).unwrap();
+    ex.update_game(g.clone());
+    let (res,moves,stats0) = ex.lazy_smp_2(&ts);
+    println!("wat 2");
+
+    return;
 
     let best   = res.get_result().unwrap();
     let scores = res.get_scores().unwrap_or_default();

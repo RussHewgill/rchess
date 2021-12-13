@@ -215,6 +215,8 @@ impl NNUE4 {
         // let bucket = if c == 0 { 0 } else { (c as usize - 1) / 4 };
         // eprintln!("bucket = {:?}", bucket);
 
+        // self.ft.reset_accum(g);
+
         let mut transformed = [0; HALF_DIMS * 2];
         // let psqt = self.ft.transform(g, &mut transformed, bucket, refresh);
         let psqt = self.ft.transform(g, &mut transformed, bucket);
