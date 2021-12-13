@@ -499,6 +499,7 @@ fn main_simd() {
 
     use rchess_engine_lib::simd_test::*;
 
+    use std::arch::x86_64::{__m256i,__m128i};
     use safe_arch::*;
     use rchess_engine_lib::simd_utils::safe_arch::*;
 
@@ -525,20 +526,19 @@ fn main_simd() {
     // let xs1: [u8; 512 + 128 + 64 + 32 + 1] = array_init::array_init(|x| rng.gen_range(0..10));
     // // // XXX: array: 737 = segfault, 736 fine
 
-    let xs: &[u8] = &xs1;
+    use aligned::{Aligned,A8,A16,A64};
 
-    // let k = std::mem::align_of_val(&xs);
-    // eprintln!("k = {:?}", k);
+    // let xs: &[u8] = &xs1;
 
     let mut res1 = [0; 16];
     res1.copy_from_slice(&xs1[0..16]);
     let res1 = m128i::from(res1);
     eprintln!("res1 = {:?}", bytemuck::cast::<m128i,[i8;16]>(res1));
 
-    // #[repr(align(16))]
-    // struct Wrapper<'a>(&'a [u8]);
+    let ws: Aligned<A64,_> = Aligned(xs1);
 
-    // let a: &[m128i] = unsafe {
+    // // let a: &[m128i] = unsafe {
+    // let a = unsafe {
 
     //     // let xs = Wrapper(xs);
     //     // std::mem::transmute(xs)
@@ -547,24 +547,42 @@ fn main_simd() {
     //     // std::slice::from_raw_parts(ptr, 1)
 
     //     // let (a,b,c) = xs.align_to::<m128i>();
-    //     // eprintln!("a.len() = {:?}", a.len());
-    //     // eprintln!("b.len() = {:?}", b.len());
-    //     // eprintln!("c.len() = {:?}", c.len());
-    //     // b
+    //     let (a,b,c) = xs.align_to::<__m128i>();
+    //     eprintln!("a.len() = {:?}", a.len());
+    //     eprintln!("b.len() = {:?}", b.len());
+    //     eprintln!("c.len() = {:?}", c.len());
+    //     b
 
     // };
 
-    let k0 = std::mem::align_of_val(&xs);
-    eprintln!("k0 = {:?}", k0);
+    // let k0 = std::mem::align_of_val(&xs);
+    // eprintln!("k0 = {:?}", k0);
 
-    let a = slice_u8_to_m128i(&xs);
+    // fn slice_u8_to_m128i2(xs: &[u8]) -> &[__m128i] {
+    //     unsafe {
+    //         let ptr = xs.as_ptr() as *const __m128i;
+    //         std::slice::from_raw_parts(ptr, 1)
+    //     }
+    // }
 
-    // let a: &[m128i] = unsafe {
-    //     std::mem::transmute(xs)
-    // };
+    // let a = slice_u8_to_m128i2(xs);
+
+    // use as_slice::AsSlice;
+
+    // let ws1: &[u8] = ws.as_slice();
+
+    let ws1: &[u8] = ws.as_ref();
+
+    // let k = std::mem::align_of_val(ws1);
+    // eprintln!("k = {:?}", k);
+
+    let a: &[m128i] = unsafe {
+        std::mem::transmute(ws1)
+    };
 
     let res0 = a[0];
     eprintln!("res0 = {:?}", bytemuck::cast::<m128i,[i8;16]>(res0));
+    // eprintln!("res0 = {:?}", bytemuck::cast::<__m128i,[i8;16]>(res0));
 
     return;
 
@@ -1784,30 +1802,6 @@ fn _main_nn() -> std::io::Result<()> {
         // let v = nn.evaluate(&g, false);
         // eprintln!("v = {:?}", v);
 
-        // return Ok(());
-
-        // let mv1 = Move::new_quiet("D7", "F6", Knight);
-        // let mv2 = Move::new_quiet("D2", "B3", Knight);
-        // nn.ft.update_accum(&g1, White, false);
-        // nn.ft.update_accum(&g1, Black, false);
-
-        // let v1 = nn.evaluate(&g1, false, true);
-        // eprintln!("v1 = {:?}", v1); // -22
-
-        // nn.ft.accum.needs_refresh = [false; 2];
-        // nn.ft.make_move(&g1, mv1);
-        // nn.ft.make_move(&g2, mv2);
-
-        // let v = nn.evaluate(&g3, false, false);
-        // eprintln!("v = {:?}", v);
-
-        // let v1 = nn.evaluate(&g1, false, true);
-        // let v2 = nn.evaluate(&g2, false, true);
-        // let v3 = nn.evaluate(&g3, false, true);
-        // eprintln!("v1 = {:?}", v1); // -22
-        // eprintln!("v2 = {:?}", v2); // -22
-        // eprintln!("v3 = {:?}", v3); // -10
-
         // let fen = "4k3/3ppp2/8/8/8/8/2NPPP2/4K3 w - - 0 1"; // +1 knight
         // let fen = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1";
         // let fen = "8/8/8/8/8/8/8/8 w - - 0 1";
@@ -1818,25 +1812,10 @@ fn _main_nn() -> std::io::Result<()> {
 
         // let xs: [u8; 32] = array_init::array_init(|x| x as u8);
         // let xs: [i8; 32] = array_init::array_init(|x| x as i8);
-        let xs: [u8; 64] = array_init::array_init(|x| x as u8);
+        // let xs: [u8; 64] = array_init::array_init(|x| x as u8);
         // let xs: [i8; 1024] = array_init::array_init(|x| x as i8);
         // let xs: [i32; 1024] = array_init::array_init(|x| x as i32);
         // let xs: [i32; 32] = array_init::array_init(|x| x as i32);
-
-        // let xs2: Vec<m256i> = xs.array_chunks::<32>()
-        //     .map(|&a| m256i::from(a))
-        //     .collect();
-
-        // let xs1: &[u8] = &xs;
-        // let xs2: &[m256i] = unsafe {
-        //     let ptr = xs1.as_ptr();
-        //     let ptr = ptr as *const u8 as *const m256i;
-        //     std::slice::from_raw_parts(ptr, xs1.len() / 32)
-        // };
-
-        // let k0: [u8; 32] = bytemuck::cast(xs2[0]);
-
-        // eprintln!("k0 = {:?}", k0);
 
         // d6b4 -> -599
         let v = nn.evaluate(&g, false, false);

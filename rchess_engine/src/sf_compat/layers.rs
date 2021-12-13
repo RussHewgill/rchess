@@ -15,6 +15,8 @@ use byteorder::{ReadBytesExt, LittleEndian};
 
 use num_traits::{Num,PrimInt,NumCast,AsPrimitive};
 
+use aligned::{Aligned,A64};
+
 const CACHE_LINE_SIZE: usize = 64;
 const WEIGHT_SCALE_BITS: u32 = 6;
 
@@ -123,10 +125,13 @@ mod nn_affine {
     pub struct NNAffine<Prev: NNLayer, const OS: usize, const IS: usize> {
         pub prev:    Prev,
 
-        pub biases:  [i32; OS],
+        // pub biases:  [i32; OS],
+        pub biases:  Aligned<A64,[i32; OS]>,
+
         pub weights: Vec<i8>, // IS * SIZE_INPUT
 
-        pub buffer:  [<NNAffine<Prev,OS,IS> as NNLayer>::OutputType; OS],
+        // pub buffer:  [<NNAffine<Prev,OS,IS> as NNLayer>::OutputType; OS],
+        pub buffer:  Aligned<A64,[<NNAffine<Prev,OS,IS> as NNLayer>::OutputType; OS]>,
     }
 
     /// Consts
@@ -222,11 +227,11 @@ mod nn_affine {
             Self {
                 prev,
 
-                biases:  [0; OS],
+                biases:  Aligned([0; OS]),
                 weights: vec![0; OS * Self::SIZE_INPUT],
 
                 // buffer:  [Self::OutputType::zero(); OS]
-                buffer:  [0; OS]
+                buffer:  Aligned([0; OS])
             }
         }
 
@@ -685,10 +690,11 @@ mod nn_affine {
         };
 
         fn get_buf(&self) -> &[Self::OutputType] {
-            &self.buffer
+            self.buffer.as_ref()
         }
         fn get_buf_mut(&mut self) -> &mut [Self::OutputType] {
-            &mut self.buffer
+            // mut self.buffer.as_mut()
+            self.buffer.as_mut()
         }
 
         #[cfg(feature = "nope")]
