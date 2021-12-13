@@ -520,6 +520,8 @@ fn main_simd() {
 
     let xs1: [u8; 2048] = array_init::array_init(|x| rng.gen_range(0..10));
 
+    // let xs1 = xs1.to_vec();
+
     // let xs1: [u8; 512 + 256 + 64 + 32 + 0] = array_init::array_init(|x| rng.gen_range(0..10));
     // // XXX: slice: 865 = segfault, 864 fine
 
@@ -530,10 +532,10 @@ fn main_simd() {
 
     // let xs: &[u8] = &xs1;
 
-    let mut res1 = [0; 16];
-    res1.copy_from_slice(&xs1[0..16]);
-    let res1 = m128i::from(res1);
-    eprintln!("res1 = {:?}", bytemuck::cast::<m128i,[i8;16]>(res1));
+    // let mut res1 = [0; 16];
+    // res1.copy_from_slice(&xs1[0..16]);
+    // let res1 = m128i::from(res1);
+    // eprintln!("res1 = {:?}", bytemuck::cast::<m128i,[i8;16]>(res1));
 
     let ws: Aligned<A64,_> = Aligned(xs1);
 
@@ -558,31 +560,32 @@ fn main_simd() {
     // let k0 = std::mem::align_of_val(&xs);
     // eprintln!("k0 = {:?}", k0);
 
-    // fn slice_u8_to_m128i2(xs: &[u8]) -> &[__m128i] {
-    //     unsafe {
-    //         let ptr = xs.as_ptr() as *const __m128i;
-    //         std::slice::from_raw_parts(ptr, 1)
-    //     }
-    // }
-
-    // let a = slice_u8_to_m128i2(xs);
-
-    // use as_slice::AsSlice;
-
-    // let ws1: &[u8] = ws.as_slice();
-
     let ws1: &[u8] = ws.as_ref();
 
-    // let k = std::mem::align_of_val(ws1);
-    // eprintln!("k = {:?}", k);
+    // let a: &[m128i] = unsafe {
+    //     let ptr = ws1.as_ptr() as *const m128i;
+    //     std::slice::from_raw_parts(ptr, ws1.len() / 16)
+    // };
 
-    let a: &[m128i] = unsafe {
-        std::mem::transmute(ws1)
+    let a: &[m256i] = unsafe {
+        let ptr = ws1.as_ptr() as *const m256i;
+        std::slice::from_raw_parts(ptr, ws1.len() / 32)
     };
 
-    let res0 = a[0];
+    let sum0 = m256i::from([1u8; 32]);
+    let sum1 = sum0;
+    let sum2 = m256i::from([0u8; 32]);
+    let sum3 = sum2;
+
+    let bias = m128i::from([0u8; 16]);
+
+    let res0 = add_horizontal_i32_m256i(sum0, sum1);
+
+    // let res0 = m256_haddx4(sum0, sum0, sum1, sum1, bias);
+
+    // let res0 = a[0];
+    // eprintln!("res0 = {:?}", bytemuck::cast::<m128i,[i8;16]>(res0));
     eprintln!("res0 = {:?}", bytemuck::cast::<m128i,[i8;16]>(res0));
-    // eprintln!("res0 = {:?}", bytemuck::cast::<__m128i,[i8;16]>(res0));
 
     return;
 

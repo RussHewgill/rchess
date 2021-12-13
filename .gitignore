@@ -28,3 +28,4 @@ matrix.csv
 paramsets/*
 *.nnue
 c_testing/test
+c_testing/test2

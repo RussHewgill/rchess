@@ -68,7 +68,8 @@ mod nn_input {
 
     #[derive(Debug,Eq,PartialEq,PartialOrd,Ord,Clone)]
     pub struct NNInput<const OS: usize> {
-        buf:   [u8; OS],
+        // buf:   [u8; OS],
+        buf:   Aligned<A64,[u8; OS]>,
     }
 
     impl<const OS: usize> NNLayer for NNInput<OS> {
@@ -85,10 +86,10 @@ mod nn_input {
         // fn size(&self) -> usize { self.buf.len() }
 
         fn get_buf(&self) -> &[Self::OutputType] {
-            &self.buf
+            self.buf.as_ref()
         }
         fn get_buf_mut(&mut self) -> &mut [Self::OutputType] {
-            &mut self.buf
+            self.buf.as_mut()
         }
 
         // fn propagate(&mut self, trans_features: &[u8], output: &mut [Self::OutputType]) {
@@ -107,7 +108,7 @@ mod nn_input {
     impl<const OS: usize> NNInput<OS> {
         pub fn new() -> Self {
             Self {
-                buf:  [0; OS],
+                buf:  Aligned([0; OS]),
             }
         }
     }
@@ -116,6 +117,8 @@ mod nn_input {
 
 /// Affine
 mod nn_affine {
+    use crate::eprint_self;
+
     use super::*;
     use byteorder::WriteBytesExt;
     use num_traits::{Num,Zero};
@@ -128,7 +131,8 @@ mod nn_affine {
         // pub biases:  [i32; OS],
         pub biases:  Aligned<A64,[i32; OS]>,
 
-        pub weights: Vec<i8>, // IS * SIZE_INPUT
+        // pub weights: Vec<i8>, // IS * SIZE_INPUT
+        pub weights: Aligned<A64,Vec<i8>>, // IS * SIZE_INPUT
 
         // pub buffer:  [<NNAffine<Prev,OS,IS> as NNLayer>::OutputType; OS],
         pub buffer:  Aligned<A64,[<NNAffine<Prev,OS,IS> as NNLayer>::OutputType; OS]>,
@@ -228,7 +232,7 @@ mod nn_affine {
                 prev,
 
                 biases:  Aligned([0; OS]),
-                weights: vec![0; OS * Self::SIZE_INPUT],
+                weights: Aligned(vec![0; OS * Self::SIZE_INPUT]),
 
                 // buffer:  [Self::OutputType::zero(); OS]
                 buffer:  Aligned([0; OS])
@@ -437,7 +441,7 @@ mod nn_affine {
             // unimplemented!()
         }
 
-        #[cfg(feature = "nope")]
+        // #[cfg(feature = "nope")]
         pub fn _propagate_avx2_small(&mut self, trans_features: &[u8]) {
             self.prev.propagate(trans_features);
             let input = self.prev.get_buf();
@@ -458,23 +462,21 @@ mod nn_affine {
         pub fn _propagate_avx2_large(&mut self, trans_features: &[u8]) {
             self.prev.propagate(trans_features);
             let input = self.prev.get_buf();
-            // assert!(input.len() == Self::SIZE_INPUT);
-            let input = &input[0..Self::SIZE_INPUT];
-            let input2: &[u8] = unsafe {
-                let ptr = input.as_ptr() as *const u8;
-                std::slice::from_raw_parts(ptr, input.len())
-            };
-            // inputs  = 2048, 1: u8
-            // weights = 8, 2048: i8
 
-            assert_eq!(input.len() % 32, 0);
-
-            // for block in 0..Self::SIZE_INPUT {
-            // }
-
+            for i in 0..Self::SIZE_OUTPUT {
+                let offset = i * Self::SIZE_INPUT_PADDED;
+                let mut sum: i32 = self.biases[i];
+                for (j,x) in input.iter().enumerate() {
+                    let x: i32 = x.as_();
+                    // let x0 = self.weights[offset + j] as i32 * x;
+                    let x0 = self.weights[Self::get_weight_index(offset + j)] as i32 * x;
+                    sum += x0;
+                }
+                self.buffer[i] = sum as i32;
+            }
         }
 
-        #[cfg(feature = "nope")]
+        // #[cfg(feature = "nope")]
         pub fn _propagate_avx2_large(&mut self, trans_features: &[u8]) {
             self.prev.propagate(trans_features);
             let input = self.prev.get_buf();
@@ -489,26 +491,26 @@ mod nn_affine {
             };
 
             use safe_arch::*;
+            use crate::simd_utils::safe_arch::*;
 
             assert_eq!(input.len() % 32, 0);
 
-            let input_vec: Vec<m256i> = input2.array_chunks::<32>()
-                .map(|&a| m256i::from(a))
-                .collect();
+            // let input_vec: Vec<m256i> = input2.array_chunks::<32>()
+            //     .map(|&a| m256i::from(a))
+            //     .collect();
 
-            // // XXX: Segfault?
-            // let input_vec: &[m256i] = unsafe {
-            //     let ptr = input2.as_ptr();
-            //     let ptr = ptr as *const i8 as *const m256i;
-            //     std::slice::from_raw_parts(ptr, input.len() / 32)
-            // };
+            // XXX: Segfault?
+            let input_vec: &[m256i] = unsafe {
+                let ptr = input2.as_ptr();
+                let ptr = ptr as *const i8 as *const m256i;
+                std::slice::from_raw_parts(ptr, input.len() / 32)
+            };
 
             // let k0 = input_vec[0];
             // eprintln!("k0 = {:?}", k0);
 
             let weight_vec: &[m256i] = unsafe {
-                let ptr = self.weights.as_ptr();
-                let ptr = ptr as *const m256i;
+                let ptr = self.weights.as_ptr() as *const m256i;
                 std::slice::from_raw_parts(ptr, self.weights.len() / 32)
             };
 
@@ -526,10 +528,10 @@ mod nn_affine {
 
                     use crate::eprint_self;
 
-                    eprint_self!(Self::BIG_BLOCK_SIZE); // 16384
-                    eprint_self!(Self::SMALL_BLOCK_SIZE); // 32
-                    eprint_self!(Self::NUM_SMALL_BLOCKS_PER_BIG_BLOCK); // 512
-                    eprint_self!(Self::NUM_SMALL_BLOCKS_PER_OUTPUT); // 64
+                    // eprint_self!(Self::BIG_BLOCK_SIZE); // 16384
+                    // eprint_self!(Self::SMALL_BLOCK_SIZE); // 32
+                    // eprint_self!(Self::NUM_SMALL_BLOCKS_PER_BIG_BLOCK); // 512
+                    // eprint_self!(Self::NUM_SMALL_BLOCKS_PER_OUTPUT); // 64
 
                     // eprintln!("w_offset = {:?}", w_offset);
 
@@ -544,7 +546,7 @@ mod nn_affine {
                         let b0 = weight_vec[k];
                         let b1 = weight_vec[k + Self::NUM_OUTPUT_REGS];
 
-                        Self::m256_add_dpbusd_epi32x2(&mut acc[k], in0, b0, in1, b1)
+                        m256_add_dpbusd_epi32x2(&mut acc[k], in0, b0, in1, b1)
                     }
 
                     small_block += 2
@@ -568,7 +570,7 @@ mod nn_affine {
 
                 for k in (0..Self::NUM_OUTPUT_REGS/4).map(|x| x * 4) {
                     let idx = (big_block * Self::NUM_OUTPUT_REGS + k) / 4;
-                    output_vec[idx] = Self::m256_haddx4(acc[k+0],acc[k+1],acc[k+2],acc[k+2],bias_vec[idx]);
+                    output_vec[idx] = m256_haddx4(acc[k+0],acc[k+1],acc[k+2],acc[k+2],bias_vec[idx]);
                     // let sum = Self::m256_haddx4(acc[k+0],acc[k+1],acc[k+2],acc[k+2],bias_vec[idx]);
                     // self.buffer[k+0] = extract_i32_imm_m128i::<0>(sum);
                     // self.buffer[k+1] = extract_i32_imm_m128i::<1>(sum);
@@ -592,63 +594,6 @@ mod nn_affine {
             //     self.buffer[i] = sum as i32;
             // }
 
-        }
-
-        // pub fn slice_i8_to_m256i(xs: &[i8]) -> safe_arch::m256i {
-        //     assert!(xs.len() >= 32);
-        //     use safe_arch::*;
-        //     let k0: m256i = unsafe {
-        //         let ptr = xs.get_unchecked(..32).as_ptr();
-        //         let ptr = ptr as *const u8 as *const std::arch::x86_64::__m256i;
-        //         let x = std::arch::x86_64::_mm256_loadu_si256(ptr);
-        //         m256i(x)
-        //     };
-        //     k0
-        // }
-
-        // pub fn slice_u8_to_m256i(xs: &[u8]) -> safe_arch::m256i {
-        //     assert!(xs.len() >= 32);
-        //     use safe_arch::*;
-        //     let k0: m256i = unsafe {
-        //         let ptr = xs.get_unchecked(..32).as_ptr();
-        //         let ptr = ptr as *const std::arch::x86_64::__m256i;
-        //         let x = std::arch::x86_64::_mm256_loadu_si256(ptr);
-        //         m256i(x)
-        //     };
-        //     k0
-        // }
-
-        fn m256_add_dpbusd_epi32x2(
-            mut acc: &mut safe_arch::m256i,
-            a0: safe_arch::m256i, b0: safe_arch::m256i,
-            a1: safe_arch::m256i, b1: safe_arch::m256i,
-        ) {
-            use safe_arch::*;
-            let mut product0 = mul_u8i8_add_horizontal_saturating_m256i(a0, b0);
-            let product1     = mul_u8i8_add_horizontal_saturating_m256i(a1, b1);
-            product0         = add_saturating_i16_m256i(product0, product1);
-            product0         = mul_i16_horizontal_add_m256i(product0, set_splat_i16_m256i(1));
-            *acc             = add_i32_m256i(*acc, product0);
-        }
-
-        fn m256_haddx4(
-            mut sum0: safe_arch::m256i,
-            sum1:     safe_arch::m256i,
-            mut sum2: safe_arch::m256i,
-            sum3:     safe_arch::m256i,
-            bias:     safe_arch::m128i
-        ) -> safe_arch::m128i {
-            use safe_arch::*;
-
-            sum0 = add_horizontal_i32_m256i(sum0, sum1);
-            sum2 = add_horizontal_i32_m256i(sum2, sum3);
-
-            sum0 = add_horizontal_i32_m256i(sum0, sum2);
-
-            let sum128lo = cast_to_m128i_from_m256i(sum0);
-            let sum128hi = extract_m128i_m256i::<1>(sum0);
-
-            add_i32_m128i(add_i32_m128i(sum128lo, sum128hi), bias)
         }
 
     }
@@ -697,7 +642,7 @@ mod nn_affine {
             self.buffer.as_mut()
         }
 
-        #[cfg(feature = "nope")]
+        // #[cfg(feature = "nope")]
         fn propagate(&mut self, trans_features: &[u8]) {
             if Self::SIZE_INPUT_PADDED >= 128 {
                 self._propagate_avx2_large(trans_features);
@@ -709,7 +654,7 @@ mod nn_affine {
         #[cfg(feature = "nope")]
         fn propagate(&mut self, trans_features: &[u8]) { self._propagate_ndarray(trans_features); }
 
-        // #[cfg(feature = "nope")]
+        #[cfg(feature = "nope")]
         fn propagate(&mut self, trans_features: &[u8]) {
 
             // eprintln!("affine propagate");
@@ -779,12 +724,12 @@ mod nn_affine {
 
             let size = Self::SIZE_INPUT_PADDED * Self::SIZE_OUTPUT;
 
-            self.weights = vec![0; size];
+            self.weights = Aligned(vec![0; size]);
 
             for i in 0..size {
                 let x = rdr.read_i8()?;
-                // self.weights[Self::get_weight_index(i)] = x;
-                self.weights[i] = x;
+                self.weights[Self::get_weight_index(i)] = x;
+                // self.weights[i] = x;
             }
 
             Ok(())
@@ -821,7 +766,8 @@ mod nn_relu {
     #[derive(Debug,Eq,PartialEq,PartialOrd,Ord,Clone)]
     pub struct NNClippedRelu<Prev: NNLayer, const OS: usize> {
         pub prev:    Prev,
-        buf:         [u8; OS],
+        // buf:         [u8; OS],
+        buf:         Aligned<A64,[u8; OS]>,
     }
 
     impl<Prev: NNLayer, const OS: usize> NNClippedRelu<Prev, OS> {
@@ -833,7 +779,7 @@ mod nn_relu {
         pub fn new(prev: Prev) -> Self {
             Self {
                 prev,
-                buf:  [0; OS],
+                buf:  Aligned([0; OS]),
             }
         }
     }
@@ -856,10 +802,10 @@ mod nn_relu {
         // fn size(&self) -> usize { self.prev.size() }
 
         fn get_buf(&self) -> &[Self::OutputType] {
-            &self.buf
+            self.buf.as_ref()
         }
         fn get_buf_mut(&mut self) -> &mut [Self::OutputType] {
-            &mut self.buf
+            self.buf.as_mut()
         }
 
         fn propagate(&mut self, trans_features: &[u8]) {

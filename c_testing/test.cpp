@@ -102,15 +102,15 @@ int main() {
 
     std::uint32_t* ys = reinterpret_cast<std::uint32_t*>(xs);
 
-    std::cout << "xs[0] = " << xs[0] << std::endl;
-    std::cout << "xs[1] = " << xs[1] << std::endl;
-    std::cout << "xs[2] = " << xs[2] << std::endl;
-    std::cout << "xs[3] = " << xs[3] << std::endl;
+    //std::cout << "xs[0] = " << xs[0] << std::endl;
+    //std::cout << "xs[1] = " << xs[1] << std::endl;
+    //std::cout << "xs[2] = " << xs[2] << std::endl;
+    //std::cout << "xs[3] = " << xs[3] << std::endl;
 
-    std::cout << "ys[0] = " << ys[0] << std::endl;
-    std::cout << "ys[1] = " << ys[1] << std::endl;
-    std::cout << "ys[2] = " << ys[2] << std::endl;
-    std::cout << "ys[3] = " << ys[3] << std::endl;
+    //std::cout << "ys[0] = " << ys[0] << std::endl;
+    //std::cout << "ys[1] = " << ys[1] << std::endl;
+    //std::cout << "ys[2] = " << ys[2] << std::endl;
+    //std::cout << "ys[3] = " << ys[3] << std::endl;
 
     return 0;
 

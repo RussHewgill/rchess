@@ -108,35 +108,37 @@ pub mod std_simd {
 pub mod safe_arch {
     use safe_arch::*;
 
-    #[repr(align(16))]
-    struct Wrapper<'a>(&'a [u8]);
-
-    pub fn slice_u8_to_m256i(xs: &[u8]) -> &[m256i] {
-        let xs = Wrapper(xs);
-        unsafe { std::mem::transmute(xs) }
+    pub fn m256_add_dpbusd_epi32x2(
+        mut acc: &mut safe_arch::m256i,
+        a0: safe_arch::m256i, b0: safe_arch::m256i,
+        a1: safe_arch::m256i, b1: safe_arch::m256i,
+    ) {
+        use safe_arch::*;
+        let mut product0 = mul_u8i8_add_horizontal_saturating_m256i(a0, b0);
+        let product1     = mul_u8i8_add_horizontal_saturating_m256i(a1, b1);
+        product0         = add_saturating_i16_m256i(product0, product1);
+        product0         = mul_i16_horizontal_add_m256i(product0, set_splat_i16_m256i(1));
+        *acc             = add_i32_m256i(*acc, product0);
     }
 
-    pub fn slice_u8_to_m128i(xs: &[u8]) -> &[m128i] {
+    pub fn m256_haddx4(
+        mut sum0: safe_arch::m256i,
+        sum1:     safe_arch::m256i,
+        mut sum2: safe_arch::m256i,
+        sum3:     safe_arch::m256i,
+        bias:     safe_arch::m128i
+    ) -> safe_arch::m128i {
+        use safe_arch::*;
 
-        let s0 = std::mem::size_of::<u8>();
-        let s1 = std::mem::size_of::<m128i>();
+        sum0 = add_horizontal_i32_m256i(sum0, sum1);
+        sum2 = add_horizontal_i32_m256i(sum2, sum3);
 
-        eprintln!("s0 = {:?}", s0);
-        eprintln!("s1 = {:?}", s1);
+        sum0 = add_horizontal_i32_m256i(sum0, sum2);
 
-        let k0 = std::mem::align_of_val(&xs);
-        eprintln!("k0 = {:?}", k0);
+        let sum128lo = cast_to_m128i_from_m256i(sum0);
+        let sum128hi = extract_m128i_m256i::<1>(sum0);
 
-        assert_eq!((xs.len() * s0) % s1, 0);
-
-        // let len = xs.len() / 16;
-        let len = (xs.len() * s0) / s1;
-
-        unsafe {
-            // let xs = Wrapper(xs);
-            // std::mem::transmute(xs)
-            std::slice::from_raw_parts(xs.as_ptr() as *const m128i, len)
-        }
+        add_i32_m128i(add_i32_m128i(sum128lo, sum128hi), bias)
     }
 
     /// Overflows to negative
