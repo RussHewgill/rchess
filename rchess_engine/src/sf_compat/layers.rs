@@ -125,7 +125,6 @@ mod nn_affine {
     use byteorder::WriteBytesExt;
     use num_traits::{Num,Zero};
 
-    // #[derive(Debug,PartialEq,Clone)]
     #[derive(Debug,Eq,PartialEq,Clone)]
     pub struct NNAffine<Prev: NNLayer, const OS: usize, const IS: usize> {
         pub prev:    Prev,
@@ -736,6 +735,9 @@ mod nn_affine {
             // }
             // eprintln!("x = {:?}", x);
 
+            let mut acc = [0i32; IS];
+            assert_eq!(IS, input.len());
+
             for i in 0..Self::SIZE_OUTPUT {
 
                 let offset = i * Self::SIZE_INPUT_PADDED;
@@ -743,20 +745,14 @@ mod nn_affine {
                 // let mut sum: i32 = self.biases[i];
                 let mut sum: i32 = unsafe { *self.biases.get_unchecked(i) };
 
-                for (j,x) in input.iter().enumerate() {
+                for (k,x) in input.iter().enumerate() {
                     let x: i32 = x.as_();
-                    let x0 = self.weights[offset + j] as i32 * x;
+                    let x0 = self.weights[offset + k] as i32 * x;
                     // let x0 = self.weights[offset + j] as i32 * *x as i32; // no benefit
                     // let x0 = unsafe { *self.weights.get_unchecked(offset + j) } as i32 * x;
                     sum += x0;
+                    // acc[k] = x0;
                 }
-
-                // // for (x,w) in input.iter().zip(self.weights[offset..offset+input.len()].iter()) {
-                // for (x,w) in input.iter().zip(self.weights[offset..].iter()) {
-                //     let x: i32 = x.as_();
-                //     let x0 = *w as i32 * x;
-                //     sum += x0;
-                // }
 
                 self.buffer[i] = sum as i32;
             }

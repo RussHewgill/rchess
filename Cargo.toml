@@ -16,8 +16,10 @@ opt-level = 3
 # opt-level = 1
 
 [profile.release]
+opt-level = 3
 debug = 1
 incremental = true
+# panic = "abort"
 
 # https://deterministic.space/high-performance-rust.html
 lto = false

@@ -25,18 +25,18 @@ impl NNDelta {
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
 pub enum NNDeltas {
     Deltas(ArrayVec<NNDelta,3>),
-    // Copy,
-    CopyCastle(Color,(NNIndex,NNIndex),(NNIndex,NNIndex)),
-    CopyKing(Color,(NNIndex,NNIndex)),
+    Copy,
+    // CopyCastle(Color,(NNIndex,NNIndex),(NNIndex,NNIndex)),
+    // CopyKing(Color,(NNIndex,NNIndex)),
 }
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Ord,Clone,Copy)]
 pub struct NNAccumData {
     pub side:            Color,
-    pub accum:           [i16; 1024], // TransformedFeatureDimensions = 1024
-    pub psqt:            [i32; 8],    // PSQTBuckets = 8
-    // pub accum:           [[i16; 1024]; 2], // TransformedFeatureDimensions = 1024
-    // pub psqt:            [[i32; 8]; 2],    // PSQTBuckets = 8
+    // pub accum:           [i16; 1024], // TransformedFeatureDimensions = 1024
+    // pub psqt:            [i32; 8],    // PSQTBuckets = 8
+    pub accum:           [[i16; 1024]; 2], // TransformedFeatureDimensions = 1024
+    pub psqt:            [[i32; 8]; 2],    // PSQTBuckets = 8
 }
 
 // #[derive(Debug,PartialEq,Clone,Copy)]
@@ -86,37 +86,37 @@ impl NNAccum {
     pub fn make_copy(&self, side: Color) -> NNAccumData {
         NNAccumData {
             side,
-            accum:  self.accum[side],
-            psqt:   self.psqt[side],
-            // accum:  self.accum,
-            // psqt:   self.psqt,
+            // accum:  self.accum[side],
+            // psqt:   self.psqt[side],
+            accum:  self.accum,
+            psqt:   self.psqt,
         }
     }
 
-    // pub fn push_copy(&mut self, side: Color) {
+    pub fn push_copy(&mut self, side: Color) {
+        let delta = self.make_copy(side);
+        self.stack_delta.push(NNDeltas::Copy);
+        self.stack_copies.push(delta);
+    }
+
+    // pub fn push_copy_king(&mut self, side: Color, xs: (NNIndex,NNIndex)) {
     //     let delta = self.make_copy(side);
-    //     self.stack_delta.push(NNDeltas::Copy);
+    //     self.stack_delta.push(NNDeltas::CopyKing(side,xs));
     //     self.stack_copies.push(delta);
     // }
 
-    pub fn push_copy_king(&mut self, side: Color, xs: (NNIndex,NNIndex)) {
-        let delta = self.make_copy(side);
-        self.stack_delta.push(NNDeltas::CopyKing(side,xs));
-        self.stack_copies.push(delta);
-    }
-
-    pub fn push_copy_castle(&mut self, side: Color, (xs,ys): ((NNIndex,NNIndex),(NNIndex,NNIndex))) {
-        let delta = self.make_copy(side);
-        self.stack_delta.push(NNDeltas::CopyCastle(side,xs,ys));
-        self.stack_copies.push(delta);
-    }
+    // pub fn push_copy_castle(&mut self, side: Color, (xs,ys): ((NNIndex,NNIndex),(NNIndex,NNIndex))) {
+    //     let delta = self.make_copy(side);
+    //     self.stack_delta.push(NNDeltas::CopyCastle(side,xs,ys));
+    //     self.stack_copies.push(delta);
+    // }
 
     pub fn pop_prev(&mut self) {
         if let Some(prev) = self.stack_copies.pop() {
-            self.accum[prev.side].copy_from_slice(&prev.accum);
-            self.psqt[prev.side].copy_from_slice(&prev.psqt);
-            // self.accum = prev.accum;
-            // self.psqt  = prev.psqt;
+            // self.accum[prev.side].copy_from_slice(&prev.accum);
+            // self.psqt[prev.side].copy_from_slice(&prev.psqt);
+            self.accum = prev.accum;
+            self.psqt  = prev.psqt;
         }
     }
 

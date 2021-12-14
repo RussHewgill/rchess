@@ -133,31 +133,44 @@ pub fn crit_bench_simd(c: &mut Criterion) {
 
     group.warm_up_time(Duration::from_secs_f64(1.0));
 
-    group.sample_size(20);
-    group.measurement_time(Duration::from_secs_f64(3.));
+    // group.sample_size(20);
+    // group.measurement_time(Duration::from_secs_f64(3.));
 
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
     use rchess_engine_lib::simd_test::*;
 
-    const IS: usize = 1024;
+    const IS: usize = 2 * 1024;
     const OS: usize = 8;
 
-    // let input: [i8; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
-    // let weights: Vec<i8>  = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
-    // let biases: [i32; OS] = array_init::array_init(|_| rng.gen_range(-100..100));
-    // let mut output = [0i32; OS];
+    let input: [u8; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
+    let weights: Vec<i8>  = (0..OS * IS).map(|_| rng.gen_range(-100..100)).collect();
+    let biases: [i32; OS] = array_init::array_init(|_| rng.gen_range(-100..100));
+    let mut output = [0i32; OS];
 
-    const N: usize = 2048;
-    let xs1: [u8; N] = array_init::array_init(|x| rng.gen_range(0..2));
-    let xs2: [i8; N] = array_init::array_init(|x| rng.gen_range(-10..10));
+    use rchess_engine_lib::sf_compat::{Layer0,NNAffine,NNLayer};
 
-    let ys1: [i32; N] = array_init::array_init(|x| xs1[x] as i32);
-    let ys2: [i32; N] = array_init::array_init(|x| xs2[x] as i32);
+    let mut layer0 = Layer0::new();
+    let mut layer1 = NNAffine::<Layer0, 8, {1024 * 2}>::new(layer0);
 
-    group.bench_function("dot prod basic", |b| b.iter(|| {
-        let x = dot_product_basic(black_box(&xs1), &xs2);
+    group.bench_function("SIMD mm 0", |b| b.iter(|| {
+        simd_mm_0::<IS,OS>(black_box(&input), &weights, &biases, &mut output);
     }));
+
+    group.bench_function("NNAffine mm", |b| b.iter(|| {
+        layer1.propagate(&input);
+    }));
+
+    // const N: usize = 2048;
+    // let xs1: [u8; N] = array_init::array_init(|x| rng.gen_range(0..2));
+    // let xs2: [i8; N] = array_init::array_init(|x| rng.gen_range(-10..10));
+
+    // let ys1: [i32; N] = array_init::array_init(|x| xs1[x] as i32);
+    // let ys2: [i32; N] = array_init::array_init(|x| xs2[x] as i32);
+
+    // group.bench_function("dot prod basic", |b| b.iter(|| {
+    //     let x = dot_product_basic(black_box(&xs1), &xs2);
+    // }));
 
     // group.bench_function("dot prod 0", |b| b.iter(|| {
     //     dot_product0(black_box(&xs1), &xs2)
@@ -169,10 +182,6 @@ pub fn crit_bench_simd(c: &mut Criterion) {
 
     // group.bench_function("dot prod 2", |b| b.iter(|| {
     //     dot_product2(black_box(&ys1), &ys2)
-    // }));
-
-    // group.bench_function("SIMD mm 0", |b| b.iter(|| {
-    //     simd_mm_0::<IS,OS>(black_box(&input), &weights, &biases, &mut output);
     // }));
 
     // group.bench_function("SIMD mm 1", |b| b.iter(|| {
@@ -376,7 +385,7 @@ pub fn crit_bench_nnue(c: &mut Criterion) {
 
     group.warm_up_time(Duration::from_secs_f64(2.0));
 
-    group.sample_size(200);
+    group.sample_size(100);
     group.measurement_time(Duration::from_secs_f64(5.));
 
     let ts = Tables::read_from_file_def().unwrap();
@@ -391,37 +400,35 @@ pub fn crit_bench_nnue(c: &mut Criterion) {
         Game::from_fen(&ts, &fen).unwrap()
     }).collect();
 
-    // group.bench_function("nnue eval", |b| b.iter(|| {
-    //     for g in wacs.iter() {
-    //         // nn.ft.accum.needs_refresh = [true; 2];
-    //         nn.ft.reset_accum(&g);
-    //         let v = nn.evaluate(black_box(&g), false);
-    //     }
-    // }));
-
-    // let mut wacs2: Vec<(Game,Move,NNFeatureTrans)> = wacs.into_iter().map(|g| {
-    let mut wacs2: Vec<(Game,Move)> = wacs.into_iter().map(|g| {
-        let moves = g.search_all(&ts).get_moves_unsafe();
-        let mv = moves.choose(&mut rng).unwrap();
-        // let mut ft = nn.ft.clone();
-        // ft.reset_accum(&g);
-        (g,*mv)
-    }).collect();
-
-    // let wacs3 = wacs2.clone().into_iter().map(|(g,mv,ft)| {
-    //     (g,*mv,ft)
-    // }).collect::<Vec<_>>();
-    let wacs3: Vec<(Game,Move)> =
-        wacs2.clone().into_iter().filter(|(_,mv)| mv.piece() != Some(King)).collect();
-
-    let mut ft = nn.ft.clone();
-
-    group.bench_function("nnue _update_accum", |b| b.iter(|| {
-        let mut wacs22 = wacs2.clone();
-        for (g,mv) in wacs22.iter_mut() {
-            ft.reset_accum(black_box(&g));
+    group.bench_function("nnue eval", |b| b.iter(|| {
+        for g in wacs.iter() {
+            // nn.ft.accum.needs_refresh = [true; 2];
+            nn.ft.reset_accum(&g);
+            let v = nn.evaluate(black_box(&g), false);
         }
     }));
+
+    // // let mut wacs2: Vec<(Game,Move,NNFeatureTrans)> = wacs.into_iter().map(|g| {
+    // let mut wacs2: Vec<(Game,Move)> = wacs.into_iter().map(|g| {
+    //     let moves = g.search_all(&ts).get_moves_unsafe();
+    //     let mv = moves.choose(&mut rng).unwrap();
+    //     // let mut ft = nn.ft.clone();
+    //     // ft.reset_accum(&g);
+    //     (g,*mv)
+    // }).collect();
+    // // let wacs3 = wacs2.clone().into_iter().map(|(g,mv,ft)| {
+    // //     (g,*mv,ft)
+    // // }).collect::<Vec<_>>();
+    // let wacs3: Vec<(Game,Move)> =
+    //     wacs2.clone().into_iter().filter(|(_,mv)| mv.piece() != Some(King)).collect();
+    // let mut ft = nn.ft.clone();
+
+    // group.bench_function("nnue _update_accum", |b| b.iter(|| {
+    //     let mut wacs22 = wacs2.clone();
+    //     for (g,mv) in wacs22.iter_mut() {
+    //         ft.reset_accum(black_box(&g));
+    //     }
+    // }));
 
     // group.bench_function("nnue make_move", |b| {
     //     b.iter(|| {
