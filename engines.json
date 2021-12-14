@@ -16,7 +16,7 @@
         "options": [
             { "name": "Skill Level", "value": 20 },
             { "name": "UCI_LimitStrength", "value": true },
-            { "name": "UCI_Elo", "value": 1700 }
+            { "name": "UCI_Elo", "value": 2000 }
         ]
     }
 ]

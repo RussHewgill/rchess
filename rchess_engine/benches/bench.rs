@@ -6,6 +6,7 @@
 #![feature(iter_partition_in_place)]
 #![feature(core_intrinsics)]
 
+use rchess_engine_lib::sf_compat::accumulator::NNDelta;
 use rchess_engine_lib::types::*;
 use rchess_engine_lib::tables::*;
 use rchess_engine_lib::explore::*;
@@ -400,13 +401,32 @@ pub fn crit_bench_nnue(c: &mut Criterion) {
         Game::from_fen(&ts, &fen).unwrap()
     }).collect();
 
-    group.bench_function("nnue eval", |b| b.iter(|| {
-        for g in wacs.iter() {
-            // nn.ft.accum.needs_refresh = [true; 2];
-            nn.ft.reset_accum(&g);
-            let v = nn.evaluate(black_box(&g), false);
+    let wacs2: Vec<(Game,NNIndex)> = wacs.into_iter().flat_map(|g| {
+        let moves = g.search_all(&ts).get_moves_unsafe();
+        let mv = moves.choose(&mut rng).unwrap();
+
+        if mv.piece() == Some(King) { None } else {
+            let d = nn.ft._make_move(&g, *mv);
+            Some((g,d[0].get().0))
+        }
+    }).collect();
+
+    let mut ft = nn.ft.clone();
+
+    group.bench_function("nnue _accum_rem", |b| b.iter(|| {
+        for (g,idx) in wacs2.iter() {
+            // ft.reset_accum(black_box(&g));
+            ft._accum_rem(g.state.side_to_move, *idx);
         }
     }));
+
+    // group.bench_function("nnue eval", |b| b.iter(|| {
+    //     for g in wacs.iter() {
+    //         // nn.ft.accum.needs_refresh = [true; 2];
+    //         nn.ft.reset_accum(&g);
+    //         let v = nn.evaluate(black_box(&g), false);
+    //     }
+    // }));
 
     // // let mut wacs2: Vec<(Game,Move,NNFeatureTrans)> = wacs.into_iter().map(|g| {
     // let mut wacs2: Vec<(Game,Move)> = wacs.into_iter().map(|g| {

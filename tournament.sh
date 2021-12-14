@@ -22,17 +22,19 @@ done
 # echo $time
 # echo $games
 
-ENGINE2=rchess_prev
-# ENGINE2=stockfish
+# ENGINE2=rchess_prev
+ENGINE2=stockfish
 
 cutechess-cli \
     -tournament gauntlet \
     -concurrency 1 \
     -pgnout out_pgn.pgn \
-    -engine conf=rchess st=$time timemargin=50 \
-    -engine conf=$ENGINE2 st=$time timemargin=50 \
+    -engine conf=rchess st=$time timemargin=50 restart=on \
+    -engine conf=$ENGINE2 st=$time timemargin=50 restart=on \
     -each proto=uci \
     -openings file=tables/openings-10ply-100k.pgn policy=round \
+    -tb tables/syzygy/ \
+    -tbpieces 5 \
     -repeat \
     -rounds $games \
     -games 2 \
