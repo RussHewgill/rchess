@@ -181,9 +181,9 @@ impl ExHelper {
 
             let mut nn2 = nn.clone();
             nn2.ft.reset_accum(g);
-            let v2 = nn2.evaluate(g, true, false);
+            let v2 = nn2.evaluate(g, true);
 
-            let v = nn.evaluate(&g, true, false);
+            let v = nn.evaluate(&g, true);
 
             // assert_eq!(v, v2);
             if v != v2 {

@@ -1750,7 +1750,7 @@ fn _main_nn() -> std::io::Result<()> {
             let sq = Coord::from("E1");
             let idx = NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
             let x = 22468;
-            eprintln!("idx 1 = {:?}, idx == {}, {}", idx, x, x == idx);
+            eprintln!("idx 1 = {:?}, idx == {}, {}", idx, x, x == idx.0);
         }
         {
             let side = White;
@@ -1758,7 +1758,7 @@ fn _main_nn() -> std::io::Result<()> {
             let sq = Coord::from("E2");
             let idx = NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
             let x = 21836;
-            eprintln!("idx 0 = {:?}, idx == {}, {}", idx, x, x == idx);
+            eprintln!("idx 0 = {:?}, idx == {}, {}", idx, x, x == idx.0);
         }
         {
             let side = Black;
@@ -1766,7 +1766,7 @@ fn _main_nn() -> std::io::Result<()> {
             let sq = Coord::from("E8");
             let idx = NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
             let x = 22524;
-            eprintln!("idx 2 = {:?}, idx == {}, {}", idx, x, x == idx);
+            eprintln!("idx 2 = {:?}, idx == {}, {}", idx, x, x == idx.0);
         }
     }
 
@@ -1781,7 +1781,7 @@ fn _main_nn() -> std::io::Result<()> {
             let sq = Coord::from("E1");
             let idx = NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
             let x = 22524;
-            eprintln!("idx 1 = {:?}, idx == {}, {}", idx, x, x == idx);
+            eprintln!("idx 1 = {:?}, idx == {}, {}", idx, x, x == idx.0);
         }
         {
             let side = White;
@@ -1789,7 +1789,7 @@ fn _main_nn() -> std::io::Result<()> {
             let sq = Coord::from("E2");
             let idx = NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
             let x = 21940;
-            eprintln!("idx 0 = {:?}, idx == {}, {}", idx, x, x == idx);
+            eprintln!("idx 0 = {:?}, idx == {}, {}", idx, x, x == idx.0);
         }
         {
             let side = Black;
@@ -1797,7 +1797,7 @@ fn _main_nn() -> std::io::Result<()> {
             let sq = Coord::from("E8");
             let idx = NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
             let x = 22468;
-            eprintln!("idx 2 = {:?}, idx == {}, {}", idx, x, x == idx);
+            eprintln!("idx 2 = {:?}, idx == {}, {}", idx, x, x == idx.0);
         }
     }
 
@@ -1825,27 +1825,45 @@ fn _main_nn() -> std::io::Result<()> {
         let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
         let mut g = Game::from_fen(&ts, fen).unwrap();
 
-        use safe_arch::*;
-
         let mut nn2 = nn.clone();
         nn2.ft.reset_accum(&g);
-        let v0 = nn2.evaluate(&g, false, false);
+        let v0 = nn2.evaluate(&g, false);
         eprintln!("v0 = {:?}", v0);
 
-        let mv1 = Move::new_capture("e5", "d4", Pawn, Pawn);
-        let mv2 = Move::new_capture("e3", "d4", Pawn, Pawn);
+        let mv1 = Move::new_capture("a8", "a3", Rook, Pawn);
+        // let mv1 = Move::new_capture("e5", "d4", Pawn, Pawn);
+        // let mv2 = Move::new_capture("e3", "d4", Pawn, Pawn);
         // let mv1 = Move::new_quiet("e5", "e4", Pawn);
         // let mv2 = Move::new_quiet("d4", "d5", Pawn);
 
         let g2 = g.make_move_unchecked(&ts, mv1).unwrap();
+
+        let nn3 = nn2.clone();
 
         // nn2.ft._update_accum(&g2, White);
         // nn2.ft._update_accum(&g2, Black);
         nn2.ft.make_move(&g2, mv1);
         // nn2.ft.reset_accum(&g2);
 
-        let g3 = g2.make_move_unchecked(&ts, mv2).unwrap();
-        nn2.ft.make_move(&g3, mv2);
+        // let k0 = nn2.ft.accum.stack_delta.len();
+        // eprintln!("k0 = {:?}", k0);
+
+        // for x in nn2.ft.accum.stack_delta.iter() {
+        //     eprintln!("x = {:?}", x);
+        // }
+
+        let x0 = &nn2.ft.accum.stack_delta[0];
+        eprintln!("x0 = {:?}", x0);
+
+        nn2.ft.accum_pop();
+
+        eprintln!("nn2 == nn3 = {:?}", nn2 == nn3);
+
+        let v1 = nn2.evaluate(&g, false);
+        eprintln!("v1 = {:?}", v1);
+
+        // let g3 = g2.make_move_unchecked(&ts, mv2).unwrap();
+        // nn2.ft.make_move(&g3, mv2);
 
         // nn2.ft.accum.needs_refresh = [false; 2];
         // let v2 = nn2.evaluate(&g2, false, false);
@@ -1885,13 +1903,13 @@ fn _main_nn() -> std::io::Result<()> {
         // let idx0 = NNUE4::make_index_half_ka_v2("G8".into(), Black, Pawn, Black, "E5".into());
         // nn2.ft.accum_rem(Black, idx0, false);
 
-        // nn2.ft.accum.needs_refresh = [false; 2];
-        // nn2.ft.accum_pop();
-        // nn2.ft.accum_pop();
-        // nn2.ft.accum.needs_refresh = [false; 2];
-        let v3 = nn2.evaluate(&g3, false, false);
-        eprintln!("v3 = {:?}", v3);
-        // eprintln!("v3 == -599 = {:?}", v3 == -599);
+        // // nn2.ft.accum.needs_refresh = [false; 2];
+        // // nn2.ft.accum_pop();
+        // // nn2.ft.accum_pop();
+        // // nn2.ft.accum.needs_refresh = [false; 2];
+        // let v3 = nn2.evaluate(&g3, false, false);
+        // eprintln!("v3 = {:?}", v3);
+        // // eprintln!("v3 == -599 = {:?}", v3 == -599);
 
         // let g3 = g2.make_move_unchecked(&ts, mv2).unwrap();
         // nn2.ft.make_move(&g3, mv2);
@@ -1905,14 +1923,14 @@ fn _main_nn() -> std::io::Result<()> {
         let fen0 = "r4rk1/4npp1/1p1q2b1/1B6/1B1P2Q1/P7/5PP1/R3K2R b KQ - 0 2";
         let mut g0 = Game::from_fen(&ts, fen0).unwrap();
 
-        nn.ft.reset_accum(&g0);
-        let v = nn.evaluate(&g0, false, false);
-        eprintln!("v = {:?}", v);
+        // nn.ft.reset_accum(&g0);
+        // let v = nn.evaluate(&g0, false);
+        // eprintln!("v = {:?}", v);
 
         return Ok(());
 
         // d6b4 -> -599
-        let v = nn.evaluate(&g, false, false);
+        let v = nn.evaluate(&g, false);
         eprintln!("v = {:?}", v);
         eprintln!("v == -599 = {:?}", v == -599);
 

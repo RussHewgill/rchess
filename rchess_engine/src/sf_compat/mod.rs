@@ -16,6 +16,20 @@ use std::path::Path;
 
 use byteorder::{ReadBytesExt, LittleEndian, WriteBytesExt};
 
+pub use self::index::NNIndex;
+mod index {
+
+    use derive_more::*;
+
+    #[derive(Debug,Deref,Eq,Ord,PartialEq,PartialOrd,Hash,Clone,Copy,
+             Index,Add,Mul,Div,Sum,AddAssign,MulAssign,
+             From,Into,AsRef,AsMut
+    )]
+    pub struct NNIndex(pub usize);
+}
+
+// type NNIndex = usize;
+
 pub type Layer0 = NNInput<{HALF_DIMS * 2}>;
 pub type Layer1 = NNClippedRelu<NNAffine<Layer0, 8, {HALF_DIMS * 2}>, 8>;
 pub type Layer2 = NNClippedRelu<NNAffine<Layer1, 32, 8>, 32>;
@@ -208,7 +222,7 @@ impl NNUE4 {
     }
 
     // TODO: check for correctness with trace_eval
-    pub fn evaluate(&mut self, g: &Game, adjusted: bool, _: bool) -> Score {
+    pub fn evaluate(&mut self, g: &Game, adjusted: bool) -> Score {
 
         let c = g.state.material.count();
         let bucket = (c as usize - 1) / 4;
@@ -270,7 +284,7 @@ impl NNUE4 {
         Coord::new_int(out)
     }
 
-    pub fn make_index_half_ka_v2(king_sq: Coord, persp: Color, pc: Piece, side: Color, sq: Coord) -> usize {
+    pub fn make_index_half_ka_v2(king_sq: Coord, persp: Color, pc: Piece, side: Color, sq: Coord) -> NNIndex {
         let o_king_sq = Self::orient(king_sq, persp, king_sq);
 
         // let pidx = PIECE_SQ_INDEX[side][persp][pc.index() + 1];
@@ -280,9 +294,16 @@ impl NNUE4 {
         // assert!(pc_nb > 0);
         let pc_nb = PS_NB * pc_nb as usize;
 
-        Self::orient(king_sq, persp, sq).inner() as usize
-            + pidx
-            + pc_nb
+        NNIndex(Self::orient(king_sq, persp, sq).inner() as usize
+                + pidx
+                + pc_nb)
+    }
+
+    // pub fn make_index_2((ksq1,ksq2): (Coord,Coord), pc: Piece, side: Color, sq: Coord) -> (NNIndex,NNIndex) {
+    pub fn make_index_2(ksqs: [Coord; 2], pc: Piece, side: Color, sq: Coord) -> [NNIndex; 2] {
+        let w = Self::make_index_half_ka_v2(ksqs[White], White, pc, side, sq);
+        let b = Self::make_index_half_ka_v2(ksqs[White], White, pc, side, sq);
+        [w,b]
     }
 
 }

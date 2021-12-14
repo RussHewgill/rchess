@@ -2,12 +2,21 @@
 use arrayvec::ArrayVec;
 
 use crate::types::*;
+use super::NNIndex;
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub enum NNDelta {
-    Add(usize,Color),
-    Remove(usize,Color),
-    Copy,
+    Add(NNIndex,NNIndex),
+    Remove(NNIndex,NNIndex),
+    // Add(usize,(Coord,Color,Piece,Color,Coord)),
+    // Remove(usize,(Coord,Color,Piece,Color,Coord)),
+    // Copy,
+}
+
+#[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
+pub enum NNDeltas {
+    Deltas(ArrayVec<NNDelta,3>),
+    Copy
 }
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Ord,Clone,Copy)]
@@ -31,7 +40,8 @@ pub struct NNAccum {
     // pub stack:           Vec<NNDelta>,
 
     // pub stack_delta:        Vec<NNDelta>,
-    pub stack_delta:        Vec<ArrayVec<NNDelta,8>>,
+    // pub stack_delta:        Vec<ArrayVec<NNDelta,8>>,
+    pub stack_delta:        Vec<NNDeltas>,
     pub stack_copies:       Vec<NNAccumData>,
 
     pub needs_refresh:   [bool; 2],
@@ -67,9 +77,9 @@ impl NNAccum {
 
     pub fn push_copy(&mut self) {
         let delta = self.make_copy();
-        let mut arr = ArrayVec::new();
-        arr.push(NNDelta::Copy);
-        self.stack_delta.push(arr);
+        // let mut arr = ArrayVec::new();
+        // arr.push(NNDelta::Copy);
+        self.stack_delta.push(NNDeltas::Copy);
         self.stack_copies.push(delta);
     }
 
@@ -85,7 +95,7 @@ impl NNAccum {
 /// Append Active
 impl NNAccum {
 
-    pub fn append_active(g: &Game, persp: Color, mut active: &mut ArrayVec<usize, 32>) {
+    pub fn append_active(g: &Game, persp: Color, mut active: &mut ArrayVec<NNIndex, 32>) {
         let king_sq = g.get(King,persp).bitscan();
 
         for side in [White,Black] {

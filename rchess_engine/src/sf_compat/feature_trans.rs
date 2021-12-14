@@ -2,8 +2,9 @@
 use crate::evaluate::Score;
 use crate::types::*;
 use crate::sf_compat::accumulator::*;
+use crate::sf_compat::NNIndex;
 
-use super::HALF_DIMS;
+use super::{HALF_DIMS, NNUE4};
 use super::accumulator::NNAccum;
 
 use std::io::{self, Read,BufReader, BufWriter};
@@ -100,7 +101,7 @@ impl NNFeatureTrans {
     // pub fn transform(&mut self, g: &Game, output: &mut [u8], bucket: usize, refresh: bool) -> Score {
     pub fn transform(&mut self, g: &Game, output: &mut [u8], bucket: usize) -> Score {
 
-        // let output = &mut output[..HALF_DIMS*2];
+        let output = &mut output[..HALF_DIMS*2];
 
         // eprintln!("FT transform");
 
@@ -136,41 +137,58 @@ impl NNFeatureTrans {
 }
 
 /// Directly Apply Moves
+#[cfg(feature = "nope")]
 impl NNFeatureTrans {
 
     // #[cfg(feature = "nope")]
     pub fn make_move_add(
-        &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) -> NNDelta {
+        // &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) -> NNDelta {
+        &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) -> NNIndex {
         // eprintln!("adding ({:?},{:?}) {:?} {:?} at {:?}", persp, king_sq, side, pc, sq);
         let d_add = super::NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
         // eprintln!("d_add = {:?}", d_add);
-        self.accum_add(persp, d_add, true)
+        self.accum_add(persp, d_add, true);
+        d_add
     }
 
     // #[cfg(feature = "nope")]
     pub fn make_move_rem(
-        &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) -> NNDelta {
+        // &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) -> NNDelta {
+        &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) -> NNIndex {
         let d_rem = super::NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
-        self.accum_rem(persp, d_rem, true)
+        self.accum_rem(persp, d_rem, true);
+        d_rem
     }
 
     // #[cfg(feature = "nope")]
     pub fn make_move_move(
-        &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, from: Coord, to: Coord) -> [NNDelta; 2] {
+        &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color,
+        // from: Coord, to: Coord) -> [NNDelta; 2] {
+        from: Coord, to: Coord) -> [NNIndex; 2] {
         let x = self.make_move_rem(persp, king_sq, pc, side, from);
         let y = self.make_move_add(persp, king_sq, pc, side, to);
         [x, y]
     }
 
     #[inline(always)]
-    #[cfg(feature = "nope")]
     pub fn make_move(&mut self, g: &Game, mv: Move) {
-        // self.reset_accum(g);
+        if mv.piece() == Some(King) {
+            self.accum.push_copy();
+            self.reset_accum(g);
+        } else {
+            self.accum.push_copy();
+            self.reset_accum(g);
+            // self._make_move(g, White, mv);
+            // self._make_move(g, Black, mv);
+            // self._make_move(g, !g.state.side_to_move, mv);
+            // a.extend(b.into_iter());
+            // self.accum.stack_delta.push(a);
+        }
     }
 
     /// Noticable speed up
     #[inline(always)]
-    // #[cfg(feature = "nope")]
+    #[cfg(feature = "nope")]
     pub fn make_move(&mut self, g: &Game, mv: Move) {
         if mv.piece() == Some(King) {
             self.accum.push_copy();
@@ -186,7 +204,7 @@ impl NNFeatureTrans {
 
     #[inline(always)]
     // #[cfg(feature = "nope")]
-    pub fn _make_move(&mut self, g: &Game, persp: Color, mv: Move) -> ArrayVec<NNDelta,8> {
+    pub fn _make_move(&mut self, g: &Game, persp: Color, mv: Move) -> NNDeltas {
 
         // self.update_accum(g, White);
         // self.update_accum(g, Black);
@@ -194,8 +212,11 @@ impl NNFeatureTrans {
 
         let mut out = ArrayVec::new();
 
+        assert!(mv.piece() != Some(King));
+
         let king_sq = g.get(King,persp).bitscan();
         let side = !g.state.side_to_move;
+        // let side = g.state.side_to_move;
         match mv {
             Move::Quiet { from, to, pc } => {
                 let a = self.make_move_move(persp, king_sq, pc, side, from, to);
@@ -222,12 +243,13 @@ impl NNFeatureTrans {
                 out.push(b);
             },
             Move::Castle { from, to, rook_from, rook_to } => {
-                let a = self.make_move_move(persp, king_sq, King, side, from, to);
-                let b = self.make_move_move(persp, king_sq, Rook, side, rook_from, rook_to);
-                out.push(a[0]);
-                out.push(a[1]);
-                out.push(b[0]);
-                out.push(b[1]);
+                // let a = self.make_move_move(persp, king_sq, King, side, from, to);
+                // let b = self.make_move_move(persp, king_sq, Rook, side, rook_from, rook_to);
+                // out.push(a[0]);
+                // out.push(a[1]);
+                // out.push(b[0]);
+                // out.push(b[1]);
+                unimplemented!()
             },
             Move::Promotion { from, to, new_piece } => {
                 let a = self.make_move_rem(persp, king_sq, Pawn, side, from);
@@ -245,7 +267,111 @@ impl NNFeatureTrans {
             },
             Move::NullMove => {},
         }
-        out
+        NNDeltas::Deltas(out)
+    }
+
+}
+
+/// Directly Apply Moves
+impl NNFeatureTrans {
+
+    pub fn make_move_rem(&mut self, ksqs: [Coord; 2], pc: Piece, side: Color, sq: Coord) -> NNDelta {
+        let [i_w,i_b] = NNUE4::make_index_2(ksqs, pc, side, sq);
+        self.accum_add(i_w, i_b)
+    }
+
+    pub fn make_move_add(&mut self, ksqs: [Coord; 2], pc: Piece, side: Color, sq: Coord) -> NNDelta {
+        let [i_w,i_b] = NNUE4::make_index_2(ksqs, pc, side, sq);
+        self.accum_rem(i_w, i_b)
+    }
+
+    pub fn make_move_move(
+        &mut self, ksqs: [Coord; 2], pc: Piece, side: Color, from: Coord, to: Coord) -> (NNDelta,NNDelta) {
+        let a = self.make_move_rem(ksqs, pc, side, from);
+        let b = self.make_move_add(ksqs, pc, side, to);
+        (a,b)
+    }
+
+    #[inline(always)]
+    pub fn make_move(&mut self, g: &Game, mv: Move) {
+        if mv.piece() == Some(King) {
+            self.accum.push_copy();
+            self.reset_accum(g);
+        } else {
+            // self.accum.push_copy();
+            // self.reset_accum(g);
+            let ds = self._make_move(g, mv);
+            self.accum.stack_delta.push(ds);
+        }
+    }
+
+    pub fn _make_move(&mut self, g: &Game, mv: Move) -> NNDeltas {
+
+        self.update_accum(g, White);
+        self.update_accum(g, Black);
+
+        let mut out = ArrayVec::new();
+
+        assert!(mv.piece() != Some(King));
+
+        // let side = g.state.side_to_move;
+        let side = !g.state.side_to_move; // XXX: should be after make_move g -> g2
+
+        // let king_sq = g.get(King,persp).bitscan();
+        let ksqs = [g.get(King,White).bitscan(),g.get(King,Black).bitscan()];
+
+        match mv {
+            Move::Quiet { from, to, pc } => {
+                let a = self.make_move_move(ksqs, pc, side, from, to);
+                // out.push(a[0]);
+                // out.push(a[1]);
+            },
+            Move::PawnDouble { from, to } => {
+                let a = self.make_move_move(ksqs, Pawn, side, from, to);
+                // out.push(a[0]);
+                // out.push(a[1]);
+            },
+            Move::Capture { from, to, pc, victim } => {
+                let a = self.make_move_move(ksqs, pc, side, from, to);
+                let b = self.make_move_rem(ksqs, victim, !side, to);
+                // out.push(a[0]);
+                // out.push(a[1]);
+                // out.push(b);
+            },
+            Move::EnPassant { from, to, capture } => {
+                let a = self.make_move_move(ksqs, Pawn, side, from, to);
+                let b = self.make_move_rem(ksqs, Pawn, !side, capture);
+                // out.push(a[0]);
+                // out.push(a[1]);
+                // out.push(b);
+            },
+            Move::Castle { from, to, rook_from, rook_to } => {
+                // let a = self.make_move_move(ksqs, King, side, from, to);
+                // let b = self.make_move_move(ksqs, Rook, side, rook_from, rook_to);
+                // out.push(a[0]);
+                // out.push(a[1]);
+                // out.push(b[0]);
+                // out.push(b[1]);
+                unimplemented!()
+            },
+            Move::Promotion { from, to, new_piece } => {
+                let a = self.make_move_rem(ksqs, Pawn, side, from);
+                let b = self.make_move_add(ksqs, new_piece, side, to);
+                // out.push(a);
+                // out.push(b);
+            },
+            Move::PromotionCapture { from, to, new_piece, victim } => {
+                let a = self.make_move_rem(ksqs, Pawn, side, from);
+                let b = self.make_move_add(ksqs, new_piece, side, to);
+                let c = self.make_move_rem(ksqs, victim, !side, to);
+                // out.push(a);
+                // out.push(b);
+                // out.push(c);
+            },
+            Move::NullMove => {},
+        }
+
+        NNDeltas::Deltas(out)
     }
 
 }
@@ -254,11 +380,40 @@ impl NNFeatureTrans {
 impl NNFeatureTrans {
 
     #[inline(always)]
-    #[cfg(feature = "nope")]
+    #[cfg(feature = "nope")] // XXX:
     pub fn accum_pop(&mut self) {}
 
     #[inline(always)]
+    #[cfg(feature = "nope")] // XXX:
+    pub fn accum_pop(&mut self) {
+        self.accum.pop_prev();
+    }
+
+    #[inline(always)]
     // #[cfg(feature = "nope")]
+    pub fn accum_pop(&mut self) {
+        match self.accum.stack_delta.pop() {
+            Some(NNDeltas::Deltas(ds)) => {
+                for d in ds.into_iter() {
+                    match d {
+                        NNDelta::Add(i_w,i_b) => {
+                            self.accum_add(i_w, i_b);
+                        },
+                        NNDelta::Remove(i_w,i_b) => {
+                            self.accum_rem(i_w, i_b);
+                        },
+                    }
+                }
+            },
+            Some(NNDeltas::Copy) => {
+                self.accum.pop_prev();
+            },
+            None => {},
+        }
+    }
+
+    #[inline(always)]
+    #[cfg(feature = "nope")] // XXX:
     pub fn accum_pop(&mut self) {
         if let Some(xs) = self.accum.stack_delta.pop() {
             for x in xs {
@@ -281,7 +436,73 @@ impl NNFeatureTrans {
         }
     }
 
+    fn _accum_pop(&mut self, d: NNDelta) {
+        match d {
+            NNDelta::Add(i_w,i_b) => {
+                // self.accum_add(side, d_add, false);
+                unimplemented!()
+            },
+            NNDelta::Remove(i_w,i_b) => {
+                unimplemented!()
+            },
+        }
+    }
+
     #[inline(always)]
+    pub fn accum_add(&mut self, i_w: NNIndex, i_b: NNIndex) -> NNDelta {
+        self._accum_add(White, i_w);
+        self._accum_add(Black, i_b);
+        NNDelta::Remove(i_w,i_b)
+    }
+
+    #[inline(always)]
+    pub fn accum_rem(&mut self, i_w: NNIndex, i_b: NNIndex) -> NNDelta {
+        self._accum_rem(White, i_w);
+        self._accum_rem(Black, i_b);
+        NNDelta::Add(i_w,i_b)
+    }
+
+    #[inline(always)]
+    pub fn _accum_add(&mut self, persp: Color, idx: NNIndex) {
+        let idx = idx.0;
+        let offset = HALF_DIMS * idx;
+
+        let mut accum = &mut self.accum.accum[persp][..HALF_DIMS];
+        let mut weights = &mut self.weights[offset..offset + HALF_DIMS];
+
+        for j in 0..HALF_DIMS {
+            accum[j] += weights[j];
+        }
+        for k in 0..Self::PSQT_BUCKETS {
+            self.accum.psqt[persp][k] += self.psqt_weights[idx * Self::PSQT_BUCKETS + k];
+            // if let Some(x) = self.psqt_weights.get(d_add * Self::PSQT_BUCKETS + k) {
+            //     self.accum.psqt[persp][k] += *x;
+            // }
+        }
+    }
+
+    #[inline(always)]
+    pub fn _accum_rem(&mut self, persp: Color, idx: NNIndex) {
+        let idx = idx.0;
+        let offset = HALF_DIMS * idx;
+
+        let mut accum = &mut self.accum.accum[persp][..HALF_DIMS];
+        let mut weights = &mut self.weights[offset..offset + HALF_DIMS];
+
+        for j in 0..HALF_DIMS {
+            // self.accum.accum[persp][j] -= self.weights[offset + j];
+            accum[j] -= weights[j];
+        }
+        for k in 0..Self::PSQT_BUCKETS {
+            self.accum.psqt[persp][k] -= self.psqt_weights[idx * Self::PSQT_BUCKETS + k];
+            // if let Some(x) = self.psqt_weights.get(d_rem * Self::PSQT_BUCKETS + k) {
+            //     self.accum.psqt[persp][k] -= *x;
+            // }
+        }
+    }
+
+    #[inline(always)]
+    #[cfg(feature = "nope")] // XXX:
     pub fn accum_add(&mut self, persp: Color, d_add: usize, push: bool) -> NNDelta {
         let offset = HALF_DIMS * d_add;
 
@@ -300,10 +521,12 @@ impl NNFeatureTrans {
         // if push {
         //     self.accum.stack_delta.push(NNDelta::Remove(d_add));
         // }
-        NNDelta::Remove(d_add, persp)
+        // NNDelta::Remove(d_add, None)
+        NNDelta::Remove(d_add)
     }
 
     #[inline(always)]
+    #[cfg(feature = "nope")] // XXX:
     pub fn accum_rem(&mut self, persp: Color, d_rem: usize, push: bool) -> NNDelta {
         let offset = HALF_DIMS * d_rem;
 
@@ -324,7 +547,8 @@ impl NNFeatureTrans {
         // if push {
         //     self.accum.stack_delta.push(NNDelta::Add(d_rem));
         // }
-        NNDelta::Add(d_rem, persp)
+        // NNDelta::Add(d_rem, None)
+        NNDelta::Add(d_rem)
     }
 
     // pub fn apply_deltas(&mut self, persp: Color) {
@@ -342,6 +566,7 @@ impl NNFeatureTrans {
 
     // #[inline(always)]
     pub fn reset_accum(&mut self, g: &Game) {
+        // debug!("resetting accum");
         self._update_accum(g, White);
         self._update_accum(g, Black);
         self.accum.needs_refresh = [false; 2];
@@ -366,12 +591,12 @@ impl NNFeatureTrans {
         self.accum.psqt[persp].fill(0);
 
         for idx in active.into_iter() {
-            let offset = HALF_DIMS * idx;
+            let offset = HALF_DIMS * idx.0;
             for j in 0..HALF_DIMS {
                 self.accum.accum[persp][j] += self.weights[offset + j];
             }
             for k in 0..Self::PSQT_BUCKETS {
-                self.accum.psqt[persp][k] += self.psqt_weights[idx * Self::PSQT_BUCKETS + k];
+                self.accum.psqt[persp][k] += self.psqt_weights[idx.0 * Self::PSQT_BUCKETS + k];
             }
         }
     }
