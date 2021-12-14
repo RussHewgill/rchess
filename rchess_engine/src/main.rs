@@ -2617,9 +2617,9 @@ fn main9() {
     // let mv = Move::Capture { from: "H5".into(), to: "G4".into(), pc: Pawn, victim: Pawn };
 
     // let t = 10.0;
-    // let t = 6.0;
+    let t = 6.0;
     // let t = 4.0;
-    let t = 2.0;
+    // let t = 2.0;
     // let t = 0.5;
     // let t = 0.3;
 
@@ -2724,20 +2724,20 @@ fn main9() {
     let t1 = t0.elapsed();
     let t2 = t1.as_secs_f64();
 
-    println!("wat 0");
-    let fen = games_wac(1);
-    let g = Game::from_fen(&ts, &fen).unwrap();
-    ex.update_game(g.clone());
-    let (res,moves,stats0) = ex.lazy_smp_2(&ts);
-    println!("wat 1");
+    // println!("wat 0");
+    // let fen = games_wac(1);
+    // let g = Game::from_fen(&ts, &fen).unwrap();
+    // ex.update_game(g.clone());
+    // let (res,moves,stats0) = ex.lazy_smp_2(&ts);
+    // println!("wat 1");
 
-    let fen = games_wac(2);
-    let g = Game::from_fen(&ts, &fen).unwrap();
-    ex.update_game(g.clone());
-    let (res,moves,stats0) = ex.lazy_smp_2(&ts);
-    println!("wat 2");
+    // let fen = games_wac(2);
+    // let g = Game::from_fen(&ts, &fen).unwrap();
+    // ex.update_game(g.clone());
+    // let (res,moves,stats0) = ex.lazy_smp_2(&ts);
+    // println!("wat 2");
 
-    return;
+    // return;
 
     let best   = res.get_result().unwrap();
     let scores = res.get_scores().unwrap_or_default();

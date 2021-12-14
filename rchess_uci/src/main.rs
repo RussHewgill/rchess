@@ -194,10 +194,10 @@ fn main() -> std::io::Result<()> {
 
                         debug!("explorer going: ");
 
-                        if let Some(ref mut nnue) = explorer.nnue {
-                            nnue.ft.accum.needs_refresh = [true; 2];
-                            nnue.ft.reset_accum(&explorer.game);
-                        }
+                        // if let Some(ref mut nnue) = explorer.nnue {
+                        //     // nnue.ft.accum.needs_refresh = [true; 2];
+                        //     nnue.ft.reset_accum(&explorer.game);
+                        // }
 
                         parse_go(&mut explorer, params.clone().collect());
 

@@ -374,10 +374,10 @@ pub fn crit_bench_nnue(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("group");
 
-    group.warm_up_time(Duration::from_secs_f64(1.0));
+    group.warm_up_time(Duration::from_secs_f64(2.0));
 
-    group.sample_size(100);
-    group.measurement_time(Duration::from_secs_f64(4.));
+    group.sample_size(200);
+    group.measurement_time(Duration::from_secs_f64(5.));
 
     let ts = Tables::read_from_file_def().unwrap();
 
@@ -391,12 +391,46 @@ pub fn crit_bench_nnue(c: &mut Criterion) {
         Game::from_fen(&ts, &fen).unwrap()
     }).collect();
 
-    group.bench_function("nnue eval", |b| b.iter(|| {
-        for g in wacs.iter() {
-            nn.ft.accum.needs_refresh = [true; 2];
-            let v = nn.evaluate(black_box(&g), false, false);
+    // group.bench_function("nnue eval", |b| b.iter(|| {
+    //     for g in wacs.iter() {
+    //         // nn.ft.accum.needs_refresh = [true; 2];
+    //         nn.ft.reset_accum(&g);
+    //         let v = nn.evaluate(black_box(&g), false);
+    //     }
+    // }));
+
+    // let mut wacs2: Vec<(Game,Move,NNFeatureTrans)> = wacs.into_iter().map(|g| {
+    let mut wacs2: Vec<(Game,Move)> = wacs.into_iter().map(|g| {
+        let moves = g.search_all(&ts).get_moves_unsafe();
+        let mv = moves.choose(&mut rng).unwrap();
+        // let mut ft = nn.ft.clone();
+        // ft.reset_accum(&g);
+        (g,*mv)
+    }).collect();
+
+    // let wacs3 = wacs2.clone().into_iter().map(|(g,mv,ft)| {
+    //     (g,*mv,ft)
+    // }).collect::<Vec<_>>();
+    let wacs3: Vec<(Game,Move)> =
+        wacs2.clone().into_iter().filter(|(_,mv)| mv.piece() != Some(King)).collect();
+
+    let mut ft = nn.ft.clone();
+
+    group.bench_function("nnue _update_accum", |b| b.iter(|| {
+        let mut wacs22 = wacs2.clone();
+        for (g,mv) in wacs22.iter_mut() {
+            ft.reset_accum(black_box(&g));
         }
     }));
+
+    // group.bench_function("nnue make_move", |b| {
+    //     b.iter(|| {
+    //         ft.accum.stack_copies.clear();
+    //         ft.accum.stack_delta.clear();
+    //         for (g,mv) in wacs3.iter() {
+    //             ft.make_move(g, *mv);
+    //         }
+    //     })});
 
     group.finish();
 }

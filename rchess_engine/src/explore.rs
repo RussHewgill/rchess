@@ -294,6 +294,8 @@ impl Explorer {
         #[cfg(feature = "nnue")]
         if let Some(ref mut nnue) = self.nnue {
             // nnue.ft.accum.needs_refresh = [true; 2];
+            nnue.ft.accum.stack_copies.clear();
+            nnue.ft.accum.stack_delta.clear();
             nnue.ft.reset_accum(&g);
         }
         self.side = g.state.side_to_move;
