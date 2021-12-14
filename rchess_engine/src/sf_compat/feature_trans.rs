@@ -304,8 +304,27 @@ impl NNFeatureTrans {
 
     #[inline(always)]
     pub fn make_move(&mut self, g: &Game, mv: Move) {
-        if mv.piece() == Some(King) {
-            self.accum.push_copy();
+        if let Move::Castle { from, to, rook_from, rook_to } = mv {
+            let persp = g.state.side_to_move;
+            let ksq = g.get(King,persp).bitscan();
+
+            let from = NNUE4::make_index_half_ka_v2(ksq, persp, King, !persp, from);
+            let to   = NNUE4::make_index_half_ka_v2(ksq, persp, King, !persp, to);
+
+            let rook_from = NNUE4::make_index_half_ka_v2(ksq, persp, King, !persp, rook_from);
+            let rook_to   = NNUE4::make_index_half_ka_v2(ksq, persp, King, !persp, rook_to);
+
+            self.accum.push_copy_castle(!g.state.side_to_move,((from,to),(rook_from,rook_to)));
+            self.reset_accum(g);
+        } else if mv.piece() == Some(King) {
+            let persp = g.state.side_to_move;
+            let ksq = g.get(King,persp).bitscan();
+
+            let from = NNUE4::make_index_half_ka_v2(ksq, persp, King, !persp, mv.sq_from());
+            let to   = NNUE4::make_index_half_ka_v2(ksq, persp, King, !persp, mv.sq_to());
+
+            // self.accum.push_copy(!g.state.side_to_move);
+            self.accum.push_copy_king(!g.state.side_to_move,(from,to));
             self.reset_accum(g);
         } else {
             let ds = self._make_move(g, mv);
@@ -396,9 +415,21 @@ impl NNFeatureTrans {
                     self._accum_pop(d);
                 }
             },
-            Some(NNDeltas::Copy) => {
+            Some(NNDeltas::CopyCastle(persp,(from,to),(rook_from,rook_to))) => {
                 self.accum.pop_prev();
+                self._accum_add(!persp, from);
+                self._accum_rem(!persp, to);
+                self._accum_add(!persp, rook_from);
+                self._accum_rem(!persp, rook_to);
             },
+            Some(NNDeltas::CopyKing(persp,(from,to))) => {
+                self.accum.pop_prev();
+                self._accum_add(!persp, from);
+                self._accum_rem(!persp, to);
+            },
+            // Some(NNDeltas::Copy) => {
+            //     self.accum.pop_prev();
+            // },
             None => {
                 panic!("empty stack pop?");
             },

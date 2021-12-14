@@ -1725,6 +1725,7 @@ fn _main_nn() -> std::io::Result<()> {
     use byteorder::{ReadBytesExt, LittleEndian};
 
     use rchess_engine_lib::sf_compat::*;
+    use rchess_engine_lib::sf_compat::accumulator::*;
 
     // return Ok(());
 
@@ -1822,19 +1823,28 @@ fn _main_nn() -> std::io::Result<()> {
         // let fen = "4k3/3ppp2/8/8/8/8/2NPPP2/4K3 w - - 0 1"; // +1 knight
         // let fen = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1";
         // let fen = "8/8/8/8/8/8/8/8 w - - 0 1";
-        let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+        // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+        // let fen = "r4rk1/4n1p1/1p1q1pb1/1B2p3/1B1PP1Q1/P7/5PP1/R3K2R b KQ - 0 2";
+        let fen = "rnbqk2r/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 1";
         let mut g = Game::from_fen(&ts, fen).unwrap();
 
         let mut nn2 = nn.clone();
         nn2.ft.reset_accum(&g);
         let v0 = nn2.evaluate(&g, false);
-        // eprintln!("v0 = {:?}", v0);
+        eprintln!("v0 = {:?}", v0);
 
         // let mv1 = Move::new_capture("a8", "a3", Rook, Pawn);
         // let mv2 = Move::new_capture("e5", "d4", Pawn, Pawn);
         // let mv2 = Move::new_capture("e3", "d4", Pawn, Pawn);
-        let mv2 = Move::new_quiet("e5", "e4", Pawn);
+        // let mv2 = Move::new_quiet("e5", "e4", Pawn);
         // let mv2 = Move::new_quiet("d4", "d5", Pawn);
+        // let mv2 = Move::new_quiet("g8", "f7", King);
+        let mv2 = Move::Castle {
+            from:      "e1".into(),
+            to:        "g1".into(),
+            rook_from: "h1".into(),
+            rook_to:   "f1".into(),
+        };
 
         // let g2 = g.make_move_unchecked(&ts, mv1).unwrap();
 
@@ -1846,9 +1856,9 @@ fn _main_nn() -> std::io::Result<()> {
         // nn2.ft.accum_pop();
 
         let g3 = g.make_move_unchecked(&ts, mv2).unwrap();
-        // nn2.ft.make_move(&g3, mv2);
+        nn2.ft.make_move(&g3, mv2);
 
-        {
+        if !true {
             let g = &g3;
             let side = !g.state.side_to_move; // XXX: should be after make_move g -> g2
             eprintln!("side = {:?}", side);
@@ -1862,24 +1872,37 @@ fn _main_nn() -> std::io::Result<()> {
             let (a0,a1) = deltas[0].get();
             let (a2,a3) = deltas[1].get();
 
-            eprintln!("a0.get_index() = {:?}", a0.get_index());
-            eprintln!("a1.get_index() = {:?}", a1.get_index());
-            eprintln!("a2.get_index() = {:?}", a2.get_index());
-            eprintln!("a3.get_index() = {:?}", a3.get_index());
+            eprintln!("a0.get_index() = {:?}", a0.get_index(White));
+            eprintln!("a1.get_index() = {:?}", a1.get_index(White));
+            eprintln!("a2.get_index() = {:?}", a2.get_index(White));
+            eprintln!("a3.get_index() = {:?}", a3.get_index(White));
 
             // eprintln!("delta = {:?}", delta);
         }
 
         // eprintln!("nn2 == nn3 = {:?}", nn2 == nn3);
 
-        let v1 = nn2.evaluate(&g3, false);
-        eprintln!("v1 = {:?}", v1);
+        // let v1 = nn2.evaluate(&g3, false);
+        // eprintln!("v1 = {:?}", v1);
 
-        nn.ft.reset_accum(&g3);
-        let v = nn.evaluate(&g3, false);
-        eprintln!("v = {:?}", v);
+        // nn.ft.reset_accum(&g3);
+        // let v = nn.evaluate(&g3, false);
+        // eprintln!("v = {:?}", v);
 
-        eprintln!("v == v1 = {:?}", v == v1);
+        // eprintln!("v == v1 = {:?}", v == v1);
+
+        // let ks = &nn2.ft.accum.stack_delta;
+        // for k in ks.iter() {
+        //     // eprintln!("k = {:?}", k);
+        //     if let NNDeltas::CopyKing(persp, (from,to)) = k {
+        //         eprintln!("from.get_index() = {:?}", from.get_index(Black));
+        //         eprintln!("to.get_index() = {:?}", to.get_index(Black));
+        //     }
+        // }
+
+        nn2.ft.accum_pop();
+        let v3 = nn2.evaluate(&g, false);
+        eprintln!("v3 = {:?}", v3);
 
         // let g3 = g2.make_move_unchecked(&ts, mv2).unwrap();
         // nn2.ft.make_move(&g3, mv2);
@@ -2623,8 +2646,8 @@ fn main9() {
     // let t = 0.5;
     // let t = 0.3;
 
-    let n = 35;
-    // let n = 7;
+    // let n = 35;
+    let n = 7;
 
     let t0 = std::time::Instant::now();
     let timesettings = TimeSettings::new_f64(0.0,t);

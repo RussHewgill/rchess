@@ -25,7 +25,7 @@ mod index {
     use std::collections::HashMap;
 
     lazy_static!{
-        static ref NNINDEX_MAP: Mutex<HashMap<NNIndex,(Coord,Color,Piece,Color,Coord)>> = {
+        static ref NNINDEX_MAP: Mutex<HashMap<(Color,NNIndex),(Coord,Piece,Color,Coord)>> = {
             Mutex::new(HashMap::new())
         };
     }
@@ -37,22 +37,20 @@ mod index {
     pub struct NNIndex(pub usize);
 
     impl NNIndex {
-        pub fn get_index(&self) -> (Coord,Color,Piece,Color,Coord) {
+        pub fn get_index(&self, persp: Color) -> (Coord,Piece,Color,Coord) {
             let mut map = NNINDEX_MAP.lock();
-            if let Some(xs) = map.get(&self) { *xs } else {
+            if let Some(xs) = map.get(&(persp,*self)) { *xs } else {
                 // let mut xs
                 for ksq in 0u8..64 {
                     let ksq = Coord::new_int(ksq);
-                    for persp in [White,Black] {
-                        for pc in Piece::iter_pieces() {
-                            for side in [White,Black] {
-                                for sq in 0u8..64 {
-                                    let sq = Coord::new_int(sq);
-                                    let idx = NNUE4::make_index_half_ka_v2(ksq, persp, pc, side, sq);
-                                    if self == &idx {
-                                        map.insert(*self, (ksq,persp,pc,side,sq));
-                                        return (ksq,persp,pc,side,sq);
-                                    }
+                    for pc in Piece::iter_pieces() {
+                        for side in [White,Black] {
+                            for sq in 0u8..64 {
+                                let sq = Coord::new_int(sq);
+                                let idx = NNUE4::make_index_half_ka_v2(ksq, persp, pc, side, sq);
+                                if self == &idx {
+                                    map.insert((persp,*self), (ksq,pc,side,sq));
+                                    return (ksq,pc,side,sq);
                                 }
                             }
                         }

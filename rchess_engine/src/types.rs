@@ -19,7 +19,7 @@ pub static PIECES: [Piece; 6] = [Pawn,Knight,Bishop,Rook,Queen,King];
 
 pub type Depth = u8;
 
-#[derive(Serialize,Deserialize,Debug,Hash,Eq,PartialEq,PartialOrd,ShallowCopy,Clone,Copy)]
+#[derive(Serialize,Deserialize,Debug,Hash,Eq,PartialEq,PartialOrd,Ord,ShallowCopy,Clone,Copy)]
 // #[derive(Debug,Hash,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub enum Color {
     White,

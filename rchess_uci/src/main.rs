@@ -199,7 +199,7 @@ fn main() -> std::io::Result<()> {
                         //     nnue.ft.reset_accum(&explorer.game);
                         // }
 
-                        parse_go(&mut explorer, params.clone().collect());
+                        // parse_go(&mut explorer, params.clone().collect());
 
                         // let m = explorer.lock().unwrap().explore(&ts, depth).unwrap();
                         let (m,stats) = explorer.explore(&ts);
