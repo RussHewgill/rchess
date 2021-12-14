@@ -179,20 +179,20 @@ impl ExHelper {
             // let mut nn: &mut NNUE4 = nnue.borrow_mut();
             let mut nn = nnue.borrow_mut();
 
-            let mut nn2 = nn.clone();
-            nn2.ft.reset_accum(g);
-            let v2 = nn2.evaluate(g, true);
+            // let mut nn2 = nn.clone();
+            // nn2.ft.reset_accum(g);
+            // let v2 = nn2.evaluate(g, true);
 
             let v = nn.evaluate(&g, true);
 
-            // assert_eq!(v, v2);
-            if v != v2 {
-                eprintln!("g.to_fen() = {:?}", g.to_fen());
-                eprintln!("g = {:?}", g);
-                eprintln!("v  = {:?}", v);
-                eprintln!("v2 = {:?}", v2);
-                panic!("v != v2");
-            }
+            // // assert_eq!(v, v2);
+            // if v != v2 {
+            //     eprintln!("g.to_fen() = {:?}", g.to_fen());
+            //     eprintln!("g = {:?}", g);
+            //     eprintln!("v  = {:?}", v);
+            //     eprintln!("v2 = {:?}", v2);
+            //     panic!("v != v2");
+            // }
 
             // nn.ft.accum.needs_refresh = [true; 2];
             // let v = nn.evaluate(&g, true, true); // XXX: slow, always refresh
@@ -303,6 +303,13 @@ impl ExHelper {
         // for (mv,g2) in ms {
         for mv in moves.into_iter() {
 
+            // let k0 = {
+            //     let nn = &self.nnue.as_ref().unwrap();
+            //     let nn = nn.borrow();
+            //     // nn.ft.accum.stack_delta.len()
+            //     nn.ft.accum.make_copy()
+            // };
+
             // if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
             if let Some(g2) = self.make_move(ts, g, mv, None) {
 
@@ -333,6 +340,19 @@ impl ExHelper {
                 }
 
                 self.pop_nnue();
+
+                // if let Some(nnue) = &self.nnue {
+                //     let nn = nnue.borrow();
+                //     // let k1 = nn.ft.accum.stack_delta.len();
+                //     let k1 = nn.ft.accum.make_copy();
+                //     if k0 != k1 {
+                //         eprintln!("g.to_fen() = {:?}", g.to_fen());
+                //         eprintln!("g = {:?}", g);
+                //         eprintln!("(k0,k1) = {:?}", (k0,k1));
+                //         panic!();
+                //     }
+                // }
+
             }
 
         }

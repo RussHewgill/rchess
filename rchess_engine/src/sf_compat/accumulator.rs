@@ -13,6 +13,15 @@ pub enum NNDelta {
     // Copy,
 }
 
+impl NNDelta {
+    pub fn get(self) -> (NNIndex,NNIndex) {
+        match self {
+            Self::Add(a,b) => (a,b),
+            Self::Remove(a,b) => (a,b),
+        }
+    }
+}
+
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
 pub enum NNDeltas {
     Deltas(ArrayVec<NNDelta,3>),
@@ -44,7 +53,7 @@ pub struct NNAccum {
     pub stack_delta:        Vec<NNDeltas>,
     pub stack_copies:       Vec<NNAccumData>,
 
-    pub needs_refresh:   [bool; 2],
+    // pub needs_refresh:   [bool; 2],
 }
 
 /// New
@@ -60,7 +69,7 @@ impl NNAccum {
             stack_delta:      Vec::with_capacity(1024),
             stack_copies:     Vec::with_capacity(1024),
 
-            needs_refresh:    [true; 2],
+            // needs_refresh:    [true; 2],
         }
     }
 }
@@ -68,7 +77,7 @@ impl NNAccum {
 /// Delta
 impl NNAccum {
 
-    fn make_copy(&self) -> NNAccumData {
+    pub fn make_copy(&self) -> NNAccumData {
         NNAccumData {
             accum:  self.accum,
             psqt:   self.psqt,

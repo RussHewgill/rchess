@@ -105,10 +105,10 @@ impl NNFeatureTrans {
 
         // eprintln!("FT transform");
 
-        // self.update_accum(g, White, refresh);
-        // self.update_accum(g, Black, refresh);
-        self.update_accum(g, White);
-        self.update_accum(g, Black);
+        // // self.update_accum(g, White, refresh);
+        // // self.update_accum(g, Black, refresh);
+        // self.update_accum(g, White);
+        // self.update_accum(g, Black);
 
         let persps: [Color; 2] = [g.state.side_to_move, !g.state.side_to_move];
         // let persps: [Color; 2] = [!g.state.side_to_move, g.state.side_to_move];
@@ -277,19 +277,19 @@ impl NNFeatureTrans {
 
     pub fn make_move_rem(&mut self, ksqs: [Coord; 2], pc: Piece, side: Color, sq: Coord) -> NNDelta {
         let [i_w,i_b] = NNUE4::make_index_2(ksqs, pc, side, sq);
-        self.accum_add(i_w, i_b)
+        self.accum_rem(i_w, i_b)
     }
 
     pub fn make_move_add(&mut self, ksqs: [Coord; 2], pc: Piece, side: Color, sq: Coord) -> NNDelta {
         let [i_w,i_b] = NNUE4::make_index_2(ksqs, pc, side, sq);
-        self.accum_rem(i_w, i_b)
+        self.accum_add(i_w, i_b)
     }
 
     pub fn make_move_move(
-        &mut self, ksqs: [Coord; 2], pc: Piece, side: Color, from: Coord, to: Coord) -> (NNDelta,NNDelta) {
+        &mut self, ksqs: [Coord; 2], pc: Piece, side: Color, from: Coord, to: Coord) -> [NNDelta; 2] {
         let a = self.make_move_rem(ksqs, pc, side, from);
         let b = self.make_move_add(ksqs, pc, side, to);
-        (a,b)
+        [a,b]
     }
 
     #[inline(always)]
@@ -307,8 +307,8 @@ impl NNFeatureTrans {
 
     pub fn _make_move(&mut self, g: &Game, mv: Move) -> NNDeltas {
 
-        self.update_accum(g, White);
-        self.update_accum(g, Black);
+        // self.update_accum(g, White);
+        // self.update_accum(g, Black);
 
         let mut out = ArrayVec::new();
 
@@ -323,27 +323,27 @@ impl NNFeatureTrans {
         match mv {
             Move::Quiet { from, to, pc } => {
                 let a = self.make_move_move(ksqs, pc, side, from, to);
-                // out.push(a[0]);
-                // out.push(a[1]);
+                out.push(a[0]);
+                out.push(a[1]);
             },
             Move::PawnDouble { from, to } => {
                 let a = self.make_move_move(ksqs, Pawn, side, from, to);
-                // out.push(a[0]);
-                // out.push(a[1]);
+                out.push(a[0]);
+                out.push(a[1]);
             },
             Move::Capture { from, to, pc, victim } => {
                 let a = self.make_move_move(ksqs, pc, side, from, to);
                 let b = self.make_move_rem(ksqs, victim, !side, to);
-                // out.push(a[0]);
-                // out.push(a[1]);
-                // out.push(b);
+                out.push(a[0]);
+                out.push(a[1]);
+                out.push(b);
             },
             Move::EnPassant { from, to, capture } => {
                 let a = self.make_move_move(ksqs, Pawn, side, from, to);
                 let b = self.make_move_rem(ksqs, Pawn, !side, capture);
-                // out.push(a[0]);
-                // out.push(a[1]);
-                // out.push(b);
+                out.push(a[0]);
+                out.push(a[1]);
+                out.push(b);
             },
             Move::Castle { from, to, rook_from, rook_to } => {
                 // let a = self.make_move_move(ksqs, King, side, from, to);
@@ -357,16 +357,16 @@ impl NNFeatureTrans {
             Move::Promotion { from, to, new_piece } => {
                 let a = self.make_move_rem(ksqs, Pawn, side, from);
                 let b = self.make_move_add(ksqs, new_piece, side, to);
-                // out.push(a);
-                // out.push(b);
+                out.push(a);
+                out.push(b);
             },
             Move::PromotionCapture { from, to, new_piece, victim } => {
                 let a = self.make_move_rem(ksqs, Pawn, side, from);
                 let b = self.make_move_add(ksqs, new_piece, side, to);
                 let c = self.make_move_rem(ksqs, victim, !side, to);
-                // out.push(a);
-                // out.push(b);
-                // out.push(c);
+                out.push(a);
+                out.push(b);
+                out.push(c);
             },
             Move::NullMove => {},
         }
@@ -569,16 +569,16 @@ impl NNFeatureTrans {
         // debug!("resetting accum");
         self._update_accum(g, White);
         self._update_accum(g, Black);
-        self.accum.needs_refresh = [false; 2];
+        // self.accum.needs_refresh = [false; 2];
     }
 
-    // #[inline(always)]
-    pub fn update_accum(&mut self, g: &Game, persp: Color) {
-        if self.accum.needs_refresh[persp] {
-            self.accum.needs_refresh[persp] = false;
-            self._update_accum(g, persp);
-        }
-    }
+    // // #[inline(always)]
+    // pub fn update_accum(&mut self, g: &Game, persp: Color) {
+    //     if self.accum.needs_refresh[persp] {
+    //         self.accum.needs_refresh[persp] = false;
+    //         self._update_accum(g, persp);
+    //     }
+    // }
 
     // #[inline(always)]
     pub fn _update_accum(&mut self, g: &Game, persp: Color) {
@@ -602,9 +602,3 @@ impl NNFeatureTrans {
     }
 
 }
-
-
-
-
-
-

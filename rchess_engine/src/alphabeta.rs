@@ -132,35 +132,6 @@ impl ExHelper {
 /// Negamax AB
 impl ExHelper {
 
-    // pub fn check_tt_negamax(
-    //     &self,
-    //     ts:             &Tables,
-    //     g:              &Game,
-    //     zb:             &Zobrist,
-    //     depth:          Depth,
-    //     mut stats:      &mut SearchStats,
-    // ) -> Option<(SICanUse,SearchInfo)> {
-    //     let (found,entry) = TransTable::global().probe(zb);
-    //     if found {
-    //         let si = SearchInfo {
-    //             best_move:      PackedMove::unpack(&entry.best_move).unwrap().convert_to_move(ts, g),
-    //             depth_searched: entry.depth_searched,
-    //             node_type:      entry.node_type,
-    //             score:          entry.score,
-    //         };
-    //         if entry.depth_searched >= depth {
-    //             stats.tt_hits += 1;
-    //             Some((SICanUse::UseScore, si))
-    //         } else {
-    //             stats.tt_halfmiss += 1;
-    //             Some((SICanUse::UseOrdering, si))
-    //         }
-    //     } else {
-    //         stats.tt_misses += 1;
-    //         None
-    //     }
-    // }
-
     /// returns (can_use, SearchInfo)
     pub fn check_tt_negamax(
         &self,
@@ -493,6 +464,14 @@ impl ExHelper {
             //     g2
             // } else { continue 'outer; };
 
+            // // XXX: temp
+            // let k0 = {
+            //     let nn = &self.nnue.as_ref().unwrap();
+            //     let nn = nn.borrow();
+            //     // nn.ft.accum.stack_delta.len()
+            //     nn.ft.accum.make_copy()
+            // };
+
             let g2 = if let Some(g2) = self.make_move(ts, g, mv, Some(zb0)) {
                 g2
             } else { continue 'outer; };
@@ -734,6 +713,20 @@ impl ExHelper {
                     break;
                 }
             }
+
+            self.pop_nnue();
+
+            // if let Some(nnue) = &self.nnue {
+            //     let nn = nnue.borrow();
+            //     // let k1 = nn.ft.accum.stack_delta.len();
+            //     let k1 = nn.ft.accum.make_copy();
+            //     if k0 != k1 {
+            //         eprintln!("g.to_fen() = {:?}", g.to_fen());
+            //         eprintln!("g = {:?}", g);
+            //         eprintln!("(k0,k1) = {:?}", (k0,k1));
+            //         panic!();
+            //     }
+            // }
 
             moves_searched += 1;
         }

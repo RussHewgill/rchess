@@ -1828,39 +1828,58 @@ fn _main_nn() -> std::io::Result<()> {
         let mut nn2 = nn.clone();
         nn2.ft.reset_accum(&g);
         let v0 = nn2.evaluate(&g, false);
-        eprintln!("v0 = {:?}", v0);
+        // eprintln!("v0 = {:?}", v0);
 
-        let mv1 = Move::new_capture("a8", "a3", Rook, Pawn);
-        // let mv1 = Move::new_capture("e5", "d4", Pawn, Pawn);
+        // let mv1 = Move::new_capture("a8", "a3", Rook, Pawn);
+        // let mv2 = Move::new_capture("e5", "d4", Pawn, Pawn);
         // let mv2 = Move::new_capture("e3", "d4", Pawn, Pawn);
-        // let mv1 = Move::new_quiet("e5", "e4", Pawn);
+        let mv2 = Move::new_quiet("e5", "e4", Pawn);
         // let mv2 = Move::new_quiet("d4", "d5", Pawn);
 
-        let g2 = g.make_move_unchecked(&ts, mv1).unwrap();
+        // let g2 = g.make_move_unchecked(&ts, mv1).unwrap();
 
-        let nn3 = nn2.clone();
+        // // nn2.ft._update_accum(&g2, White);
+        // // nn2.ft._update_accum(&g2, Black);
+        // nn2.ft.make_move(&g2, mv1);
+        // // nn2.ft.reset_accum(&g2);
 
-        // nn2.ft._update_accum(&g2, White);
-        // nn2.ft._update_accum(&g2, Black);
-        nn2.ft.make_move(&g2, mv1);
-        // nn2.ft.reset_accum(&g2);
+        // nn2.ft.accum_pop();
 
-        // let k0 = nn2.ft.accum.stack_delta.len();
-        // eprintln!("k0 = {:?}", k0);
+        let g3 = g.make_move_unchecked(&ts, mv2).unwrap();
+        // nn2.ft.make_move(&g3, mv2);
 
-        // for x in nn2.ft.accum.stack_delta.iter() {
-        //     eprintln!("x = {:?}", x);
-        // }
+        {
+            let g = &g3;
+            let side = !g.state.side_to_move; // XXX: should be after make_move g -> g2
+            eprintln!("side = {:?}", side);
+            let ksqs = [g.get(King,White).bitscan(),g.get(King,Black).bitscan()];
+            eprintln!("ksqs[White] = {:?}", ksqs[White]);
+            eprintln!("ksqs[Black] = {:?}", ksqs[Black]);
 
-        let x0 = &nn2.ft.accum.stack_delta[0];
-        eprintln!("x0 = {:?}", x0);
+            // let [i_w,i_b] = NNUE4::make_index_2(ksqs, pc, side, sq);
 
-        nn2.ft.accum_pop();
+            let deltas = nn2.ft.make_move_move(ksqs, Pawn, Black, "e5".into(), "e4".into());
+            let (a0,a1) = deltas[0].get();
+            let (a2,a3) = deltas[1].get();
 
-        eprintln!("nn2 == nn3 = {:?}", nn2 == nn3);
+            eprintln!("a0.get_index() = {:?}", a0.get_index());
+            eprintln!("a1.get_index() = {:?}", a1.get_index());
+            eprintln!("a2.get_index() = {:?}", a2.get_index());
+            eprintln!("a3.get_index() = {:?}", a3.get_index());
 
-        let v1 = nn2.evaluate(&g, false);
+            // eprintln!("delta = {:?}", delta);
+        }
+
+        // eprintln!("nn2 == nn3 = {:?}", nn2 == nn3);
+
+        let v1 = nn2.evaluate(&g3, false);
         eprintln!("v1 = {:?}", v1);
+
+        nn.ft.reset_accum(&g3);
+        let v = nn.evaluate(&g3, false);
+        eprintln!("v = {:?}", v);
+
+        eprintln!("v == v1 = {:?}", v == v1);
 
         // let g3 = g2.make_move_unchecked(&ts, mv2).unwrap();
         // nn2.ft.make_move(&g3, mv2);
@@ -1920,8 +1939,7 @@ fn _main_nn() -> std::io::Result<()> {
         // nn2.make_mov
 
         // let fen0 = "r4rk1/4npp1/1p1q2b1/1B6/1B1p2Q1/P3P3/5PP1/R3K2R w KQ - 0 2";
-        let fen0 = "r4rk1/4npp1/1p1q2b1/1B6/1B1P2Q1/P7/5PP1/R3K2R b KQ - 0 2";
-        let mut g0 = Game::from_fen(&ts, fen0).unwrap();
+        // let mut g0 = Game::from_fen(&ts, fen0).unwrap();
 
         // nn.ft.reset_accum(&g0);
         // let v = nn.evaluate(&g0, false);
@@ -2601,7 +2619,7 @@ fn main9() {
     // let t = 10.0;
     // let t = 6.0;
     // let t = 4.0;
-    let t = 1.0;
+    let t = 2.0;
     // let t = 0.5;
     // let t = 0.3;
 
@@ -2624,11 +2642,6 @@ fn main9() {
     // only_moves.insert(Move::new_quiet("F5", "F1", Rook));
     // only_moves.insert(Move::new_double("b7", "b5"));
     // ex.cfg.only_moves = Some(only_moves);
-
-    // // let s0 = g.sum_evaluate(&ts, &ex.cfg.eval_params_mid, &ex.cfg.eval_params_end, None);
-    // let s0 = qsearch_once(&ts, &g, g.state.side_to_move, &ex.cfg.eval_params_mid, &ex.cfg.eval_params_end);
-    // eprintln!("s0 = {:?}", s0);
-    // return;
 
     // let s0 = std::mem::size_of::<OrdMove>();
     // eprintln!("s0 = {:?}", s0);
@@ -2710,8 +2723,8 @@ fn main9() {
     let (res,moves,stats0) = ex.lazy_smp_2(&ts);
     let t1 = t0.elapsed();
     let t2 = t1.as_secs_f64();
-    println!("wat 0");
 
+    println!("wat 0");
     let fen = games_wac(1);
     let g = Game::from_fen(&ts, &fen).unwrap();
     ex.update_game(g.clone());

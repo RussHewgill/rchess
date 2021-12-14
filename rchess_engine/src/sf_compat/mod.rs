@@ -18,14 +18,51 @@ use byteorder::{ReadBytesExt, LittleEndian, WriteBytesExt};
 
 pub use self::index::NNIndex;
 mod index {
-
+    use super::*;
     use derive_more::*;
+    use lazy_static::lazy_static;
+    use parking_lot::Mutex;
+    use std::collections::HashMap;
+
+    lazy_static!{
+        static ref NNINDEX_MAP: Mutex<HashMap<NNIndex,(Coord,Color,Piece,Color,Coord)>> = {
+            Mutex::new(HashMap::new())
+        };
+    }
 
     #[derive(Debug,Deref,Eq,Ord,PartialEq,PartialOrd,Hash,Clone,Copy,
              Index,Add,Mul,Div,Sum,AddAssign,MulAssign,
              From,Into,AsRef,AsMut
     )]
     pub struct NNIndex(pub usize);
+
+    impl NNIndex {
+        pub fn get_index(&self) -> (Coord,Color,Piece,Color,Coord) {
+            let mut map = NNINDEX_MAP.lock();
+            if let Some(xs) = map.get(&self) { *xs } else {
+                // let mut xs
+                for ksq in 0u8..64 {
+                    let ksq = Coord::new_int(ksq);
+                    for persp in [White,Black] {
+                        for pc in Piece::iter_pieces() {
+                            for side in [White,Black] {
+                                for sq in 0u8..64 {
+                                    let sq = Coord::new_int(sq);
+                                    let idx = NNUE4::make_index_half_ka_v2(ksq, persp, pc, side, sq);
+                                    if self == &idx {
+                                        map.insert(*self, (ksq,persp,pc,side,sq));
+                                        return (ksq,persp,pc,side,sq);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                panic!("index not found?");
+            }
+        }
+    }
+
 }
 
 // type NNIndex = usize;
@@ -302,7 +339,7 @@ impl NNUE4 {
     // pub fn make_index_2((ksq1,ksq2): (Coord,Coord), pc: Piece, side: Color, sq: Coord) -> (NNIndex,NNIndex) {
     pub fn make_index_2(ksqs: [Coord; 2], pc: Piece, side: Color, sq: Coord) -> [NNIndex; 2] {
         let w = Self::make_index_half_ka_v2(ksqs[White], White, pc, side, sq);
-        let b = Self::make_index_half_ka_v2(ksqs[White], White, pc, side, sq);
+        let b = Self::make_index_half_ka_v2(ksqs[Black], Black, pc, side, sq);
         [w,b]
     }
 
