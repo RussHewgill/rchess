@@ -361,8 +361,9 @@ fn main_tt() {
     ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
-    let k0 = ex.timer.allocate_time(g.state.side_to_move, 1);
-    eprintln!("k0 = {:?}", k0);
+    let (t_opt,t_max) = ex.timer.allocate_time(g.state.side_to_move, 1);
+    eprintln!("t_opt = {:?}", t_opt);
+    eprintln!("t_max = {:?}", t_max);
 
     return;
 
@@ -2675,6 +2676,11 @@ fn main9() {
     // ex.cfg.num_threads = None;
 
     ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+
+    // let (t_opt,t_max) = ex.timer.allocate_time(g.state.side_to_move, 1);
+    // eprintln!("t_opt = {:?}", t_opt);
+    // eprintln!("t_max = {:?}", t_max);
+    // return;
 
     // let mut only_moves = HashSet::default();
     // only_moves.insert(Move::new_quiet("F5", "F1", Rook));

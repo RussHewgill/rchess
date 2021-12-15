@@ -123,20 +123,25 @@ mod old {
             self.init.elapsed().as_secs_f64()
         }
 
-        pub fn allocate_time(&self, side: Color, ply: Depth) -> Duration {
+        pub fn allocate_time(&self, side: Color, ply: Depth) -> (Duration,Duration) {
             let t   = self.time_left[side];
             let inc = self.settings.increment[side];
+            let t   = t.max(inc); // XXX: Increment should be added to total time each move
 
             let mtg = self.moves_to_go.unwrap_or(50).min(50) as f64;
 
             let time_left = t + inc * (mtg - 1.0);
             assert!(time_left > 0.0);
 
-            let (opt,max) = if let Some(_) = self.moves_to_go {
+            let opt_extra = 1.0 + 12.0 * inc / t;
+            let opt_extra = opt_extra.clamp(1.0, 1.12);
+
+            let (opt_scale,max_scale) = if self.moves_to_go.is_some() || t == 0.0 {
                 let opt = f64::min(
                     0.0084 + (ply as f64 + 3.0).sqrt() * 0.0042,
                     0.2 * t / time_left
                 );
+                let opt = opt * opt_extra;
                 let max = f64::min(7.0, 4.0 + ply as f64 / 12.0);
                 (opt,max)
             } else {
@@ -149,12 +154,10 @@ mod old {
                 (opt,max)
             };
 
-            unimplemented!()
-        }
+            let t_opt = time_left * opt_scale;
+            let t_max = f64::min(0.8 * t, max_scale * t_opt);
 
-        pub fn estimate_remaining(&self, side: Color, mtg: u32, ideal: bool) -> Duration {
-
-            unimplemented!()
+            (Duration::from_secs_f64(t_opt),Duration::from_secs_f64(t_max))
         }
 
         pub fn should_search(&self, side: Color, depth: Depth) -> bool {

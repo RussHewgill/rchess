@@ -649,11 +649,12 @@ impl Explorer {
         let t0 = Instant::now();
         // std::thread::sleep(Duration::from_micros(100));
 
-        // let t_max = self.timer.settings.increment[self.side];
-        // let t_max = Duration::from_secs_f64(t_max);
+        let t_max = self.timer.settings.increment[self.side];
+        let t_max = Duration::from_secs_f64(t_max);
 
-        let cur_ply = self.current_ply.unwrap_or(1);
-        let t_max = self.timer.allocate_time(self.game.state.side_to_move, cur_ply);
+        // let cur_ply = self.current_ply.unwrap_or(1);
+        // let (t_opt,t_max) = self.timer.allocate_time(self.game.state.side_to_move, cur_ply);
+        // debug!("searching with (t_opt,t_max) = ({:?},{:?})", t_opt, t_max);
 
         // let t_max = self.timer.allocate_time()
 
@@ -685,6 +686,11 @@ impl Explorer {
                     self.stop.store(true, SeqCst);
                     break 'outer;
                 }
+
+                // TODO: 
+                // /// passed optimum time, maybe halt?
+                // if t1 > t_opt {
+                // }
 
                 /// Out of time, halt
                 if t1 > t_max {
