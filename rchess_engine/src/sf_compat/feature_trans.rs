@@ -296,7 +296,7 @@ impl NNFeatureTrans {
         [a,b]
     }
 
-    // #[cfg(feature = "nope")] // XXX: 
+    #[cfg(feature = "nope")] // XXX: 
     pub fn make_move(&mut self, g: &Game, mv: Move) {
         if let Move::Castle { from, to, rook_from, rook_to } = mv {
 
@@ -327,7 +327,7 @@ impl NNFeatureTrans {
         }
     }
 
-    #[cfg(feature = "nope")] // XXX: 
+    // #[cfg(feature = "nope")] // XXX: 
     pub fn make_move(&mut self, g: &Game, mv: Move) {
         if mv.piece() == Some(King) {
             self.accum.push_copy(!g.state.side_to_move);
@@ -429,20 +429,20 @@ impl NNFeatureTrans {
             //     self._accum_rem(!persp, rook_to);
             // },
 
-            Some(NNDeltas::CopyCastle(persp)) => {
-                self.accum.pop_prev();
-                self.accum.pop_prev();
-            }
-
-            Some(NNDeltas::CopyKing(persp,(from,to))) => {
-                self.accum.pop_prev();
-                self._accum_add(!persp, from);
-                self._accum_rem(!persp, to);
-            },
-
-            // Some(NNDeltas::Copy) => {
+            // Some(NNDeltas::CopyCastle(persp)) => {
             //     self.accum.pop_prev();
+            //     self.accum.pop_prev();
+            // }
+
+            // Some(NNDeltas::CopyKing(persp,(from,to))) => {
+            //     self.accum.pop_prev();
+            //     self._accum_add(!persp, from);
+            //     self._accum_rem(!persp, to);
             // },
+
+            Some(NNDeltas::Copy) => {
+                self.accum.pop_prev();
+            },
 
             None => {
                 panic!("empty stack pop?");

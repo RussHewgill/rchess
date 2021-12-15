@@ -125,6 +125,7 @@ impl SearchInfo {
     pub fn empty() -> Self {
         Self {
             best_move:      (0,0),
+            // best_move:      Move::NullMove,
             depth_searched: 0,
             node_type:      Node::Empty,
             score:          0,
