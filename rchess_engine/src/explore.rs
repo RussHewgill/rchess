@@ -651,6 +651,7 @@ impl Explorer {
 
         let t_max = self.timer.settings.increment[self.side];
         let t_max = Duration::from_secs_f64(t_max);
+        debug!("searching with t_max = {:?}", t_max);
 
         // let cur_ply = self.current_ply.unwrap_or(1);
         // let (t_opt,t_max) = self.timer.allocate_time(self.game.state.side_to_move, cur_ply);

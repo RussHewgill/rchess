@@ -485,6 +485,26 @@ fn main_simd() {
     const OS: usize = 8;
     const IS: usize = 1024;
 
+    use rchess_engine_lib::sf_compat::{Layer0,NNAffine,NNLayer};
+    let mut layer0 = Layer0::new();
+    let mut layer1 = NNAffine::<Layer0, 8, {IS * 2}>::new(layer0);
+
+    layer1.biases  = Aligned(array_init::array_init(|_| rng.gen_range(-10..10)));
+    let ws: [i8; IS * 2 * OS] = array_init::array_init(|_| rng.gen_range(-10..10));
+    layer1.weights = Aligned(ws.to_vec());
+
+    let input: [u8; IS * 2] = array_init::array_init(|_| rng.gen_range(0..2));
+    let mut output = [0i32; OS];
+
+    timer!{{
+        for _ in 0..1_000_000 {
+            layer1.propagate(&input);
+            // simd_mm_0::<{IS*2},OS>(&input, &layer1.weights, layer1.biases.as_ref(), &mut output);
+        }
+    }}
+
+    return;
+
     let input: [u8; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
     let weights: Vec<i8>  = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
     // let input: [i32; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
@@ -1861,14 +1881,14 @@ fn _main_nn() -> std::io::Result<()> {
         // let mv2 = Move::new_quiet("e5", "e4", Pawn);
         // let mv2 = Move::new_quiet("d4", "d5", Pawn);
 
-        // let mv2 = Move::new_quiet("e1", "f1", King);
+        let mv2 = Move::new_quiet("e1", "f1", King);
 
-        let mv2 = Move::Castle {
-            from:      "e1".into(),
-            to:        "g1".into(),
-            rook_from: "h1".into(),
-            rook_to:   "f1".into(),
-        };
+        // let mv2 = Move::Castle {
+        //     from:      "e1".into(),
+        //     to:        "g1".into(),
+        //     rook_from: "h1".into(),
+        //     rook_to:   "f1".into(),
+        // };
 
         // let g2 = g.make_move_unchecked(&ts, mv1).unwrap();
 

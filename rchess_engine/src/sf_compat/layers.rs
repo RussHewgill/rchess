@@ -720,6 +720,8 @@ mod nn_affine {
             // eprintln!("Self::SIZE_OUTPUT = {:?}", Self::SIZE_OUTPUT);
             // assert_eq!(Self::SIZE_OUTPUT % 4, 0);
 
+            // assert_eq!(Self::SIZE_INPUT, Self::SIZE_INPUT_PADDED);
+
             // let x: u64;
             // unsafe {
             //     asm!(
@@ -730,19 +732,23 @@ mod nn_affine {
             // }
             // eprintln!("x = {:?}", x);
 
-            let mut acc = [0i32; IS];
+            // let mut acc = [0i32; IS];
             assert_eq!(IS, input.len());
 
             for i in 0..Self::SIZE_OUTPUT {
 
                 let offset = i * Self::SIZE_INPUT_PADDED;
 
+                let weights = &self.weights[offset..offset + IS];
+                // assert_eq!(weights.len(), input.len());
+
                 // let mut sum: i32 = self.biases[i];
                 let mut sum: i32 = unsafe { *self.biases.get_unchecked(i) };
 
                 for (k,x) in input.iter().enumerate() {
                     let x: i32 = x.as_();
-                    let x0 = self.weights[offset + k] as i32 * x;
+                    // let x0 = self.weights[offset + k] as i32 * x;
+                    let x0 = weights[k] as i32 * x;
                     // let x0 = self.weights[offset + j] as i32 * *x as i32; // no benefit
                     // let x0 = unsafe { *self.weights.get_unchecked(offset + j) } as i32 * x;
                     sum += x0;

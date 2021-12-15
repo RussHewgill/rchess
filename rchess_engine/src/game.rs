@@ -33,7 +33,7 @@ pub struct Game {
     // pub history:      HashMap<Zobrist, u8>,
     pub history:      FxHashMap<Zobrist, u8>,
 
-    pub halfmove:    u8,
+    pub halfmove:     u8,
 }
 
 

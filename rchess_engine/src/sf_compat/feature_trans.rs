@@ -308,9 +308,10 @@ impl NNFeatureTrans {
             // let rook_to   = NNUE4::make_index_half_ka_v2(ksq, persp, King, !persp, rook_to);
 
             // self.accum.push_copy_castle(!g.state.side_to_move,((from,to),(rook_from,rook_to)));
-            self.accum.push_copy_castle();
 
+            self.accum.push_copy_full(!g.state.side_to_move);
             self.reset_accum(g);
+
         } else if mv.piece() == Some(King) {
             let persp = g.state.side_to_move;
             let ksq = g.get(King,persp).bitscan();
@@ -319,7 +320,7 @@ impl NNFeatureTrans {
             let to   = NNUE4::make_index_half_ka_v2(ksq, persp, King, !persp, mv.sq_to());
 
             // self.accum.push_copy(!g.state.side_to_move);
-            self.accum.push_copy_king(!g.state.side_to_move,(from,to));
+            self.accum.push_copy_half(!g.state.side_to_move,(from,to));
             self.reset_accum(g);
         } else {
             let ds = self._make_move(g, mv);
@@ -330,7 +331,7 @@ impl NNFeatureTrans {
     // #[cfg(feature = "nope")] // XXX: 
     pub fn make_move(&mut self, g: &Game, mv: Move) {
         if mv.piece() == Some(King) {
-            self.accum.push_copy(!g.state.side_to_move);
+            self.accum.push_copy_full(!g.state.side_to_move);
             self.reset_accum(g);
         } else {
             let ds = self._make_move(g, mv);
