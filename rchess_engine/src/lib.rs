@@ -11,20 +11,24 @@
 #![feature(array_chunks)]
 #![feature(asm)]
 
-// #![allow(
-//     // clippy::all,
-//     // clippy::restriction,
-//     // clippy::pedantic,
-//     // clippy::nursery,
-//     // clippy::cargo,
-//     // clippy::complexity,
-//     // clippy::correctness,
-//     // clippy::nursery,
-//     // clippy::restriction,
-//     // clippy::style,
-//     // clippy::suspicious,
-//     // clippy::perf,
-// )]
+// XXX: also brain allow ::all
+#![allow(
+    // clippy::all,
+    clippy::restriction,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::cargo,
+    clippy::complexity,
+    clippy::correctness,
+    clippy::nursery,
+    clippy::restriction,
+    clippy::style,
+    clippy::suspicious,
+    // clippy::perf,
+
+    clippy::type_complexity,
+    clippy::useless_conversion,
+)]
 
 // #![warn(
 //     clippy::perf,

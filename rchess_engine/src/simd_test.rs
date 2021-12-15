@@ -1,4 +1,7 @@
 
+
+#![allow(clippy::all)]
+
 use std::arch::x86_64::{__m256i,__m128i};
 
 use ndarray as nd;
