@@ -129,7 +129,7 @@ impl ExHelper {
 
 }
 
-/// Negamax AB
+/// TT Probe, search_single
 impl ExHelper {
 
     /// returns (can_use, SearchInfo)
@@ -190,6 +190,11 @@ impl ExHelper {
         res
     }
 
+}
+
+/// Negamax AB
+impl ExHelper {
+
     #[allow(unused_doc_comments,unused_labels)]
     /// alpha: the MIN score that the maximizing player is assured of
     /// beta:  the MAX score that the minimizing player is assured of
@@ -201,7 +206,6 @@ impl ExHelper {
         depth:                   Depth,
         ply:                     Depth,
         mut stop_counter:        &mut u16,
-        // (mut alpha, mut beta):   (i32,i32),
         (mut alpha, mut beta):   (Score,Score),
         mut stats:               &mut SearchStats,
         mut tracking:            &mut ExTracking,
@@ -413,13 +417,21 @@ impl ExHelper {
         // #[cfg(feature = "history_heuristic")]
         // order_moves_history(&tracking.history[g.state.side_to_move], &mut moves);
 
-        let mut gs: Vec<(Move,Zobrist,Option<(SICanUse,SearchInfo)>)> = moves.into_iter()
-        // let mut gs: ArrayVec<(Move,Zobrist,Option<(SICanUse,SearchInfo)>),256> = moves.into_iter()
-            .map(|mv| {
-                let zb = g.zobrist.update_move_unchecked(ts, g, mv);
-                let tt = self.check_tt_negamax(&ts, &zb, depth, &mut stats);
-                (mv,zb,tt)
-            }).collect();
+        // let mut gs: Vec<(Move,Zobrist,Option<(SICanUse,SearchInfo)>)> = moves.into_iter()
+        // // let mut gs: ArrayVec<(Move,Zobrist,Option<(SICanUse,SearchInfo)>),256> = moves.into_iter()
+        //     .map(|mv| {
+        //         let zb = g.zobrist.update_move_unchecked(ts, g, mv);
+        //         let tt = self.check_tt_negamax(&ts, &zb, depth, &mut stats);
+        //         (mv,zb,tt)
+        //     }).collect();
+
+        /// No change in performance, but easier to read in flamegraph
+        let mut gs: Vec<(Move,Zobrist,Option<(SICanUse,SearchInfo)>)> = Vec::with_capacity(moves.len());
+        for mv in moves.into_iter() {
+            let zb = g.zobrist.update_move_unchecked(ts, g, mv);
+            let tt = self.check_tt_negamax(&ts, &zb, depth, &mut stats);
+            gs.push((mv,zb,tt));
+        }
 
         self.order_moves(ts, g, ply, &mut tracking, &mut gs[..]);
 

@@ -70,6 +70,7 @@ fn main() {
         "nn"        => main_nn(),
         "nnue"      => main_nnue(),
         "train"     => main_nnue_train(),
+        "movegen"   => main_movegen(),
         "simd"      => main_simd(),
         "eval"      => main_eval(),
         "gensfen"   => {
@@ -247,6 +248,10 @@ fn _main() {
 }
 
 #[allow(unreachable_code)]
+fn main_movegen() {
+}
+
+#[allow(unreachable_code)]
 fn main_tt() {
     use rchess_engine_lib::lockless_map::*;
 
@@ -258,6 +263,15 @@ fn main_tt() {
 
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
     let zb = Zobrist(rng.gen());
+
+    // let s0 = std::mem::size_of::<TTEntry>();
+    let s0 = std::mem::size_of::<Score>();
+    eprintln!("s0 = {:?}", s0);
+
+    return;
+
+    // old
+    if !true  {
 
     if !true {
         use std::alloc::{Layout, handle_alloc_error, self};
@@ -323,6 +337,8 @@ fn main_tt() {
     // let (found, entry) = tt.probe(&zb3);
     // eprintln!("found = {:?}", found);
     // entry.place(zb, p1, 1, Node::PV, 2);
+
+    }
 
     let fen = STARTPOS;
     init_logger();

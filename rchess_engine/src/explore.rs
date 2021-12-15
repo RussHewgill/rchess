@@ -355,8 +355,8 @@ impl Explorer {
 
             let mv = si.best_move;
 
-            // let mv = [mv.0, mv.1];
-            // let mv = PackedMove::unpack(&mv).unwrap().convert_to_move(ts, &g2);
+            let mv = [mv.0, mv.1];
+            let mv = PackedMove::unpack(&mv).unwrap().convert_to_move(ts, &g2);
 
             moves.push(mv);
 

@@ -50,6 +50,7 @@ pub mod pgn;
 pub mod see;
 pub mod qsearch;
 pub mod search;
+pub mod movegen;
 pub mod explore;
 pub mod alphabeta;
 pub mod evaluate;

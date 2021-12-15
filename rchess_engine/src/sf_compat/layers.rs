@@ -42,7 +42,9 @@ pub trait NNLayer {
     // fn propagate(&mut self, trans_features: &[u8], output: &mut [Self::OutputType]);
     // fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType>;
     // fn propagate(&self, trans_features: &[u8]) -> ArrayVec<Self::OutputType, {Self::BUFFER_SIZE}>;
-    fn propagate(&mut self, trans_features: &[u8]);
+    // fn propagate(&mut self, trans_features: &[u8]);
+    // fn propagate(&mut self, trans_features: &[u8]) -> &[Self::OutputType];
+    fn propagate<'a>(&'a mut self, trans_features: &'a [u8]) -> &'a [Self::OutputType];
 
     // fn size(&self) -> usize;
 
@@ -88,18 +90,22 @@ mod nn_input {
         // fn size(&self) -> usize { self.buf.len() }
 
         fn get_buf(&self) -> &[Self::OutputType] {
-            self.buf.as_ref()
+            // self.buf.as_ref()
+            unimplemented!()
         }
         fn get_buf_mut(&mut self) -> &mut [Self::OutputType] {
-            self.buf.as_mut()
+            // self.buf.as_mut()
+            unimplemented!()
         }
 
         // fn propagate(&mut self, trans_features: &[u8], output: &mut [Self::OutputType]) {
-        fn propagate(&mut self, trans_features: &[u8]) {
+        // fn propagate(&mut self, trans_features: &[u8]) {
         // fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType> {
+        fn propagate<'a>(&mut self, trans_features: &'a [u8]) -> &'a [Self::OutputType] {
             // assert!(input.len() == output.len());
             assert_eq!(trans_features.len(), Self::SELF_BUFFER_SIZE);
-            self.buf.copy_from_slice(trans_features);
+            // self.buf.copy_from_slice(trans_features);
+            trans_features
         }
 
         fn read_parameters(&mut self, rdr: &mut BufReader<File>) -> io::Result<()> {
@@ -243,20 +249,21 @@ mod nn_affine {
     }
 
     /// Approach 1:
-    ///   - used when the PaddedInputDimensions >= 128
-    ///   - uses AVX512 if possible
-    ///   - processes inputs in batches of 2*InputSimdWidth
-    ///   - so in batches of 128 for AVX512
-    ///   - the weight blocks of size InputSimdWidth are transposed such that
-    ///     access is sequential
-    ///   - N columns of the weight matrix are processed a time, where N
-    ///     depends on the architecture (the amount of registers)
-    ///   - accumulate + hadd is used
     impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
 
         // const INPUT_SIMD_WIDTH: usize = 32; // AVX2
         // const MAX_NUM_OUTPUT_REGS: usize = 8; // AVX2
 
+        /// Approach 1:
+        ///   - used when the PaddedInputDimensions >= 128
+        ///   - uses AVX512 if possible
+        ///   - processes inputs in batches of 2*InputSimdWidth
+        ///   - so in batches of 128 for AVX512
+        ///   - the weight blocks of size InputSimdWidth are transposed such that
+        ///     access is sequential
+        ///   - N columns of the weight matrix are processed a time, where N
+        ///     depends on the architecture (the amount of registers)
+        ///   - accumulate + hadd is used
         #[cfg(feature = "nope")]
         pub fn _propagate_avx2(&mut self, trans_features: &[u8]) {
             use crate::simd_utils::x86_64::*;
@@ -648,19 +655,6 @@ mod nn_affine {
 
     }
 
-    /// Approach 2:
-    ///   - used when the PaddedInputDimensions < 128
-    ///   - does not use AVX512
-    ///   - expected use-case is for when PaddedInputDimensions == 32 and InputDimensions <= 32.
-    ///   - that's why AVX512 is hard to implement
-    ///   - expected use-case is small layers
-    ///   - not optimized as well as the approach 1
-    ///   - inputs are processed in chunks of 4, weights are respectively transposed
-    ///   - accumulation happens directly to int32s
-    impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
-
-    }
-
     impl<Prev: NNLayer, const OS: usize, const IS: usize> NNLayer for NNAffine<Prev,OS,IS> {
         type InputType = Prev::OutputType;
         type OutputType = i32;
@@ -705,13 +699,14 @@ mod nn_affine {
         fn propagate(&mut self, trans_features: &[u8]) { self._propagate_ndarray(trans_features); }
 
         // #[cfg(feature = "nope")]
-        fn propagate(&mut self, trans_features: &[u8]) {
+        // fn propagate(&mut self, trans_features: &[u8]) {
+        fn propagate<'a>(&'a mut self, trans_features: &'a [u8]) -> &'a [Self::OutputType] {
 
             // eprintln!("affine propagate");
             // eprintln!("NNAffine InputType = {:?}", std::any::type_name::<Self::InputType>());
 
-            self.prev.propagate(trans_features);
-            let input = self.prev.get_buf();
+            let input = self.prev.propagate(trans_features);
+            // let input = self.prev.get_buf();
             let input = &input[..Self::SIZE_INPUT];
 
             let input: &[u8] = unsafe {
@@ -757,6 +752,7 @@ mod nn_affine {
                 self.buffer[i] = sum as i32;
             }
 
+            self.buffer.as_ref()
         }
 
         fn read_parameters(&mut self, mut rdr: &mut BufReader<File>) -> io::Result<()> {
@@ -859,13 +855,14 @@ mod nn_relu {
             self.buf.as_mut()
         }
 
-        fn propagate(&mut self, trans_features: &[u8]) {
+        // fn propagate(&mut self, trans_features: &[u8]) {
+        fn propagate<'a>(&'a mut self, trans_features: &'a [u8]) -> &'a [Self::OutputType] {
 
             // eprintln!("relu propagate");
             // eprintln!("NNRelu InputType = {:?}", std::any::type_name::<Self::InputType>());
 
-            self.prev.propagate(trans_features);
-            let input = self.prev.get_buf();
+            let input = self.prev.propagate(trans_features);
+            // let input = self.prev.get_buf();
 
             // TODO: AVX2 magic
 
@@ -885,6 +882,7 @@ mod nn_relu {
             //     self.buf[i] = x1.as_();
             // }
 
+            self.buf.as_ref()
         }
 
         fn read_parameters(&mut self, mut rdr: &mut BufReader<File>) -> io::Result<()> {

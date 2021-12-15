@@ -114,23 +114,22 @@ pub enum SICanUse {
 #[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize)]
 // #[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
 pub struct SearchInfo {
-    pub best_move:          Move,
-    // pub best_move:          (u8,u8),
+    // pub best_move:          Move,
+    pub best_move:          (u8,u8),
     pub depth_searched:     Depth,
-    // pub score:              Score,
     pub node_type:          Node,
     pub score:              Score,
-    // pub eval:               Eval,
+}
 
-    // pub moves:              Vec<Move>,
-    // pub moves:              CopyValue<VMoves>,
-    // pub moves:              ArrayVec<Move, 100>,
-
-    // pub best_move:          Move,
-    // pub refutation_move:    Move,
-    // pub pv:                 Move,
-    // pub score:              NodeType,
-    // pub age:                Duration, // or # of moves?
+impl SearchInfo {
+    pub fn empty() -> Self {
+        Self {
+            best_move:      (0,0),
+            depth_searched: 0,
+            node_type:      Node::Empty,
+            score:          0,
+        }
+    }
 }
 
 impl PartialOrd for SearchInfo {
@@ -154,7 +153,7 @@ impl PartialOrd for SearchInfo {
 /// Quiet,
 /// // Root,
 // #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
-#[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize)]
+#[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize)]
 pub enum Node {
     PV,
     All, // UpperBound
@@ -163,6 +162,7 @@ pub enum Node {
     // Root, // XXX: ??
     // NodeAll(Score), // Score = upper bound
     // NodeCut(Score), // Score = lower bound
+    Empty,
 }
 
 // impl MvTable {
@@ -264,8 +264,8 @@ impl SearchInfo {
         score:              Score,
     ) -> Self {
 
-        // let packed_move = PackedMove::convert_from_move(best_move).pack().unwrap();
-        // let packed_move = (packed_move[0],packed_move[1]);
+        let packed_move = PackedMove::convert_from_move(best_move).pack().unwrap();
+        let packed_move = (packed_move[0],packed_move[1]);
 
         // let mv = [packed_move.0, packed_move.1];
 
@@ -273,8 +273,8 @@ impl SearchInfo {
         // assert_eq!(best_move, mv);
 
         Self {
-            // best_move: packed_move,
-            best_move,
+            best_move: packed_move,
+            // best_move,
             depth_searched,
             node_type,
             score,

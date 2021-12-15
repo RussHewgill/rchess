@@ -154,9 +154,9 @@ pub fn crit_bench_simd(c: &mut Criterion) {
     let mut layer0 = Layer0::new();
     let mut layer1 = NNAffine::<Layer0, 8, {1024 * 2}>::new(layer0);
 
-    group.bench_function("SIMD mm 0", |b| b.iter(|| {
-        simd_mm_0::<IS,OS>(black_box(&input), &weights, &biases, &mut output);
-    }));
+    // group.bench_function("SIMD mm 0", |b| b.iter(|| {
+    //     simd_mm_0::<IS,OS>(black_box(&input), &weights, &biases, &mut output);
+    // }));
 
     group.bench_function("NNAffine mm", |b| b.iter(|| {
         layer1.propagate(&input);
@@ -462,8 +462,8 @@ pub fn crit_bench_nnue(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, crit_bench_nnue);
-// criterion_group!(benches, crit_bench_simd);
+// criterion_group!(benches, crit_bench_nnue);
+criterion_group!(benches, crit_bench_simd);
 // criterion_group!(benches, crit_bench_1);
 // criterion_group!(benches, crit_bench_2);
 criterion_main!(benches);
