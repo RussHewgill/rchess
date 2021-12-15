@@ -264,11 +264,9 @@ fn main_tt() {
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
     let zb = Zobrist(rng.gen());
 
-    // let s0 = std::mem::size_of::<TTEntry>();
-    let s0 = std::mem::size_of::<Score>();
-    eprintln!("s0 = {:?}", s0);
-
-    return;
+    // // let s0 = std::mem::size_of::<TTEntry>();
+    // let s0 = std::mem::size_of::<Score>();
+    // eprintln!("s0 = {:?}", s0);
 
     // old
     if !true  {
@@ -340,19 +338,21 @@ fn main_tt() {
 
     }
 
-    let fen = STARTPOS;
     init_logger();
     let ts = Tables::read_from_file_def().unwrap();
 
-    let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
+    let fen = STARTPOS;
+    // let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
 
     let mut g = Game::from_fen(&ts, fen).unwrap();
 
-    let t = 10.0;
     let n = 40;
 
+    let t   = 10.0;
+    let inc = 0.0;
+
     let t0 = std::time::Instant::now();
-    let timesettings = TimeSettings::new_f64(0.0,t);
+    let timesettings = TimeSettings::new_f64(t,inc);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
     ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
     ex.cfg.return_moves = true;
@@ -360,6 +360,11 @@ fn main_tt() {
     // ex.cfg.num_threads = Some(6);
     ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
+
+    let k0 = ex.timer.allocate_time(g.state.side_to_move, 1);
+    eprintln!("k0 = {:?}", k0);
+
+    return;
 
     debug!("ex.cfg.num_threads = {:?}", ex.cfg.num_threads);
 

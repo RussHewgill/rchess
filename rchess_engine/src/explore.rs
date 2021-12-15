@@ -43,6 +43,7 @@ use evmap::{ReadHandle,ReadHandleFactory,WriteHandle};
 pub struct Explorer {
     pub side:          Color,
     pub game:          Game,
+    pub current_ply:   Option<Depth>,
     pub timer:         Timer,
     pub stop:          Arc<AtomicBool>,
     pub best_mate:     Arc<RwLock<Option<Depth>>>,
@@ -255,6 +256,7 @@ impl Explorer {
             side,
             game,
             // timer:          Timer::new(side, stop.clone(), settings),
+            current_ply:    None,
             timer:          Timer::new(settings),
             stop,
             best_mate:      Arc::new(RwLock::new(None)),
@@ -647,8 +649,11 @@ impl Explorer {
         let t0 = Instant::now();
         // std::thread::sleep(Duration::from_micros(100));
 
-        let t_max = self.timer.settings.increment[self.side];
-        let t_max = Duration::from_secs_f64(t_max);
+        // let t_max = self.timer.settings.increment[self.side];
+        // let t_max = Duration::from_secs_f64(t_max);
+
+        let cur_ply = self.current_ply.unwrap_or(1);
+        let t_max = self.timer.allocate_time(self.game.state.side_to_move, cur_ply);
 
         // let t_max = self.timer.allocate_time()
 

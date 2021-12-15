@@ -230,6 +230,7 @@ fn parse_go(mut ex: &mut Explorer,params: Vec<&str>) {
                 unimplemented!()
             },
             "ponder"      => {
+                // ex.timer.settings.ponder = true;
                 unimplemented!()
             },
             "wtime"       => {
@@ -254,6 +255,7 @@ fn parse_go(mut ex: &mut Explorer,params: Vec<&str>) {
             },
             "movestogo"   => {
                 let val = u32::from_str(ps.next().unwrap()).unwrap();
+                ex.timer.moves_to_go = Some(val);
             },
             "depth"       => {
                 let val = u32::from_str(ps.next().unwrap()).unwrap();

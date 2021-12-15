@@ -9,8 +9,31 @@ use std::alloc::{Layout, handle_alloc_error, self};
 use std::ptr::NonNull;
 use std::cell::{UnsafeCell, Cell};
 
+pub const CLUSTER_SIZE: usize = 3;
 
+#[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
+pub struct TTEntry {
+    pub verification:       u32,
+    pub entry:              SearchInfo,
+}
 
+impl TTEntry {
+    pub fn new() -> Self {
+        Self {
+            verification:  0,
+            entry:         SearchInfo::empty(),
+        }
+    }
+}
+
+pub struct Cluster {
+    pub entry:   [TTEntry; CLUSTER_SIZE],
+    pub padding: [u8; 2],
+}
+
+pub struct TransTable {}
+
+#[cfg(feature = "nope")]
 mod prev_pleco {
     use super::*;
 
@@ -214,7 +237,9 @@ mod prev_pleco {
 
 }
 
+#[cfg(feature = "nope")]
 mod prev_rustic_nothread {
+    use super::*;
 
     const ENTRIES_PER_BUCKET: usize = 4;
 
