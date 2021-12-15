@@ -1838,7 +1838,9 @@ fn _main_nn() -> std::io::Result<()> {
         // let mv2 = Move::new_capture("e3", "d4", Pawn, Pawn);
         // let mv2 = Move::new_quiet("e5", "e4", Pawn);
         // let mv2 = Move::new_quiet("d4", "d5", Pawn);
-        // let mv2 = Move::new_quiet("g8", "f7", King);
+
+        // let mv2 = Move::new_quiet("e1", "f1", King);
+
         let mv2 = Move::Castle {
             from:      "e1".into(),
             to:        "g1".into(),
@@ -1880,23 +1882,14 @@ fn _main_nn() -> std::io::Result<()> {
             // eprintln!("delta = {:?}", delta);
         }
 
-        // eprintln!("nn2 == nn3 = {:?}", nn2 == nn3);
-
-        // let v1 = nn2.evaluate(&g3, false);
-        // eprintln!("v1 = {:?}", v1);
-
-        // nn.ft.reset_accum(&g3);
-        // let v = nn.evaluate(&g3, false);
-        // eprintln!("v = {:?}", v);
-
-        // eprintln!("v == v1 = {:?}", v == v1);
-
         // let ks = &nn2.ft.accum.stack_delta;
         // for k in ks.iter() {
         //     // eprintln!("k = {:?}", k);
-        //     if let NNDeltas::CopyKing(persp, (from,to)) = k {
+        //     if let NNDeltas::CopyCastle(persp, (from,to), (rook_from,rook_to)) = k {
         //         eprintln!("from.get_index() = {:?}", from.get_index(Black));
         //         eprintln!("to.get_index() = {:?}", to.get_index(Black));
+        //         eprintln!("rook_from.get_index() = {:?}", rook_from.get_index(Black));
+        //         eprintln!("rook_to.get_index() = {:?}", rook_to.get_index(Black));
         //     }
         // }
 
@@ -2648,6 +2641,7 @@ fn main9() {
 
     // let n = 35;
     let n = 7;
+    // let n = 2;
 
     let t0 = std::time::Instant::now();
     let timesettings = TimeSettings::new_f64(0.0,t);
