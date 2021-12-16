@@ -124,6 +124,18 @@ macro_rules! timer {
 }
 
 #[macro_export]
+macro_rules! timer_loop {
+    ($n:expr,$e:block) => {
+        let t0 = std::time::Instant::now();
+        for _ in 0..$n $e;
+        let t1 = t0.elapsed().as_secs_f64();
+        debug!("finished in {:.3} seconds", t1);
+        eprintln!("finished {} loops in {:.3} seconds, {} loops/sec",
+                  $n, t1, pretty_print_si(($n as f64 / t1 as f64) as i64));
+    };
+}
+
+#[macro_export]
 macro_rules! builder_field {
     ($field:ident, $field_type:ty) => {
         pub fn $field(mut self, $field: $field_type) -> Self {

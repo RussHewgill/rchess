@@ -30,7 +30,7 @@ use std::str::FromStr;
 
 use itertools::Itertools;
 
-use rchess_engine_lib::{timer, eprint_self};
+use rchess_engine_lib::{timer,timer_loop,eprint_self};
 use rchess_engine_lib::explore::*;
 use rchess_engine_lib::opening_book::*;
 use rchess_engine_lib::qsearch::*;
@@ -483,25 +483,58 @@ fn main_simd() {
     // let dist1 = Uniform::new(i16::MIN,i16::MAX);
 
     const OS: usize = 8;
-    const IS: usize = 1024;
+    const IS: usize = 1024 * 2;
 
     use rchess_engine_lib::sf_compat::{Layer0,NNAffine,NNLayer};
+
+    type L1 = NNAffine::<Layer0, 8, IS>;
     let mut layer0 = Layer0::new();
-    let mut layer1 = NNAffine::<Layer0, 8, {IS * 2}>::new(layer0);
+    let mut layer1 = NNAffine::<Layer0, 8, IS>::new(layer0);
 
-    layer1.biases  = Aligned(array_init::array_init(|_| rng.gen_range(-10..10)));
-    let ws: [i8; IS * 2 * OS] = array_init::array_init(|_| rng.gen_range(-10..10));
-    layer1.weights = Aligned(ws.to_vec());
+    // layer1.biases  = Aligned(array_init::array_init(|_| rng.gen_range(-10..10)));
+    // let ws: [i8; IS * OS] = array_init::array_init(|_| rng.gen_range(-127..127));
+    // layer1.weights = Aligned(ws.to_vec());
 
-    let input: [u8; IS * 2] = array_init::array_init(|_| rng.gen_range(0..2));
+    layer1.biases  = Aligned(array_init::array_init(|x| (x as i32 % 20) - 10));
+    let ws: [i8; IS * OS] = array_init::array_init(|x| (x as i8 % 20) - 10);
+    // layer1.weights = Aligned(ws.to_vec());
+
+    for i in 0..layer1.weights.len() {
+        let i2 = L1::_get_weight_index(i);
+        layer1.weights[i2] = ws[i];
+    }
+
+    // let input: [u8; IS * 2] = array_init::array_init(|_| rng.gen_range(0..2));
+    let input: [u8; IS] = array_init::array_init(|x| x as u8 % 2);
+    let input: Aligned<A64,_> = Aligned(input.clone());
     let mut output = [0i32; OS];
 
-    timer!{{
-        for _ in 0..1_000_000 {
-            layer1.propagate(&input);
-            // simd_mm_0::<{IS*2},OS>(&input, &layer1.weights, layer1.biases.as_ref(), &mut output);
-        }
-    }}
+    // let v = layer1._propagate_avx2_small(input.as_ref());
+    // eprintln!("v = {:?}", v);
+    // let sum: i32 = v.iter().sum();
+    // eprintln!("sum = {:?}", sum);
+
+    // let v = layer1._propagate_avx2_large(input.as_ref());
+    // eprintln!("v = {:?}", v);
+    // let sum: i32 = v.iter().sum();
+    // eprintln!("sum = {:?}", sum);
+
+    // let v = layer1.propagate(input.as_ref());
+
+    // simd_mm_0::<IS,OS>(input.as_ref(), &layer1.weights, layer1.biases.as_ref(), &mut output);
+    // let sum: i32 = output.iter().sum();
+    // eprintln!("sum = {:?}", sum);
+
+    // simd_mm_1::<IS,OS>(input.as_ref(), &layer1.weights, layer1.biases.as_ref(), &mut output);
+    // let sum: i32 = output.iter().sum();
+    // eprintln!("sum = {:?}", sum);
+
+    // XXX: stockfish = 3.75 M / sec
+    timer_loop!(1_000_000, {
+        layer1.propagate(input.as_ref());
+        // simd_mm_0::<IS,OS>(&input, &layer1.weights, layer1.biases.as_ref(), &mut output);
+        // simd_mm_1::<IS,OS>(&input, &layer1.weights, layer1.biases.as_ref(), &mut output);
+    });
 
     return;
 
@@ -515,7 +548,7 @@ fn main_simd() {
         for i in 0..OS {
             let offset = i * IS;
             weights2[i].copy_from_slice(&weights[offset..offset+IS]);
-        }
+        };
         weights2
     };
 
@@ -1865,15 +1898,29 @@ fn _main_nn() -> std::io::Result<()> {
         // let fen = "4k3/3ppp2/8/8/8/8/2NPPP2/4K3 w - - 0 1"; // +1 knight
         // let fen = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1";
         // let fen = "8/8/8/8/8/8/8/8 w - - 0 1";
-        // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+        let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
         // let fen = "r4rk1/4n1p1/1p1q1pb1/1B2p3/1B1PP1Q1/P7/5PP1/R3K2R b KQ - 0 2";
-        let fen = "rnbqk2r/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 1";
+        // let fen = "rnbqk2r/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 1";
         let mut g = Game::from_fen(&ts, fen).unwrap();
+
+        type LayerX = NNAffine<Layer0, 8, {1024 * 2}>;
+        let layer1: &LayerX = &nn.layers[0].prev.prev.prev.prev;
+
+        // for wt in layer1.weights.iter() {
+        // }
+
+        let max = layer1.weights.iter().max();
+        let min = layer1.weights.iter().min();
+
+        eprintln!("(min,max) = {:?}", (min,max));
 
         let mut nn2 = nn.clone();
         nn2.ft.reset_accum(&g);
         let v0 = nn2.evaluate(&g, false);
         eprintln!("v0 = {:?}", v0);
+        eprintln!("v0 == -599 = {:?}", v0 == -599);
+
+        return Ok(());
 
         // let mv1 = Move::new_capture("a8", "a3", Rook, Pawn);
         // let mv2 = Move::new_capture("e5", "d4", Pawn, Pawn);

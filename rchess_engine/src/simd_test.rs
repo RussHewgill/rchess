@@ -65,7 +65,6 @@ mod wat {
     use super::*;
 
     pub fn simd_mm_0<const IS: usize, const OS: usize>(
-        // input:             &[i32],
         input:             &[u8],
         weights:           &[i8],
         biases:            &[i32],
@@ -93,6 +92,88 @@ mod wat {
             // }
 
             output[i] = sum;
+        }
+
+    }
+
+    pub fn simd_mm_1<const IS: usize, const OS: usize>(
+        input:             &[u8],
+        weights:           &[i8],
+        biases:            &[i32],
+        mut output:        &mut [i32],
+    ) {
+        use safe_arch::*;
+        use crate::simd_utils::safe_arch::*;
+
+        const INPUT_SIMD_WIDTH: usize = 32;
+        const NUM_OUTPUT_REGS: usize  = 8;
+
+        const NUM_BIG_BLOCKS: usize                 = 1;
+        const BIG_BLOCK_SIZE: usize                 = 16384;
+        const SMALL_BLOCK_SIZE: usize               = 32;
+        const NUM_SMALL_BLOCKS_PER_BIG_BLOCK: usize = 512;
+        const NUM_SMALL_BLOCKS_PER_OUTPUT: usize    = 64;
+
+        assert_eq!(input.len() % 32, 0);
+
+        let input_vec: &[m256i] = unsafe {
+            let ptr = input.as_ptr() as *const m256i;
+            std::slice::from_raw_parts(ptr, input.len() / 32)
+        };
+
+        let weight_vec: &[m256i] = unsafe {
+            let ptr = weights.as_ptr() as *const m256i;
+            std::slice::from_raw_parts(ptr, weights.len() / 32)
+        };
+
+        for big_block in 0..NUM_BIG_BLOCKS {
+
+            // let mut acc = [m256i::default(); NUM_OUTPUT_REGS];
+            let mut acc = vec![m256i::default(); NUM_OUTPUT_REGS];
+
+            let mut small_block = 0;
+            while small_block < NUM_SMALL_BLOCKS_PER_OUTPUT {
+
+                let w_offset = big_block * BIG_BLOCK_SIZE
+                    + small_block * SMALL_BLOCK_SIZE * NUM_OUTPUT_REGS;
+                let w_offset = w_offset / 32;
+
+                let weight_vec = &weight_vec[w_offset..];
+
+                let in0 = input_vec[small_block + 0];
+                let in1 = input_vec[small_block + 1];
+
+                for k in 0..NUM_OUTPUT_REGS {
+                    let b0 = weight_vec[k];
+                    let b1 = weight_vec[k + NUM_OUTPUT_REGS];
+                    m256_add_dpbusd_epi32x2(&mut acc[k], in0, b0, in1, b1)
+                }
+
+                small_block += 2
+            }
+
+            let bias_vec: &[m128i] = unsafe {
+                let ptr = biases.as_ptr() as *const m128i;
+                std::slice::from_raw_parts(ptr, biases.len() / 4)
+            };
+
+            let output_vec: &mut [m128i] = unsafe {
+                let ptr = output.as_mut_ptr() as *mut m128i;
+                std::slice::from_raw_parts_mut(ptr, output.len() / 4)
+            };
+
+            let mut k = 0;
+            while k < NUM_OUTPUT_REGS {
+                let idx = (big_block * NUM_OUTPUT_REGS + k) / 4;
+                output_vec[idx] = m256_haddx4(acc[k+0],acc[k+1],acc[k+2],acc[k+3],bias_vec[idx]);
+                k += 4;
+            }
+
+            // for k in 0..NUM_OUTPUT_REGS {
+            //     let idx = big_block * NUM_OUTPUT_REGS + k;
+            //     output[idx] = m256_hadd(acc[k], biases[idx]);
+            // }
+
         }
 
     }

@@ -14,6 +14,7 @@ use std::io::{self,Read,BufReader,Write,BufWriter};
 use std::fs::File;
 use std::path::Path;
 
+use aligned::{Aligned,A64};
 use byteorder::{ReadBytesExt, LittleEndian, WriteBytesExt};
 
 pub use self::index::NNIndex;
@@ -266,9 +267,9 @@ impl NNUE4 {
 
         // self.ft.reset_accum(g);
 
-        let mut transformed = [0; HALF_DIMS * 2];
+        let mut transformed: Aligned<A64,_> = Aligned([0; HALF_DIMS * 2]);
         // let psqt = self.ft.transform(g, &mut transformed, bucket, refresh);
-        let psqt = self.ft.transform(g, &mut transformed, bucket);
+        let psqt = self.ft.transform(g, transformed.as_mut(), bucket);
 
         // // let mut pos_buf = [0; Layer3::BUFFER_SIZE]; // ?? 384
         // let mut pos_buf = [0; Layer3::SIZE_OUTPUT]; // 1
@@ -276,7 +277,7 @@ impl NNUE4 {
         // self.layers[bucket].propagate(&transformed, &mut pos_buf);
 
         // let pos_buf = self.layers[bucket].propagate(&transformed);
-        self.layers[bucket].propagate(&transformed);
+        self.layers[bucket].propagate(&transformed.as_ref());
         let pos_buf = self.layers[bucket].get_buf();
         let positional = pos_buf[0] as Score;
 

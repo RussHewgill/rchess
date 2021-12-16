@@ -6,6 +6,7 @@
 #![feature(iter_partition_in_place)]
 #![feature(core_intrinsics)]
 
+use aligned::{Aligned,A2,A64};
 use rchess_engine_lib::sf_compat::accumulator::NNDelta;
 use rchess_engine_lib::types::*;
 use rchess_engine_lib::tables::*;
@@ -144,22 +145,65 @@ pub fn crit_bench_simd(c: &mut Criterion) {
     const IS: usize = 2 * 1024;
     const OS: usize = 8;
 
-    let input: [u8; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
-    let weights: Vec<i8>  = (0..OS * IS).map(|_| rng.gen_range(-100..100)).collect();
-    let biases: [i32; OS] = array_init::array_init(|_| rng.gen_range(-100..100));
+    // let input: [u8; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
+    // let weights: Vec<i8>  = (0..OS * IS).map(|_| rng.gen_range(-100..100)).collect();
+    // let biases: [i32; OS] = array_init::array_init(|_| rng.gen_range(-100..100));
+    // let mut output = [0i32; OS];
+
+    let biases: [i32; OS] = array_init::array_init(|x| (x as i32 % 20) - 10);
+    let weights: [i8; IS * OS] = array_init::array_init(|x| (x as i8 % 20) - 10);
+    // let weights: [i8; IS * OS] = [1; IS * OS];
+    let biases: Aligned<A64,_> = Aligned(biases);
+    let weights: Aligned<A64,_> = Aligned(weights);
+    // let biases: Aligned<A2,_> = Aligned(bs);
+    // let weights: Aligned<A2,_> = Aligned(ws);
+
+    let input: [u8; IS] = array_init::array_init(|x| x as u8 % 2);
+    let input: Aligned<A64,_> = Aligned(input);
+    // let input: Aligned<A2,_> = Aligned(input);
     let mut output = [0i32; OS];
 
     use rchess_engine_lib::sf_compat::{Layer0,NNAffine,NNLayer};
 
     let mut layer0 = Layer0::new();
     let mut layer1 = NNAffine::<Layer0, 8, {1024 * 2}>::new(layer0);
+    layer1.weights = Aligned(weights.to_vec());
+    layer1.biases = biases.clone();
+
+    // let xs = layer1.propagate(input.as_ref());
+    // let sum: i32 = xs.iter().sum();
+    // eprintln!("sum = {:?}", sum);
+
+    // simd_mm_1::<IS,OS>(
+    //     black_box(input.as_ref()),
+    //     black_box(weights.as_ref()),
+    //     black_box(biases.as_ref()),
+    //     black_box(output.as_mut()));
+    // let sum: i32 = output.iter().sum();
+    // eprintln!("sum = {:?}", sum);
 
     // group.bench_function("SIMD mm 0", |b| b.iter(|| {
-    //     simd_mm_0::<IS,OS>(black_box(&input), &weights, &biases, &mut output);
+    //     simd_mm_0::<IS,OS>(
+    //         black_box(input.as_ref()),
+    //         black_box(weights.as_ref()),
+    //         black_box(biases.as_ref()),
+    //         black_box(output.as_mut()));
     // }));
 
-    group.bench_function("NNAffine mm", |b| b.iter(|| {
-        layer1.propagate(&input);
+    // group.bench_function("SIMD mm 1", |b| b.iter(|| {
+    //     simd_mm_1::<IS,OS>(
+    //         black_box(input.as_ref()),
+    //         black_box(weights.as_ref()),
+    //         black_box(biases.as_ref()),
+    //         black_box(output.as_mut()));
+    // }));
+
+    // group.bench_function("NNAffine mm basic", |b| b.iter(|| {
+    //     layer1.propagate(input.as_ref());
+    // }));
+
+    group.bench_function("NNAffine mm simd", |b| b.iter(|| {
+        layer1.propagate(input.as_ref());
     }));
 
     // const N: usize = 2048;

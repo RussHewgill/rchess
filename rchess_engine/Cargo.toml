@@ -103,6 +103,8 @@ ndarray-rand = "0.14.0"
 blas-src = { version = "0.8.0", features = ["openblas"] }
 openblas-src = { version = "0.10.4", features = ["cblas","system"] }
 
+cblas = "^0.4"
+
 sprs = "0.11.0"
 
 # copyless = "0.1.5"
