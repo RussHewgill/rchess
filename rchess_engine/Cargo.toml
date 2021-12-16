@@ -23,6 +23,8 @@ default = [
     # "one_thread",
     "smallstack",
 
+    # "basic_time",
+
     # "backtrace",
 
     "keep_stats",
@@ -50,6 +52,8 @@ default = [
 par = []
 one_thread = []
 smallstack = []
+
+basic_time = []
 
 backtrace = []
 

@@ -649,13 +649,16 @@ impl Explorer {
         let t0 = Instant::now();
         // std::thread::sleep(Duration::from_micros(100));
 
-        let t_max = self.timer.settings.increment[self.side];
-        let t_max = Duration::from_secs_f64(t_max);
-        debug!("searching with t_max = {:?}", t_max);
+        #[cfg(feature = "basic_time")]
+        let t_max = Duration::from_secs_f64(self.timer.settings.increment[self.side]);
 
-        // let cur_ply = self.current_ply.unwrap_or(1);
-        // let (t_opt,t_max) = self.timer.allocate_time(self.game.state.side_to_move, cur_ply);
+        #[cfg(not(feature = "basic_time"))]
+        let cur_ply = self.current_ply.unwrap_or(1);
+        #[cfg(not(feature = "basic_time"))]
+        let (t_opt,t_max) = self.timer.allocate_time(self.game.state.side_to_move, cur_ply);
         // debug!("searching with (t_opt,t_max) = ({:?},{:?})", t_opt, t_max);
+
+        debug!("searching with t_max = {:?}", t_max);
 
         // let t_max = self.timer.allocate_time()
 
