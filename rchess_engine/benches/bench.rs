@@ -142,8 +142,10 @@ pub fn crit_bench_simd(c: &mut Criterion) {
 
     use rchess_engine_lib::simd_test::*;
 
-    const IS: usize = 2 * 1024;
-    const OS: usize = 8;
+    // const IS: usize = 2 * 1024;
+    // const OS: usize = 8;
+    const IS: usize = 8;
+    const OS: usize = 32;
 
     // let input: [u8; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
     // let weights: Vec<i8>  = (0..OS * IS).map(|_| rng.gen_range(-100..100)).collect();
@@ -166,13 +168,15 @@ pub fn crit_bench_simd(c: &mut Criterion) {
     use rchess_engine_lib::sf_compat::{Layer0,NNAffine,NNLayer};
 
     let mut layer0 = Layer0::new();
-    let mut layer1 = NNAffine::<Layer0, 8, {1024 * 2}>::new(layer0);
+    // let mut layer1 = NNAffine::<Layer0, OS, IS>::new(layer0);
+    let mut layer1 = NNAffine::<Layer0, OS, IS>::new(layer0);
     layer1.weights = Aligned(weights.to_vec());
     layer1.biases = biases.clone();
 
-    // let xs = layer1.propagate(input.as_ref());
+    let xs = layer1.propagate(input.as_ref());
     // let sum: i32 = xs.iter().sum();
     // eprintln!("sum = {:?}", sum);
+    eprintln!("xs[0..4] = {:?}", &xs[0..4]);
 
     // simd_mm_1::<IS,OS>(
     //     black_box(input.as_ref()),
@@ -202,9 +206,9 @@ pub fn crit_bench_simd(c: &mut Criterion) {
     //     layer1.propagate(input.as_ref());
     // }));
 
-    group.bench_function("NNAffine mm simd", |b| b.iter(|| {
-        layer1.propagate(input.as_ref());
-    }));
+    // group.bench_function("NNAffine mm simd", |b| b.iter(|| {
+    //     layer1.propagate(input.as_ref());
+    // }));
 
     // const N: usize = 2048;
     // let xs1: [u8; N] = array_init::array_init(|x| rng.gen_range(0..2));

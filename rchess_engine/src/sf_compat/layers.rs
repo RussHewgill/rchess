@@ -103,7 +103,7 @@ mod nn_input {
         // fn propagate(&self, trans_features: &[u8]) -> Vec<Self::OutputType> {
         fn propagate<'a>(&'a mut self, trans_features: &'a [u8]) -> &'a [Self::OutputType] {
             // assert!(input.len() == output.len());
-            assert_eq!(trans_features.len(), Self::SELF_BUFFER_SIZE);
+            // assert_eq!(trans_features.len(), Self::SELF_BUFFER_SIZE);
             // self.buf.copy_from_slice(trans_features);
             trans_features
             // self.buf.as_ref()
@@ -654,9 +654,9 @@ mod nn_affine {
 
         }
 
+        #[cfg(feature = "nope")]
         pub fn _propagate_avx2_small<'a>(
-            &'a mut self,
-            trans_features: &'a [u8]
+            &'a mut self, trans_features: &'a [u8]
         ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
 
             // eprintln!("affine propagate");
@@ -678,11 +678,18 @@ mod nn_affine {
 
             assert_eq!(IS, input.len());
 
+            eprint_self!(Self::SIZE_INPUT_PADDED);
+            eprint_self!(Self::SIZE_INPUT);
+            eprint_self!(Self::SIZE_OUTPUT);
+
+            eprintln!("self.weights.len() = {:?}", self.weights.len());
+
             for i in 0..Self::SIZE_OUTPUT {
 
                 let offset = i * Self::SIZE_INPUT_PADDED;
 
                 let weights = &self.weights[offset..offset + IS];
+                // let weights = &self.weights[offset..];
                 let mut sum: i32 = unsafe { *self.biases.get_unchecked(i) };
 
                 for (k,x) in input.iter().enumerate() {
@@ -701,26 +708,178 @@ mod nn_affine {
             self.buffer.as_ref()
         }
 
-        #[allow(unreachable_code)]
-        pub fn _propagate_avx2_large<'a>(
+        pub fn _propagate_avx2_small_nosimd<'a>(
             &'a mut self, trans_features: &'a [u8]
-        // ) -> &'a [Self::OutputType] {
         ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
+            let input = self.prev.propagate(trans_features);
+            let input = &input[..Self::SIZE_INPUT]; // TODO: bench
+            for i in 0..Self::SIZE_OUTPUT {
+                let offset = i * Self::SIZE_INPUT_PADDED;
+                let mut sum: i32 = self.biases[i];
+                for (j,x) in input.iter().enumerate() {
+                    let x: i32 = x.as_();
+                    let x0 = self.weights[offset + j] as i32 * x;
+                    sum += x0;
+                }
+                self.buffer[i] = sum as i32;
+            }
+            self.buffer.as_ref()
+        }
 
-            // return self._propagate_avx2_small(trans_features);
-
+        // #[cfg(feature = "nope")]
+        pub fn _propagate_avx2_small<'a>(
+            &'a mut self, trans_features: &'a [u8]
+        ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
             use safe_arch::*;
             use crate::simd_utils::safe_arch::*;
 
             let input = self.prev.propagate(trans_features);
-            // let input = self.prev.get_buf();
-            // let input: Aligned<A64,_> = Aligned(&input[..IS]);
-            // assert_eq!(input.len() % 32, 0);
+            let input = &input[..Self::SIZE_INPUT]; // TODO: bench
+
+            const OUTPUT_SIMD_WIDTH: usize = 32 / 4;
+            const INPUT_SIMD_WIDTH: usize = 32;
+
+            assert_eq!(Self::SIZE_INPUT % 8, 0);
+            assert!(Self::SIZE_OUTPUT % OUTPUT_SIMD_WIDTH == 0 || Self::SIZE_OUTPUT == 1);
 
             // let input: &[u8] = unsafe {
             //     let ptr = input.as_ptr() as *const u8;
             //     std::slice::from_raw_parts(ptr, input.len())
             // };
+
+            // if Self::SIZE_OUTPUT % OUTPUT_SIMD_WIDTH == 0 {
+            if false && Self::SIZE_OUTPUT % OUTPUT_SIMD_WIDTH == 0 {
+                let num_chunks: usize = IS / 4;
+                let num_regs: usize = Self::SIZE_OUTPUT / OUTPUT_SIMD_WIDTH;
+
+                let input32: &[i32] = unsafe {
+                    let ptr = input.as_ptr() as *const i32;
+                    std::slice::from_raw_parts(ptr, input.len() / 4)
+                };
+
+                let bias_vec: &[m256i] = unsafe {
+                    let ptr = self.biases.as_ptr() as *const m256i;
+                    std::slice::from_raw_parts(
+                        ptr, self.biases.len() * std::mem::size_of::<i32>() / 32)
+                };
+
+                let mut acc = vec![m256i::default(); num_regs];
+
+                for k in 0..num_regs {
+                    acc[k] = bias_vec[k];
+                }
+
+                let mut i = 0;
+                while i < num_chunks {
+                    let in0 = set_splat_i32_m256i(input32[i + 0]);
+                    let in1 = set_splat_i32_m256i(input32[i + 1]);
+
+                    let col0 = &self.weights[(i+0) * Self::SIZE_OUTPUT * 4..];
+                    let col1 = &self.weights[(i+1) * Self::SIZE_OUTPUT * 4..];
+
+                    let col0: &[m256i] = unsafe {
+                        let ptr = col0.as_ptr() as *const m256i;
+                        std::slice::from_raw_parts(ptr, col0.len() / 32)
+                    };
+                    let col1: &[m256i] = unsafe {
+                        let ptr = col1.as_ptr() as *const m256i;
+                        std::slice::from_raw_parts(ptr, col1.len() / 32)
+                    };
+
+                    for k in 0..num_regs {
+                        m256_add_dpbusd_epi32x2(&mut acc[k], in0, col0[k], in1, col1[k]);
+                    }
+
+                    let output_vec: &mut [m256i] = unsafe {
+                        let ptr = self.buffer.as_mut_ptr() as *mut m256i;
+                            std::slice::from_raw_parts_mut(
+                                ptr, self.buffer.len() * std::mem::size_of::<i32>() / 32)
+                    };
+
+                    for k in 0..num_regs {
+                        output_vec[k] = acc[k];
+                    }
+
+                    i += 2;
+                }
+
+            } else if Self::SIZE_OUTPUT == 1 {
+            // } else {
+                let num_chunks: usize = Self::SIZE_INPUT_PADDED / 32;
+
+                let input_vec: &[m256i] = unsafe {
+                    let ptr = input.as_ptr() as *const m256i;
+                    std::slice::from_raw_parts(ptr, input.len() / 32)
+                };
+
+                let row0: &[m256i] = unsafe {
+                    let ptr = self.weights.as_ptr() as *const m256i;
+                    std::slice::from_raw_parts(ptr, self.weights.len() / 32)
+                };
+
+                let mut sum = m256i::default();
+
+                for k in 0..num_chunks {
+                    let in0 = input_vec[k];
+                    m256_add_dpbusd_epi32(&mut sum, in0, row0[k]);
+                }
+
+                self.buffer[0] = m256_hadd(sum, self.biases[0]);
+            } else {
+                for i in 0..Self::SIZE_OUTPUT {
+                    let offset = i * Self::SIZE_INPUT_PADDED;
+                    let mut sum: i32 = self.biases[i];
+                    for (j,x) in input.iter().enumerate() {
+                        let x: i32 = x.as_();
+                        let x0 = self.weights[offset + j] as i32 * x;
+                        sum += x0;
+                    }
+                    self.buffer[i] = sum as i32;
+                }
+                // panic!();
+            }
+
+            self.buffer.as_ref()
+        }
+
+        #[cfg(feature = "nope")]
+        pub fn _propagate_avx2_small<'a>(
+            &'a mut self, trans_features: &'a [u8]
+        ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
+            use safe_arch::*;
+            use crate::simd_utils::safe_arch::*;
+
+            let input = self.prev.propagate(trans_features);
+            let input = &input[..Self::SIZE_INPUT]; // TODO: bench
+
+            eprintln!("Self::SIZE_INPUT = {:?}", Self::SIZE_INPUT);
+            eprintln!("Self::SIZE_OUTPUT = {:?}", Self::SIZE_OUTPUT);
+            eprintln!("self.weights.len() = {:?}", self.weights.len());
+
+            eprintln!("IS * OS = {:?}", IS * OS);
+
+            for i in 0..Self::SIZE_OUTPUT {
+                let offset = i * Self::SIZE_INPUT_PADDED;
+                let mut sum: i32 = self.biases[i];
+                for (j,x) in input.iter().enumerate() {
+                    let x: i32 = x.as_();
+                    let x0 = self.weights[offset + j] as i32 * x;
+                    sum += x0;
+                }
+                self.buffer[i] = sum as i32;
+            }
+
+            self.buffer.as_ref()
+        }
+
+        pub fn _propagate_avx2_large<'a>(
+            &'a mut self, trans_features: &'a [u8]
+        ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
+            use safe_arch::*;
+            use crate::simd_utils::safe_arch::*;
+
+            let input = self.prev.propagate(trans_features);
+            assert_eq!(input.len() % 32, 0);
 
             let input_vec: &[m256i] = unsafe {
                 let ptr = input.as_ptr() as *const m256i;
@@ -782,8 +941,6 @@ mod nn_affine {
 
             }
 
-            // eprintln!("self.buffer = {:?}", self.buffer);
-
             self.buffer.as_ref()
         }
 
@@ -828,7 +985,8 @@ mod nn_affine {
             if Self::SIZE_INPUT_PADDED >= 128 {
                 self._propagate_avx2_large(trans_features)
             } else {
-                self._propagate_avx2_small(trans_features)
+                // self._propagate_avx2_small(trans_features)
+                self._propagate_avx2_small_nosimd(trans_features)
             }
         }
 

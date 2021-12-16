@@ -482,58 +482,76 @@ fn main_simd() {
     // let dist0 = Uniform::new(0,1);
     // let dist1 = Uniform::new(i16::MIN,i16::MAX);
 
-    const OS: usize = 8;
-    const IS: usize = 1024 * 2;
+    // const OS: usize = 8;
+    // const IS: usize = 1024 * 2;
+    const IS: usize = 8;
+    const OS: usize = 32;
+    const ISP: usize = 32;
 
-    use rchess_engine_lib::sf_compat::{Layer0,NNAffine,NNLayer};
+    use rchess_engine_lib::sf_compat::{Layer0,Layer1,NNAffine,NNLayer,NNInput};
 
-    type L1 = NNAffine::<Layer0, 8, IS>;
+    // type L0 = NNInput<IS>;
+    // type L1 = NNAffine::<L0, OS, IS>;
+    // let mut layer0 = L0::new();
+    // let mut layer1 = NNAffine::<L0, OS, IS>::new(layer0);
+
+    type L2 = NNAffine::<Layer1, OS, IS>;
+
     let mut layer0 = Layer0::new();
-    let mut layer1 = NNAffine::<Layer0, 8, IS>::new(layer0);
+    let mut layer1 = Layer1::new(NNAffine::new(layer0));
+    let mut layer2 = L2::new(layer1);
 
     // layer1.biases  = Aligned(array_init::array_init(|_| rng.gen_range(-10..10)));
     // let ws: [i8; IS * OS] = array_init::array_init(|_| rng.gen_range(-127..127));
     // layer1.weights = Aligned(ws.to_vec());
 
-    layer1.biases  = Aligned(array_init::array_init(|x| (x as i32 % 20) - 10));
-    let ws: [i8; IS * OS] = array_init::array_init(|x| (x as i8 % 20) - 10);
-    // layer1.weights = Aligned(ws.to_vec());
+    layer2.biases = Aligned(array_init::array_init(|x| (x as i32 % 20) - 10));
+    let ws: [i8; ISP * OS] = array_init::array_init(|x| (x as i8 % 20) - 10);
+    layer2.weights = Aligned(ws.to_vec());
 
-    for i in 0..layer1.weights.len() {
-        let i2 = L1::_get_weight_index(i);
-        layer1.weights[i2] = ws[i];
-    }
+    // for i in 0..layer1.weights.len() {
+    //     let i2 = L1::_get_weight_index(i);
+    //     layer1.weights[i2] = ws[i];
+    // }
+
+    // eprintln!("layer2.weights.len() = {:?}", layer2.weights.len());
+    // eprintln!("layer2.biases.len() = {:?}", layer2.biases.len());
+    // eprintln!("layer2.buffer.len() = {:?}", layer2.buffer.len());
 
     // let input: [u8; IS * 2] = array_init::array_init(|_| rng.gen_range(0..2));
-    let input: [u8; IS] = array_init::array_init(|x| x as u8 % 2);
+    // let input: [u8; IS] = array_init::array_init(|x| x as u8 % 2);
+    let input: [u8; 2048] = array_init::array_init(|x| x as u8 % 2);
     let input: Aligned<A64,_> = Aligned(input.clone());
     let mut output = [0i32; OS];
 
-    // let v = layer1._propagate_avx2_small(input.as_ref());
-    // eprintln!("v = {:?}", v);
-    // let sum: i32 = v.iter().sum();
-    // eprintln!("sum = {:?}", sum);
+    let v = layer2._propagate_avx2_small(input.as_ref());
+    eprintln!("v[0..5] = {:?}", &v[0..5]);
 
-    // let v = layer1._propagate_avx2_large(input.as_ref());
-    // eprintln!("v = {:?}", v);
-    // let sum: i32 = v.iter().sum();
-    // eprintln!("sum = {:?}", sum);
+    // let v = layer2._propagate_avx2_large(input.as_ref());
+    let v = layer2._propagate_avx2_small_nosimd(input.as_ref());
+    eprintln!("v[0..5] = {:?}", &v[0..5]);
 
-    // let v = layer1.propagate(input.as_ref());
-
-    // simd_mm_0::<IS,OS>(input.as_ref(), &layer1.weights, layer1.biases.as_ref(), &mut output);
-    // let sum: i32 = output.iter().sum();
-    // eprintln!("sum = {:?}", sum);
+    // simd_mm_0::<IS,OS>(input.as_ref(), &layer2.weights, layer2.biases.as_ref(), &mut output);
+    // eprintln!("&output[0..5] = {:?}", &output[0..5]);
+    // // let sum: i32 = output.iter().sum();
+    // // eprintln!("sum = {:?}", sum);
 
     // simd_mm_1::<IS,OS>(input.as_ref(), &layer1.weights, layer1.biases.as_ref(), &mut output);
     // let sum: i32 = output.iter().sum();
     // eprintln!("sum = {:?}", sum);
 
+    return;
+
     // XXX: stockfish = 3.75 M / sec
     timer_loop!(1_000_000, {
-        layer1.propagate(input.as_ref());
+        // layer1.propagate(input.as_ref());
+        layer2._propagate_avx2_small(input.as_ref());
         // simd_mm_0::<IS,OS>(&input, &layer1.weights, layer1.biases.as_ref(), &mut output);
         // simd_mm_1::<IS,OS>(&input, &layer1.weights, layer1.biases.as_ref(), &mut output);
+    });
+
+    timer_loop!(1_000_000, {
+        layer2._propagate_avx2_small_nosimd(input.as_ref());
     });
 
     return;
@@ -1904,15 +1922,17 @@ fn _main_nn() -> std::io::Result<()> {
         let mut g = Game::from_fen(&ts, fen).unwrap();
 
         type LayerX = NNAffine<Layer0, 8, {1024 * 2}>;
-        let layer1: &LayerX = &nn.layers[0].prev.prev.prev.prev;
+        // let layer1: &LayerX = &nn.layers[0].prev.prev.prev.prev;
+        let layer1 = &nn.layers[0].prev.prev;
 
         // for wt in layer1.weights.iter() {
         // }
 
-        let max = layer1.weights.iter().max();
-        let min = layer1.weights.iter().min();
+        eprintln!("layer1.weights.len() = {:?}", layer1.weights.len());
 
-        eprintln!("(min,max) = {:?}", (min,max));
+        // let max = layer1.weights.iter().max();
+        // let min = layer1.weights.iter().min();
+        // eprintln!("(min,max) = {:?}", (min,max));
 
         let mut nn2 = nn.clone();
         nn2.ft.reset_accum(&g);
@@ -3670,11 +3690,13 @@ fn main_perft(depth: Option<u64>) {
     for (k,fen) in fens.iter().enumerate() {
         let mut g = Game::from_fen(&ts, fen).unwrap();
 
-        println!("fen #{}:", k + 1);
-        let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, n, true, false).unwrap();
-        println!("perft done in {} seconds.", t);
-        println!("stockfish took {} seconds.", t_sf);
-        println!();
+        let (ns0, ms) = g.perft(&ts, n);
+
+        // println!("fen #{}:", k + 1);
+        // let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, n, true, false).unwrap();
+        // println!("perft done in {} seconds.", t);
+        // println!("stockfish took {} seconds.", t_sf);
+        // println!();
 
     }
     return;

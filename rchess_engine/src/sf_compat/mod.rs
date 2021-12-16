@@ -64,8 +64,7 @@ mod index {
 
 }
 
-// type NNIndex = usize;
-
+// XXX: manually specifying input dims allows better const optimizations maybe?
 pub type Layer0 = NNInput<{HALF_DIMS * 2}>;
 pub type Layer1 = NNClippedRelu<NNAffine<Layer0, 8, {HALF_DIMS * 2}>, 8>;
 pub type Layer2 = NNClippedRelu<NNAffine<Layer1, 32, 8>, 32>;

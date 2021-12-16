@@ -121,6 +121,14 @@ pub mod safe_arch {
         *acc             = add_i32_m256i(*acc, product0);
     }
 
+    pub fn m256_add_dpbusd_epi32(
+        mut acc: &mut safe_arch::m256i, a: safe_arch::m256i, b: safe_arch::m256i
+    ) {
+        let mut prod0 = mul_u8i8_add_horizontal_saturating_m256i(a, b);
+        prod0         = mul_i16_horizontal_add_m256i(prod0, set_splat_i16_m256i(1));
+        *acc          = add_i32_m256i(*acc, prod0);
+    }
+
     pub fn m256_hadd(
         sum:     safe_arch::m256i,
         bias:    i32
