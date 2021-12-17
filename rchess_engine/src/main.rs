@@ -1936,27 +1936,21 @@ fn _main_nn() -> std::io::Result<()> {
 
         let mut nn2 = nn.clone();
 
-        // nn2.ft.reset_accum(&g);
-
-        nn2.ft._update_accum_simd(&g, White);
-        nn2.ft._update_accum_simd(&g, Black);
-
-        let psqt = nn2.ft.transform(&g, transformed.as_mut(), bucket);
-        eprintln!("psqt = {:?}", psqt);
+        nn2.ft.reset_accum(&g);
 
         let v0 = nn2.evaluate(&g, false);
         eprintln!("v0 = {:?}", v0);
         eprintln!("v0 == -599 = {:?}", v0 == -599);
 
-        return Ok(());
+        // return Ok(());
 
         // let mv1 = Move::new_capture("a8", "a3", Rook, Pawn);
         // let mv2 = Move::new_capture("e5", "d4", Pawn, Pawn);
         // let mv2 = Move::new_capture("e3", "d4", Pawn, Pawn);
-        // let mv2 = Move::new_quiet("e5", "e4", Pawn);
+        let mv2 = Move::new_quiet("e5", "e4", Pawn);
         // let mv2 = Move::new_quiet("d4", "d5", Pawn);
 
-        let mv2 = Move::new_quiet("e1", "f1", King);
+        // let mv2 = Move::new_quiet("e1", "f1", King);
 
         // let mv2 = Move::Castle {
         //     from:      "e1".into(),
@@ -1965,7 +1959,30 @@ fn _main_nn() -> std::io::Result<()> {
         //     rook_to:   "f1".into(),
         // };
 
-        // let g2 = g.make_move_unchecked(&ts, mv1).unwrap();
+        let g2 = g.make_move_unchecked(&ts, mv2).unwrap();
+        nn2.ft.make_move(&g2, mv2);
+
+        let mut transformed: Aligned<A64,_> = Aligned([0; HALF_DIMS * 2]);
+        let psqt = nn2.ft.transform(&g2, transformed.as_mut(), 0);
+        eprintln!("psqt = {:?}", psqt);
+        eprintln!("psqt == 2 = {:?}", psqt == 2);
+
+        // let i_w = NNIndex(21924);
+        // let i_b = NNIndex(20444);
+
+        // nn2.ft._accum_inc_simd::<true>(White, i_w);
+        // nn2.ft._accum_inc_simd::<true>(Black, i_b);
+
+        let v1 = nn2.evaluate(&g2, false);
+        eprintln!("v1 = {:?}", v1);
+        eprintln!("v1 == 755 = {:?}", v1 == 755);
+
+        let fen = "r4rk1/4npp1/1p1q2b1/1B6/1B1Pp1Q1/P3P3/5PP1/R3K2R w KQ - 0 2";
+        let mut g = Game::from_fen(&ts, fen).unwrap();
+
+        nn2.ft.reset_accum(&g);
+        let v0 = nn2.evaluate(&g, false);
+        eprintln!("v0 = {:?}", v0);
 
         // // nn2.ft._update_accum(&g2, White);
         // // nn2.ft._update_accum(&g2, Black);
@@ -1973,6 +1990,8 @@ fn _main_nn() -> std::io::Result<()> {
         // // nn2.ft.reset_accum(&g2);
 
         // nn2.ft.accum_pop();
+
+        return Ok(());
 
         let g3 = g.make_move_unchecked(&ts, mv2).unwrap();
         nn2.ft.make_move(&g3, mv2);

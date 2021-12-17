@@ -494,9 +494,69 @@ impl NNFeatureTrans {
 
     }
 
-    pub fn _accum_rem_simd(&mut self, persp: Color, idx: NNIndex) {
+    pub fn _accum_inc_simd<const ADD: bool>(&mut self, persp: Color, idx: NNIndex) {
+        use safe_arch::*;
+        use crate::simd_utils::safe_arch::*;
 
-        // for j in 0..
+        let mut acc      = [m256i::default(); Self::NUM_REGS];
+
+        for k in 0..HALF_DIMS / Self::TILE_HEIGHT {
+            let acc_tile: &mut [m256i] = unsafe {
+                let xs = &mut self.accum.accum[persp][k * Self::TILE_HEIGHT..];
+                cast_slice_to_m256i_mut(xs)
+            };
+
+            for i in 0..Self::NUM_REGS {
+                acc[i] = load_m256i(&acc_tile[i]);
+            }
+
+            let offset = HALF_DIMS * idx.0 + k * Self::TILE_HEIGHT;
+            let column = unsafe { cast_slice_to_m256i(&self.weights[offset..]) };
+
+            for i in 0..Self::NUM_REGS {
+                if ADD {
+                    acc[i] = add_i16_m256i(acc[i], column[i]);
+                } else {
+                    acc[i] = sub_i16_m256i(acc[i], column[i]);
+                }
+            }
+
+            for i in 0..Self::NUM_REGS {
+                store_m256i(&mut acc_tile[i], acc[i]);
+                // acc_tile[i] = acc[i];
+            }
+        }
+
+        drop(acc);
+        let mut acc_psqt = [m256i::default(); Self::NUM_REGS_PSQT];
+
+        for k in 0..Self::PSQT_BUCKETS / Self::TILE_HEIGHT_PSQT {
+
+            let acc_tile_psqt: &mut [m256i] = unsafe {
+                let xs = &mut self.accum.psqt[persp][k * Self::TILE_HEIGHT_PSQT..];
+                cast_slice_to_m256i_mut(xs)
+            };
+
+            for i in 0..Self::NUM_REGS_PSQT {
+                acc_psqt[i] = load_m256i(&acc_tile_psqt[i]);
+            }
+
+            let offset = Self::PSQT_BUCKETS * idx.0 + k * Self::TILE_HEIGHT_PSQT;
+            let column_psqt = unsafe { cast_slice_to_m256i(&self.psqt_weights[offset..]) };
+
+            for i in 0..Self::NUM_REGS_PSQT {
+                if ADD {
+                    acc_psqt[i] = add_i16_m256i(acc_psqt[i], column_psqt[i]);
+                } else {
+                    acc_psqt[i] = sub_i16_m256i(acc_psqt[i], column_psqt[i]);
+                }
+            }
+
+            for i in 0..Self::NUM_REGS_PSQT {
+                store_m256i(&mut acc_tile_psqt[i], acc_psqt[i]);
+                // acc_tile_psqt[i] = acc_psqt[i];
+            }
+        }
 
     }
 
@@ -554,14 +614,26 @@ impl NNFeatureTrans {
     }
 
     pub fn accum_add(&mut self, i_w: NNIndex, i_b: NNIndex) -> NNDelta {
-        self._accum_add(White, i_w);
-        self._accum_add(Black, i_b);
+        // eprintln!("add (i_w,i_b) = {:?}", (i_w,i_b));
+
+        // self._accum_add(White, i_w);
+        // self._accum_add(Black, i_b);
+
+        self._accum_inc_simd::<true>(White, i_w);
+        self._accum_inc_simd::<true>(Black, i_b);
+
         NNDelta::Remove(i_w,i_b)
     }
 
     pub fn accum_rem(&mut self, i_w: NNIndex, i_b: NNIndex) -> NNDelta {
-        self._accum_rem(White, i_w);
-        self._accum_rem(Black, i_b);
+        // eprintln!("rem (i_w,i_b) = {:?}", (i_w,i_b));
+
+        // self._accum_rem(White, i_w);
+        // self._accum_rem(Black, i_b);
+
+        self._accum_inc_simd::<false>(White, i_w);
+        self._accum_inc_simd::<false>(Black, i_b);
+
         NNDelta::Add(i_w,i_b)
     }
 
@@ -623,13 +695,6 @@ impl NNFeatureTrans {
         self._update_accum_simd(g, Black);
         // self.accum.needs_refresh = [false; 2];
     }
-
-    // pub fn update_accum(&mut self, g: &Game, persp: Color) {
-    //     if self.accum.needs_refresh[persp] {
-    //         self.accum.needs_refresh[persp] = false;
-    //         self._update_accum(g, persp);
-    //     }
-    // }
 
     pub fn _update_accum(&mut self, g: &Game, persp: Color) {
         assert!(self.biases.len() == self.accum.accum[persp].len());
