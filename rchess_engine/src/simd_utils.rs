@@ -108,6 +108,30 @@ pub mod std_simd {
 pub mod safe_arch {
     use safe_arch::*;
 
+    pub unsafe fn cast_slice_to_m256i_mut<T: Sized>(xs: &mut [T]) -> &mut [m256i] {
+        let size = std::mem::size_of::<T>();
+        assert_eq!(xs.len() % (32 / size), 0);
+        let ptr = xs.as_mut_ptr() as *mut m256i;
+        let len = xs.len() / (32 / size);
+        std::slice::from_raw_parts_mut(ptr, len)
+    }
+
+    pub unsafe fn cast_slice_to_m256i<T: Sized>(xs: &[T]) -> &[m256i] {
+        let size = std::mem::size_of::<T>();
+        assert_eq!(xs.len() % (32 / size), 0);
+        let ptr = xs.as_ptr() as *const m256i;
+        let len = xs.len() / (32 / size);
+        std::slice::from_raw_parts(ptr, len)
+    }
+
+    pub unsafe fn cast_slice_to_m128i<T: Sized>(xs: &[T]) -> &[m128i] {
+        let size = std::mem::size_of::<T>();
+        assert_eq!(xs.len() % (16 / size), 0);
+        let ptr = xs.as_ptr() as *const m128i;
+        let len = xs.len() / (16 / size);
+        std::slice::from_raw_parts(ptr, len)
+    }
+
     pub fn m256_add_dpbusd_epi32x2(
         mut acc: &mut safe_arch::m256i,
         a0: safe_arch::m256i, b0: safe_arch::m256i,

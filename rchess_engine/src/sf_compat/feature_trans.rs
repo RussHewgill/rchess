@@ -411,6 +411,97 @@ impl NNFeatureTrans {
 
 }
 
+/// SIMD
+impl NNFeatureTrans {
+
+    const NUM_REGS: usize = 16; // AVX2
+    const NUM_REGS_PSQT: usize = 1; // AVX2
+
+    /// AVX2 = 256
+    const TILE_HEIGHT: usize = Self::NUM_REGS * std::mem::size_of::<safe_arch::m256i>() / 2;
+    /// AVX2 = 8
+    const TILE_HEIGHT_PSQT: usize = Self::NUM_REGS_PSQT * std::mem::size_of::<safe_arch::m256i>() / 4;
+
+    pub fn _update_accum_simd(&mut self, g: &Game, persp: Color) {
+        use safe_arch::*;
+        use crate::simd_utils::safe_arch::*;
+
+        assert!(self.biases.len() == self.accum.accum[persp].len());
+        self.accum.accum[persp].copy_from_slice(&self.biases);
+
+        let mut active = ArrayVec::default();
+        NNAccum::append_active(g, persp, &mut active);
+
+        let mut acc      = [m256i::default(); Self::NUM_REGS];
+        let mut acc_psqt = [m256i::default(); Self::NUM_REGS_PSQT];
+
+        for k in 0..HALF_DIMS / Self::TILE_HEIGHT {
+
+            let biases_tile: &[m256i] = unsafe {
+                let bs = &self.biases[k * Self::TILE_HEIGHT..];
+                cast_slice_to_m256i(&bs)
+            };
+
+            for i in 0..Self::NUM_REGS {
+                acc[i] = biases_tile[i];
+            }
+
+            for idx in active.iter() {
+                let offset = HALF_DIMS * idx.0 + k * Self::TILE_HEIGHT;
+
+                let column = unsafe { cast_slice_to_m256i(&self.weights[offset..]) };
+
+                for i in 0..Self::NUM_REGS {
+                    acc[i] = add_i16_m256i(acc[i], column[i]);
+                }
+            }
+
+            let acc_tile: &mut [m256i] = unsafe {
+                let xs = &mut self.accum.accum[persp][k * Self::TILE_HEIGHT..];
+                cast_slice_to_m256i_mut(xs)
+            };
+
+            for i in 0..Self::NUM_REGS {
+                // vec_store(&mut accTile[k], acc[k]);
+                store_m256i(&mut acc_tile[i], acc[i]);
+            }
+
+        }
+
+        for k in 0..Self::PSQT_BUCKETS / Self::TILE_HEIGHT_PSQT {
+            self.accum.psqt[persp].fill(0);
+
+            for idx in active.iter() {
+                let offset = Self::PSQT_BUCKETS * idx.0 + k * Self::TILE_HEIGHT_PSQT;
+
+                let column_psqt = unsafe { cast_slice_to_m256i(&self.psqt_weights[offset..]) };
+
+                for i in 0..Self::NUM_REGS_PSQT {
+                    acc_psqt[i] = add_i32_m256i(acc_psqt[i], column_psqt[i]);
+                }
+            }
+
+            let acc_tile_psqt: &mut [m256i] = unsafe {
+                let xs = &mut self.accum.psqt[persp][k * Self::TILE_HEIGHT_PSQT..];
+                cast_slice_to_m256i_mut(xs)
+            };
+
+            for i in 0..Self::NUM_REGS_PSQT {
+                store_m256i(&mut acc_tile_psqt[i], acc_psqt[i]);
+            }
+
+        }
+
+    }
+
+    pub fn _accum_rem_simd(&mut self, persp: Color, idx: NNIndex) {
+
+        // for j in 0..
+
+    }
+
+}
+
 /// Update Accum
 impl NNFeatureTrans {
 
@@ -526,8 +617,10 @@ impl NNFeatureTrans {
 
     pub fn reset_accum(&mut self, g: &Game) {
         // debug!("resetting accum");
-        self._update_accum(g, White);
-        self._update_accum(g, Black);
+        // self._update_accum(g, White);
+        // self._update_accum(g, Black);
+        self._update_accum_simd(g, White);
+        self._update_accum_simd(g, Black);
         // self.accum.needs_refresh = [false; 2];
     }
 

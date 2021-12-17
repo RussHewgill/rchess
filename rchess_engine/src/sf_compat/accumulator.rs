@@ -1,8 +1,9 @@
 
-use arrayvec::ArrayVec;
-
 use crate::types::*;
 use super::{NNIndex, HALF_DIMS};
+
+use arrayvec::ArrayVec;
+use aligned::{Aligned,A32};
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub enum NNDelta {
@@ -41,19 +42,21 @@ pub enum NNDeltas {
 //     pub psqt:            [[i32; 8]; 2],    // PSQTBuckets = 8
 // }
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Ord,Clone,Copy)]
+#[derive(Debug,Eq,PartialEq,PartialOrd,Ord,Clone)]
 // #[repr(align(64))]
 pub enum NNAccumData {
     // Half(Color, [i16; 1024], [i32; 8]),
-    Full(Color, [[i16; 1024]; 2], [[i32; 8]; 2]),
+    Full(Color, Aligned<A32,[[i16; 1024]; 2]>, Aligned<A32,[[i32; 8]; 2]>),
 }
 
 // #[derive(Debug,PartialEq,Clone,Copy)]
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
-#[repr(align(64))]
+// #[repr(align(64))]
 pub struct NNAccum {
-    pub accum:           [[i16; 1024]; 2], // TransformedFeatureDimensions = 1024
-    pub psqt:            [[i32; 8]; 2],    // PSQTBuckets = 8
+    // pub accum:           [[i16; 1024]; 2], // TransformedFeatureDimensions = 1024
+    // pub psqt:            [[i32; 8]; 2],    // PSQTBuckets = 8
+    pub accum:           Aligned<A32,[[i16; 1024]; 2]>, // TransformedFeatureDimensions = 1024
+    pub psqt:            Aligned<A32,[[i32; 8]; 2]>,    // PSQTBuckets = 8
 
     // pub computed:   [bool; 2],
     // pub deltas:     ArrayVec<NNDelta, 9>, // 3 moves
@@ -75,8 +78,8 @@ pub struct NNAccum {
 impl NNAccum {
     pub fn new() -> Self {
         Self {
-            accum:            [[0; 1024]; 2],
-            psqt:             [[0; 8]; 2],
+            accum:            Aligned([[0; 1024]; 2]),
+            psqt:             Aligned([[0; 8]; 2]),
             // deltas_add:       ArrayVec::default(),
             // deltas_rem:       ArrayVec::default(),
             // stack:            ArrayVec::default(),
@@ -97,8 +100,8 @@ impl NNAccum {
             side,
             // accum:  self.accum[side],
             // psqt:   self.psqt[side],
-            self.accum,
-            self.psqt,
+            self.accum.clone(),
+            self.psqt.clone(),
         )
     }
 

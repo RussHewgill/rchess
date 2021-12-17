@@ -405,52 +405,6 @@ mod nn_affine {
         }
 
         #[cfg(feature = "nope")]
-        pub fn _propagate_ndarray(&mut self, trans_features: &[u8]) {
-
-            self.prev.propagate(trans_features);
-            let input: &[<NNAffine<Prev,OS> as NNLayer>::InputType] = self.prev.get_buf();
-
-            // assert!(Self::SIZE_OUTPUT % Self::NUM_OUTPUT_REGS == 0);
-            // assert!(input.len() % 32 == 0);
-
-            let input2 = &input[0..input.len() / 32];
-
-            // let input: nd::ArrayView2<<NNAffine<Prev,OS> as NNLayer>::InputType> = unsafe {
-            //     let ptr = input.as_ptr();
-            //     nd::ArrayView2::from_shape_ptr((Self::SIZE_INPUT,1), ptr)
-            // };
-
-            eprintln!("input.len() = {:?}", input.len());
-            // eprintln!("Self::SIZE_INPUT_PADDED = {:?}", Self::SIZE_INPUT_PADDED);
-
-            // let v = input.to_vec();
-            let mut v = vec![<NNAffine<Prev,OS> as NNLayer>::InputType::zero(); Self::SIZE_INPUT_PADDED];
-            v[..input.len()].copy_from_slice(&input);
-
-            let input = nd::Array2::from_shape_vec((Self::SIZE_INPUT_PADDED,1), v).unwrap();
-            let input = input.map(|x| (*x).as_());
-
-            eprintln!("input.shape() = {:?}", input.shape());
-
-            // let input: Array2<i32> = input.map(|x| NumCast::from(*x).unwrap());
-
-            // let input: nd::ArrayView2<i32> = input.map(|x| (*x).as_());
-
-            // let input = Array2::from_shape_vec((IS,1), input.to_vec())
-
-            eprintln!("self.weights.shape() = {:?}", self.weights.shape());
-
-            let result = self.weights.dot(&input) + &self.biases;
-
-            let x = result.is_standard_layout();
-            eprintln!("x = {:?}", x);
-
-            self.buffer.copy_from_slice(result.as_slice().unwrap());
-
-            // unimplemented!()
-        }
-
-        #[cfg(feature = "nope")]
         pub fn _propagate_avx2_small(&mut self, trans_features: &[u8]) {
             self.prev.propagate(trans_features);
             let input = self.prev.get_buf();
@@ -709,7 +663,8 @@ mod nn_affine {
         }
 
         pub fn _propagate_avx2_small_nosimd<'a>(
-            &'a mut self, trans_features: &'a [u8]
+            &'a mut self,
+            trans_features: &'a [u8]
         ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
             let input = self.prev.propagate(trans_features);
             let input = &input[..Self::SIZE_INPUT]; // TODO: bench

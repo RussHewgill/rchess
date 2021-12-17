@@ -173,10 +173,10 @@ pub fn crit_bench_simd(c: &mut Criterion) {
     layer1.weights = Aligned(weights.to_vec());
     layer1.biases = biases.clone();
 
-    let xs = layer1.propagate(input.as_ref());
-    // let sum: i32 = xs.iter().sum();
-    // eprintln!("sum = {:?}", sum);
-    eprintln!("xs[0..4] = {:?}", &xs[0..4]);
+    // let xs = layer1.propagate(input.as_ref());
+    // // let sum: i32 = xs.iter().sum();
+    // // eprintln!("sum = {:?}", sum);
+    // eprintln!("xs[0..4] = {:?}", &xs[0..4]);
 
     // simd_mm_1::<IS,OS>(
     //     black_box(input.as_ref()),
@@ -449,24 +449,23 @@ pub fn crit_bench_nnue(c: &mut Criterion) {
         Game::from_fen(&ts, &fen).unwrap()
     }).collect();
 
-    let wacs2: Vec<(Game,NNIndex)> = wacs.into_iter().flat_map(|g| {
-        let moves = g.search_all(&ts).get_moves_unsafe();
-        let mv = moves.choose(&mut rng).unwrap();
-
-        if mv.piece() == Some(King) { None } else {
-            let d = nn.ft._make_move(&g, *mv);
-            Some((g,d[0].get().0))
-        }
-    }).collect();
+    // let wacs2: Vec<(Game,NNIndex)> = wacs.into_iter().flat_map(|g| {
+    //     let moves = g.search_all(&ts).get_moves_unsafe();
+    //     let mv = moves.choose(&mut rng).unwrap();
+    //     if mv.piece() == Some(King) { None } else {
+    //         let d = nn.ft._make_move(&g, *mv);
+    //         Some((g,d[0].get().0))
+    //     }
+    // }).collect();
 
     let mut ft = nn.ft.clone();
 
-    group.bench_function("nnue _accum_rem", |b| b.iter(|| {
-        for (g,idx) in wacs2.iter() {
-            // ft.reset_accum(black_box(&g));
-            ft._accum_rem(g.state.side_to_move, *idx);
-        }
-    }));
+    // group.bench_function("nnue _accum_rem", |b| b.iter(|| {
+    //     for (g,idx) in wacs2.iter() {
+    //         // ft.reset_accum(black_box(&g));
+    //         ft._accum_rem(g.state.side_to_move, *idx);
+    //     }
+    // }));
 
     // group.bench_function("nnue eval", |b| b.iter(|| {
     //     for g in wacs.iter() {
@@ -475,6 +474,19 @@ pub fn crit_bench_nnue(c: &mut Criterion) {
     //         let v = nn.evaluate(black_box(&g), false);
     //     }
     // }));
+
+    group.bench_function("nnue reset accum", |b| b.iter(|| {
+        for g in wacs.iter() {
+            nn.ft.reset_accum(&g);
+        }
+    }));
+
+    group.bench_function("nnue reset accum simd", |b| b.iter(|| {
+        for g in wacs.iter() {
+            nn.ft._update_accum_simd(&g, White);
+            nn.ft._update_accum_simd(&g, Black);
+        }
+    }));
 
     // // let mut wacs2: Vec<(Game,Move,NNFeatureTrans)> = wacs.into_iter().map(|g| {
     // let mut wacs2: Vec<(Game,Move)> = wacs.into_iter().map(|g| {
@@ -510,8 +522,8 @@ pub fn crit_bench_nnue(c: &mut Criterion) {
     group.finish();
 }
 
-// criterion_group!(benches, crit_bench_nnue);
-criterion_group!(benches, crit_bench_simd);
+criterion_group!(benches, crit_bench_nnue);
+// criterion_group!(benches, crit_bench_simd);
 // criterion_group!(benches, crit_bench_1);
 // criterion_group!(benches, crit_bench_2);
 criterion_main!(benches);

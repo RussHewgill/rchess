@@ -70,7 +70,7 @@ pub type Layer1 = NNClippedRelu<NNAffine<Layer0, 8, {HALF_DIMS * 2}>, 8>;
 pub type Layer2 = NNClippedRelu<NNAffine<Layer1, 32, 8>, 32>;
 pub type Layer3 = NNAffine<Layer2, 1, 32>;
 
-const HALF_DIMS: usize = 1024;
+pub const HALF_DIMS: usize = 1024;
 const OUTPUT_SCALE: Score = 16;
 
 const SQUARE_NB: usize = 64;
@@ -342,7 +342,4 @@ impl NNUE4 {
     }
 
 }
-
-
-
 

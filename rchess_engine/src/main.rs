@@ -521,15 +521,15 @@ fn main_simd() {
     // let input: [u8; IS * 2] = array_init::array_init(|_| rng.gen_range(0..2));
     // let input: [u8; IS] = array_init::array_init(|x| x as u8 % 2);
     let input: [u8; 2048] = array_init::array_init(|x| x as u8 % 2);
-    let input: Aligned<A64,_> = Aligned(input.clone());
+    // let input: Aligned<A64,_> = Aligned(input.clone());
     let mut output = [0i32; OS];
 
-    let v = layer2._propagate_avx2_small(input.as_ref());
-    eprintln!("v[0..5] = {:?}", &v[0..5]);
+    // let v = layer2._propagate_avx2_small(input.as_ref());
+    // eprintln!("v[0..5] = {:?}", &v[0..5]);
 
-    // let v = layer2._propagate_avx2_large(input.as_ref());
-    let v = layer2._propagate_avx2_small_nosimd(input.as_ref());
-    eprintln!("v[0..5] = {:?}", &v[0..5]);
+    // // let v = layer2._propagate_avx2_large(input.as_ref());
+    // let v = layer2._propagate_avx2_small_nosimd(input.as_ref());
+    // eprintln!("v[0..5] = {:?}", &v[0..5]);
 
     // simd_mm_0::<IS,OS>(input.as_ref(), &layer2.weights, layer2.biases.as_ref(), &mut output);
     // eprintln!("&output[0..5] = {:?}", &output[0..5]);
@@ -540,21 +540,21 @@ fn main_simd() {
     // let sum: i32 = output.iter().sum();
     // eprintln!("sum = {:?}", sum);
 
-    return;
+    // return;
 
-    // XXX: stockfish = 3.75 M / sec
-    timer_loop!(1_000_000, {
-        // layer1.propagate(input.as_ref());
-        layer2._propagate_avx2_small(input.as_ref());
-        // simd_mm_0::<IS,OS>(&input, &layer1.weights, layer1.biases.as_ref(), &mut output);
-        // simd_mm_1::<IS,OS>(&input, &layer1.weights, layer1.biases.as_ref(), &mut output);
-    });
+    // // XXX: stockfish = 3.75 M / sec
+    // timer_loop!(1_000_000, {
+    //     // layer1.propagate(input.as_ref());
+    //     layer2._propagate_avx2_small(input.as_ref());
+    //     // simd_mm_0::<IS,OS>(&input, &layer1.weights, layer1.biases.as_ref(), &mut output);
+    //     // simd_mm_1::<IS,OS>(&input, &layer1.weights, layer1.biases.as_ref(), &mut output);
+    // });
 
-    timer_loop!(1_000_000, {
-        layer2._propagate_avx2_small_nosimd(input.as_ref());
-    });
+    // timer_loop!(1_000_000, {
+    //     layer2._propagate_avx2_small_nosimd(input.as_ref());
+    // });
 
-    return;
+    // return;
 
     let input: [u8; IS]   = array_init::array_init(|_| rng.gen_range(0..2));
     let weights: Vec<i8>  = (0..OS * IS).map(|_| rng.gen_range(-10..10)).collect();
@@ -632,7 +632,8 @@ fn main_simd() {
     // let res1 = m128i::from(res1);
     // eprintln!("res1 = {:?}", bytemuck::cast::<m128i,[i8;16]>(res1));
 
-    let ws: Aligned<A64,_> = Aligned(xs1);
+    // let ws: Aligned<A64,_> = Aligned(xs1);
+    let ws = xs1.clone();
 
     // // let a: &[m128i] = unsafe {
     // let a = unsafe {
@@ -662,34 +663,25 @@ fn main_simd() {
     //     std::slice::from_raw_parts(ptr, ws1.len() / 16)
     // };
 
-    let a: &[m256i] = unsafe {
-        let ptr = ws1.as_ptr() as *const m256i;
-        std::slice::from_raw_parts(ptr, ws1.len() / 32)
-    };
+    // let a: &[m256i] = unsafe {
+    //     let ptr = ws1.as_ptr() as *const m256i;
+    //     std::slice::from_raw_parts(ptr, ws1.len() / 32)
+    // };
 
-    let a0 = m256i::from([1i32; 8]);
-    let a1 = m256i::from([0i32; 8]);
-
-    let b0 = m256i::from([1i32; 8]);
-    let b1 = m256i::from([0i32; 8]);
+    // let a = unsafe { cast_slice_to_m256i(ws1.as_ref()) };
+    let a = unsafe { cast_slice_to_m128i(ws1.as_ref()) };
 
     // let res0 = m256_haddx4(sum0, sum0, sum1, sum1, bias);
 
     // let mut res0 = m256i::from([0i32; 8]);
     // m256_add_dpbusd_epi32x2(&mut res0, a0, b0, a1, b1);
 
-    let product0 = mul_u8i8_add_horizontal_saturating_m256i(a0, b0);
-    let product1 = mul_u8i8_add_horizontal_saturating_m256i(a1, b1);
-
-    let res0 = add_saturating_i16_m256i(product0, product1);
-    eprintln!("res0 = {:?}", bytemuck::cast::<m256i,[i16;16]>(res0));
-
-    let res0 = mul_i16_horizontal_add_m256i(product0, set_splat_i16_m256i(1));
-    eprintln!("res0 = {:?}", bytemuck::cast::<m256i,[i32;8]>(res0));
-
+    let mut res0 = [0u8; 16];
+    res0.copy_from_slice(&ws1[0..16]);
+    let res0 = m128i::from(res0);
 
     // let res0 = a[0];
-    // eprintln!("res0 = {:?}", bytemuck::cast::<m128i,[i8;16]>(res0));
+    eprintln!("res0 = {:?}", bytemuck::cast::<m128i,[i8;16]>(res0));
     // eprintln!("res1 = {:?}", bytemuck::cast::<m128i,[i8;16]>(res1));
     // eprintln!("res0 = {:?}", bytemuck::cast::<m256i,[i16;16]>(res0));
     // eprintln!("res1 = {:?}", bytemuck::cast::<m256i,[i16;16]>(res1));
@@ -1921,21 +1913,37 @@ fn _main_nn() -> std::io::Result<()> {
         // let fen = "rnbqk2r/pppppppp/8/8/8/8/PPPPPPPP/RNBQK2R w KQkq - 0 1";
         let mut g = Game::from_fen(&ts, fen).unwrap();
 
-        type LayerX = NNAffine<Layer0, 8, {1024 * 2}>;
-        // let layer1: &LayerX = &nn.layers[0].prev.prev.prev.prev;
-        let layer1 = &nn.layers[0].prev.prev;
+        // type LayerX = NNAffine<Layer0, 8, {1024 * 2}>;
+        // // let layer1: &LayerX = &nn.layers[0].prev.prev.prev.prev;
+        // let layer1 = &nn.layers[0].prev.prev;
 
-        // for wt in layer1.weights.iter() {
-        // }
-
-        eprintln!("layer1.weights.len() = {:?}", layer1.weights.len());
+        // eprintln!("layer1.weights.len() = {:?}", layer1.weights.len());
 
         // let max = layer1.weights.iter().max();
         // let min = layer1.weights.iter().min();
         // eprintln!("(min,max) = {:?}", (min,max));
 
+        let mut ft = nn.ft.clone();
+
+        use aligned::{Aligned,A64};
+        let mut transformed: Aligned<A64,_> = Aligned([0; HALF_DIMS * 2]);
+
+        let bucket = 0;
+
+        // ft.reset_accum(&g);
+
+        // return Ok(());
+
         let mut nn2 = nn.clone();
-        nn2.ft.reset_accum(&g);
+
+        // nn2.ft.reset_accum(&g);
+
+        nn2.ft._update_accum_simd(&g, White);
+        nn2.ft._update_accum_simd(&g, Black);
+
+        let psqt = nn2.ft.transform(&g, transformed.as_mut(), bucket);
+        eprintln!("psqt = {:?}", psqt);
+
         let v0 = nn2.evaluate(&g, false);
         eprintln!("v0 = {:?}", v0);
         eprintln!("v0 == -599 = {:?}", v0 == -599);
