@@ -7,6 +7,8 @@ use crate::hashing::Zobrist;
 
 pub use prev_rustic_nothread::*;
 
+use derive_new::new;
+
 // use std::alloc::{Layout, handle_alloc_error, self};
 // use std::ptr::NonNull;
 // use std::cell::{UnsafeCell, Cell};
@@ -241,16 +243,26 @@ mod prev_pleco {
 
 // #[cfg(feature = "nope")]
 mod prev_rustic_nothread {
+    use std::cell::UnsafeCell;
+    use std::ptr::NonNull;
+    use std::mem;
+    use std::alloc::{Layout, handle_alloc_error, self};
+    use std::sync::atomic::AtomicUsize;
+
+    use itertools::Unique;
+
     use super::*;
 
-    const ENTRIES_PER_BUCKET: usize = 4;
+    const ENTRIES_PER_BUCKET: usize = 3;
 
-    const MEGABYTE: usize = 1024 * 1024;
+    const KILOBYTE: usize = 1024;
+    const MEGABYTE: usize = 1024 * KILOBYTE;
+
     const HIGH_FOUR_BYTES: u64 = 0xFF_FF_FF_FF_00_00_00_00;
     const LOW_FOUR_BYTES: u64 = 0x00_00_00_00_FF_FF_FF_FF;
     const SHIFT_TO_LOWER: u64 = 32;
 
-    #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
+    #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy,new)]
     pub struct TTEntry {
         pub verification:       u32,
         // pub partial_key:        u16,
@@ -262,7 +274,7 @@ mod prev_rustic_nothread {
     }
 
     impl TTEntry {
-        pub fn new() -> Self {
+        pub fn empty() -> Self {
             Self {
                 verification:  0,
                 entry:         SearchInfo::empty(),
@@ -271,7 +283,7 @@ mod prev_rustic_nothread {
     }
 
     #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
-    struct Bucket {
+    pub struct Bucket {
         bucket: [TTEntry; ENTRIES_PER_BUCKET],
     }
 
@@ -279,7 +291,7 @@ mod prev_rustic_nothread {
     impl Bucket {
         pub fn new() -> Self {
             Self {
-                bucket: [TTEntry::new(); ENTRIES_PER_BUCKET],
+                bucket: [TTEntry::empty(); ENTRIES_PER_BUCKET],
             }
         }
     }
@@ -288,55 +300,157 @@ mod prev_rustic_nothread {
         pub fn store(&mut self, ver: u32, si: SearchInfo, used_entries: &mut usize) {
             let mut idx_lowest_depth = 0;
 
-            unimplemented!()
+            for entry in 1..ENTRIES_PER_BUCKET {
+                if self.bucket[entry].entry.depth_searched < si.depth_searched {
+                    idx_lowest_depth = entry;
+                }
+            }
+
+            if self.bucket[idx_lowest_depth].verification == 0 {
+                *used_entries += 1;
+            }
+
+            self.bucket[idx_lowest_depth] = TTEntry::new(ver, si);
         }
 
         pub fn find(&self, ver: u32) -> Option<&SearchInfo> {
-            unimplemented!()
+            for e in self.bucket.iter() {
+                if e.verification == ver {
+                    return Some(&e.entry);
+                }
+            }
+            None
+        }
+    }
+
+    pub struct TransTable {
+        // tt:            Vec<Bucket>,
+        ptr:           UnsafeCell<NonNull<Bucket>>,
+        megabytes:     UnsafeCell<usize>,
+        used_entries:  UnsafeCell<usize>,
+        tot_buckets:   UnsafeCell<usize>,
+        tot_entries:   UnsafeCell<usize>,
+    }
+
+    unsafe impl Send for TransTable {}
+    unsafe impl Sync for TransTable {}
+
+    impl TransTable {
+
+        // pub fn new_mb(mb: usize) -> Self {
+        //     let mut num_clusters: usize = (mb * MEGABYTE) / mem::size_of::<Bucket>();
+        //     num_clusters = num_clusters.next_power_of_two() / 2;
+        //     Self::new_num_clusters(num_clusters)
+        // }
+        // pub fn new_num_entries(num_clusters: usize) -> Self {
+        //     Self::new_num_clusters(num_clusters * ENTRIES_PER_BUCKET)
+        // }
+        // pub fn new_num_clusters(num_clusters: usize) -> Self {
+        //     Self::_new(num_clusters.next_power_of_two())
+        // }
+        // pub fn _new(size: usize) -> Self {
+        //     let ptr = UnsafeCell::new(unsafe { Self::alloc_room(size)});
+        //     Self {
+        //         ptr,
+        //     }
+        // }
+
+        pub fn new_mb(megabytes: usize) -> Self {
+
+            let mut tot_buckets: usize = (megabytes * MEGABYTE) / mem::size_of::<Bucket>();
+            tot_buckets = tot_buckets.next_power_of_two() / 2;
+
+            let e_size = std::mem::size_of::<TTEntry>();
+            let b_size = e_size * ENTRIES_PER_BUCKET;
+            let tot_entries = tot_buckets * ENTRIES_PER_BUCKET;
+
+            let ptr = UnsafeCell::new(unsafe { Self::alloc_room(tot_buckets) });
+
+            Self {
+                // tt: vec![Bucket::new(); tot_buckets],
+                ptr,
+                megabytes: UnsafeCell::new(megabytes),
+                used_entries: UnsafeCell::new(0),
+                tot_buckets: UnsafeCell::new(tot_buckets),
+                tot_entries: UnsafeCell::new(tot_entries),
+            }
+        }
+
+        // pub fn new_num_entries(num: usize) -> Self {
+        //     let tot_buckets = 
+        // }
+
+        unsafe fn alloc_room(size: usize) -> NonNull<Bucket> {
+            let size         = size * mem::size_of::<Bucket>();
+            let layout       = Layout::from_size_align(size, 2).unwrap();
+            let ptr: *mut u8 = alloc::alloc_zeroed(layout);
+            let new_ptr: NonNull<Bucket> = match NonNull::new(ptr) {
+                Some(ptr) => ptr.cast(),
+                _         => handle_alloc_error(layout),
+            };
+            new_ptr
         }
 
     }
 
-    pub struct TransTable {
-        tt:            Vec<Bucket>,
-        megabytes:     usize,
-        used_entries:  usize,
-        tot_buckets:   usize,
-        tot_entries:   usize,
-    }
+    // /// New
+    // impl TransTable {
+    //     pub fn new(megabytes: usize) -> Self {
+    //         let e_size = std::mem::size_of::<TTEntry>();
+    //         let b_size = e_size * ENTRIES_PER_BUCKET;
+    //         let tot_buckets = MEGABYTE / b_size * megabytes;
+    //         let tot_entries = tot_buckets * ENTRIES_PER_BUCKET;
+    //         Self {
+    //             tt: vec![Bucket::new(); tot_buckets],
+    //             megabytes,
+    //             used_entries: 0,
+    //             tot_buckets,
+    //             tot_entries,
+    //         }
+    //     }
+    // }
 
-    /// New
+    /// Insert
     impl TransTable {
-        pub fn new(megabytes: usize) -> Self {
-            let e_size = std::mem::size_of::<TTEntry>();
-            let b_size = e_size * ENTRIES_PER_BUCKET;
-            let tot_buckets = MEGABYTE / b_size * megabytes;
-            let tot_entries = tot_buckets * ENTRIES_PER_BUCKET;
-            Self {
-                tt: vec![Bucket::new(); tot_buckets],
-                megabytes,
-                used_entries: 0,
-                tot_buckets,
-                tot_entries,
+        pub fn insert(&self, zb: Zobrist, si: SearchInfo) {
+            let idx = self.calc_index(zb);
+            let ver = self.calc_verification(zb);
+            // self.tt[idx].store(ver, si, &mut self.used_entries)
+
+            unsafe {
+                // let ptr: *mut Bucket = self.ptr.get_mut().as_ptr()
+                let ptr: *mut Bucket = (*self.ptr.get()).as_ptr();
+
+                let mut used_entries: &mut usize = &mut (*self.used_entries.get());
+
+                (*ptr).store(ver, si, used_entries);
+
+                // ptr.store(ver, si, used_entries)
             }
         }
     }
 
+    /// Probe
     impl TransTable {
-        pub fn insert(&mut self, zb: Zobrist, si: SearchInfo) {
+        pub fn probe(&self, zb: Zobrist) -> Option<&SearchInfo> {
             let idx = self.calc_index(zb);
             let ver = self.calc_verification(zb);
-            self.tt[idx].store(ver, si, &mut self.used_entries)
+
+            unsafe {
+                let ptr: *mut Bucket = (*self.ptr.get()).as_ptr();
+                (*ptr).find(ver)
+            }
         }
     }
 
+    /// Misc
     impl TransTable {
-        fn calc_index(&self, zb: Zobrist) -> usize {
+        pub fn calc_index(&self, zb: Zobrist) -> usize {
             let key = (zb.0 & HIGH_FOUR_BYTES) >> SHIFT_TO_LOWER;
-            let total = self.tot_buckets as u64;
+            let total = unsafe { *self.tot_buckets.get() } as u64;
             (key % total) as usize
         }
-        fn calc_verification(&self, zb: Zobrist) -> u32 {
+        pub fn calc_verification(&self, zb: Zobrist) -> u32 {
             (zb.0 & LOW_FOUR_BYTES) as u32
         }
     }

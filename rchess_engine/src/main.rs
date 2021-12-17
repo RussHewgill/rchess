@@ -268,7 +268,26 @@ fn main_tt() {
     // let s0 = std::mem::size_of::<Score>();
     // eprintln!("s0 = {:?}", s0);
 
+    let mut tt = TransTable::new_mb(1);
 
+    // let mut b0 = Bucket::new();
+
+    // let idx = tt.calc_index(zb);
+    // let ver = tt.calc_verification(zb);
+
+    // let mut x = 0;
+
+    let mut si = SearchInfo::empty();
+    si.depth_searched = 22;
+
+    tt.insert(zb, si);
+
+    let si2 = tt.probe(zb);
+
+    // b0.store(ver, si, &mut x);
+    // let si2 = b0.find(ver);
+
+    eprintln!("si2 = {:?}", si2);
 
     return;
 

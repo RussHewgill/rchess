@@ -10,6 +10,7 @@
 #![feature(portable_simd)]
 #![feature(array_chunks)]
 #![feature(asm)]
+#![feature(ptr_internals)]
 
 // XXX: also brain allow ::all
 #![allow(
