@@ -335,6 +335,13 @@ mod prev_rustic_nothread {
     unsafe impl Send for TransTable {}
     unsafe impl Sync for TransTable {}
 
+    impl std::fmt::Debug for TransTable {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str(&format!("TransTable"))?;
+            Ok(())
+        }
+    }
+
     impl TransTable {
 
         // pub fn new_mb(mb: usize) -> Self {

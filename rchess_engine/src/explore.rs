@@ -1,5 +1,6 @@
 
 use crate::evmap_tables::*;
+use crate::lockless_map::TransTable;
 use crate::searchstats;
 use crate::types::*;
 use crate::tables::*;
@@ -38,8 +39,8 @@ use rayon::prelude::*;
 
 use evmap::{ReadHandle,ReadHandleFactory,WriteHandle};
 
-// #[derive(Debug)]
-#[derive(Debug,Clone)]
+#[derive(Debug)]
+// #[derive(Debug,Clone)]
 pub struct Explorer {
     pub side:          Color,
     pub game:          Game,
@@ -55,6 +56,8 @@ pub struct Explorer {
     pub opening_book:  Option<Arc<OpeningBook>>,
 
     pub nnue:          Option<NNUE4>,
+
+    pub ptr_tt:        TransTable,
 
     pub tt_rf:         TTReadFactory,
     pub tt_w:          TTWrite,
@@ -270,6 +273,8 @@ impl Explorer {
             opening_book:   None,
 
             nnue:           None,
+
+            ptr_tt:         TransTable::new_mb(256),
 
             tt_rf,
             tt_w,
