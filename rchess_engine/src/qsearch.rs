@@ -44,6 +44,9 @@ pub fn exhelper_once(
     let best_mate = Arc::new(RwLock::new(None));
     let best_depth = Arc::new(AtomicU8::new(0));
 
+    #[cfg(feature = "lockless_hashmap")]
+    let ptr_tt = Arc::new(crate::lockless_map::TransTable::new_mb(256));
+
     let helper = ExHelper {
         id:              0,
         side,
@@ -56,6 +59,8 @@ pub fn exhelper_once(
         cfg,
         best_depth,
         tx,
+        #[cfg(feature = "lockless_hashmap")]
+        ptr_tt,
         tt_r,
         tt_w,
         ph_rw,

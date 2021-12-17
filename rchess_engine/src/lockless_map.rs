@@ -247,11 +247,12 @@ mod prev_rustic_nothread {
     use std::ptr::NonNull;
     use std::mem;
     use std::alloc::{Layout, handle_alloc_error, self};
-    use std::sync::atomic::AtomicUsize;
-
-    use itertools::Unique;
+    // use std::sync::atomic::AtomicUsize;
 
     use super::*;
+
+    // pub const DEFAULT_TT_SIZE_MB: usize = 1024;
+    pub const DEFAULT_TT_SIZE_MB: usize = 64;
 
     const ENTRIES_PER_BUCKET: usize = 3;
 
@@ -284,13 +285,16 @@ mod prev_rustic_nothread {
 
     #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
     pub struct Bucket {
+        pub x:      usize,
         bucket: [TTEntry; ENTRIES_PER_BUCKET],
     }
 
     /// New
     impl Bucket {
         pub fn new() -> Self {
+            use rand::Rng;
             Self {
+                x:      rand::thread_rng().gen(),
                 bucket: [TTEntry::empty(); ENTRIES_PER_BUCKET],
             }
         }
@@ -325,7 +329,7 @@ mod prev_rustic_nothread {
 
     pub struct TransTable {
         // tt:            Vec<Bucket>,
-        ptr:           UnsafeCell<NonNull<Bucket>>,
+        pub ptr:           UnsafeCell<NonNull<Bucket>>,
         megabytes:     UnsafeCell<usize>,
         used_entries:  UnsafeCell<usize>,
         tot_buckets:   UnsafeCell<usize>,
@@ -372,6 +376,14 @@ mod prev_rustic_nothread {
             let tot_entries = tot_buckets * ENTRIES_PER_BUCKET;
 
             let ptr = UnsafeCell::new(unsafe { Self::alloc_room(tot_buckets) });
+
+            unsafe {
+                let mut p: *mut Bucket = (*ptr.get()).as_ptr();
+                for n in 0..tot_buckets {
+                    *p = Bucket::new();
+                    p = p.add(1);
+                }
+            }
 
             Self {
                 // tt: vec![Bucket::new(); tot_buckets],
@@ -424,9 +436,17 @@ mod prev_rustic_nothread {
             let ver = self.calc_verification(zb);
             // self.tt[idx].store(ver, si, &mut self.used_entries)
 
+            // println!("inserting zb = {:?}, idx = {:?}, ver = {:?}", zb, idx, ver);
+
             unsafe {
                 // let ptr: *mut Bucket = self.ptr.get_mut().as_ptr()
-                let ptr: *mut Bucket = (*self.ptr.get()).as_ptr();
+
+                // let ptr: *mut Bucket = (*self.ptr.get()).as_ptr()
+                //     .add(idx)
+                //     // .offset(idx as isize)
+                //     ;
+
+                let ptr = self.bucket(idx);
 
                 let mut used_entries: &mut usize = &mut (*self.used_entries.get());
 
@@ -439,12 +459,18 @@ mod prev_rustic_nothread {
 
     /// Probe
     impl TransTable {
+
+        pub unsafe fn bucket(&self, idx: usize) -> *mut Bucket {
+            (*self.ptr.get()).as_ptr()
+                .add(idx)
+        }
+
         pub fn probe(&self, zb: Zobrist) -> Option<&SearchInfo> {
             let idx = self.calc_index(zb);
             let ver = self.calc_verification(zb);
 
             unsafe {
-                let ptr: *mut Bucket = (*self.ptr.get()).as_ptr();
+                let ptr = self.bucket(idx);
                 (*ptr).find(ver)
             }
         }

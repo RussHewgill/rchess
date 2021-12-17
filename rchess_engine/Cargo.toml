@@ -25,6 +25,8 @@ default = [
 
     # "basic_time",
 
+    # "lockless_hashmap",
+
     # "backtrace",
 
     "keep_stats",
@@ -54,6 +56,8 @@ one_thread = []
 smallstack = []
 
 basic_time = []
+
+lockless_hashmap = []
 
 backtrace = []
 

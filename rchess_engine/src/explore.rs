@@ -1,6 +1,6 @@
 
 use crate::evmap_tables::*;
-use crate::lockless_map::TransTable;
+use crate::lockless_map::*;
 use crate::searchstats;
 use crate::types::*;
 use crate::tables::*;
@@ -57,7 +57,8 @@ pub struct Explorer {
 
     pub nnue:          Option<NNUE4>,
 
-    pub ptr_tt:        TransTable,
+    #[cfg(feature = "lockless_hashmap")]
+    pub ptr_tt:        Arc<TransTable>,
 
     pub tt_rf:         TTReadFactory,
     pub tt_w:          TTWrite,
@@ -109,7 +110,7 @@ pub struct ExHelper {
 
     #[cfg(feature = "syzygy")]
     pub syzygy:          Option<Arc<SyzygyTB>>,
-    pub nnue:          Option<RefCell<NNUE4>>,
+    pub nnue:            Option<RefCell<NNUE4>>,
 
     pub cfg:             ExConfig,
 
@@ -117,11 +118,14 @@ pub struct ExHelper {
     pub tx:              ExSender,
     // pub thread_dec:      Sender<usize>,
 
+    #[cfg(feature = "lockless_hashmap")]
+    pub ptr_tt:          Arc<TransTable>,
+
     pub tt_r:            TTRead,
     pub tt_w:            TTWrite,
 
     // pub ph_rw:         (PHRead,PHWrite),
-    pub ph_rw:         PHTable,
+    pub ph_rw:           PHTable,
 }
 
 /// Load EvalParams
@@ -186,6 +190,9 @@ impl Explorer {
             best_depth,
             tx,
             // thread_dec,
+
+            #[cfg(feature = "lockless_hashmap")]
+            ptr_tt:          self.ptr_tt.clone(),
 
             tt_r:            self.tt_rf.handle(),
             tt_w:            self.tt_w.clone(),
@@ -274,7 +281,8 @@ impl Explorer {
 
             nnue:           None,
 
-            ptr_tt:         TransTable::new_mb(256),
+            #[cfg(feature = "lockless_hashmap")]
+            ptr_tt:         Arc::new(TransTable::new_mb(DEFAULT_TT_SIZE_MB)),
 
             tt_rf,
             tt_w,

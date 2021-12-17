@@ -262,13 +262,13 @@ fn main_tt() {
     // println!("{} bytes allocated/{} bytes resident", allocated, resident);
 
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
-    let zb = Zobrist(rng.gen());
+    // let zb = Zobrist(rng.gen());
 
     // // let s0 = std::mem::size_of::<TTEntry>();
     // let s0 = std::mem::size_of::<Score>();
     // eprintln!("s0 = {:?}", s0);
 
-    let mut tt = TransTable::new_mb(1);
+    let tt2 = TransTable::new_mb(32);
 
     // let mut b0 = Bucket::new();
 
@@ -277,16 +277,83 @@ fn main_tt() {
 
     // let mut x = 0;
 
-    let mut si = SearchInfo::empty();
-    si.depth_searched = 22;
+    use std::cell::UnsafeCell;
+    use std::ptr::NonNull;
+    use std::mem;
+    use std::alloc::{Layout, handle_alloc_error, self};
 
-    tt.insert(zb, si);
+    // let tt: NonNull<i32> = unsafe {
+    //     let size         = 32;
+    //     let layout       = Layout::from_size_align(size, 2).unwrap();
+    //     let ptr: *mut u8 = alloc::alloc_zeroed(layout);
+    //     let ptr2: NonNull<i32> = match NonNull::new(ptr) {
+    //         Some(ptr) => ptr.cast(),
+    //         _ => unimplemented!(),
+    //     };
+    //     ptr2
+    // };
 
-    let si2 = tt.probe(zb);
+    // unsafe {
+    //     let x0: i32 = 2;
+    //     let x1: i32 = 3;
+    //     let ptr = tt.as_ptr();
+    //     *ptr = x0;
+    //     let ptr = ptr.add(1);
+    //     *ptr = x1;
+    // }
 
-    // b0.store(ver, si, &mut x);
-    // let si2 = b0.find(ver);
+    // unsafe {
+    //     let ptr = tt.as_ptr();
+    //     let x0 = *ptr;
+    //     eprintln!("x0 = {:?}", x0);
+    //     let ptr = ptr.add(1);
+    //     let x1 = *ptr;
+    //     eprintln!("x1 = {:?}", x1);
+    // }
 
+    // return;
+
+    let zb1 = Zobrist(0xcdab13aceaa91520);
+    let zb2 = Zobrist(0x6b2bc7c01dffde39);
+
+    // unsafe {
+    //     let idx0 = tt2.calc_index(zb1);
+    //     eprintln!("idx0 = {:?}", idx0);
+    //     let b0 = tt2.bucket(idx0);
+    //     eprintln!("b0 = {:?}", (*b0).x);
+    //     let idx1 = tt2.calc_index(zb2);
+    //     eprintln!("idx1 = {:?}", idx1);
+    //     let b1 = tt2.bucket(idx1);
+    //     eprintln!("b1 = {:?}", (*b1).x);
+    // }
+
+    // return;
+
+    let mut si0 = SearchInfo::empty();
+    let mut si1 = SearchInfo::empty();
+
+    si0.depth_searched = 22;
+    si1.depth_searched = 33;
+
+    let si2 = tt2.probe(zb1);
+    eprintln!("si2 = {:?}", si2);
+    let si2 = tt2.probe(zb2);
+    eprintln!("si2 = {:?}", si2);
+
+    tt2.insert(zb1, si0);
+    tt2.insert(zb2, si1);
+
+    // unsafe {
+    //     let b0 = *tt2.bucket(201644);
+    //     eprintln!("b0 = {:?}", b0);
+    //     let ver = 3936949536;
+    //     let si2 = b0.find(ver);
+    //     eprintln!("si2 = {:?}", si2);
+    // }
+
+    let si2 = tt2.probe(zb1);
+    eprintln!("si2 = {:?}", si2);
+    let si2 = tt2.probe(zb2);
     eprintln!("si2 = {:?}", si2);
 
     return;
@@ -2916,6 +2983,21 @@ fn main9() {
     let (res,moves,stats0) = ex.lazy_smp_2(&ts);
     let t1 = t0.elapsed();
     let t2 = t1.as_secs_f64();
+
+    // let fen = "r4rk1/4npp1/1p4b1/1B2p3/1q1P2Q1/P3P3/5PP1/R3K2R w KQ - 0 2";
+    // let g2 = Game::from_fen(&ts, fen).unwrap();
+    // let zb2 = g2.zobrist;
+    // eprintln!("zb2 = {:?}", zb2);
+
+    // let zb1 = Zobrist(0xcdab13aceaa91520);
+    // let zb2 = Zobrist(0x6b2bc7c01dffde39);
+    // let tt2 = ex.ptr_tt.clone();
+    // let si2 = ex.ptr_tt.probe(zb1);
+    // eprintln!("si2 = {:?}", si2);
+    // let si2 = ex.ptr_tt.probe(zb2);
+    // eprintln!("si2 = {:?}", si2);
+
+    // return;
 
     // println!("wat 0");
     // let fen = games_wac(1);

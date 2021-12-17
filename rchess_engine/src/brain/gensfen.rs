@@ -255,14 +255,22 @@ mod td_builder {
 
             let mut g = Game::from_fen(ts, STARTPOS).unwrap();
             let timesettings = TimeSettings::new_f64(0.0, self.time);
-            let mut ex = Explorer::new(g.state.side_to_move, g.clone(), self.max_depth, timesettings);
-            ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+            // let mut ex = Explorer::new(g.state.side_to_move, g.clone(), self.max_depth, timesettings);
+            let mut ex_white = Explorer::new(g.state.side_to_move, g.clone(), self.max_depth, timesettings);
+            let mut ex_black = Explorer::new(g.state.side_to_move, g.clone(), self.max_depth, timesettings);
+            // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+            ex_white.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+            ex_black.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
 
-            ex.cfg.num_threads = Some(1);
-            ex.cfg.clear_table = false;
+            // ex.cfg.num_threads = Some(1);
+            ex_white.cfg.num_threads = Some(1);
+            ex_black.cfg.num_threads = Some(1);
+            // ex.cfg.clear_table = false;
+            ex_white.cfg.clear_table = false;
+            ex_black.cfg.clear_table = false;
 
-            let mut ex_white = ex.clone();
-            let mut ex_black = ex.clone();
+            // let mut ex_white = ex.clone();
+            // let mut ex_black = ex.clone();
             ex_black.side = Black;
 
             let mut exs = [ex_white, ex_black];

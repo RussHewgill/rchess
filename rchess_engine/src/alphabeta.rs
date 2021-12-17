@@ -133,15 +133,16 @@ impl ExHelper {
 impl ExHelper {
 
     /// returns (can_use, SearchInfo)
+    #[cfg(not(feature = "lockless_hashmap"))]
     pub fn check_tt_negamax(
         &self,
         ts:             &Tables,
-        zb:             &Zobrist,
+        zb:             Zobrist,
         depth:          Depth,
         mut stats:      &mut SearchStats,
     ) -> Option<(SICanUse,SearchInfo)> {
         // if let Some(si) = tt_r.get_one(&g.zobrist) {
-        if let Some(si) = self.tt_r.get_one(zb) {
+        if let Some(si) = self.tt_r.get_one(&zb) {
             if si.depth_searched >= depth {
                 stats!(stats.tt_hits += 1);
                 Some((SICanUse::UseScore,*si))
@@ -156,6 +157,35 @@ impl ExHelper {
             // score
             None
         }
+    }
+
+    #[cfg(feature = "lockless_hashmap")]
+    pub fn check_tt_negamax(
+        &self,
+        ts:             &Tables,
+        zb:             Zobrist,
+        depth:          Depth,
+        mut stats:      &mut SearchStats,
+    ) -> Option<(SICanUse,SearchInfo)> {
+        // if let Some(si) = tt_r.get_one(&g.zobrist) {
+
+        if let Some(si) = self.ptr_tt.probe(zb) {
+        // if let Some(si) = self.tt_r.get_one(zb) {
+            if si.depth_searched >= depth {
+                stats!(stats.tt_hits += 1);
+                Some((SICanUse::UseScore,*si))
+            } else {
+                stats!(stats.tt_halfmiss += 1);
+                Some((SICanUse::UseOrdering,*si))
+            }
+        } else {
+            // if g.zobrist == Zobrist(0x1eebfbac03c62e9d) { println!("wat wat 3"); }
+            stats!(stats.tt_misses += 1);
+            // let score = self._ab_search(&ts, &g, depth - 1, k + 1, alpha, beta, !maximizing);
+            // score
+            None
+        }
+
     }
 
     pub fn ab_search_single(
@@ -429,7 +459,7 @@ impl ExHelper {
         let mut gs: Vec<(Move,Zobrist,Option<(SICanUse,SearchInfo)>)> = Vec::with_capacity(moves.len());
         for mv in moves.into_iter() {
             let zb = g.zobrist.update_move_unchecked(ts, g, mv);
-            let tt = self.check_tt_negamax(&ts, &zb, depth, &mut stats);
+            let tt = self.check_tt_negamax(&ts, zb, depth, &mut stats);
             gs.push((mv,zb,tt));
         }
 

@@ -199,9 +199,15 @@ pub enum Node {
 /// tt_insert_deepest
 impl ExHelper {
 
+    #[cfg(feature = "lockless_hashmap")]
+    pub fn tt_insert_deepest(&self, zb: Zobrist, si: SearchInfo) {
+        // trace!("inserting zb = {:?}, si = {:?}", zb, si);
+        self.ptr_tt.insert(zb, si);
+    }
+
     #[allow(unused_doc_comments)]
-    pub fn tt_insert_deepest(
-        &self, zb: Zobrist, si: SearchInfo) -> bool {
+    #[cfg(not(feature = "lockless_hashmap"))]
+    pub fn tt_insert_deepest(&self, zb: Zobrist, si: SearchInfo) -> bool {
 
         let d  = si.depth_searched;
         let nt = si.node_type;
