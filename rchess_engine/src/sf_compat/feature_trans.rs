@@ -13,7 +13,7 @@ use std::path::Path;
 
 use arrayvec::ArrayVec;
 use byteorder::{ReadBytesExt, LittleEndian, WriteBytesExt};
-use aligned::{Aligned,A64};
+use aligned::{Aligned,A64,A32};
 
 // #[derive(Debug,PartialEq,Clone)]
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
@@ -527,36 +527,54 @@ impl NNFeatureTrans {
             }
         }
 
-        drop(acc);
+        // drop(acc);
         let mut acc_psqt = [m256i::default(); Self::NUM_REGS_PSQT];
 
         for k in 0..Self::PSQT_BUCKETS / Self::TILE_HEIGHT_PSQT {
-
             let acc_tile_psqt: &mut [m256i] = unsafe {
                 let xs = &mut self.accum.psqt[persp][k * Self::TILE_HEIGHT_PSQT..];
-                cast_slice_to_m256i_mut(xs)
+                cast_slice_to_m256i_mut(xs.as_mut())
             };
-
             for i in 0..Self::NUM_REGS_PSQT {
                 acc_psqt[i] = load_m256i(&acc_tile_psqt[i]);
+                // acc_psqt[i] = acc_tile_psqt[i];
             }
-
             let offset = Self::PSQT_BUCKETS * idx.0 + k * Self::TILE_HEIGHT_PSQT;
             let column_psqt = unsafe { cast_slice_to_m256i(&self.psqt_weights[offset..]) };
-
             for i in 0..Self::NUM_REGS_PSQT {
                 if ADD {
-                    acc_psqt[i] = add_i16_m256i(acc_psqt[i], column_psqt[i]);
+                    acc_psqt[i] = add_i32_m256i(acc_psqt[i], column_psqt[i]);
                 } else {
-                    acc_psqt[i] = sub_i16_m256i(acc_psqt[i], column_psqt[i]);
+                    acc_psqt[i] = sub_i32_m256i(acc_psqt[i], column_psqt[i]);
                 }
             }
-
             for i in 0..Self::NUM_REGS_PSQT {
                 store_m256i(&mut acc_tile_psqt[i], acc_psqt[i]);
                 // acc_tile_psqt[i] = acc_psqt[i];
             }
         }
+
+        // let idx = idx.0;
+        // let offset = HALF_DIMS * idx;
+
+        // let mut accum = &mut self.accum.accum[persp][..HALF_DIMS];
+        // let weights = &self.weights[offset..offset + HALF_DIMS];
+
+        // for j in 0..HALF_DIMS {
+        //     if ADD {
+        //         accum[j] += weights[j];
+        //     } else {
+        //         accum[j] -= weights[j];
+        //     }
+        // }
+
+        // for k in 0..Self::PSQT_BUCKETS {
+        //     if ADD {
+        //         self.accum.psqt[persp][k] += self.psqt_weights[idx * Self::PSQT_BUCKETS + k];
+        //     } else {
+        //         self.accum.psqt[persp][k] -= self.psqt_weights[idx * Self::PSQT_BUCKETS + k];
+        //     }
+        // }
 
     }
 
@@ -615,6 +633,8 @@ impl NNFeatureTrans {
 
     pub fn accum_add(&mut self, i_w: NNIndex, i_b: NNIndex) -> NNDelta {
         // eprintln!("add (i_w,i_b) = {:?}", (i_w,i_b));
+
+        // TODO: assert if different
 
         // self._accum_add(White, i_w);
         // self._accum_add(Black, i_b);

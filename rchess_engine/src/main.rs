@@ -268,8 +268,12 @@ fn main_tt() {
     // let s0 = std::mem::size_of::<Score>();
     // eprintln!("s0 = {:?}", s0);
 
+
+
+    return;
+
     // old
-    if !true  {
+    if !true {
 
     if !true {
         use std::alloc::{Layout, handle_alloc_error, self};
@@ -1960,18 +1964,30 @@ fn _main_nn() -> std::io::Result<()> {
         // };
 
         let g2 = g.make_move_unchecked(&ts, mv2).unwrap();
-        nn2.ft.make_move(&g2, mv2);
+        // nn2.ft.make_move(&g2, mv2);
+
+        let mut nn3 = nn2.clone();
+
+        let i_w = NNIndex(21924);
+        let i_b = NNIndex(20444);
+        // let i_w = NNIndex(21916);
+        // let i_b = NNIndex(20452);
+
+        nn2.ft._accum_inc_simd::<true>(White, i_w);
+        // nn2.ft._accum_inc_simd::<true>(Black, i_b);
+
+        nn3.ft._accum_add(White, i_w);
+        // nn3.ft._accum_add(Black, i_b);
+
+        eprintln!("nn2.accum.accum == nn3.accum.accum = {:?}", nn2.ft.accum.accum == nn3.ft.accum.accum);
+        eprintln!("nn2.accum.psqt == nn3.accum.psqt = {:?}", nn2.ft.accum.psqt == nn3.ft.accum.psqt);
+
+        return Ok(());
 
         let mut transformed: Aligned<A64,_> = Aligned([0; HALF_DIMS * 2]);
         let psqt = nn2.ft.transform(&g2, transformed.as_mut(), 0);
         eprintln!("psqt = {:?}", psqt);
         eprintln!("psqt == 2 = {:?}", psqt == 2);
-
-        // let i_w = NNIndex(21924);
-        // let i_b = NNIndex(20444);
-
-        // nn2.ft._accum_inc_simd::<true>(White, i_w);
-        // nn2.ft._accum_inc_simd::<true>(Black, i_b);
 
         let v1 = nn2.evaluate(&g2, false);
         eprintln!("v1 = {:?}", v1);

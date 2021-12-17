@@ -5,33 +5,35 @@ use crate::evaluate::Score;
 use crate::explore::SearchInfo;
 use crate::hashing::Zobrist;
 
-use std::alloc::{Layout, handle_alloc_error, self};
-use std::ptr::NonNull;
-use std::cell::{UnsafeCell, Cell};
+pub use prev_rustic_nothread::*;
 
-pub const CLUSTER_SIZE: usize = 3;
+// use std::alloc::{Layout, handle_alloc_error, self};
+// use std::ptr::NonNull;
+// use std::cell::{UnsafeCell, Cell};
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
-pub struct TTEntry {
-    pub verification:       u32,
-    pub entry:              SearchInfo,
-}
+// pub const CLUSTER_SIZE: usize = 3;
 
-impl TTEntry {
-    pub fn new() -> Self {
-        Self {
-            verification:  0,
-            entry:         SearchInfo::empty(),
-        }
-    }
-}
+// #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
+// pub struct TTEntry {
+//     pub verification:       u32,
+//     pub entry:              SearchInfo,
+// }
 
-pub struct Cluster {
-    pub entry:   [TTEntry; CLUSTER_SIZE],
-    pub padding: [u8; 2],
-}
+// impl TTEntry {
+//     pub fn new() -> Self {
+//         Self {
+//             verification:  0,
+//             entry:         SearchInfo::empty(),
+//         }
+//     }
+// }
 
-pub struct TransTable {}
+// pub struct Cluster {
+//     pub entry:   [TTEntry; CLUSTER_SIZE],
+//     pub padding: [u8; 2],
+// }
+
+// pub struct TransTable {}
 
 #[cfg(feature = "nope")]
 mod prev_pleco {
@@ -237,7 +239,7 @@ mod prev_pleco {
 
 }
 
-#[cfg(feature = "nope")]
+// #[cfg(feature = "nope")]
 mod prev_rustic_nothread {
     use super::*;
 
@@ -284,8 +286,15 @@ mod prev_rustic_nothread {
 
     impl Bucket {
         pub fn store(&mut self, ver: u32, si: SearchInfo, used_entries: &mut usize) {
+            let mut idx_lowest_depth = 0;
+
             unimplemented!()
         }
+
+        pub fn find(&self, ver: u32) -> Option<&SearchInfo> {
+            unimplemented!()
+        }
+
     }
 
     pub struct TransTable {
