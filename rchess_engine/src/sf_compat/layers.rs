@@ -849,7 +849,8 @@ mod nn_affine {
             for big_block in 0..Self::NUM_BIG_BLOCKS {
 
                 // let mut acc = [m256i::default(); Self::NUM_OUTPUT_REGS];
-                let mut acc = vec![m256i::default(); Self::NUM_OUTPUT_REGS];
+                // let mut acc = vec![m256i::default(); Self::NUM_OUTPUT_REGS];
+                let mut acc = [m256i::default(); OS];
 
                 let mut small_block = 0;
                 while small_block < Self::NUM_SMALL_BLOCKS_PER_OUTPUT {
