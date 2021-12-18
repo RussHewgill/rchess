@@ -20,10 +20,10 @@ impl ExHelper {
         // (alpha,beta):       (i32,i32),
         (alpha,beta):       (Score,Score),
         mut stats:          &mut SearchStats,
-        mut tracking:       &mut ExTracking,
+        mut tracking:       &mut ABStack,
     ) -> bool {
 
-        cfg.root        = false;
+        // cfg.root        = false;
         cfg.do_null     = false;
         cfg.inside_null = true;
 
@@ -45,6 +45,7 @@ impl ExHelper {
                 (-beta, -beta + 1),
                 // (-beta, -alpha), // XXX: doesn't work
                 stats, tracking,
+                ABNodeType::NonPV,
             ) {
 
                 // res.moves.push_front(mv);

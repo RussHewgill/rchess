@@ -100,6 +100,13 @@ pub enum Prune {
     NullMove,
 }
 
+#[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
+pub enum ABNodeType {
+    Root,
+    PV,
+    NonPV,
+}
+
 // pub struct ABStack {
 //     pvs:              Vec<Move>,
 //     ply:              Depth,
@@ -136,7 +143,39 @@ impl ExHelper {
 
 }
 
-/// TT Probe, search_single
+/// search_single
+impl ExHelper {
+    pub fn ab_search_single(
+        &self,
+        ts:             &Tables,
+        mut stats:      &mut SearchStats,
+        mut tracking:   &mut ABStack,
+        depth:          Depth,
+    ) -> ABResults {
+
+        let mut stop_counter = 0;
+
+        let mut cfg = ABConfig::new_depth(depth);
+        // is_root = true;
+
+        let (alpha,beta) = (Score::MIN,Score::MAX);
+        let (alpha,beta) = (alpha + 200,beta - 200);
+
+        let mut g = self.game.clone();
+
+        let res = self._ab_search_negamax(
+            ts, &mut g, cfg, depth,
+            0, &mut stop_counter, (alpha, beta),
+            &mut stats,
+            &mut tracking,
+            ABNodeType::Root,
+        );
+
+        res
+    }
+}
+
+/// TT Probe
 impl ExHelper {
 
     /// returns (can_use, SearchInfo)
@@ -195,34 +234,199 @@ impl ExHelper {
 
     }
 
-    pub fn ab_search_single(
+    pub fn check_tt2(
         &self,
         ts:             &Tables,
-        mut stats:      &mut SearchStats,
-        mut tracking:   &mut ExTracking,
+        zb:             Zobrist,
         depth:          Depth,
-    ) -> ABResults {
-
-        let mut stop_counter = 0;
-
-        let mut cfg = ABConfig::new_depth(depth);
-        cfg.root = true;
-
-        let (alpha,beta) = (Score::MIN,Score::MAX);
-        let (alpha,beta) = (alpha + 200,beta - 200);
-
-        let mut g = self.game.clone();
-
-        let res = self._ab_search_negamax(
-            ts, &mut g, cfg, depth,
-            0, &mut stop_counter, (alpha, beta),
-            &mut stats,
-            &mut tracking,
-            );
-
-        res
+        mut stats:      &mut SearchStats,
+    ) -> Option<SearchInfo> {
+        if let Some(si) = self.ptr_tt.probe(zb) {
+            if si.depth_searched >= depth {
+                stats!(stats.tt_hits += 1);
+            } else {
+                stats!(stats.tt_halfmiss += 1);
+            }
+            Some(*si)
+        } else {
+            stats!(stats.tt_misses += 1);
+            None
+        }
     }
 
+}
+
+/// Negamax AB Refactor
+impl ExHelper {
+    #[allow(unused_doc_comments,unused_labels)]
+    pub fn _ab_search_negamax2(
+        &self,
+        ts:                      &Tables,
+        g:                       &Game,
+        mut cfg:                 ABConfig,
+        depth:                   Depth,
+        ply:                     Depth,
+        mut stop_counter:        &mut u16,
+        (mut alpha, mut beta):   (Score,Score),
+        mut stats:               &mut SearchStats,
+        mut stack:               &mut ABStack,
+        node_type:               ABNodeType,
+        cut_node:                bool,
+    ) -> ABResults {
+        use ABNodeType::*;
+
+        // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
+
+        let is_pv: bool   = node_type != ABNodeType::NonPV;
+        let is_root: bool = node_type == ABNodeType::Root;
+
+        /// Repetition, Halting
+        if !is_root {
+            /// Repetition checking
+            if let Some(k) = g.history.get(&g.zobrist) {
+                if *k >= 2 {
+                    let score = -STALEMATE_VALUE + ply as Score;
+                    return ABSingle(ABResult::new_single(g.last_move.unwrap(), 0));
+                }
+            }
+
+            /// Halted search
+            if self.stop.load(SeqCst) {
+                return ABNone;
+            }
+            {
+                let r = self.best_mate.read();
+                if let Some(best) = *r {
+                    trace!("halting search of depth {}, mate found", cfg.max_depth);
+                    return ABNone;
+                }
+            }
+
+        }
+
+        /// Qsearch
+        if depth == 0 {
+            // if !self.tt_r.contains_key(&g.zobrist) {
+            // }
+            stats.leaves += 1;
+
+            #[cfg(feature = "qsearch")]
+            let score = {
+                // trace!("    beginning qsearch, {:?}, a/b: {:?},{:?}",
+                //        prev_mvs.front().unwrap().1, alpha, beta);
+                let nt = if node_type == PV { PV } else { NonPV };
+                let score = self.qsearch(&ts, &g, (ply,0), (alpha, beta), &mut stats, nt);
+                // trace!("    returned from qsearch, score = {}", score);
+                score
+            };
+
+            #[cfg(not(feature = "qsearch"))]
+            let score = if g.state.side_to_move == Black {
+                -g.evaluate(&ts).sum()
+            } else {
+                g.evaluate(&ts).sum()
+            };
+
+            // return ABSingle(ABResult::new_empty(score));
+            return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
+        }
+
+        // let msi: Option<(SICanUse,SearchInfo)> = self.check_tt_negamax(ts, g.zobrist, depth, stats);
+        let msi: Option<SearchInfo> = self.check_tt2(ts, g.zobrist, depth, stats);
+
+        /// Check for returnable TT score
+        if let Some(si) = msi {
+            if !is_pv && si.depth_searched >= depth { // XXX: depth or depth-1 ??
+                return ABResults::ABSingle(ABResult::new_single(g.last_move.unwrap(), si.score));
+            }
+        }
+
+        /// Syzygy Probe
+        #[cfg(feature = "syzygy")]
+        if let Some(tb) = &self.syzygy {
+            match tb.probe_wdl(ts, g) {
+                Ok(Wdl::Win) => {
+                    // trace!("found WDL win: {:?}", Wdl::Win);
+                    match tb.best_move(ts, g) {
+                        Ok(Some((mv,dtz)))  => {
+                            // trace!("dtz,ply = {:?}, {:?}", dtz, ply);
+                            // let score = CHECKMATE_VALUE - ply as Score - dtz.0 as Score;
+                            let score = CHECKMATE_VALUE - dtz.add_plies(ply as i32).0.abs() as Score;
+
+                            // XXX: wrong, but matches with other wrong mate in x count
+                            let score = score + 1;
+                            // return ABResults::ABSingle(ABResult::new_single(mv, score));
+                            return ABResults::ABSyzygy(ABResult::new_single(mv, score));
+                            // return ABResults::ABSyzygy(ABResult::new_single(mv, score));
+                        },
+                        Err(e) => {
+                        },
+                        _ => {
+                        },
+                    }
+                },
+                Ok(Wdl::Loss) => {
+                    // return ABResults::ABSingle()
+                },
+                Ok(wdl) => {
+                    trace!("found other WDL: {:?}", wdl);
+                    // unimplemented!()
+                },
+                Err(e) => {
+                    // unimplemented!()
+                }
+            }
+        }
+
+        /// when in check, skip early pruning
+        let in_check = g.state.checkers.is_not_empty();
+
+        // TODO: futility pruning
+
+        // TODO: null move pruning
+
+        // /// Filter checkmate, stalemate
+        // let mut moves: Vec<Move> = match moves {
+        //     Outcome::Checkmate(c) => {
+        //         // let score = 100_000_000 - ply as Score;
+        //         let score = CHECKMATE_VALUE - ply as Score;
+        //         // if !self.tt_r.contains_key(&g.zobrist) {
+        //         // }
+        //         stats.leaves += 1;
+        //         stats.checkmates += 1;
+
+        //         let mv = g.last_move.unwrap();
+
+        //         // return ABSingle(ABResult::new_empty(-score));
+        //         return ABSingle(ABResult::new_single(mv, -score));
+
+        //     },
+        //     Outcome::Stalemate    => {
+        //         let score = -STALEMATE_VALUE + ply as Score;
+        //         // if !self.tt_r.contains_key(&g.zobrist) {
+        //         //     stats!(stats.leaves += 1);
+        //         //     stats!(stats.stalemates += 1);
+        //         // }
+        //         stats.leaves += 1;
+        //         stats.stalemates += 1;
+
+        //         // let mv = g.last_move.unwrap();
+        //         if let Some(mv) = g.last_move {
+        //             // TODO: adjust stalemate value when winning/losing
+        //             // return ABSingle(ABResult::new_empty(-score));
+        //             // return ABSingle(ABResult::new_single(mv, score));
+        //             return ABSingle(ABResult::new_single(mv, 0));
+        //         } else {
+        //             return ABNone
+        //         }
+        //     },
+        //     Outcome::Moves(ms)    => ms,
+        // };
+
+
+
+        unimplemented!()
+    }
 }
 
 /// Negamax AB
@@ -256,10 +460,15 @@ impl ExHelper {
         mut stop_counter:        &mut u16,
         (mut alpha, mut beta):   (Score,Score),
         mut stats:               &mut SearchStats,
-        mut tracking:            &mut ExTracking,
+        mut stack:               &mut ABStack,
+        node_type:               ABNodeType,
     ) -> ABResults {
+        use ABNodeType::*;
 
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
+
+        let is_pv: bool   = node_type != ABNodeType::NonPV;
+        let is_root: bool = node_type == ABNodeType::Root;
 
         /// Repetition checking
         // if !cfg.inside_null {
@@ -270,7 +479,7 @@ impl ExHelper {
                     // return ABSingle(ABResult::new_single(g.last_move.unwrap(), -score));
                     // return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
                     // trace!("repetition found, last move {:?}", g.last_move);
-                    if cfg.root {
+                    if is_root {
                         // return ABNone;
                     } else {
                         return ABSingle(ABResult::new_single(g.last_move.unwrap(), 0));
@@ -318,7 +527,7 @@ impl ExHelper {
 
         // let moves = g.search_all(&ts);
 
-        let moves = if cfg.root {
+        let moves = if is_root {
             if let Some(mvs) = &self.cfg.only_moves {
                 let mvs = mvs.clone().into_iter().collect();
                 Outcome::Moves(mvs)
@@ -368,7 +577,7 @@ impl ExHelper {
         };
 
         /// Filter blocked moves
-        if cfg.root {
+        if is_root {
             moves.retain(|mv| !self.cfg.blocked_moves.contains(&mv));
         }
 
@@ -382,7 +591,8 @@ impl ExHelper {
             let score = {
                 // trace!("    beginning qsearch, {:?}, a/b: {:?},{:?}",
                 //        prev_mvs.front().unwrap().1, alpha, beta);
-                let score = self.qsearch(&ts, &g, (ply,0), (alpha, beta), &mut stats);
+                let nt = if node_type == PV { PV } else { NonPV };
+                let score = self.qsearch(&ts, &g, (ply,0), (alpha, beta), &mut stats, nt);
                 // trace!("    returned from qsearch, score = {}", score);
                 score
             };
@@ -481,7 +691,7 @@ impl ExHelper {
             gs.push((mv,zb,tt));
         }
 
-        self.order_moves(ts, g, ply, &mut tracking, &mut gs[..]);
+        self.order_moves(ts, g, ply, &mut stack, &mut gs[..]);
 
         let mut node_type = Node::All;
 
@@ -580,7 +790,6 @@ impl ExHelper {
 
                     let mut cfg2 = cfg;
                     cfg2.do_null = true;
-                    cfg2.root    = false;
 
                     let mut lmr = true;
                     let mut depth2 = depth - 1;
@@ -631,10 +840,7 @@ impl ExHelper {
                             ts, &g2, cfg2, depth3, ply + 1, &mut stop_counter,
                             (-beta, -alpha), &mut stats,
                             // pms.clone(), &mut history, tt_r, tt_w.clone(),
-                            &mut tracking,
-                            // false,
-                            // // XXX: No Null pruning inside reduced depth search ?
-                            // true
+                            &mut stack, NonPV
                         ) {
                             ABSingle(mut res) | ABSyzygy(mut res) => {
                                 res.neg_score(mv);
@@ -666,31 +872,22 @@ impl ExHelper {
                     match self._ab_search_negamax(
                         ts, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
                         (a2, b2), &mut stats,
-                        // pms.clone(), &mut history, tt_r, tt_w.clone()) {
-                        &mut tracking) {
+                        &mut stack,
+                        NonPV
+                    ) {
                         ABSingle(mut res) | ABSyzygy(mut res) => {
-                            // res.moves.push_front(*mv);
                             res.neg_score(mv);
-
-                            if mv != res.mv {
-                                eprintln!("g = {:?}", g);
-                                eprintln!("g2 = {:?}", g2);
-                                eprintln!("mv  = {:?}", mv);
-                                eprintln!("res = {:?}", res);
-                                panic!();
-                            }
-                            // assert_eq!(mv, res.mv);
 
                             #[cfg(feature = "pvs_search")]
                             if !search_pv && res.score > alpha {
                                 match self._ab_search_negamax(
                                     ts, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
                                     (-beta, -alpha), &mut stats,
-                                    // pms, &mut history, tt_r, tt_w.clone()) {
-                                    &mut tracking) {
+                                    &mut stack,
+                                    NonPV,
+                                ) {
                                     ABSingle(mut res2) | ABSyzygy(mut res2) => {
                                         res2.neg_score(mv);
-                                        // res2.moves.push_front(*mv);
                                         res = res2;
                                     },
                                     // ABList(_, _) => break 'outer,
@@ -705,7 +902,7 @@ impl ExHelper {
                                 }
                             }
 
-                            if cfg.root {
+                            if is_root {
                                 list.push(res.clone());
                             }
                             (false, res)
@@ -760,7 +957,7 @@ impl ExHelper {
                     #[cfg(feature = "killer_moves")]
                     if !mv.filter_all_captures() {
                         // tracking.killers.increment(g.state.side_to_move, ply, &mv);
-                        tracking.killers.store(g.state.side_to_move, ply, mv);
+                        stack.killers.store(g.state.side_to_move, ply, mv);
                     }
 
                     if moves_searched == 0 {
@@ -832,7 +1029,7 @@ impl ExHelper {
                 // let mut res2 = res.clone();
                 // res2.mv = *mv;
 
-                if cfg.root {
+                if is_root {
                     ABList(*res, list)
                 } else {
                     ABSingle(*res)

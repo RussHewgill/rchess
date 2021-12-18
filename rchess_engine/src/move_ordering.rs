@@ -37,7 +37,7 @@ impl ExHelper {
         ts:           &Tables,
         g:            &Game,
         ply:          Depth,
-        tracking:     &ExTracking,
+        tracking:     &ABStack,
         mut gs:       &mut [(Move,Zobrist,Option<(SICanUse,SearchInfo)>)],
     ) {
 
@@ -61,7 +61,7 @@ impl ExHelper {
         ts:           &Tables,
         g:            &Game,
         ply:          Depth,
-        tracking:     &ExTracking,
+        tracking:     &ABStack,
         (mv,zb,mtt):  &(Move,Zobrist,Option<(SICanUse,SearchInfo)>),
         #[cfg(feature = "killer_moves")]
         killers:      &(Option<Move>,Option<Move>),

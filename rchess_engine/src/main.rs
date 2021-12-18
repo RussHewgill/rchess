@@ -2799,7 +2799,7 @@ fn main9() {
 
     // let fen = "r1bqk2r/ppp2ppp/2np1n2/4p3/1PP1P3/P1NPbN2/5PPP/R2QKB1R w KQkq -";
 
-    let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
+    // let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
 
     // let fen = "rnbqkb1r/p4p2/2p1pn1p/1p2P1p1/2pP3B/2N2N2/PP3PPP/R2QKB1R w KQkq g6"; // rand opening
 
@@ -2860,8 +2860,8 @@ fn main9() {
     // let t = 0.5;
     // let t = 0.3;
 
-    let n = 35;
-    // let n = 7;
+    // let n = 35;
+    let n = 7;
     // let n = 2;
 
     let t0 = std::time::Instant::now();
@@ -3718,6 +3718,9 @@ fn main5() {
 #[allow(unreachable_code)]
 fn main_perft(depth: Option<u64>) {
 
+    // let ts = Tables::new();
+    let ts = Tables::read_from_file_def().unwrap();
+
     // let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ";
@@ -3733,6 +3736,14 @@ fn main_perft(depth: Option<u64>) {
 
     // let fen = "rnb1k1nr/pppp1ppp/5q2/2b1p3/4P1P1/7P/PPPP1P2/RNBQKBNR w KQkq - 1 4";
 
+    let d = 4;
+    let mut g = Game::from_fen(&ts, fen2).unwrap();
+    timer!({
+        let (tot,_) = g.perft(&ts, d);
+    });
+
+    return;
+
     let n = match depth {
         None    => 4,
         Some(d) => d,
@@ -3744,20 +3755,17 @@ fn main_perft(depth: Option<u64>) {
     // eprintln!("k0 = {:?}", k0);
     // let k1 = Coord::new_int(k0);
 
-    // let ts = Tables::new();
-    let ts = Tables::read_from_file_def().unwrap();
-
     println!("starting");
     for (k,fen) in fens.iter().enumerate() {
         let mut g = Game::from_fen(&ts, fen).unwrap();
 
-        let (ns0, ms) = g.perft(&ts, n);
+        // let (ns0, ms) = g.perft(&ts, n);
 
-        // println!("fen #{}:", k + 1);
-        // let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, n, true, false).unwrap();
-        // println!("perft done in {} seconds.", t);
-        // println!("stockfish took {} seconds.", t_sf);
-        // println!();
+        println!("fen #{}:", k + 1);
+        let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, n, true, false).unwrap();
+        println!("perft done in {} seconds.", t);
+        println!("stockfish took {} seconds.", t_sf);
+        println!();
 
     }
     return;

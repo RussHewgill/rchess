@@ -1,4 +1,5 @@
 
+use crate::alphabeta::ABNodeType;
 use crate::sf_compat::NNUE4;
 use crate::types::*;
 use crate::tables::*;
@@ -155,7 +156,7 @@ impl ExHelper {
         let (alpha,beta) = (alpha + 200,beta - 200);
         self.game = g.clone();
         self.side = g.state.side_to_move;
-        self.qsearch(ts, g, (0,0), (alpha,beta), stats)
+        self.qsearch(ts, g, (0,0), (alpha,beta), stats, ABNodeType::Root)
     }
 
     pub fn qsearch_once(
@@ -166,7 +167,7 @@ impl ExHelper {
     ) -> Score {
         let (alpha,beta) = (Score::MIN,Score::MAX);
         let (alpha,beta) = (alpha + 200,beta - 200);
-        self.qsearch(ts, g, (0,0), (alpha,beta), stats)
+        self.qsearch(ts, g, (0,0), (alpha,beta), stats, ABNodeType::Root)
     }
 
     /// alpha = the MINimum score that the MAXimizing player is assured of
@@ -181,6 +182,7 @@ impl ExHelper {
         (ply,qply):               (Depth,Depth),
         (mut alpha, mut beta):    (Score,Score),
         mut stats:                &mut SearchStats,
+        node_type:                ABNodeType,
     ) -> Score {
         // trace!("qsearch, {:?} to move, ply {}, a/b: {:?},{:?}",
         //        g.state.side_to_move, ply, alpha, beta);
@@ -343,7 +345,8 @@ impl ExHelper {
                     }
                 }
 
-                let score = -self.qsearch(&ts, &g2, (ply + 1,qply + 1), (-beta, -alpha), &mut stats);
+                let score = -self.qsearch(
+                    &ts, &g2, (ply + 1,qply + 1), (-beta, -alpha), &mut stats, node_type);
 
                 if score >= beta && allow_stand_pat {
                     // trace!("qsearch returning beta 1: {:?}", beta);

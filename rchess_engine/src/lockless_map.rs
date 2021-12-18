@@ -252,6 +252,7 @@ mod prev_rustic_nothread {
     use super::*;
 
     // pub const DEFAULT_TT_SIZE_MB: usize = 1024;
+    // pub const DEFAULT_TT_SIZE_MB: usize = 256;
     pub const DEFAULT_TT_SIZE_MB: usize = 64;
 
     const ENTRIES_PER_BUCKET: usize = 3;

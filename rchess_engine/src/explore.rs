@@ -143,25 +143,18 @@ impl ExHelper {
 }
 
 #[derive(Debug,Clone)]
-pub struct ExTracking {
+pub struct ABStack {
     pub history:      [[[Score; 64]; 64]; 2],
     pub killers:      KillerMoves,
-    // pub pvs:          Vec<Vec<Move>>,
-    // pub killers:      [[u8; 64]; 64],
-    // pub killers_1:    Vec<Move>,
-    // pub killers_2:    Vec<Move>,
+    pub pvs:          Vec<Move>,
 }
 
-impl ExTracking {
+impl ABStack {
     fn new() -> Self {
         Self {
             history:      [[[0; 64]; 64]; 2],
-            // killers:      [[0; 64]; 64],
             killers:      KillerMoves::default(),
-            // killers_1:    ArrayVec::new(),
-            // killers_2:    ArrayVec::new(),
-            // killers_1:    vec![],
-            // killers_2:    vec![],
+            pvs:          Vec::with_capacity(64),
         }
     }
 }
@@ -227,20 +220,20 @@ pub struct ABConfig {
     // pub depth:            Depth,
     // pub ply:              Depth,
     // pub tt_r:             &'a TTRead,
-    pub root:             bool,
+    // pub root:             bool,
     pub do_null:          bool,
     pub inside_null:      bool,
-    pub use_ob:           bool,
+    // pub use_ob:           bool,
 }
 
 impl ABConfig {
     pub fn new_depth(max_depth: Depth) -> Self {
         Self {
             max_depth,
-            root:         false,
+            // root:         false,
             do_null:      true,
             inside_null:  false,
-            use_ob:       false,
+            // use_ob:       false,
         }
     }
 }
@@ -935,7 +928,7 @@ impl ExHelper {
     ) {
 
         // let mut history = [[[0; 64]; 64]; 2];
-        let mut tracking = ExTracking::new();
+        let mut tracking = ABStack::new();
         let mut stats = SearchStats::default();
 
         let skip_size = Self::SKIP_SIZE[self.id % Self::SKIP_LEN];
@@ -992,372 +985,5 @@ impl ExHelper {
         trace!("exiting lazy_smp_single, id = {}", self.id);
     }
 
-}
-
-/// Lazy SMP Negamax Old
-impl Explorer {
-
-    fn _lazy_smp_single_negamax(
-        &self,
-        ts:               &Tables,
-        depth:            Depth,
-        tx:               Sender<(Depth,ABResults,SearchStats)>,
-        // mut history:      [[[Score; 64]; 64]; 2],
-    ) {
-        let mut history = [[[0; 64]; 64]; 2];
-
-        // #[cfg(not(feature = "lockless_hashmap"))]
-        // let tt_r = self.tt_rf.handle();
-        // #[cfg(not(feature = "lockless_hashmap"))]
-        // let tt_w = self.tt_w.clone();
-
-        let (alpha,beta) = (i32::MIN,i32::MAX);
-        let (alpha,beta) = (alpha + 200,beta - 200);
-
-        let mut stats = SearchStats::default();
-        let mut stop_counter = 0;
-
-        let mut cfg = ABConfig::new_depth(depth);
-        cfg.root = true;
-
-        let mut g       = self.game.clone();
-        // let mut prev_ms = VecDeque::new();
-
-        // let res = self._ab_search_negamax(
-        //     ts, &mut g, cfg, depth,
-        //     0, &mut stop_counter, (alpha, beta),
-        //     &mut stats,
-        //     // &mut prev_ms,
-        //     VecDeque::new(),
-        //     &mut history,
-        //     // &tt_r, tt_w.clone(),true,true);
-        //     &tt_r, tt_w.clone());
-
-        // // XXX: ??
-        // match tx.send((depth,res,stats)) {
-        // // match tx.try_send((depth,res,stats)) {
-        //     Ok(_) => {},
-        //     // Err(_) => panic!("tx send error: depth {}", depth),
-        //     Err(_) => trace!("tx send error: depth {}", depth),
-        //     // Err(_) => {},
-        // }
-        // drop(tx);
-
-        unimplemented!()
-    }
-
-    fn _lazy_smp_single_negamax2(
-        &self,
-        ts:               &Tables,
-        depth:            Depth,
-        tx:               Sender<(Depth,ABResults,SearchStats)>,
-        // tt_r:             TTRead,
-        // tt_w:             TTWrite,
-    ) {
-
-        let mut stats = SearchStats::default();
-
-        // let helper = self.build_exhelper(ts, 1, depth);
-        // let res = helper.ab_search_negamax(ts, &mut stats, depth);
-
-        // match tx.send((depth,res,stats)) {
-        //     // match tx.try_send((depth,res,stats)) {
-        //     Ok(_) => {},
-        //     // Err(_) => panic!("tx send error: depth {}", depth),
-        //     Err(_) => trace!("tx send error: depth {}", depth),
-        //     // Err(_) => {},
-        // }
-        // drop(tx);
-
-        unimplemented!()
-    }
-
-    #[allow(unused_doc_comments)]
-    #[cfg(feature = "nope")]
-    pub fn lazy_smp_negamax(&self, ts: &Tables, print: bool, strict_depth: bool)
-                            -> ((ABResult, Vec<ABResult>),SearchStats,(TTRead,TTWrite)) {
-
-        let out: Arc<RwLock<(Depth,ABResults,SearchStats)>> =
-            Arc::new(RwLock::new((0, ABResults::ABNone, SearchStats::default())));
-
-        let tt_w = self.tt_w.clone();
-        let tt_r = self.tt_rf.handle();
-
-        let sleep_time = Duration::from_millis(1);
-
-        self.stop.store(false, SeqCst);
-        {
-            let mut w = self.best_mate.write();
-            *w = None;
-        }
-
-        crossbeam::scope(|s| {
-
-            let (tx,rx): (Sender<(Depth,ABResults,SearchStats)>,
-                          Receiver<(Depth,ABResults,SearchStats)>) =
-                crossbeam::channel::bounded(12);
-
-            let mut timer = self.timer.clone();
-            timer.reset();
-
-            let mut stats = SearchStats::default();
-
-            let best_depth      = Arc::new(AtomicU8::new(0));
-            let best_depth2     = best_depth.clone();
-            let search_id       = Arc::new(AtomicU8::new(0));
-            let thread_counter  = Arc::new(AtomicU8::new(0));
-            let thread_counter2 = thread_counter.clone();
-
-            let out1            = out.clone();
-            let out2            = out.clone();
-            let stop            = self.stop.clone();
-            let stop2           = self.stop.clone();
-
-            #[cfg(feature = "one_thread")]
-            let max_threads = 1;
-            #[cfg(not(feature = "one_thread"))]
-            // let max_threads = 6;
-            // let max_threads = np_cpus;
-            let max_threads = 6;
-
-            let depths = vec![
-                0, 1, 0, 2, 0, 1,
-                0, 1, 0, 2, 0, 1,
-            ];
-
-            let t0 = Instant::now();
-            let t_max = self.timer.settings.increment[self.side];
-                // + (self.timer.settings.safety / 2.0);
-            let t_max = Duration::from_secs_f64(t_max);
-
-            let rx_thread = s.builder()
-                // .stack_size(4 * 1024 * 1024) // 4 MiB
-                .spawn(move |_| loop {
-
-                    match rx.try_recv() {
-                        Err(TryRecvError::Empty)    => {
-                            std::thread::sleep(sleep_time);
-                            // std::thread::sleep(Duration::from_millis(1));
-                        },
-                        Err(TryRecvError::Disconnected)    => {
-                            trace!("Breaking thread counter loop (Disconnect)");
-                            break;
-                        },
-                        Ok((depth,abres,stats0)) => {
-                            if stop2.load(SeqCst) {
-                                trace!("Breaking thread counter loop (Force Stop)");
-                                let mut w = out1.write();
-                                w.2 = w.2 + stats0;
-                                break;
-                            }
-                            match abres.clone() {
-                                ABResults::ABList(bestres, _) | ABResults::ABSingle(bestres)
-                                    if depth > best_depth2.load(SeqCst) => {
-                                        best_depth2.store(depth,SeqCst);
-
-                                        debug!("new best move d({}): {:.3}s: {}: {:?}",
-                                            depth, t0.elapsed().as_secs_f64(),
-                                            // bestres.score, bestres.moves.front());
-                                            bestres.score, bestres.mv);
-
-                                        if bestres.score > 100_000_000 - 50 {
-                                            let k = 100_000_000 - bestres.score.abs();
-                                            debug!("Found mate in {}: d({}), {:?}",
-                                                // k, depth, bestres.moves.front());
-                                                k, depth, bestres.mv);
-                                            let mut best = self.best_mate.write();
-                                            *best = Some(k as u8);
-                                            let mut w = out1.write();
-                                            *w = (depth, abres, w.2 + stats0);
-                                            // *w = (depth, scores, None);
-                                            break;
-                                        } else {
-                                            let mut w = out1.write();
-                                            *w = (depth, abres, w.2 + stats0);
-                                        }
-                                },
-
-                                // ABResults::ABSingle(bestres) if depth > best_depth2.load(SeqCst) => {
-                                //     best_depth2.store(depth,SeqCst);
-
-                                //     debug!("new best move d({}): {:.3}s: {}: {:?}",
-                                //         depth, t0.elapsed().as_secs_f64(),
-                                //         bestres.score, bestres.moves.front());
-
-                                //     if bestres.score > 100_000_000 - 50 {
-                                //         let k = 100_000_000 - bestres.score.abs();
-                                //         debug!("Found mate in {}: d({}), {:?}",
-                                //                k, depth, bestres.moves.front());
-                                //         let mut best = self.best_mate.write();
-                                //         *best = Some(k as u8);
-                                //         let mut w = out1.write();
-                                //         *w = (depth, abres, w.2 + stats0);
-                                //         // *w = (depth, scores, None);
-                                //         break;
-                                //     } else {
-                                //         let mut w = out1.write();
-                                //         *w = (depth, abres, w.2 + stats0);
-                                //     }
-
-                                // },
-
-                                _ => {
-                                    let mut w = out1.write();
-                                    w.2 = w.2 + stats0;
-                                },
-
-                            }
-                            thread_counter2.fetch_sub(1, SeqCst);
-                            trace!("decrementing thread counter, new val = {}", thread_counter2.load(SeqCst));
-                        },
-                    }
-                }).unwrap();
-
-            'outer: loop {
-
-                {
-                    let r = self.best_mate.read();
-                    if r.is_some() {
-                        let d = best_depth.load(SeqCst);
-                        debug!("breaking loop (Mate),  d: {}, t0: {:.3}",
-                               d, t0.elapsed().as_secs_f64());
-                        stop.store(true, SeqCst);
-                        break 'outer;
-                    }
-                }
-
-                // if best_depth.load(SeqCst) + 1 + depths_largest > self.max_depth {
-                if best_depth.load(SeqCst) + 1 > self.cfg.max_depth {
-                // if thread_counter.load(SeqCst) != 0 && best_depth.load(SeqCst) + 1 > self.max_depth {
-                    let d = best_depth.load(SeqCst);
-                    debug!("breaking loop (Depth), d: {}, t0: {:.3}", d, t0.elapsed().as_secs_f64());
-                    // drop(tx);
-
-                    loop {
-
-                        {
-                            let r = self.best_mate.read();
-                            if r.is_some() {
-                                let d = best_depth.load(SeqCst);
-                                debug!("breaking loop (Depth -> Mate),  d: {}, t0: {:.3}",
-                                       d, t0.elapsed().as_secs_f64());
-                                stop.store(true, SeqCst);
-                                drop(tx);
-                                break 'outer;
-                            }
-                        }
-
-                        if thread_counter.load(SeqCst) == 0 {
-                            let d = best_depth.load(SeqCst);
-                            debug!("breaking loop (Depth -> Threads),  d: {}, t0: {:.3}",
-                                   d, t0.elapsed().as_secs_f64());
-                            stop.store(true, SeqCst);
-                            drop(tx);
-                            break 'outer;
-                        }
-                        if t0.elapsed() > t_max {
-                            let d = best_depth.load(SeqCst);
-                            debug!("breaking loop (Depth -> Time),  d: {}, t0: {:.3}",
-                                   d, t0.elapsed().as_secs_f64());
-                            stop.store(true, SeqCst);
-                            drop(tx);
-                            break 'outer;
-                        } else {
-                            // trace!("t0.elapsed(), t_max: {:?}, {:?}", t0.elapsed(), t_max);
-                        }
-                        std::thread::sleep(sleep_time);
-                    }
-
-                    // break 'outer;
-                // } if thread_counter.load(SeqCst) != 0 && cur_depth > self.max_depth {
-                }
-
-                let sid       = search_id.load(SeqCst);
-                let cur_depth = best_depth.load(SeqCst) + 1 + depths[sid as usize];
-
-                if t0.elapsed() > t_max {
-                    let d = best_depth.load(SeqCst);
-                    debug!("breaking loop (Time),  d: {}, t0: {:.3}", d, t0.elapsed().as_secs_f64());
-                    // XXX: Only force threads to stop if out of time ?
-                    stop.store(true, SeqCst);
-                    drop(tx);
-                    break;
-                }
-                if cur_depth > self.cfg.max_depth {
-                    // debug!("cur_depth > self.max_depth");
-                    continue;
-                }
-                if thread_counter.load(SeqCst) < max_threads {
-
-                    let tx2    = tx.clone();
-                    let stop2  = stop.clone();
-                    let tt_w2  = tt_w.clone();
-                    let tt_r2  = self.tt_rf.handle();
-
-                    trace!("spawning thread: (sid: {}) = cur_depth {:?}", sid, cur_depth);
-                    s.builder()
-                        // .stack_size(4 * 1024 * 1024) // 4 MiB
-                        // .stack_size(1 * 512 * 1024) // 0.5 MiB
-                        // .stack_size(64 * 1024) // 64 KiB
-                        .spawn(move |_| {
-                            self._lazy_smp_single_negamax(
-                                // self._lazy_smp_single_aspiration(
-                                // ts, cur_depth, tx2, tt_r2, tt_w2.clone());
-                                ts, cur_depth, tx2);
-                        }).unwrap();
-
-                    thread_counter.fetch_add(1, SeqCst);
-
-                    search_id.fetch_update(SeqCst, SeqCst, |sid| {
-                        if sid >= max_threads - 1 {
-                            Some(0)
-                        } else { Some(sid + 1) }
-                    }).unwrap();
-
-                } else {
-                    std::thread::sleep(sleep_time);
-                }
-
-                #[cfg(feature = "keep_stats")]
-                timer.update_times(self.side, stats.nodes);
-                #[cfg(not(feature = "keep_stats"))]
-                timer.update_times(self.side, 0);
-            }
-
-            rx_thread.join().unwrap();
-
-        }).unwrap();
-
-        let (d,mut out,mut stats) = {
-            let r = out.read();
-            r.clone()
-        };
-        stats!(stats.max_depth = d);
-
-        match out {
-            ABResults::ABList(best, ress) => {
-
-                // debug!("finished lazy_smp_negamax: moves {:?}", best.moves);
-                debug!("finished lazy_smp_negamax: move {:?}", best.mv);
-
-                ((best,ress),stats,(tt_r,tt_w))
-            },
-            ABResults::ABSingle(best) => {
-                // panic!("single result only?");
-                debug!("finished lazy_smp_negamax: single move {:?}", best.mv);
-                ((best,vec![]),stats,(tt_r,tt_w))
-            }
-            r => {
-                // ((ABResults::ABNone, vec![]), stats, (tt_r,tt_w))
-                // unimplemented!()
-                panic!("ABResults: {:?}", r);
-            },
-        }
-    }
-
-}
-
-/// Misc
-impl Explorer {
 }
 
