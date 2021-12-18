@@ -282,36 +282,17 @@ fn main_tt() {
     use std::mem;
     use std::alloc::{Layout, handle_alloc_error, self};
 
-    // let tt: NonNull<i32> = unsafe {
-    //     let size         = 32;
-    //     let layout       = Layout::from_size_align(size, 2).unwrap();
-    //     let ptr: *mut u8 = alloc::alloc_zeroed(layout);
-    //     let ptr2: NonNull<i32> = match NonNull::new(ptr) {
-    //         Some(ptr) => ptr.cast(),
-    //         _ => unimplemented!(),
-    //     };
-    //     ptr2
-    // };
+    // Bucket     = 36
+    // SearchInfo = 8
+    // TTEntry    = 12
 
-    // unsafe {
-    //     let x0: i32 = 2;
-    //     let x1: i32 = 3;
-    //     let ptr = tt.as_ptr();
-    //     *ptr = x0;
-    //     let ptr = ptr.add(1);
-    //     *ptr = x1;
-    // }
+    let k0 = std::mem::size_of::<rchess_engine_lib::lockless_map::Bucket>();
+    eprintln!("k0 = {:?}", k0);
 
-    // unsafe {
-    //     let ptr = tt.as_ptr();
-    //     let x0 = *ptr;
-    //     eprintln!("x0 = {:?}", x0);
-    //     let ptr = ptr.add(1);
-    //     let x1 = *ptr;
-    //     eprintln!("x1 = {:?}", x1);
-    // }
+    let k1 = std::mem::size_of::<TTEntry>();
+    eprintln!("k1 = {:?}", k1);
 
-    // return;
+    return;
 
     let zb1 = Zobrist(0xcdab13aceaa91520);
     let zb2 = Zobrist(0x6b2bc7c01dffde39);
@@ -2816,7 +2797,7 @@ fn main9() {
 
     // let fen = "r1bqk2r/ppp2ppp/2np1n2/4p3/1PP1P3/P1NPbN2/5PPP/R2QKB1R w KQkq -";
 
-    let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
+    // let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
 
     // let fen = "rnbqkb1r/p4p2/2p1pn1p/1p2P1p1/2pP3B/2N2N2/PP3PPP/R2QKB1R w KQkq g6"; // rand opening
 
@@ -2877,8 +2858,8 @@ fn main9() {
     // let t = 0.5;
     // let t = 0.3;
 
-    let n = 35;
-    // let n = 6;
+    // let n = 35;
+    let n = 7;
     // let n = 2;
 
     let t0 = std::time::Instant::now();

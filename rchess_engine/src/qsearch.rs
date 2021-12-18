@@ -300,12 +300,19 @@ impl ExHelper {
             return alpha;
         }
 
-        order_mvv_lva(&mut moves);
+        // TODO: hash table lookup
+        // debug!("")
 
-        // moves.par_sort_by(|a,b| {
-        // });
-        // moves.sort_by_cached_key(|m| g.static_exchange(&ts, *m));
-        // moves.reverse();
+        // /// No change in performance, but easier to read in flamegraph
+        // let mut gs: Vec<(Move,Zobrist,Option<(SICanUse,SearchInfo)>)> = Vec::with_capacity(moves.len());
+        // for mv in moves.into_iter() {
+        //     let zb = g.zobrist.update_move_unchecked(ts, g, mv);
+        //     let tt = self.check_tt_negamax(&ts, zb, depth, &mut stats);
+        //     gs.push((mv,zb,tt));
+        // }
+
+        order_mvv_lva(&mut moves);
+        // self.order_moves(ts, g, ply, &mut tracking, &mut gs[..]);
 
         // let ms = moves.into_iter()
         //     .flat_map(|m| g.make_move_unchecked(&ts, m).ok().map(|x| (m,x)));

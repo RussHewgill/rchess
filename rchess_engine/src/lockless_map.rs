@@ -284,8 +284,9 @@ mod prev_rustic_nothread {
     }
 
     #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
+    // #[repr(align(64))]
     pub struct Bucket {
-        pub x:      usize,
+        // pub x:  usize,
         bucket: [TTEntry; ENTRIES_PER_BUCKET],
     }
 
@@ -294,7 +295,7 @@ mod prev_rustic_nothread {
         pub fn new() -> Self {
             use rand::Rng;
             Self {
-                x:      rand::thread_rng().gen(),
+                // x:      rand::thread_rng().gen(),
                 bucket: [TTEntry::empty(); ENTRIES_PER_BUCKET],
             }
         }
@@ -335,6 +336,7 @@ mod prev_rustic_nothread {
         tot_entries:   Cell<usize>,
     }
 
+    /// Not actually safe, but at least it's a bit faster
     unsafe impl Send for TransTable {}
     unsafe impl Sync for TransTable {}
 
@@ -345,6 +347,7 @@ mod prev_rustic_nothread {
         }
     }
 
+    /// New
     impl TransTable {
 
         // pub fn new_mb(mb: usize) -> Self {
@@ -394,10 +397,6 @@ mod prev_rustic_nothread {
             }
         }
 
-        // pub fn new_num_entries(num: usize) -> Self {
-        //     let tot_buckets = 
-        // }
-
         unsafe fn alloc_room(size: usize) -> NonNull<Bucket> {
             let size         = size * mem::size_of::<Bucket>();
             let layout       = Layout::from_size_align(size, 2).unwrap();
@@ -411,47 +410,15 @@ mod prev_rustic_nothread {
 
     }
 
-    // /// New
-    // impl TransTable {
-    //     pub fn new(megabytes: usize) -> Self {
-    //         let e_size = std::mem::size_of::<TTEntry>();
-    //         let b_size = e_size * ENTRIES_PER_BUCKET;
-    //         let tot_buckets = MEGABYTE / b_size * megabytes;
-    //         let tot_entries = tot_buckets * ENTRIES_PER_BUCKET;
-    //         Self {
-    //             tt: vec![Bucket::new(); tot_buckets],
-    //             megabytes,
-    //             used_entries: 0,
-    //             tot_buckets,
-    //             tot_entries,
-    //         }
-    //     }
-    // }
-
     /// Insert
     impl TransTable {
         pub fn insert(&self, zb: Zobrist, si: SearchInfo) {
             let idx = self.calc_index(zb);
             let ver = self.calc_verification(zb);
-            // self.tt[idx].store(ver, si, &mut self.used_entries)
-
-            // println!("inserting zb = {:?}, idx = {:?}, ver = {:?}", zb, idx, ver);
-
             unsafe {
-                // let ptr: *mut Bucket = self.ptr.get_mut().as_ptr()
-
-                // let ptr: *mut Bucket = (*self.ptr.get()).as_ptr()
-                //     .add(idx)
-                //     // .offset(idx as isize)
-                //     ;
-
                 let ptr = self.bucket(idx);
-
                 let mut used_entries: &mut usize = &mut (*self.used_entries.get());
-
                 (*ptr).store(ver, si, used_entries);
-
-                // ptr.store(ver, si, used_entries)
             }
         }
     }
@@ -459,7 +426,7 @@ mod prev_rustic_nothread {
     /// Probe
     impl TransTable {
 
-        pub unsafe fn bucket(&self, idx: usize) -> *mut Bucket {
+        unsafe fn bucket(&self, idx: usize) -> *mut Bucket {
             (*self.ptr.get()).as_ptr()
                 .add(idx)
         }
@@ -477,6 +444,12 @@ mod prev_rustic_nothread {
 
     /// Misc
     impl TransTable {
+
+        pub fn calc_index2(zb: Zobrist) -> usize {
+            // jjjjk
+            unimplemented!()
+        }
+
         pub fn calc_index(&self, zb: Zobrist) -> usize {
             let key = (zb.0 & HIGH_FOUR_BYTES) >> SHIFT_TO_LOWER;
             // let total = unsafe { *self.tot_buckets.get() } as u64;
