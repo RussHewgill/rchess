@@ -100,6 +100,13 @@ pub enum Prune {
     NullMove,
 }
 
+// pub struct ABStack {
+//     pvs:              Vec<Move>,
+//     ply:              Depth,
+//     current_move:     Move,
+//     excluded_move:    Move,
+// }
+
 /// Make move, increment NNUE
 impl ExHelper {
 
@@ -220,6 +227,21 @@ impl ExHelper {
 
 /// Negamax AB
 impl ExHelper {
+
+
+    /// Steps:
+    ///   0:  Check for repetition
+    ///   1:  Check for Stop if mate found
+    ///   2:  Generate Moves
+    ///   3:  Check for Checkmate, Stalemate
+    ///   4:  Qsearch if depth == 0
+    ///   5:  Syzygy probe
+    ///   6:  Null Pruning (off)
+    ///   7:  TransTable Lookup for each move
+    ///   8:  Move Ordering
+    ///   Loop over moves:
+    ///     9:  Futility Pruning
+    ///     10: Check if TT Score can be used, else:
 
     #[allow(unused_doc_comments,unused_labels)]
     /// alpha: the MIN score that the maximizing player is assured of

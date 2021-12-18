@@ -2799,7 +2799,7 @@ fn main9() {
 
     // let fen = "r1bqk2r/ppp2ppp/2np1n2/4p3/1PP1P3/P1NPbN2/5PPP/R2QKB1R w KQkq -";
 
-    // let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
+    let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
 
     // let fen = "rnbqkb1r/p4p2/2p1pn1p/1p2P1p1/2pP3B/2N2N2/PP3PPP/R2QKB1R w KQkq g6"; // rand opening
 
@@ -2860,8 +2860,8 @@ fn main9() {
     // let t = 0.5;
     // let t = 0.3;
 
-    // let n = 35;
-    let n = 7;
+    let n = 35;
+    // let n = 7;
     // let n = 2;
 
     let t0 = std::time::Instant::now();

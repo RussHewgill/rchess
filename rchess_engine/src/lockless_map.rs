@@ -284,7 +284,7 @@ mod prev_rustic_nothread {
     }
 
     #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
-    // #[repr(align(64))]
+    #[repr(align(64))]
     pub struct Bucket {
         // pub x:  usize,
         bucket: [TTEntry; ENTRIES_PER_BUCKET],
@@ -301,6 +301,7 @@ mod prev_rustic_nothread {
         }
     }
 
+    /// store, find
     impl Bucket {
         pub fn store(&mut self, ver: u32, si: SearchInfo, used_entries: &mut usize) {
             let mut idx_lowest_depth = 0;
@@ -385,10 +386,9 @@ mod prev_rustic_nothread {
             let b_size = e_size * ENTRIES_PER_BUCKET;
             let tot_entries = tot_buckets * ENTRIES_PER_BUCKET;
 
-            // let ptr = UnsafeCell::new(unsafe { Self::alloc_room(tot_buckets) });
-
             let vec = UnsafeCell::new(vec![Bucket::new(); tot_buckets]);
 
+            // let ptr = UnsafeCell::new(unsafe { Self::alloc_room(tot_buckets) });
             // unsafe {
             //     let mut p: *mut Bucket = (*ptr.get()).as_ptr();
             //     for n in 0..tot_buckets {
@@ -417,6 +417,7 @@ mod prev_rustic_nothread {
             let ver = self.calc_verification(zb);
             unsafe {
                 let ptr = self.bucket(idx).unwrap();
+                // let ptr = self.bucket(idx);
                 let mut used_entries: &mut usize = &mut (*self.used_entries.get());
                 // (*ptr).store(ver, si, used_entries);
                 ptr.store(ver, si, used_entries);
@@ -430,7 +431,7 @@ mod prev_rustic_nothread {
         // unsafe fn bucket(&self, idx: usize) -> *mut Bucket {
         unsafe fn bucket(&self, idx: usize) -> Option<&mut Bucket> {
             // (*self.ptr.get()).as_ptr()
-            //     .add(idx)
+                // .add(idx)
             (*self.vec.get()).get_mut(idx)
         }
 
@@ -440,9 +441,10 @@ mod prev_rustic_nothread {
 
             unsafe {
                 let ptr = self.bucket(idx)?;
-                // (*ptr).find(ver)
                 let si = ptr.find(ver)?;
                 Some(&si)
+                // let ptr = self.bucket(idx);
+                // (*ptr).find(ver)
             }
         }
 
@@ -476,8 +478,11 @@ mod prev_rustic_nothread {
     /// Prefetch
     impl TransTable {
         fn prefetch(&self, zb: Zobrist) {
-            // let idx = self.calc_index(zb)
-            unimplemented!()
+            let idx = self.calc_index(zb);
+            unsafe {
+                let ptr = (*self.vec.get()).as_ptr().add(idx);
+                crate::prefetch::prefetch_write(ptr);
+            }
         }
     }
 
