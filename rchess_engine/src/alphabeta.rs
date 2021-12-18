@@ -206,14 +206,10 @@ impl ExHelper {
 
         let mut g = self.game.clone();
 
-        let tt_r = self.tt_r.clone();
-        let tt_w = self.tt_w.clone();
-
         let res = self._ab_search_negamax(
             ts, &mut g, cfg, depth,
             0, &mut stop_counter, (alpha, beta),
             &mut stats,
-            // VecDeque::new(),
             &mut tracking,
             );
 

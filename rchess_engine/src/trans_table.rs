@@ -50,6 +50,7 @@ pub type TTWrite       = EVWrite<SearchInfo>;
 // }
 
 impl Explorer {
+    #[cfg(not(feature = "lockless_hashmap"))]
     pub fn handle(&self) -> TTRead {
         self.tt_rf.handle()
     }

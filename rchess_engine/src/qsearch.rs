@@ -25,10 +25,13 @@ pub fn exhelper_once(
     cfg.eval_params_mid = ev_mid.clone();
     cfg.eval_params_end = ev_end.clone();
 
+    #[cfg(not(feature = "lockless_hashmap"))]
     let (tt_r, tt_w) = evmap::Options::default()
         .with_hasher(FxBuildHasher::default())
         .construct();
+    #[cfg(not(feature = "lockless_hashmap"))]
     let tt_rf = tt_w.factory();
+    #[cfg(not(feature = "lockless_hashmap"))]
     let tt_w = Arc::new(Mutex::new(tt_w));
 
     let ph_rw = if let Some(t) = ph_rw {
@@ -61,7 +64,9 @@ pub fn exhelper_once(
         tx,
         #[cfg(feature = "lockless_hashmap")]
         ptr_tt,
+        #[cfg(not(feature = "lockless_hashmap"))]
         tt_r,
+        #[cfg(not(feature = "lockless_hashmap"))]
         tt_w,
         ph_rw,
     };

@@ -2816,7 +2816,7 @@ fn main9() {
 
     // let fen = "r1bqk2r/ppp2ppp/2np1n2/4p3/1PP1P3/P1NPbN2/5PPP/R2QKB1R w KQkq -";
 
-    // let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
+    let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
 
     // let fen = "rnbqkb1r/p4p2/2p1pn1p/1p2P1p1/2pP3B/2N2N2/PP3PPP/R2QKB1R w KQkq g6"; // rand opening
 
@@ -2877,8 +2877,8 @@ fn main9() {
     // let t = 0.5;
     // let t = 0.3;
 
-    // let n = 35;
-    let n = 7;
+    let n = 35;
+    // let n = 6;
     // let n = 2;
 
     let t0 = std::time::Instant::now();
@@ -2887,8 +2887,8 @@ fn main9() {
     ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
-    // ex.cfg.num_threads = Some(6);
-    ex.cfg.num_threads = Some(1);
+    ex.cfg.num_threads = Some(6);
+    // ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
@@ -2911,73 +2911,7 @@ fn main9() {
     // eprintln!("mv = {:?}", mv);
     // return;
 
-    let tt_r = ex.handle();
-
-    if !true {
-        // non legal move: Db h2h4
-        // let tt = load_tt("/home/me/code/rust/rchess/tt2.bin").unwrap();
-        ex.clear_tt();
-        load_tt("/home/me/code/rust/rchess/tt2.bin", ex.tt_w.clone()).unwrap();
-
-        let fen1 = "3r1k2/1b1n4/1q1P1r1p/ppp5/2p3Q1/7P/PP2RPP1/2K2B1R w - -";
-        let g1 = Game::from_fen(&ts, fen1).unwrap();
-
-        // ex.update_game(g1.clone());
-        // let (mv,stats) = ex.explore(&ts, None);
-        // let (mv,_) = mv.unwrap();
-        // eprintln!("g1 = {:?}", g1);
-        // eprintln!("mv = {:?}", mv);
-
-        let fen2 = "3r1k2/1b1n4/1q1PQr1p/ppp5/2p5/7P/PP2RPP1/2K2B1R b - -";
-        let mut g2 = Game::from_fen(&ts, fen2).unwrap();
-
-        g2.last_move = Some(g1.convert_move("g4", "e6", "").unwrap());
-        g2.history.insert(g2.zobrist, 2);
-
-        ex.update_game(g2.clone());
-        let (mv,stats) = ex.explore(&ts);
-        let (mv,_) = mv.unwrap();
-        eprintln!("g2 = {:?}", g2);
-        eprintln!("mv = {:?}", mv);
-
-        // let si = tt_r.get(&zb0).unwrap();
-        // eprintln!("si = {:?}", si);
-
-        // ex.update_game(g0.clone());
-        // let (mv,stats) = ex.explore(&ts, None);
-        // let (mv,_) = mv.unwrap();
-        // eprintln!("mv = {:?}", mv);
-
-        return;
-    }
-
-    // loop {
-    if !true {
-        let (mv,stats) = ex.explore(&ts);
-        // let (mv,_) = mv.unwrap();
-
-        match mv.map(|(m,_)| g.make_move_unchecked(&ts, m)) {
-            Some(Ok(g2)) => {
-                g = g2;
-                ex.update_game(g.clone());
-
-                eprintln!("g = {:?}", g);
-                eprintln!("g.to_fen() = {:?}", g.to_fen());
-
-                save_tt(&tt_r, "/home/me/code/rust/rchess/tt2.bin").unwrap();
-            },
-            // Err(e) => {
-            _ => {
-                ex.clear_tt();
-                g = Game::from_fen(&ts, fen).unwrap();
-                ex.update_game(g.clone());
-                eprintln!();
-                // eprintln!("restarting: e = {:?}", e);
-                eprintln!("restarting");
-                eprintln!();
-            },
-        }
-    }
+    // let tt_r = ex.handle();
 
     ex.update_game(g.clone());
     let (res,moves,stats0) = ex.lazy_smp_2(&ts);
@@ -3023,7 +2957,7 @@ fn main9() {
     println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
              stats0.max_depth, t2);
 
-    let tt_r = ex.tt_rf.handle();
+    // let tt_r = ex.tt_rf.handle();
 
     println!();
     for (n,mv) in moves.iter().enumerate() {

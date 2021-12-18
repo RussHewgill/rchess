@@ -243,7 +243,7 @@ mod prev_pleco {
 
 // #[cfg(feature = "nope")]
 mod prev_rustic_nothread {
-    use std::cell::UnsafeCell;
+    use std::cell::{UnsafeCell, Cell};
     use std::ptr::NonNull;
     use std::mem;
     use std::alloc::{Layout, handle_alloc_error, self};
@@ -328,12 +328,11 @@ mod prev_rustic_nothread {
     }
 
     pub struct TransTable {
-        // tt:            Vec<Bucket>,
-        pub ptr:           UnsafeCell<NonNull<Bucket>>,
-        megabytes:     UnsafeCell<usize>,
+        ptr:           UnsafeCell<NonNull<Bucket>>,
+        megabytes:     Cell<usize>,
         used_entries:  UnsafeCell<usize>,
-        tot_buckets:   UnsafeCell<usize>,
-        tot_entries:   UnsafeCell<usize>,
+        tot_buckets:   Cell<usize>,
+        tot_entries:   Cell<usize>,
     }
 
     unsafe impl Send for TransTable {}
@@ -388,10 +387,10 @@ mod prev_rustic_nothread {
             Self {
                 // tt: vec![Bucket::new(); tot_buckets],
                 ptr,
-                megabytes: UnsafeCell::new(megabytes),
+                megabytes:    Cell::new(megabytes),
                 used_entries: UnsafeCell::new(0),
-                tot_buckets: UnsafeCell::new(tot_buckets),
-                tot_entries: UnsafeCell::new(tot_entries),
+                tot_buckets:  Cell::new(tot_buckets),
+                tot_entries:  Cell::new(tot_entries),
             }
         }
 
@@ -480,7 +479,8 @@ mod prev_rustic_nothread {
     impl TransTable {
         pub fn calc_index(&self, zb: Zobrist) -> usize {
             let key = (zb.0 & HIGH_FOUR_BYTES) >> SHIFT_TO_LOWER;
-            let total = unsafe { *self.tot_buckets.get() } as u64;
+            // let total = unsafe { *self.tot_buckets.get() } as u64;
+            let total = self.tot_buckets.get() as u64;
             (key % total) as usize
         }
         pub fn calc_verification(&self, zb: Zobrist) -> u32 {

@@ -60,7 +60,9 @@ pub struct Explorer {
     #[cfg(feature = "lockless_hashmap")]
     pub ptr_tt:        Arc<TransTable>,
 
+    #[cfg(not(feature = "lockless_hashmap"))]
     pub tt_rf:         TTReadFactory,
+    #[cfg(not(feature = "lockless_hashmap"))]
     pub tt_w:          TTWrite,
 
     // pub ph_rw:         (PHReadFactory,PHWrite),
@@ -121,7 +123,9 @@ pub struct ExHelper {
     #[cfg(feature = "lockless_hashmap")]
     pub ptr_tt:          Arc<TransTable>,
 
+    #[cfg(not(feature = "lockless_hashmap"))]
     pub tt_r:            TTRead,
+    #[cfg(not(feature = "lockless_hashmap"))]
     pub tt_w:            TTWrite,
 
     // pub ph_rw:         (PHRead,PHWrite),
@@ -194,7 +198,9 @@ impl Explorer {
             #[cfg(feature = "lockless_hashmap")]
             ptr_tt:          self.ptr_tt.clone(),
 
+            #[cfg(not(feature = "lockless_hashmap"))]
             tt_r:            self.tt_rf.handle(),
+            #[cfg(not(feature = "lockless_hashmap"))]
             tt_w:            self.tt_w.clone(),
 
             // ph_rw:           (self.ph_rw.0.handle(),self.ph_rw.1.clone()),
@@ -250,11 +256,7 @@ impl Explorer {
 
         let stop = Arc::new(AtomicBool::new(false));
 
-        // let (tt_r, tt_w) = evmap::Options::default()
-        //     .with_hasher(FxBuildHasher::default())
-        //     .construct();
-        // let tt_rf = tt_w.factory();
-        // let tt_w = Arc::new(Mutex::new(tt_w));
+        #[cfg(not(feature = "lockless_hashmap"))]
         let (tt_rf, tt_w) = new_hash_table();
 
         let ph_rw = PHTableFactory::new();
@@ -284,7 +286,9 @@ impl Explorer {
             #[cfg(feature = "lockless_hashmap")]
             ptr_tt:         Arc::new(TransTable::new_mb(DEFAULT_TT_SIZE_MB)),
 
+            #[cfg(not(feature = "lockless_hashmap"))]
             tt_rf,
+            #[cfg(not(feature = "lockless_hashmap"))]
             tt_w,
 
             // ph_rw:          (ph_rf,ph_w),
@@ -300,9 +304,12 @@ impl Explorer {
     // }
 
     pub fn clear_tt(&self) {
-        let mut w = self.tt_w.lock();
-        w.purge();
-        w.refresh();
+        #[cfg(not(feature = "lockless_hashmap"))]
+        {
+            let mut w = self.tt_w.lock();
+            w.purge();
+            w.refresh();
+        }
     }
 
     pub fn update_game(&mut self, g: Game) {
@@ -348,8 +355,50 @@ impl Explorer {
 impl Explorer {
 
     pub fn get_pv(&self, ts: &Tables, g: &Game) -> Vec<Move> {
-        let tt_r = self.tt_rf.handle();
-        Self::_get_pv(ts, g, &tt_r)
+        #[cfg(feature = "lockless_hashmap")]
+        {
+            Self::_get_pv_lockless(ts, g, self.ptr_tt.clone())
+        }
+        #[cfg(not(feature = "lockless_hashmap"))]
+        {
+            let tt_r = self.tt_rf.handle();
+            Self::_get_pv(ts, g, &tt_r)
+        }
+    }
+
+    pub fn _get_pv_lockless(ts: &Tables, g: &Game, tt: Arc<TransTable>) -> Vec<Move> {
+        let mut moves = vec![];
+
+        let mut g2 = g.clone();
+        let mut zb = g2.zobrist;
+
+        let mut hashes = HashSet::<Zobrist>::default();
+        hashes.insert(zb);
+
+        while let Some(si) = tt.probe(zb) {
+            hashes.insert(zb);
+
+            // eprintln!("si.node_type {:>3} = {:?}", k, si.node_type);
+            // eprintln!("si.best_move {:>3} = {:?}", k, si.best_move);
+            // eprintln!();
+
+            let mv = si.best_move;
+
+            let mv = [mv.0, mv.1];
+            let mv = PackedMove::unpack(&mv).unwrap().convert_to_move(ts, &g2);
+
+            moves.push(mv);
+
+            g2 = g2.make_move_unchecked(&ts, mv).unwrap();
+            zb = g2.zobrist;
+
+            if hashes.contains(&zb) {
+                trace!("_get_pv, duplicate hash: {:?}\n{:?}", zb, g);
+                break;
+            }
+        }
+
+        moves
     }
 
     pub fn _get_pv(ts: &Tables, g: &Game, tt_r: &TTRead) -> Vec<Move> {
@@ -910,7 +959,14 @@ impl ExHelper {
 
             if !self.stop.load(SeqCst) && depth >= self.best_depth.load(SeqCst) {
                 let moves = if self.cfg.return_moves {
-                    Explorer::_get_pv(ts, &self.game, &self.tt_r)
+                    #[cfg(feature = "lockless_hashmap")]
+                    {
+                        Explorer::_get_pv_lockless(ts, &self.game, self.ptr_tt.clone())
+                    }
+                    #[cfg(not(feature = "lockless_hashmap"))]
+                    {
+                        Explorer::_get_pv(ts, &self.game, &self.tt_r)
+                    }
                 } else { vec![] };
                 match self.tx.try_send(ExMessage::Message(depth, res, moves, stats)) {
                     Ok(_)  => {
@@ -950,8 +1006,10 @@ impl Explorer {
     ) {
         let mut history = [[[0; 64]; 64]; 2];
 
-        let tt_r = self.tt_rf.handle();
-        let tt_w = self.tt_w.clone();
+        // #[cfg(not(feature = "lockless_hashmap"))]
+        // let tt_r = self.tt_rf.handle();
+        // #[cfg(not(feature = "lockless_hashmap"))]
+        // let tt_w = self.tt_w.clone();
 
         let (alpha,beta) = (i32::MIN,i32::MAX);
         let (alpha,beta) = (alpha + 200,beta - 200);
