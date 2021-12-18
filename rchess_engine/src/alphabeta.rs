@@ -295,14 +295,6 @@ impl ExHelper {
         /// Repetition, Halting
         if !is_root {
 
-            // /// Repetition checking
-            // if let Some(k) = g.history.get(&g.zobrist) {
-            //     if *k >= 2 {
-            //         let score = -STALEMATE_VALUE + ply as Score;
-            //         return ABSingle(ABResult::new_single(g.last_move.unwrap(), 0));
-            //     }
-            // }
-
             /// Repetition checking
             if alpha < DRAW_VALUE {
                 // for (zb,_) in stack.move_history.iter().step_by(2) {
@@ -409,45 +401,67 @@ impl ExHelper {
 
         // TODO: null move pruning
 
-        // /// Filter checkmate, stalemate
-        // let mut moves: Vec<Move> = match moves {
-        //     Outcome::Checkmate(c) => {
-        //         // let score = 100_000_000 - ply as Score;
-        //         let score = CHECKMATE_VALUE - ply as Score;
-        //         // if !self.tt_r.contains_key(&g.zobrist) {
-        //         // }
-        //         stats.leaves += 1;
-        //         stats.checkmates += 1;
+        /// Generate legal moves
+        let moves = if is_root {
+            if let Some(mvs) = &self.cfg.only_moves {
+                let mvs = mvs.clone().into_iter().collect();
+                Outcome::Moves(mvs)
+            } else {
+                g.search_all(&ts)
+            }
+        } else {
+            g.search_all(&ts)
+        };
 
-        //         let mv = g.last_move.unwrap();
+        /// Filter checkmate, stalemate
+        let mut moves: Vec<Move> = match moves {
+            Outcome::Checkmate(c) => {
+                // let score = 100_000_000 - ply as Score;
+                let score = CHECKMATE_VALUE - ply as Score;
+                // if !self.tt_r.contains_key(&g.zobrist) {
+                // }
+                stats.leaves += 1;
+                stats.checkmates += 1;
 
-        //         // return ABSingle(ABResult::new_empty(-score));
-        //         return ABSingle(ABResult::new_single(mv, -score));
+                let mv = g.last_move.unwrap();
 
-        //     },
-        //     Outcome::Stalemate    => {
-        //         let score = -STALEMATE_VALUE + ply as Score;
-        //         // if !self.tt_r.contains_key(&g.zobrist) {
-        //         //     stats!(stats.leaves += 1);
-        //         //     stats!(stats.stalemates += 1);
-        //         // }
-        //         stats.leaves += 1;
-        //         stats.stalemates += 1;
+                // return ABSingle(ABResult::new_empty(-score));
+                return ABSingle(ABResult::new_single(mv, -score));
 
-        //         // let mv = g.last_move.unwrap();
-        //         if let Some(mv) = g.last_move {
-        //             // TODO: adjust stalemate value when winning/losing
-        //             // return ABSingle(ABResult::new_empty(-score));
-        //             // return ABSingle(ABResult::new_single(mv, score));
-        //             return ABSingle(ABResult::new_single(mv, 0));
-        //         } else {
-        //             return ABNone
-        //         }
-        //     },
-        //     Outcome::Moves(ms)    => ms,
-        // };
+            },
+            Outcome::Stalemate    => {
+                let score = -STALEMATE_VALUE + ply as Score;
+                // if !self.tt_r.contains_key(&g.zobrist) {
+                //     stats!(stats.leaves += 1);
+                //     stats!(stats.stalemates += 1);
+                // }
+                stats.leaves += 1;
+                stats.stalemates += 1;
 
+                // let mv = g.last_move.unwrap();
+                if let Some(mv) = g.last_move {
+                    // TODO: adjust stalemate value when winning/losing
+                    // return ABSingle(ABResult::new_empty(-score));
+                    // return ABSingle(ABResult::new_single(mv, score));
+                    return ABSingle(ABResult::new_single(mv, 0));
+                } else {
+                    return ABNone
+                }
+            },
+            Outcome::Moves(ms)    => ms,
+        };
 
+        /// Filter blocked moves
+        if is_root {
+            moves.retain(|mv| !self.cfg.blocked_moves.contains(&mv));
+        }
+
+        // self.order_moves(ts, g, ply, &mut stack, &mut gs[..]);
+
+        // let mut moves_searched = 0;
+        // let val = Score::MIN + 200;
+        // let mut val: (Option<(Zobrist,ABResult,bool)>,Score) = (None,val);
+        // let mut list = vec![];
 
         unimplemented!()
     }

@@ -23,7 +23,7 @@ default = [
     # "one_thread",
     "smallstack",
 
-    # "basic_time",
+    "basic_time",
 
     "lockless_hashmap",
 
@@ -195,4 +195,5 @@ termcolor = "1.1.2"
 safe_arch = { version = "^0.6", features = ["bytemuck"] }
 bytemuck = { version = "^1.7", features = ["extern_crate_alloc"] }
 
+strum = { version = "^0.23", features = ["derive"] }
 

@@ -32,6 +32,17 @@ pub enum OrdMove {
 }
 
 impl ExHelper {
+
+    // pub fn order_moves2(
+    //     &self,
+    //     ts:           &Tables,
+    //     g:            &Game,
+    //     ply:          Depth,
+    //     tracking:     &ABStack,
+    //     mut gs:       &mut [Move],
+    // ) {
+    // }
+
     pub fn order_moves(
         &self,
         ts:           &Tables,
