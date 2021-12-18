@@ -329,7 +329,8 @@ mod prev_rustic_nothread {
     }
 
     pub struct TransTable {
-        ptr:           UnsafeCell<NonNull<Bucket>>,
+        // ptr:           UnsafeCell<NonNull<Bucket>>,
+        vec:           UnsafeCell<Vec<Bucket>>,
         megabytes:     Cell<usize>,
         used_entries:  UnsafeCell<usize>,
         tot_buckets:   Cell<usize>,
@@ -340,11 +341,11 @@ mod prev_rustic_nothread {
     unsafe impl Send for TransTable {}
     unsafe impl Sync for TransTable {}
 
-    impl Drop for TransTable {
-        fn drop(&mut self) {
-            unsafe { self.de_alloc(); }
-        }
-    }
+    // impl Drop for TransTable {
+    //     fn drop(&mut self) {
+    //         unsafe { self.de_alloc(); }
+    //     }
+    // }
 
     impl std::fmt::Debug for TransTable {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -384,19 +385,22 @@ mod prev_rustic_nothread {
             let b_size = e_size * ENTRIES_PER_BUCKET;
             let tot_entries = tot_buckets * ENTRIES_PER_BUCKET;
 
-            let ptr = UnsafeCell::new(unsafe { Self::alloc_room(tot_buckets) });
+            // let ptr = UnsafeCell::new(unsafe { Self::alloc_room(tot_buckets) });
 
-            unsafe {
-                let mut p: *mut Bucket = (*ptr.get()).as_ptr();
-                for n in 0..tot_buckets {
-                    *p = Bucket::new();
-                    p = p.add(1);
-                }
-            }
+            let vec = UnsafeCell::new(vec![Bucket::new(); tot_buckets]);
+
+            // unsafe {
+            //     let mut p: *mut Bucket = (*ptr.get()).as_ptr();
+            //     for n in 0..tot_buckets {
+            //         *p = Bucket::new();
+            //         p = p.add(1);
+            //     }
+            // }
 
             Self {
                 // tt: vec![Bucket::new(); tot_buckets],
-                ptr,
+                // ptr,
+                vec,
                 megabytes:    Cell::new(megabytes),
                 used_entries: UnsafeCell::new(0),
                 tot_buckets:  Cell::new(tot_buckets),
@@ -412,9 +416,10 @@ mod prev_rustic_nothread {
             let idx = self.calc_index(zb);
             let ver = self.calc_verification(zb);
             unsafe {
-                let ptr = self.bucket(idx);
+                let ptr = self.bucket(idx).unwrap();
                 let mut used_entries: &mut usize = &mut (*self.used_entries.get());
-                (*ptr).store(ver, si, used_entries);
+                // (*ptr).store(ver, si, used_entries);
+                ptr.store(ver, si, used_entries);
             }
         }
     }
@@ -422,9 +427,11 @@ mod prev_rustic_nothread {
     /// Probe
     impl TransTable {
 
-        unsafe fn bucket(&self, idx: usize) -> *mut Bucket {
-            (*self.ptr.get()).as_ptr()
-                .add(idx)
+        // unsafe fn bucket(&self, idx: usize) -> *mut Bucket {
+        unsafe fn bucket(&self, idx: usize) -> Option<&mut Bucket> {
+            // (*self.ptr.get()).as_ptr()
+            //     .add(idx)
+            (*self.vec.get()).get_mut(idx)
         }
 
         pub fn probe(&self, zb: Zobrist) -> Option<&SearchInfo> {
@@ -432,8 +439,10 @@ mod prev_rustic_nothread {
             let ver = self.calc_verification(zb);
 
             unsafe {
-                let ptr = self.bucket(idx);
-                (*ptr).find(ver)
+                let ptr = self.bucket(idx)?;
+                // (*ptr).find(ver)
+                let si = ptr.find(ver)?;
+                Some(&si)
             }
         }
 
@@ -475,25 +484,25 @@ mod prev_rustic_nothread {
     /// Unsafe Alloc, De-alloc
     impl TransTable {
 
-        unsafe fn de_alloc(&self) {
-            // assert!()
-            let layout = Layout::from_size_align(self.tot_buckets.get(), 2).unwrap();
-            let ptr: *mut NonNull<Bucket> = self.ptr.get();
-            // let ptr = ptr as *mut u8;
-            let ptr: *mut u8 = mem::transmute(ptr);
-            alloc::dealloc(ptr, layout);
-        }
+        // unsafe fn de_alloc(&self) {
+        //     // assert!()
+        //     let layout = Layout::from_size_align(self.tot_buckets.get(), 2).unwrap();
+        //     let ptr: *mut Bucket = (*self.ptr.get()).as_ptr();
+        //     // let ptr = ptr as *mut u8;
+        //     let ptr: *mut u8 = mem::transmute(ptr);
+        //     alloc::dealloc(ptr, layout);
+        // }
 
-        unsafe fn alloc_room(size: usize) -> NonNull<Bucket> {
-            let size         = size * mem::size_of::<Bucket>();
-            let layout       = Layout::from_size_align(size, 2).unwrap();
-            let ptr: *mut u8 = alloc::alloc_zeroed(layout);
-            let new_ptr: NonNull<Bucket> = match NonNull::new(ptr) {
-                Some(ptr) => ptr.cast(),
-                _         => handle_alloc_error(layout),
-            };
-            new_ptr
-        }
+        // unsafe fn alloc_room(size: usize) -> NonNull<Bucket> {
+        //     let size         = size * mem::size_of::<Bucket>();
+        //     let layout       = Layout::from_size_align(size, 2).unwrap();
+        //     let ptr: *mut u8 = alloc::alloc_zeroed(layout);
+        //     let new_ptr: NonNull<Bucket> = match NonNull::new(ptr) {
+        //         Some(ptr) => ptr.cast(),
+        //         _         => handle_alloc_error(layout),
+        //     };
+        //     new_ptr
+        // }
 
     }
 
