@@ -145,15 +145,17 @@ fn main() -> std::io::Result<()> {
                                 // eprintln!("fen = {:?}", fen);
                                 match xs.next() {
                                     Some(moves) => {
-
                                         let moves = moves.split(" ");
-                                        for m in moves {
-                                            let from = &m[0..2];
-                                            let to = &m[2..4];
-                                            let other = &m[4..];
-                                            let mm = g.convert_move(from, to, other).unwrap();
-                                            g = g.make_move_unchecked(&ts, mm).unwrap();
-                                        }
+
+                                        // for m in moves {
+                                        //     let from = &m[0..2];
+                                        //     let to = &m[2..4];
+                                        //     let other = &m[4..];
+                                        //     let mm = g.convert_move(from, to, other).unwrap();
+                                        //     g = g.make_move_unchecked(&ts, mm).unwrap();
+                                        // }
+
+                                        explorer.update_game_movelist(&ts, &fen, moves);
 
                                     },
                                     None => {},

@@ -28,10 +28,10 @@ pub struct Game {
     pub pawn_zb:      Zobrist,
     pub last_move:    Option<Move>,
 
-    // pub history:      GHistory,
-    // pub history:      Vec<(Zobrist,Move)>,
-    // pub history:      HashMap<Zobrist, u8>,
-    pub history:      FxHashMap<Zobrist, u8>,
+    // // pub history:      GHistory,
+    // // pub history:      Vec<(Zobrist,Move)>,
+    // // pub history:      HashMap<Zobrist, u8>,
+    // pub history:      FxHashMap<Zobrist, u8>,
 
     pub halfmove:     u8,
 }
@@ -70,14 +70,14 @@ pub struct GameState {
 
 impl Default for Game {
     fn default() -> Self {
-        let history = FxHashMap::default();
+        // let history = FxHashMap::default();
 
         Self {
             state:        GameState::default(),
             zobrist:      Zobrist(0),
             pawn_zb:      Zobrist(0),
             last_move:    None,
-            history,
+            // history,
             halfmove:    0,
             // ..Default::default()
         }
@@ -536,12 +536,12 @@ impl Game {
                     next.zobrist = zb;
                 };
 
-                if let Some(mut k) = next.history.get_mut(&next.zobrist) {
-                    *k += 1;
-                    // if *k >= 2 { return Err(GameEnd::DrawRepetition); }
-                } else {
-                    next.history.insert(next.zobrist, 1);
-                }
+                // if let Some(mut k) = next.history.get_mut(&next.zobrist) {
+                //     *k += 1;
+                //     // if *k >= 2 { return Err(GameEnd::DrawRepetition); }
+                // } else {
+                //     next.history.insert(next.zobrist, 1);
+                // }
 
                 if mv.is_zeroing() {
                     next.halfmove = 0;

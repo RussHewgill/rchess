@@ -2787,7 +2787,7 @@ fn main9() {
     // let fen = &games(2); // STS2 002, Qt R a7E7
     // let fen = &games(2); // STS15 001, Qt Q d3d1
 
-    // let fen = "r3rbk1/1pq2ppp/p1n3b1/3BpNP1/4P3/P1Q1B2P/1PP2P2/3RR1K1 b - - 0 1"; // repetition
+    let fen = "r3rbk1/1pq2ppp/p1n3b1/3BpNP1/4P3/P1Q1B2P/1PP2P2/3RR1K1 b - - 0 1"; // repetition
     // let fen = "r3rbk1/1pq2ppp/p1n5/3BpNPb/4P3/P1Q1B2P/1PP2P2/3RR1K1 w - - 1 2"; // repetition
     // let fen = "r3rbk1/1pq2ppp/p1n5/3BpNPb/4P3/P1QRB2P/1PP2P2/4R1K1 b - - 2 2"; // repetition
     // let fen = "r3rbk1/1pq2ppp/p1n3b1/3BpNP1/4P3/P1QRB2P/1PP2P2/4R1K1 w - - 3 3"; // repetition
@@ -3738,7 +3738,7 @@ fn main_perft(depth: Option<u64>) {
 
     let d = 4;
     let mut g = Game::from_fen(&ts, fen2).unwrap();
-    timer!({
+    timer_loop!(4,{
         let (tot,_) = g.perft(&ts, d);
     });
 

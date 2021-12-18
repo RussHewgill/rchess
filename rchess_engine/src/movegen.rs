@@ -23,6 +23,10 @@ impl Iterator for MoveGen {
     }
 }
 
+/// Generate
+impl MoveGen {
+}
+
 /// Pawns
 impl MoveGen {
     pub fn gen_pawns(&self, ts: &Tables, gen: MoveGenType) -> Vec<Move> {

@@ -20,6 +20,7 @@ pub use crate::timer::*;
 pub use crate::trans_table::*;
 pub use crate::searchstats::*;
 
+use std::cell::Cell;
 use std::cell::RefCell;
 use std::path::Path;
 use std::collections::{VecDeque,HashMap,HashSet};
@@ -68,7 +69,7 @@ pub struct Explorer {
     // pub ph_rw:         (PHReadFactory,PHWrite),
     pub ph_rw:         PHTableFactory,
 
-    // pub move_history:  Vec<(Zobrist, Move)>,
+    pub move_history:  Vec<(Zobrist, Move)>,
     // pub pos_history:   HashMap<Zobrist,u8>,
 }
 
@@ -130,6 +131,10 @@ pub struct ExHelper {
 
     // pub ph_rw:         (PHRead,PHWrite),
     pub ph_rw:           PHTable,
+
+    // pub move_history:  Vec<(Zobrist, Move)>,
+    // pub stack:           Cell<ABStack>,
+
 }
 
 /// Load EvalParams
@@ -144,17 +149,24 @@ impl ExHelper {
 
 #[derive(Debug,Clone)]
 pub struct ABStack {
-    pub history:      [[[Score; 64]; 64]; 2],
-    pub killers:      KillerMoves,
-    pub pvs:          Vec<Move>,
+    pub history:        [[[Score; 64]; 64]; 2],
+    pub killers:        KillerMoves,
+    pub move_history:   Vec<(Zobrist, Move)>,
+    // pub pvs:          Vec<Move>,
 }
 
 impl ABStack {
-    fn new() -> Self {
+    pub fn new_with_moves(moves: Vec<(Zobrist, Move)>) -> Self {
+        let mut out = Self::new();
+        out.move_history = moves;
+        out
+    }
+    pub fn new() -> Self {
         Self {
-            history:      [[[0; 64]; 64]; 2],
-            killers:      KillerMoves::default(),
-            pvs:          Vec::with_capacity(64),
+            history:        [[[0; 64]; 64]; 2],
+            killers:        KillerMoves::default(),
+            // pvs:          Vec::with_capacity(64),
+            move_history:   vec![],
         }
     }
 }
@@ -198,6 +210,7 @@ impl Explorer {
 
             // ph_rw:           (self.ph_rw.0.handle(),self.ph_rw.1.clone()),
             ph_rw:           self.ph_rw.handle(),
+
         }
     }
 
@@ -209,8 +222,6 @@ pub enum ExMessage {
     End(usize),
 }
 
-// pub type ExReceiver = Receiver<(Depth,ABResults,SearchStats,Option<usize>)>;
-// pub type ExSender   = Sender<(Depth,ABResults,SearchStats,Option<usize>)>;
 pub type ExReceiver = Receiver<ExMessage>;
 pub type ExSender   = Sender<ExMessage>;
 
@@ -287,7 +298,7 @@ impl Explorer {
             // ph_rw:          (ph_rf,ph_w),
             ph_rw,
 
-            // move_history:   vec![],
+            move_history:   vec![],
             // pos_history:    HashMap::default(),
         }
     }
@@ -315,6 +326,24 @@ impl Explorer {
         }
         self.side = g.state.side_to_move;
         self.game = g;
+    }
+
+    pub fn update_game_movelist<'a>(
+        &mut self,
+        ts:          &Tables,
+        fen:         &str,
+        mut moves:   impl Iterator<Item = &'a str>) {
+        let mut g = Game::from_fen(&ts, &fen).unwrap();
+        for m in moves {
+            let from = &m[0..2];
+            let to = &m[2..4];
+            let other = &m[4..];
+            let mm = g.convert_move(from, to, other).unwrap();
+            g = g.make_move_unchecked(&ts, mm).unwrap();
+            self.move_history.push((g.zobrist,mm));
+        }
+
+        self.update_game(g);
     }
 
     pub fn load_nnue<P: AsRef<Path>>(&mut self, path: P) -> std::io::Result<()> {

@@ -70,6 +70,7 @@ pub fn exhelper_once(
         #[cfg(not(feature = "lockless_hashmap"))]
         tt_w,
         ph_rw,
+        // move_history: vec![],
     };
 
     helper
@@ -156,7 +157,8 @@ impl ExHelper {
         let (alpha,beta) = (alpha + 200,beta - 200);
         self.game = g.clone();
         self.side = g.state.side_to_move;
-        self.qsearch(ts, g, (0,0), (alpha,beta), stats, ABNodeType::Root)
+        let mut stack = ABStack::new();
+        self.qsearch(ts, g, (0,0), (alpha,beta), &mut stack, stats, ABNodeType::Root)
     }
 
     pub fn qsearch_once(
@@ -167,7 +169,8 @@ impl ExHelper {
     ) -> Score {
         let (alpha,beta) = (Score::MIN,Score::MAX);
         let (alpha,beta) = (alpha + 200,beta - 200);
-        self.qsearch(ts, g, (0,0), (alpha,beta), stats, ABNodeType::Root)
+        let mut stack = ABStack::new();
+        self.qsearch(ts, g, (0,0), (alpha,beta), &mut stack, stats, ABNodeType::Root)
     }
 
     /// alpha = the MINimum score that the MAXimizing player is assured of
@@ -181,6 +184,7 @@ impl ExHelper {
         g:                        &Game,
         (ply,qply):               (Depth,Depth),
         (mut alpha, mut beta):    (Score,Score),
+        mut stack:                &mut ABStack,
         mut stats:                &mut SearchStats,
         node_type:                ABNodeType,
     ) -> Score {
@@ -330,7 +334,7 @@ impl ExHelper {
             // };
 
             // if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
-            if let Some(g2) = self.make_move(ts, g, mv, None) {
+            if let Some(g2) = self.make_move(ts, g, mv, None, stack) {
 
                 // trace!("qsearch: mv = {:?}, g = {:?}\n, g2 = {:?}", mv, g, g2);
                 // trace!("qsearch: mv = {:?}", mv);
@@ -340,17 +344,17 @@ impl ExHelper {
                         // trace!("fen = {}", g.to_fen());
                         // trace!("qsearch: SEE negative: {} {:?}", see, g);
                         // trace!("qsearch: SEE negative: {}", see);
-                        self.pop_nnue();
+                        self.pop_nnue(stack);
                         continue;
                     }
                 }
 
                 let score = -self.qsearch(
-                    &ts, &g2, (ply + 1,qply + 1), (-beta, -alpha), &mut stats, node_type);
+                    &ts, &g2, (ply + 1,qply + 1), (-beta, -alpha), stack, stats, node_type);
 
                 if score >= beta && allow_stand_pat {
                     // trace!("qsearch returning beta 1: {:?}", beta);
-                    self.pop_nnue();
+                    self.pop_nnue(stack);
                     return beta; // fail hard
                     // return stand_pat; // fail soft
                 }
@@ -359,7 +363,7 @@ impl ExHelper {
                     alpha = score;
                 }
 
-                self.pop_nnue();
+                self.pop_nnue(stack);
 
                 // if let Some(nnue) = &self.nnue {
                 //     let nn = nnue.borrow();

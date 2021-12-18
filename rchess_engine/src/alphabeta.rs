@@ -118,7 +118,14 @@ pub enum ABNodeType {
 impl ExHelper {
 
     // #[inline(always)]
-    pub fn make_move(&self, ts: &Tables, g: &Game, mv: Move, zb0: Option<Zobrist>) -> Option<Game> {
+    pub fn make_move(
+        &self,
+        ts:           &Tables,
+        g:            &Game,
+        mv:           Move,
+        zb0:          Option<Zobrist>,
+        mut stack:    &mut ABStack,
+    ) -> Option<Game> {
         if let Ok(g2) = g._make_move_unchecked(ts, mv, zb0) {
 
             // push NNUE
@@ -128,16 +135,21 @@ impl ExHelper {
                 nn.ft.make_move(&g2, mv);
             }
 
+            stack.move_history.push((g.zobrist,mv));
+
             Some(g2)
         } else { None }
     }
 
     // #[inline(always)]
-    pub fn pop_nnue(&self) {
+    pub fn pop_nnue(&self, mut stack: &mut ABStack) {
         #[cfg(feature = "nnue")]
         if let Some(nnue) = &self.nnue {
             let mut nn = nnue.borrow_mut();
             nn.ft.accum_pop();
+
+            stack.move_history.pop();
+
         }
     }
 
@@ -282,10 +294,20 @@ impl ExHelper {
 
         /// Repetition, Halting
         if !is_root {
+
+            // /// Repetition checking
+            // if let Some(k) = g.history.get(&g.zobrist) {
+            //     if *k >= 2 {
+            //         let score = -STALEMATE_VALUE + ply as Score;
+            //         return ABSingle(ABResult::new_single(g.last_move.unwrap(), 0));
+            //     }
+            // }
+
             /// Repetition checking
-            if let Some(k) = g.history.get(&g.zobrist) {
-                if *k >= 2 {
-                    let score = -STALEMATE_VALUE + ply as Score;
+            if alpha < DRAW_VALUE {
+                // for (zb,_) in stack.move_history.iter().step_by(2) {
+                let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
+                if cycle && alpha >= beta {
                     return ABSingle(ABResult::new_single(g.last_move.unwrap(), 0));
                 }
             }
@@ -294,6 +316,8 @@ impl ExHelper {
             if self.stop.load(SeqCst) {
                 return ABNone;
             }
+
+            /// Mate found
             {
                 let r = self.best_mate.read();
                 if let Some(best) = *r {
@@ -315,7 +339,7 @@ impl ExHelper {
                 // trace!("    beginning qsearch, {:?}, a/b: {:?},{:?}",
                 //        prev_mvs.front().unwrap().1, alpha, beta);
                 let nt = if node_type == PV { PV } else { NonPV };
-                let score = self.qsearch(&ts, &g, (ply,0), (alpha, beta), &mut stats, nt);
+                let score = self.qsearch(&ts, &g, (ply,0), (alpha, beta), stack, stats, nt);
                 // trace!("    returned from qsearch, score = {}", score);
                 score
             };
@@ -470,24 +494,24 @@ impl ExHelper {
         let is_pv: bool   = node_type != ABNodeType::NonPV;
         let is_root: bool = node_type == ABNodeType::Root;
 
-        /// Repetition checking
-        // if !cfg.inside_null {
-        {
-            if let Some(k) = g.history.get(&g.zobrist) {
-                if *k >= 2 {
-                    let score = -STALEMATE_VALUE + ply as Score;
-                    // return ABSingle(ABResult::new_single(g.last_move.unwrap(), -score));
-                    // return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
-                    // trace!("repetition found, last move {:?}", g.last_move);
-                    if is_root {
-                        // return ABNone;
-                    } else {
-                        return ABSingle(ABResult::new_single(g.last_move.unwrap(), 0));
-                    }
-                    // return ABSingle(ABResult::new_empty(0));
-                }
-            }
-        }
+        // /// Repetition checking
+        // // if !cfg.inside_null {
+        // {
+        //     if let Some(k) = g.history.get(&g.zobrist) {
+        //         if *k >= 2 {
+        //             let score = -STALEMATE_VALUE + ply as Score;
+        //             // return ABSingle(ABResult::new_single(g.last_move.unwrap(), -score));
+        //             // return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
+        //             // trace!("repetition found, last move {:?}", g.last_move);
+        //             if is_root {
+        //                 // return ABNone;
+        //             } else {
+        //                 return ABSingle(ABResult::new_single(g.last_move.unwrap(), 0));
+        //             }
+        //             // return ABSingle(ABResult::new_empty(0));
+        //         }
+        //     }
+        // }
 
         // // TODO: bench this
         // if *stop_counter > 2000 {
@@ -592,7 +616,7 @@ impl ExHelper {
                 // trace!("    beginning qsearch, {:?}, a/b: {:?},{:?}",
                 //        prev_mvs.front().unwrap().1, alpha, beta);
                 let nt = if node_type == PV { PV } else { NonPV };
-                let score = self.qsearch(&ts, &g, (ply,0), (alpha, beta), &mut stats, nt);
+                let score = self.qsearch(&ts, &g, (ply,0), (alpha, beta), stack, stats, nt);
                 // trace!("    returned from qsearch, score = {}", score);
                 score
             };
@@ -742,7 +766,7 @@ impl ExHelper {
             //     nn.ft.accum.make_copy()
             // };
 
-            let g2 = if let Some(g2) = self.make_move(ts, g, mv, Some(zb0)) {
+            let g2 = if let Some(g2) = self.make_move(ts, g, mv, Some(zb0), stack) {
                 g2
             } else { continue 'outer; };
 
@@ -896,7 +920,7 @@ impl ExHelper {
                                         panic!("ABPrune 1");
                                     },
                                     ABNone       => {
-                                        self.pop_nnue();
+                                        self.pop_nnue(stack);
                                         break 'outer;
                                     }
                                 }
@@ -910,13 +934,13 @@ impl ExHelper {
                         ABPrune(beta, prune) => {
                             // panic!("ABPrune 2");
                             // trace!("ABPrune 2: {:?} {:?}", beta, prune);
-                            self.pop_nnue();
+                            self.pop_nnue(stack);
                             continue 'outer;
                         },
                         // ABList(_, _) => break 'outer,
                         ABList(_, _) => panic!("found ABList when not root?"),
                         ABNone       => {
-                            self.pop_nnue();
+                            self.pop_nnue(stack);
                             break 'outer;
                         }
                     }
@@ -966,12 +990,12 @@ impl ExHelper {
                         stats!(stats.beta_cut_first.1 += 1);
                     }
 
-                    self.pop_nnue();
+                    self.pop_nnue(stack);
                     break;
                 }
             }
 
-            self.pop_nnue();
+            self.pop_nnue(stack);
 
             // if let Some(nnue) = &self.nnue {
             //     let nn = nnue.borrow();
