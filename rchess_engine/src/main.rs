@@ -286,11 +286,13 @@ fn main_tt() {
     // SearchInfo = 8
     // TTEntry    = 12
 
-    let k0 = std::mem::size_of::<rchess_engine_lib::lockless_map::Bucket>();
-    eprintln!("k0 = {:?}", k0);
+    // let k0: u128 = 0;
 
-    let k1 = std::mem::size_of::<TTEntry>();
-    eprintln!("k1 = {:?}", k1);
+    // let k0 = std::mem::size_of::<rchess_engine_lib::lockless_map::Bucket>();
+    // eprintln!("k0 = {:?}", k0);
+
+    // let k1 = std::mem::size_of::<TTEntry>();
+    // eprintln!("k1 = {:?}", k1);
 
     return;
 

@@ -89,6 +89,8 @@ pub mod move_ordering;
 
 pub mod lockless_map;
 
+pub mod prefetch;
+
 pub mod simd_utils;
 pub mod simd_test;
 

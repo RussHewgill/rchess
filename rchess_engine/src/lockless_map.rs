@@ -340,6 +340,12 @@ mod prev_rustic_nothread {
     unsafe impl Send for TransTable {}
     unsafe impl Sync for TransTable {}
 
+    impl Drop for TransTable {
+        fn drop(&mut self) {
+            unsafe { self.de_alloc(); }
+        }
+    }
+
     impl std::fmt::Debug for TransTable {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.write_str(&format!("TransTable"))?;
@@ -369,6 +375,7 @@ mod prev_rustic_nothread {
         // }
 
         pub fn new_mb(megabytes: usize) -> Self {
+            assert!(megabytes > 0);
 
             let mut tot_buckets: usize = (megabytes * MEGABYTE) / mem::size_of::<Bucket>();
             tot_buckets = tot_buckets.next_power_of_two() / 2;
@@ -395,17 +402,6 @@ mod prev_rustic_nothread {
                 tot_buckets:  Cell::new(tot_buckets),
                 tot_entries:  Cell::new(tot_entries),
             }
-        }
-
-        unsafe fn alloc_room(size: usize) -> NonNull<Bucket> {
-            let size         = size * mem::size_of::<Bucket>();
-            let layout       = Layout::from_size_align(size, 2).unwrap();
-            let ptr: *mut u8 = alloc::alloc_zeroed(layout);
-            let new_ptr: NonNull<Bucket> = match NonNull::new(ptr) {
-                Some(ptr) => ptr.cast(),
-                _         => handle_alloc_error(layout),
-            };
-            new_ptr
         }
 
     }
@@ -440,25 +436,65 @@ mod prev_rustic_nothread {
                 (*ptr).find(ver)
             }
         }
+
+    }
+
+    /// Query
+    impl TransTable {
+        // pub fn bucket_count(&self) -> usize {
+        // }
     }
 
     /// Misc
     impl TransTable {
 
-        pub fn calc_index2(zb: Zobrist) -> usize {
-            // jjjjk
-            unimplemented!()
-        }
+        // /// Stockfish ??
+        // pub fn calc_index2(&self, zb: Zobrist) -> usize {
+        //     let key = (zb.0 as u128 * self.tot_buckets.get() as u128) >> 64;
+        //     key as usize
+        // }
 
         pub fn calc_index(&self, zb: Zobrist) -> usize {
             let key = (zb.0 & HIGH_FOUR_BYTES) >> SHIFT_TO_LOWER;
-            // let total = unsafe { *self.tot_buckets.get() } as u64;
             let total = self.tot_buckets.get() as u64;
             (key % total) as usize
         }
         pub fn calc_verification(&self, zb: Zobrist) -> u32 {
             (zb.0 & LOW_FOUR_BYTES) as u32
         }
+    }
+
+    /// Prefetch
+    impl TransTable {
+        fn prefetch(&self, zb: Zobrist) {
+            // let idx = self.calc_index(zb)
+            unimplemented!()
+        }
+    }
+
+    /// Unsafe Alloc, De-alloc
+    impl TransTable {
+
+        unsafe fn de_alloc(&self) {
+            // assert!()
+            let layout = Layout::from_size_align(self.tot_buckets.get(), 2).unwrap();
+            let ptr: *mut NonNull<Bucket> = self.ptr.get();
+            // let ptr = ptr as *mut u8;
+            let ptr: *mut u8 = mem::transmute(ptr);
+            alloc::dealloc(ptr, layout);
+        }
+
+        unsafe fn alloc_room(size: usize) -> NonNull<Bucket> {
+            let size         = size * mem::size_of::<Bucket>();
+            let layout       = Layout::from_size_align(size, 2).unwrap();
+            let ptr: *mut u8 = alloc::alloc_zeroed(layout);
+            let new_ptr: NonNull<Bucket> = match NonNull::new(ptr) {
+                Some(ptr) => ptr.cast(),
+                _         => handle_alloc_error(layout),
+            };
+            new_ptr
+        }
+
     }
 
 }

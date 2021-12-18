@@ -111,9 +111,7 @@ pub enum SICanUse {
     UseOrdering,
 }
 
-// #[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone)]
 #[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize)]
-// #[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
 pub struct SearchInfo {
     // pub best_move:          Move,
     pub best_move:          (u8,u8),
