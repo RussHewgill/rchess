@@ -25,7 +25,7 @@ default = [
 
     "basic_time",
 
-    "lockless_hashmap",
+    # "lockless_hashmap",
 
     # "backtrace",
 
@@ -38,10 +38,11 @@ default = [
     "nnue",
 
     # "null_pruning",
-    "late_move_reduction",
     # "history_heuristic",
-    "killer_moves",
     # "futility_pruning",
+
+    "late_move_reduction",
+    "killer_moves",
 
     "qsearch",
 
@@ -195,5 +196,5 @@ termcolor = "1.1.2"
 safe_arch = { version = "^0.6", features = ["bytemuck"] }
 bytemuck = { version = "^1.7", features = ["extern_crate_alloc"] }
 
-strum = { version = "^0.23", features = ["derive"] }
+# strum = { version = "^0.23", features = ["derive"] }
 

@@ -473,7 +473,7 @@ impl Explorer {
     // }
 
     // pub fn explore(&self, ts: &Tables, _: Option<Depth>)
-    pub fn explore(&self, ts: &Tables)
+    pub fn explore(&self, ts: &'static Tables)
                    // -> (Option<(Move,Score)>,SearchStats) {
                    -> (Option<(Move,ABResult)>,SearchStats) {
 
@@ -699,7 +699,7 @@ impl Explorer {
     #[allow(unused_labels,unused_doc_comments)]
     pub fn lazy_smp_2(
         &self,
-        ts:         &Tables,
+        ts:         &'static Tables,
     ) -> (ABResults,Vec<Move>,SearchStats) {
 
         let max_threads = if let Some(x) = self.cfg.num_threads {
@@ -953,7 +953,7 @@ impl ExHelper {
     #[allow(unused_doc_comments)]
     fn lazy_smp_single(
         &self,
-        ts:               &Tables,
+        ts:               &'static Tables,
     ) {
 
         // let mut history = [[[0; 64]; 64]; 2];

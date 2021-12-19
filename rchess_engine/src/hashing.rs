@@ -242,7 +242,8 @@ impl ZbTable {
 
 impl std::fmt::Debug for Zobrist {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("{:#8x}", self.0))?;
+        // f.write_str(&format!("{:#8x}", self.0))?;
+        f.write_str(&format!("{:#>016x}", self.0))?;
         Ok(())
     }
 }

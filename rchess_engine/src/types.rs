@@ -103,10 +103,12 @@ impl Move {
     //     [Sq::F8.to(), Sq::G8.to()],
     // ];
 
-    // pub const CASTLE_QUEENSIDE_BETWEEN: [[Coord; 2]; 2] = [
-    //     [Sq::C1.to(), Sq::D1.to()],
-    //     [Sq::C8.to(), Sq::D8.to()],
-    // ];
+    pub const CASTLE_QUEENSIDE_BETWEEN: [BitBoard; 2] = [
+        // BitBoard::new(&[Sq::C1.to(), Sq::D1.to()]),
+        // BitBoard::new(&[Sq::C8.to(), Sq::D8.to()]),
+        BitBoard(0x000000000000000c),
+        BitBoard(0x0c00000000000000),
+    ];
 
     pub const CASTLE_KINGSIDE: [Move; 2] = [
         Move::Castle {

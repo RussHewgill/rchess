@@ -8,8 +8,8 @@ use arrayvec::ArrayVec;
 
 #[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
 pub enum MoveGenType {
-    CapturesPromotions,
-    Quiets,
+    Captures, // also queen promotions
+    Quiets, // also under-promotions
     Evasions,
     QuietChecks,
     // Pseudo,
@@ -20,9 +20,13 @@ pub enum MoveGenType {
 #[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
 pub enum MoveGenStage {
     // Init = 0,
-    Hash = 0,
-    Captures,
-    Quiets,
+    Hash,
+    Captures(bool),
+    Quiets(bool),
+
+    EvasionHash,
+    Evasion(bool),
+
     Finished,
 }
 
@@ -30,10 +34,17 @@ impl MoveGenStage {
     pub fn next(self) -> Option<Self> {
         use MoveGenStage::*;
         match self {
-            Hash     => Some(Captures),
-            Captures => Some(Quiets),
-            Quiets   => Some(Finished),
-            Finished => None,
+            Hash            => Some(Captures(true)),
+            Captures(true)  => Some(Captures(false)),
+            Captures(false) => Some(Quiets(true)),
+            Quiets(true)    => Some(Quiets(false)),
+            Quiets(false)   => Some(Finished),
+
+            EvasionHash    => Some(Evasion(true)),
+            Evasion(true)  => Some(Evasion(false)),
+            Evasion(false) => Some(Finished),
+
+            Finished    => None,
         }
     }
 }
@@ -54,6 +65,7 @@ pub struct MoveGen<'a> {
     ply:        Depth,
 }
 
+/// New
 impl<'a> MoveGen<'a> {
     pub fn new(
         ts:             &'static Tables,
@@ -69,7 +81,7 @@ impl<'a> MoveGen<'a> {
             game,
             in_check,
             side,
-            stage:     MoveGenStage::Hash,
+            stage:     if in_check { MoveGenStage::EvasionHash } else { MoveGenStage::Hash },
             buf:       ArrayVec::new(),
             hashmove,
             depth,
@@ -79,6 +91,10 @@ impl<'a> MoveGen<'a> {
 
     pub fn buf(&self) -> &[Move] {
         &self.buf
+    }
+
+    pub fn buf_legal(&self) -> impl Iterator<Item = &Move> {
+        self.buf.iter().filter(move |mv| self.move_is_legal(**mv))
     }
 
 }
@@ -95,13 +111,16 @@ impl<'a> Iterator for MoveGen<'a> {
                 }
 
                 self.stage = self.stage.next()?;
-
-                self.generate(MoveGenType::CapturesPromotions);
-                // TODO: sort here?
-
                 self.next()
             },
-            MoveGenStage::Captures => {
+            MoveGenStage::Captures(true) => {
+                self.generate(MoveGenType::Captures);
+                // TODO: sort here?
+
+                self.stage = self.stage.next()?;
+                self.next()
+            },
+            MoveGenStage::Captures(false) => {
                 if let Some(mv) = self.buf.pop() {
                     if self.move_is_legal(mv) {
                         return Some(mv);
@@ -109,12 +128,18 @@ impl<'a> Iterator for MoveGen<'a> {
                         return self.next();
                     }
                 }
-                self.stage = self.stage.next()?;
 
-                self.generate(MoveGenType::Quiets);
+                self.stage = self.stage.next()?;
                 self.next()
             },
-            MoveGenStage::Quiets   => {
+            MoveGenStage::Quiets(true) => {
+                self.generate(MoveGenType::Quiets);
+                // TODO: sort here?
+
+                self.stage = self.stage.next()?;
+                self.next()
+            },
+            MoveGenStage::Quiets(false) => {
                 if let Some(mv) = self.buf.pop() {
                     if self.move_is_legal(mv) {
                         return Some(mv);
@@ -125,6 +150,37 @@ impl<'a> Iterator for MoveGen<'a> {
                 self.stage = self.stage.next()?;
                 None
             },
+
+            MoveGenStage::EvasionHash => {
+                if let Some(mv) = self.hashmove {
+                    if self.move_is_legal(mv) {
+                        return Some(mv);
+                    }
+                }
+
+                self.stage = self.stage.next()?;
+                self.next()
+            },
+
+            MoveGenStage::Evasion(true) => {
+                self.generate(MoveGenType::Evasions);
+                // TODO: sort here?
+
+                self.stage = self.stage.next()?;
+                self.next()
+            },
+            MoveGenStage::Evasion(false) => {
+                if let Some(mv) = self.buf.pop() {
+                    if self.move_is_legal(mv) {
+                        return Some(mv);
+                    } else {
+                        return self.next();
+                    }
+                }
+                self.stage = self.stage.next()?;
+                None
+            },
+
             MoveGenStage::Finished => {
                 None
             },
@@ -157,7 +213,24 @@ impl<'a> MoveGen<'a> {
     }
 
     fn _gen_all_in_check(&mut self, gen: MoveGenType) {
-        unimplemented!()
+        self.gen_king(gen);
+
+        let num_checkers = self.game.state.checkers.into_iter().count();
+        if num_checkers == 0 {
+            panic!();
+        } else if num_checkers == 1 {
+
+            self.gen_pawns(gen);
+            self.gen_knights(gen);
+            self.gen_sliding(gen, Bishop);
+            self.gen_sliding(gen, Rook);
+            self.gen_sliding(gen, Queen);
+
+        } else {
+            // double check
+            return;
+        }
+
     }
 
 }
@@ -165,15 +238,15 @@ impl<'a> MoveGen<'a> {
 /// Perft
 impl<'a> MoveGen<'a> {
 
-    pub fn perft(ts: &'a Tables, g: &'a Game, depth: Depth) -> (u64,Vec<(Move,u64)>) {
+    pub fn perft(ts: &'static Tables, g: &'a Game, depth: Depth) -> (u64,Vec<(Move,u64)>) {
         let depth = depth.max(1);
         let mut out = vec![];
         let mut sum = 0;
-        let mut gen = Self::new(ts, g, None, depth, 0);
+        let mut gen = Self::new(ts, &g, None, depth, 0);
 
         while let Some(mv) = gen.next() {
             if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
-                let sum2 = Self::_perft(ts, g, depth - 1);
+                let sum2 = Self::_perft(ts, g2, depth - 1);
                 out.push((mv,sum2));
                 sum += sum2;
             }
@@ -182,12 +255,13 @@ impl<'a> MoveGen<'a> {
         (sum,out)
     }
 
-    pub fn _perft(ts: &Tables, g: Game, depth: Depth) -> u64 {
+    pub fn _perft(ts: &'static Tables, g: Game, depth: Depth) -> u64 {
         if depth == 0 { return 1; }
 
-        let mut gen = Self::new(ts, &g, None, depth, 0);
+        let mut gen = MoveGen::new(ts, &g, None, depth, 0);
 
         let mut sum = 0;
+
         while let Some(mv) = gen.next() {
             if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
                 let sum2 = Self::_perft(ts, g2, depth - 1);
@@ -197,7 +271,6 @@ impl<'a> MoveGen<'a> {
 
         sum
     }
-
 
 }
 
@@ -261,11 +334,10 @@ impl<'a> MoveGen<'a> {
         };
 
         let ps = self.game.get(Pawn, self.side);
-        // let ps = ps & !(if self.side == White { BitBoard::mask_rank(6) } else { BitBoard::mask_rank(1) });
         let ps = ps & !rank7;
 
         match gen {
-            MoveGenType::CapturesPromotions => {
+            MoveGenType::Captures => {
 
                 // let enemies = self.game.get_color(!self.side);
 
@@ -305,6 +377,7 @@ impl<'a> MoveGen<'a> {
                     });
                 }
 
+                self.gen_promotions(gen);
             },
             MoveGenType::Quiets => {
                 let pushes = ps.shift_dir(dir);
@@ -315,9 +388,8 @@ impl<'a> MoveGen<'a> {
                 let doubles = doubles & !(occ) & (!(occ)).shift_dir(dir);
 
                 for to in pushes.into_iter() {
-                    let t = to.into();
-                    if let Some(f) = (!dir).shift_coord(t) {
-                        let mv = Move::Quiet { from: f, to: t, pc: Pawn };
+                    if let Some(f) = (!dir).shift_coord(to) {
+                        let mv = Move::Quiet { from: f, to, pc: Pawn };
                         self.buf.push(mv);
                     }
                 };
@@ -328,11 +400,72 @@ impl<'a> MoveGen<'a> {
                     self.buf.push(mv);
                 }
 
+                self.gen_promotions(gen);
             },
-            MoveGenType::Evasions    => unimplemented!(),
+            MoveGenType::Evasions    => {
+                self.gen_pawns(MoveGenType::Captures);
+                self.gen_pawns(MoveGenType::Quiets);
+            },
             MoveGenType::QuietChecks => unimplemented!(),
         }
     }
+
+    pub fn gen_promotions(&mut self, gen: MoveGenType) {
+
+        let rank7 = if self.side == White { BitBoard::mask_rank(6) } else { BitBoard::mask_rank(1) };
+
+        let ps = self.game.get(Pawn, self.side);
+        let ps = ps & rank7;
+
+        let occ = self.game.all_occupied();
+        let (dir,dw,de) = match self.side {
+            White => (N,NW,NE),
+            Black => (S,SW,SE),
+        };
+
+        let pushes = ps.shift_dir(dir);
+        let pushes = pushes & !(occ);
+
+        for to in pushes.into_iter() {
+            if let Some(from) = (!dir).shift_coord(to) {
+                if gen == MoveGenType::Captures {
+                    let mv = Move::Promotion { from, to, new_piece: Queen };
+                    self.buf.push(mv);
+                } else if gen == MoveGenType::Quiets {
+                    let mv = Move::Promotion { from, to, new_piece: Knight };
+                    self.buf.push(mv);
+                    let mv = Move::Promotion { from, to, new_piece: Bishop };
+                    self.buf.push(mv);
+                    let mv = Move::Promotion { from, to, new_piece: Rook };
+                    self.buf.push(mv);
+                }
+            }
+        }
+
+        for from in ps.into_iter() {
+            let bb = BitBoard::single(from);
+            let mut cs = (bb.shift_dir(dw) & self.game.get_color(!self.side))
+                | (bb.shift_dir(de) & self.game.get_color(!self.side));
+
+            for to in cs.into_iter() {
+                let (_,victim) = self.game.get_at(to).unwrap();
+                if gen == MoveGenType::Captures {
+                    let mv = Move::PromotionCapture { from, to, new_piece: Queen, victim };
+                    self.buf.push(mv);
+                } else if gen == MoveGenType::Quiets {
+                    let mv = Move::PromotionCapture { from, to, new_piece: Knight, victim };
+                    self.buf.push(mv);
+                    let mv = Move::PromotionCapture { from, to, new_piece: Bishop, victim };
+                    self.buf.push(mv);
+                    let mv = Move::PromotionCapture { from, to, new_piece: Rook, victim };
+                    self.buf.push(mv);
+                }
+            }
+
+        }
+
+    }
+
 }
 
 /// Knights
@@ -341,28 +474,36 @@ impl<'a> MoveGen<'a> {
     pub fn gen_knights(&mut self, gen: MoveGenType) {
         let occ = self.game.all_occupied();
         let ks = self.game.get(Knight, self.side);
-        ks.into_iter().for_each(|from| {
-            let ms = self.ts.get_knight(from);
-            match gen {
-                MoveGenType::CapturesPromotions => {
+
+        match gen {
+            MoveGenType::Captures => {
+                ks.into_iter().for_each(|from| {
+                    let ms = self.ts.get_knight(from);
                     let captures = ms & self.game.get_color(!self.side);
                     captures.into_iter().for_each(|to| {
                         let (_,victim) = self.game.get_at(to).unwrap();
                         let mv = Move::Capture { from, to, pc: Knight, victim };
                         self.buf.push(mv);
-                    })
-                },
-                MoveGenType::Quiets => {
-                    let quiets   = ms & !occ;
+                    });
+                });
+            },
+            MoveGenType::Quiets => {
+                ks.into_iter().for_each(|from| {
+                    let ms = self.ts.get_knight(from);
+                    let quiets = ms & !occ;
                     quiets.into_iter().for_each(|to| {
                         let mv = Move::Quiet { from, to, pc: Knight };
                         self.buf.push(mv);
-                    })
-                },
-                MoveGenType::Evasions    => unimplemented!(),
-                MoveGenType::QuietChecks => unimplemented!(),
-            }
-        });
+                    });
+                });
+            },
+            MoveGenType::Evasions    => {
+                self.gen_knights(MoveGenType::Captures);
+                self.gen_knights(MoveGenType::Quiets);
+            },
+            MoveGenType::QuietChecks => unimplemented!(),
+        }
+
     }
 
     // pub fn gen_knights(&'a self, gen: MoveGenType) -> impl Iterator<Item = Move> + 'a {
@@ -396,29 +537,35 @@ impl<'a> MoveGen<'a> {
     pub fn gen_sliding(&mut self, gen: MoveGenType, pc: Piece) {
         let pieces = self.game.get(pc, self.side);
 
-        for sq in pieces.into_iter() {
-            let moves   = self._gen_sliding_single(pc, sq.into(), None);
-            match gen {
-                MoveGenType::CapturesPromotions => {
+        match gen {
+            MoveGenType::Captures => {
+                for sq in pieces.into_iter() {
+                    let moves   = self._gen_sliding_single(pc, sq.into(), None);
                     let attacks = moves & self.game.get_color(!self.side);
                     attacks.into_iter().for_each(|to| {
                         let (_,victim) = self.game.get_at(to).unwrap();
                         let mv = Move::Capture { from: sq, to, pc, victim };
                         self.buf.push(mv);
                     });
-                },
-                MoveGenType::Quiets => {
+                }
+            },
+            MoveGenType::Quiets => {
+                for sq in pieces.into_iter() {
+                    let moves   = self._gen_sliding_single(pc, sq.into(), None);
                     let quiets  = moves & self.game.all_empty();
                     quiets.into_iter().for_each(|sq2| {
                         let mv = Move::Quiet { from: sq, to: sq2, pc };
                         self.buf.push(mv);
                     });
-                },
-                MoveGenType::Evasions    => unimplemented!(),
-                MoveGenType::QuietChecks => unimplemented!(),
-            }
-
+                }
+            },
+            MoveGenType::Evasions    => {
+                self.gen_sliding(MoveGenType::Captures, pc);
+                self.gen_sliding(MoveGenType::Quiets, pc);
+            },
+            MoveGenType::QuietChecks => unimplemented!(),
         }
+
 
     }
 
@@ -443,7 +590,7 @@ impl<'a> MoveGen<'a> {
 
 }
 
-/// Sliding
+/// King, Castling
 impl<'a> MoveGen<'a> {
 
     pub fn gen_castles(&mut self) {
@@ -476,9 +623,10 @@ impl<'a> MoveGen<'a> {
         if queenside {
             if let mv@Move::Castle { from, to, rook_from, rook_to } = Move::CASTLE_QUEENSIDE[self.side] {
                 if self.game.get(Rook,self.side).is_one_at(rook_from) {
-                    let between = self.ts.between_exclusive(from, rook_from);
-                    if (between & self.game.all_occupied()).is_empty() {
-                        if !between.into_iter().any(
+                    let between_blocks  = self.ts.between_exclusive(from, rook_from);
+                    let between_attacks = Move::CASTLE_QUEENSIDE_BETWEEN[self.side];
+                    if (between_blocks & self.game.all_occupied()).is_empty() {
+                        if !between_attacks.into_iter().any(
                             |sq| self.game.find_attacks_by_side(self.ts, sq, !self.side, true)) {
                             self.buf.push(mv);
                         }
@@ -497,7 +645,7 @@ impl<'a> MoveGen<'a> {
         let occ = self.game.all_occupied();
 
         match gen {
-            MoveGenType::CapturesPromotions => {
+            MoveGenType::Captures => {
                 let captures = moves & self.game.get_color(!self.side);
                 captures.into_iter().for_each(|to| {
                     let (_,victim) = self.game.get_at(to).unwrap();
@@ -506,13 +654,35 @@ impl<'a> MoveGen<'a> {
                 });
             },
             MoveGenType::Quiets => {
+                let captures = moves & self.game.get_color(!self.side);
                 let quiets   = moves & !occ;
                 quiets.into_iter().for_each(|to| {
                     let mv = Move::Quiet { from, to, pc: King };
                     self.buf.push(mv);
                 });
             },
-            MoveGenType::Evasions    => unimplemented!(),
+            MoveGenType::Evasions    => {
+
+                self.gen_king(MoveGenType::Captures);
+                self.gen_king(MoveGenType::Quiets);
+
+                // let captures = moves & self.game.get_color(!self.side);
+                // captures.into_iter().for_each(|to| {
+                //     if !self.game.find_attacks_by_side(self.ts, to, !self.side, true) {
+                //         let (_,victim) = self.game.get_at(to).unwrap();
+                //         let mv = Move::Capture { from, to, pc: King, victim };
+                //         self.buf.push(mv);
+                //     }
+                // });
+                // let quiets   = moves & !occ;
+                // quiets.into_iter().for_each(|to| {
+                //     if !self.game.find_attacks_by_side(self.ts, to, !self.side, true) {
+                //         let mv = Move::Quiet { from, to, pc: King };
+                //         self.buf.push(mv);
+                //     }
+                // });
+
+            },
             MoveGenType::QuietChecks => unimplemented!(),
         }
     }

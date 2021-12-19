@@ -1358,7 +1358,8 @@ fn main_tuning() {
 fn main_gensfen(count: u64, path: &str) {
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
-    let ts = Tables::read_from_file_def().unwrap();
+    // let ts = Tables::read_from_file_def().unwrap();
+    let ts = &_TABLES;
     let ob = OpeningBook::read_from_file(&ts, "tables/Perfect_2021/BIN/Perfect2021.bin").unwrap();
 
     let t0 = Instant::now();
@@ -2720,8 +2721,8 @@ fn main9() {
 
     // let ts = Tables::new();
     // ts.write_to_file_def().unwrap();
-    let ts = Tables::read_from_file_def().unwrap();
-    // let ts = &_TABLES;
+    // let ts = Tables::read_from_file_def().unwrap();
+    let ts = &_TABLES;
 
     fn games_wac(i: usize) -> String {
         let mut games = read_epd("testpositions/WAC.epd").unwrap();
@@ -3049,7 +3050,8 @@ fn main_sts(sts: Option<u64>) {
 
     // let ts = Tables::new();
     // let ts = Tables::read_from_file("tables.bin").unwrap();
-    let ts = Tables::read_from_file_def().unwrap();
+    // let ts = Tables::read_from_file_def().unwrap();
+    let ts = &_TABLES;
 
     let timesettings = TimeSettings::new_f64(
         0.0,
@@ -3410,7 +3412,8 @@ fn main_wac(num: Option<u64>, send_url: bool) {
 
     // let ts = Tables::new();
     // let ts = Tables::read_from_file("tables.bin").unwrap();
-    let ts = Tables::read_from_file_def().unwrap();
+    // let ts = Tables::read_from_file_def().unwrap();
+    let ts = &_TABLES;
 
     let timesettings = TimeSettings::new_f64(
         0.0,
@@ -3567,7 +3570,8 @@ fn main5() {
 
     let n = 3;
 
-    let ts = Tables::new();
+    // let ts = Tables::new();
+    let ts = &_TABLES;
 
     // let mut g = Game::from_fen(&ts, fen).unwrap();
     // let _ = g.recalc_gameinfo_mut(&ts);
@@ -3719,7 +3723,9 @@ fn main5() {
 fn main_perft(depth: Option<u64>) {
 
     // let ts = Tables::new();
-    let ts = Tables::read_from_file_def().unwrap();
+    // let ts = Tables::read_from_file_def().unwrap();
+
+    let ts = &_TABLES;
 
     // let fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
@@ -3745,6 +3751,10 @@ fn main_perft(depth: Option<u64>) {
 
     // let fen = "3n1n2/3pkp2/Pp1ppp2/8/8/4P3/3P1PN1/B2QKR2 w - - 0 1";
     let fen = fen2;
+    // let fen = "7k/8/8/1p3p2/4p3/3K1P2/8/8 w - - 0 1";
+    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P1Q1/2N4p/PPPBBPPP/R3K2R b KQkq - 1 1";
+    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P1Q1/2N5/PPPBBPpP/R3K2R w KQkq - 0 2";
+    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q2/PPPBBPpP/R3K2R b KQkq - 1 2";
     let mut g = Game::from_fen(&ts, fen).unwrap();
 
     let mut gen = MoveGen::new(&ts, &g, None, 0, 0);
@@ -3753,12 +3763,15 @@ fn main_perft(depth: Option<u64>) {
     // }
 
     // // gen.gen_castles();
-    // gen.gen_pawns(MoveGenType::CapturesPromotions);
-    // for mv in gen.buf().iter() {
+    // gen.gen_pawns(MoveGenType::Captures);
+    // // gen.gen_knights(MoveGenType::Quiets);
+    // // gen.gen_knights(MoveGenType::Evasions);
+    // for mv in gen.buf_legal() {
+    // // for mv in gen.buf().iter() {
     //     eprintln!("mv = {:?}", mv);
     // }
 
-    let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, d as u64, true, true).unwrap();
+    // let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, d as u64, true, true).unwrap();
 
     // let (k0,mvs0) = g.perft(&ts, d as u64);
     // eprintln!("k0 = {:?}", k0);
@@ -3766,16 +3779,16 @@ fn main_perft(depth: Option<u64>) {
     // let (k1,mvs1) = MoveGen::perft(&ts, &g, d);
     // eprintln!("k1 = {:?}", k1);
 
-    return;
+    // return;
 
-    let t0 = std::time::Instant::now();
-    for depth in 0..d {
-        let (k,_) = MoveGen::perft(&ts, &g, depth as Depth);
-        let t1 = t0.elapsed().as_secs_f64();
-        eprintln!("depth {:>2} = {:>10}, done in {:.3}", depth, k, t1);
-    }
+    // let t0 = std::time::Instant::now();
+    // for depth in 0..d {
+    //     let (k,_) = MoveGen::perft(&ts, &g, depth as Depth);
+    //     let t1 = t0.elapsed().as_secs_f64();
+    //     eprintln!("depth {:>2} = {:>10}, done in {:.3}", depth, k, t1);
+    // }
 
-    return;
+    // return;
 
     timer_loop!(4,{
         let _ = MoveGen::perft(&ts, &g, d as Depth);

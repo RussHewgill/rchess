@@ -164,7 +164,7 @@ mod td_builder {
 
         pub fn do_explore<P: AsRef<Path> + Send>(
             &self,
-            ts:         &Tables,
+            ts:         &'static Tables,
             ob:         &OpeningBook,
             count:      u64,
             print:      bool,
@@ -243,7 +243,7 @@ mod td_builder {
 
         pub fn _do_explore(
             &self,
-            ts:         &Tables,
+            ts:         &'static Tables,
             ob:         &OpeningBook,
             count:      u64,
             mut rng:    StdRng,
