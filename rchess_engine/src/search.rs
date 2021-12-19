@@ -427,7 +427,7 @@ impl Game {
         if mv.filter_en_passant() {
             if self.state.en_passant.is_none() {
                 return false;
-            } else if let Some(g2) = self.clone()._apply_move_unchecked(&ts, &mv, false) {
+            } else if let Some(g2) = self.clone()._apply_move_unchecked(&ts, mv, false) {
                 let checks = g2.find_checkers(&ts, self.state.side_to_move);
                 return checks.is_empty();
             } else {
@@ -538,13 +538,13 @@ impl Game {
     pub fn find_attacks_by_side(&self, ts: &Tables, c0: Coord, col: Color, king: bool) -> bool {
 
         let moves_k = ts.get_king(c0);
-        if (*moves_k & self.get(King, col)).is_not_empty() { return true; }
+        if (moves_k & self.get(King, col)).is_not_empty() { return true; }
 
         let moves_p = ts.get_pawn(c0).get_capture(!col);
         if (*moves_p & self.get(Pawn, col)).is_not_empty() { return true; }
 
         let moves_n = ts.get_knight(c0);
-        if (*moves_n & self.get(Knight, col)).is_not_empty() { return true; }
+        if (moves_n & self.get(Knight, col)).is_not_empty() { return true; }
 
         let occ = if king {
             self.all_occupied() & !self.get(King, !col)
@@ -570,7 +570,7 @@ impl Game {
         let pawns = *pawns.get_capture(col);
         let pawns = pawns & self.get_piece(Pawn);
 
-        let knights = *ts.get_knight(c0) & self.get_piece(Knight);
+        let knights = ts.get_knight(c0) & self.get_piece(Knight);
 
         let moves_r = self._search_sliding_single(&ts, Rook, c0, col, None);
             // | self._search_sliding_single(&ts, Rook, c0, !col, Some(occ));
@@ -735,7 +735,7 @@ impl Game {
         let c0 = self.get(King, col).bitscan();
         let mut out = BitBoard::empty();
 
-        let moves = *ts.get_king(c0);
+        let moves = ts.get_king(c0);
         let moves = moves & !self.get_color(col);
         moves
 
@@ -775,7 +775,7 @@ impl Game {
         let p0 = self.get(King, col).bitscan();
         // if p0 == 64 { return vec![]; }
         // if p0 == 64 { return out; }
-        let moves = *ts.get_king(p0);
+        let moves = ts.get_king(p0);
 
         let oc = self.all_occupied();
         let quiets   = moves & !oc;
@@ -852,8 +852,8 @@ impl Game {
         ks.into_iter().for_each(|sq| {
             let ms = ts.get_knight(sq);
 
-            let quiets   = *ms & !oc;
-            let captures = *ms & self.get_color(!col);
+            let quiets   = ms & !oc;
+            let captures = ms & self.get_color(!col);
 
             if !only_caps {
                 quiets.into_iter().for_each(|t| {

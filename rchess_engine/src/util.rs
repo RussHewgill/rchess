@@ -1,4 +1,5 @@
 
+use crate::movegen::MoveGen;
 use crate::types::*;
 use crate::tables::*;
 
@@ -318,7 +319,10 @@ pub fn test_stockfish(
     let mut g = Game::from_fen(ts, fen).unwrap();
 
     let now = std::time::Instant::now();
-    let (ns0, ms) = g.perft(&ts, n);
+
+    // let (ns0, ms) = g.perft(&ts, n);
+    let (ns0,ms) = MoveGen::perft(ts, &g, n as Depth);
+
     let done = now.elapsed().as_secs_f64();
     // println!("perft done in {} seconds.", now.elapsed().as_secs_f64());
 

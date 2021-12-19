@@ -529,7 +529,7 @@ impl Game {
         self.get(Knight, side).into_iter()
             .map(|sq| {
                 let moves = ts.get_knight(sq);
-                let moves = *moves & self.all_empty();
+                let moves = moves & self.all_empty();
                 moves.into_iter().filter(|&sq2| {
                     self.outpost_square(ev, sq2.into(), side)
                 }).count() as Score
@@ -610,7 +610,7 @@ impl Game {
         match pc {
             Knight => {
                 let mvs = ts.get_knight(c0);
-                (*mvs & mob).popcount() as Score
+                (mvs & mob).popcount() as Score
             },
             Bishop => {
                 let occ = self.all_occupied() & !self.get(Queen, side);
@@ -665,7 +665,7 @@ impl Game {
 
         let king = self.get(King, side).bitscan();
         let sqs = ts.get_king(king);
-        let pawns = self.get(Pawn, side) & *sqs;
+        let pawns = self.get(Pawn, side) & sqs;
         let pawn_shield = pawns.popcount() as Score;
 
         unimplemented!()

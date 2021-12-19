@@ -166,11 +166,11 @@ impl Tables {
     }
     // pub fn get_knight(&self, Coord(x,y): Coord) -> &BitBoard {
     // pub fn get_knight<T: Into<Coord>>(&self, c: T) -> &BitBoard {
-    pub fn get_knight(&self, c: Coord) -> &BitBoard {
+    pub fn get_knight(&self, c: Coord) -> BitBoard {
         // let Coord(x,y) = c.into();
         // &self.knight_moves[x as usize][y as usize]
         let (x,y) = c.to_rankfile();
-        &self.knight_moves[c]
+        self.knight_moves[c]
     }
     // pub fn get_pawn(&self, Coord(x,y): Coord) -> &MoveSetPawn {
     // pub fn get_pawn<T: Into<Coord>>(&self, c: T) -> &MoveSetPawn {
@@ -181,9 +181,9 @@ impl Tables {
     }
     // pub fn get_king(&self, Coord(x,y): Coord) -> &BitBoard {
     // pub fn get_king<T: Into<Coord>>(&self, c: T) -> &BitBoard {
-    pub fn get_king(&self, c: Coord) -> &BitBoard {
+    pub fn get_king(&self, c: Coord) -> BitBoard {
         let (x,y) = c.to_rankfile();
-        &self.king_moves[x as usize][y as usize]
+        self.king_moves[x as usize][y as usize]
     }
 }
 

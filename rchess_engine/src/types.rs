@@ -91,8 +91,59 @@ pub enum Move {
     // PromotionCapture   { side: Color, from: Coord, to: Coord, new_piece: Piece, victim: Piece },
 }
 
+/// Const Castles
+impl Move {
+
+    // pub const fn new_castle_const(side: Color, kingside: bool) -> Move {
+    //     if kingside {}
+    // }
+
+    // pub const CASTLE_KINGSIDE_BETWEEN: [[Coord; 2]; 2] = [
+    //     [Sq::F1.to(), Sq::G1.to()],
+    //     [Sq::F8.to(), Sq::G8.to()],
+    // ];
+
+    // pub const CASTLE_QUEENSIDE_BETWEEN: [[Coord; 2]; 2] = [
+    //     [Sq::C1.to(), Sq::D1.to()],
+    //     [Sq::C8.to(), Sq::D8.to()],
+    // ];
+
+    pub const CASTLE_KINGSIDE: [Move; 2] = [
+        Move::Castle {
+            from:      Sq::E1.to(),
+            to:        Sq::G1.to(),
+            rook_from: Sq::H1.to(),
+            rook_to:   Sq::F1.to(),
+        },
+        Move::Castle {
+            from:      Sq::E8.to(),
+            to:        Sq::G8.to(),
+            rook_from: Sq::H8.to(),
+            rook_to:   Sq::F8.to(),
+        },
+    ];
+
+    pub const CASTLE_QUEENSIDE: [Move; 2] = [
+        Move::Castle {
+            from:      Sq::E1.to(),
+            to:        Sq::C1.to(),
+            rook_from: Sq::A1.to(),
+            rook_to:   Sq::D1.to(),
+        },
+        Move::Castle {
+            from:      Sq::E8.to(),
+            to:        Sq::C8.to(),
+            rook_from: Sq::A8.to(),
+            rook_to:   Sq::D8.to(),
+        },
+    ];
+
+}
+
 /// Conveninience builders
 impl Move {
+
+
     pub fn new_quiet<T: Into<Coord>>(from: T, to: T, pc: Piece) -> Move {
         Move::Quiet { from: from.into(), to: to.into(), pc }
     }

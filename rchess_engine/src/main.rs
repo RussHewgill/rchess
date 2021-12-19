@@ -2870,8 +2870,8 @@ fn main9() {
     ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
-    ex.cfg.num_threads = Some(6);
-    // ex.cfg.num_threads = Some(1);
+    // ex.cfg.num_threads = Some(6);
+    ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
@@ -3725,7 +3725,7 @@ fn main_perft(depth: Option<u64>) {
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
     // let fen = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - ";
     // let fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
-    let fen = STARTPOS;
+    // let fen = STARTPOS;
 
     let fen2 = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
     let fen3 = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - "; // Position 3
@@ -3736,10 +3736,53 @@ fn main_perft(depth: Option<u64>) {
 
     // let fen = "rnb1k1nr/pppp1ppp/5q2/2b1p3/4P1P1/7P/PPPP1P2/RNBQKBNR w KQkq - 1 4";
 
-    let d = 4;
-    let mut g = Game::from_fen(&ts, fen2).unwrap();
+
+    use rchess_engine_lib::movegen::*;
+
+    // let gen = MoveGen::new(&ts, &g, None, 0, 0);
+
+    let d = depth.unwrap_or(4) as Depth;
+
+    // let fen = "3n1n2/3pkp2/Pp1ppp2/8/8/4P3/3P1PN1/B2QKR2 w - - 0 1";
+    let fen = fen2;
+    let mut g = Game::from_fen(&ts, fen).unwrap();
+
+    let mut gen = MoveGen::new(&ts, &g, None, 0, 0);
+    // while let Some(mv) = gen.next() {
+    //     eprintln!("mv = {:?}", mv);
+    // }
+
+    // // gen.gen_castles();
+    // gen.gen_pawns(MoveGenType::CapturesPromotions);
+    // for mv in gen.buf().iter() {
+    //     eprintln!("mv = {:?}", mv);
+    // }
+
+    let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, d as u64, true, true).unwrap();
+
+    // let (k0,mvs0) = g.perft(&ts, d as u64);
+    // eprintln!("k0 = {:?}", k0);
+
+    // let (k1,mvs1) = MoveGen::perft(&ts, &g, d);
+    // eprintln!("k1 = {:?}", k1);
+
+    return;
+
+    let t0 = std::time::Instant::now();
+    for depth in 0..d {
+        let (k,_) = MoveGen::perft(&ts, &g, depth as Depth);
+        let t1 = t0.elapsed().as_secs_f64();
+        eprintln!("depth {:>2} = {:>10}, done in {:.3}", depth, k, t1);
+    }
+
+    return;
+
     timer_loop!(4,{
-        let (tot,_) = g.perft(&ts, d);
+        let _ = MoveGen::perft(&ts, &g, d as Depth);
+    });
+
+    timer_loop!(4,{
+        let (tot,_) = g.perft(&ts, d as u64);
     });
 
     return;
@@ -3749,7 +3792,7 @@ fn main_perft(depth: Option<u64>) {
         Some(d) => d,
     };
 
-    let fens = vec![fen,fen2,fen3,fen4,fen5];
+    let fens = vec![STARTPOS,fen2,fen3,fen4,fen5];
 
     // let k0 = 0u8;
     // eprintln!("k0 = {:?}", k0);

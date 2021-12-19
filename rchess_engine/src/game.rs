@@ -382,15 +382,15 @@ impl Game {
         self.zobrist = self.zobrist.update_side_to_move(&ts);
     }
 
-    pub fn _apply_move_unchecked(&self, ts: &Tables, mv: &Move, calc_zb: bool) -> Option<Game> {
+    pub fn _apply_move_unchecked(&self, ts: &Tables, mv: Move, calc_zb: bool) -> Option<Game> {
         match mv {
-            &Move::Quiet      { from, to, pc } => {
+            Move::Quiet      { from, to, pc } => {
                 let (side,pc) = self.get_at(from)?;
                 let mut out = self.clone();
                 out.move_piece_mut_unchecked(&ts, from, to, pc, side, calc_zb);
                 Some(out)
             },
-            &Move::PawnDouble { from, to } => {
+            Move::PawnDouble { from, to } => {
                 let (side,pc) = self.get_at(from)?;
                 let mut out = self.clone();
                 out.move_piece_mut_unchecked(&ts, from, to, pc, side, calc_zb);
@@ -409,7 +409,7 @@ impl Game {
                 Some(out)
             },
             // &Move::Capture    { from, to } => {
-            &Move::Capture    { from, to, pc, victim } => {
+            Move::Capture    { from, to, pc, victim } => {
                 let col = self.state.side_to_move;
                 // let (c0,_) = self.get_at(from)?;
                 // let (c1,_) = self.get_at(to)?;
@@ -420,7 +420,7 @@ impl Game {
                 out.move_piece_mut_unchecked(&ts, from, to, pc, col, calc_zb);
                 Some(out)
             },
-            &Move::EnPassant  { from, to, capture } => {
+            Move::EnPassant  { from, to, capture } => {
                 let col = self.state.side_to_move;
                 // let (c0,pc0) = self.get_at(from)?;
                 // let to1 = if col == White { S.shift_coord(to)? } else { N.shift_coord(to)? };
@@ -432,7 +432,7 @@ impl Game {
                 out.move_piece_mut_unchecked(&ts, from, to, Pawn, col, calc_zb);
                 Some(out)
             },
-            &Move::Promotion  { from, to, new_piece } => {
+            Move::Promotion  { from, to, new_piece } => {
                 let col = self.state.side_to_move;
                 // let (c0,pc0) = self.get_at(from)?;
                 let mut out = self.clone();
@@ -440,7 +440,7 @@ impl Game {
                 out.insert_piece_mut_unchecked(&ts, to, new_piece, col, calc_zb);
                 Some(out)
             },
-            &Move::PromotionCapture  { from, to, new_piece, victim } => {
+            Move::PromotionCapture  { from, to, new_piece, victim } => {
                 let col = self.state.side_to_move;
                 // let (c0,pc0) = self.get_at(from)?;
                 // let (c1,pc1) = self.get_at(to)?;
@@ -450,7 +450,7 @@ impl Game {
                 out.insert_piece_mut_unchecked(&ts, to, new_piece, col, calc_zb);
                 Some(out)
             },
-            &Move::Castle     { from, to, rook_from, rook_to } => {
+            Move::Castle     { from, to, rook_from, rook_to } => {
                 let mut out = self.clone();
                 let col = self.state.side_to_move;
                 out.delete_piece_mut_unchecked(&ts, from, King, col, calc_zb);
@@ -458,7 +458,7 @@ impl Game {
                 out.insert_pieces_mut_unchecked(&ts, &[(to,King,col),(rook_to,Rook,col)], true, calc_zb);
                 Some(out)
             },
-            &Move::NullMove => {
+            Move::NullMove => {
                 let mut out = self.clone();
                 Some(out)
             }
@@ -497,7 +497,7 @@ impl Game {
             }
         }
 
-        match self._apply_move_unchecked(&ts, &mv, calc_zb) {
+        match self._apply_move_unchecked(&ts, mv, calc_zb) {
             Some(mut next) => {
                 match mv {
                     Move::PawnDouble { .. }                   => {
