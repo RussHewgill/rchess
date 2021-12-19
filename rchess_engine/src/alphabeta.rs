@@ -204,23 +204,23 @@ impl ExHelper {
 
         let mut g = self.game.clone();
 
-        // let res = self._ab_search_negamax(
-        //     ts, &mut g, cfg, depth,
-        //     0, &mut stop_counter, (alpha, beta),
-        //     &mut stats,
-        //     &mut stack,
-        //     ABNodeType::Root,
-        // );
-
-        let res = self._ab_search_negamax2(
-            ts,
-            &g,
-            (depth,0),
-            (alpha,beta),
-            stats,
-            stack,
+        let res = self._ab_search_negamax(
+            ts, &mut g, cfg, depth,
+            0, &mut stop_counter, (alpha, beta),
+            &mut stats,
+            &mut stack,
             ABNodeType::Root,
-            false);
+        );
+
+        // let res = self._ab_search_negamax2(
+        //     ts,
+        //     &g,
+        //     (depth,0),
+        //     (alpha,beta),
+        //     stats,
+        //     stack,
+        //     ABNodeType::Root,
+        //     false);
 
         res
     }
@@ -329,8 +329,14 @@ impl ExHelper {
 
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
 
-        let is_pv: bool   = node_type != ABNodeType::NonPV;
+        #[cfg(feature = "pvs_search")]
+        let mut is_pv = beta != alpha + 1;
+        // let mut is_pv = node_type != ABNodeType::NonPV;
+        #[cfg(not(feature = "pvs_search"))]
+        let is_pv = false;
         let is_root: bool = node_type == ABNodeType::Root;
+
+        let mut current_node_type = Node::All;
 
         /// Repetition, Halting
         if !is_root {
@@ -441,19 +447,6 @@ impl ExHelper {
 
         // TODO: null move pruning
 
-        // /// Generate legal moves
-        // let moves = if is_root {
-        //     if let Some(mvs) = &self.cfg.only_moves {
-        //         let mvs = mvs.clone().into_iter().collect();
-        //         Outcome::Moves(mvs)
-        //     } else {
-        //         g.search_all(&ts)
-        //     }
-        // } else {
-        //     g.search_all(&ts)
-        // };
-        // let moves = if moves.is_end() { vec![] } else { moves.get_moves_unsafe() };
-
         let m_hashmove: Option<Move> = msi.map(|si| {
             let mv = si.best_move;
             let mv = PackedMove::unpack(&[mv.0,mv.1]).unwrap().convert_to_move(ts, g);
@@ -461,11 +454,6 @@ impl ExHelper {
         });
         let mut movegen = MoveGen::new(ts, &g, m_hashmove, depth, ply);
         // let mut movegen = MoveGen::new(ts, &g, None, depth, ply);
-
-        // /// Filter blocked moves
-        // if is_root {
-        //     moves.retain(|mv| !self.cfg.blocked_moves.contains(&mv));
-        // }
 
         // self.order_moves(ts, g, ply, &mut stack, &mut gs[..]);
 
@@ -478,7 +466,10 @@ impl ExHelper {
         let mut list = vec![];
 
         'outer: while let Some(mv) = movegen.next() {
-        // 'outer: for mv in moves.into_iter() {
+
+            if is_root && self.cfg.blocked_moves.contains(&mv) {
+                continue 'outer;
+            }
 
             let mut next_depth = depth - 1;
             let mut extensions = 0;
@@ -517,15 +508,15 @@ impl ExHelper {
                 }
 
                 if !b && best_val.1 > alpha {
-                    // node_type = Node::PV;
+                    current_node_type = Node::PV;
                     alpha = best_val.1;
-                    // #[cfg(feature = "pvs_search")]
-                    // if true { search_pv = false; }
+                    #[cfg(feature = "pvs_search")]
+                    if true { search_pv = false; }
                 }
 
                 if b {
                     // node_type = Some(Node::Cut);
-                    // node_type = Node::Cut;
+                    current_node_type = Node::Cut;
 
                     #[cfg(feature = "history_heuristic")]
                     if !mv.filter_all_captures() {
@@ -579,20 +570,30 @@ impl ExHelper {
         match &best_val.0 {
             Some((zb,res)) => {
 
-                // self.tt_insert_deepest(
-                //     g.zobrist,
-                //     SearchInfo::new(
-                //         // ts, g,
-                //         res.mv,
-                //         // res.moves.clone().into(),
-                //         // res.moves.len() as u8,
-                //         // res.moves.len() as u8 - 1,
-                //         // res.moves.len() as u8,
-                //         depth - 1,
-                //         // depth,
-                //         node_type,
-                //         res.score,
-                //     ));
+                if !is_root {
+
+                    // let nt = if best_val.1 >= beta {
+                    //     Node::Cut
+                    // } else {
+                    //     unimplemented!()
+                    // };
+
+                    self.tt_insert_deepest(
+                        g.zobrist,
+                        SearchInfo::new(
+                            // ts, g,
+                            res.mv,
+                            // res.moves.clone().into(),
+                            // res.moves.len() as u8,
+                            // res.moves.len() as u8 - 1,
+                            // res.moves.len() as u8,
+                            depth - 1,
+                            // depth,
+                            // node_type,
+                            current_node_type,
+                            res.score,
+                        ));
+                }
 
                 if is_root {
                     ABList(*res, list)
@@ -889,140 +890,6 @@ impl ExHelper {
         let mut val = Score::MIN + 200;
         let mut val: (Option<(Zobrist,ABResult,bool)>,Score) = (None,val);
         let mut list = vec![];
-
-        #[cfg(feature = "nope")]
-        'outer: for mv in moves.into_iter() {
-            let g2 = if let Some(g2) = self.make_move(ts, g, mv, None, stack) {
-                g2
-            } else { continue 'outer; };
-
-            let mut depth2 = depth - 1;
-
-            #[cfg(feature = "pvs_search")]
-            let (a2,b2) = if skip_pv || search_pv {
-                (-beta, -alpha)
-            } else {
-                (-alpha - 1, -alpha)
-            };
-            #[cfg(not(feature = "pvs_search"))]
-            let (a2,b2) = (-beta, -alpha);
-
-            // let res = -self._ab_search_negamax(
-            //     ts, &g2, cfg, depth2, ply + 1, &mut stop_counter,
-            //     (a2, b2), &mut stats,
-            //     &mut stack,
-            //     NonPV
-            // );
-            // let res = if let Some(r) = res.get_result() { r } else {
-            //     self.pop_nnue(stack);
-            //     continue 'outer;
-            // };
-
-            let (_,res) = match self._ab_search_negamax(
-                ts, &g2, cfg, depth2, ply + 1, &mut stop_counter,
-                (a2, b2), &mut stats,
-                &mut stack,
-                NonPV
-            ) {
-                ABSingle(mut res) | ABSyzygy(mut res) => {
-                    res.neg_score(mv);
-                    #[cfg(feature = "pvs_search")]
-                    if !search_pv && res.score > alpha {
-                        match self._ab_search_negamax(
-                            ts, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
-                            (-beta, -alpha), &mut stats,
-                            &mut stack,
-                            NonPV,
-                        ) {
-                            ABSingle(mut res2) | ABSyzygy(mut res2) => {
-                                res2.neg_score(mv);
-                                res = res2;
-                            },
-                            // ABList(_, _) => break 'outer,
-                            ABList(_, _) => panic!("found ABList when not root?"),
-                            ABPrune(beta, prune) => {
-                                panic!("ABPrune 1");
-                            },
-                            ABNone       => {
-                                self.pop_nnue(stack);
-                                break 'outer;
-                            }
-                        }
-                    }
-                    if is_root {
-                        list.push(res.clone());
-                    }
-                    (false, res)
-                },
-                ABPrune(beta, prune) => {
-                    // panic!("ABPrune 2");
-                    // trace!("ABPrune 2: {:?} {:?}", beta, prune);
-                    self.pop_nnue(stack);
-                    continue 'outer;
-                },
-                // ABList(_, _) => break 'outer,
-                ABList(_, _) => panic!("found ABList when not root?"),
-                ABNone       => {
-                    self.pop_nnue(stack);
-                    break 'outer;
-                }
-            };
-
-            if is_root {
-                list.push(res.clone());
-            }
-
-            let mut b = false;
-
-            if res.score > val.1 {
-                val.1 = res.score;
-                val.0 = Some((g.zobrist, res.clone(),false))
-            }
-
-            #[cfg(not(feature = "negamax_only"))]
-            {
-                if res.score >= beta { // Fail Soft
-                    b = true;
-                    // return beta;
-                }
-
-                if !b && val.1 > alpha {
-                    node_type = Node::PV;
-                    alpha = val.1;
-                    #[cfg(feature = "pvs_search")]
-                    if true { search_pv = false; }
-                }
-
-                if b {
-                    // node_type = Some(Node::Cut);
-                    node_type = Node::Cut;
-
-                    #[cfg(feature = "history_heuristic")]
-                    if !mv.filter_all_captures() {
-                        tracking.history[g.state.side_to_move][mv.sq_from()][mv.sq_to()] +=
-                            ply as Score * ply as Score;
-                    }
-
-                    #[cfg(feature = "killer_moves")]
-                    if !mv.filter_all_captures() {
-                        // tracking.killers.increment(g.state.side_to_move, ply, &mv);
-                        stack.killers.store(g.state.side_to_move, ply, mv);
-                    }
-
-                    if moves_searched == 0 {
-                        stats!(stats.beta_cut_first.0 += 1);
-                    } else {
-                        stats!(stats.beta_cut_first.1 += 1);
-                    }
-
-                    self.pop_nnue(stack);
-                    break;
-                }
-            }
-
-            self.pop_nnue(stack);
-            moves_searched += 1;
-        }
 
         // #[cfg(feature = "nope")]
         'outer: for (mv,zb0,tt) in gs.into_iter() {
