@@ -478,7 +478,7 @@ mod prev_rustic_nothread {
 
     /// Prefetch
     impl TransTable {
-        fn prefetch(&self, zb: Zobrist) {
+        pub fn prefetch(&self, zb: Zobrist) {
             let idx = self.calc_index(zb);
             unsafe {
                 let ptr = (*self.vec.get()).as_ptr().add(idx);

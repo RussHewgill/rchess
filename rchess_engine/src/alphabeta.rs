@@ -188,15 +188,13 @@ impl ExHelper {
         depth:          Depth,
     ) -> ABResults {
 
-        let mut stop_counter = 0;
-        let mut cfg = ABConfig::new_depth(depth);
-        // is_root = true;
-
         let (alpha,beta) = (Score::MIN,Score::MAX);
         let (alpha,beta) = (alpha + 200,beta - 200);
 
         let mut g = self.game.clone();
 
+        // let mut stop_counter = 0;
+        // let mut cfg = ABConfig::new_depth(depth);
         // let res = self._ab_search_negamax(
         //     ts, &mut g, cfg, depth,
         //     0, &mut stop_counter, (alpha, beta),
@@ -395,7 +393,6 @@ impl ExHelper {
             return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
         }
 
-        // let msi: Option<(SICanUse,SearchInfo)> = self.check_tt_negamax(ts, g.zobrist, depth, stats);
         let msi: Option<SearchInfo> = if is_root { None } else {
             self.check_tt2(ts, g.zobrist, depth, stats)
         };
@@ -465,11 +462,13 @@ impl ExHelper {
 
         let mut moves_searched = 0;
         let mut val = Score::MIN + 200;
-        // let mut val: (Option<(Zobrist,ABResult,bool)>,Score) = (None,val);
         let mut best_val: (Option<(Zobrist,ABResult)>,Score) = (None,val);
         let mut list = vec![];
 
         'outer: while let Some(mv) = movegen.next() {
+
+            let zb0 = g.zobrist.update_move_unchecked(ts, g, mv);
+            self.ptr_tt.prefetch(zb0);
 
             if is_root && self.cfg.blocked_moves.contains(&mv) {
                 continue 'outer;
@@ -478,8 +477,8 @@ impl ExHelper {
             let mut next_depth = depth - 1;
             let mut extensions = 0;
 
-            // let g2 = if let Some(g2) = self.make_move(ts, g, mv, Some(zb0), stack) {
-            let g2 = if let Some(g2) = self.make_move(ts, g, mv, None, stack) {
+            let g2 = if let Some(g2) = self.make_move(ts, g, mv, Some(zb0), stack) {
+            // let g2 = if let Some(g2) = self.make_move(ts, g, mv, None, stack) {
                 g2
             } else { continue 'outer; };
             moves_searched += 1;
@@ -500,7 +499,6 @@ impl ExHelper {
 
             if res.score > best_val.1 {
                 best_val.1 = res.score;
-                // val.0 = Some((g.zobrist, res.clone(),from_tt))
                 best_val.0 = Some((g.zobrist, res))
             }
 
@@ -575,12 +573,6 @@ impl ExHelper {
             Some((zb,res)) => {
 
                 if !is_root && Some(res.mv) != movegen.hashmove {
-
-                    // let nt = if best_val.1 >= beta {
-                    //     Node::Cut
-                    // } else {
-                    //     unimplemented!()
-                    // };
 
                     self.tt_insert_deepest(
                         g.zobrist,
