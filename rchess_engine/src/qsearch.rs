@@ -220,6 +220,8 @@ impl ExHelper {
             if g.state.side_to_move == Black { -stand_pat } else { stand_pat }
         };
 
+        // return stand_pat;
+
         if self.stop.load(SeqCst) {
             return stand_pat;
         }

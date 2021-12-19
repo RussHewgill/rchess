@@ -51,18 +51,18 @@ impl MoveGenStage {
 
 #[derive(Debug,Clone)]
 pub struct MoveGen<'a> {
-    ts:         &'static Tables,
-    game:       &'a Game,
+    ts:              &'static Tables,
+    game:            &'a Game,
 
-    in_check:   bool,
-    side:       Color,
+    in_check:        bool,
+    side:            Color,
 
-    stage:      MoveGenStage,
-    buf:        ArrayVec<Move,256>,
+    stage:           MoveGenStage,
+    buf:             ArrayVec<Move,256>,
 
-    hashmove:   Option<Move>,
-    depth:      Depth,
-    ply:        Depth,
+    pub hashmove:    Option<Move>,
+    depth:           Depth,
+    ply:             Depth,
 }
 
 /// New
@@ -112,6 +112,8 @@ impl<'a> Iterator for MoveGen<'a> {
             MoveGenStage::Hash     => {
                 if let Some(mv) = self.hashmove {
                     if self.move_is_legal(mv) {
+                        // println!("returning hashmove: {:?}: {:?}", self.game.to_fen(), mv);
+                        self.stage = self.stage.next()?;
                         return Some(mv);
                     }
                 }
@@ -128,7 +130,7 @@ impl<'a> Iterator for MoveGen<'a> {
             },
             MoveGenStage::Captures(false) => {
                 if let Some(mv) = self.buf.pop() {
-                    if self.move_is_legal(mv) {
+                    if Some(mv) != self.hashmove && self.move_is_legal(mv) {
                         return Some(mv);
                     } else {
                         return self.next();
@@ -147,7 +149,7 @@ impl<'a> Iterator for MoveGen<'a> {
             },
             MoveGenStage::Quiets(false) => {
                 if let Some(mv) = self.buf.pop() {
-                    if self.move_is_legal(mv) {
+                    if Some(mv) != self.hashmove && self.move_is_legal(mv) {
                         return Some(mv);
                     } else {
                         return self.next();
@@ -160,6 +162,7 @@ impl<'a> Iterator for MoveGen<'a> {
             MoveGenStage::EvasionHash => {
                 if let Some(mv) = self.hashmove {
                     if self.move_is_legal(mv) {
+                        self.stage = self.stage.next()?;
                         return Some(mv);
                     }
                 }
@@ -177,7 +180,7 @@ impl<'a> Iterator for MoveGen<'a> {
             },
             MoveGenStage::Evasion(false) => {
                 if let Some(mv) = self.buf.pop() {
-                    if self.move_is_legal(mv) {
+                    if Some(mv) != self.hashmove && self.move_is_legal(mv) {
                         return Some(mv);
                     } else {
                         return self.next();

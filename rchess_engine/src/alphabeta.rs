@@ -137,13 +137,6 @@ pub enum ABNodeType {
     NonPV,
 }
 
-// pub struct ABStack {
-//     pvs:              Vec<Move>,
-//     ply:              Depth,
-//     current_move:     Move,
-//     excluded_move:    Move,
-// }
-
 /// Make move, increment NNUE
 impl ExHelper {
 
@@ -204,23 +197,23 @@ impl ExHelper {
 
         let mut g = self.game.clone();
 
-        let res = self._ab_search_negamax(
-            ts, &mut g, cfg, depth,
-            0, &mut stop_counter, (alpha, beta),
-            &mut stats,
-            &mut stack,
-            ABNodeType::Root,
-        );
-
-        // let res = self._ab_search_negamax2(
-        //     ts,
-        //     &g,
-        //     (depth,0),
-        //     (alpha,beta),
-        //     stats,
-        //     stack,
+        // let res = self._ab_search_negamax(
+        //     ts, &mut g, cfg, depth,
+        //     0, &mut stop_counter, (alpha, beta),
+        //     &mut stats,
+        //     &mut stack,
         //     ABNodeType::Root,
-        //     false);
+        // );
+
+        let res = self._ab_search_negamax2(
+            ts,
+            &g,
+            (depth,0),
+            (alpha,beta),
+            stats,
+            stack,
+            ABNodeType::Root,
+            false);
 
         res
     }
@@ -305,8 +298,17 @@ impl ExHelper {
             None
         }
         #[cfg(not(feature = "lockless_hashmap"))]
-        // None
-        panic!()
+        if let Some(si) = self.tt_r.get_one(&zb) {
+            if si.depth_searched >= depth {
+                stats!(stats.tt_hits += 1);
+            } else {
+                stats!(stats.tt_halfmiss += 1);
+            }
+            Some(*si)
+        } else {
+            stats!(stats.tt_misses += 1);
+            None
+        }
     }
 
 }
@@ -351,7 +353,7 @@ impl ExHelper {
             }
 
             /// Halted search
-            if self.stop.load(SeqCst) {
+            if self.stop.load(std::sync::atomic::Ordering::Relaxed) {
                 return ABNone;
             }
 
@@ -394,7 +396,9 @@ impl ExHelper {
         }
 
         // let msi: Option<(SICanUse,SearchInfo)> = self.check_tt_negamax(ts, g.zobrist, depth, stats);
-        let msi: Option<SearchInfo> = self.check_tt2(ts, g.zobrist, depth, stats);
+        let msi: Option<SearchInfo> = if is_root { None } else {
+            self.check_tt2(ts, g.zobrist, depth, stats)
+        };
 
         /// Check for returnable TT score
         if let Some(si) = msi {
@@ -570,7 +574,7 @@ impl ExHelper {
         match &best_val.0 {
             Some((zb,res)) => {
 
-                if !is_root {
+                if !is_root && Some(res.mv) != movegen.hashmove {
 
                     // let nt = if best_val.1 >= beta {
                     //     Node::Cut
@@ -581,11 +585,7 @@ impl ExHelper {
                     self.tt_insert_deepest(
                         g.zobrist,
                         SearchInfo::new(
-                            // ts, g,
                             res.mv,
-                            // res.moves.clone().into(),
-                            // res.moves.len() as u8,
-                            // res.moves.len() as u8 - 1,
                             // res.moves.len() as u8,
                             depth - 1,
                             // depth,
@@ -593,6 +593,7 @@ impl ExHelper {
                             current_node_type,
                             res.score,
                         ));
+
                 }
 
                 if is_root {
