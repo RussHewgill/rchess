@@ -25,7 +25,7 @@ default = [
 
     "basic_time",
 
-    # "lockless_hashmap",
+    "lockless_hashmap",
 
     # "backtrace",
 
@@ -41,12 +41,12 @@ default = [
     # "history_heuristic",
     # "futility_pruning",
 
-    "late_move_reduction",
-    "killer_moves",
+    # "late_move_reduction",
+    # "killer_moves",
 
     "qsearch",
 
-    "pvs_search",
+    # "pvs_search",
 
     # "negamax_only",
 

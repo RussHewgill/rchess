@@ -298,7 +298,8 @@ impl ExHelper {
             None
         }
         #[cfg(not(feature = "lockless_hashmap"))]
-        None
+        // None
+        panic!()
     }
 
 }
@@ -524,6 +525,9 @@ impl ExHelper {
                 self.pop_nnue(stack);
                 continue 'outer;
             };
+            if node_type == Root {
+                list.push(res);
+            }
 
             let mut b = false;
 
@@ -574,10 +578,27 @@ impl ExHelper {
             self.pop_nnue(stack);
         }
 
-        // let mut moves_searched = 0;
-        // let val = Score::MIN + 200;
-        // let mut val: (Option<(Zobrist,ABResult,bool)>,Score) = (None,val);
-        // let mut list = vec![];
+        if in_check && moves_searched == 0 {
+            let score = CHECKMATE_VALUE - ply as Score;
+            stats.leaves += 1;
+            stats.checkmates += 1;
+            let mv = g.last_move.unwrap();
+            return ABSingle(ABResult::new_single(mv, -score));
+        } else if moves_searched == 0 {
+            let score = -STALEMATE_VALUE + ply as Score;
+            stats.leaves += 1;
+            stats.stalemates += 1;
+            if let Some(mv) = g.last_move {
+                // TODO: adjust stalemate value when winning/losing
+                return ABSingle(ABResult::new_single(mv, 0));
+            } else {
+                return ABNone;
+            }
+        }
+
+        /// XXX: stat padding by including nodes found in TT
+        stats!(stats.inc_nodes_arr(ply));
+        stats!(stats.nodes += 1);
 
         match &best_val.0 {
             Some((zb,res)) => {
