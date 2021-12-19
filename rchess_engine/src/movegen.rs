@@ -76,7 +76,7 @@ impl<'a> MoveGen<'a> {
     ) -> Self {
         let in_check = game.state.checkers.is_not_empty();
         let side = game.state.side_to_move;
-        Self {
+        let mut out = Self {
             ts,
             game,
             in_check,
@@ -86,7 +86,13 @@ impl<'a> MoveGen<'a> {
             hashmove,
             depth,
             ply,
-        }
+        };
+        // XXX: check for legal move incase of corrupted TTEntry
+        let hashmove = if let Some (mv) = hashmove {
+            if out.move_is_legal(mv) { Some(mv) } else { None }
+        } else { None };
+        out.hashmove = hashmove;
+        out
     }
 
     pub fn buf(&self) -> &[Move] {

@@ -12,7 +12,7 @@ impl ExHelper {
 
     pub fn prune_null_move_negamax(
         &self,
-        ts:                 &Tables,
+        ts:                 &'static Tables,
         mut g:              &Game,
         mut cfg:            ABConfig,
         depth:              Depth,

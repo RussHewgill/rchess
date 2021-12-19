@@ -99,6 +99,13 @@ impl std::ops::Neg for ABResults {
 }
 
 impl ABResults {
+
+    pub fn get_result_mv(&self, mv: Move) -> Option<ABResult> {
+        let mut res = self.get_result()?;
+        res.mv = mv;
+        Some(res)
+    }
+
     pub fn get_result(&self) -> Option<ABResult> {
         match self {
             Self::ABSingle(res)  => Some(*res),
@@ -197,23 +204,23 @@ impl ExHelper {
 
         let mut g = self.game.clone();
 
-        let res = self._ab_search_negamax(
-            ts, &mut g, cfg, depth,
-            0, &mut stop_counter, (alpha, beta),
-            &mut stats,
-            &mut stack,
-            ABNodeType::Root,
-        );
-
-        // let res = self._ab_search_negamax2(
-        //     ts,
-        //     &g,
-        //     (depth,0),
-        //     (alpha,beta),
-        //     stats,
-        //     stack,
+        // let res = self._ab_search_negamax(
+        //     ts, &mut g, cfg, depth,
+        //     0, &mut stop_counter, (alpha, beta),
+        //     &mut stats,
+        //     &mut stack,
         //     ABNodeType::Root,
-        //     false);
+        // );
+
+        let res = self._ab_search_negamax2(
+            ts,
+            &g,
+            (depth,0),
+            (alpha,beta),
+            stats,
+            stack,
+            ABNodeType::Root,
+            false);
 
         res
     }
@@ -445,6 +452,7 @@ impl ExHelper {
         // } else {
         //     g.search_all(&ts)
         // };
+        // let moves = if moves.is_end() { vec![] } else { moves.get_moves_unsafe() };
 
         let m_hashmove: Option<Move> = msi.map(|si| {
             let mv = si.best_move;
@@ -452,44 +460,7 @@ impl ExHelper {
             mv
         });
         let mut movegen = MoveGen::new(ts, &g, m_hashmove, depth, ply);
-
-        // /// Filter checkmate, stalemate
-        // let mut moves: Vec<Move> = match moves {
-        //     Outcome::Checkmate(c) => {
-        //         // let score = 100_000_000 - ply as Score;
-        //         let score = CHECKMATE_VALUE - ply as Score;
-        //         // if !self.tt_r.contains_key(&g.zobrist) {
-        //         // }
-        //         stats.leaves += 1;
-        //         stats.checkmates += 1;
-
-        //         let mv = g.last_move.unwrap();
-
-        //         // return ABSingle(ABResult::new_empty(-score));
-        //         return ABSingle(ABResult::new_single(mv, -score));
-
-        //     },
-        //     Outcome::Stalemate    => {
-        //         let score = -STALEMATE_VALUE + ply as Score;
-        //         // if !self.tt_r.contains_key(&g.zobrist) {
-        //         //     stats!(stats.leaves += 1);
-        //         //     stats!(stats.stalemates += 1);
-        //         // }
-        //         stats.leaves += 1;
-        //         stats.stalemates += 1;
-
-        //         // let mv = g.last_move.unwrap();
-        //         if let Some(mv) = g.last_move {
-        //             // TODO: adjust stalemate value when winning/losing
-        //             // return ABSingle(ABResult::new_empty(-score));
-        //             // return ABSingle(ABResult::new_single(mv, score));
-        //             return ABSingle(ABResult::new_single(mv, 0));
-        //         } else {
-        //             return ABNone
-        //         }
-        //     },
-        //     Outcome::Moves(ms)    => ms,
-        // };
+        // let mut movegen = MoveGen::new(ts, &g, None, depth, ply);
 
         // /// Filter blocked moves
         // if is_root {
@@ -507,6 +478,7 @@ impl ExHelper {
         let mut list = vec![];
 
         'outer: while let Some(mv) = movegen.next() {
+        // 'outer: for mv in moves.into_iter() {
 
             let mut next_depth = depth - 1;
             let mut extensions = 0;
@@ -521,7 +493,7 @@ impl ExHelper {
 
             let res = -self._ab_search_negamax2(
                 ts, &g2, (next_depth,ply+1), (-beta, -alpha), stats, stack, NonPV, false);
-            let res = if let Some(r) = res.get_result() { r } else {
+            let res = if let Some(mut r) = res.get_result_mv(mv) { r } else {
                 self.pop_nnue(stack);
                 continue 'outer;
             };
@@ -537,47 +509,51 @@ impl ExHelper {
                 best_val.0 = Some((g.zobrist, res))
             }
 
-            if res.score >= beta { // Fail Soft
-                b = true;
-                // return beta;
-            }
-
-            if !b && best_val.1 > alpha {
-                // node_type = Node::PV;
-                alpha = best_val.1;
-                // #[cfg(feature = "pvs_search")]
-                // if true { search_pv = false; }
-            }
-
-            if b {
-                // node_type = Some(Node::Cut);
-                // node_type = Node::Cut;
-
-                #[cfg(feature = "history_heuristic")]
-                if !mv.filter_all_captures() {
-                    tracking.history[g.state.side_to_move][mv.sq_from()][mv.sq_to()] +=
-                        ply as Score * ply as Score;
+            #[cfg(not(feature = "negamax_only"))]
+            {
+                if res.score >= beta { // Fail Soft
+                    b = true;
+                    // return beta;
                 }
 
-                #[cfg(feature = "killer_moves")]
-                if !mv.filter_all_captures() {
-                    // tracking.killers.increment(g.state.side_to_move, ply, &mv);
-                    stack.killers.store(g.state.side_to_move, ply, mv);
+                if !b && best_val.1 > alpha {
+                    // node_type = Node::PV;
+                    alpha = best_val.1;
+                    // #[cfg(feature = "pvs_search")]
+                    // if true { search_pv = false; }
                 }
 
-                if moves_searched <= 1 {
-                    stats!(stats.beta_cut_first.0 += 1);
-                } else {
-                    stats!(stats.beta_cut_first.1 += 1);
-                }
+                if b {
+                    // node_type = Some(Node::Cut);
+                    // node_type = Node::Cut;
 
-                self.pop_nnue(stack);
-                break;
+                    #[cfg(feature = "history_heuristic")]
+                    if !mv.filter_all_captures() {
+                        tracking.history[g.state.side_to_move][mv.sq_from()][mv.sq_to()] +=
+                            ply as Score * ply as Score;
+                    }
+
+                    #[cfg(feature = "killer_moves")]
+                    if !mv.filter_all_captures() {
+                        // tracking.killers.increment(g.state.side_to_move, ply, &mv);
+                        stack.killers.store(g.state.side_to_move, ply, mv);
+                    }
+
+                    if moves_searched <= 1 {
+                        stats!(stats.beta_cut_first.0 += 1);
+                    } else {
+                        stats!(stats.beta_cut_first.1 += 1);
+                    }
+
+                    self.pop_nnue(stack);
+                    break;
+                }
             }
 
             self.pop_nnue(stack);
         }
 
+        /// Filter checkmate, stalemate
         if in_check && moves_searched == 0 {
             let score = CHECKMATE_VALUE - ply as Score;
             stats.leaves += 1;
@@ -652,7 +628,7 @@ impl ExHelper {
     /// beta:  the MAX score that the minimizing player is assured of
     pub fn _ab_search_negamax(
         &self,
-        ts:                      &Tables,
+        ts:                      &'static Tables,
         g:                       &Game,
         mut cfg:                 ABConfig,
         depth:                   Depth,
@@ -914,6 +890,141 @@ impl ExHelper {
         let mut val: (Option<(Zobrist,ABResult,bool)>,Score) = (None,val);
         let mut list = vec![];
 
+        #[cfg(feature = "nope")]
+        'outer: for mv in moves.into_iter() {
+            let g2 = if let Some(g2) = self.make_move(ts, g, mv, None, stack) {
+                g2
+            } else { continue 'outer; };
+
+            let mut depth2 = depth - 1;
+
+            #[cfg(feature = "pvs_search")]
+            let (a2,b2) = if skip_pv || search_pv {
+                (-beta, -alpha)
+            } else {
+                (-alpha - 1, -alpha)
+            };
+            #[cfg(not(feature = "pvs_search"))]
+            let (a2,b2) = (-beta, -alpha);
+
+            // let res = -self._ab_search_negamax(
+            //     ts, &g2, cfg, depth2, ply + 1, &mut stop_counter,
+            //     (a2, b2), &mut stats,
+            //     &mut stack,
+            //     NonPV
+            // );
+            // let res = if let Some(r) = res.get_result() { r } else {
+            //     self.pop_nnue(stack);
+            //     continue 'outer;
+            // };
+
+            let (_,res) = match self._ab_search_negamax(
+                ts, &g2, cfg, depth2, ply + 1, &mut stop_counter,
+                (a2, b2), &mut stats,
+                &mut stack,
+                NonPV
+            ) {
+                ABSingle(mut res) | ABSyzygy(mut res) => {
+                    res.neg_score(mv);
+                    #[cfg(feature = "pvs_search")]
+                    if !search_pv && res.score > alpha {
+                        match self._ab_search_negamax(
+                            ts, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
+                            (-beta, -alpha), &mut stats,
+                            &mut stack,
+                            NonPV,
+                        ) {
+                            ABSingle(mut res2) | ABSyzygy(mut res2) => {
+                                res2.neg_score(mv);
+                                res = res2;
+                            },
+                            // ABList(_, _) => break 'outer,
+                            ABList(_, _) => panic!("found ABList when not root?"),
+                            ABPrune(beta, prune) => {
+                                panic!("ABPrune 1");
+                            },
+                            ABNone       => {
+                                self.pop_nnue(stack);
+                                break 'outer;
+                            }
+                        }
+                    }
+                    if is_root {
+                        list.push(res.clone());
+                    }
+                    (false, res)
+                },
+                ABPrune(beta, prune) => {
+                    // panic!("ABPrune 2");
+                    // trace!("ABPrune 2: {:?} {:?}", beta, prune);
+                    self.pop_nnue(stack);
+                    continue 'outer;
+                },
+                // ABList(_, _) => break 'outer,
+                ABList(_, _) => panic!("found ABList when not root?"),
+                ABNone       => {
+                    self.pop_nnue(stack);
+                    break 'outer;
+                }
+            };
+
+            if is_root {
+                list.push(res.clone());
+            }
+
+            let mut b = false;
+
+            if res.score > val.1 {
+                val.1 = res.score;
+                val.0 = Some((g.zobrist, res.clone(),false))
+            }
+
+            #[cfg(not(feature = "negamax_only"))]
+            {
+                if res.score >= beta { // Fail Soft
+                    b = true;
+                    // return beta;
+                }
+
+                if !b && val.1 > alpha {
+                    node_type = Node::PV;
+                    alpha = val.1;
+                    #[cfg(feature = "pvs_search")]
+                    if true { search_pv = false; }
+                }
+
+                if b {
+                    // node_type = Some(Node::Cut);
+                    node_type = Node::Cut;
+
+                    #[cfg(feature = "history_heuristic")]
+                    if !mv.filter_all_captures() {
+                        tracking.history[g.state.side_to_move][mv.sq_from()][mv.sq_to()] +=
+                            ply as Score * ply as Score;
+                    }
+
+                    #[cfg(feature = "killer_moves")]
+                    if !mv.filter_all_captures() {
+                        // tracking.killers.increment(g.state.side_to_move, ply, &mv);
+                        stack.killers.store(g.state.side_to_move, ply, mv);
+                    }
+
+                    if moves_searched == 0 {
+                        stats!(stats.beta_cut_first.0 += 1);
+                    } else {
+                        stats!(stats.beta_cut_first.1 += 1);
+                    }
+
+                    self.pop_nnue(stack);
+                    break;
+                }
+            }
+
+            self.pop_nnue(stack);
+            moves_searched += 1;
+        }
+
+        // #[cfg(feature = "nope")]
         'outer: for (mv,zb0,tt) in gs.into_iter() {
 
             // match g.get_at(mv.sq_from()) {
