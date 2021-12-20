@@ -11,17 +11,14 @@ use crate::syzygy::{SyzygyTB, Wdl, Dtz};
 
 use crate::stats;
 
-// pub use ABResults::*;
+use ABResults::*;
 use arrayvec::ArrayVec;
 
 use std::sync::atomic::Ordering::{SeqCst,Relaxed};
 
 #[derive(Debug,PartialEq,PartialOrd,Clone,Copy)]
 pub struct ABResult {
-    // pub moves:    VecDeque<Move>,
-    // pub mv:       Option<Move>,
     pub mv:       Move,
-    // pub next:     Move,
     pub score:    Score,
 }
 
@@ -36,35 +33,19 @@ impl std::ops::Neg for ABResult {
 
 impl ABResult {
 
-    // pub fn new_empty(score: Score) -> Self {
-    //     Self {
-    //         mv: None,
-    //         // moves: VecDeque::default(),
-    //         score,
-    //     }
-    // }
-
-    pub fn new_single(mv: Move, score: Score) -> Self {
-        // let mut moves = VecDeque::default();
-        // moves.push_back(mv);
+    pub fn new_null() -> Self {
         Self {
-            // mv: Some(mv),
-            mv: mv,
-            // moves,
-            score,
+            mv: Move::NullMove,
+            score: 0,
         }
     }
 
-    // pub fn new_with(mv: Move, score: Score) -> Self {
-    //     Self {
-    //         mv: Some(mv),
-    //         score,
-    //     }
-    // }
-
-    // pub fn neg_score(&mut self) {
-    //     self.score = -self.score;
-    // }
+    pub fn new_single(mv: Move, score: Score) -> Self {
+        Self {
+            mv: mv,
+            score,
+        }
+    }
 
     pub fn neg_score(&mut self, mv: Move) {
         self.score = -self.score;
@@ -332,16 +313,21 @@ impl ExHelper {
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
 
         #[cfg(feature = "pvs_search")]
-        let mut is_pv = beta != alpha + 1;
-        // let mut is_pv = node_type != ABNodeType::NonPV;
+        let mut is_pv_node = node_type != ABNodeType::NonPV;
         #[cfg(not(feature = "pvs_search"))]
-        let is_pv = false;
-        let is_root: bool = node_type == ABNodeType::Root;
+        let is_pv_node = false;
+
+        // let mut is_pv_node = beta != alpha + 1;
+        // if beta != alpha + 1 {
+        //     eprintln!("node_type = {:?}", node_type);
+        // }
+
+        let is_root_node: bool = node_type == ABNodeType::Root;
 
         let mut current_node_type = Node::All;
 
         /// Repetition, Halting
-        if !is_root {
+        if !is_root_node {
 
             /// Repetition checking
             if alpha < DRAW_VALUE {
@@ -395,13 +381,13 @@ impl ExHelper {
             return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
         }
 
-        let msi: Option<SearchInfo> = if is_root { None } else {
+        let msi: Option<SearchInfo> = if is_root_node { None } else {
             self.check_tt2(ts, g.zobrist, depth, stats)
         };
 
         /// Check for returnable TT score
         if let Some(si) = msi {
-            if !is_pv && si.depth_searched >= depth { // XXX: depth or depth-1 ??
+            if !is_pv_node && si.depth_searched >= depth { // XXX: depth or depth-1 ??
                 return ABResults::ABSingle(ABResult::new_single(g.last_move.unwrap(), si.score));
             }
         }
@@ -459,11 +445,12 @@ impl ExHelper {
 
         // self.order_moves(ts, g, ply, &mut stack, &mut gs[..]);
 
-        let mut search_pv      = true;
+        // let mut search_pv = true;
+        let mut do_pvs = true;
 
         #[cfg(feature = "pvs_search")]
         if depth < 3 {
-            search_pv = false;
+            do_pvs = false;
         }
 
         let mut moves_searched = 0;
@@ -476,7 +463,7 @@ impl ExHelper {
             let zb0 = g.zobrist.update_move_unchecked(ts, g, mv);
             self.ptr_tt.prefetch(zb0);
 
-            if is_root && self.cfg.blocked_moves.contains(&mv) {
+            if is_root_node && self.cfg.blocked_moves.contains(&mv) {
                 continue 'outer;
             }
 
@@ -489,9 +476,12 @@ impl ExHelper {
             let mut extensions = 0;
 
             let mut res: ABResult = 'search: {
-                let mut res: ABResult;
+                // let mut res: ABResult;
+                let mut res: ABResult = ABResult::new_null();
 
                 let mut lmr = true;
+                let mut did_lmr = false;
+                let mut lmr_failed_high = false;
 
                 #[cfg(feature = "late_move_reduction")]
                 if lmr && mv.filter_all_captures() {
@@ -504,7 +494,7 @@ impl ExHelper {
 
                 #[cfg(feature = "late_move_reduction")]
                 if lmr
-                    && !is_pv
+                    && !is_pv_node
                     && moves_searched >= LMR_MIN_MOVES
                     && next_depth >= LMR_MIN_DEPTH
                     && !mv.filter_promotion()
@@ -517,48 +507,55 @@ impl ExHelper {
                     let (a2,b2) = (-(alpha+1),-alpha);
                     let res2 = -self._ab_search_negamax2(
                         ts, &g2, (depth_r,ply+1), (a2,b2), stats, stack, NonPV, false);
-                    let r = if let Some(mut r) = res2.get_result_mv(mv) { r } else {
+                    res = if let Some(mut r) = res2.get_result_mv(mv) { r } else {
                         self.pop_nnue(stack);
                         continue 'outer;
                         // panic!();
                     };
-                    if r.score <= alpha {
-                        stats!(stats.lmrs.0 += 1);
-                        break 'search r;
-                    }
+                    // if r.score <= alpha {
+                    //     stats!(stats.lmrs.0 += 1);
+                    //     break 'search r;
+                    // }
+                    lmr_failed_high = res.score > alpha;
+                    did_lmr = true;
                 }
 
-                #[cfg(feature = "pvs_search")]
-                let (a2,b2) = if !search_pv {
-                    (-beta, -alpha)
-                } else {
-                    (-alpha - 1, -alpha)
-                };
-                #[cfg(not(feature = "pvs_search"))]
-                let (a2,b2) = (-beta, -alpha);
+                /// If LMR failed, do full depth search
+                if !did_lmr || lmr_failed_high {
 
-                res = {
-                    let res2 = -self._ab_search_negamax2(
-                        ts, &g2, (next_depth,ply+1), (a2,b2), stats, stack, NonPV, false);
-                    if let Some(mut r) = res2.get_result_mv(mv) { r } else {
-                        self.pop_nnue(stack);
-                        continue 'outer;
-                        // panic!();
-                    }
-                };
-
-                #[cfg(feature = "pvs_search")]
-                if !search_pv && res.score > alpha {
-                    let res2 = -self._ab_search_negamax2(
-                        ts, &g2, (next_depth,ply+1), (-beta,-alpha), stats, stack, NonPV, false);
-                    if let Some(mut r) = res2.get_result_mv(mv) {
-                        res = r;
+                    #[cfg(feature = "pvs_search")]
+                    let (a2,b2) = if !do_pvs {
+                        (-beta, -alpha)
                     } else {
-                        self.pop_nnue(stack);
-                        continue 'outer;
-                        // panic!();
+                        (-alpha - 1, -alpha)
+                    };
+                    #[cfg(not(feature = "pvs_search"))]
+                    let (a2,b2) = (-beta, -alpha);
+
+                    res = {
+                        let res2 = -self._ab_search_negamax2(
+                            ts, &g2, (next_depth,ply+1), (a2,b2), stats, stack, NonPV, false);
+                        if let Some(mut r) = res2.get_result_mv(mv) { r } else {
+                            self.pop_nnue(stack);
+                            continue 'outer;
+                            // panic!();
+                        }
                     };
                 }
+
+                // #[cfg(feature = "pvs_search")]
+                // // if !do_pvs && res.score > alpha {
+                // if is_pv_node && res.score > alpha {
+                //     let res2 = -self._ab_search_negamax2(
+                //         ts, &g2, (next_depth,ply+1), (-beta,-alpha), stats, stack, NonPV, false);
+                //     if let Some(mut r) = res2.get_result_mv(mv) {
+                //         res = r;
+                //     } else {
+                //         self.pop_nnue(stack);
+                //         continue 'outer;
+                //         // panic!();
+                //     };
+                // }
 
                 // let res = -self._ab_search_negamax2(
                 //     ts, &g2, (next_depth,ply+1), (-beta, -alpha), stats, stack, NonPV, false);
@@ -567,6 +564,21 @@ impl ExHelper {
                 //     continue 'outer;
                 // };
 
+                /// Do PV Search on the first move
+                #[cfg(feature = "pvs_search")]
+                if do_pvs && is_pv_node && moves_searched == 1 {
+                    let res2 = -self._ab_search_negamax2(
+                        ts, &g2, (next_depth,ply+1), (-beta, -alpha), stats, stack, PV, false);
+                    res = if let Some(mut r) = res2.get_result_mv(mv) { r } else {
+                        self.pop_nnue(stack);
+                        continue 'outer;
+                        // panic!();
+                    }
+                }
+
+                if res.mv == Move::NullMove {
+                    panic!();
+                }
                 res
             };
 
@@ -592,7 +604,7 @@ impl ExHelper {
                     current_node_type = Node::PV;
                     alpha = best_val.1;
                     #[cfg(feature = "pvs_search")]
-                    if true { search_pv = false; }
+                    if true { do_pvs = false; }
                 }
 
                 if b {
@@ -651,7 +663,7 @@ impl ExHelper {
         match &best_val.0 {
             Some((zb,res)) => {
 
-                if !is_root && Some(res.mv) != movegen.hashmove {
+                if !is_root_node && Some(res.mv) != movegen.hashmove {
                 // if !is_root {
 
                     self.tt_insert_deepest(
@@ -668,7 +680,7 @@ impl ExHelper {
 
                 }
 
-                if is_root {
+                if is_root_node {
                     ABList(*res, list)
                 } else {
                     ABSingle(*res)

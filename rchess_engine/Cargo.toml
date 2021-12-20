@@ -48,7 +48,7 @@ default = [
 
     "qsearch",
 
-    # "pvs_search",
+    "pvs_search",
 
     # "negamax_only",
 

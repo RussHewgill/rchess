@@ -2857,9 +2857,9 @@ fn main9() {
     // let mv = Move::Capture { from: "H5".into(), to: "G4".into(), pc: Pawn, victim: Pawn };
 
     // let t = 10.0;
-    let t = 6.0;
+    // let t = 6.0;
     // let t = 4.0;
-    // let t = 2.0;
+    let t = 2.0;
     // let t = 0.5;
     // let t = 0.3;
 

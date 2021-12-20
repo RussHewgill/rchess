@@ -10,7 +10,7 @@ use crate::explore::*;
 use crate::syzygy::{SyzygyTB, Wdl, Dtz};
 use crate::alphabeta::*;
 
-use crate::alphabeta::ABNodeType::ABNone;
+use crate::alphabeta::{ABNodeType::*,ABResults::*};
 
 use std::sync::atomic::Ordering::{SeqCst,Relaxed};
 
