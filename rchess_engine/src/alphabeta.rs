@@ -193,16 +193,20 @@ impl ExHelper {
 
         let mut g = self.game.clone();
 
-        // let mut stop_counter = 0;
-        // let mut cfg = ABConfig::new_depth(depth);
-        // let res = self._ab_search_negamax(
-        //     ts, &mut g, cfg, depth,
-        //     0, &mut stop_counter, (alpha, beta),
-        //     &mut stats,
-        //     &mut stack,
-        //     ABNodeType::Root,
-        // );
+        #[cfg(not(feature = "new_search"))]
+        let res = {
+            let mut stop_counter = 0;
+            let mut cfg = ABConfig::new_depth(depth);
+            self._ab_search_negamax(
+                ts, &mut g, cfg, depth,
+                0, &mut stop_counter, (alpha, beta),
+                &mut stats,
+                &mut stack,
+                ABNodeType::Root,
+            )
+        };
 
+        #[cfg(feature = "new_search")]
         let res = self._ab_search_negamax2(
             ts,
             &g,
@@ -454,11 +458,15 @@ impl ExHelper {
             mv
         });
         let mut movegen = MoveGen::new(ts, &g, m_hashmove, depth, ply);
-        // let mut movegen = MoveGen::new(ts, &g, None, depth, ply);
 
         // self.order_moves(ts, g, ply, &mut stack, &mut gs[..]);
 
-        let mut search_pv = true;
+        let mut search_pv      = true;
+
+        #[cfg(feature = "pvs_search")]
+        if depth < 3 {
+            search_pv = false;
+        }
 
         let mut moves_searched = 0;
         let mut val = Score::MIN + 200;
@@ -474,23 +482,95 @@ impl ExHelper {
                 continue 'outer;
             }
 
-            let mut next_depth = depth - 1;
-            let mut extensions = 0;
-
             let g2 = if let Some(g2) = self.make_move(ts, g, mv, Some(zb0), stack) {
-            // let g2 = if let Some(g2) = self.make_move(ts, g, mv, None, stack) {
                 g2
             } else { continue 'outer; };
             moves_searched += 1;
 
-            /// Full depth search
+            let mut next_depth = depth - 1;
+            let mut extensions = 0;
 
-            let res = -self._ab_search_negamax2(
-                ts, &g2, (next_depth,ply+1), (-beta, -alpha), stats, stack, NonPV, false);
-            let res = if let Some(mut r) = res.get_result_mv(mv) { r } else {
-                self.pop_nnue(stack);
-                continue 'outer;
+            let mut res: ABResult = 'search: {
+                let mut res: ABResult;
+
+                let mut lmr = true;
+
+                // #[cfg(feature = "late_move_reduction")]
+                // if lmr && mv.filter_all_captures() {
+                //     let see = g2.static_exchange(&ts, mv).unwrap();
+                //     /// Capture with good SEE: do not reduce
+                //     if see > 0 {
+                //         lmr = false;
+                //     }
+                // }
+
+                #[cfg(feature = "late_move_reduction")]
+                if lmr
+                    && !is_pv
+                    && moves_searched >= LMR_MIN_MOVES
+                    && next_depth >= LMR_MIN_DEPTH
+                    && !mv.filter_promotion()
+                    && !in_check
+                    && g2.state.checkers.is_empty()
+                {
+                    let depth_r = next_depth.checked_sub(LMR_REDUCTION).unwrap();
+                    // let (a2,b2) = (-beta,-alpha);
+                    let (a2,b2) = (-(alpha+1),-alpha);
+                    let res2 = -self._ab_search_negamax2(
+                        ts, &g2, (depth_r,ply+1), (a2,b2), stats, stack, NonPV, false);
+                    let r = if let Some(mut r) = res2.get_result_mv(mv) { r } else {
+                        // self.pop_nnue(stack);
+                        // continue 'outer;
+                        panic!();
+                    };
+                    if r.score <= alpha {
+                        stats!(stats.lmrs.0 += 1);
+                        break 'search r;
+                    }
+                }
+
+                #[cfg(feature = "pvs_search")]
+                let (a2,b2) = if !search_pv {
+                    (-beta, -alpha)
+                } else {
+                    (-alpha - 1, -alpha)
+                };
+                #[cfg(not(feature = "pvs_search"))]
+                let (a2,b2) = (-beta, -alpha);
+
+                res = {
+                    let res2 = -self._ab_search_negamax2(
+                        ts, &g2, (next_depth,ply+1), (a2,b2), stats, stack, NonPV, false);
+                    if let Some(mut r) = res2.get_result_mv(mv) { r } else {
+                        // self.pop_nnue(stack);
+                        // continue 'outer;
+                        panic!();
+                    }
+                };
+
+                #[cfg(feature = "pvs_search")]
+                if !search_pv && res.score > alpha {
+                    let res2 = -self._ab_search_negamax2(
+                        ts, &g2, (next_depth,ply+1), (-beta,-alpha), stats, stack, NonPV, false);
+                    if let Some(mut r) = res2.get_result_mv(mv) {
+                        res = r;
+                    } else {
+                        // self.pop_nnue(stack);
+                        // continue 'outer;
+                        panic!();
+                    };
+                }
+
+                // let res = -self._ab_search_negamax2(
+                //     ts, &g2, (next_depth,ply+1), (-beta, -alpha), stats, stack, NonPV, false);
+                // let res = if let Some(mut r) = res.get_result_mv(mv) { r } else {
+                //     self.pop_nnue(stack);
+                //     continue 'outer;
+                // };
+
+                res
             };
+
             if node_type == Root {
                 list.push(res);
             }
