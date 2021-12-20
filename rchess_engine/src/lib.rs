@@ -13,6 +13,7 @@
 // #![feature(ptr_internals)]
 // #![feature(let_chains)]
 
+#![allow(incomplete_features)] // XXX:
 #![feature(adt_const_params)]
 
 // XXX: also brain allow ::all
