@@ -3401,9 +3401,9 @@ fn main_wac(num: Option<u64>, send_url: bool) {
     // let mut games = read_ccr_onehour("ccr_onehour.txt").unwrap();
     // let mut games = read_epd("Midgames250.epd").unwrap();
 
-    // let mut games = read_epd("testpositions/WAC.epd").unwrap();
+    let mut games = read_epd("testpositions/WAC.epd").unwrap();
     // let mut games = read_epd("testpositions/STS15.epd").unwrap();
-    let mut games = read_epd("testpositions/iq6.epd").unwrap();
+    // let mut games = read_epd("testpositions/iq6.epd").unwrap();
 
     for (fen,ms) in games.iter() {
         // eprintln!("fen, ms = {:?}: {:?}", fen, ms);

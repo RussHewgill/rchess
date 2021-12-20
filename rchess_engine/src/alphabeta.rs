@@ -329,10 +329,10 @@ impl ExHelper {
 
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
 
-        // #[cfg(feature = "pvs_search")]
+        #[cfg(feature = "pvs_search")]
         let is_pv_node = NODE_TYPE != ABNodeType::NonPV;
-        // #[cfg(not(feature = "pvs_search"))]
-        // let is_pv_node = false;
+        #[cfg(not(feature = "pvs_search"))]
+        let is_pv_node = false;
 
         // let mut is_pv_node = beta != alpha + 1;
         // if beta != alpha + 1 {
@@ -501,8 +501,8 @@ impl ExHelper {
 
                 let mut lmr = true;
 
-                let mut do_full_depth = true;
-                // let mut do_full_depth = false; // XXX: ??
+                // let mut do_full_depth = true;
+                let mut do_full_depth = false; // XXX: ??
 
                 #[cfg(feature = "late_move_reduction")]
                 if lmr && mv.filter_all_captures() {
@@ -515,7 +515,7 @@ impl ExHelper {
 
                 #[cfg(feature = "late_move_reduction")]
                 if lmr
-                    && !is_pv_node
+                    && (!is_pv_node || is_root_node)
                     && moves_searched >= LMR_MIN_MOVES
                     && next_depth >= LMR_MIN_DEPTH
                     && !mv.filter_promotion()
@@ -540,14 +540,14 @@ impl ExHelper {
                     }
                     // lmr_failed_high = res.score > alpha;
                     // did_lmr = true;
-                    if res.score > alpha {
-                        do_full_depth = true;
-                    }
+                    // if res.score > alpha {
+                    //     do_full_depth = true;
+                    // }
                 } else {
                     do_full_depth = is_root_node || !is_pv_node || moves_searched > 1;
                 }
-                // #[cfg(not(feature = "late_move_reduction"))]
-                // { do_full_depth = true; }
+                #[cfg(not(feature = "late_move_reduction"))]
+                { do_full_depth = true; }
                 // #[cfg(not(feature = "pvs_search"))]
                 // { do_full_depth = true; }
 
@@ -560,17 +560,16 @@ impl ExHelper {
                 /// If LMR failed
                 /// If not a PV
                 if do_full_depth {
+                // if true {
 
-                    // #[cfg(feature = "pvs_search")]
-                    // let (a2,b2) = if search_pvs_all {
-                    // // let (a2,b2) = if !do_pvs {
-                    //     (-beta, -alpha)
-                    // } else {
-                    //     (-(alpha + 1), -alpha)
-                    // };
-                    // #[cfg(not(feature = "pvs_search"))]
-                    // let (a2,b2) = (-beta, -alpha);
-
+                    #[cfg(feature = "pvs_search")]
+                    let (a2,b2) = if search_pvs_all {
+                    // let (a2,b2) = if !do_pvs {
+                        (-beta, -alpha)
+                    } else {
+                        (-(alpha + 1), -alpha)
+                    };
+                    #[cfg(not(feature = "pvs_search"))]
                     let (a2,b2) = (-beta, -alpha);
 
                     res = {
@@ -598,19 +597,18 @@ impl ExHelper {
                         };
                     }
 
-                    // ///   PVS
-                    // /// Do PV Search on the first move
-                    // /// Full depth search and PVS should never both happen in same node ?? maybe
-                    // #[cfg(feature = "pvs_search")]
-                    // if do_pvs && res.score > alpha {
-                    // // if res.score > alpha && do_pvs && is_pv_node && moves_searched == 1 {
-                    //     let res2 = -self._ab_search_negamax2::<{PV}>(
-                    //         ts, &g2, (next_depth,ply+1), (-beta, -alpha), stats, stack, false);
-                    //     res = if let Some(mut r) = res2.get_result_mv(mv) { r } else {
-                    //         self.pop_nnue(stack);
-                    //         continue 'outer;
-                    //     }
-                    // }
+                }
+
+                /// Do PV Search on the first move
+                #[cfg(feature = "pvs_search")]
+                if !do_full_depth && is_pv_node && moves_searched == 1 {
+
+                    let res2 = -self._ab_search_negamax2::<{PV}>(
+                        ts, &g2, (next_depth,ply+1), (-beta, -alpha), stats, stack, false);
+                    res = if let Some(mut r) = res2.get_result_mv(mv) { r } else {
+                        self.pop_nnue(stack);
+                        continue 'outer;
+                    }
 
                 }
 
