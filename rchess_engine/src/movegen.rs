@@ -70,13 +70,13 @@ pub struct MoveGen<'a> {
 impl<'a> MoveGen<'a> {
     pub fn sort(&mut self, st: &ABStack) {
 
-        // let mut buf = &mut self.buf;
-        // let ts      = self.ts;
-        // let g       = self.game;
-        // let ply     = self.ply;
-        // buf.sort_by_cached_key(|&mv| {
-        //     std::cmp::Reverse(crate::move_ordering::score_move_for_sort(ts, g, st, ply, mv))
-        // });
+        let mut buf = &mut self.buf;
+        let ts      = self.ts;
+        let g       = self.game;
+        let ply     = self.ply;
+        buf.sort_by_cached_key(|&mv| {
+            std::cmp::Reverse(crate::move_ordering::score_move_for_sort(ts, g, st, ply, mv))
+        });
 
     }
 }
