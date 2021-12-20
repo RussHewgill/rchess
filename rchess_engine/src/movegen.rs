@@ -67,9 +67,9 @@ pub struct MoveGen<'a> {
     ply:             Depth,
 }
 
+/// Sort
 impl<'a> MoveGen<'a> {
     pub fn sort(&mut self, st: &ABStack) {
-
         let mut buf = &mut self.buf;
         let ts      = self.ts;
         let g       = self.game;
@@ -77,7 +77,6 @@ impl<'a> MoveGen<'a> {
         buf.sort_by_cached_key(|&mv| {
             std::cmp::Reverse(crate::move_ordering::score_move_for_sort(ts, g, st, ply, mv))
         });
-
     }
 }
 

@@ -95,6 +95,8 @@ pub mod prefetch;
 pub mod simd_utils;
 pub mod simd_test;
 
+pub mod ab_prev;
+
 #[allow(clippy::all)]
 pub mod util;
 
