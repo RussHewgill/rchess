@@ -185,15 +185,25 @@ impl ExHelper {
             )
         };
 
+        // #[cfg(feature = "new_search")]
+        // let res = self._ab_search_negamax2(
+        //     ts,
+        //     &g,
+        //     (depth,0),
+        //     (alpha,beta),
+        //     stats,
+        //     stack,
+        //     ABNodeType::Root,
+        //     false);
+
         #[cfg(feature = "new_search")]
-        let res = self._ab_search_negamax2(
+        let res = self._ab_search_negamax2::<{ABNodeType::Root}>(
             ts,
             &g,
             (depth,0),
             (alpha,beta),
             stats,
             stack,
-            ABNodeType::Root,
             false);
 
         res
@@ -294,10 +304,16 @@ impl ExHelper {
 
 }
 
+// pub trait ABNodeTag {
+// }
+
+// pub struct 
+
 /// Negamax AB Refactor
 impl ExHelper {
     #[allow(unused_doc_comments,unused_labels)]
-    pub fn _ab_search_negamax2(
+    // pub fn _ab_search_negamax2(
+    pub fn _ab_search_negamax2<const NODE_TYPE: ABNodeType>(
         &self,
         ts:                      &'static Tables,
         g:                       &Game,
@@ -305,7 +321,7 @@ impl ExHelper {
         (mut alpha, mut beta):   (Score,Score),
         mut stats:               &mut SearchStats,
         mut stack:               &mut ABStack,
-        node_type:               ABNodeType,
+        // node_type:               ABNodeType,
         cut_node:                bool,
     ) -> ABResults {
         use ABNodeType::*;
@@ -313,7 +329,7 @@ impl ExHelper {
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
 
         #[cfg(feature = "pvs_search")]
-        let mut is_pv_node = node_type != ABNodeType::NonPV;
+        let mut is_pv_node = NODE_TYPE != ABNodeType::NonPV;
         #[cfg(not(feature = "pvs_search"))]
         let is_pv_node = false;
 
@@ -322,7 +338,7 @@ impl ExHelper {
         //     eprintln!("node_type = {:?}", node_type);
         // }
 
-        let is_root_node: bool = node_type == ABNodeType::Root;
+        let is_root_node: bool = NODE_TYPE == ABNodeType::Root;
 
         let mut current_node_type = Node::All;
 
@@ -364,7 +380,7 @@ impl ExHelper {
             let score = {
                 // trace!("    beginning qsearch, {:?}, a/b: {:?},{:?}",
                 //        prev_mvs.front().unwrap().1, alpha, beta);
-                let nt = if node_type == PV { PV } else { NonPV };
+                let nt = if NODE_TYPE == PV { PV } else { NonPV };
                 let score = self.qsearch(&ts, &g, (ply,0), (alpha, beta), stack, stats, nt);
                 // trace!("    returned from qsearch, score = {}", score);
                 score
@@ -505,8 +521,10 @@ impl ExHelper {
 
                     // let (a2,b2) = (-beta,-alpha);
                     let (a2,b2) = (-(alpha+1),-alpha);
-                    let res2 = -self._ab_search_negamax2(
-                        ts, &g2, (depth_r,ply+1), (a2,b2), stats, stack, NonPV, false);
+                    // let res2 = -self._ab_search_negamax2(
+                        // ts, &g2, (depth_r,ply+1), (a2,b2), stats, stack, NonPV, false);
+                    let res2 = -self._ab_search_negamax2::<{NonPV}>(
+                        ts, &g2, (depth_r,ply+1), (a2,b2), stats, stack, false);
                     res = if let Some(mut r) = res2.get_result_mv(mv) { r } else {
                         self.pop_nnue(stack);
                         continue 'outer;
@@ -533,8 +551,10 @@ impl ExHelper {
                     let (a2,b2) = (-beta, -alpha);
 
                     res = {
-                        let res2 = -self._ab_search_negamax2(
-                            ts, &g2, (next_depth,ply+1), (a2,b2), stats, stack, NonPV, false);
+                        // let res2 = -self._ab_search_negamax2(
+                        //     ts, &g2, (next_depth,ply+1), (a2,b2), stats, stack, NonPV, false);
+                        let res2 = -self._ab_search_negamax2::<{NonPV}>(
+                            ts, &g2, (next_depth,ply+1), (a2,b2), stats, stack, false);
                         if let Some(mut r) = res2.get_result_mv(mv) { r } else {
                             self.pop_nnue(stack);
                             continue 'outer;
@@ -567,8 +587,10 @@ impl ExHelper {
                 /// Do PV Search on the first move
                 #[cfg(feature = "pvs_search")]
                 if do_pvs && is_pv_node && moves_searched == 1 {
-                    let res2 = -self._ab_search_negamax2(
-                        ts, &g2, (next_depth,ply+1), (-beta, -alpha), stats, stack, PV, false);
+                    // let res2 = -self._ab_search_negamax2(
+                    //     ts, &g2, (next_depth,ply+1), (-beta, -alpha), stats, stack, PV, false);
+                    let res2 = -self._ab_search_negamax2::<{PV}>(
+                        ts, &g2, (next_depth,ply+1), (-beta, -alpha), stats, stack, false);
                     res = if let Some(mut r) = res2.get_result_mv(mv) { r } else {
                         self.pop_nnue(stack);
                         continue 'outer;
@@ -582,7 +604,7 @@ impl ExHelper {
                 res
             };
 
-            if node_type == Root {
+            if NODE_TYPE == Root {
                 list.push(res);
             }
 

@@ -13,6 +13,8 @@
 // #![feature(ptr_internals)]
 // #![feature(let_chains)]
 
+#![feature(adt_const_params)]
+
 // XXX: also brain allow ::all
 #![allow(
     // clippy::all,
