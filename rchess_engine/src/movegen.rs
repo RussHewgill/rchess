@@ -74,9 +74,17 @@ impl<'a> MoveGen<'a> {
         let ts      = self.ts;
         let g       = self.game;
         let ply     = self.ply;
+
+        #[cfg(feature = "killer_moves")]
+        let killers = st.killers.get(g.state.side_to_move,ply);
+        #[cfg(not(feature = "killer_moves"))]
+        let killers = (None,None);
+
         buf.sort_by_cached_key(|&mv| {
-            std::cmp::Reverse(crate::move_ordering::score_move_for_sort(ts, g, st, ply, mv))
+            // std::cmp::Reverse(crate::move_ordering::score_move_for_sort(ts, g, st, ply, mv, killers))
+            crate::move_ordering::score_move_for_sort(ts, g, st, ply, mv, killers)
         });
+
     }
 }
 

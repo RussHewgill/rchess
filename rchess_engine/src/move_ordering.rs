@@ -33,11 +33,12 @@ pub enum OrdMove {
 }
 
 pub fn score_move_for_sort(
-    ts:     &'static Tables,
-    g:      &Game,
-    st:     &ABStack,
-    ply:    Depth,
-    mv:     Move,
+    ts:         &'static Tables,
+    g:          &Game,
+    st:         &ABStack,
+    ply:        Depth,
+    mv:         Move,
+    killers:    (Option<Move>,Option<Move>),
 ) -> OrdMove {
     use self::OrdMove::*;
 
@@ -69,10 +70,10 @@ pub fn score_move_for_sort(
         _                                 => {},
     }
 
-    // #[cfg(feature = "killer_moves")]
-    // if Some(*mv) == st.killers.0 || Some(*mv) == st.killers.0 {
-    //     return KillerMove;
-    // }
+    #[cfg(feature = "killer_moves")]
+    if Some(mv) == killers.0 || Some(mv) == killers.1 {
+        return KillerMove;
+    }
 
     Other
 }
@@ -154,7 +155,7 @@ impl ExHelper {
         }
 
         #[cfg(feature = "killer_moves")]
-        if Some(*mv) == killers.0 || Some(*mv) == killers.0 {
+        if Some(*mv) == killers.0 || Some(*mv) == killers.1 {
             return KillerMove;
         }
 

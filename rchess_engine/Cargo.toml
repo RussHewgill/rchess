@@ -41,14 +41,14 @@ default = [
     # "history_heuristic",
     # "futility_pruning",
 
-    # "late_move_reduction",
-    # "killer_moves",
+    "late_move_reduction",
+    "killer_moves",
 
-    # "new_search",
+    "new_search",
 
     "qsearch",
 
-    "pvs_search",
+    # "pvs_search",
 
     # "negamax_only",
 

@@ -305,15 +305,9 @@ impl ExHelper {
 
 }
 
-// pub trait ABNodeTag {
-// }
-
-// pub struct 
-
 /// Negamax AB Refactor
 impl ExHelper {
     #[allow(unused_doc_comments,unused_labels)]
-    // pub fn _ab_search_negamax2(
     pub fn _ab_search_negamax2<const NODE_TYPE: ABNodeType>(
         &self,
         ts:                      &'static Tables,
@@ -322,7 +316,6 @@ impl ExHelper {
         (mut alpha, mut beta):   (Score,Score),
         mut stats:               &mut SearchStats,
         mut stack:               &mut ABStack,
-        // node_type:               ABNodeType,
         cut_node:                bool,
     ) -> ABResults {
         use ABNodeType::*;
@@ -503,7 +496,7 @@ impl ExHelper {
                 let mut lmr = true;
 
                 // let mut do_full_depth = true;
-                let mut do_full_depth = false; // XXX: ??
+                let mut do_full_depth = true; // XXX: ??
 
                 #[cfg(feature = "late_move_reduction")]
                 if lmr && mv.filter_all_captures() {
@@ -553,8 +546,8 @@ impl ExHelper {
                 } else {
                     do_full_depth = is_root_node || !is_pv_node || moves_searched > 1;
                 }
-                #[cfg(not(feature = "late_move_reduction"))]
-                { do_full_depth = true; }
+                // #[cfg(not(feature = "late_move_reduction"))]
+                // { do_full_depth = true; }
                 // #[cfg(not(feature = "pvs_search"))]
                 // { do_full_depth = true; }
 
