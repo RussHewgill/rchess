@@ -2829,6 +2829,8 @@ fn main9() {
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
 
+    // let fen = &games_sts(2, 1);
+
     // eprintln!("correct = {:?}", correct);
 
     eprintln!("fen = {:?}", fen);
@@ -2864,6 +2866,9 @@ fn main9() {
     // let n = 35;
     let n = 9;
     // let n = 2;
+
+    // let k0 = std::mem::size_of::<ExHelper>();
+    // eprintln!("k0 = {:?}", k0);
 
     let t0 = std::time::Instant::now();
     let timesettings = TimeSettings::new_f64(0.0,t);

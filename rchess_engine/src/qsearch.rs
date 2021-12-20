@@ -70,7 +70,7 @@ pub fn exhelper_once(
         #[cfg(not(feature = "lockless_hashmap"))]
         tt_w,
         ph_rw,
-        // move_history: vec![],
+        move_history: vec![],
     };
 
     helper

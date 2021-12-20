@@ -5,6 +5,7 @@ use crate::tables::*;
 use crate::trans_table::*;
 use crate::searchstats::*;
 use crate::evaluate::*;
+use crate::movegen::*;
 
 use rayon::prelude::*;
 
@@ -31,17 +32,52 @@ pub enum OrdMove {
     Other,
 }
 
-impl ExHelper {
+pub fn score_move_for_sort(
+    ts:     &'static Tables,
+    g:      &Game,
+    st:     &ABStack,
+    ply:    Depth,
+    mv:     Move,
+) -> OrdMove {
+    use self::OrdMove::*;
 
-    // pub fn order_moves2(
-    //     &self,
-    //     ts:           &Tables,
-    //     g:            &Game,
-    //     ply:          Depth,
-    //     tracking:     &ABStack,
-    //     mut gs:       &mut [Move],
-    // ) {
-    // }
+    match mv {
+        Move::PromotionCapture { .. }            => return PromCapture,
+        Move::Promotion { new_piece: Queen, .. } => return Prom,
+        Move::Promotion { .. }                   => return PromMinor,
+        Move::EnPassant { .. }                   => return GoodCapture,
+        Move::Capture { pc, victim, .. } => match (pc,victim) {
+            (Queen,Queen)   => return GoodCapture,
+            (Rook,Rook)     => return GoodCapture,
+            (Knight,Bishop) => return GoodCapture,
+            (Bishop,Bishop) => return GoodCapture,
+            (Bishop,Knight) => return GoodCapture,
+            (Pawn,Pawn)     => return GoodCapture,
+            _               => {
+                if let Some(see) = g.static_exchange(ts, mv) {
+                    if see == 0 {
+                        return CaptureEvenSee;
+                    } else if see > 0 {
+                        return CaptureGoodSee((see / 1000).clamp(-127,127) as i8);
+                    } else if see < 0 {
+                        return CaptureBadSee((see / 1000).clamp(-127,127) as i8);
+                    }
+                }
+            },
+        }
+        Move::Castle { .. } => return Castle,
+        _                                 => {},
+    }
+
+    #[cfg(feature = "killer_moves")]
+    if Some(*mv) == killers.0 || Some(*mv) == killers.0 {
+        return KillerMove;
+    }
+
+    Other
+}
+
+impl ExHelper {
 
     pub fn order_moves(
         &self,

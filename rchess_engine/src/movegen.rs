@@ -1,4 +1,6 @@
 
+pub use self::pieces::*;
+use crate::explore::ABStack;
 use crate::types::*;
 use crate::tables::*;
 
@@ -65,7 +67,21 @@ pub struct MoveGen<'a> {
     ply:             Depth,
 }
 
-/// New
+impl<'a> MoveGen<'a> {
+    pub fn sort(&mut self, st: &ABStack) {
+
+        // let mut buf = &mut self.buf;
+        // let ts      = self.ts;
+        // let g       = self.game;
+        // let ply     = self.ply;
+        // buf.sort_by_cached_key(|&mv| {
+        //     std::cmp::Reverse(crate::move_ordering::score_move_for_sort(ts, g, st, ply, mv))
+        // });
+
+    }
+}
+
+/// New, getters
 impl<'a> MoveGen<'a> {
     pub fn new(
         ts:             &'static Tables,
@@ -105,9 +121,10 @@ impl<'a> MoveGen<'a> {
 
 }
 
-impl<'a> Iterator for MoveGen<'a> {
-    type Item = Move;
-    fn next(&mut self) -> Option<Self::Item> {
+/// Not quite Iter
+impl<'a> MoveGen<'a> {
+
+    pub fn next(&mut self, stack: &ABStack) -> Option<Move> {
         match self.stage {
             MoveGenStage::Hash     => {
                 if let Some(mv) = self.hashmove {
@@ -119,40 +136,42 @@ impl<'a> Iterator for MoveGen<'a> {
                 }
 
                 self.stage = self.stage.next()?;
-                self.next()
+                self.next(stack)
             },
             MoveGenStage::Captures(true) => {
                 self.generate(MoveGenType::Captures);
-                // TODO: sort here?
+                // TODO: sort here
+                self.sort(stack);
 
                 self.stage = self.stage.next()?;
-                self.next()
+                self.next(stack)
             },
             MoveGenStage::Captures(false) => {
                 if let Some(mv) = self.buf.pop() {
                     if Some(mv) != self.hashmove && self.move_is_legal(mv) {
                         return Some(mv);
                     } else {
-                        return self.next();
+                        return self.next(stack);
                     }
                 }
 
                 self.stage = self.stage.next()?;
-                self.next()
+                self.next(stack)
             },
             MoveGenStage::Quiets(true) => {
                 self.generate(MoveGenType::Quiets);
                 // TODO: sort here?
+                self.sort(stack);
 
                 self.stage = self.stage.next()?;
-                self.next()
+                self.next(stack)
             },
             MoveGenStage::Quiets(false) => {
                 if let Some(mv) = self.buf.pop() {
                     if Some(mv) != self.hashmove && self.move_is_legal(mv) {
                         return Some(mv);
                     } else {
-                        return self.next();
+                        return self.next(stack);
                     }
                 }
                 self.stage = self.stage.next()?;
@@ -168,22 +187,23 @@ impl<'a> Iterator for MoveGen<'a> {
                 }
 
                 self.stage = self.stage.next()?;
-                self.next()
+                self.next(stack)
             },
 
             MoveGenStage::Evasion(true) => {
                 self.generate(MoveGenType::Evasions);
                 // TODO: sort here?
+                self.sort(stack);
 
                 self.stage = self.stage.next()?;
-                self.next()
+                self.next(stack)
             },
             MoveGenStage::Evasion(false) => {
                 if let Some(mv) = self.buf.pop() {
                     if Some(mv) != self.hashmove && self.move_is_legal(mv) {
                         return Some(mv);
                     } else {
-                        return self.next();
+                        return self.next(stack);
                     }
                 }
                 self.stage = self.stage.next()?;
@@ -195,7 +215,93 @@ impl<'a> Iterator for MoveGen<'a> {
             },
         }
     }
+
 }
+
+// impl<'a> Iterator for MoveGen<'a> {
+//     type Item = Move;
+//     fn next(&mut self) -> Option<Self::Item> {
+//         match self.stage {
+//             MoveGenStage::Hash     => {
+//                 if let Some(mv) = self.hashmove {
+//                     if self.move_is_legal(mv) {
+//                         // println!("returning hashmove: {:?}: {:?}", self.game.to_fen(), mv);
+//                         self.stage = self.stage.next()?;
+//                         return Some(mv);
+//                     }
+//                 }
+//                 self.stage = self.stage.next()?;
+//                 self.next()
+//             },
+//             MoveGenStage::Captures(true) => {
+//                 self.generate(MoveGenType::Captures);
+//                 // TODO: sort here?
+//                 self.stage = self.stage.next()?;
+//                 self.next()
+//             },
+//             MoveGenStage::Captures(false) => {
+//                 if let Some(mv) = self.buf.pop() {
+//                     if Some(mv) != self.hashmove && self.move_is_legal(mv) {
+//                         return Some(mv);
+//                     } else {
+//                         return self.next();
+//                     }
+//                 }
+//                 self.stage = self.stage.next()?;
+//                 self.next()
+//             },
+//             MoveGenStage::Quiets(true) => {
+//                 self.generate(MoveGenType::Quiets);
+//                 // TODO: sort here?
+//                 self.stage = self.stage.next()?;
+//                 self.next()
+//             },
+//             MoveGenStage::Quiets(false) => {
+//                 if let Some(mv) = self.buf.pop() {
+//                     if Some(mv) != self.hashmove && self.move_is_legal(mv) {
+//                         return Some(mv);
+//                     } else {
+//                         return self.next();
+//                     }
+//                 }
+//                 self.stage = self.stage.next()?;
+//                 None
+//             },
+
+//             MoveGenStage::EvasionHash => {
+//                 if let Some(mv) = self.hashmove {
+//                     if self.move_is_legal(mv) {
+//                         self.stage = self.stage.next()?;
+//                         return Some(mv);
+//                     }
+//                 }
+//                 self.stage = self.stage.next()?;
+//                 self.next()
+//             },
+//             MoveGenStage::Evasion(true) => {
+//                 self.generate(MoveGenType::Evasions);
+//                 // TODO: sort here?
+//                 self.stage = self.stage.next()?;
+//                 self.next()
+//             },
+//             MoveGenStage::Evasion(false) => {
+//                 if let Some(mv) = self.buf.pop() {
+//                     if Some(mv) != self.hashmove && self.move_is_legal(mv) {
+//                         return Some(mv);
+//                     } else {
+//                         return self.next();
+//                     }
+//                 }
+//                 self.stage = self.stage.next()?;
+//                 None
+//             },
+
+//             MoveGenStage::Finished => {
+//                 None
+//             },
+//         }
+//     }
+// }
 
 /// Generate
 impl<'a> MoveGen<'a> {
@@ -253,9 +359,11 @@ impl<'a> MoveGen<'a> {
         let mut sum = 0;
         let mut gen = Self::new(ts, &g, None, depth, 0);
 
-        while let Some(mv) = gen.next() {
+        let stack = ABStack::new();
+
+        while let Some(mv) = gen.next(&stack) {
             if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
-                let sum2 = Self::_perft(ts, g2, depth - 1);
+                let sum2 = Self::_perft(ts, &stack, g2, depth - 1);
                 out.push((mv,sum2));
                 sum += sum2;
             }
@@ -264,16 +372,16 @@ impl<'a> MoveGen<'a> {
         (sum,out)
     }
 
-    pub fn _perft(ts: &'static Tables, g: Game, depth: Depth) -> u64 {
+    pub fn _perft(ts: &'static Tables, st: &ABStack, g: Game, depth: Depth) -> u64 {
         if depth == 0 { return 1; }
 
         let mut gen = MoveGen::new(ts, &g, None, depth, 0);
 
         let mut sum = 0;
 
-        while let Some(mv) = gen.next() {
+        while let Some(mv) = gen.next(st) {
             if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
-                let sum2 = Self::_perft(ts, g2, depth - 1);
+                let sum2 = Self::_perft(ts, st, g2, depth - 1);
                 sum += sum2;
             }
         }
@@ -329,374 +437,376 @@ impl<'a> MoveGen<'a> {
     }
 }
 
-/// Pawns
-impl<'a> MoveGen<'a> {
-    pub fn gen_pawns(&mut self, gen: MoveGenType) {
+mod pieces {
+    use super::*;
 
-        let occ = self.game.all_occupied();
-        let rank7 = if self.side == White { BitBoard::mask_rank(6) } else { BitBoard::mask_rank(1) };
-        let rank3 = if self.side == White { BitBoard::mask_rank(2) } else { BitBoard::mask_rank(5) };
+    /// Pawns
+    impl<'a> MoveGen<'a> {
+        pub fn gen_pawns(&mut self, gen: MoveGenType) {
 
-        let (dir,dw,de) = match self.side {
-            White => (N,NW,NE),
-            Black => (S,SW,SE),
-        };
+            let occ = self.game.all_occupied();
+            let rank7 = if self.side == White { BitBoard::mask_rank(6) } else { BitBoard::mask_rank(1) };
+            let rank3 = if self.side == White { BitBoard::mask_rank(2) } else { BitBoard::mask_rank(5) };
 
-        let ps = self.game.get(Pawn, self.side);
-        let ps = ps & !rank7;
+            let (dir,dw,de) = match self.side {
+                White => (N,NW,NE),
+                Black => (S,SW,SE),
+            };
 
-        match gen {
-            MoveGenType::Captures => {
+            let ps = self.game.get(Pawn, self.side);
+            let ps = ps & !rank7;
 
-                // let enemies = self.game.get_color(!self.side);
+            match gen {
+                MoveGenType::Captures => {
 
-                // let b1 = ps.shift_dir(dw) & enemies;
-                // let b2 = ps.shift_dir(de) & enemies;
+                    // let enemies = self.game.get_color(!self.side);
 
-                // for to in b1.into_iter() {
-                //     let (_,victim) = self.game.get_at(to).unwrap();
-                //     if let Some(from) = (!dw).shift_coord(to) {
-                //         let mv = Move::Capture { from, to, pc: Pawn, victim };
-                //         self.buf.push(mv);
-                //     }
-                // }
+                    // let b1 = ps.shift_dir(dw) & enemies;
+                    // let b2 = ps.shift_dir(de) & enemies;
 
-                for f in ps.into_iter() {
-                    let bb = BitBoard::single(f);
-                    let mut cs = (bb.shift_dir(dw) & self.game.get_color(!self.side))
-                        | (bb.shift_dir(de) & self.game.get_color(!self.side));
-                    while cs.0 != 0 {
-                        let t = cs.bitscan_reset_mut();
-                        let (_,victim) = self.game.get_at(t.into()).unwrap();
-                        let mv = Move::Capture { from: f, to: t.into(), pc: Pawn, victim };
+                    // for to in b1.into_iter() {
+                    //     let (_,victim) = self.game.get_at(to).unwrap();
+                    //     if let Some(from) = (!dw).shift_coord(to) {
+                    //         let mv = Move::Capture { from, to, pc: Pawn, victim };
+                    //         self.buf.push(mv);
+                    //     }
+                    // }
+
+                    for f in ps.into_iter() {
+                        let bb = BitBoard::single(f);
+                        let mut cs = (bb.shift_dir(dw) & self.game.get_color(!self.side))
+                            | (bb.shift_dir(de) & self.game.get_color(!self.side));
+                        while cs.0 != 0 {
+                            let t = cs.bitscan_reset_mut();
+                            let (_,victim) = self.game.get_at(t.into()).unwrap();
+                            let mv = Move::Capture { from: f, to: t.into(), pc: Pawn, victim };
+                            self.buf.push(mv);
+                        }
+                    }
+
+                    if let Some(ep) = self.game.state.en_passant {
+                        let attacks = self.ts.get_pawn(ep).get_capture(!self.side);
+                        let attacks = *attacks & ps;
+                        attacks.into_iter().for_each(|sq| {
+                            let capture = if self.side == White { S.shift_coord(ep) } else { N.shift_coord(ep) };
+                            let capture = capture
+                                .unwrap_or_else(
+                                    || panic!("en passant bug? ep: {:?}, capture: {:?}", ep, capture));
+                            let mv = Move::EnPassant { from: sq.into(), to: ep, capture };
+                            self.buf.push(mv);
+                        });
+                    }
+
+                    self.gen_promotions(gen);
+                },
+                MoveGenType::Quiets => {
+                    let pushes = ps.shift_dir(dir);
+                    let pushes = pushes & !(occ);
+
+                    let doubles = ps & BitBoard::mask_rank(if self.side == White { 1 } else { 6 });
+                    let doubles = doubles.shift_mult(dir, 2);
+                    let doubles = doubles & !(occ) & (!(occ)).shift_dir(dir);
+
+                    for to in pushes.into_iter() {
+                        if let Some(f) = (!dir).shift_coord(to) {
+                            let mv = Move::Quiet { from: f, to, pc: Pawn };
+                            self.buf.push(mv);
+                        }
+                    };
+
+                    for to in doubles.into_iter() {
+                        let f = BitBoard::single(to.into()).shift_mult(!dir, 2);
+                        let mv = Move::PawnDouble { from: f.bitscan().into(), to: to.into() };
+                        self.buf.push(mv);
+                    }
+
+                    self.gen_promotions(gen);
+                },
+                MoveGenType::Evasions    => {
+                    self.gen_pawns(MoveGenType::Captures);
+                    self.gen_pawns(MoveGenType::Quiets);
+                },
+                MoveGenType::QuietChecks => unimplemented!(),
+            }
+        }
+
+        pub fn gen_promotions(&mut self, gen: MoveGenType) {
+
+            let rank7 = if self.side == White { BitBoard::mask_rank(6) } else { BitBoard::mask_rank(1) };
+
+            let ps = self.game.get(Pawn, self.side);
+            let ps = ps & rank7;
+
+            let occ = self.game.all_occupied();
+            let (dir,dw,de) = match self.side {
+                White => (N,NW,NE),
+                Black => (S,SW,SE),
+            };
+
+            let pushes = ps.shift_dir(dir);
+            let pushes = pushes & !(occ);
+
+            for to in pushes.into_iter() {
+                if let Some(from) = (!dir).shift_coord(to) {
+                    if gen == MoveGenType::Captures {
+                        let mv = Move::Promotion { from, to, new_piece: Queen };
+                        self.buf.push(mv);
+                    } else if gen == MoveGenType::Quiets {
+                        let mv = Move::Promotion { from, to, new_piece: Knight };
+                        self.buf.push(mv);
+                        let mv = Move::Promotion { from, to, new_piece: Bishop };
+                        self.buf.push(mv);
+                        let mv = Move::Promotion { from, to, new_piece: Rook };
+                        self.buf.push(mv);
+                    }
+                }
+            }
+
+            for from in ps.into_iter() {
+                let bb = BitBoard::single(from);
+                let mut cs = (bb.shift_dir(dw) & self.game.get_color(!self.side))
+                    | (bb.shift_dir(de) & self.game.get_color(!self.side));
+
+                for to in cs.into_iter() {
+                    let (_,victim) = self.game.get_at(to).unwrap();
+                    if gen == MoveGenType::Captures {
+                        let mv = Move::PromotionCapture { from, to, new_piece: Queen, victim };
+                        self.buf.push(mv);
+                    } else if gen == MoveGenType::Quiets {
+                        let mv = Move::PromotionCapture { from, to, new_piece: Knight, victim };
+                        self.buf.push(mv);
+                        let mv = Move::PromotionCapture { from, to, new_piece: Bishop, victim };
+                        self.buf.push(mv);
+                        let mv = Move::PromotionCapture { from, to, new_piece: Rook, victim };
                         self.buf.push(mv);
                     }
                 }
 
-                if let Some(ep) = self.game.state.en_passant {
-                    let attacks = self.ts.get_pawn(ep).get_capture(!self.side);
-                    let attacks = *attacks & ps;
-                    attacks.into_iter().for_each(|sq| {
-                        let capture = if self.side == White { S.shift_coord(ep) } else { N.shift_coord(ep) };
-                        let capture = capture
-                            .unwrap_or_else(
-                                || panic!("en passant bug? ep: {:?}, capture: {:?}", ep, capture));
-                        let mv = Move::EnPassant { from: sq.into(), to: ep, capture };
-                        self.buf.push(mv);
+            }
+
+        }
+
+    }
+
+    /// Knights
+    impl<'a> MoveGen<'a> {
+
+        pub fn gen_knights(&mut self, gen: MoveGenType) {
+            let occ = self.game.all_occupied();
+            let ks = self.game.get(Knight, self.side);
+
+            match gen {
+                MoveGenType::Captures => {
+                    ks.into_iter().for_each(|from| {
+                        let ms = self.ts.get_knight(from);
+                        let captures = ms & self.game.get_color(!self.side);
+                        captures.into_iter().for_each(|to| {
+                            let (_,victim) = self.game.get_at(to).unwrap();
+                            let mv = Move::Capture { from, to, pc: Knight, victim };
+                            self.buf.push(mv);
+                        });
                     });
-                }
+                },
+                MoveGenType::Quiets => {
+                    ks.into_iter().for_each(|from| {
+                        let ms = self.ts.get_knight(from);
+                        let quiets = ms & !occ;
+                        quiets.into_iter().for_each(|to| {
+                            let mv = Move::Quiet { from, to, pc: Knight };
+                            self.buf.push(mv);
+                        });
+                    });
+                },
+                MoveGenType::Evasions    => {
+                    self.gen_knights(MoveGenType::Captures);
+                    self.gen_knights(MoveGenType::Quiets);
+                },
+                MoveGenType::QuietChecks => unimplemented!(),
+            }
 
-                self.gen_promotions(gen);
-            },
-            MoveGenType::Quiets => {
-                let pushes = ps.shift_dir(dir);
-                let pushes = pushes & !(occ);
+        }
 
-                let doubles = ps & BitBoard::mask_rank(if self.side == White { 1 } else { 6 });
-                let doubles = doubles.shift_mult(dir, 2);
-                let doubles = doubles & !(occ) & (!(occ)).shift_dir(dir);
+        // pub fn gen_knights(&'a self, gen: MoveGenType) -> impl Iterator<Item = Move> + 'a {
+        //     let occ = self.game.all_occupied();
+        //     let ks = self.game.get(Knight, self.side);
+        //     ks.into_iter().flat_map(move |from| {
+        //         let ms = self.ts.get_knight(from);
+        //         match gen {
+        //             MoveGenType::Captures => {
+        //                 let captures = *ms & self.game.get_color(!self.side);
+        //                 captures.into_iter().map(move |to| {
+        //                     let (_,victim) = self.game.get_at(to).unwrap();
+        //                     Move::Capture { from, to, pc: Knight, victim }
+        //                 })
+        //             },
+        //             MoveGenType::Quiets => {
+        //                 let quiets   = *ms & !occ;
+        //                 quiets.into_iter().map(move |to| {
+        //                     Move::Quiet { from, to, pc: Knight }
+        //                 })
+        //             },
+        //         }
+        //     })
+        // }
 
-                for to in pushes.into_iter() {
-                    if let Some(f) = (!dir).shift_coord(to) {
-                        let mv = Move::Quiet { from: f, to, pc: Pawn };
-                        self.buf.push(mv);
+    }
+
+    /// Sliding
+    impl<'a> MoveGen<'a> {
+
+        pub fn gen_sliding(&mut self, gen: MoveGenType, pc: Piece) {
+            let pieces = self.game.get(pc, self.side);
+
+            match gen {
+                MoveGenType::Captures => {
+                    for sq in pieces.into_iter() {
+                        let moves   = self._gen_sliding_single(pc, sq.into(), None);
+                        let attacks = moves & self.game.get_color(!self.side);
+                        attacks.into_iter().for_each(|to| {
+                            let (_,victim) = self.game.get_at(to).unwrap();
+                            let mv = Move::Capture { from: sq, to, pc, victim };
+                            self.buf.push(mv);
+                        });
                     }
-                };
-
-                for to in doubles.into_iter() {
-                    let f = BitBoard::single(to.into()).shift_mult(!dir, 2);
-                    let mv = Move::PawnDouble { from: f.bitscan().into(), to: to.into() };
-                    self.buf.push(mv);
-                }
-
-                self.gen_promotions(gen);
-            },
-            MoveGenType::Evasions    => {
-                self.gen_pawns(MoveGenType::Captures);
-                self.gen_pawns(MoveGenType::Quiets);
-            },
-            MoveGenType::QuietChecks => unimplemented!(),
-        }
-    }
-
-    pub fn gen_promotions(&mut self, gen: MoveGenType) {
-
-        let rank7 = if self.side == White { BitBoard::mask_rank(6) } else { BitBoard::mask_rank(1) };
-
-        let ps = self.game.get(Pawn, self.side);
-        let ps = ps & rank7;
-
-        let occ = self.game.all_occupied();
-        let (dir,dw,de) = match self.side {
-            White => (N,NW,NE),
-            Black => (S,SW,SE),
-        };
-
-        let pushes = ps.shift_dir(dir);
-        let pushes = pushes & !(occ);
-
-        for to in pushes.into_iter() {
-            if let Some(from) = (!dir).shift_coord(to) {
-                if gen == MoveGenType::Captures {
-                    let mv = Move::Promotion { from, to, new_piece: Queen };
-                    self.buf.push(mv);
-                } else if gen == MoveGenType::Quiets {
-                    let mv = Move::Promotion { from, to, new_piece: Knight };
-                    self.buf.push(mv);
-                    let mv = Move::Promotion { from, to, new_piece: Bishop };
-                    self.buf.push(mv);
-                    let mv = Move::Promotion { from, to, new_piece: Rook };
-                    self.buf.push(mv);
-                }
-            }
-        }
-
-        for from in ps.into_iter() {
-            let bb = BitBoard::single(from);
-            let mut cs = (bb.shift_dir(dw) & self.game.get_color(!self.side))
-                | (bb.shift_dir(de) & self.game.get_color(!self.side));
-
-            for to in cs.into_iter() {
-                let (_,victim) = self.game.get_at(to).unwrap();
-                if gen == MoveGenType::Captures {
-                    let mv = Move::PromotionCapture { from, to, new_piece: Queen, victim };
-                    self.buf.push(mv);
-                } else if gen == MoveGenType::Quiets {
-                    let mv = Move::PromotionCapture { from, to, new_piece: Knight, victim };
-                    self.buf.push(mv);
-                    let mv = Move::PromotionCapture { from, to, new_piece: Bishop, victim };
-                    self.buf.push(mv);
-                    let mv = Move::PromotionCapture { from, to, new_piece: Rook, victim };
-                    self.buf.push(mv);
-                }
+                },
+                MoveGenType::Quiets => {
+                    for sq in pieces.into_iter() {
+                        let moves   = self._gen_sliding_single(pc, sq.into(), None);
+                        let quiets  = moves & self.game.all_empty();
+                        quiets.into_iter().for_each(|sq2| {
+                            let mv = Move::Quiet { from: sq, to: sq2, pc };
+                            self.buf.push(mv);
+                        });
+                    }
+                },
+                MoveGenType::Evasions    => {
+                    self.gen_sliding(MoveGenType::Captures, pc);
+                    self.gen_sliding(MoveGenType::Quiets, pc);
+                },
+                MoveGenType::QuietChecks => unimplemented!(),
             }
 
+
+        }
+
+        pub fn _gen_sliding_single(
+            &self,
+            pc:     Piece,
+            c0:     Coord,
+            occ:    Option<BitBoard>,
+        ) -> BitBoard {
+            let occ = match occ {
+                None    => self.game.all_occupied(),
+                Some(b) => b,
+            };
+            let moves = match pc {
+                Rook   => self.ts.attacks_rook(c0, occ),
+                Bishop => self.ts.attacks_bishop(c0, occ),
+                Queen  => self.ts.attacks_bishop(c0, occ) | self.ts.attacks_rook(c0, occ),
+                _      => panic!("search sliding: {:?}", pc),
+            };
+            moves & !self.game.get_color(self.side)
         }
 
     }
 
-}
+    /// King, Castling
+    impl<'a> MoveGen<'a> {
 
-/// Knights
-impl<'a> MoveGen<'a> {
+        pub fn gen_castles(&mut self) {
+            if self.game.state.checkers.is_not_empty() {
+                return;
+            }
 
-    pub fn gen_knights(&mut self, gen: MoveGenType) {
-        let occ = self.game.all_occupied();
-        let ks = self.game.get(Knight, self.side);
+            let (kingside,queenside) = self.game.state.castling.get_color(self.side);
 
-        match gen {
-            MoveGenType::Captures => {
-                ks.into_iter().for_each(|from| {
-                    let ms = self.ts.get_knight(from);
-                    let captures = ms & self.game.get_color(!self.side);
+            let ksq: Coord = self.game.get(King, self.side).bitscan().into();
+
+            if (self.side == White && ksq != Sq::E1.to()) || (self.side == Black && ksq != Sq::E8.to()) {
+                return;
+            }
+
+            if kingside {
+                if let mv@Move::Castle { from, to, rook_from, rook_to } = Move::CASTLE_KINGSIDE[self.side] {
+                    if self.game.get(Rook,self.side).is_one_at(rook_from) {
+                        let between = self.ts.between_exclusive(from, rook_from);
+                        if (between & self.game.all_occupied()).is_empty() {
+                            if !between.into_iter().any(
+                                |sq| self.game.find_attacks_by_side(self.ts, sq, !self.side, true)) {
+                                self.buf.push(mv);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if queenside {
+                if let mv@Move::Castle { from, to, rook_from, rook_to } = Move::CASTLE_QUEENSIDE[self.side] {
+                    if self.game.get(Rook,self.side).is_one_at(rook_from) {
+                        let between_blocks  = self.ts.between_exclusive(from, rook_from);
+                        let between_attacks = Move::CASTLE_QUEENSIDE_BETWEEN[self.side];
+                        if (between_blocks & self.game.all_occupied()).is_empty() {
+                            if !between_attacks.into_iter().any(
+                                |sq| self.game.find_attacks_by_side(self.ts, sq, !self.side, true)) {
+                                self.buf.push(mv);
+                            }
+                        }
+                    }
+                }
+            }
+
+        }
+
+        pub fn gen_king(&mut self, gen: MoveGenType) {
+            let from = self.game.get(King, self.side).bitscan();
+
+            let moves = self.ts.get_king(from);
+
+            let occ = self.game.all_occupied();
+
+            match gen {
+                MoveGenType::Captures => {
+                    let captures = moves & self.game.get_color(!self.side);
                     captures.into_iter().for_each(|to| {
                         let (_,victim) = self.game.get_at(to).unwrap();
-                        let mv = Move::Capture { from, to, pc: Knight, victim };
+                        let mv = Move::Capture { from, to, pc: King, victim };
                         self.buf.push(mv);
                     });
-                });
-            },
-            MoveGenType::Quiets => {
-                ks.into_iter().for_each(|from| {
-                    let ms = self.ts.get_knight(from);
-                    let quiets = ms & !occ;
+                },
+                MoveGenType::Quiets => {
+                    let captures = moves & self.game.get_color(!self.side);
+                    let quiets   = moves & !occ;
                     quiets.into_iter().for_each(|to| {
-                        let mv = Move::Quiet { from, to, pc: Knight };
+                        let mv = Move::Quiet { from, to, pc: King };
                         self.buf.push(mv);
                     });
-                });
-            },
-            MoveGenType::Evasions    => {
-                self.gen_knights(MoveGenType::Captures);
-                self.gen_knights(MoveGenType::Quiets);
-            },
-            MoveGenType::QuietChecks => unimplemented!(),
-        }
+                },
+                MoveGenType::Evasions    => {
 
-    }
+                    self.gen_king(MoveGenType::Captures);
+                    self.gen_king(MoveGenType::Quiets);
 
-    // pub fn gen_knights(&'a self, gen: MoveGenType) -> impl Iterator<Item = Move> + 'a {
-    //     let occ = self.game.all_occupied();
-    //     let ks = self.game.get(Knight, self.side);
-    //     ks.into_iter().flat_map(move |from| {
-    //         let ms = self.ts.get_knight(from);
-    //         match gen {
-    //             MoveGenType::Captures => {
-    //                 let captures = *ms & self.game.get_color(!self.side);
-    //                 captures.into_iter().map(move |to| {
-    //                     let (_,victim) = self.game.get_at(to).unwrap();
-    //                     Move::Capture { from, to, pc: Knight, victim }
-    //                 })
-    //             },
-    //             MoveGenType::Quiets => {
-    //                 let quiets   = *ms & !occ;
-    //                 quiets.into_iter().map(move |to| {
-    //                     Move::Quiet { from, to, pc: Knight }
-    //                 })
-    //             },
-    //         }
-    //     })
-    // }
+                    // let captures = moves & self.game.get_color(!self.side);
+                    // captures.into_iter().for_each(|to| {
+                    //     if !self.game.find_attacks_by_side(self.ts, to, !self.side, true) {
+                    //         let (_,victim) = self.game.get_at(to).unwrap();
+                    //         let mv = Move::Capture { from, to, pc: King, victim };
+                    //         self.buf.push(mv);
+                    //     }
+                    // });
+                    // let quiets   = moves & !occ;
+                    // quiets.into_iter().for_each(|to| {
+                    //     if !self.game.find_attacks_by_side(self.ts, to, !self.side, true) {
+                    //         let mv = Move::Quiet { from, to, pc: King };
+                    //         self.buf.push(mv);
+                    //     }
+                    // });
 
-}
-
-/// Sliding
-impl<'a> MoveGen<'a> {
-
-    pub fn gen_sliding(&mut self, gen: MoveGenType, pc: Piece) {
-        let pieces = self.game.get(pc, self.side);
-
-        match gen {
-            MoveGenType::Captures => {
-                for sq in pieces.into_iter() {
-                    let moves   = self._gen_sliding_single(pc, sq.into(), None);
-                    let attacks = moves & self.game.get_color(!self.side);
-                    attacks.into_iter().for_each(|to| {
-                        let (_,victim) = self.game.get_at(to).unwrap();
-                        let mv = Move::Capture { from: sq, to, pc, victim };
-                        self.buf.push(mv);
-                    });
-                }
-            },
-            MoveGenType::Quiets => {
-                for sq in pieces.into_iter() {
-                    let moves   = self._gen_sliding_single(pc, sq.into(), None);
-                    let quiets  = moves & self.game.all_empty();
-                    quiets.into_iter().for_each(|sq2| {
-                        let mv = Move::Quiet { from: sq, to: sq2, pc };
-                        self.buf.push(mv);
-                    });
-                }
-            },
-            MoveGenType::Evasions    => {
-                self.gen_sliding(MoveGenType::Captures, pc);
-                self.gen_sliding(MoveGenType::Quiets, pc);
-            },
-            MoveGenType::QuietChecks => unimplemented!(),
-        }
-
-
-    }
-
-    pub fn _gen_sliding_single(
-        &self,
-        pc:     Piece,
-        c0:     Coord,
-        occ:    Option<BitBoard>,
-    ) -> BitBoard {
-        let occ = match occ {
-            None    => self.game.all_occupied(),
-            Some(b) => b,
-        };
-        let moves = match pc {
-            Rook   => self.ts.attacks_rook(c0, occ),
-            Bishop => self.ts.attacks_bishop(c0, occ),
-            Queen  => self.ts.attacks_bishop(c0, occ) | self.ts.attacks_rook(c0, occ),
-            _      => panic!("search sliding: {:?}", pc),
-        };
-        moves & !self.game.get_color(self.side)
-    }
-
-}
-
-/// King, Castling
-impl<'a> MoveGen<'a> {
-
-    pub fn gen_castles(&mut self) {
-        if self.game.state.checkers.is_not_empty() {
-            return;
-        }
-
-        let (kingside,queenside) = self.game.state.castling.get_color(self.side);
-
-        let ksq: Coord = self.game.get(King, self.side).bitscan().into();
-
-        if (self.side == White && ksq != Sq::E1.to()) || (self.side == Black && ksq != Sq::E8.to()) {
-            return;
-        }
-
-        if kingside {
-            if let mv@Move::Castle { from, to, rook_from, rook_to } = Move::CASTLE_KINGSIDE[self.side] {
-                if self.game.get(Rook,self.side).is_one_at(rook_from) {
-                    let between = self.ts.between_exclusive(from, rook_from);
-                    if (between & self.game.all_occupied()).is_empty() {
-                        if !between.into_iter().any(
-                            |sq| self.game.find_attacks_by_side(self.ts, sq, !self.side, true)) {
-                            self.buf.push(mv);
-                        }
-                    }
-                }
+                },
+                MoveGenType::QuietChecks => unimplemented!(),
             }
         }
-
-        if queenside {
-            if let mv@Move::Castle { from, to, rook_from, rook_to } = Move::CASTLE_QUEENSIDE[self.side] {
-                if self.game.get(Rook,self.side).is_one_at(rook_from) {
-                    let between_blocks  = self.ts.between_exclusive(from, rook_from);
-                    let between_attacks = Move::CASTLE_QUEENSIDE_BETWEEN[self.side];
-                    if (between_blocks & self.game.all_occupied()).is_empty() {
-                        if !between_attacks.into_iter().any(
-                            |sq| self.game.find_attacks_by_side(self.ts, sq, !self.side, true)) {
-                            self.buf.push(mv);
-                        }
-                    }
-                }
-            }
-        }
-
     }
 
-    pub fn gen_king(&mut self, gen: MoveGenType) {
-        let from = self.game.get(King, self.side).bitscan();
-
-        let moves = self.ts.get_king(from);
-
-        let occ = self.game.all_occupied();
-
-        match gen {
-            MoveGenType::Captures => {
-                let captures = moves & self.game.get_color(!self.side);
-                captures.into_iter().for_each(|to| {
-                    let (_,victim) = self.game.get_at(to).unwrap();
-                    let mv = Move::Capture { from, to, pc: King, victim };
-                    self.buf.push(mv);
-                });
-            },
-            MoveGenType::Quiets => {
-                let captures = moves & self.game.get_color(!self.side);
-                let quiets   = moves & !occ;
-                quiets.into_iter().for_each(|to| {
-                    let mv = Move::Quiet { from, to, pc: King };
-                    self.buf.push(mv);
-                });
-            },
-            MoveGenType::Evasions    => {
-
-                self.gen_king(MoveGenType::Captures);
-                self.gen_king(MoveGenType::Quiets);
-
-                // let captures = moves & self.game.get_color(!self.side);
-                // captures.into_iter().for_each(|to| {
-                //     if !self.game.find_attacks_by_side(self.ts, to, !self.side, true) {
-                //         let (_,victim) = self.game.get_at(to).unwrap();
-                //         let mv = Move::Capture { from, to, pc: King, victim };
-                //         self.buf.push(mv);
-                //     }
-                // });
-                // let quiets   = moves & !occ;
-                // quiets.into_iter().for_each(|to| {
-                //     if !self.game.find_attacks_by_side(self.ts, to, !self.side, true) {
-                //         let mv = Move::Quiet { from, to, pc: King };
-                //         self.buf.push(mv);
-                //     }
-                // });
-
-            },
-            MoveGenType::QuietChecks => unimplemented!(),
-        }
-    }
 }
-
-
-
 

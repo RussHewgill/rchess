@@ -473,7 +473,7 @@ impl ExHelper {
         let mut best_val: (Option<(Zobrist,ABResult)>,Score) = (None,val);
         let mut list = vec![];
 
-        'outer: while let Some(mv) = movegen.next() {
+        'outer: while let Some(mv) = movegen.next(&stack) {
 
             let zb0 = g.zobrist.update_move_unchecked(ts, g, mv);
             self.ptr_tt.prefetch(zb0);
@@ -519,9 +519,9 @@ impl ExHelper {
                     let res2 = -self._ab_search_negamax2(
                         ts, &g2, (depth_r,ply+1), (a2,b2), stats, stack, NonPV, false);
                     let r = if let Some(mut r) = res2.get_result_mv(mv) { r } else {
-                        // self.pop_nnue(stack);
-                        // continue 'outer;
-                        panic!();
+                        self.pop_nnue(stack);
+                        continue 'outer;
+                        // panic!();
                     };
                     if r.score <= alpha {
                         stats!(stats.lmrs.0 += 1);
@@ -542,9 +542,9 @@ impl ExHelper {
                     let res2 = -self._ab_search_negamax2(
                         ts, &g2, (next_depth,ply+1), (a2,b2), stats, stack, NonPV, false);
                     if let Some(mut r) = res2.get_result_mv(mv) { r } else {
-                        // self.pop_nnue(stack);
-                        // continue 'outer;
-                        panic!();
+                        self.pop_nnue(stack);
+                        continue 'outer;
+                        // panic!();
                     }
                 };
 
@@ -555,9 +555,9 @@ impl ExHelper {
                     if let Some(mut r) = res2.get_result_mv(mv) {
                         res = r;
                     } else {
-                        // self.pop_nnue(stack);
-                        // continue 'outer;
-                        panic!();
+                        self.pop_nnue(stack);
+                        continue 'outer;
+                        // panic!();
                     };
                 }
 
@@ -653,6 +653,7 @@ impl ExHelper {
             Some((zb,res)) => {
 
                 if !is_root && Some(res.mv) != movegen.hashmove {
+                // if !is_root {
 
                     self.tt_insert_deepest(
                         g.zobrist,
@@ -676,6 +677,7 @@ impl ExHelper {
             },
             _                    => ABNone,
         }
+
     }
 }
 

@@ -132,7 +132,7 @@ pub struct ExHelper {
     // pub ph_rw:         (PHRead,PHWrite),
     pub ph_rw:           PHTable,
 
-    // pub move_history:  Vec<(Zobrist, Move)>,
+    pub move_history:    Vec<(Zobrist, Move)>,
     // pub stack:           Cell<ABStack>,
 
 }
@@ -152,21 +152,21 @@ pub struct ABStack {
     pub history:        [[[Score; 64]; 64]; 2],
     pub killers:        KillerMoves,
     pub move_history:   Vec<(Zobrist, Move)>,
-    // pub pvs:          Vec<Move>,
+    // pub pvs:            Vec<Move>,
 }
 
 impl ABStack {
-    pub fn new_with_moves(moves: Vec<(Zobrist, Move)>) -> Self {
+    pub fn new_with_moves(moves: &Vec<(Zobrist, Move)>) -> Self {
         let mut out = Self::new();
-        out.move_history = moves;
+        out.move_history = moves.clone();
         out
     }
     pub fn new() -> Self {
         Self {
             history:        [[[0; 64]; 64]; 2],
             killers:        KillerMoves::default(),
-            // pvs:          Vec::with_capacity(64),
-            move_history:   vec![],
+            move_history:   Vec::with_capacity(64),
+            // pvs:            Vec::with_capacity(64),
         }
     }
 }
@@ -210,6 +210,8 @@ impl Explorer {
 
             // ph_rw:           (self.ph_rw.0.handle(),self.ph_rw.1.clone()),
             ph_rw:           self.ph_rw.handle(),
+
+            move_history:    self.move_history.clone(),
 
         }
     }
@@ -464,43 +466,8 @@ impl Explorer {
 /// Entry points
 impl Explorer {
 
-    // pub fn explore_mult(&self, ts: &Tables)
-    //                     -> ((ABResult,Vec<ABResult>),SearchStats) {
-    //     let ((best, mut scores),stats,(tt_r,tt_w)) = self.lazy_smp_negamax(ts, false, false);
-    //     scores.sort_by_key(|x| x.score);
-    //     scores.reverse();
-    //     ((best,scores), stats)
-    // }
-
-    // pub fn explore(&self, ts: &Tables, _: Option<Depth>)
-    pub fn explore(&self, ts: &'static Tables)
-                   // -> (Option<(Move,Score)>,SearchStats) {
-                   -> (Option<(Move,ABResult)>,SearchStats) {
-
-        // let (moves,stats) = self.iterative_deepening(&ts, false, false);
-        // (moves.get(0).map(|x| x.0),stats)
-
-        // let (moves,stats,_) = self.lazy_smp(&ts, false, false);
-
-        // let mv = moves.get(0).map(|x| x.0);
-        // let mv = moves.get(0).map(|x| (x.0,x.2));
-
-        // if let Some(ob) = &self.opening_book {
-        //     if let Some(mvs) = ob.best_moves(&self.game) {
-        //         unimplemented!()
-        //     }
-        // }
-
-        // let ((best, scores),stats,(tt_r,tt_w)) = self.lazy_smp_negamax(ts, false, false);
-
+    pub fn explore(&self, ts: &'static Tables) -> (Option<(Move,ABResult)>,SearchStats) {
         let (ress,moves,stats) = self.lazy_smp_2(ts);
-
-        // debug!("finished lazy_smp_2, ress = {:?}", ress);
-
-        // match ress {
-        //     ABResults::ABList(res,_) | ABResults::ABSingle(res) 
-        // }
-
         if let Some(best) = ress.get_result() {
             debug!("explore: best move = {:?}", best.mv);
             (Some((best.mv,best)),stats)
@@ -509,180 +476,7 @@ impl Explorer {
             // panic!();
             (None,stats)
         }
-
-        // // if let Some(mv) = best.moves.get(0) {
-        // if let Some(mv) = best.mv {
-        //     let score = best.score;
-        //     debug!("explore: best move = {:?}", mv);
-        //     // (Some((mv,score)),stats)
-        //     (Some((mv,best)),stats)
-        // } else {
-        //     (None, stats)
-        // }
-
-        // unimplemented!()
-
-        // unimplemented!()
-        // if iterative {
-        //     let (moves,stats) = self.iterative_deepening(&ts, false);
-        //     (moves.get(0).map(|x| x.0),stats)
-        // } else {
-        //     let (moves,stats) = self.rank_moves(&ts, false);
-        //     (moves.get(0).map(|x| x.0),stats)
-        // }
-
     }
-
-}
-
-/// iterative_deepening
-#[cfg(feature = "iterative")]
-impl Explorer {
-
-    pub fn iterative_deepening(&self, ts: &Tables, print: bool, strict_depth: bool)
-                               -> (Vec<(Move,Vec<Move>,Score)>,SearchStats) {
-
-        let ms = self.game.search_all(&ts, None);
-        let ms = ms.get_moves_unsafe();
-        let (ms,stats) = self._iterative_deepening(&ts, print, ms, strict_depth);
-
-        // (ms.get(0).map(|x| x.0),stats)
-        // (ms.get(0).copied(),stats)
-        (ms,stats)
-    }
-
-    pub fn _iterative_deepening(&self, ts: &Tables, print: bool, moves: Vec<Move>, strict_depth: bool)
-                                -> (Vec<(Move,Vec<Move>,Score)>,SearchStats) {
-
-        // self.trans_table_w.purge();
-        // self.trans_table_w.refresh();
-
-        // self.trans_table.clear();
-
-        let mut timer = self.timer.clone();
-        timer.reset();
-
-        // let mut out: Vec<(Move,i32)> = vec![];
-        let mut out = vec![];
-        let mut ss:  Vec<SearchStats>;
-        let mut stats = SearchStats::default();
-        let mut depth = 0;
-
-        #[cfg(feature = "par")]
-        let gs: Vec<(Move,Game)> = moves.par_iter().flat_map(|mv| {
-            if let Ok(g2) = self.game.make_move_unchecked(&ts, *mv) {
-                Some((*mv,g2))
-            } else { None }
-        }).collect();
-        #[cfg(not(feature = "par"))]
-        let gs: Vec<(Move,Game)> = moves.iter().flat_map(|mv| {
-            if let Ok(g2) = self.game.make_move_unchecked(&ts, *mv) {
-                Some((*mv,g2))
-            } else { None }
-        }).collect();
-
-        // let alpha = Arc::new(AtomicI32::new(i32::MIN));
-        // let beta  = Arc::new(AtomicI32::new(i32::MAX));
-
-        // while (depth <= self.max_depth) && (strict_depth || (|| timer.should_search(self.side, depth))()) {
-        while (depth <= self.max_depth) && (strict_depth || (timer.should_search(self.side, depth))) {
-        // while (depth <= self.max_depth) && (timer.should_search(self.side, depth)) {
-
-            // // eprintln!("Explorer: not parallel");
-            // // (out,ss) = gs.iter().map(|(mv,g2)| {
-            // (out,ss) = gs.par_iter().map(|(mv,g2)| {
-            //     let alpha = Arc::new(AtomicI32::new(i32::MIN));
-            //     let beta  = Arc::new(AtomicI32::new(i32::MAX));
-            //     // let alpha = i32::MIN;
-            //     // let beta  = i32::MAX;
-            //     let mut stats = SearchStats::default();
-            //     let (mut mv_seq,score) = self._ab_search(
-            //         &ts, &g2, depth, 1, alpha, beta, false, &mut stats, *mv);
-            //     mv_seq.push(*mv);
-            //     mv_seq.reverse();
-            //     ((*mv,mv_seq,score),stats)
-            // }).unzip();
-
-            let stop = Arc::new(AtomicBool::new(false));
-
-            // let (tt_r, tt_w) = evmap::new();
-            // let tt_w = Arc::new(Mutex::new(tt_w));
-
-            #[cfg(feature = "par")]
-            {
-                // let gs2 = gs.into_iter().map(|(mv,g2)| {
-                //     ((mv,g2),tt_r.clone(),tt_w.clone())
-                // }).collect::<Vec<_>>();
-                // (out,ss) = gs2.par_iter().map(|((mv,g2),tt_r2,tt_w2)| {
-                (out,ss) = gs.par_iter().map(|(mv,g2)| {
-                    let (tt_r, tt_w) = evmap::new();
-                    let tt_w = Arc::new(Mutex::new(tt_w));
-                    let mut stats = SearchStats::default();
-                    let ((mut mv_seq,score),_) = {
-                        let alpha = i32::MIN;
-                        let beta  = i32::MAX;
-                        self._ab_search(
-                            &ts, &g2, depth, depth, 1, alpha, beta, false, &mut stats, *mv,
-                            // &tt_r2, tt_w2,
-                            &tt_r, tt_w,
-                        )
-                            .unwrap()
-                    };
-                    mv_seq.push(*mv);
-                    mv_seq.reverse();
-                    ((*mv,mv_seq,score),stats)
-                }).unzip();
-            }
-            #[cfg(not(feature = "par"))]
-            {
-                // eprintln!("Explorer: not parallel");
-                (out,ss) = gs.iter().map(|(mv,g2)| {
-                // (out,ss) = gs.par_iter().map(|(mv,g2)| {
-                //     let mut stats = SearchStats::default();
-                    let (mut mv_seq,score) = {
-                        let alpha = i32::MIN;
-                        let beta  = i32::MAX;
-                        self._ab_search(
-                            &ts, &g2, depth, 1, alpha, beta, false, &mut stats, stop, *mv)
-                    };
-                    mv_seq.push(*mv);
-                    mv_seq.reverse();
-                    ((*mv,mv_seq,score),stats)
-                }).unzip();
-            }
-
-            stats = ss.iter().sum();
-
-            #[cfg(feature = "par")]
-            out.par_sort_unstable_by(|a,b| a.2.cmp(&b.2));
-            #[cfg(not(feature = "par"))]
-            out.sort_unstable_by(|a,b| a.2.cmp(&b.2));
-
-            if self.side == self.game.state.side_to_move {
-                out.reverse();
-            }
-
-            if print {
-                eprintln!("depth = {:?}", depth);
-                eprintln!("nodes = {:?}", stats.nodes);
-            }
-
-            stats.max_depth = depth;
-            depth += 1;
-            timer.update_times(self.side, stats.nodes);
-            if print {
-                eprintln!("depth, time = {:?}, {:.2}", depth-1, timer.time_left[self.side]);
-            }
-        }
-        // if print {
-        //     print!("\n");
-        //     for (m,s) in out.iter() {
-        //         eprintln!("{:>8} = {:?}", s, m);
-        //     }
-        // }
-        (out,stats)
-    }
-
 }
 
 /// Lazy SMP Negamax 2
@@ -957,7 +751,8 @@ impl ExHelper {
     ) {
 
         // let mut history = [[[0; 64]; 64]; 2];
-        let mut tracking = ABStack::new();
+        // let mut tracking = ABStack::new();
+        let mut tracking = ABStack::new_with_moves(&self.move_history);
         let mut stats = SearchStats::default();
 
         let skip_size = Self::SKIP_SIZE[self.id % Self::SKIP_LEN];
