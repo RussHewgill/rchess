@@ -113,59 +113,55 @@ impl ExHelper {
 
         // let moves = g.search_all(&ts);
 
-        let moves = if is_root {
-            if let Some(mvs) = &self.cfg.only_moves {
-                let mvs = mvs.clone().into_iter().collect();
-                Outcome::Moves(mvs)
-            } else {
-                g.search_all(&ts)
-            }
-        } else {
-            g.search_all(&ts)
-        };
+        // let moves = if is_root {
+        //     if let Some(mvs) = &self.cfg.only_moves {
+        //         let mvs = mvs.clone().into_iter().collect();
+        //         Outcome::Moves(mvs)
+        //     } else {
+        //         g.search_all(&ts)
+        //     }
+        // } else {
+        //     g.search_all(&ts)
+        // };
 
-        /// Filter checkmate, stalemate
-        let mut moves: Vec<Move> = match moves {
-            Outcome::Checkmate(c) => {
-                // let score = 100_000_000 - ply as Score;
-                let score = CHECKMATE_VALUE - ply as Score;
-                // if !self.tt_r.contains_key(&g.zobrist) {
-                // }
-                stats.leaves += 1;
-                stats.checkmates += 1;
+        // /// Filter checkmate, stalemate
+        // let mut moves: Vec<Move> = match moves {
+        //     Outcome::Checkmate(c) => {
+        //         // let score = 100_000_000 - ply as Score;
+        //         let score = CHECKMATE_VALUE - ply as Score;
+        //         // if !self.tt_r.contains_key(&g.zobrist) {
+        //         // }
+        //         stats.leaves += 1;
+        //         stats.checkmates += 1;
+        //         let mv = g.last_move.unwrap();
+        //         // return ABSingle(ABResult::new_empty(-score));
+        //         return ABSingle(ABResult::new_single(mv, -score));
+        //     },
+        //     Outcome::Stalemate    => {
+        //         let score = -STALEMATE_VALUE + ply as Score;
+        //         // if !self.tt_r.contains_key(&g.zobrist) {
+        //         //     stats!(stats.leaves += 1);
+        //         //     stats!(stats.stalemates += 1);
+        //         // }
+        //         stats.leaves += 1;
+        //         stats.stalemates += 1;
+        //         // let mv = g.last_move.unwrap();
+        //         if let Some(mv) = g.last_move {
+        //             // TODO: adjust stalemate value when winning/losing
+        //             // return ABSingle(ABResult::new_empty(-score));
+        //             // return ABSingle(ABResult::new_single(mv, score));
+        //             return ABSingle(ABResult::new_single(mv, 0));
+        //         } else {
+        //             return ABNone
+        //         }
+        //     },
+        //     Outcome::Moves(ms)    => ms,
+        // };
 
-                let mv = g.last_move.unwrap();
-
-                // return ABSingle(ABResult::new_empty(-score));
-                return ABSingle(ABResult::new_single(mv, -score));
-
-            },
-            Outcome::Stalemate    => {
-                let score = -STALEMATE_VALUE + ply as Score;
-                // if !self.tt_r.contains_key(&g.zobrist) {
-                //     stats!(stats.leaves += 1);
-                //     stats!(stats.stalemates += 1);
-                // }
-                stats.leaves += 1;
-                stats.stalemates += 1;
-
-                // let mv = g.last_move.unwrap();
-                if let Some(mv) = g.last_move {
-                    // TODO: adjust stalemate value when winning/losing
-                    // return ABSingle(ABResult::new_empty(-score));
-                    // return ABSingle(ABResult::new_single(mv, score));
-                    return ABSingle(ABResult::new_single(mv, 0));
-                } else {
-                    return ABNone
-                }
-            },
-            Outcome::Moves(ms)    => ms,
-        };
-
-        /// Filter blocked moves
-        if is_root {
-            moves.retain(|mv| !self.cfg.blocked_moves.contains(&mv));
-        }
+        // /// Filter blocked moves
+        // if is_root {
+        //     moves.retain(|mv| !self.cfg.blocked_moves.contains(&mv));
+        // }
 
         /// Enter Qsearch
         if depth == 0 {
@@ -192,6 +188,17 @@ impl ExHelper {
 
             // return ABSingle(ABResult::new_empty(score));
             return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
+        }
+
+        let msi: Option<SearchInfo> = if is_root { None } else {
+            self.check_tt2(ts, g.zobrist, depth, stats)
+        };
+
+        /// Check for returnable TT score
+        if let Some(si) = msi {
+            if !is_pv && si.depth_searched >= depth { // XXX: depth or depth-1 ??
+                return ABResults::ABSingle(ABResult::new_single(g.last_move.unwrap(), si.score));
+            }
         }
 
         /// Syzygy Probe
@@ -269,15 +276,15 @@ impl ExHelper {
         //         (mv,zb,tt)
         //     }).collect();
 
-        /// No change in performance, but easier to read in flamegraph
-        let mut gs: Vec<(Move,Zobrist,Option<(SICanUse,SearchInfo)>)> = Vec::with_capacity(moves.len());
-        for mv in moves.into_iter() {
-            let zb = g.zobrist.update_move_unchecked(ts, g, mv);
-            let tt = self.check_tt_negamax(&ts, zb, depth, &mut stats);
-            gs.push((mv,zb,tt));
-        }
+        // /// No change in performance, but easier to read in flamegraph
+        // let mut gs: Vec<(Move,Zobrist,Option<(SICanUse,SearchInfo)>)> = Vec::with_capacity(moves.len());
+        // for mv in moves.into_iter() {
+        //     let zb = g.zobrist.update_move_unchecked(ts, g, mv);
+        //     let tt = self.check_tt_negamax(&ts, zb, depth, &mut stats);
+        //     gs.push((mv,zb,tt));
+        // }
 
-        self.order_moves(ts, g, ply, &mut stack, &mut gs[..]);
+        // self.order_moves(ts, g, ply, &mut stack, &mut gs[..]);
 
         let mut node_type = Node::All;
 
@@ -295,13 +302,24 @@ impl ExHelper {
                 static_eval + FUTILITY_MARGIN <= alpha
             } else { false };
 
+        let m_hashmove: Option<Move> = msi.map(|si| {
+            let mv = si.best_move;
+            let mv = PackedMove::unpack(&[mv.0,mv.1]).unwrap().convert_to_move(ts, g);
+            mv
+        });
+        let mut movegen = MoveGen::new(ts, &g, m_hashmove, depth, ply);
+
         let mut moves_searched = 0;
         let mut val = Score::MIN + 200;
         let mut val: (Option<(Zobrist,ABResult,bool)>,Score) = (None,val);
         let mut list = vec![];
 
         // #[cfg(feature = "nope")]
-        'outer: for (mv,zb0,tt) in gs.into_iter() {
+        // 'outer: for (mv,zb0,tt) in gs.into_iter() {
+        'outer: while let Some(mv) = movegen.next(&stack) {
+
+            let zb0 = g.zobrist.update_move_unchecked(ts, g, mv);
+            self.ptr_tt.prefetch(zb0);
 
             // match g.get_at(mv.sq_from()) {
             //     None => {
@@ -353,6 +371,143 @@ impl ExHelper {
                 skip_pv = true;
             }
 
+            let (from_tt,res) = 'search: {
+                let mut cfg2 = cfg;
+                cfg2.do_null = true;
+
+                let mut lmr = true;
+                let mut depth2 = depth - 1;
+
+                #[cfg(feature = "late_move_reduction")]
+                if mv.filter_all_captures() {
+                    let see = g2.static_exchange(&ts, mv).unwrap();
+                    /// Capture with good SEE: do not reduce
+                    if see > 0 {
+                        lmr = false;
+                    }
+                }
+
+                /// not reducing when in check replaces check extension
+                #[cfg(feature = "late_move_reduction")]
+                if lmr
+                    && !is_pv_node
+                    && moves_searched >= LMR_MIN_MOVES
+                    // && ply >= LMR_MIN_PLY
+                    && depth >= LMR_MIN_DEPTH
+                    && !mv.filter_promotion()
+                    && g.state.checkers.is_empty()
+                    && g2.state.checkers.is_empty()
+                {
+
+                    let depth3 = depth.checked_sub(LMR_REDUCTION).unwrap();
+                    // let depth3 = depth.checked_sub(3).unwrap();
+
+                    // let depth3 = if moves_searched < 2 {
+                    //     depth.checked_sub(1).unwrap()
+                    // } else if moves_searched < 4 {
+                    //     depth.checked_sub(2).unwrap()
+                    // } else {
+                    //     // let k = Depth::max(1, depth)
+                    //     let k = 3;
+                    //     depth.checked_sub(k).unwrap()
+                    //     // depth.checked_sub(depth / 3).unwrap()
+                    // };
+
+                    // let depth3 = if ply < LMR_PLY_CONST {
+                    //     // depth - LMR_REDUCTION
+                    //     depth.checked_sub(1).unwrap()
+                    // } else {
+                    //     depth.checked_sub(depth / 3).unwrap()
+                    // };
+
+                    match self._ab_search_negamax(
+                        ts, &g2, cfg2, depth3, ply + 1, &mut stop_counter,
+                        (-beta, -alpha), &mut stats,
+                        // pms.clone(), &mut history, tt_r, tt_w.clone(),
+                        &mut stack, NonPV
+                    ) {
+                        ABSingle(mut res) | ABSyzygy(mut res) => {
+                            res.neg_score(mv);
+                            if res.score <= alpha {
+                                stats!(stats.lmrs.0 += 1);
+                                // res.moves.push_front(*mv);
+                                break 'search (false,res);
+                            }
+                        },
+                        ABList(_, _) => panic!("found ABList when not root?"),
+                        ABPrune(beta, prune) => {
+                            // panic!("ABPrune 0");
+                            // trace!("ABPrune 0: {:?} {:?}", beta, prune);
+                        },
+                        ABNone       => {},
+                    }
+
+                }
+
+                #[cfg(feature = "pvs_search")]
+                let (a2,b2) = if skip_pv || search_pv {
+                    (-beta, -alpha)
+                } else {
+                    (-alpha - 1, -alpha)
+                };
+                #[cfg(not(feature = "pvs_search"))]
+                let (a2,b2) = (-beta, -alpha);
+
+                match self._ab_search_negamax(
+                    ts, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
+                    (a2, b2), &mut stats,
+                    &mut stack,
+                    NonPV
+                ) {
+                    ABSingle(mut res) | ABSyzygy(mut res) => {
+                        res.neg_score(mv);
+
+                        #[cfg(feature = "pvs_search")]
+                        if !search_pv && res.score > alpha {
+                            match self._ab_search_negamax(
+                                ts, &g2, cfg2, depth2, ply + 1, &mut stop_counter,
+                                (-beta, -alpha), &mut stats,
+                                &mut stack,
+                                NonPV,
+                            ) {
+                                ABSingle(mut res2) | ABSyzygy(mut res2) => {
+                                    res2.neg_score(mv);
+                                    res = res2;
+                                },
+                                // ABList(_, _) => break 'outer,
+                                ABList(_, _) => panic!("found ABList when not root?"),
+                                ABPrune(beta, prune) => {
+                                    panic!("ABPrune 1");
+                                },
+                                ABNone       => {
+                                    self.pop_nnue(stack);
+                                    break 'outer;
+                                }
+                            }
+                        }
+
+                        if is_root {
+                            list.push(res.clone());
+                        }
+                        (false, res)
+                    },
+                    ABPrune(beta, prune) => {
+                        // panic!("ABPrune 2");
+                        // trace!("ABPrune 2: {:?} {:?}", beta, prune);
+                        self.pop_nnue(stack);
+                        continue 'outer;
+                    },
+                    // ABList(_, _) => break 'outer,
+                    ABList(_, _) => panic!("found ABList when not root?"),
+                    ABNone       => {
+                        self.pop_nnue(stack);
+                        break 'outer;
+                    }
+                }
+
+            };
+
+            #[cfg(feature = "nope")]
             let (from_tt,res) = match tt {
 
                 Some((SICanUse::UseScore,si)) => {
@@ -588,7 +743,8 @@ impl ExHelper {
             // Some((zb,mv,res)) => {
             Some((zb,res,from_tt)) => {
 
-                if !cfg.inside_null && !from_tt {
+                // if !cfg.inside_null && !from_tt {
+                if !cfg.inside_null && Some(res.mv) != movegen.hashmove {
                 // if !from_tt {
                     // trace!("inserting TT, zb = {:?}", g.zobrist);
                     self.tt_insert_deepest(

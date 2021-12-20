@@ -44,11 +44,11 @@ default = [
     # "late_move_reduction",
     # "killer_moves",
 
-    "new_search",
+    # "new_search",
 
     "qsearch",
 
-    # "pvs_search",
+    "pvs_search",
 
     # "negamax_only",
 

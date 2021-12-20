@@ -69,10 +69,10 @@ pub fn score_move_for_sort(
         _                                 => {},
     }
 
-    #[cfg(feature = "killer_moves")]
-    if Some(*mv) == killers.0 || Some(*mv) == killers.0 {
-        return KillerMove;
-    }
+    // #[cfg(feature = "killer_moves")]
+    // if Some(*mv) == st.killers.0 || Some(*mv) == st.killers.0 {
+    //     return KillerMove;
+    // }
 
     Other
 }

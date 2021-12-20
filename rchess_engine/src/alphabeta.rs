@@ -330,11 +330,12 @@ impl ExHelper {
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
 
         #[cfg(feature = "pvs_search")]
-        let is_pv_node = NODE_TYPE != ABNodeType::NonPV;
+        let mut is_pv_node = NODE_TYPE != ABNodeType::NonPV;
         #[cfg(not(feature = "pvs_search"))]
         let is_pv_node = false;
 
-        // let mut is_pv_node = beta != alpha + 1;
+        #[cfg(feature = "pvs_search")]
+        let is_pv_node = beta != alpha + 1;
         // if beta != alpha + 1 {
         //     eprintln!("node_type = {:?}", node_type);
         // }
@@ -515,20 +516,25 @@ impl ExHelper {
 
                 #[cfg(feature = "late_move_reduction")]
                 if lmr
-                    && (!is_pv_node || is_root_node)
-                    && moves_searched >= LMR_MIN_MOVES
+                    // && (!is_pv_node || is_root_node)
+                    // && (!is_pv_node && !is_root_node)
+                    && !is_pv_node
+                    && moves_searched >= (if is_root_node { 2 + LMR_MIN_MOVES } else { LMR_MIN_MOVES })
+                    // && ply >= LMR_MIN_PLY
                     && next_depth >= LMR_MIN_DEPTH
                     && !mv.filter_promotion()
+                    // && !mv.filter_all_captures()
                     && !in_check
                     && g2.state.checkers.is_empty()
                 {
-                    let depth_r = next_depth.checked_sub(LMR_REDUCTION).unwrap();
+                    // let depth_r = next_depth.checked_sub(LMR_REDUCTION).unwrap();
+                    let depth_r = next_depth.checked_sub(1).unwrap();
 
                     // let (a2,b2) = (-beta,-alpha);
                     let (a2,b2) = (-(alpha+1),-alpha); // XXX: ??
 
                     let res2 = -self._ab_search_negamax2::<{NonPV}>(
-                        ts, &g2, (depth_r,ply+1), (a2,b2), stats, stack, false);
+                        ts, &g2, (depth_r,ply+1), (a2,b2), stats, stack, true);
                     res = if let Some(mut r) = res2.get_result_mv(mv) { r } else {
                         self.pop_nnue(stack);
                         continue 'outer;
@@ -538,11 +544,12 @@ impl ExHelper {
                         stats!(stats.lmrs.0 += 1);
                         break 'search res;
                     }
-                    // lmr_failed_high = res.score > alpha;
-                    // did_lmr = true;
-                    // if res.score > alpha {
-                    //     do_full_depth = true;
-                    // }
+
+                    /// if LMR failed high
+                    if res.score > alpha {
+                        do_full_depth = true;
+                    }
+
                 } else {
                     do_full_depth = is_root_node || !is_pv_node || moves_searched > 1;
                 }
@@ -557,8 +564,7 @@ impl ExHelper {
                 // eprintln!("do_pvs = {:?}", do_pvs);
 
                 ///   Full depth search
-                /// If LMR failed
-                /// If not a PV
+                /// If LMR failed or was skipped
                 if do_full_depth {
                 // if true {
 

@@ -2738,10 +2738,10 @@ fn main9() {
         games[i - 1].clone()
     }
 
-    fn games_sts(i: usize, sts: u8) -> String {
+    fn games_sts(i: usize, sts: u8) -> (String,Vec<String>) {
         let mut games = read_epd(&format!("testpositions/STS/STS{}.epd", sts)).unwrap();
-        let mut games = games.into_iter();
-        let games = games.map(|x| x.0).collect::<Vec<_>>();
+        // let mut games = games.into_iter();
+        // let games = games.map(|x| x.0).collect::<Vec<_>>();
         games[i - 1].clone()
     }
 
@@ -2829,8 +2829,7 @@ fn main9() {
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
 
-    // let fen = &games_sts(2, 1);
-
+    // let (fen,correct) = &games_sts(5, 2); // fen, set
     // eprintln!("correct = {:?}", correct);
 
     eprintln!("fen = {:?}", fen);
@@ -2864,8 +2863,8 @@ fn main9() {
     // let t = 0.3;
 
     // let n = 35;
-    let n = 9;
-    // let n = 7;
+    // let n = 9;
+    let n = 7;
     // let n = 2;
 
     // let k0 = std::mem::size_of::<ExHelper>();
@@ -3405,10 +3404,10 @@ fn main_wac(num: Option<u64>, send_url: bool) {
     // let mut games = read_epd("testpositions/STS15.epd").unwrap();
     // let mut games = read_epd("testpositions/iq6.epd").unwrap();
 
-    for (fen,ms) in games.iter() {
-        // eprintln!("fen, ms = {:?}: {:?}", fen, ms);
-        eprintln!("ms = {:?}", ms);
-    }
+    // for (fen,ms) in games.iter() {
+    //     // eprintln!("fen, ms = {:?}: {:?}", fen, ms);
+    //     eprintln!("ms = {:?}", ms);
+    // }
 
     if let Some(num) = num {
         games.truncate(num as usize);
@@ -3423,7 +3422,7 @@ fn main_wac(num: Option<u64>, send_url: bool) {
 
     let timesettings = TimeSettings::new_f64(
         0.0,
-        1.0,
+        0.5,
     );
 
     let mut total = (0,0);
