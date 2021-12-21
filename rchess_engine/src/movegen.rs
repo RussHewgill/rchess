@@ -24,6 +24,8 @@ pub enum MoveGenType {
 pub enum MoveGenStage {
     // Init = 0,
     Hash,
+    CounterMove,
+
     CapturesInit,
     Captures,
     QuietsInit,
@@ -43,7 +45,9 @@ impl MoveGenStage {
     pub fn next(self) -> Option<Self> {
         use MoveGenStage::*;
         match self {
-            Hash         => Some(CapturesInit),
+            Hash         => Some(CounterMove),
+            CounterMove  => Some(CapturesInit),
+
             CapturesInit => Some(Captures),
             Captures     => Some(QuietsInit),
             QuietsInit   => Some(Quiets),
@@ -63,18 +67,20 @@ impl MoveGenStage {
 
 #[derive(Debug,Clone)]
 pub struct MoveGen<'a> {
-    ts:              &'static Tables,
-    game:            &'a Game,
+    ts:                  &'static Tables,
+    game:                &'a Game,
 
-    in_check:        bool,
-    side:            Color,
+    in_check:            bool,
+    side:                Color,
 
-    stage:           MoveGenStage,
-    buf:             ArrayVec<Move,256>,
+    stage:               MoveGenStage,
+    buf:                 ArrayVec<Move,256>,
 
-    pub hashmove:    Option<Move>,
-    depth:           Depth,
-    ply:             Depth,
+    pub hashmove:        Option<Move>,
+    pub counter_move:    Option<Move>,
+
+    depth:               Depth,
+    ply:                 Depth,
 }
 
 /// Sort
@@ -105,11 +111,15 @@ impl<'a> MoveGen<'a> {
         ts:             &'static Tables,
         game:           &'a Game,
         hashmove:       Option<Move>,
+        // counter_move:   Option<Move>,
         depth:          Depth,
         ply:            Depth,
     ) -> Self {
         let in_check = game.state.checkers.is_not_empty();
         let side = game.state.side_to_move;
+
+        let counter_move = None;
+
         let mut out = Self {
             ts,
             game,
@@ -117,7 +127,10 @@ impl<'a> MoveGen<'a> {
             side,
             stage:     if in_check { MoveGenStage::EvasionHash } else { MoveGenStage::Hash },
             buf:       ArrayVec::new(),
+
             hashmove,
+            counter_move,
+
             depth,
             ply,
         };
@@ -184,9 +197,9 @@ impl<'a> MoveGen<'a> {
         }
     }
 
-
     pub fn next(&mut self, stack: &ABStack) -> Option<Move> {
         match self.stage {
+
             MoveGenStage::Hash     => {
                 if let Some(mv) = self.hashmove {
                     if self.move_is_legal(mv) {
@@ -195,10 +208,20 @@ impl<'a> MoveGen<'a> {
                         return Some(mv);
                     }
                 }
-
                 self.stage = self.stage.next()?;
                 self.next(stack)
             },
+            MoveGenStage::CounterMove => {
+                if let Some(mv) = self.counter_move {
+                    if self.move_is_legal(mv) {
+                        self.stage = self.stage.next()?;
+                        return Some(mv);
+                    }
+                }
+                self.stage = self.stage.next()?;
+                self.next(stack)
+            },
+
             MoveGenStage::CapturesInit => {
                 self.generate(MoveGenType::Captures);
                 // TODO: sort here
@@ -274,8 +297,8 @@ impl<'a> MoveGen<'a> {
             MoveGenStage::GenAll     => self.next_all(stack),
             MoveGenStage::GenAllInit => self.next_all(stack),
 
-            // MoveGenStage::Finished => {
-            _ => {
+            MoveGenStage::Finished => {
+            // _ => {
                 None
             },
         }

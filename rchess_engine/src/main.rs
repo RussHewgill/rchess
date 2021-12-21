@@ -2830,7 +2830,7 @@ fn main9() {
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
 
-    let (fen,correct) = &games_sts(6, 4); // fen, set
+    let (fen,correct) = &games_sts(10, 4); // fen, set
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();

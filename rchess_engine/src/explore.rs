@@ -99,8 +99,7 @@ impl Default for ExConfig {
             blocked_moves:         HashSet::default(),
             only_moves:            None,
 
-            // late_move_reductions:  cfg!(feature = "late_move_reduction"),
-            late_move_reductions:  false,
+            late_move_reductions:  cfg!(feature = "late_move_reduction"),
 
             return_moves:          false,
             clear_table:           true,
@@ -163,6 +162,7 @@ pub struct ABStack {
     // pub history:        [[[Score; 64]; 64]; 2],
     pub history:        ButterflyHistory,
     pub killers:        KillerMoves,
+    pub counter_moves:  CounterMoves,
     pub move_history:   Vec<(Zobrist, Move)>,
     // pub pvs:            Vec<Move>,
 }
@@ -177,6 +177,7 @@ impl ABStack {
         Self {
             history:        ButterflyHistory::default(),
             killers:        KillerMoves::default(),
+            counter_moves:  CounterMoves::default(),
             move_history:   Vec::with_capacity(64),
             // pvs:            Vec::with_capacity(64),
         }

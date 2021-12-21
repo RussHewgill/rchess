@@ -3,7 +3,6 @@ use std::collections::HashMap;
 
 use crate::types::*;
 use crate::tables::*;
-use crate::evaluate::*;
 use crate::heuristics::KillerMoves;
 
 impl Default for KillerMoves {
@@ -11,7 +10,7 @@ impl Default for KillerMoves {
         Self {
             primary:    [None; 100],
             secondary:  [None; 100],
-            counter:    [[[[0; 2]; 64]; 64]; 100],
+            // counter:    [[[[0; 2]; 64]; 64]; 100],
         }
     }
 }

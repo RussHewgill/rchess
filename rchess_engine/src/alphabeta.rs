@@ -504,7 +504,8 @@ impl ExHelper {
 
                 // #[cfg(feature = "late_move_reduction")]
                 if lmr && mv.filter_all_captures() {
-                    let see = g2.static_exchange(&ts, mv).unwrap();
+                    // let see = g2.static_exchange(&ts, mv).unwrap();
+                    let see = g.static_exchange(&ts, mv).unwrap(); // XXX: g or g2?
                     /// Capture with good SEE: do not reduce
                     if see > 0 {
                         lmr = false;
