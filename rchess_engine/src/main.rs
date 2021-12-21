@@ -2830,7 +2830,7 @@ fn main9() {
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
 
-    let (fen,correct) = &games_sts(10, 4); // fen, set
+    // let (fen,correct) = &games_sts(10, 4); // fen, set
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -2866,13 +2866,13 @@ fn main9() {
 
     // let t = 10.0;
     // let t = 6.0;
-    // let t = 4.0;
-    let t = 1.0;
+    let t = 4.0;
+    // let t = 1.0;
     // let t = 0.5;
     // let t = 0.3;
 
-    let n = 35;
-    // let n = 7;
+    // let n = 35;
+    let n = 7;
     // let n = 2;
 
     // let k0 = std::mem::size_of::<ExHelper>();
@@ -2889,9 +2889,10 @@ fn main9() {
 
     ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
+    ex.cfg.late_move_reductions = true;
+
     let mut ex2 = ex.clone();
 
-    ex.cfg.late_move_reductions = true;
     let t0 = std::time::Instant::now();
     ex.update_game(g.clone());
     let (res,moves,stats0) = ex.lazy_smp_2(&ts);
@@ -2900,25 +2901,21 @@ fn main9() {
     let time0 = t2;
     let best0 = res.get_result().unwrap();
 
-    println!();
-
-    ex2.cfg.late_move_reductions = false;
-    ex2.update_game(g.clone());
-    ex2.clear_tt();
-    let t0 = std::time::Instant::now();
-    let (res2,moves2,stats2) = ex2.lazy_smp_2(&ts);
-    let t1 = t0.elapsed();
-    let t2 = t1.as_secs_f64();
-    let time2 = t2;
-    let best2 = res2.get_result().unwrap();
-
-    println!();
-    println!("With LMR: time: {:.3} sec: {:?}", time0, best0.mv);
-    println!("no LMR:   time: {:.3} sec: {:?}", time2, best2.mv);
-
-    eprintln!("\ncorrect move = {:?}", correct);
-
-    return;
+    // println!();
+    // ex2.cfg.late_move_reductions = false;
+    // ex2.update_game(g.clone());
+    // ex2.clear_tt();
+    // let t0 = std::time::Instant::now();
+    // let (res2,moves2,stats2) = ex2.lazy_smp_2(&ts);
+    // let t1 = t0.elapsed();
+    // let t2 = t1.as_secs_f64();
+    // let time2 = t2;
+    // let best2 = res2.get_result().unwrap();
+    // println!();
+    // println!("With LMR: time: {:.3} sec: {:?}", time0, best0.mv);
+    // println!("no LMR:   time: {:.3} sec: {:?}", time2, best2.mv);
+    // eprintln!("\ncorrect move = {:?}", correct);
+    // return;
 
     let best   = res.get_result().unwrap();
     let scores = res.get_scores().unwrap_or_default();
@@ -2927,10 +2924,9 @@ fn main9() {
     // eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
     println!();
     debug!("Best move = {:>8} {:?}", best.score, best.mv);
-    debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
-             stats0.max_depth, t2);
+    debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth, t2);
 
-    return;
+    // return;
 
     println!();
     for (n,mv) in moves.iter().enumerate() {

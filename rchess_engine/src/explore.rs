@@ -164,7 +164,7 @@ pub struct ABStack {
     pub killers:        KillerMoves,
     pub counter_moves:  CounterMoves,
     pub move_history:   Vec<(Zobrist, Move)>,
-    // pub pvs:            Vec<Move>,
+    pub pvs:            Vec<Move>,
 }
 
 impl ABStack {
@@ -180,6 +180,7 @@ impl ABStack {
             counter_moves:  CounterMoves::default(),
             move_history:   Vec::with_capacity(64),
             // pvs:            Vec::with_capacity(64),
+            pvs:            vec![Move::NullMove; 64],
         }
     }
 }
@@ -396,6 +397,7 @@ impl Explorer {
 }
 
 /// Get PV
+#[cfg(feature = "nope")]
 impl Explorer {
 
     pub fn get_pv(&self, ts: &Tables, g: &Game) -> Vec<Move> {
@@ -481,6 +483,13 @@ impl Explorer {
         moves
     }
 
+}
+
+/// Get PV
+impl ExHelper {
+    pub fn get_pv(&self, ts: &'static Tables, st: &ABStack) -> Vec<Move> {
+        st.pvs.clone()
+    }
 }
 
 /// Entry points
@@ -772,7 +781,7 @@ impl ExHelper {
 
         // let mut history = [[[0; 64]; 64]; 2];
         // let mut tracking = ABStack::new();
-        let mut tracking = ABStack::new_with_moves(&self.move_history);
+        let mut stack = ABStack::new_with_moves(&self.move_history);
         let mut stats = SearchStats::default();
 
         let skip_size = Self::SKIP_SIZE[self.id % Self::SKIP_LEN];
@@ -790,20 +799,26 @@ impl ExHelper {
         {
             // trace!("iterative depth {}", depth);
 
-            let res = self.ab_search_single(ts, &mut stats, &mut tracking, depth);
+            // stack.pvs.clear();
+            stack.pvs = vec![Move::NullMove; 64];
+            let res = self.ab_search_single(ts, &mut stats, &mut stack, depth);
             // debug!("res = {:?}", res);
             // trace!("finished res, id = {}, depth = {}", self.id, depth);
 
             if !self.stop.load(SeqCst) && depth >= self.best_depth.load(SeqCst) {
                 let moves = if self.cfg.return_moves {
-                    #[cfg(feature = "lockless_hashmap")]
-                    {
-                        Explorer::_get_pv_lockless(ts, &self.game, self.ptr_tt.clone())
-                    }
-                    #[cfg(not(feature = "lockless_hashmap"))]
-                    {
-                        Explorer::_get_pv(ts, &self.game, &self.tt_r)
-                    }
+                    // self.get_pv(ts, &stack)
+                    let mut v = stack.pvs.clone();
+                    v.retain(|&mv| mv != Move::NullMove);
+                    v
+                    // #[cfg(feature = "lockless_hashmap")]
+                    // {
+                    //     Explorer::_get_pv_lockless(ts, &self.game, self.ptr_tt.clone())
+                    // }
+                    // #[cfg(not(feature = "lockless_hashmap"))]
+                    // {
+                    //     Explorer::_get_pv(ts, &self.game, &self.tt_r)
+                    // }
                 } else { vec![] };
                 match self.tx.try_send(ExMessage::Message(depth, res, moves, stats)) {
                     Ok(_)  => {
