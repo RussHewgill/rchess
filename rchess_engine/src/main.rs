@@ -36,6 +36,7 @@ use rchess_engine_lib::opening_book::*;
 use rchess_engine_lib::qsearch::*;
 use rchess_engine_lib::types::*;
 use rchess_engine_lib::search::*;
+use rchess_engine_lib::movegen::*;
 use rchess_engine_lib::tables::*;
 use rchess_engine_lib::parsing::*;
 use rchess_engine_lib::util::*;
@@ -2829,12 +2830,17 @@ fn main9() {
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
 
-    // let (fen,correct) = &games_sts(5, 2); // fen, set
-    // eprintln!("correct = {:?}", correct);
+    let (fen,correct) = &games_sts(6, 4); // fen, set
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
+
+    // let mut movegen = MoveGen::new_all(&ts, &g, None, 0, 0);
+    // let stack = ABStack::new();
+    // while let Some(mv) = movegen.next_all(&stack) {
+    //     eprintln!("mv = {:?}", mv);
+    // }
 
     // g.last_move = Some(Move::new_capture("D1", "D2", King, Queen));
 
@@ -2845,6 +2851,9 @@ fn main9() {
 
     eprintln!("g.to_fen() = {:?}", g.to_fen());
     eprintln!("g = {:?}", g);
+
+    // eprintln!();
+    // eprintln!("correct = {:?}", correct);
 
     // let hook = std::panic::take_hook();
     // std::panic::set_hook(Box::new(move |panicinfo| {
@@ -2858,19 +2867,17 @@ fn main9() {
     // let t = 10.0;
     // let t = 6.0;
     // let t = 4.0;
-    let t = 2.0;
+    let t = 1.0;
     // let t = 0.5;
     // let t = 0.3;
 
-    // let n = 35;
-    // let n = 9;
-    let n = 7;
+    let n = 35;
+    // let n = 7;
     // let n = 2;
 
     // let k0 = std::mem::size_of::<ExHelper>();
     // eprintln!("k0 = {:?}", k0);
 
-    let t0 = std::time::Instant::now();
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
     ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
@@ -2882,76 +2889,58 @@ fn main9() {
 
     ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
-    // let (t_opt,t_max) = ex.timer.allocate_time(g.state.side_to_move, 1);
-    // eprintln!("t_opt = {:?}", t_opt);
-    // eprintln!("t_max = {:?}", t_max);
-    // return;
+    let mut ex2 = ex.clone();
 
-    // let mut only_moves = HashSet::default();
-    // only_moves.insert(Move::new_quiet("F5", "F1", Rook));
-    // only_moves.insert(Move::new_double("b7", "b5"));
-    // ex.cfg.only_moves = Some(only_moves);
-
-    // let s0 = std::mem::size_of::<OrdMove>();
-    // eprintln!("s0 = {:?}", s0);
-    // return;
-
-    // let (mv,stats) = ex.explore(&ts, None);
-    // eprintln!("mv = {:?}", mv);
-    // return;
-
-    // let tt_r = ex.handle();
-
+    ex.cfg.late_move_reductions = true;
+    let t0 = std::time::Instant::now();
     ex.update_game(g.clone());
     let (res,moves,stats0) = ex.lazy_smp_2(&ts);
     let t1 = t0.elapsed();
     let t2 = t1.as_secs_f64();
+    let time0 = t2;
+    let best0 = res.get_result().unwrap();
 
-    // let fen = "r4rk1/4npp1/1p4b1/1B2p3/1q1P2Q1/P3P3/5PP1/R3K2R w KQ - 0 2";
-    // let g2 = Game::from_fen(&ts, fen).unwrap();
-    // let zb2 = g2.zobrist;
-    // eprintln!("zb2 = {:?}", zb2);
+    println!();
 
-    // let zb1 = Zobrist(0xcdab13aceaa91520);
-    // let zb2 = Zobrist(0x6b2bc7c01dffde39);
-    // let tt2 = ex.ptr_tt.clone();
-    // let si2 = ex.ptr_tt.probe(zb1);
-    // eprintln!("si2 = {:?}", si2);
-    // let si2 = ex.ptr_tt.probe(zb2);
-    // eprintln!("si2 = {:?}", si2);
+    ex2.cfg.late_move_reductions = false;
+    ex2.update_game(g.clone());
+    let t0 = std::time::Instant::now();
+    let (res2,moves2,stats2) = ex2.lazy_smp_2(&ts);
+    let t1 = t0.elapsed();
+    let t2 = t1.as_secs_f64();
+    let time2 = t2;
+    let best2 = res2.get_result().unwrap();
 
-    // return;
+    println!();
+    println!("With LMR: time: {:.3} sec: {:?}", time0, best0.mv);
+    println!("no LMR:   time: {:.3} sec: {:?}", time2, best2.mv);
 
-    // println!("wat 0");
-    // let fen = games_wac(1);
-    // let g = Game::from_fen(&ts, &fen).unwrap();
-    // ex.update_game(g.clone());
-    // let (res,moves,stats0) = ex.lazy_smp_2(&ts);
-    // println!("wat 1");
+    eprintln!("\ncorrect move = {:?}", correct);
 
-    // let fen = games_wac(2);
-    // let g = Game::from_fen(&ts, &fen).unwrap();
-    // ex.update_game(g.clone());
-    // let (res,moves,stats0) = ex.lazy_smp_2(&ts);
-    // println!("wat 2");
-
-    // return;
+    return;
 
     let best   = res.get_result().unwrap();
     let scores = res.get_scores().unwrap_or_default();
 
     // for m in best.moves.iter() { eprintln!("\t{:?}", m); }
     // eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
-    eprintln!("\nBest move = {:>8} {:?}", best.score, best.mv);
-    println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
+    println!();
+    debug!("Best move = {:>8} {:?}", best.score, best.mv);
+    debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
              stats0.max_depth, t2);
 
-    // let tt_r = ex.tt_rf.handle();
+    return;
 
     println!();
     for (n,mv) in moves.iter().enumerate() {
         eprintln!("{}\t{:?}", n, mv);
     }
+
+    stats0.print(t1);
+
+    eprintln!();
+
+    stats0.print_ebf(false);
 
     // return;
 
@@ -3021,12 +3010,6 @@ fn main9() {
     // for m in mvs0.iter() {
     //     eprintln!("\t{:?}", m);
     // }
-
-    stats0.print(t1);
-
-    eprintln!();
-
-    stats0.print_ebf(false);
 
     // let zb = g.zobrist;
     // let si = tt_r.get_one(&zb).unwrap();
@@ -4180,12 +4163,13 @@ fn main2() {
 
 fn init_logger() {
     let cfg = ConfigBuilder::new()
-            .set_time_level(LevelFilter::Off)
-            .set_target_level(LevelFilter::Off)
-            .set_thread_level(LevelFilter::Info)
+        .set_time_level(LevelFilter::Off)
+        .set_time_format_str("%H-%M-%S %.6f")
+        .set_target_level(LevelFilter::Off)
+        .set_thread_level(LevelFilter::Info)
         // .set_thread_level(LevelFilter::Off)
-            .set_location_level(LevelFilter::Off)
-            .build();
+        .set_location_level(LevelFilter::Off)
+        .build();
 
     let logfile = std::fs::File::create("test.log").unwrap();
     let log0 = WriteLogger::new(LevelFilter::Trace, cfg.clone(), logfile);

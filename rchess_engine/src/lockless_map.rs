@@ -1,7 +1,6 @@
 
 use crate::types::*;
 use crate::trans_table::Node;
-use crate::evaluate::Score;
 use crate::explore::SearchInfo;
 use crate::hashing::Zobrist;
 

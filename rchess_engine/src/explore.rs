@@ -40,8 +40,8 @@ use rayon::prelude::*;
 
 use evmap::{ReadHandle,ReadHandleFactory,WriteHandle};
 
-#[derive(Debug)]
-// #[derive(Debug,Clone)]
+// #[derive(Debug)]
+#[derive(Debug,Clone)]
 pub struct Explorer {
     pub side:          Color,
     pub game:          Game,
@@ -75,27 +75,38 @@ pub struct Explorer {
 
 #[derive(Debug,Clone)]
 pub struct ExConfig {
-    pub max_depth:         Depth,
-    pub num_threads:       Option<u8>,
-    pub blocked_moves:     HashSet<Move>,
-    pub only_moves:        Option<HashSet<Move>>,
-    pub return_moves:      bool,
-    pub clear_table:       bool,
-    pub eval_params_mid:   EvalParams,
-    pub eval_params_end:   EvalParams,
+    pub max_depth:             Depth,
+    pub num_threads:           Option<u8>,
+
+    pub blocked_moves:         HashSet<Move>,
+    pub only_moves:            Option<HashSet<Move>>,
+
+    pub late_move_reductions:  bool,
+
+    pub return_moves:          bool,
+    pub clear_table:           bool,
+
+    pub eval_params_mid:       EvalParams,
+    pub eval_params_end:       EvalParams,
 }
 
 impl Default for ExConfig {
     fn default() -> Self {
         Self {
-            max_depth:        10,
-            num_threads:      None,
-            blocked_moves:    HashSet::default(),
-            only_moves:       None,
-            return_moves:     false,
-            clear_table:      true,
-            eval_params_mid:  EvalParams::default(),
-            eval_params_end:  EvalParams::default(),
+            max_depth:             10,
+            num_threads:           None,
+
+            blocked_moves:         HashSet::default(),
+            only_moves:            None,
+
+            // late_move_reductions:  cfg!(feature = "late_move_reduction"),
+            late_move_reductions:  false,
+
+            return_moves:          false,
+            clear_table:           true,
+
+            eval_params_mid:       EvalParams::default(),
+            eval_params_end:       EvalParams::default(),
         }
     }
 }

@@ -3,6 +3,7 @@ pub use self::pieces::*;
 use crate::explore::ABStack;
 use crate::types::*;
 use crate::tables::*;
+use crate::move_ordering::score_move_for_sort;
 
 use arrayvec::ArrayVec;
 
@@ -23,11 +24,17 @@ pub enum MoveGenType {
 pub enum MoveGenStage {
     // Init = 0,
     Hash,
-    Captures(bool),
-    Quiets(bool),
+    CapturesInit,
+    Captures,
+    QuietsInit,
+    Quiets,
 
     EvasionHash,
-    Evasion(bool),
+    EvasionInit,
+    Evasion,
+
+    GenAllInit,
+    GenAll,
 
     Finished,
 }
@@ -36,17 +43,20 @@ impl MoveGenStage {
     pub fn next(self) -> Option<Self> {
         use MoveGenStage::*;
         match self {
-            Hash            => Some(Captures(true)),
-            Captures(true)  => Some(Captures(false)),
-            Captures(false) => Some(Quiets(true)),
-            Quiets(true)    => Some(Quiets(false)),
-            Quiets(false)   => Some(Finished),
+            Hash         => Some(CapturesInit),
+            CapturesInit => Some(Captures),
+            Captures     => Some(QuietsInit),
+            QuietsInit   => Some(Quiets),
+            Quiets       => Some(Finished),
 
-            EvasionHash    => Some(Evasion(true)),
-            Evasion(true)  => Some(Evasion(false)),
-            Evasion(false) => Some(Finished),
+            EvasionHash  => Some(EvasionInit),
+            EvasionInit  => Some(Evasion),
+            Evasion      => Some(Finished),
 
-            Finished    => None,
+            GenAllInit   => Some(GenAll),
+            GenAll       => None,
+
+            Finished     => None,
         }
     }
 }
@@ -74,6 +84,7 @@ impl<'a> MoveGen<'a> {
         let ts      = self.ts;
         let g       = self.game;
         let ply     = self.ply;
+        let stage   = self.stage;
 
         #[cfg(feature = "killer_moves")]
         let killers = st.killers.get(g.state.side_to_move,ply);
@@ -82,7 +93,7 @@ impl<'a> MoveGen<'a> {
 
         buf.sort_by_cached_key(|&mv| {
             // std::cmp::Reverse(crate::move_ordering::score_move_for_sort(ts, g, st, ply, mv, killers))
-            crate::move_ordering::score_move_for_sort(ts, g, st, ply, mv, killers)
+            score_move_for_sort(ts, g, stage, st, ply, mv, killers)
         });
 
     }
@@ -118,6 +129,18 @@ impl<'a> MoveGen<'a> {
         out
     }
 
+    pub fn new_all(
+        ts:             &'static Tables,
+        game:           &'a Game,
+        hashmove:       Option<Move>,
+        depth:          Depth,
+        ply:            Depth,
+    ) -> Self {
+        let mut out = Self::new(ts, game, hashmove, depth, ply);
+        out.stage = MoveGenStage::GenAllInit;
+        out
+    }
+
     pub fn buf(&self) -> &[Move] {
         &self.buf
     }
@@ -130,6 +153,37 @@ impl<'a> MoveGen<'a> {
 
 /// Not quite Iter
 impl<'a> MoveGen<'a> {
+
+    pub fn next_all(&mut self, stack: &ABStack) -> Option<Move> {
+        match self.stage {
+            MoveGenStage::GenAll => {
+                if let Some(mv) = self.buf.pop() {
+                    if self.move_is_legal(mv) {
+                        return Some(mv);
+                    } else {
+                        return self.next_all(stack);
+                    }
+                }
+                self.stage = MoveGenStage::Finished;
+                None
+            },
+            MoveGenStage::GenAllInit => {
+                if self.in_check {
+                    self.generate(MoveGenType::Evasions);
+                } else {
+                    self.generate(MoveGenType::Captures);
+                    self.generate(MoveGenType::Quiets);
+                }
+                self.sort(stack);
+
+                self.stage = self.stage.next()?;
+                self.next_all(stack)
+            }
+            _ => unimplemented!(),
+            // _ => None,
+        }
+    }
+
 
     pub fn next(&mut self, stack: &ABStack) -> Option<Move> {
         match self.stage {
@@ -145,7 +199,7 @@ impl<'a> MoveGen<'a> {
                 self.stage = self.stage.next()?;
                 self.next(stack)
             },
-            MoveGenStage::Captures(true) => {
+            MoveGenStage::CapturesInit => {
                 self.generate(MoveGenType::Captures);
                 // TODO: sort here
                 self.sort(stack);
@@ -153,7 +207,7 @@ impl<'a> MoveGen<'a> {
                 self.stage = self.stage.next()?;
                 self.next(stack)
             },
-            MoveGenStage::Captures(false) => {
+            MoveGenStage::Captures => {
                 if let Some(mv) = self.buf.pop() {
                     if Some(mv) != self.hashmove && self.move_is_legal(mv) {
                         return Some(mv);
@@ -165,7 +219,7 @@ impl<'a> MoveGen<'a> {
                 self.stage = self.stage.next()?;
                 self.next(stack)
             },
-            MoveGenStage::Quiets(true) => {
+            MoveGenStage::QuietsInit => {
                 self.generate(MoveGenType::Quiets);
                 // TODO: sort here?
                 self.sort(stack);
@@ -173,7 +227,7 @@ impl<'a> MoveGen<'a> {
                 self.stage = self.stage.next()?;
                 self.next(stack)
             },
-            MoveGenStage::Quiets(false) => {
+            MoveGenStage::Quiets => {
                 if let Some(mv) = self.buf.pop() {
                     if Some(mv) != self.hashmove && self.move_is_legal(mv) {
                         return Some(mv);
@@ -197,7 +251,7 @@ impl<'a> MoveGen<'a> {
                 self.next(stack)
             },
 
-            MoveGenStage::Evasion(true) => {
+            MoveGenStage::EvasionInit => {
                 self.generate(MoveGenType::Evasions);
                 // TODO: sort here?
                 self.sort(stack);
@@ -205,7 +259,7 @@ impl<'a> MoveGen<'a> {
                 self.stage = self.stage.next()?;
                 self.next(stack)
             },
-            MoveGenStage::Evasion(false) => {
+            MoveGenStage::Evasion => {
                 if let Some(mv) = self.buf.pop() {
                     if Some(mv) != self.hashmove && self.move_is_legal(mv) {
                         return Some(mv);
@@ -217,7 +271,11 @@ impl<'a> MoveGen<'a> {
                 None
             },
 
-            MoveGenStage::Finished => {
+            MoveGenStage::GenAll     => self.next_all(stack),
+            MoveGenStage::GenAllInit => self.next_all(stack),
+
+            // MoveGenStage::Finished => {
+            _ => {
                 None
             },
         }

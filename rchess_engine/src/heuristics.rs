@@ -16,13 +16,13 @@ pub struct KillerMoves {
 
 #[derive(Debug,Clone)]
 pub struct ButterflyHistory {
-    buf:        [[[i16; 64]; 64]; 2]
+    buf:        [[[Score; 64]; 64]; 2]
 }
 
-pub fn depth_stat_bonus(d: Depth) -> Score {
-    let d = d as Score;
+pub fn depth_stat_bonus(ply: Depth) -> Score {
+    let ply = ply as Score;
 
-    (d * d).min(250)
+    (ply * ply).min(250)
 }
 
 

@@ -35,6 +35,7 @@ pub enum OrdMove {
 pub fn score_move_for_sort(
     ts:         &'static Tables,
     g:          &Game,
+    stage:      MoveGenStage,
     st:         &ABStack,
     ply:        Depth,
     mv:         Move,
@@ -57,11 +58,13 @@ pub fn score_move_for_sort(
             _               => {
                 if let Some(see) = g.static_exchange(ts, mv) {
                     if see == 0 {
-                        return CaptureEvenSee;
+                        // return CaptureEvenSee;
                     } else if see > 0 {
-                        return CaptureGoodSee((see / 1000).clamp(-127,127) as i8);
+                        // return CaptureGoodSee((see / 1000).clamp(-127,127) as i8);
+                        return CaptureGoodSee(scale_score_to_i8(see));
                     } else if see < 0 {
-                        return CaptureBadSee((see / 1000).clamp(-127,127) as i8);
+                        // return CaptureBadSee((see / 1000).clamp(-127,127) as i8);
+                        return CaptureBadSee(scale_score_to_i8(see));
                     }
                 }
             },
@@ -73,6 +76,13 @@ pub fn score_move_for_sort(
     #[cfg(feature = "killer_moves")]
     if Some(mv) == killers.0 || Some(mv) == killers.1 {
         return KillerMove;
+    }
+
+    #[cfg(feature = "history_heuristic")]
+    if mv.filter_quiet() || mv.filter_pawndouble() {
+        if let Some(hist) = st.history.get_move(mv, g.state.side_to_move) {
+            return OtherScore(scale_score_to_i8(hist));
+        }
     }
 
     Other

@@ -19,7 +19,32 @@ pub use self::{Color::*,Piece::*};
 // pub static PIECES: [Piece; 6] = [Pawn,Rook,Knight,Bishop,Queen,King];
 pub static PIECES: [Piece; 6] = [Pawn,Knight,Bishop,Rook,Queen,King];
 
+// pub use self::score::*;
+// mod score {
+//     use derive_more::*;
+//     use evmap_derive::ShallowCopy;
+//     use serde::{Serialize,Deserialize};
+//     #[derive(Debug,Deref,Eq,Ord,PartialEq,PartialOrd,Hash,Clone,Copy,
+//              Index,Add,Sub,Mul,Div,Sum,Neg,
+//              AddAssign,MulAssign,
+//              From,Into,AsRef,AsMut,
+//              Serialize,Deserialize,ShallowCopy
+//     )]
+//     #[repr(transparent)]
+//     pub struct Score(i32);
+//     impl Score {
+//         pub fn get(&self) -> i32 {
+//             self.0
+//         }
+//     }
+// }
+
 pub type Score = i32;
+
+pub fn scale_score_to_i8(s: i32) -> i8 {
+    const K: i32 = 16909320;
+    (s / K) as i8
+}
 
 pub type Depth = u8;
 
@@ -409,6 +434,13 @@ impl Move {
             Move::Promotion { .. }        => true,
             Move::PromotionCapture { .. } => true,
             _                             => false,
+        }
+    }
+
+    pub fn filter_pawndouble(&self) -> bool {
+        match self {
+            &Move::PawnDouble { .. } => true,
+            _                        => false,
         }
     }
 

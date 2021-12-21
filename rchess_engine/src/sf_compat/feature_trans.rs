@@ -1,5 +1,4 @@
 
-use crate::evaluate::Score;
 use crate::types::*;
 use crate::sf_compat::accumulator::*;
 use crate::sf_compat::NNIndex;

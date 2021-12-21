@@ -41,7 +41,7 @@ default = [
     "history_heuristic",
     # "futility_pruning",
 
-    "late_move_reduction",
+    # # "late_move_reduction",
     "killer_moves",
 
     "new_search",
@@ -73,7 +73,7 @@ syzygy = []
 nnue = []
 
 null_pruning = []
-late_move_reduction = []
+# late_move_reduction = []
 history_heuristic = []
 killer_moves = []
 futility_pruning = []

@@ -7,7 +7,6 @@ pub use self::feature_trans::NNFeatureTrans;
 pub use self::accumulator::NNAccum;
 pub use self::layers::{NNAffine,NNClippedRelu,NNInput,NNLayer};
 
-use crate::evaluate::Score;
 use crate::types::*;
 
 use std::io::{self,Read,BufReader,Write,BufWriter};

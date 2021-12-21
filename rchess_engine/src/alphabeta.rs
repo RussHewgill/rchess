@@ -453,6 +453,7 @@ impl ExHelper {
             mv
         });
         let mut movegen = MoveGen::new(ts, &g, m_hashmove, depth, ply);
+        // let mut movegen = MoveGen::new_all(ts, &g, m_hashmove, depth, ply);
 
         // self.order_moves(ts, g, ply, &mut stack, &mut gs[..]);
 
@@ -494,12 +495,14 @@ impl ExHelper {
                 // let mut res: ABResult;
                 let mut res: ABResult = ABResult::new_null();
 
-                let mut lmr = true;
+                // let mut lmr = true;
+                // let mut lmr = false;
+                let mut lmr = self.cfg.late_move_reductions;
 
                 // let mut do_full_depth = true;
                 let mut do_full_depth = true; // XXX: ??
 
-                #[cfg(feature = "late_move_reduction")]
+                // #[cfg(feature = "late_move_reduction")]
                 if lmr && mv.filter_all_captures() {
                     let see = g2.static_exchange(&ts, mv).unwrap();
                     /// Capture with good SEE: do not reduce
@@ -508,7 +511,7 @@ impl ExHelper {
                     }
                 }
 
-                #[cfg(feature = "late_move_reduction")]
+                // #[cfg(feature = "late_move_reduction")]
                 if lmr
                     && !is_pv_node
                     && moves_searched >= (if is_root_node { 2 + LMR_MIN_MOVES } else { LMR_MIN_MOVES })
@@ -586,7 +589,7 @@ impl ExHelper {
 
                 }
 
-                /// Do PV Search on the first move
+                /// Do full PV Search on the first move
                 #[cfg(feature = "pvs_search")]
                 if !do_full_depth && is_pv_node && moves_searched == 1 {
 
@@ -638,9 +641,6 @@ impl ExHelper {
 
                     #[cfg(feature = "history_heuristic")]
                     if !mv.filter_all_captures() {
-                        // stack.history[g.state.side_to_move][mv.sq_from()][mv.sq_to()] +=
-                        //     ply as Score * ply as Score;
-                        // stack.history.increment(mv.sq_from(), mv.sq_to(), g.state.side_to_move, add)
                         stack.history.increment(mv, ply, g.state.side_to_move);
                     }
 
