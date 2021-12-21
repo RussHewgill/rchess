@@ -2904,6 +2904,7 @@ fn main9() {
 
     ex2.cfg.late_move_reductions = false;
     ex2.update_game(g.clone());
+    ex2.clear_tt();
     let t0 = std::time::Instant::now();
     let (res2,moves2,stats2) = ex2.lazy_smp_2(&ts);
     let t1 = t0.elapsed();

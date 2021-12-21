@@ -322,6 +322,13 @@ impl Explorer {
     // }
 
     pub fn clear_tt(&self) {
+        #[cfg(feature = "lockless_hashmap")]
+        {
+            debug!("clearing table, unsafe");
+            unsafe {
+                self.ptr_tt.clear_table();
+            }
+        }
         #[cfg(not(feature = "lockless_hashmap"))]
         {
             let mut w = self.tt_w.lock();
