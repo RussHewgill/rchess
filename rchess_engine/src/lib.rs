@@ -68,7 +68,6 @@ pub mod tuning;
 pub mod texel;
 pub mod hashing;
 pub mod trans_table;
-pub mod killer_moves;
 
 pub mod opening_book;
 #[cfg(feature = "syzygy")]
@@ -90,6 +89,7 @@ pub mod searchstats;
 
 pub mod pruning;
 pub mod move_ordering;
+pub mod heuristics;
 
 pub mod lockless_map;
 

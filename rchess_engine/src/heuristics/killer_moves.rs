@@ -4,16 +4,7 @@ use std::collections::HashMap;
 use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
-
-
-
-
-#[derive(Debug,Clone)]
-pub struct KillerMoves {
-    primary:       [Option<Move>; 100],
-    secondary:     [Option<Move>; 100],
-    counter:       [[[[u8; 2]; 64]; 64]; 100],
-}
+use crate::heuristics::KillerMoves;
 
 impl Default for KillerMoves {
     fn default() -> Self {

@@ -470,6 +470,7 @@ impl ExHelper {
         let mut best_val: (Option<(Zobrist,ABResult)>,Score) = (None,val);
         let mut list = vec![];
 
+        /// Loop over moves
         'outer: while let Some(mv) = movegen.next(&stack) {
 
             let mut next_depth = depth - 1;
@@ -509,11 +510,8 @@ impl ExHelper {
 
                 #[cfg(feature = "late_move_reduction")]
                 if lmr
-                    // && (!is_pv_node || is_root_node)
-                    // && (!is_pv_node && !is_root_node)
                     && !is_pv_node
                     && moves_searched >= (if is_root_node { 2 + LMR_MIN_MOVES } else { LMR_MIN_MOVES })
-                    // && ply >= LMR_MIN_PLY
                     && next_depth >= LMR_MIN_DEPTH
                     && !mv.filter_promotion()
                     // && !mv.filter_all_captures()
@@ -531,7 +529,6 @@ impl ExHelper {
                     res = if let Some(mut r) = res2.get_result_mv(mv) { r } else {
                         self.pop_nnue(stack);
                         continue 'outer;
-                        // panic!();
                     };
                     if res.score <= alpha {
                         stats!(stats.lmrs.0 += 1);
@@ -548,22 +545,13 @@ impl ExHelper {
                 }
                 // #[cfg(not(feature = "late_move_reduction"))]
                 // { do_full_depth = true; }
-                // #[cfg(not(feature = "pvs_search"))]
-                // { do_full_depth = true; }
-
-                // eprintln!("is_pv_node = {:?}", is_pv_node);
-                // eprintln!("is_root_node = {:?}", is_root_node);
-                // eprintln!("do_full_depth = {:?}", do_full_depth);
-                // eprintln!("do_pvs = {:?}", do_pvs);
 
                 ///   Full depth search
                 /// If LMR failed or was skipped
                 if do_full_depth {
-                // if true {
 
                     #[cfg(feature = "pvs_search")]
                     let (a2,b2) = if search_pvs_all {
-                    // let (a2,b2) = if !do_pvs {
                         (-beta, -alpha)
                     } else {
                         (-(alpha + 1), -alpha)

@@ -9,7 +9,7 @@ use crate::pruning::*;
 use crate::alphabeta::*;
 use crate::opening_book::*;
 use crate::pawn_hash_table::*;
-use crate::killer_moves::*;
+use crate::heuristics::*;
 
 #[cfg(feature = "syzygy")]
 use crate::syzygy::SyzygyTB;
@@ -149,7 +149,8 @@ impl ExHelper {
 
 #[derive(Debug,Clone)]
 pub struct ABStack {
-    pub history:        [[[Score; 64]; 64]; 2],
+    // pub history:        [[[Score; 64]; 64]; 2],
+    pub history:        ButterflyHistory,
     pub killers:        KillerMoves,
     pub move_history:   Vec<(Zobrist, Move)>,
     // pub pvs:            Vec<Move>,
@@ -163,7 +164,7 @@ impl ABStack {
     }
     pub fn new() -> Self {
         Self {
-            history:        [[[0; 64]; 64]; 2],
+            history:        ButterflyHistory::default(),
             killers:        KillerMoves::default(),
             move_history:   Vec::with_capacity(64),
             // pvs:            Vec::with_capacity(64),
