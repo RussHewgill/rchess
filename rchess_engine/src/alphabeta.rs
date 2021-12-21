@@ -1,4 +1,5 @@
 
+// use crate::heuristics::*;
 use crate::movegen::*;
 use crate::searchstats;
 use crate::types::*;
@@ -322,6 +323,13 @@ impl ExHelper {
 
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
 
+        let mut current_stack: &mut ABStackPly = if let Some(s) = stack.stacks.get_mut(ply as usize) {
+            s
+        } else {
+            stack.stacks.push(ABStackPly::new(ply));
+            stack.stacks.get_mut(ply as usize).unwrap()
+        };
+
         #[cfg(feature = "pvs_search")]
         let mut is_pv_node = NODE_TYPE != NonPV;
         #[cfg(not(feature = "pvs_search"))]
@@ -337,12 +345,6 @@ impl ExHelper {
         /// Misc assertions
         #[cfg(feature = "pvs_search")]
         {
-
-            if !(is_pv_node || (alpha == beta - 1)) {
-                eprintln!("NODE_TYPE = {:?}", NODE_TYPE);
-                eprintln!("(alpha,beta) = {:?}", (alpha,beta));
-            }
-
             assert!(is_pv_node || (alpha == beta - 1));
             assert!(!(is_pv_node && is_cut_node));
         }
@@ -455,7 +457,38 @@ impl ExHelper {
 
         // TODO: futility pruning
 
-        // TODO: null move pruning
+        /// null move pruning
+        #[cfg(feature = "null_pruning")]
+        if !is_pv_node
+            && g.last_move != Some(Move::NullMove)
+            && depth >= NULL_PRUNE_MIN_DEPTH
+            && !in_check
+            && g.state.phase < 200
+        {
+            let r = 2;
+
+            if let Ok(g2) = g.make_move_unchecked(ts, Move::NullMove) {
+                let res = -self._ab_search_negamax2::<{NonPV}>(
+                    ts, &g2, (depth - r,ply+1), (-beta,-beta+1), stats, stack, !is_cut_node);
+
+                if let Some(res) = res.get_result() {
+                    if res.score >= beta {
+                        stats!(stats.null_prunes += 1);
+                        return ABPrune(beta, Prune::NullMove);
+                    }
+                }
+
+            }
+
+            // if self.prune_null_move_negamax(
+            //     ts, g, cfg, depth, ply, (alpha, beta), &mut stats,
+            //     &mut tracking) {
+            //     // return ABNone;
+            //     // return ABSingle(ABResult::new_empty(beta));
+            //     return ABPrune(beta, Prune::NullMove);
+            // }
+
+        }
 
         let m_hashmove: Option<Move> = msi.map(|si| {
             let mv = si.best_move;
@@ -497,6 +530,16 @@ impl ExHelper {
                 continue 'outer;
             }
 
+            // TODO: 
+            /// Shallow pruning
+            if !is_root_node {
+            }
+
+            // TODO: 
+            /// Singular extension
+            if !is_root_node {
+            }
+
             let g2 = if let Some(g2) = self.make_move(ts, g, mv, Some(zb0), stack) {
                 g2
             } else { continue 'outer; };
@@ -521,8 +564,7 @@ impl ExHelper {
                     }
                 }
 
-                // TODO: more depth?
-                // #[cfg(feature = "late_move_reduction")]
+                /// Late Move Reductions
                 if lmr
                     && !is_pv_node
                     && moves_searched >= (if is_root_node { 2 + LMR_MIN_MOVES } else { LMR_MIN_MOVES })
@@ -532,8 +574,16 @@ impl ExHelper {
                     && !in_check
                     && g2.state.checkers.is_empty()
                 {
-                    let depth_r = next_depth.checked_sub(LMR_REDUCTION).unwrap();
-                    // let depth_r = next_depth.checked_sub(1).unwrap();
+
+                    // let depth_r = next_depth.checked_sub(LMR_REDUCTION).unwrap();
+                    // // let depth_r = next_depth.checked_sub(1).unwrap();
+
+                    let r = if moves_searched < 4 {
+                        1
+                    } else {
+                        (next_depth / 3).min(1)
+                    };
+                    let depth_r = next_depth.checked_sub(r).unwrap();
 
                     // let (a2,b2) = (-beta,-alpha);
                     let (a2,b2) = (-(alpha+1),-alpha); // XXX: ??
@@ -576,9 +626,8 @@ impl ExHelper {
                     let (a2,b2) = (-beta, -alpha);
 
                     res = {
-                        // let next_cut_node = !cut_node;
+                        let next_cut_node = !is_cut_node;
                         // trace!("search 1");
-                        let next_cut_node = false;
                         let res2 = -self._ab_search_negamax2::<{NonPV}>(
                             ts, &g2, (next_depth,ply+1), (a2,b2), stats, stack, next_cut_node);
                         if let Some(mut r) = res2.get_result_mv(mv) { r } else {
@@ -592,6 +641,7 @@ impl ExHelper {
                     #[cfg(feature = "pvs_search")]
                     if !search_pvs_all && res.score > alpha && res.score < beta {
                         res = {
+                            // let next_cut_node = !is_cut_node;
                             // trace!("search 2");
                             let res2 = -self._ab_search_negamax2::<{PV}>(
                                 ts, &g2, (next_depth,ply+1), (-beta,-alpha), stats, stack, false);
@@ -655,25 +705,23 @@ impl ExHelper {
                     // { do_pvs = true; }
                 }
 
+                /// Fail high, update stats
                 if b {
                     // node_type = Some(Node::Cut);
                     current_node_type = Node::Cut;
 
-                    #[cfg(feature = "history_heuristic")]
                     if !mv.filter_all_captures() {
+                        #[cfg(feature = "history_heuristic")]
                         stack.history.increment(mv, ply, g.state.side_to_move);
-                    }
 
-                    #[cfg(feature = "killer_moves")]
-                    if !mv.filter_all_captures() {
-                        // tracking.killers.increment(g.state.side_to_move, ply, &mv);
+                        #[cfg(feature = "killer_moves")]
                         stack.killers.store(g.state.side_to_move, ply, mv);
-                    }
 
-                    #[cfg(feature = "countermove_heuristic")]
-                    if !mv.filter_all_captures() {
-                        // stack.
-                        unimplemented!()
+                        #[cfg(feature = "countermove_heuristic")]
+                        if let Some(prev_mv) = g.last_move {
+                            stack.counter_moves.insert_counter_move(prev_mv, mv, g.state.side_to_move);
+                        }
+
                     }
 
                     if moves_searched <= 1 {
@@ -682,7 +730,6 @@ impl ExHelper {
                         stats!(stats.beta_cut_first.1 += 1);
                     }
 
-                    /// Fail high
                     self.pop_nnue(stack);
                     break;
                 }

@@ -30,6 +30,7 @@ use std::str::FromStr;
 
 use itertools::Itertools;
 
+use rchess_engine_lib::heuristics::*;
 use rchess_engine_lib::{timer,timer_loop,eprint_self};
 use rchess_engine_lib::explore::*;
 use rchess_engine_lib::opening_book::*;
@@ -2866,8 +2867,8 @@ fn main9() {
 
     // let t = 10.0;
     // let t = 6.0;
-    let t = 4.0;
-    // let t = 1.0;
+    // let t = 4.0;
+    let t = 2.0;
     // let t = 0.5;
     // let t = 0.3;
 
@@ -2875,8 +2876,20 @@ fn main9() {
     let n = 7;
     // let n = 2;
 
-    // let k0 = std::mem::size_of::<ExHelper>();
+    // let k0 = std::mem::size_of::<CounterMoves>();
     // eprintln!("k0 = {:?}", k0);
+    // return;
+
+
+    // let mut xs = [0i32; 64];
+    // for n in 0..64 {
+    //     let x = (21.9 + f32::ln(0.5) / 2.0) * f32::ln(n as f32);
+    //     xs[n] = x as i32;
+    // }
+    // for x in xs {
+    //     eprintln!("x = {:?}", x);
+    // }
+    // return;
 
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
@@ -2928,10 +2941,10 @@ fn main9() {
 
     // return;
 
-    println!();
-    for (n,mv) in moves.iter().enumerate() {
-        eprintln!("{}\t{:?}", n, mv);
-    }
+    // println!();
+    // for (n,mv) in moves.iter().enumerate() {
+    //     eprintln!("{}\t{:?}", n, mv);
+    // }
 
     stats0.print(t1);
 

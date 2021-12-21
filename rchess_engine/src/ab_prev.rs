@@ -249,7 +249,7 @@ impl ExHelper {
             && cfg.do_null {
                 if self.prune_null_move_negamax(
                     ts, g, cfg, depth, ply, (alpha, beta), &mut stats,
-                    &mut tracking) {
+                    &mut stack) {
 
                     // return ABNone;
                     // return ABSingle(ABResult::new_empty(beta));

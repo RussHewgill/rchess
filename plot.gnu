@@ -11,10 +11,12 @@ set ytics auto
 set mxtics 2
 set mytics 2
 
-set xrange [0:50]
-set yrange [0:2200]
+# set xrange [0:50]
+# set yrange [0:2200]
 
 min(x,y) = (x > y) ? y : x
 
-plot min((6 * x + 229) * x - 215, 2000)
+# plot min((6 * x + 229) * x - 215, 2000)
+
+plot ((21.9 + log(1)) / 2) * log(x)
 

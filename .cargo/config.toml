@@ -9,7 +9,7 @@ rustflags = [
 rustflags = [
     "-Ctarget-cpu=native",
     "-Clink-arg=-fuse-ld=lld",
-    "-Zshare-generics=y",
+    # "-Zshare-generics=y",
 ]
 
 
