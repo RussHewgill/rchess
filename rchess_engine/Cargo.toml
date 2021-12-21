@@ -38,7 +38,7 @@ default = [
     "nnue",
 
     # "null_pruning",
-    # "history_heuristic",
+    "history_heuristic",
     # "futility_pruning",
 
     "late_move_reduction",

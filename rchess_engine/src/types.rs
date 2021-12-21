@@ -5,6 +5,8 @@ pub use crate::game::*;
 pub use crate::hashing::*;
 pub use self::packed_move::*;
 
+// pub use crate::evaluate::Score;
+
 // pub use log::{debug, error};
 pub use log::{debug, error, warn, info, trace};
 use evmap_derive::ShallowCopy;
@@ -16,6 +18,8 @@ pub use self::{Color::*,Piece::*};
 
 // pub static PIECES: [Piece; 6] = [Pawn,Rook,Knight,Bishop,Queen,King];
 pub static PIECES: [Piece; 6] = [Pawn,Knight,Bishop,Rook,Queen,King];
+
+pub type Score = i32;
 
 pub type Depth = u8;
 

@@ -19,3 +19,10 @@ pub struct ButterflyHistory {
     buf:        [[[i16; 64]; 64]; 2]
 }
 
+pub fn depth_stat_bonus(d: Depth) -> Score {
+    let d = d as Score;
+
+    (d * d).min(250)
+}
+
+

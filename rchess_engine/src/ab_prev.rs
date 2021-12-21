@@ -537,8 +537,9 @@ impl ExHelper {
 
                     #[cfg(feature = "history_heuristic")]
                     if !mv.filter_all_captures() {
-                        tracking.history[g.state.side_to_move][mv.sq_from()][mv.sq_to()] +=
-                            ply as Score * ply as Score;
+                        // stack.history[g.state.side_to_move][mv.sq_from()][mv.sq_to()] +=
+                        //     ply as Score * ply as Score;
+                        unimplemented!()
                     }
 
                     #[cfg(feature = "killer_moves")]
