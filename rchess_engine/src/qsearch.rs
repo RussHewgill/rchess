@@ -1,5 +1,6 @@
 
 use crate::alphabeta::ABNodeType;
+use crate::movegen::MoveGen;
 use crate::sf_compat::NNUE4;
 use crate::types::*;
 use crate::tables::*;
@@ -76,75 +77,7 @@ pub fn exhelper_once(
     helper
 }
 
-// pub fn qsearch_once2(
-//     ts:       &Tables,
-//     g:        &Game,
-//     side:     Color,
-//     ev_mid:   &EvalParams,
-//     ev_end:   &EvalParams,
-//     ph_rw:    Option<&PHTable>,
-// ) -> Score {
-
-//     let mut cfg = ExConfig::default();
-//     cfg.eval_params_mid = ev_mid.clone();
-//     cfg.eval_params_end = ev_end.clone();
-
-//     let (tt_r, tt_w) = evmap::Options::default()
-//         .with_hasher(FxBuildHasher::default())
-//         .construct();
-//     let tt_rf = tt_w.factory();
-//     let tt_w = Arc::new(Mutex::new(tt_w));
-
-//     // let (ph_rf,ph_w) = new_hash_table();
-//     let ph_rw = if let Some(t) = ph_rw {
-//         t.clone()
-//     } else {
-//         let ph_rw = PHTableFactory::new();
-//         ph_rw.handle()
-//     };
-
-//     let (tx,rx): (ExSender,ExReceiver) = crossbeam::channel::unbounded();
-
-//     let stop = Arc::new(AtomicBool::new(false));
-//     let best_mate = Arc::new(RwLock::new(None));
-//     let best_depth = Arc::new(AtomicU8::new(0));
-
-//     let helper = ExHelper {
-//         id:              0,
-//         side,
-//         game:            g.clone(),
-//         stop,
-//         best_mate,
-//         #[cfg(feature = "syzygy")]
-//         syzygy:          None,
-//         cfg,
-//         best_depth,
-//         tx,
-//         tt_r,
-//         tt_w,
-//         ph_rw,
-//     };
-
-//     let (alpha,beta) = (i32::MIN,i32::MAX);
-//     let (alpha,beta) = (alpha + 200,beta - 200);
-//     let mut stats = SearchStats::default();
-
-//     let score = helper.qsearch(
-//         ts,
-//         g,
-//         (0,0),
-//         (alpha, beta),
-//         &mut stats);
-
-//     if side == Black {
-//         -score
-//     } else {
-//         score
-//     }
-
-// }
-
-/// Quiescence
+/// Search once
 impl ExHelper {
 
     pub fn qsearch_once_mut(
@@ -158,7 +91,9 @@ impl ExHelper {
         self.game = g.clone();
         self.side = g.state.side_to_move;
         let mut stack = ABStack::new();
-        self.qsearch(ts, g, (0,0), (alpha,beta), &mut stack, stats, ABNodeType::Root)
+        // self.qsearch(ts, g, (0,0), (alpha,beta), &mut stack, stats, ABNodeType::Root)
+        // self.qsearch2::<{ABNodeType::Root}>(ts, g, (0,0), (alpha,beta), &mut stack, stats)
+        unimplemented!()
     }
 
     pub fn qsearch_once(
@@ -170,51 +105,125 @@ impl ExHelper {
         let (alpha,beta) = (Score::MIN,Score::MAX);
         let (alpha,beta) = (alpha + 200,beta - 200);
         let mut stack = ABStack::new();
-        self.qsearch(ts, g, (0,0), (alpha,beta), &mut stack, stats, ABNodeType::Root)
+        // self.qsearch(ts, g, (0,0), (alpha,beta), &mut stack, stats, ABNodeType::Root)
+        // self.qsearch2::<{ABNodeType::Root}>(ts, g, (0,0), (alpha,beta), &mut stack, stats)
+        unimplemented!()
     }
+
+}
+
+/// Quiescence 2
+impl ExHelper {
+
+    #[allow(unused_doc_comments)]
+    pub fn qsearch<const NODE_TYPE: ABNodeType>(
+        &self,
+        ts:                       &'static Tables,
+        g:                        &Game,
+        (ply,qply):               (Depth,Depth),
+        (mut alpha, mut beta):    (Score,Score),
+        mut stack:                &mut ABStack,
+        mut stats:                &mut SearchStats,
+    ) -> Score {
+
+        let stand_pat = if let Some(nnue) = &self.nnue {
+            let mut nn = nnue.borrow_mut();
+            nn.evaluate(&g, true)
+        } else {
+            let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
+            if g.state.side_to_move == Black { -stand_pat } else { stand_pat }
+        };
+
+        /// early halt
+        if self.stop.load(SeqCst) { return stand_pat; }
+
+        stats.qt_nodes += 1;
+        stats!(stats.q_max_depth = stats.q_max_depth.max(ply as u8));
+
+        let mut allow_stand_pat = true;
+
+        if stand_pat >= beta {
+            return beta; // fail hard
+            // return stand_pat; // fail soft
+        }
+
+        if stand_pat > alpha {
+            alpha = stand_pat;
+        }
+
+        let mut movegen = MoveGen::new_qsearch(ts, g, None, qply);
+
+        /// TODO: Delta Pruning
+        // let mut big_delta = Queen.score();
+        // if moves.iter().any(|mv| mv.filter_promotion()) {
+        //     big_delta += Queen.score() - Pawn.score();
+        // }
+        // if stand_pat < alpha - big_delta {
+        //     // trace!("qsearch: delta prune: {}", alpha);
+        //     return alpha;
+        // }
+
+        // let mut moves_searched = 0;
+
+        while let Some(mv) = movegen.next(stack) {
+            if let Some(g2) = self.make_move(ts, g, mv, None, stack) {
+
+                // moves_searched += 1;
+
+                if let Some(see) = movegen.static_exchange(mv) {
+                    if see < 0 {
+                        self.pop_nnue(stack);
+                        continue;
+                    }
+                }
+
+                let score = -self.qsearch::<{NODE_TYPE}>(
+                    &ts, &g2, (ply + 1,qply + 1), (-beta, -alpha), stack, stats);
+
+                if score >= beta && allow_stand_pat {
+                    self.pop_nnue(stack);
+                    return beta; // fail hard
+                    // return stand_pat; // fail soft
+                }
+
+                if score > alpha {
+                    alpha = score;
+                }
+
+                self.pop_nnue(stack);
+            }
+        }
+
+        alpha
+    }
+
+}
+
+/// Quiescence 2
+impl ExHelper {
 
     /// alpha = the MINimum score that the MAXimizing player is assured of
     /// beta  = the MAXimum score that the MINimizing player is assured of
     #[allow(unused_doc_comments)]
     // #[allow(unreachable_code)]
     #[allow(unused_assignments)]
-    pub fn qsearch(
+    // pub fn qsearch(
+    pub fn qsearch2<const NODE_TYPE: ABNodeType>(
         &self,
-        ts:                       &Tables,
+        ts:                       &'static Tables,
         g:                        &Game,
         (ply,qply):               (Depth,Depth),
         (mut alpha, mut beta):    (Score,Score),
         mut stack:                &mut ABStack,
         mut stats:                &mut SearchStats,
-        node_type:                ABNodeType,
+        // node_type:                ABNodeType,
     ) -> Score {
         // trace!("qsearch, {:?} to move, ply {}, a/b: {:?},{:?}",
         //        g.state.side_to_move, ply, alpha, beta);
 
         let stand_pat = if let Some(nnue) = &self.nnue {
-            // let mut nn: &mut NNUE4 = nnue.borrow_mut();
             let mut nn = nnue.borrow_mut();
-
-            // let mut nn2 = nn.clone();
-            // nn2.ft.reset_accum(g);
-            // let v2 = nn2.evaluate(g, true);
-
-            let v = nn.evaluate(&g, true);
-
-            // // assert_eq!(v, v2);
-            // if v != v2 {
-            //     eprintln!("g.to_fen() = {:?}", g.to_fen());
-            //     eprintln!("g = {:?}", g);
-            //     eprintln!("v  = {:?}", v);
-            //     eprintln!("v2 = {:?}", v2);
-            //     panic!("v != v2");
-            // }
-
-            // nn.ft.accum.needs_refresh = [true; 2];
-            // let v = nn.evaluate(&g, true, true); // XXX: slow, always refresh
-
-            v
-            // unimplemented!()
+            nn.evaluate(&g, true)
         } else {
             let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
             if g.state.side_to_move == Black { -stand_pat } else { stand_pat }
@@ -311,22 +320,12 @@ impl ExHelper {
         // TODO: hash table lookup
         // debug!("")
 
-        // /// No change in performance, but easier to read in flamegraph
-        // let mut gs: Vec<(Move,Zobrist,Option<(SICanUse,SearchInfo)>)> = Vec::with_capacity(moves.len());
-        // for mv in moves.into_iter() {
-        //     let zb = g.zobrist.update_move_unchecked(ts, g, mv);
-        //     let tt = self.check_tt_negamax(&ts, zb, depth, &mut stats);
-        //     gs.push((mv,zb,tt));
-        // }
-
         order_mvv_lva(&mut moves);
-        // self.order_moves(ts, g, ply, &mut tracking, &mut gs[..]);
 
-        // let ms = moves.into_iter()
-        //     .flat_map(|m| g.make_move_unchecked(&ts, m).ok().map(|x| (m,x)));
+        let mut movegen = MoveGen::new_qsearch(ts, g, None, qply);
 
-        // for (mv,g2) in ms {
         for mv in moves.into_iter() {
+        // while let Some(mv) = movegen.next(stack) {
 
             // let k0 = {
             //     let nn = &self.nnue.as_ref().unwrap();
@@ -351,8 +350,10 @@ impl ExHelper {
                     }
                 }
 
-                let score = -self.qsearch(
-                    &ts, &g2, (ply + 1,qply + 1), (-beta, -alpha), stack, stats, node_type);
+                // let score = -self.qsearch(
+                //     &ts, &g2, (ply + 1,qply + 1), (-beta, -alpha), stack, stats, node_type);
+                let score = -self.qsearch2::<{NODE_TYPE}>(
+                    &ts, &g2, (ply + 1,qply + 1), (-beta, -alpha), stack, stats);
 
                 if score >= beta && allow_stand_pat {
                     // trace!("qsearch returning beta 1: {:?}", beta);

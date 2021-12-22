@@ -2880,6 +2880,13 @@ fn main9() {
     // eprintln!("k0 = {:?}", k0);
     // return;
 
+    // let mut movegen = MoveGen::new(&ts, &g, None, 0, 0);
+    // let mv = Move::new_quiet("e5", "e6", Pawn);
+    // let k0 = movegen.move_is_legal(mv);
+    // eprintln!("k0 = {:?}", k0);
+    // let k1 = movegen.move_is_pseudo_legal(mv);
+    // eprintln!("k1 = {:?}", k1);
+    // return;
 
     // let mut xs = [0i32; 64];
     // for n in 0..64 {

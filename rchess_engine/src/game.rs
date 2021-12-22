@@ -1198,12 +1198,13 @@ impl Game {
 
     pub fn all_occupied(&self) -> BitBoard {
         // self.state.occupied
-        self.state.pawns
-            | self.state.rooks
-            | self.state.knights
-            | self.state.bishops
-            | self.state.queens
-            | self.state.kings
+        // self.state.pawns
+        //     | self.state.rooks
+        //     | self.state.knights
+        //     | self.state.bishops
+        //     | self.state.queens
+        //     | self.state.kings
+        self.state.white | self.state.black
     }
 
     pub fn all_empty(&self) -> BitBoard {

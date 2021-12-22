@@ -16,17 +16,19 @@ use serde::{Serialize,Deserialize};
 use serde_big_array::BigArray;
 use derive_new::new;
 
-pub static LMR_MIN_MOVES: Depth = 2;
-pub static LMR_MIN_PLY: Depth = 3;
-pub static LMR_MIN_DEPTH: Depth = 3;
+pub const LMR_MIN_MOVES: Depth = 2;
+pub const LMR_MIN_PLY: Depth = 3;
+pub const LMR_MIN_DEPTH: Depth = 3;
 
-pub static LMR_REDUCTION: Depth = 3;
-pub static LMR_PLY_CONST: Depth = 6;
+pub const LMR_REDUCTION: Depth = 3;
+pub const LMR_PLY_CONST: Depth = 6;
 
-pub static QS_RECAPS_ONLY: Depth = 5;
+pub const QS_RECAPS_ONLY: Depth = 5;
 // pub static QS_RECAPS_ONLY: Depth = 100;
 
-pub static NULL_PRUNE_MIN_DEPTH: Depth = 2;
+pub const NULL_PRUNE_MIN_DEPTH: Depth = 3;
+pub const NULL_PRUNE_MIN_PHASE: Phase = 200;
+pub const NULL_PRUNE_REDUCTION: Depth = 2;
 
 // pub static FUTILITY_MARGIN: Score = 200;
 pub static FUTILITY_MARGIN: Score = 300;

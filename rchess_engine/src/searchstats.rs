@@ -101,11 +101,11 @@ mod ss {
     // pub struct NHashes
 
     #[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
-    pub struct NArr(pub [u32; 50]);
+    pub struct NArr(pub [u32; 64]);
 
     impl Default for NArr {
         fn default() -> Self {
-            Self([0; 50])
+            Self([0; 64])
         }
     }
 
@@ -205,6 +205,10 @@ mod ss {
         }
 
         pub fn inc_nodes_arr(&mut self, ply: Depth) {
+            if ply as usize >= self.nodes_arr.0.len() {
+                debug!("inc_nodes_arr: depth more than 64");
+                return;
+            }
             // self.nodes_arr.0[d as usize] += 1;
             self.nodes_arr.0[ply as usize] += 1;
         }

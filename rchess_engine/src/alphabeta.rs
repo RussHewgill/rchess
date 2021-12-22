@@ -383,8 +383,19 @@ impl ExHelper {
             let score = {
                 // trace!("    beginning qsearch, {:?}, a/b: {:?},{:?}",
                 //        prev_mvs.front().unwrap().1, alpha, beta);
-                let nt = if NODE_TYPE == PV { PV } else { NonPV };
-                let score = self.qsearch(&ts, &g, (ply,0), (alpha, beta), stack, stats, nt);
+
+                // let nt: ABNodeType = if NODE_TYPE == PV { PV } else { NonPV };
+                // let score = self.qsearch(&ts, &g, (ply,0), (alpha, beta), stack, stats, nt);
+                // // let score = self.qsearch::<{NT}>(&ts, &g, (ply,0), (alpha, beta), stack, stats);
+
+                let score = if NODE_TYPE == PV {
+                    self.qsearch::<{PV}>(&ts, &g, (ply,0), (alpha, beta), stack, stats)
+                    // self.qsearch2::<{PV}>(&ts, &g, (ply,0), (alpha, beta), stack, stats)
+                } else {
+                    self.qsearch::<{PV}>(&ts, &g, (ply,0), (alpha, beta), stack, stats)
+                    // self.qsearch2::<{PV}>(&ts, &g, (ply,0), (alpha, beta), stack, stats)
+                };
+
                 // trace!("    returned from qsearch, score = {}", score);
                 score
             };
@@ -456,16 +467,25 @@ impl ExHelper {
         /// null move pruning
         #[cfg(feature = "null_pruning")]
         if !is_pv_node
+            // && !stack.inside_null
             && g.last_move != Some(Move::NullMove)
             && depth >= NULL_PRUNE_MIN_DEPTH
             && !in_check
-            && g.state.phase < 200
+            && g.state.phase < NULL_PRUNE_MIN_PHASE
         {
-            let r = 3;
+            let r = NULL_PRUNE_REDUCTION; // 2
 
-            if let Ok(g2) = g.make_move_unchecked(ts, Move::NullMove) {
+            assert!(depth - 1 >= r);
+
+            let null_depth = depth - 1 - r;
+
+            // if let Ok(g2) = g.make_move_unchecked(ts, Move::NullMove) {
+            if let Some(g2) = self.make_move(ts, g, Move::NullMove, None, stack) {
+
+                // stack.inside_null = true;
                 let res = -self._ab_search_negamax2::<{NonPV}>(
-                    ts, &g2, (depth - r,ply+1), (-beta,-beta+1), stats, stack, !is_cut_node);
+                    ts, &g2, (null_depth,ply+1), (-beta,-beta+1), stats, stack, !is_cut_node);
+                // stack.inside_null = false;
 
                 if let Some(res) = res.get_result() {
                     if res.score >= beta {
@@ -474,15 +494,8 @@ impl ExHelper {
                     }
                 }
 
+                self.pop_nnue(stack);
             }
-
-            // if self.prune_null_move_negamax(
-            //     ts, g, cfg, depth, ply, (alpha, beta), &mut stats,
-            //     &mut tracking) {
-            //     // return ABNone;
-            //     // return ABSingle(ABResult::new_empty(beta));
-            //     return ABPrune(beta, Prune::NullMove);
-            // }
 
         }
 
@@ -550,10 +563,9 @@ impl ExHelper {
 
                 let mut do_full_depth = true; // XXX: ??
 
-                // #[cfg(feature = "late_move_reduction")]
                 if lmr && mv.filter_all_captures() {
-                    // let see = g2.static_exchange(&ts, mv).unwrap();
-                    let see = g.static_exchange(&ts, mv).unwrap(); // XXX: g or g2?
+                    // let see = g.static_exchange(&ts, mv).unwrap(); // XXX: g or g2?
+                    let see = movegen.static_exchange(mv).unwrap();
                     /// Capture with good SEE: do not reduce
                     if see > 0 {
                         lmr = false;

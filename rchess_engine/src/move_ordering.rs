@@ -10,6 +10,7 @@ use crate::movegen::*;
 use rayon::prelude::*;
 
 use std::cmp::Ordering;
+use std::collections::HashMap;
 use evmap_derive::ShallowCopy;
 
 #[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
@@ -33,13 +34,14 @@ pub enum OrdMove {
 }
 
 pub fn score_move_for_sort(
-    ts:         &'static Tables,
-    g:          &Game,
-    stage:      MoveGenStage,
-    st:         &ABStack,
-    ply:        Depth,
-    mv:         Move,
-    killers:    (Option<Move>,Option<Move>),
+    ts:           &'static Tables,
+    g:            &Game,
+    mut see_map:  &mut HashMap<Move,Score>,
+    stage:        MoveGenStage,
+    st:           &ABStack,
+    ply:          Depth,
+    mv:           Move,
+    killers:      (Option<Move>,Option<Move>),
 ) -> OrdMove {
     use self::OrdMove::*;
 
@@ -57,6 +59,7 @@ pub fn score_move_for_sort(
             (Pawn,Pawn)     => return GoodCapture,
             _               => {
                 if let Some(see) = g.static_exchange(ts, mv) {
+                // if let Some(see) = MoveGen::_static_exchange(ts, g, see_map, mv) {
                     if see == 0 {
                         // return CaptureEvenSee;
                     } else if see > 0 {

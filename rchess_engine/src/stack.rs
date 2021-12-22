@@ -10,9 +10,14 @@ pub struct ABStack {
     // pub killers:        crate::heuristics::KillerMoves,
     pub counter_moves:  crate::heuristics::CounterMoves,
 
-    pub stacks:         ArrayVec<ABStackPly,128>,
+    pub inside_null:    bool,
 
-    pub move_history:   ArrayVec<(Zobrist, Move), 128>,
+    // pub stacks:         ArrayVec<ABStackPly,128>,
+    pub stacks:         Vec<ABStackPly>,
+
+    // pub move_history:   ArrayVec<(Zobrist, Move), 128>,
+    pub move_history:   Vec<(Zobrist, Move)>,
+    // pub move_history:   Vec<(Zobrist, Move)>,
     pub pvs:            [Move; 128],
 }
 
@@ -69,8 +74,8 @@ impl ABStackPly {
 impl ABStack {
     pub fn new_with_moves(moves: &Vec<(Zobrist, Move)>) -> Self {
         let mut out = Self::new();
-        // out.move_history = moves.clone();
-        out.move_history.try_extend_from_slice(&moves).unwrap();
+        out.move_history = moves.clone();
+        // out.move_history.try_extend_from_slice(&moves).unwrap();
         out
     }
     pub fn new() -> Self {
@@ -78,10 +83,14 @@ impl ABStack {
             history:        crate::heuristics::ButterflyHistory::default(),
             // killers:        crate::heuristics::KillerMoves::default(),
             counter_moves:  crate::heuristics::CounterMoves::default(),
-            // stacks:         Vec::with_capacity(64),
-            // move_history:   Vec::with_capacity(64),
-            stacks:         ArrayVec::new(),
-            move_history:   ArrayVec::new(),
+
+            inside_null:    false,
+
+            stacks:         Vec::with_capacity(64),
+            move_history:   Vec::with_capacity(64),
+            // stacks:         ArrayVec::new(),
+            // move_history:   ArrayVec::new(),
+
             // pvs:            Vec::with_capacity(64),
             // pvs:            vec![Move::NullMove; 64],
             pvs:            [Move::NullMove; 128],

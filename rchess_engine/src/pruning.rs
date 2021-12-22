@@ -10,6 +10,7 @@ use crate::explore::*;
 /// Null Move
 impl ExHelper {
 
+    #[cfg(not(feature = "new_search"))]
     pub fn prune_null_move_negamax(
         &self,
         ts:                 &'static Tables,
@@ -60,30 +61,6 @@ impl ExHelper {
             }
         }
 
-        false
-    }
-
-}
-
-/// Cycle prevention
-impl Explorer {
-
-
-    pub fn cycle_prevention(
-        &self,
-        ts:           &Tables,
-        (mv,g2):      (&Move, &Game),
-        prev_mvs:     &VecDeque<(Zobrist, Move)>,
-    ) -> bool {
-
-        for (zb,mv) in prev_mvs.iter().rev() {
-        }
-
-        // if Some(&(g2.zobrist,*mv)) == prev_mvs.get(prev_mvs.len() - 3) {
-        //     panic!("wat: {:?}\n {:?}", mv, g2)
-        // }
-
-        // unimplemented!()
         false
     }
 
