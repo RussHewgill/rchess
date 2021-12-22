@@ -331,7 +331,6 @@ impl<'a> MoveGen<'a> {
                 self.stage = self.stage.next()?;
                 self.next(stack)
             },
-
             EvasionInit => {
                 self.generate(MoveGenType::Evasions);
                 self.sort(stack);
@@ -443,9 +442,27 @@ impl<'a> MoveGen<'a> {
             /// in check, must block or capture attacker
 
             let target = match gen {
-                MoveGenType::Captures => Some(self.game.state.checkers),
-                _                     => None,
+                MoveGenType::Captures                       => Some(self.game.state.checkers),
+                MoveGenType::Quiets                         => {
+                    let ksq     = self.game.get(King, self.side).bitscan();
+                    let between = self.ts.between(ksq, self.game.state.checkers.bitscan());
+                    Some(between & self.game.all_empty())
+                },
+                MoveGenType::Evasions                       => {
+                    let ksq     = self.game.get(King, self.side).bitscan();
+                    let between = self.ts.between(ksq, self.game.state.checkers.bitscan());
+                    Some(between | self.game.state.checkers)
+                },
+                // MoveGenType::QuietChecks                    => unimplemented!(),
+                _                                        => None,
             };
+
+            // let target = None;
+
+            // let target = match gen {
+            //     MoveGenType::Captures    => target & self.game.get_color(!self.side),
+            //     MoveGenType::Quiets      => target & self.game.all_occupied(),
+            // }
 
             self.gen_king(gen, target);
             self.gen_pawns(gen, target);
@@ -456,16 +473,6 @@ impl<'a> MoveGen<'a> {
 
         } else {
             // double check, only generate king moves
-
-            // let ksq    = self.game.get(King, self.side).bitscan();
-            // let target = self.ts.between(ksq, self.game.state.checkers.bitscan());
-
-            // let target = match gen {
-            //     MoveGenType::Captures    => target & self.game.get_color(!self.side),
-            //     MoveGenType::Quiets      => target & self.game.all_occupied(),
-            //     MoveGenType::Evasions    => unimplemented!(),
-            //     MoveGenType::QuietChecks => unimplemented!(),
-            // }
 
             self.gen_king(gen, None);
 
@@ -627,36 +634,50 @@ mod pieces {
             match gen {
                 MoveGenType::Captures => {
 
-                    // let enemies = self.game.get_color(!self.side);
+                    let enemies = self.game.get_color(!self.side);
 
-                    // let b1 = ps.shift_dir(dw) & enemies;
-                    // let b2 = ps.shift_dir(de) & enemies;
+                    let mut bw = ps.shift_dir(dw) & enemies;
+                    let mut be = ps.shift_dir(de) & enemies;
 
-                    // for to in b1.into_iter() {
-                    //     let (_,victim) = self.game.get_at(to).unwrap();
-                    //     if let Some(from) = (!dw).shift_coord(to) {
+                    if let Some(tgt) = target {
+                        bw &= tgt;
+                        be &= tgt;
+                    }
+
+                    for to in bw.into_iter() {
+                        let (_,victim) = self.game.get_at(to).unwrap();
+                        if let Some(from) = (!dw).shift_coord(to) {
+                            let mv = Move::Capture { from, to, pc: Pawn, victim };
+                            self.buf.push(mv);
+                        }
+                    }
+
+                    for to in be.into_iter() {
+                        let (_,victim) = self.game.get_at(to).unwrap();
+                        if let Some(from) = (!de).shift_coord(to) {
+                            let mv = Move::Capture { from, to, pc: Pawn, victim };
+                            self.buf.push(mv);
+                        }
+                    }
+
+                    // for from in ps.into_iter() {
+                    //     let bb = BitBoard::single(from);
+                    //     let mut cs = (bb.shift_dir(dw) & self.game.get_color(!self.side))
+                    //         | (bb.shift_dir(de) & self.game.get_color(!self.side));
+                    //     if let Some(tgt) = target { cs &= tgt; }
+                    //     for to in cs.into_iter() {
+                    //         let (_,victim) = self.game.get_at(to).unwrap();
                     //         let mv = Move::Capture { from, to, pc: Pawn, victim };
                     //         self.buf.push(mv);
                     //     }
                     // }
 
-                    for f in ps.into_iter() {
-                        let bb = BitBoard::single(f);
-                        let mut cs = (bb.shift_dir(dw) & self.game.get_color(!self.side))
-                            | (bb.shift_dir(de) & self.game.get_color(!self.side));
-                        while cs.0 != 0 {
-                            let t = cs.bitscan_reset_mut();
-                            let (_,victim) = self.game.get_at(t.into()).unwrap();
-                            let mv = Move::Capture { from: f, to: t.into(), pc: Pawn, victim };
-                            self.buf.push(mv);
-                        }
-                    }
-
                     if let Some(ep) = self.game.state.en_passant {
                         let attacks = self.ts.get_pawn(ep).get_capture(!self.side);
                         let attacks = *attacks & ps;
                         attacks.into_iter().for_each(|sq| {
-                            let capture = if self.side == White { S.shift_coord(ep) } else { N.shift_coord(ep) };
+                            let capture =
+                                if self.side == White { S.shift_coord(ep) } else { N.shift_coord(ep) };
                             let capture = capture
                                 .unwrap_or_else(
                                     || panic!("en passant bug? ep: {:?}, capture: {:?}", ep, capture));
@@ -669,11 +690,13 @@ mod pieces {
                 },
                 MoveGenType::Quiets => {
                     let pushes = ps.shift_dir(dir);
-                    let pushes = pushes & !(occ);
+                    let mut pushes = pushes & !(occ);
+                    if let Some(tgt) = target { pushes &= tgt; }
 
                     let doubles = ps & BitBoard::mask_rank(if self.side == White { 1 } else { 6 });
                     let doubles = doubles.shift_mult(dir, 2);
-                    let doubles = doubles & !(occ) & (!(occ)).shift_dir(dir);
+                    let mut doubles = doubles & !(occ) & (!(occ)).shift_dir(dir);
+                    if let Some(tgt) = target { doubles &= tgt; }
 
                     for to in pushes.into_iter() {
                         if let Some(f) = (!dir).shift_coord(to) {
@@ -712,7 +735,8 @@ mod pieces {
             };
 
             let pushes = ps.shift_dir(dir);
-            let pushes = pushes & !(occ);
+            let mut pushes = pushes & !(occ);
+            if let Some(tgt) = target { pushes &= tgt; }
 
             for to in pushes.into_iter() {
                 if let Some(from) = (!dir).shift_coord(to) {
@@ -734,6 +758,7 @@ mod pieces {
                 let bb = BitBoard::single(from);
                 let mut cs = (bb.shift_dir(dw) & self.game.get_color(!self.side))
                     | (bb.shift_dir(de) & self.game.get_color(!self.side));
+                if let Some(tgt) = target { cs &= tgt; }
 
                 for to in cs.into_iter() {
                     let (_,victim) = self.game.get_at(to).unwrap();
@@ -767,7 +792,8 @@ mod pieces {
                 MoveGenType::Captures => {
                     ks.into_iter().for_each(|from| {
                         let ms = self.ts.get_knight(from);
-                        let captures = ms & self.game.get_color(!self.side);
+                        let mut captures = ms & self.game.get_color(!self.side);
+                        if let Some(tgt) = target { captures &= tgt; }
                         captures.into_iter().for_each(|to| {
                             let (_,victim) = self.game.get_at(to).unwrap();
                             let mv = Move::Capture { from, to, pc: Knight, victim };
@@ -778,7 +804,8 @@ mod pieces {
                 MoveGenType::Quiets => {
                     ks.into_iter().for_each(|from| {
                         let ms = self.ts.get_knight(from);
-                        let quiets = ms & !occ;
+                        let mut quiets = ms & !occ;
+                        if let Some(tgt) = target { quiets &= tgt; }
                         quiets.into_iter().for_each(|to| {
                             let mv = Move::Quiet { from, to, pc: Knight };
                             self.buf.push(mv);
@@ -806,8 +833,9 @@ mod pieces {
                 MoveGenType::Captures => {
                     for sq in pieces.into_iter() {
                         let moves   = self._gen_sliding_single(pc, sq.into(), None);
-                        let attacks = moves & self.game.get_color(!self.side);
-                        attacks.into_iter().for_each(|to| {
+                        let mut captures = moves & self.game.get_color(!self.side);
+                        if let Some(tgt) = target { captures &= tgt; }
+                        captures.into_iter().for_each(|to| {
                             let (_,victim) = self.game.get_at(to).unwrap();
                             let mv = Move::Capture { from: sq, to, pc, victim };
                             self.buf.push(mv);
@@ -817,7 +845,8 @@ mod pieces {
                 MoveGenType::Quiets => {
                     for sq in pieces.into_iter() {
                         let moves   = self._gen_sliding_single(pc, sq.into(), None);
-                        let quiets  = moves & self.game.all_empty();
+                        let mut quiets  = moves & self.game.all_empty();
+                        if let Some(tgt) = target { quiets &= tgt; }
                         quiets.into_iter().for_each(|sq2| {
                             let mv = Move::Quiet { from: sq, to: sq2, pc };
                             self.buf.push(mv);

@@ -3754,18 +3754,18 @@ fn main_perft(depth: Option<u64>) {
 
     let d = depth.unwrap_or(4) as Depth;
 
-    // let fen = "3n1n2/3pkp2/Pp1ppp2/8/8/4P3/3P1PN1/B2QKR2 w - - 0 1";
-    let fen = fen2;
-    // let fen = "7k/8/8/1p3p2/4p3/3K1P2/8/8 w - - 0 1";
-    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P1Q1/2N4p/PPPBBPPP/R3K2R b KQkq - 1 1";
-    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P1Q1/2N5/PPPBBPpP/R3K2R w KQkq - 0 2";
-    // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q2/PPPBBPpP/R3K2R b KQkq - 1 2";
-    let mut g = Game::from_fen(&ts, fen).unwrap();
+    // // let fen = "3n1n2/3pkp2/Pp1ppp2/8/8/4P3/3P1PN1/B2QKR2 w - - 0 1";
+    // let fen = fen2;
+    // // let fen = "7k/8/8/1p3p2/4p3/3K1P2/8/8 w - - 0 1";
+    // // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P1Q1/2N4p/PPPBBPPP/R3K2R b KQkq - 1 1";
+    // // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P1Q1/2N5/PPPBBPpP/R3K2R w KQkq - 0 2";
+    // // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q2/PPPBBPpP/R3K2R b KQkq - 1 2";
+    // let mut g = Game::from_fen(&ts, fen).unwrap();
 
-    let mut gen = MoveGen::new(&ts, &g, None, 0, 0);
-    // while let Some(mv) = gen.next() {
-    //     eprintln!("mv = {:?}", mv);
-    // }
+    // let mut gen = MoveGen::new(&ts, &g, None, 0, 0);
+    // // while let Some(mv) = gen.next() {
+    // //     eprintln!("mv = {:?}", mv);
+    // // }
 
     // // gen.gen_castles();
     // gen.gen_pawns(MoveGenType::Captures);
@@ -3795,15 +3795,15 @@ fn main_perft(depth: Option<u64>) {
 
     // return;
 
-    timer_loop!(4,{
-        let _ = MoveGen::perft(&ts, &g, d as Depth);
-    });
+    // timer_loop!(4,{
+    //     let _ = MoveGen::perft(&ts, &g, d as Depth);
+    // });
 
-    timer_loop!(4,{
-        let (tot,_) = g.perft(&ts, d as u64);
-    });
+    // timer_loop!(4,{
+    //     let (tot,_) = g.perft(&ts, d as u64);
+    // });
 
-    return;
+    // return;
 
     let n = match depth {
         None    => 4,
@@ -3830,6 +3830,8 @@ fn main_perft(depth: Option<u64>) {
 
     }
     return;
+
+    let fen = STARTPOS;
 
     // let ts = Tables::new();
     // let ts = &_TABLES;
