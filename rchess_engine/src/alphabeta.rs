@@ -323,14 +323,8 @@ impl ExHelper {
 
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
 
-        // let mut current_stack: &mut ABStackPly = if let Some(s) = stack.stacks.get_mut(ply as usize) {
-        //     s
-        // } else {
-        //     stack.stacks.push(ABStackPly::new(ply));
-        //     stack.stacks.get_mut(ply as usize).unwrap()
-        // };
-
-        let mut current_stack: &mut ABStackPly = stack.get_or_push(ply);
+        // let mut current_stack: &mut ABStackPly = stack.get_or_push(ply);
+        stack.push_if_empty(ply);
 
         #[cfg(feature = "pvs_search")]
         let mut is_pv_node = NODE_TYPE != NonPV;
@@ -717,7 +711,7 @@ impl ExHelper {
                         stack.history.increment(mv, ply, g.state.side_to_move);
 
                         #[cfg(feature = "killer_moves")]
-                        stack.killers.store(g.state.side_to_move, ply, mv);
+                        stack.killer_store(ply, mv);
 
                         #[cfg(feature = "countermove_heuristic")]
                         if let Some(prev_mv) = g.last_move {

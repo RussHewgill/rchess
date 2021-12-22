@@ -461,7 +461,7 @@ impl Explorer {
 /// Get PV
 impl ExHelper {
     pub fn get_pv(&self, ts: &'static Tables, st: &ABStack) -> Vec<Move> {
-        st.pvs.clone()
+        st.pvs.to_vec()
     }
 }
 
@@ -772,8 +772,7 @@ impl ExHelper {
         {
             // trace!("iterative depth {}", depth);
 
-            // stack.pvs.clear();
-            stack.pvs = vec![Move::NullMove; 64];
+            stack.pvs.fill(Move::NullMove);
             let res = self.ab_search_single(ts, &mut stats, &mut stack, depth);
             // debug!("res = {:?}", res);
             // trace!("finished res, id = {}, depth = {}", self.id, depth);
@@ -781,7 +780,7 @@ impl ExHelper {
             if !self.stop.load(SeqCst) && depth >= self.best_depth.load(SeqCst) {
                 let moves = if self.cfg.return_moves {
                     // self.get_pv(ts, &stack)
-                    let mut v = stack.pvs.clone();
+                    let mut v = stack.pvs.to_vec();
                     v.retain(|&mv| mv != Move::NullMove);
                     v
                     // #[cfg(feature = "lockless_hashmap")]
