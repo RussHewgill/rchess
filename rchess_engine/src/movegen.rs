@@ -37,6 +37,7 @@ pub enum MoveGenStage {
     EvasionInit,
     Evasion,
 
+    QSearchHash,
     QSearchInit,
     QSearch,
 
@@ -64,6 +65,7 @@ impl MoveGenStage {
             EvasionInit  => Some(Evasion),
             Evasion      => Some(Finished),
 
+            QSearchHash  => Some(QSearchInit),
             QSearchInit  => Some(QSearch),
             QSearch      => Some(Finished),
 
@@ -183,7 +185,8 @@ impl<'a> MoveGen<'a> {
             see_hashes:  HashMap::default(),
             in_check,
             side,
-            stage:     if in_check { MoveGenStage::EvasionHash } else { MoveGenStage::Hash },
+            stage:     if in_check { MoveGenStage::EvasionHash } else { MoveGenStage::QSearchHash },
+            // stage:     MoveGenStage::Finished,
             buf:       ArrayVec::new(),
             // buf:       Vec::with_capacity(128),
 
@@ -348,20 +351,37 @@ impl<'a> MoveGen<'a> {
                 None
             },
 
+            QSearchHash => {
+                if let Some(mv) = self.hashmove {
+                    if self.move_is_legal(mv) {
+                        self.stage = self.stage.next()?;
+                        return Some(mv);
+                    }
+                }
+                self.stage = self.stage.next()?;
+                self.next(stack)
+            },
             QSearchInit => {
+
                 if self.ply > QS_RECAPS_ONLY && !self.in_check {
                     if let Some(prev) = self.game.state.last_capture {
                         self.generate(MoveGenType::Captures);
                         self.buf.retain(|mv| mv.sq_to() == prev);
 
-                        assert!(self.buf.len() <= 1);
-                        // self.sort(stack);
+                        // assert!(self.buf.len() <= 1);
+                        self.sort(stack);
+                        self.stage = self.stage.next()?;
+                        return self.next(stack);
+                    } else {
+                        assert_eq!(self.buf.len(), 0);
                         self.stage = self.stage.next()?;
                         return self.next(stack);
                     }
                 }
+
                 self.generate(MoveGenType::Captures);
                 self.sort(stack);
+
                 self.stage = self.stage.next()?;
                 self.next(stack)
             },
@@ -413,23 +433,29 @@ impl<'a> MoveGen<'a> {
         }
     }
 
+    #[allow(unused_doc_comments)]
     fn _gen_all_in_check(&mut self, gen: MoveGenType) {
 
         let num_checkers = self.game.state.checkers.popcount();
         if num_checkers == 0 {
             panic!();
         } else if num_checkers == 1 {
+            /// in check, must block or capture attacker
 
-            // let target = 
+            let target = match gen {
+                MoveGenType::Captures => Some(self.game.state.checkers),
+                _                     => None,
+            };
 
-            self.gen_king(gen, None);
-            self.gen_pawns(gen, None);
-            self.gen_knights(gen, None);
-            self.gen_sliding(gen, Bishop, None);
-            self.gen_sliding(gen, Rook, None);
-            self.gen_sliding(gen, Queen, None);
+            self.gen_king(gen, target);
+            self.gen_pawns(gen, target);
+            self.gen_knights(gen, target);
+            self.gen_sliding(gen, Bishop, target);
+            self.gen_sliding(gen, Rook, target);
+            self.gen_sliding(gen, Queen, target);
 
         } else {
+            // double check, only generate king moves
 
             // let ksq    = self.game.get(King, self.side).bitscan();
             // let target = self.ts.between(ksq, self.game.state.checkers.bitscan());
@@ -443,7 +469,6 @@ impl<'a> MoveGen<'a> {
 
             self.gen_king(gen, None);
 
-            // double check, only generate king moves
             return;
         }
 

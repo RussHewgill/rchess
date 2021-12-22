@@ -138,6 +138,11 @@ impl ExHelper {
         if self.stop.load(SeqCst) { return stand_pat; }
 
         stats.qt_nodes += 1;
+
+        // if ply > stats.q_max_depth {
+        //     eprintln!("new max depth = {:?}", ply);
+        // }
+
         stats!(stats.q_max_depth = stats.q_max_depth.max(ply as u8));
 
         let mut allow_stand_pat = true;
@@ -253,16 +258,17 @@ impl ExHelper {
             // trace!("qsearch new alpha: {:?}", alpha);
         }
 
-        let mut moves = if qply > QS_RECAPS_ONLY && !g.in_check() && g.state.last_capture.is_some() {
-            let cap = g.state.last_capture.unwrap();
-
-            match g.search_all_single_to(&ts, cap, None, true) {
-                Outcome::Moves(ms) => {
-                    // stats.qt_hits += 1;
-                    ms
-                },
-                _                  => vec![],
-            }
+        let mut moves = if qply > QS_RECAPS_ONLY
+            && !g.in_check()
+            && g.state.last_capture.is_some() {
+                let cap = g.state.last_capture.unwrap();
+                match g.search_all_single_to(&ts, cap, None, true) {
+                    Outcome::Moves(ms) => {
+                        // stats.qt_hits += 1;
+                        ms
+                    },
+                    _                  => vec![],
+                }
         } else if qply > QS_RECAPS_ONLY && !g.in_check() {
             // stats.qt_misses += 1;
             return stand_pat;
@@ -322,7 +328,7 @@ impl ExHelper {
 
         order_mvv_lva(&mut moves);
 
-        let mut movegen = MoveGen::new_qsearch(ts, g, None, qply);
+        // let mut movegen = MoveGen::new_qsearch(ts, g, None, qply);
 
         for mv in moves.into_iter() {
         // while let Some(mv) = movegen.next(stack) {
