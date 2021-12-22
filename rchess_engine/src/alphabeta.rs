@@ -323,12 +323,14 @@ impl ExHelper {
 
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
 
-        let mut current_stack: &mut ABStackPly = if let Some(s) = stack.stacks.get_mut(ply as usize) {
-            s
-        } else {
-            stack.stacks.push(ABStackPly::new(ply));
-            stack.stacks.get_mut(ply as usize).unwrap()
-        };
+        // let mut current_stack: &mut ABStackPly = if let Some(s) = stack.stacks.get_mut(ply as usize) {
+        //     s
+        // } else {
+        //     stack.stacks.push(ABStackPly::new(ply));
+        //     stack.stacks.get_mut(ply as usize).unwrap()
+        // };
+
+        let mut current_stack: &mut ABStackPly = stack.get_or_push(ply);
 
         #[cfg(feature = "pvs_search")]
         let mut is_pv_node = NODE_TYPE != NonPV;
@@ -465,7 +467,7 @@ impl ExHelper {
             && !in_check
             && g.state.phase < 200
         {
-            let r = 2;
+            let r = 3;
 
             if let Ok(g2) = g.make_move_unchecked(ts, Move::NullMove) {
                 let res = -self._ab_search_negamax2::<{NonPV}>(

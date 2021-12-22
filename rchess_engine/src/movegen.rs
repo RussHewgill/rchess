@@ -93,7 +93,11 @@ impl<'a> MoveGen<'a> {
         let stage   = self.stage;
 
         #[cfg(feature = "killer_moves")]
-        let killers = st.killers.get(g.state.side_to_move,ply);
+        let killers = match st.stacks.get(ply as usize) {
+            Some(ks) => (ks.killers.get(0).copied(),ks.killers.get(1).copied()),
+            _        => (None,None)
+        };
+        // let killers = st.killers.get(g.state.side_to_move,ply);
         #[cfg(not(feature = "killer_moves"))]
         let killers = (None,None);
 

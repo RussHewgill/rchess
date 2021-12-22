@@ -542,11 +542,11 @@ impl ExHelper {
                         unimplemented!()
                     }
 
-                    #[cfg(feature = "killer_moves")]
-                    if !mv.filter_all_captures() {
-                        // tracking.killers.increment(g.state.side_to_move, ply, &mv);
-                        stack.killers.store(g.state.side_to_move, ply, mv);
-                    }
+                    // #[cfg(feature = "killer_moves")]
+                    // if !mv.filter_all_captures() {
+                    //     // tracking.killers.increment(g.state.side_to_move, ply, &mv);
+                    //     stack.killers.store(g.state.side_to_move, ply, mv);
+                    // }
 
                     if moves_searched == 0 {
                         stats!(stats.beta_cut_first.0 += 1);

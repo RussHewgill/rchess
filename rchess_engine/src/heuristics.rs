@@ -9,6 +9,8 @@ pub use self::counter_moves::*;
 
 use crate::types::*;
 
+use arrayvec::ArrayVec;
+
 // TODO: tune
 pub fn depth_stat_bonus(ply: Depth) -> Score {
     let ply = ply as Score;
@@ -25,6 +27,7 @@ pub fn lmr_reduction(d: Depth, ms: u8) -> Depth {
 }
 
 pub type ButterflyBoard = [[[Score; 64]; 64]; 2];
+
 
 #[derive(Debug,Clone)]
 pub struct KillerMoves {

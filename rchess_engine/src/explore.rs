@@ -10,6 +10,7 @@ use crate::alphabeta::*;
 use crate::opening_book::*;
 use crate::pawn_hash_table::*;
 // use crate::heuristics::*;
+pub use crate::stack::{ABStack,ABStackPly};
 
 #[cfg(feature = "syzygy")]
 use crate::syzygy::SyzygyTB;
@@ -154,53 +155,6 @@ impl ExHelper {
         self.cfg.eval_params_mid = ev_mid;
         self.cfg.eval_params_end = ev_end;
         Ok(())
-    }
-}
-
-#[derive(Debug,Clone)]
-pub struct ABStack {
-    // pub history:        [[[Score; 64]; 64]; 2],
-    pub history:        crate::heuristics::ButterflyHistory,
-    pub killers:        crate::heuristics::KillerMoves,
-    pub counter_moves:  crate::heuristics::CounterMoves,
-
-    pub stacks:         Vec<ABStackPly>,
-
-    pub move_history:   Vec<(Zobrist, Move)>,
-    pub pvs:            Vec<Move>,
-}
-
-#[derive(Debug,Clone)]
-pub struct ABStackPly {
-    ply:              Depth,
-    moves_searched:   u8,
-}
-
-impl ABStackPly {
-    pub fn new(ply: Depth) -> Self {
-        Self {
-            ply,
-            moves_searched: 0,
-        }
-    }
-}
-
-impl ABStack {
-    pub fn new_with_moves(moves: &Vec<(Zobrist, Move)>) -> Self {
-        let mut out = Self::new();
-        out.move_history = moves.clone();
-        out
-    }
-    pub fn new() -> Self {
-        Self {
-            history:        crate::heuristics::ButterflyHistory::default(),
-            killers:        crate::heuristics::KillerMoves::default(),
-            counter_moves:  crate::heuristics::CounterMoves::default(),
-            stacks:         Vec::with_capacity(64),
-            move_history:   Vec::with_capacity(64),
-            // pvs:            Vec::with_capacity(64),
-            pvs:            vec![Move::NullMove; 64],
-        }
     }
 }
 

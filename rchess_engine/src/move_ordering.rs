@@ -99,13 +99,13 @@ impl ExHelper {
         mut gs:       &mut [(Move,Zobrist,Option<(SICanUse,SearchInfo)>)],
     ) {
 
-        #[cfg(feature = "killer_moves")]
-        {
-            let killers = tracking.killers.get(g.state.side_to_move,ply);
-            gs.sort_by_cached_key(|x| {
-                Self::order_score_move(ts, g, ply, tracking, x, &killers)
-            });
-        }
+        // #[cfg(feature = "killer_moves")]
+        // {
+        //     let killers = tracking.killers.get(g.state.side_to_move,ply);
+        //     gs.sort_by_cached_key(|x| {
+        //         Self::order_score_move(ts, g, ply, tracking, x, &killers)
+        //     });
+        // }
 
         #[cfg(not(feature = "killer_moves"))]
         gs.sort_by_cached_key(|x| {
