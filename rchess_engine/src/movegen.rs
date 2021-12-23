@@ -552,6 +552,12 @@ impl<'a> MoveGen<'a> {
     }
 }
 
+impl<'a> MoveGen<'a> {
+    pub fn gives_check(&self) -> bool {
+        unimplemented!()
+    }
+}
+
 /// Check Pseudo
 impl<'a> MoveGen<'a> {
     pub fn move_is_pseudo_legal(&self, mv: Move) -> bool {
