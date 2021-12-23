@@ -58,8 +58,8 @@ pub fn score_move_for_sort(
             (Bishop,Knight) => return GoodCapture,
             (Pawn,Pawn)     => return GoodCapture,
             _               => {
-                if let Some(see) = g.static_exchange(ts, mv) {
-                // if let Some(see) = MoveGen::_static_exchange(ts, g, see_map, mv) {
+                // if let Some(see) = g.static_exchange(ts, mv) {
+                if let Some(see) = MoveGen::_static_exchange(ts, g, see_map, mv) {
                     if see == 0 {
                         // return CaptureEvenSee;
                     } else if see > 0 {

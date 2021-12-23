@@ -109,6 +109,7 @@ impl ABResults {
 #[derive(Debug,PartialEq,PartialOrd,Clone)]
 pub enum Prune {
     NullMove,
+    Futility,
 }
 
 #[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
@@ -462,7 +463,31 @@ impl ExHelper {
         /// when in check, skip early pruning
         let in_check = g.state.checkers.is_not_empty();
 
-        // TODO: futility pruning
+        // let static_eval = if in_check {
+        //     None
+        // } else if let Some(nnue) = &self.nnue {
+        //     let mut nn = nnue.borrow_mut();
+        //     let score = nn.evaluate(&g, true);
+        //     stack.with(ply, |st| st.static_eval = Some(score));
+        //     Some(score)
+        // } else {
+        //     let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
+        //     let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
+        //     stack.with(ply, |st| st.static_eval = Some(score));
+        //     Some(score)
+        // };
+
+        // // let mut can
+        // // TODO: futility pruning
+        // if depth == 1
+        //     && !is_pv_node
+        //     && !in_check
+        //     // && static_eval - FUTILITY_MARGIN >= beta
+        //     && static_eval + FUTILITY_MARGIN <= alpha
+        // {
+        //     stats.fut_prunes += 1;
+        //     return ABPrune(static_eval, Prune::Futility);
+        // }
 
         /// null move pruning
         #[cfg(feature = "null_pruning")]
@@ -504,7 +529,7 @@ impl ExHelper {
             let mv = PackedMove::unpack(&[mv.0,mv.1]).unwrap().convert_to_move(ts, g);
             mv
         });
-        let mut movegen = MoveGen::new(ts, &g, m_hashmove, depth, ply);
+        let mut movegen = MoveGen::new(ts, &g, m_hashmove, stack, depth, ply);
         // let mut movegen = MoveGen::new_all(ts, &g, m_hashmove, depth, ply);
 
         // self.order_moves(ts, g, ply, &mut stack, &mut gs[..]);
@@ -538,6 +563,9 @@ impl ExHelper {
             if is_root_node && self.cfg.blocked_moves.contains(&mv) {
                 continue 'outer;
             }
+
+            let capture_or_promotion = mv.filter_all_captures() || mv.filter_promotion();
+            let gives_check = movegen.gives_check(mv);
 
             // TODO: 
             /// Shallow pruning
@@ -586,11 +614,7 @@ impl ExHelper {
                     // let depth_r = next_depth.checked_sub(LMR_REDUCTION).unwrap();
                     // // let depth_r = next_depth.checked_sub(1).unwrap();
 
-                    let r = if moves_searched < 4 {
-                        1
-                    } else {
-                        (next_depth / 3).min(1)
-                    };
+                    let r = lmr_reduction(next_depth, moves_searched);
                     let depth_r = next_depth.checked_sub(r).unwrap();
 
                     // let (a2,b2) = (-beta,-alpha);

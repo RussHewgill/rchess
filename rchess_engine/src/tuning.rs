@@ -16,22 +16,63 @@ use serde::{Serialize,Deserialize};
 use serde_big_array::BigArray;
 use derive_new::new;
 
-pub const LMR_MIN_MOVES: Depth = 2;
-pub const LMR_MIN_PLY: Depth = 3;
-pub const LMR_MIN_DEPTH: Depth = 3;
+pub use self::const_params::*;
+mod const_params {
+    use crate::types::*;
 
-pub const LMR_REDUCTION: Depth = 3;
-pub const LMR_PLY_CONST: Depth = 6;
+    pub const MAX_SEARCH_PLY: Depth = 220;
 
-pub const QS_RECAPS_ONLY: Depth = 5;
-// pub static QS_RECAPS_ONLY: Depth = 100;
+    pub static CHECKMATE_VALUE: Score = 100_000_000;
 
-pub const NULL_PRUNE_MIN_DEPTH: Depth = 3;
-pub const NULL_PRUNE_MIN_PHASE: Phase = 200;
-pub const NULL_PRUNE_REDUCTION: Depth = 2;
+    // pub static STALEMATE_VALUE: Score = 20_000_000;
+    // pub static DRAW_VALUE: Score = 20_000_000;
+    pub static STALEMATE_VALUE: Score = 0;
+    pub static DRAW_VALUE: Score = 0;
 
-// pub static FUTILITY_MARGIN: Score = 200;
-pub static FUTILITY_MARGIN: Score = 300;
+    // pub static CHECKMATE_VALUE: Score = 32000;
+    // pub static STALEMATE_VALUE: Score = 31000;
+
+    pub const LMR_MIN_MOVES: Depth = 2;
+    pub const LMR_MIN_PLY: Depth = 3;
+    pub const LMR_MIN_DEPTH: Depth = 3;
+
+    pub const LMR_REDUCTION: Depth = 3;
+    pub const LMR_PLY_CONST: Depth = 6;
+
+    pub const QS_RECAPS_ONLY: Depth = 5;
+    // pub static QS_RECAPS_ONLY: Depth = 100;
+
+    pub const NULL_PRUNE_MIN_DEPTH: Depth = 3;
+    pub const NULL_PRUNE_MIN_PHASE: Phase = 200;
+    pub const NULL_PRUNE_REDUCTION: Depth = 2;
+
+    // pub static FUTILITY_MARGIN: Score = 200;
+    pub static FUTILITY_MARGIN: Score = 300;
+
+}
+
+pub use self::misc_functions::*;
+mod misc_functions {
+    use crate::types::*;
+
+    // TODO: tune
+    pub fn depth_stat_bonus(ply: Depth) -> Score {
+        let ply = ply as Score;
+        (ply * ply).min(250)
+    }
+
+    pub fn lmr_reduction(d: Depth, ms: u8) -> Depth {
+        if ms < 4 {
+            return 1;
+        }
+
+        (d / 3).min(1)
+
+        // let mut r =
+        // unimplemented!()
+    }
+
+}
 
 pub trait Tunable {
     const LEN: usize;

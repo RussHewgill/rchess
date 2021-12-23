@@ -34,6 +34,7 @@ impl KillerMoves {
 
     pub fn store(&mut self, side: Color, ply: Depth, mv: Move) {
         // self.increment(side, ply, &mv);
+        if !mv.filter_quiet() { return; }
         if let Some(prev) = self.primary[ply as usize] {
             if prev != mv {
                 self.secondary[ply as usize] = Some(prev);

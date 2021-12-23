@@ -156,7 +156,7 @@ impl ExHelper {
             alpha = stand_pat;
         }
 
-        let mut movegen = MoveGen::new_qsearch(ts, g, None, qply);
+        let mut movegen = MoveGen::new_qsearch(ts, g, None, stack, qply);
 
         /// TODO: Delta Pruning
         // let mut big_delta = Queen.score();
@@ -204,7 +204,7 @@ impl ExHelper {
 
 }
 
-/// Quiescence 2
+/// Quiescence old
 impl ExHelper {
 
     /// alpha = the MINimum score that the MAXimizing player is assured of

@@ -56,45 +56,6 @@ impl ExHelper {
         let is_pv: bool   = node_type != ABNodeType::NonPV;
         let is_root: bool = node_type == ABNodeType::Root;
 
-        // /// Repetition checking
-        // // if !cfg.inside_null {
-        // {
-        //     if let Some(k) = g.history.get(&g.zobrist) {
-        //         if *k >= 2 {
-        //             let score = -STALEMATE_VALUE + ply as Score;
-        //             // return ABSingle(ABResult::new_single(g.last_move.unwrap(), -score));
-        //             // return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
-        //             // trace!("repetition found, last move {:?}", g.last_move);
-        //             if is_root {
-        //                 // return ABNone;
-        //             } else {
-        //                 return ABSingle(ABResult::new_single(g.last_move.unwrap(), 0));
-        //             }
-        //             // return ABSingle(ABResult::new_empty(0));
-        //         }
-        //     }
-        // }
-
-        // // TODO: bench this
-        // if *stop_counter > 2000 {
-        //     if self.stop.load(SeqCst) {
-        //         return ABNone;
-        //     }
-        //     // {
-        //     //     let r = self.best_mate.read();
-        //     //     if let Some(best) = *r {
-        //     //         drop(r);
-        //     //         if best <= cfg.max_depth {
-        //     //             trace!("halting search of depth {}, faster mate found", cfg.max_depth);
-        //     //             return ABNone;
-        //     //         }
-        //     //     }
-        //     // }
-        //     *stop_counter = 0;
-        // } else {
-        //     *stop_counter += 1;
-        // }
-
         if self.stop.load(SeqCst) {
             return ABNone;
         }

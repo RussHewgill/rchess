@@ -20,7 +20,8 @@ use serde::{Serialize,Deserialize};
 pub type Phase = u8;
 
 // #[derive(PartialEq,Clone)]
-#[derive(PartialEq,Clone,Serialize,Deserialize)]
+// #[derive(PartialEq,Clone,Serialize,Deserialize)]
+#[derive(PartialEq,Clone,Copy,Serialize,Deserialize)]
 pub struct Game {
     // pub move_history: Vec<Move>,
     pub state:        GameState,
@@ -787,6 +788,12 @@ impl Game {
         *bp = bp.set_zero(at);
 
         if mat && pc != King {
+
+            if !(self.state.material.buf[side][pc.index()] > 0) {
+                debug!("wat: \n{:?}\n{:?}\n{:?}",
+                       self.to_fen(), self, (Coord::from(at), pc, side));
+            }
+
             assert!(self.state.material.buf[side][pc.index()] > 0);
             self.state.material.buf[side][pc.index()] -= 1;
         }
@@ -931,6 +938,7 @@ impl Game {
                         return Some(Move::Castle { from, to: king_to, rook_from, rook_to });
 
                     } else {
+                        eprintln!("g.to_fen() = {:?}", self.to_fen());
                         panic!("self capture?: {:?}->{:?}\n{:?}", from, to, self);
                     }
                 }

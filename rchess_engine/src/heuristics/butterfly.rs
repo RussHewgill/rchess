@@ -1,5 +1,5 @@
 
-use crate::heuristics::depth_stat_bonus;
+use crate::tuning::depth_stat_bonus;
 use crate::types::*;
 use crate::tables::*;
 use crate::heuristics::KillerMoves;

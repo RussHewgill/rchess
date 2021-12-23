@@ -305,6 +305,8 @@ pub fn crit_bench_1(c: &mut Criterion) {
     }).collect();
     // games.truncate(10);
 
+    let mut g0 = Game::from_fen(&ts, STARTPOS).unwrap();
+
     let stop = Arc::new(AtomicBool::new(false));
     // let ex = Explorer::new(g.state.side_to_move, g.clone(), n, stop, timesettings);
 
@@ -312,8 +314,8 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
     group.warm_up_time(Duration::from_secs_f64(2.0));
 
-    group.sample_size(20);
-    group.measurement_time(Duration::from_secs_f64(5.));
+    // group.sample_size(20);
+    // group.measurement_time(Duration::from_secs_f64(5.));
 
     // let fen = "1n4k1/2p2rpp/1n6/1q6/8/4QP2/1P3P1P/1N1R2K1 w - - 0 1"; // #3, Qt R d1d8
     // let (n,t) = (35,1.0);
@@ -334,16 +336,43 @@ pub fn crit_bench_1(c: &mut Criterion) {
     //     let (m,stats) = ex.explore(&ts, None);
     // }));
 
-    let ev_mid = EvalParams::default();
-    let ev_end = EvalParams::default();
+    let n = 3;
+    let t = 0.1;
+
+    let timesettings = TimeSettings::new_f64(0.0,t);
+    let mut ex = Explorer::new(g0.state.side_to_move, g0.clone(), n, timesettings);
+    ex.cfg.num_threads = Some(1);
+    // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+
+    println!("starting");
+    let t0 = std::time::Instant::now();
+    for (n,g) in wacs.iter().enumerate() {
+        eprintln!("n = {:?}", n);
+        ex.clear_tt();
+        ex.update_game(*g);
+        let (m,stats) = ex.explore(&ts);
+    }
+    let t1 = t0.elapsed().as_secs_f64();
+    println!("finished in {:.3} seconds", t1);
+
+    // group.bench_function("explore wacs", |b| b.iter(|| {
+    //     for g in wacs.iter() {
+    //         ex.clear_tt();
+    //         ex.update_game(g.clone());
+    //         let (m,stats) = ex.explore(&ts);
+    //     }
+    // }));
+
+    // let ev_mid = EvalParams::default();
+    // let ev_end = EvalParams::default();
 
     // group.bench_function("eval arr", |b| b.iter(|| {
     //     let arr = ev_mid.to_arr();
     //     let ev2 = EvalParams::from_arr(&arr);
     // }));
 
-    let ph_rw = rchess_engine_lib::pawn_hash_table::PHTableFactory::new();
-    let ph_rw = ph_rw.handle();
+    // let ph_rw = rchess_engine_lib::pawn_hash_table::PHTableFactory::new();
+    // let ph_rw = ph_rw.handle();
 
     // Baseline = 118 us
     // material = 1.78 us
@@ -475,18 +504,18 @@ pub fn crit_bench_nnue(c: &mut Criterion) {
     //     }
     // }));
 
-    group.bench_function("nnue reset accum", |b| b.iter(|| {
-        for g in wacs.iter() {
-            nn.ft.reset_accum(&g);
-        }
-    }));
+    // group.bench_function("nnue reset accum", |b| b.iter(|| {
+    //     for g in wacs.iter() {
+    //         nn.ft.reset_accum(&g);
+    //     }
+    // }));
 
-    group.bench_function("nnue reset accum simd", |b| b.iter(|| {
-        for g in wacs.iter() {
-            nn.ft._update_accum_simd(&g, White);
-            nn.ft._update_accum_simd(&g, Black);
-        }
-    }));
+    // group.bench_function("nnue reset accum simd", |b| b.iter(|| {
+    //     for g in wacs.iter() {
+    //         nn.ft._update_accum_simd(&g, White);
+    //         nn.ft._update_accum_simd(&g, Black);
+    //     }
+    // }));
 
     // // let mut wacs2: Vec<(Game,Move,NNFeatureTrans)> = wacs.into_iter().map(|g| {
     // let mut wacs2: Vec<(Game,Move)> = wacs.into_iter().map(|g| {
@@ -522,9 +551,9 @@ pub fn crit_bench_nnue(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, crit_bench_nnue);
+// criterion_group!(benches, crit_bench_nnue);
 // criterion_group!(benches, crit_bench_simd);
-// criterion_group!(benches, crit_bench_1);
+criterion_group!(benches, crit_bench_1);
 // criterion_group!(benches, crit_bench_2);
 criterion_main!(benches);
 

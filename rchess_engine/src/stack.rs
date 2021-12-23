@@ -31,6 +31,15 @@ impl ABStack {
             self.stacks.push(ABStackPly::new(ply));
         }
     }
+
+    pub fn with<F>(&mut self, ply: Depth, mut f: F)
+        where F: FnMut(&mut ABStackPly)
+    {
+        if let Some(st) = self.stacks.get_mut(ply as usize) {
+            f(st);
+        }
+    }
+
 }
 
 impl ABStack {
@@ -46,16 +55,7 @@ pub struct ABStackPly {
     pub ply:              Depth,
     pub moves_searched:   u8,
     pub killers:          [Option<Move>; 2],
-}
-
-/// Killers
-impl ABStackPly {
-    pub fn killer_store(&mut self, mv: Move) {
-        if self.killers[0] != Some(mv) {
-            self.killers[1] = self.killers[0];
-            self.killers[0] = Some(mv);
-        }
-    }
+    pub static_eval:      Option<Score>,
 }
 
 /// New
@@ -66,6 +66,17 @@ impl ABStackPly {
             moves_searched: 0,
             // killers:        ArrayVec::default(),
             killers:        [None; 2],
+            static_eval:    None,
+        }
+    }
+}
+
+/// Killers
+impl ABStackPly {
+    pub fn killer_store(&mut self, mv: Move) {
+        if self.killers[0] != Some(mv) {
+            self.killers[1] = self.killers[0];
+            self.killers[0] = Some(mv);
         }
     }
 }

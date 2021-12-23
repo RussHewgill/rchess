@@ -93,6 +93,7 @@ pub struct MoveGen<'a> {
 
     pub hashmove:        Option<Move>,
     pub counter_move:    Option<Move>,
+    pub killer_moves:    ArrayVec<Move,2>,
 
     depth:               Depth,
     ply:                 Depth,
@@ -138,13 +139,17 @@ impl<'a> MoveGen<'a> {
         game:           &'a Game,
         hashmove:       Option<Move>,
         // counter_move:   Option<Move>,
+        stack:          &ABStack,
         depth:          Depth,
         ply:            Depth,
     ) -> Self {
         let in_check = game.state.checkers.is_not_empty();
         let side = game.state.side_to_move;
 
-        let counter_move = None;
+        // let counter_move = None;
+        let counter_move = if let Some(prev_mv) = game.last_move {
+            stack.counter_moves.get_counter_move(prev_mv, game.state.side_to_move)
+        } else { None };
 
         let mut out = Self {
             ts,
@@ -158,15 +163,16 @@ impl<'a> MoveGen<'a> {
 
             hashmove,
             counter_move,
+            killer_moves:   ArrayVec::new(),
 
             depth,
             ply,
         };
         // XXX: check for legal move incase of corrupted TTEntry
-        let hashmove = if let Some (mv) = hashmove {
-            if out.move_is_legal(mv) { Some(mv) } else { None }
-        } else { None };
-        out.hashmove = hashmove;
+        // let hashmove = if let Some (mv) = hashmove {
+        //     if out.move_is_legal(mv) { Some(mv) } else { None }
+        // } else { None };
+        // out.hashmove = hashmove;
         out
     }
 
@@ -174,10 +180,15 @@ impl<'a> MoveGen<'a> {
         ts:             &'static Tables,
         game:           &'a Game,
         hashmove:       Option<Move>,
+        stack:          &ABStack,
         ply:            Depth,
     ) -> Self {
         let in_check = game.state.checkers.is_not_empty();
         let side = game.state.side_to_move;
+
+        let counter_move = if let Some(prev_mv) = game.last_move {
+            stack.counter_moves.get_counter_move(prev_mv, game.state.side_to_move)
+        } else { None };
 
         let mut out = Self {
             ts,
@@ -191,7 +202,8 @@ impl<'a> MoveGen<'a> {
             // buf:       Vec::with_capacity(128),
 
             hashmove,
-            counter_move: None,
+            counter_move,
+            killer_moves:   ArrayVec::new(),
 
             depth: 0,
             ply,
@@ -203,11 +215,12 @@ impl<'a> MoveGen<'a> {
     pub fn new_all(
         ts:             &'static Tables,
         game:           &'a Game,
+        stack:          &ABStack,
         hashmove:       Option<Move>,
         depth:          Depth,
         ply:            Depth,
     ) -> Self {
-        let mut out = Self::new(ts, game, hashmove, depth, ply);
+        let mut out = Self::new(ts, game, hashmove, stack, depth, ply);
         out.stage = MoveGenStage::GenAllInit;
         out
     }
@@ -260,7 +273,7 @@ impl<'a> MoveGen<'a> {
 
             Hash     => {
                 if let Some(mv) = self.hashmove {
-                    if self.move_is_legal(mv) {
+                    if self.move_is_legal(mv) && self.move_is_pseudo_legal(mv) {
                         // println!("returning hashmove: {:?}: {:?}", self.game.to_fen(), mv);
                         self.stage = self.stage.next()?;
                         return Some(mv);
@@ -271,7 +284,7 @@ impl<'a> MoveGen<'a> {
             },
             CounterMove => {
                 if let Some(mv) = self.counter_move {
-                    if self.move_is_legal(mv) {
+                    if self.move_is_legal(mv) && self.move_is_pseudo_legal(mv) {
                         self.stage = self.stage.next()?;
                         return Some(mv);
                     }
@@ -282,7 +295,14 @@ impl<'a> MoveGen<'a> {
 
             CapturesInit => {
                 self.generate(MoveGenType::Captures);
-                // TODO: sort here
+
+                /// Killer moves
+                // self.buf.retain(|mv| !ks.contains(mv)); // killer moves are only quiets
+                for &mv in self.killer_moves.iter() {
+                    if self.move_is_legal(mv) { self.buf.push(mv); }
+                }
+
+                /// Sort
                 self.sort(stack);
 
                 self.stage = self.stage.next()?;
@@ -322,7 +342,7 @@ impl<'a> MoveGen<'a> {
 
             EvasionHash => {
                 if let Some(mv) = self.hashmove {
-                    if self.move_is_legal(mv) {
+                    if self.move_is_legal(mv) && self.move_is_pseudo_legal(mv) {
                         self.stage = self.stage.next()?;
                         return Some(mv);
                     }
@@ -490,9 +510,8 @@ impl<'a> MoveGen<'a> {
         let depth = depth.max(1);
         let mut out = vec![];
         let mut sum = 0;
-        let mut gen = Self::new(ts, &g, None, depth, 0);
-
         let stack = ABStack::new();
+        let mut gen = Self::new(ts, &g, None, &stack, depth, 0);
 
         while let Some(mv) = gen.next(&stack) {
             if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
@@ -508,7 +527,7 @@ impl<'a> MoveGen<'a> {
     pub fn _perft(ts: &'static Tables, st: &ABStack, g: Game, depth: Depth) -> u64 {
         if depth == 0 { return 1; }
 
-        let mut gen = MoveGen::new(ts, &g, None, depth, 0);
+        let mut gen = MoveGen::new(ts, &g, None, st, depth, 0);
 
         let mut sum = 0;
 
@@ -527,35 +546,39 @@ impl<'a> MoveGen<'a> {
 /// SEE
 impl<'a> MoveGen<'a> {
 
-    // pub fn _static_exchange(
-    //     ts: &'static Tables,
-    //     g: &Game,
-    //     mut map: &mut HashMap<Move,Score>,
-    //     mv: Move
-    // ) -> Option<Score> {
-    //     if !mv.filter_all_captures() { return None; }
-    //     if let Some(score) = map.get(&mv) {
-    //         Some(*score)
-    //     } else {
-    //         if let Some(score) = g.static_exchange(ts, mv) {
-    //             map.insert(mv, score);
-    //             Some(score)
-    //         } else {
-    //             None
-    //         }
-    //     }
-    // }
+    pub fn _static_exchange(
+        ts: &'static Tables,
+        g: &Game,
+        mut map: &mut HashMap<Move,Score>,
+        mv: Move
+    ) -> Option<Score> {
+        if !mv.filter_all_captures() { return None; }
+        if let Some(score) = map.get(&mv) {
+            Some(*score)
+        } else {
+            if let Some(score) = g.static_exchange(ts, mv) {
+                map.insert(mv, score);
+                Some(score)
+            } else {
+                None
+            }
+        }
+    }
 
     pub fn static_exchange(&mut self, mv: Move) -> Option<Score> {
-        // Self::_static_exchange(self.ts, self.game, &mut self.see_hashes, mv)
-        self.game.static_exchange(self.ts, mv)
+        Self::_static_exchange(self.ts, self.game, &mut self.see_hashes, mv)
+        // self.game.static_exchange(self.ts, mv)
     }
 }
 
 /// Misc helpers
 impl<'a> MoveGen<'a> {
 
-    pub fn gives_check(ts: &Tables, g: &Game, mv: Move) -> bool {
+    pub fn gives_check(&self, mv: Move) -> bool {
+        Self::_gives_check(&self.ts, &self.game, mv)
+    }
+
+    pub fn _gives_check(ts: &Tables, g: &Game, mv: Move) -> bool {
 
         let ksq_enemy = g.get(King, !g.state.side_to_move).bitscan();
 
@@ -570,7 +593,7 @@ impl<'a> MoveGen<'a> {
         }
 
         if let Some(pc) = mv.piece() {
-            if g.state.check_squares[pc].is_one_at(mv.sq_to()) {
+            if pc != King && g.state.check_squares[pc].is_one_at(mv.sq_to()) {
                 return true;
             }
         }
@@ -582,6 +605,7 @@ impl<'a> MoveGen<'a> {
             }
         }
 
+        // XXX: maybe not complete?
         /// En Passant
         if let Move::EnPassant { from, to, capture } = mv {
             // let b = g.all_occupied() ^ BitBoard::single(from) ^ BitBoard::single(capture);
@@ -596,15 +620,42 @@ impl<'a> MoveGen<'a> {
 
 /// Check Pseudo
 impl<'a> MoveGen<'a> {
-    pub fn move_is_pseudo_legal(&self, mv: Move) -> bool {
+    pub fn move_is_pseudo_legal(&mut self, mv: Move) -> bool {
 
+        if mv.filter_promotion() {
+            let mut vs = vec![];
+            self._gen_promotions(MoveGenType::Captures, None, Some(&mut vs));
+            self._gen_promotions(MoveGenType::Quiets, None, Some(&mut vs));
+            return vs.contains(&mv);
+        } else if mv.filter_en_passant() {
+            unimplemented!("en passant")
+        } else if mv.filter_castle() {
+            let mut vs = vec![];
+            self._gen_castles(Some(&mut vs));
+            return vs.contains(&mv);
+        }
+
+        /// From must be occupied by correct side
         if let Some((side,pc)) = self.game.get_at(mv.sq_from()) {
             if self.side != side || mv.piece() != Some(pc) {
                 return false;
             }
+        } else { return false; }
+
+        /// To must not be occupied by friendly
+        if let Some((side,pc)) = self.game.get_at(mv.sq_to()) {
+            if self.side == side {
+                return false;
+            } else if mv.piece() == Some(Pawn) {
+                /// Pawns can't capture with pushes
+                return false;
+            }
         }
 
-        unimplemented!()
+        true
+        // debug!("unhandled move_is_pseudo_legal: \n{:?}\n{:?}\n{:?}",
+        //        self.game.to_fen(), self.game, mv);
+        // panic!("unhandled move_is_pseudo_legal");
     }
 }
 
@@ -659,6 +710,7 @@ mod pieces {
 
     /// Pawns
     impl<'a> MoveGen<'a> {
+
         pub fn gen_pawns(&mut self, gen: MoveGenType, target: Option<BitBoard>) {
 
             let occ = self.game.all_occupied();
@@ -714,20 +766,6 @@ mod pieces {
                     //     }
                     // }
 
-                    if let Some(ep) = self.game.state.en_passant {
-                        let attacks = self.ts.get_pawn(ep).get_capture(!self.side);
-                        let attacks = attacks & ps;
-                        attacks.into_iter().for_each(|sq| {
-                            let capture =
-                                if self.side == White { S.shift_coord(ep) } else { N.shift_coord(ep) };
-                            let capture = capture
-                                .unwrap_or_else(
-                                    || panic!("en passant bug? ep: {:?}, capture: {:?}", ep, capture));
-                            let mv = Move::EnPassant { from: sq.into(), to: ep, capture };
-                            self.buf.push(mv);
-                        });
-                    }
-
                     self.gen_promotions(gen, target);
                 },
                 MoveGenType::Quiets => {
@@ -763,9 +801,43 @@ mod pieces {
             }
         }
 
+        pub fn gen_en_passant(&mut self, target: Option<BitBoard>, mut buf: Option<&mut Vec<Move>>) {
+
+            // let rank5 = if self.side == White { BitBoard::mask_rank(4) } else { BitBoard::mask_rank(3) };
+
+            let ps = self.game.get(Pawn, self.side);
+            // let ps = ps & rank5;
+
+            if let Some(ep) = self.game.state.en_passant {
+                let attacks = self.ts.get_pawn(ep).get_capture(!self.side);
+                let attacks = attacks & ps;
+                attacks.into_iter().for_each(|sq| {
+                    let capture =
+                        if self.side == White { S.shift_coord(ep) } else { N.shift_coord(ep) };
+                    let capture = capture
+                        .unwrap_or_else(
+                            || panic!("en passant bug? ep: {:?}, capture: {:?}", ep, capture));
+                    let mv = Move::EnPassant { from: sq.into(), to: ep, capture };
+                    if let Some(mut buf) = buf.as_mut() {buf.push(mv);} else {self.buf.push(mv);}
+                });
+            }
+
+        }
+
         pub fn gen_promotions(&mut self, gen: MoveGenType, target: Option<BitBoard>) {
+            self._gen_promotions(gen, target, None);
+        }
+
+        pub fn _gen_promotions(
+            &mut self,
+            gen: MoveGenType,
+            target: Option<BitBoard>,
+            mut buf: Option<&mut Vec<Move>>
+        ) {
 
             let rank7 = if self.side == White { BitBoard::mask_rank(6) } else { BitBoard::mask_rank(1) };
+
+            // let mut buf = if let Some(mut b) = buf.as_mut() { b } else { &mut self.buf }
 
             let ps = self.game.get(Pawn, self.side);
             let ps = ps & rank7;
@@ -784,14 +856,14 @@ mod pieces {
                 if let Some(from) = (!dir).shift_coord(to) {
                     if gen == MoveGenType::Captures {
                         let mv = Move::Promotion { from, to, new_piece: Queen };
-                        self.buf.push(mv);
+                        if let Some(mut buf) = buf.as_mut() {buf.push(mv);} else {self.buf.push(mv);}
                     } else if gen == MoveGenType::Quiets {
                         let mv = Move::Promotion { from, to, new_piece: Knight };
-                        self.buf.push(mv);
+                        if let Some(mut buf) = buf.as_mut() {buf.push(mv);} else {self.buf.push(mv);}
                         let mv = Move::Promotion { from, to, new_piece: Bishop };
-                        self.buf.push(mv);
+                        if let Some(mut buf) = buf.as_mut() {buf.push(mv);} else {self.buf.push(mv);}
                         let mv = Move::Promotion { from, to, new_piece: Rook };
-                        self.buf.push(mv);
+                        if let Some(mut buf) = buf.as_mut() {buf.push(mv);} else {self.buf.push(mv);}
                     }
                 }
             }
@@ -806,14 +878,14 @@ mod pieces {
                     let (_,victim) = self.game.get_at(to).unwrap();
                     if gen == MoveGenType::Captures {
                         let mv = Move::PromotionCapture { from, to, new_piece: Queen, victim };
-                        self.buf.push(mv);
+                        if let Some(mut buf) = buf.as_mut() {buf.push(mv);} else {self.buf.push(mv);}
                     } else if gen == MoveGenType::Quiets {
                         let mv = Move::PromotionCapture { from, to, new_piece: Knight, victim };
-                        self.buf.push(mv);
+                        if let Some(mut buf) = buf.as_mut() {buf.push(mv);} else {self.buf.push(mv);}
                         let mv = Move::PromotionCapture { from, to, new_piece: Bishop, victim };
-                        self.buf.push(mv);
+                        if let Some(mut buf) = buf.as_mut() {buf.push(mv);} else {self.buf.push(mv);}
                         let mv = Move::PromotionCapture { from, to, new_piece: Rook, victim };
-                        self.buf.push(mv);
+                        if let Some(mut buf) = buf.as_mut() {buf.push(mv);} else {self.buf.push(mv);}
                     }
                 }
 
@@ -930,6 +1002,10 @@ mod pieces {
     impl<'a> MoveGen<'a> {
 
         pub fn gen_castles(&mut self) {
+            self._gen_castles(None);
+        }
+
+        pub fn _gen_castles(&mut self, mut buf: Option<&mut Vec<Move>>) {
             if self.in_check {
                 return;
             }
@@ -949,7 +1025,11 @@ mod pieces {
                         if (between & self.game.all_occupied()).is_empty() {
                             if !between.into_iter().any(
                                 |sq| self.game.find_attacks_by_side(self.ts, sq, !self.side, true)) {
-                                self.buf.push(mv);
+                                if let Some(mut buf) = buf.as_mut() {
+                                    buf.push(mv);
+                                } else {
+                                    self.buf.push(mv);
+                                }
                             }
                         }
                     }
@@ -964,7 +1044,11 @@ mod pieces {
                         if (between_blocks & self.game.all_occupied()).is_empty() {
                             if !between_attacks.into_iter().any(
                                 |sq| self.game.find_attacks_by_side(self.ts, sq, !self.side, true)) {
-                                self.buf.push(mv);
+                                if let Some(mut buf) = buf.as_mut() {
+                                    buf.push(mv);
+                                } else {
+                                    self.buf.push(mv);
+                                }
                             }
                         }
                     }

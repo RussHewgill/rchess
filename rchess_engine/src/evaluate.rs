@@ -11,11 +11,11 @@ use serde::{Serialize,Deserialize};
 // pub type Score = i32;
 // pub type Score = i16;
 
-pub static CHECKMATE_VALUE: Score = 100_000_000;
-pub static STALEMATE_VALUE: Score = 20_000_000;
-pub static DRAW_VALUE: Score = 20_000_000;
-// pub static CHECKMATE_VALUE: Score = 32000;
-// pub static STALEMATE_VALUE: Score = 31000;
+// pub static CHECKMATE_VALUE: Score = 100_000_000;
+// pub static STALEMATE_VALUE: Score = 20_000_000;
+// pub static DRAW_VALUE: Score = 20_000_000;
+// // pub static CHECKMATE_VALUE: Score = 32000;
+// // pub static STALEMATE_VALUE: Score = 31000;
 
 mod tapered {
     use crate::types::*;

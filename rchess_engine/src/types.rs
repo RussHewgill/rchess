@@ -253,11 +253,18 @@ mod packed_move {
             }
         }
 
-        pub fn from(&self) -> u8 {
-            u8::from(self._from)
+        // pub fn from(&self) -> u8 {
+        //     u8::from(self._from)
+        // }
+        // pub fn to(&self) -> u8 {
+        //     u8::from(self._to)
+        // }
+
+        pub fn from(&self) -> Coord {
+            Coord::new_int(u8::from(self._from))
         }
-        pub fn to(&self) -> u8 {
-            u8::from(self._to)
+        pub fn to(&self) -> Coord {
+            Coord::new_int(u8::from(self._to))
         }
 
         // pub fn prom(&self) -> Option<Piece> {

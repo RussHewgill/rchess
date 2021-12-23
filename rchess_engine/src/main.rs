@@ -2880,38 +2880,19 @@ fn main9() {
     // eprintln!("k0 = {:?}", k0);
     // return;
 
-    // let fen = "4k3/4r3/8/4p3/3P4/8/8/4K3 b - - 0 1";
-    // let fen = "4k2r/8/8/8/8/8/p7/5K2 b k - 0 1";
-    let fen = "1k6/8/8/3Pp3/8/6B1/8/K7 w - e6 0 2";
-    let mut g = Game::from_fen(&ts, fen).unwrap();
+    // let fen = "2n2rk1/5pp1/1p1B2b1/1B2P3/6Q1/4P3/3K1PP1/R6R b - -";
+    // let mut g = Game::from_fen(&ts, fen).unwrap();
+    // let mut movegen = MoveGen::new(&ts, &g, None, &ABStack::new(), 0, 0);
+    // // let mv = Move::new_quiet("g6", "f7", Bishop);
+    // // let mv = Move::new_capture("b4", "d6", Bishop, Queen);
+    // // let mv = Move::new_quiet("g4", "g3", Queen);
+    // let mv = Move::new_capture("a1", "h1", Rook, Rook);
 
-    // let mv0 = Move::new_capture("e5", "d4", Pawn, Pawn);
-    // let mv0 = Move::Promotion { from: "a2".into(), to: "a1".into(), new_piece: Queen };
-    // let mv1 = Move::CASTLE_KINGSIDE[Black];
-    let mv0 = Move::EnPassant { from: "d5".into(), to: "e6".into(), capture: "e5".into() };
-
-    let k0 = MoveGen::gives_check(&ts, &g, mv0);
-    eprintln!("k0 = {:?}", k0);
-
-    // let b0 = g.state.check_block_mask;
-    // let b1 = g.state.king_blocks_w;
-    // let b2 = g.state.king_blocks_b;
-
-    // eprintln!("b0 = {:?}", b0);
-    // eprintln!("b1 = {:?}", b1);
-    // eprintln!("b2 = {:?}", b2);
-
-    // let k1 = MoveGen::gives_check(&ts, &g, mv1);
-    // eprintln!("k1 = {:?}", k1);
-
-    return;
-
-    // let mut movegen = MoveGen::new(&ts, &g, None, 0, 0);
-    // let mv = Move::new_quiet("e5", "e6", Pawn);
     // let k0 = movegen.move_is_legal(mv);
     // eprintln!("k0 = {:?}", k0);
     // let k1 = movegen.move_is_pseudo_legal(mv);
     // eprintln!("k1 = {:?}", k1);
+
     // return;
 
     // let mut xs = [0i32; 64];
