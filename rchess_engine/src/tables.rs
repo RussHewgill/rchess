@@ -318,8 +318,9 @@ impl Tables {
         self.line_bb[s1 as usize][s2 as usize]
     }
 
-    pub fn aligned<T: Into<Coord>>(&self, s1: T, s2: T, s3: T) -> BitBoard {
-        self.line(s1, s2) & BitBoard::single(s3.into())
+    // pub fn aligned<T: Into<Coord>>(&self, s1: T, s2: T, s3: T) -> BitBoard {
+    pub fn aligned<T: Into<Coord>>(&self, s1: T, s2: T, s3: T) -> bool {
+        (self.line(s1, s2) & BitBoard::single(s3.into())).is_not_empty()
     }
 
 }
@@ -919,10 +920,10 @@ mod movesets {
                 Black => &self.black_quiet,
             }
         }
-        pub fn get_capture(&self, c: Color) -> &BitBoard {
+        pub fn get_capture(&self, c: Color) -> BitBoard {
             match c {
-                White => &self.white_capture,
-                Black => &self.black_capture,
+                White => self.white_capture,
+                Black => self.black_capture,
             }
         }
     }

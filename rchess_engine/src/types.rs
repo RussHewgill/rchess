@@ -422,6 +422,7 @@ impl IntoIterator for Outcome {
     }
 }
 
+/// Filters, zeroing
 impl Move {
 
     pub fn is_zeroing(&self) -> bool {
@@ -484,6 +485,11 @@ impl Move {
         }
     }
 
+}
+
+/// Getters
+impl Move {
+
     pub fn sq_from(&self) -> Coord {
         match self {
             &Move::Quiet { from, .. }            => from,
@@ -537,6 +543,18 @@ impl Move {
             _                                      => None,
         }
     }
+
+    pub fn new_piece(&self) -> Option<Piece> {
+        match self {
+            Move::Promotion { new_piece, .. }        => Some(*new_piece),
+            Move::PromotionCapture { new_piece, .. } => Some(*new_piece),
+            _                                        => None,
+        }
+    }
+
+}
+
+impl Move {
 
     pub fn reverse(&self, g: &Game) -> Option<Self> {
         match *self {
@@ -682,6 +700,19 @@ impl<T> std::ops::IndexMut<Color> for [T; 2] {
     fn index_mut(&mut self, col: Color) -> &mut Self::Output {
         let sq = if col == White { 0 } else { 1 };
         &mut self[sq]
+    }
+}
+
+impl<T> std::ops::Index<Piece> for [T; 5] {
+    type Output = T;
+    fn index(&self, pc: Piece) -> &Self::Output {
+        &self[pc.index()]
+    }
+}
+
+impl<T> std::ops::IndexMut<Piece> for [T; 5] {
+    fn index_mut(&mut self, pc: Piece) -> &mut Self::Output {
+        &mut self[pc.index()]
     }
 }
 

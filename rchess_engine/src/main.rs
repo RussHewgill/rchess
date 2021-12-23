@@ -2876,9 +2876,35 @@ fn main9() {
     let n = 7;
     // let n = 2;
 
-    // let k0 = std::mem::size_of::<CounterMoves>();
+    // let k0 = std::mem::size_of::<Game>();
     // eprintln!("k0 = {:?}", k0);
     // return;
+
+    // let fen = "4k3/4r3/8/4p3/3P4/8/8/4K3 b - - 0 1";
+    // let fen = "4k2r/8/8/8/8/8/p7/5K2 b k - 0 1";
+    let fen = "1k6/8/8/3Pp3/8/6B1/8/K7 w - e6 0 2";
+    let mut g = Game::from_fen(&ts, fen).unwrap();
+
+    // let mv0 = Move::new_capture("e5", "d4", Pawn, Pawn);
+    // let mv0 = Move::Promotion { from: "a2".into(), to: "a1".into(), new_piece: Queen };
+    // let mv1 = Move::CASTLE_KINGSIDE[Black];
+    let mv0 = Move::EnPassant { from: "d5".into(), to: "e6".into(), capture: "e5".into() };
+
+    let k0 = MoveGen::gives_check(&ts, &g, mv0);
+    eprintln!("k0 = {:?}", k0);
+
+    // let b0 = g.state.check_block_mask;
+    // let b1 = g.state.king_blocks_w;
+    // let b2 = g.state.king_blocks_b;
+
+    // eprintln!("b0 = {:?}", b0);
+    // eprintln!("b1 = {:?}", b1);
+    // eprintln!("b2 = {:?}", b2);
+
+    // let k1 = MoveGen::gives_check(&ts, &g, mv1);
+    // eprintln!("k1 = {:?}", k1);
+
+    return;
 
     // let mut movegen = MoveGen::new(&ts, &g, None, 0, 0);
     // let mv = Move::new_quiet("e5", "e6", Pawn);
@@ -3815,6 +3841,18 @@ fn main_perft(depth: Option<u64>) {
     // let k0 = 0u8;
     // eprintln!("k0 = {:?}", k0);
     // let k1 = Coord::new_int(k0);
+
+    println!("starting");
+    let t0 = std::time::Instant::now();
+    for (k,fen) in fens.iter().enumerate() {
+        let mut g = Game::from_fen(&ts, fen).unwrap();
+        let (tot,_) = MoveGen::perft(&ts, &g, d);
+        eprintln!("{} = {:>8?}", k, tot);
+    }
+    let t1 = t0.elapsed().as_secs_f64();
+    println!("perft done in {} seconds.", t1);
+
+    return;
 
     println!("starting");
     for (k,fen) in fens.iter().enumerate() {

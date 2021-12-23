@@ -2,6 +2,7 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 #![allow(unused_mut)]
+#![allow(unused_doc_comments)]
 
 #![feature(destructuring_assignment)]
 #![feature(core_intrinsics)]

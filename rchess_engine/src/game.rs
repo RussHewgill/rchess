@@ -36,7 +36,6 @@ pub struct Game {
     pub halfmove:     u8,
 }
 
-
 #[derive(Debug,Default,PartialOrd,Clone,Copy,Serialize,Deserialize)]
 pub struct GameState {
     pub side_to_move:       Color,
@@ -57,6 +56,8 @@ pub struct GameState {
     pub phase:              Phase,
     pub last_capture:       Option<Coord>,
     pub material:           Material,
+
+    pub check_squares:      [BitBoard; 5],
 
     // pub checkers:           Option<BitBoard>,
     // pub king_blocks_w:      Option<BitBoard>,
@@ -366,6 +367,15 @@ impl GameState {
 
 }
 
+/// Partial Clone
+impl Game {
+    pub fn clone_partial(&self) -> Self {
+        // let st = GameState {
+        // }
+        unimplemented!()
+    }
+}
+
 /// make move
 impl Game {
 
@@ -471,7 +481,6 @@ impl Game {
     }
 
     #[must_use]
-    // pub fn make_move_unchecked(&self, ts: &Tables, m: &Move) -> Option<Self> {
     pub fn _make_move_unchecked(
         &self,
         ts:          &Tables,
@@ -572,19 +581,6 @@ impl Game {
 
     }
 
-    // /// [m-4, m-3, m-2, m-1, m]
-    // /// draw when:
-    // ///     m == m-2
-    // fn _check_history(&self) -> bool {
-
-    //     // // self.history
-    //     // let m0 = self.history.get_at(0);
-    //     // let m2 = self.history.get_at(2);
-
-    //     // unimplemented!()
-    //     false
-    // }
-
 }
 
 /// update info
@@ -623,10 +619,12 @@ impl Game {
         self.state.king_blocks_b = BitBoard::empty();
         // self.state.pinners       = None;
 
-        self.update_pins_mut(&ts);
-        self.update_checkers_mut(&ts);
-        self.update_check_block_mut(&ts);
+        self.update_pins_mut(ts);
+        self.update_checkers_mut(ts);
+        self.update_check_block_mut(ts);
         // self.update_occupied_mut();
+
+        self.update_check_squares_mut(ts);
 
         // self.state.phase = self.game_phase();
 
@@ -653,18 +651,16 @@ impl Game {
         // self.state.pinners       = None;
     }
 
-    fn update_pins_mut2(&mut self, ts: &Tables) {
-        let side = self.state.side_to_move;
-        let c0: Coord = self.get(King, side).bitscan().into();
-        let bs = self.find_slider_blockers(&ts, c0, side);
-
-        match side {
-            White => self.state.king_blocks_w = bs,
-            Black => self.state.king_blocks_b = bs,
-        }
+    fn update_check_squares_mut(&mut self, ts: &Tables) {
+        let ksq = self.get(King, !self.state.side_to_move).bitscan();
+        self.state.check_squares[Pawn]   = ts.get_pawn(ksq).get_capture(!self.state.side_to_move);
+        self.state.check_squares[Knight] = ts.get_knight(ksq);
+        self.state.check_squares[Bishop] = ts.attacks_bishop(ksq, self.all_occupied());
+        self.state.check_squares[Rook]   = ts.attacks_rook(ksq, self.all_occupied());
+        self.state.check_squares[Queen]  =
+            self.state.check_squares[Bishop] | self.state.check_squares[Rook];
     }
 
-    // fn _old_update_pins_mut(&mut self, ts: &Tables) {
     fn update_pins_mut(&mut self, ts: &Tables) {
 
         let c0 = self.get(King, White);
@@ -1195,6 +1191,13 @@ impl Game {
         // }
 
     }
+
+    // pub fn get_blockers(&self, side: Color) -> BitBoard {
+    //     // match side {
+    //     //     White = self.state.king_blocks_w,
+    //     // }
+    //     unimplemented!()
+    // }
 
     pub fn all_occupied(&self) -> BitBoard {
         // self.state.occupied

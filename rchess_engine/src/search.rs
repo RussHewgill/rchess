@@ -447,7 +447,7 @@ impl Game {
                 // Not pinned
                 // OR moving along pin ray
                 let x = (BitBoard::single(mv.sq_from()) & pins).is_empty()
-                    || (ts.aligned(mv.sq_from(), mv.sq_to(), self.get(King, side).bitscan().into()).0 != 0);
+                    || ts.aligned(mv.sq_from(), mv.sq_to(), self.get(King, side).bitscan().into());
 
                 // not in check
                 let x0 = x & self.state.checkers.is_empty();
@@ -541,7 +541,7 @@ impl Game {
         if (moves_k & self.get(King, col)).is_not_empty() { return true; }
 
         let moves_p = ts.get_pawn(c0).get_capture(!col);
-        if (*moves_p & self.get(Pawn, col)).is_not_empty() { return true; }
+        if (moves_p & self.get(Pawn, col)).is_not_empty() { return true; }
 
         let moves_n = ts.get_knight(c0);
         if (moves_n & self.get(Knight, col)).is_not_empty() { return true; }
@@ -567,7 +567,7 @@ impl Game {
 
         let pawns = ts.get_pawn(c0);
         // let pawns = *pawns.get_capture(White) | *pawns.get_capture(Black);
-        let pawns = *pawns.get_capture(col);
+        let pawns = pawns.get_capture(col);
         let pawns = pawns & self.get_piece(Pawn);
 
         let knights = ts.get_knight(c0) & self.get_piece(Knight);
@@ -948,7 +948,7 @@ impl Game {
 
         if let Some(ep) = self.state.en_passant {
             let attacks = ts.get_pawn(ep).get_capture(!side);
-            let attacks = *attacks & ps;
+            let attacks = attacks & ps;
             attacks.into_iter().for_each(|sq| {
                 let capture = if side == White { S.shift_coord(ep) } else { N.shift_coord(ep) };
                 let capture = capture
@@ -1024,7 +1024,7 @@ impl Game {
 
         if let Some(ep) = self.state.en_passant {
             let attacks = ts.get_pawn(ep).get_capture(!col);
-            let attacks = *attacks & ps;
+            let attacks = attacks & ps;
             attacks.into_iter().for_each(|sq| {
                 let capture = if col == White { S.shift_coord(ep) } else { N.shift_coord(ep) };
                 let capture = capture

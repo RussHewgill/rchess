@@ -552,10 +552,46 @@ impl<'a> MoveGen<'a> {
     }
 }
 
+/// Misc helpers
 impl<'a> MoveGen<'a> {
-    pub fn gives_check(&self) -> bool {
-        unimplemented!()
+
+    pub fn gives_check(ts: &Tables, g: &Game, mv: Move) -> bool {
+
+        let ksq_enemy = g.get(King, !g.state.side_to_move).bitscan();
+
+        /// Castle
+        if let Move::Castle { rook_to, .. } = mv {
+            return g.state.check_squares[Rook].is_one_at(rook_to);
+        }
+
+        /// Promotion
+        if let Some(new_pc) = mv.new_piece() {
+            return g.state.check_squares[new_pc].is_one_at(mv.sq_to());
+        }
+
+        if let Some(pc) = mv.piece() {
+            if g.state.check_squares[pc].is_one_at(mv.sq_to()) {
+                return true;
+            }
+        }
+
+        /// revealed check
+        if g.get_pins(!g.state.side_to_move).is_one_at(mv.sq_from()) {
+            if !ts.aligned(mv.sq_from(), mv.sq_to(), ksq_enemy) {
+                return true;
+            }
+        }
+
+        /// En Passant
+        if let Move::EnPassant { from, to, capture } = mv {
+            // let b = g.all_occupied() ^ BitBoard::single(from) ^ BitBoard::single(capture);
+            // let b = b | BitBoard::single(to);
+            return g.get_pins(!g.state.side_to_move).is_one_at(capture);
+        }
+
+        false
     }
+
 }
 
 /// Check Pseudo
@@ -603,8 +639,8 @@ impl<'a> MoveGen<'a> {
                 // Not pinned
                 // OR moving along pin ray
                 let x = (BitBoard::single(mv.sq_from()) & pins).is_empty()
-                    || (self.ts.aligned(mv.sq_from(), mv.sq_to(),
-                                        self.game.get(King, self.side).bitscan().into()).0 != 0);
+                    || self.ts.aligned(
+                        mv.sq_from(), mv.sq_to(), self.game.get(King, self.side).bitscan().into());
 
                 // not in check
                 let x0 = x & self.game.state.checkers.is_empty();
@@ -680,7 +716,7 @@ mod pieces {
 
                     if let Some(ep) = self.game.state.en_passant {
                         let attacks = self.ts.get_pawn(ep).get_capture(!self.side);
-                        let attacks = *attacks & ps;
+                        let attacks = attacks & ps;
                         attacks.into_iter().for_each(|sq| {
                             let capture =
                                 if self.side == White { S.shift_coord(ep) } else { N.shift_coord(ep) };
