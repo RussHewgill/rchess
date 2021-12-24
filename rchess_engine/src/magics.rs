@@ -8,7 +8,7 @@ use crate::types::*;
 use crate::tables::*;
 
 // #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
-#[derive(Serialize,Deserialize,Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Default,Serialize,Deserialize,Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub struct Magic {
     pub attacks:   usize,
     pub mask:      BitBoard,
@@ -42,11 +42,90 @@ impl Magic {
 
 }
 
+pub fn gen_magics(bishop: bool)
+                        -> std::result::Result<([Magic; 64], [BitBoard; 0x1480]),
+                                               ([Magic; 64], [BitBoard; 0x19000])>
+{
+    // #[cfg(target_feature = "bmi2")]
+    // return _gen_magics_pext(bishop);
+    // #[cfg(not(target_feature = "bmi2"))]
+    return _gen_magics(bishop);
+}
+
 pub fn _gen_magics_pext(bishop: bool)
                         -> std::result::Result<([Magic; 64], [BitBoard; 0x1480]),
                                                ([Magic; 64], [BitBoard; 0x19000])>
 {
-    unimplemented!()
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
+
+    let mut reference: [BitBoard; 4096] = [BitBoard::empty(); 4096];
+    let mut occupancy: [BitBoard; 4096] = [BitBoard::empty(); 4096];
+
+    let mut table_b: [BitBoard; 0x1480]  = [BitBoard::empty(); 0x1480];
+    let mut table_r: [BitBoard; 0x19000] = [BitBoard::empty(); 0x19000];
+
+    // let mut magics: [Option<Magic>; 64] = [None; 64];
+    let mut magics: [Magic; 64] = [Magic::default(); 64];
+
+    let (r1bb,r8bb) = (BitBoard::mask_rank(0),BitBoard::mask_rank(7));
+    let (f1bb,f8bb) = (BitBoard::mask_file(0),BitBoard::mask_file(7));
+    let mut epoch = [0; 4096];
+    // let mut epoch = [0; 65536];
+    let mut cnt   = 0;
+    let mut size: usize = 0;
+
+    for sq in 0u8..64 {
+        let c0 = Coord::new_int(sq);
+
+        let edges: BitBoard =
+            ((BitBoard::mask_rank(0) | BitBoard::mask_rank(7)) & !BitBoard::mask_rank(c0.rank()))
+            | ((BitBoard::mask_file(0) | BitBoard::mask_file(7)) & !BitBoard::mask_file(c0.file()));
+
+        // let mut m: &mut Magic = &mut magics[sq as usize];
+        let mut m = Magic::default();
+
+
+        // let mask = if bishop {
+        m.mask = if bishop {
+            Tables::gen_blockermask_bishop(c0) & !edges
+        } else {
+            Tables::gen_blockermask_rook(c0) & !edges
+        };
+
+        // let mut attacks_idx: usize = if sq == 0 {
+        m.attacks = if sq == 0 {
+            0
+        } else {
+            magics[sq as usize - 1].attacks + size
+        };
+
+        let mut b = BitBoard(0);
+        size = 0;
+        loop {
+            occupancy[size] = b;
+            reference[size] = Tables::gen_moveboard(b, c0, bishop);
+
+            // #[cfg(target_feature = "bmi2")]
+            if bishop {
+                table_b[m.attacks + unsafe { pext(b.0, m.mask.0) } as usize] = reference[size];
+            } else {
+                table_r[m.attacks + unsafe { pext(b.0, m.mask.0) } as usize] = reference[size];
+            }
+
+            size += 1;
+            b.0 = (b.0 - m.mask.0) & m.mask.0;
+            if b.is_empty() { break; }
+        }
+
+        magics[sq as usize] = m;
+
+    }
+
+    if bishop {
+        Ok((magics, table_b))
+    } else {
+        Err((magics, table_r))
+    }
 }
 
 #[allow(unreachable_code)]

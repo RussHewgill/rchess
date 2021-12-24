@@ -3787,12 +3787,8 @@ fn main_perft(depth: Option<u64>) {
 
     let d = depth.unwrap_or(4) as Depth;
 
-    // // let fen = "3n1n2/3pkp2/Pp1ppp2/8/8/4P3/3P1PN1/B2QKR2 w - - 0 1";
     // let fen = fen2;
-    // // let fen = "7k/8/8/1p3p2/4p3/3K1P2/8/8 w - - 0 1";
-    // // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P1Q1/2N4p/PPPBBPPP/R3K2R b KQkq - 1 1";
-    // // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P1Q1/2N5/PPPBBPpP/R3K2R w KQkq - 0 2";
-    // // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q2/PPPBBPpP/R3K2R b KQkq - 1 2";
+    // let fen = "r3k2r/p1ppqpb1/bn2p1p1/3PN3/Pp2n3/2N2Q1p/1PP1BPPP/R1B1K2R b KQkq a3 0 2";
     // let mut g = Game::from_fen(&ts, fen).unwrap();
 
     // let mut gen = MoveGen::new(&ts, &g, None, 0, 0);
@@ -3849,17 +3845,17 @@ fn main_perft(depth: Option<u64>) {
     // eprintln!("k0 = {:?}", k0);
     // let k1 = Coord::new_int(k0);
 
-    // println!("starting");
-    // let t0 = std::time::Instant::now();
-    // for (k,fen) in fens.iter().enumerate() {
-    //     let mut g = Game::from_fen(&ts, fen).unwrap();
-    //     let (tot,_) = MoveGen::perft(&ts, &g, d);
-    //     eprintln!("{} = {:>8?}", k, tot);
-    // }
-    // let t1 = t0.elapsed().as_secs_f64();
-    // println!("perft done in {} seconds.", t1);
+    println!("starting");
+    let t0 = std::time::Instant::now();
+    for (k,fen) in fens.iter().enumerate() {
+        let mut g = Game::from_fen(&ts, fen).unwrap();
+        let (tot,_) = MoveGen::perft(&ts, &g, d);
+        eprintln!("{} = {:>8?}", k, tot);
+    }
+    let t1 = t0.elapsed().as_secs_f64();
+    println!("perft done in {} seconds.", t1);
 
-    // return;
+    return;
 
     println!("starting");
     for (k,fen) in fens.iter().enumerate() {

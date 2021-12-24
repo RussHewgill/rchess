@@ -53,7 +53,8 @@ lazy_static! {
     //     ts
     // };
     // pub static ref _TABLES: Tables = Tables::read_from_file("tables.bin").unwrap();
-    pub static ref _TABLES: Tables = Tables::read_from_file_def().unwrap();
+    // pub static ref _TABLES: Tables = Tables::read_from_file_def().unwrap();
+    pub static ref _TABLES: Tables = Tables::new();
 }
 
 pub static CENTERDIST: [u8; 64] = [
@@ -254,7 +255,7 @@ impl Tables {
         // println!("wat 2");
 
         let (magics_rook, table_rook) = if magics {
-            _gen_magics(false).unwrap_err()
+            gen_magics(false).unwrap_err()
         } else {
             ([Magic::new(0, BitBoard::empty(), BitBoard::empty(), 0); 64],
              [BitBoard::empty(); 0x19000])
@@ -264,7 +265,7 @@ impl Tables {
         let table_rook = table_rook.to_vec();
 
         let (magics_bishop, table_bishop) = if magics {
-            _gen_magics(true).unwrap()
+            gen_magics(true).unwrap()
         } else {
             ([Magic::new(0, BitBoard::empty(), BitBoard::empty(), 0); 64],
             [BitBoard::empty(); 0x1480])

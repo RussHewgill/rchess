@@ -755,6 +755,8 @@ mod pieces {
                         }
                     }
 
+                    self.gen_en_passant(target, None);
+
                     self.gen_promotions(gen, target);
                 },
                 MoveGenType::Quiets => {
