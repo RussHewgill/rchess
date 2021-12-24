@@ -115,9 +115,9 @@ pub struct MoveGen<'a> {
 
     buf:                 ArrayVec<Move,256>,
     // buf:                 ArrayVec<(Move,OrdMove),256>,
-    // buf_scored:          ArrayVec<(Move,OrdMove),256>,
+    buf_scored:          ArrayVec<(Move,OrdMove),256>,
 
-    buf_set:             BinaryHeap<MGKey>,
+    // buf_set:             BinaryHeap<MGKey>,
 
     cur:                 usize,
 
@@ -127,38 +127,6 @@ pub struct MoveGen<'a> {
 
     depth:               Depth,
     ply:                 Depth,
-}
-
-/// Binary Heap
-impl<'a> MoveGen<'a> {
-
-    pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
-        // unimplemented!()
-        let MGKey(n,_) = self.buf_set.pop()?;
-        self.buf.get(n).copied()
-    }
-
-    pub fn sort(&mut self, st: &ABStack) {
-        let mut see_map = &mut self.see_map;
-        #[cfg(feature = "killer_moves")]
-        let killers = st.killer_get(self.ply);
-        #[cfg(not(feature = "killer_moves"))]
-        let killers = (None,None);
-
-        for (n,mv) in self.buf.iter().enumerate() {
-            let score = score_move_for_sort(
-                self.ts, self.game, see_map, self.stage, st, self.ply, *mv, killers);
-            self.buf_set.push(MGKey(n,score));
-        }
-
-        // for mv in self.buf.drain(..) {
-        //     let score = score_move_for_sort(
-        //         self.ts, self.game, see_map, self.stage, st, self.ply, mv, killers);
-        //     // self.buf_scored.push((mv, score));
-        // }
-
-    }
-
 }
 
 /// Score, Pick best
@@ -172,10 +140,10 @@ impl<'a> MoveGen<'a> {
         self._pick(st, true)
     }
 
-    #[cfg(feature = "nope")]
+    // #[cfg(feature = "nope")]
     pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
-        // let (mv,_) = self.buf_scored.pop()?;
-        let mv = self.buf.pop()?;
+        let (mv,_) = self.buf_scored.pop()?;
+        // let mv = self.buf.pop()?;
         Some(mv)
     }
 
@@ -205,7 +173,7 @@ impl<'a> MoveGen<'a> {
         None
     }
 
-    #[cfg(feature = "nope")]
+    // #[cfg(feature = "nope")]
     pub fn sort(&mut self, st: &ABStack) {
         let mut see_map = &mut self.see_map;
         #[cfg(feature = "killer_moves")]
@@ -217,6 +185,8 @@ impl<'a> MoveGen<'a> {
                 self.ts, self.game, see_map, self.stage, st, self.ply, mv, killers);
             self.buf_scored.push((mv, score));
         }
+        self.buf_scored.sort_unstable_by_key(|x| x.1);
+        self.buf_scored.reverse();
     }
 
 }
@@ -280,10 +250,10 @@ impl<'a> MoveGen<'a> {
             side,
             stage:     if in_check { MoveGenStage::EvasionHash } else { MoveGenStage::Hash },
             buf:       ArrayVec::new(),
-            // buf_scored: ArrayVec::new(),
             // buf:       Vec::with_capacity(128),
 
-            buf_set:      BinaryHeap::new(),
+            buf_scored: ArrayVec::new(),
+            // buf_set:      BinaryHeap::new(),
 
             cur: 0,
 
@@ -326,9 +296,9 @@ impl<'a> MoveGen<'a> {
             // stage:     MoveGenStage::Finished,
             buf:       ArrayVec::new(),
             // buf:       Vec::with_capacity(128),
-            // buf_scored: ArrayVec::new(),
 
-            buf_set:      BinaryHeap::new(),
+            buf_scored: ArrayVec::new(),
+            // buf_set:      BinaryHeap::new(),
 
             cur: 0,
 
@@ -755,6 +725,13 @@ impl<'a> MoveGen<'a> {
 
 /// Check Pseudo
 impl<'a> MoveGen<'a> {
+
+    #[cfg(feature = "nope")]
+    pub fn move_is_pseudo_legal(&mut self, mv: Move) -> bool {
+        true
+    }
+
+    // #[cfg(feature = "nope")]
     pub fn move_is_pseudo_legal(&mut self, mv: Move) -> bool {
 
         if mv.filter_promotion() {
@@ -763,7 +740,10 @@ impl<'a> MoveGen<'a> {
             self._gen_promotions(MoveGenType::Quiets, None, Some(&mut vs));
             return vs.contains(&mv);
         } else if mv.filter_en_passant() {
-            unimplemented!("en passant")
+            let mut vs = vec![];
+            // unimplemented!("en passant")
+            self.gen_en_passant(None, Some(&mut vs));
+            return vs.contains(&mv);
         } else if mv.filter_castle() {
             let mut vs = vec![];
             self._gen_castles(Some(&mut vs));

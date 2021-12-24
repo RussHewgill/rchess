@@ -2876,28 +2876,25 @@ fn main9() {
     let n = 8;
     // let n = 2;
 
-    let mut wacs = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
-    let mut wacs: Vec<Game> = wacs.into_iter().map(|(fen,_)| {
-        Game::from_fen(&ts, &fen).unwrap()
-    }).collect();
-
-    let st = ABStack::new();
-
-    timer!({
-        for k in 0..5000 {
-            if k % 1000 == 0 {
-                eprintln!("k = {:?}", k);
-            }
-            for g in wacs.iter() {
-                let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
-                let mut x = 0;
-                while let Some(mv) = movegen.next(&st) {
-                    x += 1;
-                }
-            }
-        }});
-
-    return;
+    // let mut wacs = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
+    // let mut wacs: Vec<Game> = wacs.into_iter().map(|(fen,_)| {
+    //     Game::from_fen(&ts, &fen).unwrap()
+    // }).collect();
+    // let st = ABStack::new();
+    // timer!({
+    //     for k in 0..5000 {
+    //         if k % 1000 == 0 {
+    //             eprintln!("k = {:?}", k);
+    //         }
+    //         for g in wacs.iter() {
+    //             let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
+    //             let mut x = 0;
+    //             while let Some(mv) = movegen.next(&st) {
+    //                 x += 1;
+    //             }
+    //         }
+    //     }});
+    // return;
 
     // let k0 = std::mem::size_of::<Game>();
     // eprintln!("k0 = {:?}", k0);
