@@ -142,9 +142,10 @@ impl<'a> MoveGen<'a> {
 
     // #[cfg(feature = "nope")]
     pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
-        let (mv,_) = self.buf_scored.pop()?;
-        // let mv = self.buf.pop()?;
-        Some(mv)
+        // let (mv,_) = self.buf_scored.pop()?;
+        // // let mv = self.buf.pop()?;
+        // Some(mv)
+        panic!("TODO: move pickers without sort");
     }
 
     #[cfg(feature = "nope")]
@@ -683,7 +684,7 @@ impl<'a> MoveGen<'a> {
         Self::_gives_check(&self.ts, &self.game, mv)
     }
 
-    pub fn _gives_check(ts: &Tables, g: &Game, mv: Move) -> bool {
+    fn _gives_check(ts: &Tables, g: &Game, mv: Move) -> bool {
 
         let ksq_enemy = g.get(King, !g.state.side_to_move).bitscan();
 

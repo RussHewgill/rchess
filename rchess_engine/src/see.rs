@@ -7,6 +7,28 @@ use crate::explore::*;
 
 
 impl Game {
+    pub fn static_exchange_ge(&self, ts: &Tables, mv: Move, threshold: Score) -> Option<bool> {
+
+        // if mv.filter_castle() | mv.filter_promotion() | mv.filter_en_passant() {
+        if !mv.filter_all_captures() || mv.filter_en_passant() {
+            return 0 >= threshold;
+        }
+
+        let mut swap: Score = self.get_at(mv.sq_to())?.1.score() - threshold;
+        if swap < 0 {
+            return Some(false);
+        }
+
+        swap = self.get_at(mv.sq_from())?.1.score() - swap;
+        if swap <= 0 {
+            return Some(true);
+        }
+
+        unimplemented!()
+    }
+}
+
+impl Game {
 
     pub fn static_exchange(&self, ts: &Tables, mv: Move) -> Option<Score> {
 

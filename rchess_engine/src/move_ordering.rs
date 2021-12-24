@@ -57,6 +57,9 @@ pub fn score_move_for_sort(
             (Bishop,Bishop) => return GoodCapture,
             (Bishop,Knight) => return GoodCapture,
             (Pawn,Pawn)     => return GoodCapture,
+
+            // _ => return CaptureEvenSee,
+
             _               => {
                 // if let Some(see) = g.static_exchange(ts, mv) {
                 if let Some(see) = MoveGen::_static_exchange(ts, g, see_map, mv) {
@@ -71,6 +74,7 @@ pub fn score_move_for_sort(
                     }
                 }
             },
+
         }
         Move::Castle { .. } => return Castle,
         _                                 => {},
