@@ -2873,8 +2873,34 @@ fn main9() {
     // let t = 0.3;
 
     // let n = 35;
-    let n = 7;
+    let n = 8;
     // let n = 2;
+
+    // use core::arch::x86_64::_pext_u64;
+
+
+
+
+    return;
+
+    let mut wacs = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
+    let mut wacs: Vec<Game> = wacs.into_iter().map(|(fen,_)| {
+        Game::from_fen(&ts, &fen).unwrap()
+    }).collect();
+
+    let st = ABStack::new();
+
+    for _ in 0..10000 {
+        for g in wacs.iter() {
+            let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
+            let mut x = 0;
+            while let Some(mv) = movegen.next(&st) {
+                x += 1;
+            }
+        }
+    }
+
+    return;
 
     // let k0 = std::mem::size_of::<Game>();
     // eprintln!("k0 = {:?}", k0);
@@ -3823,17 +3849,17 @@ fn main_perft(depth: Option<u64>) {
     // eprintln!("k0 = {:?}", k0);
     // let k1 = Coord::new_int(k0);
 
-    println!("starting");
-    let t0 = std::time::Instant::now();
-    for (k,fen) in fens.iter().enumerate() {
-        let mut g = Game::from_fen(&ts, fen).unwrap();
-        let (tot,_) = MoveGen::perft(&ts, &g, d);
-        eprintln!("{} = {:>8?}", k, tot);
-    }
-    let t1 = t0.elapsed().as_secs_f64();
-    println!("perft done in {} seconds.", t1);
+    // println!("starting");
+    // let t0 = std::time::Instant::now();
+    // for (k,fen) in fens.iter().enumerate() {
+    //     let mut g = Game::from_fen(&ts, fen).unwrap();
+    //     let (tot,_) = MoveGen::perft(&ts, &g, d);
+    //     eprintln!("{} = {:>8?}", k, tot);
+    // }
+    // let t1 = t0.elapsed().as_secs_f64();
+    // println!("perft done in {} seconds.", t1);
 
-    return;
+    // return;
 
     println!("starting");
     for (k,fen) in fens.iter().enumerate() {

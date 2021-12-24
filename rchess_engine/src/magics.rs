@@ -2,7 +2,7 @@
 use serde::{Serialize,Deserialize};
 
 use itertools::iproduct;
-use rand::Rng;
+use rand::{prelude::{StdRng,SliceRandom},Rng,SeedableRng};
 
 use crate::types::*;
 use crate::tables::*;
@@ -28,28 +28,37 @@ impl Magic {
         }
     }
 
-    pub fn index(mask: BitBoard, magic: BitBoard, shift: u32, occ: BitBoard) -> u64 {
-        // unsigned lo = unsigned(occupied) & unsigned(mask);
-        let lo = occ.0 & mask.0;
-        // unsigned hi = unsigned(occupied >> 32) & unsigned(mask >> 32);
-        let hi = occ.0.overflowing_shr(32).0 & mask.0.overflowing_shr(32).0;
-
-        // return (lo * unsigned(magic) ^ hi * unsigned(magic >> 32)) >> shift;
-        let k0 = lo.overflowing_mul(magic.0.overflowing_pow(hi as u32).0).0
-            .overflowing_mul(magic.0.overflowing_shr(32).0).0;
-        let k1 = k0.overflowing_shr(shift).0;
-
-        k1
-    }
+    // pub fn index(mask: BitBoard, magic: BitBoard, shift: u32, occ: BitBoard) -> u64 {
+    //     // unsigned lo = unsigned(occupied) & unsigned(mask);
+    //     let lo = occ.0 & mask.0;
+    //     // unsigned hi = unsigned(occupied >> 32) & unsigned(mask >> 32);
+    //     let hi = occ.0.overflowing_shr(32).0 & mask.0.overflowing_shr(32).0;
+    //     // return (lo * unsigned(magic) ^ hi * unsigned(magic >> 32)) >> shift;
+    //     let k0 = lo.overflowing_mul(magic.0.overflowing_pow(hi as u32).0).0
+    //         .overflowing_mul(magic.0.overflowing_shr(32).0).0;
+    //     let k1 = k0.overflowing_shr(shift).0;
+    //     k1
+    // }
 
 }
 
+pub fn _gen_magics_pext(bishop: bool)
+                        -> std::result::Result<([Magic; 64], [BitBoard; 0x1480]),
+                                               ([Magic; 64], [BitBoard; 0x19000])>
+{
+    unimplemented!()
+}
+
+#[allow(unreachable_code)]
 pub fn _gen_magics(bishop: bool)
                     -> std::result::Result<([Magic; 64], [BitBoard; 0x1480]),
                                             ([Magic; 64], [BitBoard; 0x19000])>
 {
-    let mut rng = rand::thread_rng();
+    // let mut rng = rand::thread_rng();
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
+
     let mut reference: [BitBoard; 4096] = [BitBoard::empty(); 4096];
+    let mut occupancy: [BitBoard; 4096] = [BitBoard::empty(); 4096];
 
     let mut table_b: [BitBoard; 0x1480]  = [BitBoard::empty(); 0x1480];
     let mut table_r: [BitBoard; 0x19000] = [BitBoard::empty(); 0x19000];
@@ -57,8 +66,8 @@ pub fn _gen_magics(bishop: bool)
     let mut magics: [Option<Magic>; 64] = [None; 64];
     let (r1bb,r8bb) = (BitBoard::mask_rank(0),BitBoard::mask_rank(7));
     let (f1bb,f8bb) = (BitBoard::mask_file(0),BitBoard::mask_file(7));
-    // let mut epoch = [0; 4096];
-    let mut epoch = [0; 65536];
+    let mut epoch = [0; 4096];
+    // let mut epoch = [0; 65536];
     let mut cnt   = 0;
     let mut size: usize = 0;
 
@@ -91,11 +100,19 @@ pub fn _gen_magics(bishop: bool)
 
         // let shift = 64 - mask.popcount();
 
-        let attacks = if sq == 0 {
+        // #[cfg(not(target_feature = "bmi2"))]
+        let mut attacks: usize = if sq == 0 {
             0
         } else {
             magics[sq as usize - 1].unwrap().attacks + size
         };
+
+        // let mut attacks: &mut [BitBoard] = if sq == 0 {
+        //     &mut (if bishop { table_b[..] } else { table_r[..] } )
+        // } else {
+        //     let idx = magics[sq as usize - 1].unwrap().attacks + size;
+        //     &mut (if bishop { table_b[idx..] } else { table_r[idx..] } )
+        // };
 
         let mbs = mask.iter_subsets();
 
@@ -109,19 +126,31 @@ pub fn _gen_magics(bishop: bool)
         //     mask.popcount()
         // };
 
+        // let mut b = 0;
+        // size = 0;
+        // loop {
+        //     occupancy[size] = BitBoard(b);
+        //     reference[size] = Tables::gen_moveboard(BitBoard(b), c0, bishop);
+        //     #[cfg(target_feature = "bmi2")]
+        //     if b == 0 { break; }
+        // }
+
+        // #[cfg(target_feature = "bmi2")]
+        // continue;
+
         for (s,b) in mbs.iter().enumerate() {
             if bishop {
                 reference[s] = Tables::gen_moveboard_bishop(*b, c0);
+                // #[cfg(target_feature = "bmi2")]
+                // {
+                //     table_b[pext(b, )]
+                // }
             } else {
                 reference[s] = Tables::gen_moveboard_rook(*b, c0);
             }
             size = s + 1;
         }
         let mut mm: u64;
-
-        // let mut n1s = vec![];
-        // let mut n = mask.popcount() - 1;
-        // let mut n1 = true;
 
         let n = mask.popcount();
         let shift = 64 - n;
@@ -135,13 +164,6 @@ pub fn _gen_magics(bishop: bool)
             // mm = rng.gen();
             // mm = 0x48FFFE99FECFAA00;
             // mm = 0x90a207c5e7ae23ff;
-
-            // if t0.elapsed().as_secs_f64() > 1.0 {
-            //     n = n + 1;
-            //     n1 = false;
-            //     epoch = [0; 65536];
-            //     shift = 64 - n;
-            // }
 
             loop {
                 mm = Tables::sparse_rand(&mut rng);
@@ -178,38 +200,13 @@ pub fn _gen_magics(bishop: bool)
                     break 'inner;
                 }
 
-                // let tb = table[attacks + idx];
-                // if tb.is_empty() {
-                //     table[attacks + idx] = result;
-                //     xs.push(attacks + idx);
-                // } else if tb.0 != result.0 {
-                //     done = false;
-                //     break 'inner;
-                // }
-
             };
 
             if done {
                 break 'outer
             }
 
-            // if done {
-            //     break 'outer
-            // } else {
-            //     for i in xs.iter() {
-            //         table[*i] = BitBoard::empty();
-            //     }
-            //     xs.clear()
-            // }
-
         }
-
-        // if n1 {
-        //     debug!("Found N-1 for {:?}", c0);
-        //     n1s.push((n1, sq, c0));
-        // } else {
-        //     debug!("Found only N for {:?}", c0);
-        // }
 
         if mm == 0 {
             panic!("wot");
@@ -217,47 +214,6 @@ pub fn _gen_magics(bishop: bool)
 
         let m = Magic::new(attacks, mask, BitBoard(mm), shift);
         magics[sq as usize] = Some(m);
-
-        // for (idx, result) in results.into_iter() {
-        //     table[idx] = result;
-        // }
-
-        // eprintln!("n = {:?}", n);
-        // eprintln!("2^n = {:?}", 2u64.pow(n));
-
-        // eprintln!("mbs.len() = {:?}", mbs.len());
-
-        // let mbs = vec![
-        //     BitBoard::new(&["A6","D1"]),
-        // ];
-
-        // let mut rng = rand::thread_rng();
-        // let mut mm: u64;
-        // for (s,b) in mbs.iter().enumerate() {
-
-            // loop {
-            //     mm = rng.gen();
-            //     let k0 = b.0.overflowing_mul(mm).0;
-            //     let k1 = 2u64.pow(mask.popcount());
-            //     let k2 = 64u64.overflowing_sub(k1).0;
-            //     let k3 = k0.overflowing_shr(k2 as u32).0;
-            //     if k3 != 0 { break; }
-            // }
-
-            // // eprintln!("magic? = {:?}", BitBoard(mm));
-            // m.magic = BitBoard(mm);
-            // cnt += 1;
-            // for i in 0..size {
-            //     let idx = Magic::index(mask, BitBoard(mm), shift, occupancy[i]) as usize;
-            //     if epoch[idx] < cnt {
-            //         epoch[idx] = cnt;
-            //         table[attacks + idx] = reference[i];
-            //     } else if table[attacks + idx] != reference[i] {
-            //         break;
-            //     }
-            // }
-
-        // }
 
     }
 
@@ -276,9 +232,52 @@ pub fn _gen_magics(bishop: bool)
 
 }
 
+unsafe fn pext(a: u64, mask: u64) -> u64 {
+    #[cfg(not(target_feature = "bmi2"))]
+    panic!("pext but no bmi2 instructions");
+    #[cfg(target_feature = "bmi2")]
+    core::arch::x86_64::_pext_u64(a, mask)
+}
 
 impl Tables {
 
+    #[cfg(feature = "nope")]
+    pub fn attacks_rook(&self, c0: Coord, occ: BitBoard) -> BitBoard {
+        let m = self.magics_rook[c0];
+        #[cfg(target_feature = "bmi2")]
+        unsafe {
+            let idx = pext(occ.0, m.mask.0);
+            self.table_rook[m.attacks + idx as usize]
+        }
+        #[cfg(not(target_feature = "bmi2"))]
+        {
+            let mut occ = occ;
+            let occ = (occ & m.mask).0;
+            let occ = occ.overflowing_mul(m.magic.0).0;
+            let occ = occ.overflowing_shr(m.shift as u32).0;
+            self.table_rook[m.attacks + occ as usize]
+        }
+    }
+
+    #[cfg(feature = "nope")]
+    pub fn attacks_bishop(&self, c0: Coord, occ: BitBoard) -> BitBoard {
+        let m = self.magics_bishop[c0];
+        #[cfg(target_feature = "bmi2")]
+        unsafe {
+            let idx = pext(occ.0, m.mask.0);
+            self.table_bishop[m.attacks + idx as usize]
+        }
+        #[cfg(not(target_feature = "bmi2"))]
+        {
+            let mut occ = occ;
+            let occ = (occ & m.mask).0;
+            let occ = occ.overflowing_mul(m.magic.0).0;
+            let occ = occ.overflowing_shr(m.shift as u32).0;
+            self.table_bishop[m.attacks + occ as usize]
+        }
+    }
+
+    // #[cfg(feature = "nope")]
     pub fn attacks_rook(&self, c0: Coord, occ: BitBoard) -> BitBoard {
         let sq: u32 = c0.into();
         let m = self.magics_rook[sq as usize];
@@ -293,13 +292,10 @@ impl Tables {
         self.table_rook[m.attacks + occ as usize]
     }
 
+    // #[cfg(feature = "nope")]
     pub fn attacks_bishop(&self, c0: Coord, occ: BitBoard) -> BitBoard {
         let sq: u32 = c0.into();
         let m = self.magics_bishop[sq as usize];
-        // if m.magic.0 == 0 {
-        //     trace!("Magics not initialized");
-        //     return BitBoard::empty();
-        // }
         let mut occ = occ;
         let occ = (occ & m.mask).0;
         let occ = occ.overflowing_mul(m.magic.0).0;
@@ -307,7 +303,7 @@ impl Tables {
         self.table_bishop[m.attacks + occ as usize]
     }
 
-    fn sparse_rand(rng: &mut rand::rngs::ThreadRng) -> u64 {
+    fn sparse_rand(rng: &mut StdRng) -> u64 {
         let x0: u64 = rng.gen();
         let x1: u64 = rng.gen();
         let x2: u64 = rng.gen();
@@ -344,6 +340,14 @@ impl Tables {
 
         // (!b0 & b1).set_zero(c0)
         b1.set_zero(c0)
+    }
+
+    pub fn gen_moveboard(occ: BitBoard, c0: Coord, bishop: bool) -> BitBoard {
+        if bishop {
+            Tables::gen_moveboard_bishop(occ, c0)
+        } else {
+            Tables::gen_moveboard_rook(occ, c0)
+        }
     }
 
     pub fn gen_moveboard_rook(occ: BitBoard, c0: Coord) -> BitBoard {

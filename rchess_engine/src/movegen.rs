@@ -40,6 +40,7 @@ pub enum MoveGenStage {
     QSearchHash,
     QSearchInit,
     QSearch,
+    // QChecks,
 
     // QSearchRecaps,
 
@@ -753,18 +754,6 @@ mod pieces {
                             self.buf.push(mv);
                         }
                     }
-
-                    // for from in ps.into_iter() {
-                    //     let bb = BitBoard::single(from);
-                    //     let mut cs = (bb.shift_dir(dw) & self.game.get_color(!self.side))
-                    //         | (bb.shift_dir(de) & self.game.get_color(!self.side));
-                    //     if let Some(tgt) = target { cs &= tgt; }
-                    //     for to in cs.into_iter() {
-                    //         let (_,victim) = self.game.get_at(to).unwrap();
-                    //         let mv = Move::Capture { from, to, pc: Pawn, victim };
-                    //         self.buf.push(mv);
-                    //     }
-                    // }
 
                     self.gen_promotions(gen, target);
                 },

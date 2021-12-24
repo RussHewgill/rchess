@@ -336,24 +336,37 @@ pub fn crit_bench_1(c: &mut Criterion) {
     //     let (m,stats) = ex.explore(&ts, None);
     // }));
 
-    let n = 3;
-    let t = 0.1;
+    use rchess_engine_lib::movegen::*;
 
-    let timesettings = TimeSettings::new_f64(0.0,t);
-    let mut ex = Explorer::new(g0.state.side_to_move, g0.clone(), n, timesettings);
-    ex.cfg.num_threads = Some(1);
-    // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+    let st = ABStack::new();
 
-    println!("starting");
-    let t0 = std::time::Instant::now();
-    for (n,g) in wacs.iter().enumerate() {
-        eprintln!("n = {:?}", n);
-        ex.clear_tt();
-        ex.update_game(*g);
-        let (m,stats) = ex.explore(&ts);
-    }
-    let t1 = t0.elapsed().as_secs_f64();
-    println!("finished in {:.3} seconds", t1);
+    group.bench_function("movegen all", |b| b.iter(|| {
+        for g in wacs.iter() {
+            let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
+            let mut x = 0;
+            while let Some(mv) = movegen.next(&st) {
+                x += 1;
+            }
+        }
+    }));
+
+    // let n = 3;
+    // let t = 0.1;
+    // let timesettings = TimeSettings::new_f64(0.0,t);
+    // let mut ex = Explorer::new(g0.state.side_to_move, g0.clone(), n, timesettings);
+    // ex.cfg.num_threads = Some(1);
+    // // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+
+    // println!("starting");
+    // let t0 = std::time::Instant::now();
+    // for (n,g) in wacs.iter().enumerate() {
+    //     eprintln!("n = {:?}", n);
+    //     ex.clear_tt();
+    //     ex.update_game(*g);
+    //     let (m,stats) = ex.explore(&ts);
+    // }
+    // let t1 = t0.elapsed().as_secs_f64();
+    // println!("finished in {:.3} seconds", t1);
 
     // group.bench_function("explore wacs", |b| b.iter(|| {
     //     for g in wacs.iter() {
