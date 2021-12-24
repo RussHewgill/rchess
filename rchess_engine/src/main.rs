@@ -2876,13 +2876,6 @@ fn main9() {
     let n = 8;
     // let n = 2;
 
-    // use core::arch::x86_64::_pext_u64;
-
-
-
-
-    return;
-
     let mut wacs = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
     let mut wacs: Vec<Game> = wacs.into_iter().map(|(fen,_)| {
         Game::from_fen(&ts, &fen).unwrap()
@@ -2890,15 +2883,19 @@ fn main9() {
 
     let st = ABStack::new();
 
-    for _ in 0..10000 {
-        for g in wacs.iter() {
-            let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
-            let mut x = 0;
-            while let Some(mv) = movegen.next(&st) {
-                x += 1;
+    timer!({
+        for k in 0..5000 {
+            if k % 1000 == 0 {
+                eprintln!("k = {:?}", k);
             }
-        }
-    }
+            for g in wacs.iter() {
+                let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
+                let mut x = 0;
+                while let Some(mv) = movegen.next(&st) {
+                    x += 1;
+                }
+            }
+        }});
 
     return;
 

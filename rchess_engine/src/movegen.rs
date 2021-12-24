@@ -1,12 +1,13 @@
 
-use std::collections::HashMap;
-
 pub use self::pieces::*;
 use crate::explore::ABStack;
+use crate::move_ordering::OrdMove;
 use crate::types::*;
 use crate::tables::*;
 use crate::move_ordering::score_move_for_sort;
 
+use std::collections::BinaryHeap;
+use std::collections::HashMap;
 use arrayvec::ArrayVec;
 
 // use strum::{IntoEnumIterator,EnumIter};
@@ -78,19 +79,47 @@ impl MoveGenStage {
     }
 }
 
+#[derive(Debug,Eq,Clone,Copy)]
+pub struct MGKey(usize, OrdMove);
+
+impl Ord for MGKey {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.1.cmp(&other.1)
+    }
+}
+
+impl PartialOrd for MGKey {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.1.partial_cmp(&other.1)
+    }
+}
+
+impl PartialEq for MGKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+            && self.1 == other.1
+    }
+}
+
 #[derive(Debug,Clone)]
 pub struct MoveGen<'a> {
     ts:                  &'static Tables,
     game:                &'a Game,
 
-    pub see_hashes:      HashMap<Move,Score>,
+    pub see_map:         HashMap<Move,Score>,
 
     in_check:            bool,
     side:                Color,
 
     stage:               MoveGenStage,
+
     buf:                 ArrayVec<Move,256>,
-    // buf:                 Vec<Move>,
+    // buf:                 ArrayVec<(Move,OrdMove),256>,
+    // buf_scored:          ArrayVec<(Move,OrdMove),256>,
+
+    buf_set:             BinaryHeap<MGKey>,
+
+    cur:                 usize,
 
     pub hashmove:        Option<Move>,
     pub counter_move:    Option<Move>,
@@ -100,27 +129,118 @@ pub struct MoveGen<'a> {
     ply:                 Depth,
 }
 
+/// Binary Heap
+impl<'a> MoveGen<'a> {
+
+    pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
+        // unimplemented!()
+        let MGKey(n,_) = self.buf_set.pop()?;
+        self.buf.get(n).copied()
+    }
+
+    pub fn sort(&mut self, st: &ABStack) {
+        let mut see_map = &mut self.see_map;
+        #[cfg(feature = "killer_moves")]
+        let killers = st.killer_get(self.ply);
+        #[cfg(not(feature = "killer_moves"))]
+        let killers = (None,None);
+
+        for (n,mv) in self.buf.iter().enumerate() {
+            let score = score_move_for_sort(
+                self.ts, self.game, see_map, self.stage, st, self.ply, *mv, killers);
+            self.buf_set.push(MGKey(n,score));
+        }
+
+        // for mv in self.buf.drain(..) {
+        //     let score = score_move_for_sort(
+        //         self.ts, self.game, see_map, self.stage, st, self.ply, mv, killers);
+        //     // self.buf_scored.push((mv, score));
+        // }
+
+    }
+
+}
+
+/// Score, Pick best
+impl<'a> MoveGen<'a> {
+
+    pub fn pick_next(&mut self, st: &ABStack) -> Option<Move> {
+        self._pick(st, false)
+    }
+
+    pub fn pick_best(&mut self, st: &ABStack) -> Option<Move> {
+        self._pick(st, true)
+    }
+
+    #[cfg(feature = "nope")]
+    pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
+        // let (mv,_) = self.buf_scored.pop()?;
+        let mv = self.buf.pop()?;
+        Some(mv)
+    }
+
+    #[cfg(feature = "nope")]
+    pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
+
+        let len = self.buf_scored.len();
+
+        // let mut cur = 0;
+        self.cur = 0;
+        while self.cur < len {
+
+            if best {
+                self.buf_scored.swap(self.cur, len - 1);
+            }
+
+            let (mv,score) = self.buf_scored[self.cur];
+            // if Some(mv) != self.hashmove && filter 
+            if Some(mv) != self.hashmove {
+                self.buf_scored.remove(self.cur);
+                return Some(mv);
+            }
+
+            self.cur += 1;
+        }
+
+        None
+    }
+
+    #[cfg(feature = "nope")]
+    pub fn sort(&mut self, st: &ABStack) {
+        let mut see_map = &mut self.see_map;
+        #[cfg(feature = "killer_moves")]
+        let killers = st.killer_get(self.ply);
+        #[cfg(not(feature = "killer_moves"))]
+        let killers = (None,None);
+        for mv in self.buf.drain(..) {
+            let score = score_move_for_sort(
+                self.ts, self.game, see_map, self.stage, st, self.ply, mv, killers);
+            self.buf_scored.push((mv, score));
+        }
+    }
+
+}
+
 /// Sort
 impl<'a> MoveGen<'a> {
 
     #[cfg(feature = "nope")]
     pub fn sort(&mut self, st: &ABStack) {}
 
-    // #[cfg(feature = "nope")]
+    #[cfg(feature = "nope")]
     pub fn sort(&mut self, st: &ABStack) {
         let mut buf = &mut self.buf;
         let ts      = self.ts;
         let g       = self.game;
         let ply     = self.ply;
         let stage   = self.stage;
-        let mut see = &mut self.see_hashes;
+        let mut see = &mut self.see_map;
 
         #[cfg(feature = "killer_moves")]
         let killers = match st.stacks.get(ply as usize) {
             Some(ks) => (ks.killers[0],ks.killers[1]),
             _        => (None,None)
         };
-        // let killers = st.killers.get(g.state.side_to_move,ply);
         #[cfg(not(feature = "killer_moves"))]
         let killers = (None,None);
 
@@ -155,12 +275,17 @@ impl<'a> MoveGen<'a> {
         let mut out = Self {
             ts,
             game,
-            see_hashes:  HashMap::default(),
+            see_map:  HashMap::default(),
             in_check,
             side,
             stage:     if in_check { MoveGenStage::EvasionHash } else { MoveGenStage::Hash },
             buf:       ArrayVec::new(),
+            // buf_scored: ArrayVec::new(),
             // buf:       Vec::with_capacity(128),
+
+            buf_set:      BinaryHeap::new(),
+
+            cur: 0,
 
             hashmove,
             counter_move,
@@ -194,13 +319,18 @@ impl<'a> MoveGen<'a> {
         let mut out = Self {
             ts,
             game,
-            see_hashes:  HashMap::default(),
+            see_map:  HashMap::default(),
             in_check,
             side,
             stage:     if in_check { MoveGenStage::EvasionHash } else { MoveGenStage::QSearchHash },
             // stage:     MoveGenStage::Finished,
             buf:       ArrayVec::new(),
             // buf:       Vec::with_capacity(128),
+            // buf_scored: ArrayVec::new(),
+
+            buf_set:      BinaryHeap::new(),
+
+            cur: 0,
 
             hashmove,
             counter_move,
@@ -310,7 +440,8 @@ impl<'a> MoveGen<'a> {
                 self.next(stack)
             },
             Captures => {
-                if let Some(mv) = self.buf.pop() {
+                // if let Some(mv) = self.buf.pop() {
+                if let Some(mv) = self.pick_best(stack) {
                     if Some(mv) != self.hashmove && self.move_is_legal(mv) {
                         return Some(mv);
                     } else {
@@ -330,7 +461,8 @@ impl<'a> MoveGen<'a> {
                 self.next(stack)
             },
             Quiets => {
-                if let Some(mv) = self.buf.pop() {
+                if let Some(mv) = self.pick_next(stack) {
+                // if let Some(mv) = self.buf.pop() {
                     if Some(mv) != self.hashmove && self.move_is_legal(mv) {
                         return Some(mv);
                     } else {
@@ -360,7 +492,8 @@ impl<'a> MoveGen<'a> {
                 self.next(stack)
             },
             Evasion => {
-                if let Some(mv) = self.buf.pop() {
+                if let Some(mv) = self.pick_best(stack) {
+                // if let Some(mv) = self.buf.pop() {
                     if Some(mv) != self.hashmove && self.move_is_legal(mv) {
                         return Some(mv);
                     } else {
@@ -406,7 +539,8 @@ impl<'a> MoveGen<'a> {
                 self.next(stack)
             },
             QSearch => {
-                if let Some(mv) = self.buf.pop() {
+                if let Some(mv) = self.pick_best(stack) {
+                // if let Some(mv) = self.buf.pop() {
                     if Some(mv) != self.hashmove && self.move_is_legal(mv) {
                         return Some(mv);
                     } else {
@@ -567,7 +701,7 @@ impl<'a> MoveGen<'a> {
     }
 
     pub fn static_exchange(&mut self, mv: Move) -> Option<Score> {
-        Self::_static_exchange(self.ts, self.game, &mut self.see_hashes, mv)
+        Self::_static_exchange(self.ts, self.game, &mut self.see_map, mv)
         // self.game.static_exchange(self.ts, mv)
     }
 }

@@ -46,9 +46,9 @@ pub fn gen_magics(bishop: bool)
                         -> std::result::Result<([Magic; 64], [BitBoard; 0x1480]),
                                                ([Magic; 64], [BitBoard; 0x19000])>
 {
-    // #[cfg(target_feature = "bmi2")]
-    // return _gen_magics_pext(bishop);
-    // #[cfg(not(target_feature = "bmi2"))]
+    #[cfg(target_feature = "bmi2")]
+    return _gen_magics_pext(bishop);
+    #[cfg(not(target_feature = "bmi2"))]
     return _gen_magics(bishop);
 }
 
@@ -320,7 +320,7 @@ unsafe fn pext(a: u64, mask: u64) -> u64 {
 
 impl Tables {
 
-    #[cfg(feature = "nope")]
+    // #[cfg(feature = "nope")]
     pub fn attacks_rook(&self, c0: Coord, occ: BitBoard) -> BitBoard {
         let m = self.magics_rook[c0];
         #[cfg(target_feature = "bmi2")]
@@ -338,7 +338,7 @@ impl Tables {
         }
     }
 
-    #[cfg(feature = "nope")]
+    // #[cfg(feature = "nope")]
     pub fn attacks_bishop(&self, c0: Coord, occ: BitBoard) -> BitBoard {
         let m = self.magics_bishop[c0];
         #[cfg(target_feature = "bmi2")]
@@ -356,7 +356,7 @@ impl Tables {
         }
     }
 
-    // #[cfg(feature = "nope")]
+    #[cfg(feature = "nope")]
     pub fn attacks_rook(&self, c0: Coord, occ: BitBoard) -> BitBoard {
         let sq: u32 = c0.into();
         let m = self.magics_rook[sq as usize];
@@ -371,7 +371,7 @@ impl Tables {
         self.table_rook[m.attacks + occ as usize]
     }
 
-    // #[cfg(feature = "nope")]
+    #[cfg(feature = "nope")]
     pub fn attacks_bishop(&self, c0: Coord, occ: BitBoard) -> BitBoard {
         let sq: u32 = c0.into();
         let m = self.magics_bishop[sq as usize];
