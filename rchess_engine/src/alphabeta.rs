@@ -152,10 +152,8 @@ impl ExHelper {
         if let Some(nnue) = &self.nnue {
             let mut nn = nnue.borrow_mut();
             nn.ft.accum_pop();
-
-            stack.move_history.pop();
-
         }
+        stack.move_history.pop();
     }
 
 }
@@ -325,7 +323,7 @@ impl ExHelper {
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
 
         // let mut current_stack: &mut ABStackPly = stack.get_or_push(ply);
-        stack.push_if_empty(ply);
+        stack.push_if_empty(g, ply);
 
         #[cfg(feature = "pvs_search")]
         let mut is_pv_node = NODE_TYPE != NonPV;
@@ -352,10 +350,13 @@ impl ExHelper {
             /// Repetition checking
             if alpha < DRAW_VALUE {
                 // for (zb,_) in stack.move_history.iter().step_by(2) {
+
                 let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
+                // let cycle = stack.move_history.contains(&zb2);
                 if cycle && alpha >= beta {
                     return ABSingle(ABResult::new_single(g.last_move.unwrap(), 0));
                 }
+
             }
 
             /// Halted search

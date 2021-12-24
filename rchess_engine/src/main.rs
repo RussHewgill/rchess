@@ -2914,7 +2914,7 @@ fn main9() {
     ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
-    ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+    // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
     ex.cfg.late_move_reductions = true;
 

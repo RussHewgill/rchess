@@ -1,4 +1,6 @@
 
+use std::collections::HashSet;
+
 use crate::types::*;
 
 use arrayvec::ArrayVec;
@@ -17,7 +19,8 @@ pub struct ABStack {
 
     // pub move_history:   ArrayVec<(Zobrist, Move), 128>,
     pub move_history:   Vec<(Zobrist, Move)>,
-    // pub move_history:   Vec<(Zobrist, Move)>,
+    // pub move_history:   HashSet<Zobrist>,
+
     pub pvs:            [Move; 128],
 }
 
@@ -26,9 +29,9 @@ impl ABStack {
         unimplemented!()
     }
 
-    pub fn push_if_empty(&mut self, ply: Depth) {
+    pub fn push_if_empty(&mut self, g: &Game, ply: Depth) {
         if self.stacks.get(ply as usize).is_none() {
-            self.stacks.push(ABStackPly::new(ply));
+            self.stacks.push(ABStackPly::new(g, ply));
         }
     }
 
@@ -56,17 +59,19 @@ pub struct ABStackPly {
     pub moves_searched:   u8,
     pub killers:          [Option<Move>; 2],
     pub static_eval:      Option<Score>,
+    pub material:         Material,
 }
 
 /// New
 impl ABStackPly {
-    pub fn new(ply: Depth) -> Self {
+    pub fn new(g: &Game, ply: Depth) -> Self {
         Self {
             ply,
             moves_searched: 0,
             // killers:        ArrayVec::default(),
             killers:        [None; 2],
             static_eval:    None,
+            material:       g.state.material,
         }
     }
 }
@@ -86,6 +91,9 @@ impl ABStack {
     pub fn new_with_moves(moves: &Vec<(Zobrist, Move)>) -> Self {
         let mut out = Self::new();
         out.move_history = moves.clone();
+        // for (zb,_) in moves.iter() {
+        //     out.move_history.insert(*zb);
+        // }
         // out.move_history.try_extend_from_slice(&moves).unwrap();
         out
     }
@@ -99,6 +107,7 @@ impl ABStack {
 
             stacks:         Vec::with_capacity(64),
             move_history:   Vec::with_capacity(64),
+            // move_history:   HashSet::default(),
             // stacks:         ArrayVec::new(),
             // move_history:   ArrayVec::new(),
 
