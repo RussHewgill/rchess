@@ -566,7 +566,7 @@ impl ExHelper {
             }
 
             let capture_or_promotion = mv.filter_all_captures() || mv.filter_promotion();
-            // let gives_check = movegen.gives_check(mv);
+            let gives_check = movegen.gives_check(mv);
 
             // TODO: 
             /// Shallow pruning
@@ -610,6 +610,7 @@ impl ExHelper {
                     && !mv.filter_promotion()
                     // && !mv.filter_all_captures()
                     && !in_check
+                    && !gives_check
                     && g2.state.checkers.is_empty()
                 {
 

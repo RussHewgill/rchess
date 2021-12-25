@@ -718,6 +718,7 @@ impl<'a> MoveGen<'a> {
 }
 
 /// Misc helpers
+// #[cfg(feature = "nope")]
 impl<'a> MoveGen<'a> {
 
     pub fn gives_check(&self, mv: Move) -> bool {

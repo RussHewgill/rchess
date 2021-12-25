@@ -77,7 +77,7 @@ pub fn score_move_for_sort(
                 if let Some(see) = MoveGen::_static_exchange(ts, g, see_map, mv) {
                 // if let Some(see) = g.static_exchange(ts, mv) {
                     if see == 0 {
-                        // return CaptureEvenSee;
+                        return CaptureEvenSee;
                     } else if see > 0 {
                         // return CaptureGoodSee((see / 1000).clamp(-127,127) as i8);
                         return CaptureGoodSee(scale_score_to_i8(see));
