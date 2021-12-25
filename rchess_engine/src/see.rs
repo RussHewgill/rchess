@@ -7,7 +7,12 @@ use crate::explore::*;
 
 
 impl Game {
-    pub fn static_exchange_ge(&self, ts: &Tables, mv: Move, threshold: Score) -> Option<bool> {
+
+    pub fn static_exchange_ge(&self, ts: &Tables, mv: Move, threshold: Score) -> bool {
+        self._static_exchange_ge(ts, mv, threshold).unwrap_or(false)
+    }
+
+    fn _static_exchange_ge(&self, ts: &Tables, mv: Move, threshold: Score) -> Option<bool> {
 
         let side = self.state.side_to_move;
         let (from,to) = (mv.sq_from(),mv.sq_to());
@@ -63,6 +68,8 @@ impl Game {
             if bb.is_not_empty() {
                 swap = Pawn.score() - swap;
                 if swap < res { break; }
+                occ ^= SQUARE_BB[bb.bitscan()];
+                attackers |= ts.attacks_rook(to, occ) & (self.get_piece(Rook) | self.get_piece(Queen));
                 continue;
             }
 

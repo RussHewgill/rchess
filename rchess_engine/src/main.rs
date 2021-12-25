@@ -2881,15 +2881,24 @@ fn main9() {
     // // let fen = "1k6/2n5/8/3n4/4P3/4N3/8/K7 w - - 0 1";
     // let fen = "1k6/2n5/2p5/3n4/4P3/2N1N3/8/K7 w - - 0 1";
     // let mut g = Game::from_fen(&ts, fen).unwrap();
-    // let mv0 = Move::new_capture("e4", "d5", Pawn, Knight);
+    // // let mv0 = Move::new_capture("e4", "d5", Pawn, Knight);
+    // let mv0 = Move::new_capture("c3", "d5", Knight, Knight);
     // let k0 = g.static_exchange(&ts, mv0);
     // eprintln!("k0 = {:?}", k0);
-    // let val = 0;
-    // // let val = 100;
-    // // let val = 320;
-    // // let val = 320;
+    // let val = 1;
     // let k1 = g.static_exchange_ge(ts, mv0, val);
     // eprintln!("k1 = {:?}", k1);
+    // return;
+
+    // let mut movegen = MoveGen::new(&ts, &g, None, &ABStack::new(), 0, 0);
+    // while let Some(mv) = movegen.next(&ABStack::new()) {
+    //     eprintln!("mv = {:?}", mv);
+    //     let see0 = g.static_exchange(&ts, mv);
+    //     eprintln!("see 0 = {:?}", see0);
+    //     let threshold = 1;
+    //     let see1 = g.static_exchange_ge(&ts, mv, threshold);
+    //     eprintln!("see 1 = {:?}", see1);
+    // }
     // return;
 
     let mut wacs = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();

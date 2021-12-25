@@ -17,7 +17,7 @@ impl Default for ButterflyHistory {
 impl ButterflyHistory {
 
     pub fn get_move(&self, mv: Move, side: Color) -> Option<Score> {
-        assert!(mv.filter_quiet() || mv.filter_pawndouble());
+        // assert!(mv.filter_quiet() || mv.filter_pawndouble());
         self._get_move(mv.sq_from(), mv.sq_to(), side)
     }
 

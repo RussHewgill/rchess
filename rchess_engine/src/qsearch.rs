@@ -175,11 +175,17 @@ impl ExHelper {
 
                 // moves_searched += 1;
 
-                if let Some(see) = movegen.static_exchange(mv) {
-                    if see < 0 {
-                        self.pop_nnue(stack);
-                        continue;
-                    }
+                // if let Some(see) = movegen.static_exchange_ge(mv) {
+                //     if see < 0 {
+                //         self.pop_nnue(stack);
+                //         continue;
+                //     }
+                // }
+
+                let see = movegen.static_exchange_ge(mv, 1);
+                if !see {
+                    self.pop_nnue(stack);
+                    continue;
                 }
 
                 let score = -self.qsearch::<{NODE_TYPE}>(

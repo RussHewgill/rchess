@@ -133,7 +133,7 @@ pub struct MoveGen<'a> {
     ply:                 Depth,
 }
 
-/// Score, Pick best
+/// Score, Sort, Pick best
 impl<'a> MoveGen<'a> {
 
     pub fn pick_next(&mut self, st: &ABStack) -> Option<Move> {
@@ -196,6 +196,7 @@ impl<'a> MoveGen<'a> {
 
         self.buf_scored.sort_unstable_by_key(|x| x.1);
         self.buf_scored.reverse();
+
     }
 
 }
@@ -669,40 +670,49 @@ impl<'a> MoveGen<'a> {
 /// SEE
 impl<'a> MoveGen<'a> {
 
-    #[cfg(feature = "nope")]
-    pub fn _static_exchange(
-        ts: &'static Tables,
-        g: &Game,
-        mut map: &mut HashMap<Move,Score>,
-        mv: Move
-    ) -> Option<Score> {
-        g.static_exchange(ts, mv)
-    }
+    // // #[cfg(feature = "nope")]
+    // pub fn _static_exchange(
+    //     ts:          &'static Tables,
+    //     g:           &Game,
+    //     mut map:     &mut HashMap<Move,Score>,
+    //     mv:          Move,
+    //     threshold:   Score,
+    // ) -> Option<Score> {
+    //     g.static_exchange(ts, mv)
+    // }
 
     // #[cfg(feature = "nope")]
-    pub fn _static_exchange(
-        ts: &'static Tables,
-        g: &Game,
-        mut map: &mut HashMap<Move,Score>,
-        mv: Move
-    ) -> Option<Score> {
-        if !mv.filter_all_captures() { return None; }
-        if let Some(score) = map.get(&mv) {
-            Some(*score)
-        } else {
-            if let Some(score) = g.static_exchange(ts, mv) {
-                map.insert(mv, score);
-                Some(score)
-            } else {
-                None
-            }
-        }
+    // pub fn _static_exchange(
+    //     ts:          &'static Tables,
+    //     g:           &Game,
+    //     mut map:     &mut HashMap<Move,Score>,
+    //     mv:          Move,
+    //     threshold:   Score,
+    // ) -> Option<Score> {
+    //     if !mv.filter_all_captures() { return None; }
+    //     if let Some(score) = map.get(&mv) {
+    //         Some(*score)
+    //     } else {
+    //         if let Some(score) = g.static_exchange(ts, mv) {
+    //             map.insert(mv, score);
+    //             Some(score)
+    //         } else {
+    //             None
+    //         }
+    //     }
+    // }
+
+    // pub fn static_exchange(&mut self, mv: Move, threshold: Score) -> Option<Score> {
+    pub fn static_exchange_ge(&mut self, mv: Move, threshold: Score) -> bool {
+        // Self::_static_exchange(self.ts, self.game, &mut self.see_map, mv, threshold)
+        // if let Some(see) = self.game.static_exchange(self.ts, mv) {
+        //     see >= threshold
+        // } else {
+        //     false
+        // }
+        self.game.static_exchange_ge(self.ts, mv, threshold)
     }
 
-    pub fn static_exchange(&mut self, mv: Move) -> Option<Score> {
-        Self::_static_exchange(self.ts, self.game, &mut self.see_map, mv)
-        // self.game.static_exchange(self.ts, mv)
-    }
 }
 
 /// Misc helpers
