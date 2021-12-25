@@ -595,6 +595,7 @@ impl ExHelper {
                 if lmr && mv.filter_all_captures() {
                     // let see = g.static_exchange(&ts, mv).unwrap(); // XXX: g or g2?
                     let see = movegen.static_exchange_ge(mv, 1);
+                    // let see = g.static_exchange_ge(ts, mv, 1);
                     /// Capture with good SEE: do not reduce
                     if see {
                         lmr = false;

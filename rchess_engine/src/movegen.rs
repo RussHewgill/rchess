@@ -682,35 +682,37 @@ impl<'a> MoveGen<'a> {
     // }
 
     // #[cfg(feature = "nope")]
-    // pub fn _static_exchange(
-    //     ts:          &'static Tables,
-    //     g:           &Game,
-    //     mut map:     &mut HashMap<Move,Score>,
-    //     mv:          Move,
-    //     threshold:   Score,
-    // ) -> Option<Score> {
-    //     if !mv.filter_all_captures() { return None; }
-    //     if let Some(score) = map.get(&mv) {
-    //         Some(*score)
-    //     } else {
-    //         if let Some(score) = g.static_exchange(ts, mv) {
-    //             map.insert(mv, score);
-    //             Some(score)
-    //         } else {
-    //             None
-    //         }
-    //     }
-    // }
+    pub fn _static_exchange(
+        ts:          &'static Tables,
+        g:           &Game,
+        mut map:     &mut HashMap<Move,Score>,
+        mv:          Move,
+    ) -> Option<Score> {
+        if !mv.filter_all_captures() { return None; }
+        if let Some(score) = map.get(&mv) {
+            Some(*score)
+        } else {
+            if let Some(score) = g.static_exchange(ts, mv) {
+                map.insert(mv, score);
+                Some(score)
+            } else {
+                None
+            }
+        }
+    }
 
     // pub fn static_exchange(&mut self, mv: Move, threshold: Score) -> Option<Score> {
     pub fn static_exchange_ge(&mut self, mv: Move, threshold: Score) -> bool {
         // Self::_static_exchange(self.ts, self.game, &mut self.see_map, mv, threshold)
+
         // if let Some(see) = self.game.static_exchange(self.ts, mv) {
-        //     see >= threshold
-        // } else {
-        //     false
-        // }
-        self.game.static_exchange_ge(self.ts, mv, threshold)
+        if let Some(see) = Self::_static_exchange(self.ts, self.game, &mut self.see_map, mv) {
+            see >= threshold
+        } else {
+            false
+        }
+
+        // self.game.static_exchange_ge(self.ts, mv, threshold)
     }
 
 }

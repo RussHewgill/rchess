@@ -23,14 +23,14 @@ pub enum OrdMove {
     GoodCapture,
     KillerMove,
     // KillerMove(u8),
-    // CaptureGoodSee(i8),
-    CaptureGoodSee,
+    CaptureGoodSee(i8),
+    // CaptureGoodSee,
     // Capture(u8),
     CaptureEvenSee,
     Castle,
     PromMinor,
-    // CaptureBadSee(i8),
-    CaptureBadSee,
+    CaptureBadSee(i8),
+    // CaptureBadSee,
     OtherScore(i8),
     Other,
 }
@@ -64,29 +64,28 @@ pub fn score_move_for_sort(
 
             _               => {
 
-                /// XXX: ??
-                let threshold = 1;
-
-                if g.static_exchange_ge(ts, mv, threshold) {
-                    return CaptureGoodSee;
-                } else {
-                    return CaptureBadSee;
-                }
+                // /// XXX: ??
+                // let threshold = 1;
+                // if g.static_exchange_ge(ts, mv, threshold) {
+                //     return CaptureGoodSee;
+                // } else {
+                //     return CaptureBadSee;
+                // }
 
                 // return CaptureEvenSee;
 
-                // // if let Some(see) = MoveGen::_static_exchange(ts, g, see_map, mv, threshold) {
+                if let Some(see) = MoveGen::_static_exchange(ts, g, see_map, mv) {
                 // if let Some(see) = g.static_exchange(ts, mv) {
-                //     if see == 0 {
-                //         // return CaptureEvenSee;
-                //     } else if see > 0 {
-                //         // return CaptureGoodSee((see / 1000).clamp(-127,127) as i8);
-                //         return CaptureGoodSee(scale_score_to_i8(see));
-                //     } else if see < 0 {
-                //         // return CaptureBadSee((see / 1000).clamp(-127,127) as i8);
-                //         return CaptureBadSee(scale_score_to_i8(see));
-                //     }
-                // }
+                    if see == 0 {
+                        // return CaptureEvenSee;
+                    } else if see > 0 {
+                        // return CaptureGoodSee((see / 1000).clamp(-127,127) as i8);
+                        return CaptureGoodSee(scale_score_to_i8(see));
+                    } else if see < 0 {
+                        // return CaptureBadSee((see / 1000).clamp(-127,127) as i8);
+                        return CaptureBadSee(scale_score_to_i8(see));
+                    }
+                }
 
             },
 
