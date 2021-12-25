@@ -340,15 +340,26 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
     let st = ABStack::new();
 
-    group.bench_function("movegen all", |b| b.iter(|| {
-        for g in wacs.iter() {
-            let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
-            let mut x = 0;
-            while let Some(mv) = movegen.next(&st) {
-                x += 1;
-            }
-        }
-    }));
+    // group.bench_function("movegen all", |b| b.iter(|| {
+    //     for g in wacs.iter() {
+    //         let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
+    //         let mut x = 0;
+    //         while let Some(mv) = movegen.next(&st) {
+    //             x += 1;
+    //         }
+    //     }
+    // }));
+
+    // let fen = "1k6/2n5/2p5/3n4/4P3/2N1N3/8/K7 w - - 0 1";
+    // let mut g = Game::from_fen(&ts, fen).unwrap();
+    // let mv0 = Move::new_capture("e4", "d5", Pawn, Knight);
+    // group.bench_function("see", |b| b.iter(|| {
+    //     let k0 = g.static_exchange(&ts, mv0);
+    // }));
+    // group.bench_function("see ge", |b| b.iter(|| {
+    //     let val = 0;
+    //     let k1 = g.static_exchange_ge(ts, mv0, val);
+    // }));
 
     // let n = 3;
     // let t = 0.1;

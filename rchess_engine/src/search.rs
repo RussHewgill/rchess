@@ -482,10 +482,10 @@ impl Game {
         moves
     }
 
-    // pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord, col: Color) -> (BitBoard, BitBoard) {
-    pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord, col: Color) -> BitBoard {
+    pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord, col: Color) -> (BitBoard, BitBoard) {
+    // pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord, col: Color) -> BitBoard {
         let mut blockers = BitBoard::empty();
-        // let mut pinners = BitBoard::empty();
+        let mut pinners = BitBoard::empty();
 
         let snipers = ts.get_rook(c0).concat() & (self.get_piece(Rook) | self.get_piece(Queen))
             | ts.get_bishop(c0).concat() & (self.get_piece(Bishop) | self.get_piece(Queen));
@@ -498,33 +498,20 @@ impl Game {
             let b = ts.between(c0, sq.into()) & occ;
 
             if b.is_not_empty() & !b.more_than_one() {
-                // eprintln!("b = {:?}", b);
                 blockers |= b;
 
                 // XXX: not used ??
-                // if let Some((col1,_)) = self.get_at(sq.into()) {
-                //     // println!("wat 1");
-                //     if col != col1 {
-                //         pinners.set_one_mut(sq.into());
-                //     }
-                // }
+                if let Some((col1,_)) = self.get_at(sq) {
+                    if col != col1 {
+                        pinners.set_one_mut(sq);
+                    }
+                }
 
             }
 
-
-            // // if (b.0 != 0) & !((b & BitBoard(b.0 - 1)).0 != 0) {
-            // if (b.0 != 0) & !((b & BitBoard(b.0.overflowing_sub(1).0)).0 != 0) {
-            //     // println!("wat 0");
-            //     blockers |= b;
-            //     if let Some((col1,_)) = self.get_at(sq.into()) {
-            //         // println!("wat 1");
-            //         pinners.set_one_mut(sq.into());
-            //     }
-            // }
-
         });
-        // (blockers, pinners)
-        blockers
+        (blockers, pinners)
+        // blockers
     }
 
     pub fn obstructed(&self, ts: &Tables, c0: Coord, c1: Coord) -> BitBoard {

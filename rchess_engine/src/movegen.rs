@@ -79,26 +79,30 @@ impl MoveGenStage {
     }
 }
 
-#[derive(Debug,Eq,Clone,Copy)]
-pub struct MGKey(usize, OrdMove);
+#[cfg(feature = "nope")]
+mod mg_key {
+    #[derive(Debug,Eq,Clone,Copy)]
+    pub struct MGKey(usize, OrdMove);
 
-impl Ord for MGKey {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.1.cmp(&other.1)
+    impl Ord for MGKey {
+        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+            self.1.cmp(&other.1)
+        }
     }
-}
 
-impl PartialOrd for MGKey {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.1.partial_cmp(&other.1)
+    impl PartialOrd for MGKey {
+        fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+            self.1.partial_cmp(&other.1)
+        }
     }
-}
 
-impl PartialEq for MGKey {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
-            && self.1 == other.1
+    impl PartialEq for MGKey {
+        fn eq(&self, other: &Self) -> bool {
+            self.0 == other.0
+                && self.1 == other.1
+        }
     }
+
 }
 
 #[derive(Debug,Clone)]
@@ -142,10 +146,10 @@ impl<'a> MoveGen<'a> {
 
     // #[cfg(feature = "nope")]
     pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
-        // let (mv,_) = self.buf_scored.pop()?;
-        // // let mv = self.buf.pop()?;
-        // Some(mv)
-        panic!("TODO: move pickers without sort");
+        let (mv,_) = self.buf_scored.pop()?;
+        // let mv = self.buf.pop()?;
+        Some(mv)
+        // panic!("TODO: move pickers without sort");
     }
 
     #[cfg(feature = "nope")]
@@ -177,15 +181,19 @@ impl<'a> MoveGen<'a> {
     // #[cfg(feature = "nope")]
     pub fn sort(&mut self, st: &ABStack) {
         let mut see_map = &mut self.see_map;
+
         #[cfg(feature = "killer_moves")]
         let killers = st.killer_get(self.ply);
+
         #[cfg(not(feature = "killer_moves"))]
         let killers = (None,None);
+
         for mv in self.buf.drain(..) {
             let score = score_move_for_sort(
                 self.ts, self.game, see_map, self.stage, st, self.ply, mv, killers);
             self.buf_scored.push((mv, score));
         }
+
         self.buf_scored.sort_unstable_by_key(|x| x.1);
         self.buf_scored.reverse();
     }
@@ -194,6 +202,15 @@ impl<'a> MoveGen<'a> {
 
 /// Sort
 impl<'a> MoveGen<'a> {
+
+    pub fn partial_sort(mut xs: &mut [(Move,OrdMove)]) {
+
+        for (n,x) in xs.iter_mut().enumerate() {
+            // let tmp = 
+        }
+
+        unimplemented!()
+    }
 
     #[cfg(feature = "nope")]
     pub fn sort(&mut self, st: &ABStack) {}
@@ -652,6 +669,17 @@ impl<'a> MoveGen<'a> {
 /// SEE
 impl<'a> MoveGen<'a> {
 
+    #[cfg(feature = "nope")]
+    pub fn _static_exchange(
+        ts: &'static Tables,
+        g: &Game,
+        mut map: &mut HashMap<Move,Score>,
+        mv: Move
+    ) -> Option<Score> {
+        g.static_exchange(ts, mv)
+    }
+
+    // #[cfg(feature = "nope")]
     pub fn _static_exchange(
         ts: &'static Tables,
         g: &Game,

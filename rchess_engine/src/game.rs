@@ -64,10 +64,14 @@ pub struct GameState {
     // pub king_blocks_w:      Option<BitBoard>,
     // pub king_blocks_b:      Option<BitBoard>,
     // pub check_block_mask:   Option<BitBoard>,
+
     pub checkers:           BitBoard,
     pub king_blocks_w:      BitBoard,
     pub king_blocks_b:      BitBoard,
     pub check_block_mask:   BitBoard,
+
+    pub pinners:            [BitBoard; 2],
+
 }
 
 impl Default for Game {
@@ -669,18 +673,22 @@ impl Game {
             panic!("No King? g = {:?}", self);
         }
         let c0 = c0.bitscan().into();
-        // let (bs_w, ps_b) = self.find_slider_blockers(&ts, c0, White);
-        let bs_w = self.find_slider_blockers(&ts, c0, White);
+        let (bs_w, ps_b) = self.find_slider_blockers(&ts, c0, White);
+        // let bs_w = self.find_slider_blockers(&ts, c0, White);
 
         let c1 = self.get(King, Black);
         if c1.is_empty() {
             panic!("No King? g = {:?}", self);
         }
         let c1 = c1.bitscan().into();
-        let bs_b = self.find_slider_blockers(&ts, c1, Black);
+        let (bs_b, ps_w) = self.find_slider_blockers(&ts, c1, Black);
+        // let bs_b = self.find_slider_blockers(&ts, c1, Black);
 
         self.state.king_blocks_w = bs_w;
         self.state.king_blocks_b = bs_b;
+
+        self.state.pinners[White] = ps_w;
+        self.state.pinners[Black] = ps_b;
 
     }
 
@@ -1198,6 +1206,10 @@ impl Game {
         //     }
         // }
 
+    }
+
+    pub fn get_pinners(&self, side: Color) -> BitBoard {
+        self.state.pinners[side]
     }
 
     // pub fn get_blockers(&self, side: Color) -> BitBoard {

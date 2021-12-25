@@ -9,22 +9,108 @@ use crate::explore::*;
 impl Game {
     pub fn static_exchange_ge(&self, ts: &Tables, mv: Move, threshold: Score) -> Option<bool> {
 
+        let side = self.state.side_to_move;
+        let (from,to) = (mv.sq_from(),mv.sq_to());
+
         // if mv.filter_castle() | mv.filter_promotion() | mv.filter_en_passant() {
         if !mv.filter_all_captures() || mv.filter_en_passant() {
-            return 0 >= threshold;
+            return Some(0 >= threshold);
         }
 
-        let mut swap: Score = self.get_at(mv.sq_to())?.1.score() - threshold;
+        let mut swap: Score = self.get_at(to)?.1.score() - threshold;
+        // eprintln!("swap 0 = {:?}", swap);
         if swap < 0 {
             return Some(false);
         }
 
-        swap = self.get_at(mv.sq_from())?.1.score() - swap;
+        swap = self.get_at(from)?.1.score() - swap;
+        // eprintln!("swap 1 = {:?}", swap);
         if swap <= 0 {
             return Some(true);
         }
 
-        unimplemented!()
+        let mut occ = self.all_occupied() ^ BitBoard::single(from) ^ BitBoard::single(to);
+
+        let mut attackers_own = self.find_attackers_to(&ts, to, !side);
+        // attackers_own &= !(BitBoard::single(mv.sq_from()));
+        let mut attackers_other = self.find_attackers_to(&ts, to, side);
+
+        let mut attackers = attackers_own | attackers_other;
+        let mut stm_attackers: BitBoard;
+        let mut bb: BitBoard;
+
+        let mut res = 1;
+        let mut stm = side;
+
+        let sides = [self.get_color(White),self.get_color(Black)];
+
+        loop {
+            stm = !stm;
+            attackers &= occ;
+
+            stm_attackers = attackers & sides[stm];
+            if stm_attackers.is_empty() { break; }
+
+            if (self.get_pinners(!stm) & occ).is_not_empty() {
+                stm_attackers &= !self.get_pins(stm);
+            }
+
+            if stm_attackers.is_empty() { break; }
+
+            res ^= 1;
+
+            bb = stm_attackers & self.get_piece(Pawn);
+            if bb.is_not_empty() {
+                swap = Pawn.score() - swap;
+                if swap < res { break; }
+                continue;
+            }
+
+            bb = stm_attackers & self.get_piece(Knight);
+            if bb.is_not_empty() {
+                swap = Knight.score() - swap;
+                if swap < res { break; }
+                occ ^= SQUARE_BB[bb.bitscan()];
+                continue;
+            }
+
+            bb = stm_attackers & self.get_piece(Bishop);
+            if bb.is_not_empty() {
+                swap = Bishop.score() - swap;
+                if swap < res { break; }
+                occ ^= SQUARE_BB[bb.bitscan()];
+                attackers |= ts.attacks_bishop(to, occ) & (self.get_piece(Bishop) | self.get_piece(Queen));
+                continue;
+            }
+
+            bb = stm_attackers & self.get_piece(Rook);
+            if bb.is_not_empty() {
+                swap = Rook.score() - swap;
+                if swap < res { break; }
+                occ ^= SQUARE_BB[bb.bitscan()];
+                attackers |= ts.attacks_rook(to, occ) & (self.get_piece(Rook) | self.get_piece(Queen));
+                continue;
+            }
+
+            bb = stm_attackers & self.get_piece(Queen);
+            if bb.is_not_empty() {
+                swap = Rook.score() - swap;
+                if swap < res { break; }
+                occ ^= SQUARE_BB[bb.bitscan()];
+                attackers |= (ts.attacks_rook(to, occ) & (self.get_piece(Rook) | self.get_piece(Queen)))
+                    | ts.attacks_bishop(to, occ) & (self.get_piece(Bishop) | self.get_piece(Queen));
+                continue;
+            }
+
+            // king
+            if (attackers & !sides[stm]).is_not_empty() {
+                res ^= 1;
+            }
+            return Some(res == 1);
+
+        }
+
+        return Some(res == 1);
     }
 }
 

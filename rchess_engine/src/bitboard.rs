@@ -56,6 +56,10 @@ impl BitBoard {
         BitBoard(0)
     }
 
+    pub fn _single<T: Into<Coord>>(c: T) -> BitBoard {
+        Self::single(c.into())
+    }
+
     pub fn single(c: Coord) -> BitBoard {
         let mut b = BitBoard::empty();
         b.flip_mut(c);

@@ -2876,6 +2876,22 @@ fn main9() {
     let n = 8;
     // let n = 2;
 
+    // // let fen = "1k6/2n5/8/3p4/4P3/4N3/8/K7 w - - 0 1";
+    // // let fen = "1k6/2n5/2p5/3p4/4P3/4N3/8/K7 w - - 0 1";
+    // // let fen = "1k6/2n5/8/3n4/4P3/4N3/8/K7 w - - 0 1";
+    // let fen = "1k6/2n5/2p5/3n4/4P3/2N1N3/8/K7 w - - 0 1";
+    // let mut g = Game::from_fen(&ts, fen).unwrap();
+    // let mv0 = Move::new_capture("e4", "d5", Pawn, Knight);
+    // let k0 = g.static_exchange(&ts, mv0);
+    // eprintln!("k0 = {:?}", k0);
+    // let val = 0;
+    // // let val = 100;
+    // // let val = 320;
+    // // let val = 320;
+    // let k1 = g.static_exchange_ge(ts, mv0, val);
+    // eprintln!("k1 = {:?}", k1);
+    // return;
+
     let mut wacs = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
     let mut wacs: Vec<Game> = wacs.into_iter().map(|(fen,_)| {
         Game::from_fen(&ts, &fen).unwrap()

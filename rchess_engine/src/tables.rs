@@ -19,8 +19,7 @@ use serde_big_array::BigArray;
 
 pub const STARTPOS: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-// SQUAREDIST
-lazy_static! {
+lazy_static! { /// SQUAREDIST
     pub static ref SQUAREDIST: [[u8; 64]; 64] = {
         let mut out = [[0; 64]; 64];
         for s1 in 0u32..64 {
@@ -43,8 +42,7 @@ lazy_static! {
 
 }
 
-// TABLES
-lazy_static! {
+lazy_static! { /// TABLES
     // pub static ref _TABLES: Tables = {
     //     #[cfg(not(feature = "smallstack"))]
     //     let ts = Tables::read_from_file("tables.bin").unwrap();
@@ -55,6 +53,10 @@ lazy_static! {
     // pub static ref _TABLES: Tables = Tables::read_from_file("tables.bin").unwrap();
     // pub static ref _TABLES: Tables = Tables::read_from_file_def().unwrap();
     pub static ref _TABLES: Tables = Tables::new();
+}
+
+lazy_static! { /// SQUARE_BB
+    pub static ref SQUARE_BB: [BitBoard; 64] = array_init::array_init(|x| BitBoard::single(Coord::new_int(x)));
 }
 
 pub static CENTERDIST: [u8; 64] = [
