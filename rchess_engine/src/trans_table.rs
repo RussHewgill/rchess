@@ -113,21 +113,56 @@ pub enum SICanUse {
 
 #[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize)]
 pub struct SearchInfo {
-    // pub best_move:          Move,
-    pub best_move:          (u8,u8),
+    pub best_move:          Move,
+    // pub best_move:          (u8,u8),
     pub depth_searched:     Depth,
     pub node_type:          Node,
     pub score:              Score,
+    // pub eval:               Score,
 }
 
 impl SearchInfo {
     pub fn empty() -> Self {
         Self {
-            best_move:      (0,0),
-            // best_move:      Move::NullMove,
+            // best_move:      (0,0),
+            best_move:      Move::NullMove,
             depth_searched: 0,
             node_type:      Node::Empty,
             score:          0,
+            // eval:           0,
+        }
+    }
+}
+
+/// New
+impl SearchInfo {
+    // pub fn new(mv: Move, moves: Vec<Move>, depth_searched: Depth, node_type: Node, score: Score) -> Self {
+    //     let moves = VMoves::from_vec(moves).into();
+    pub fn new(
+        best_move:          Move,
+        // moves:              Vec<Move>,
+        depth_searched:     Depth,
+        node_type:          Node,
+        score:              Score,
+        // eval:               Option<Score>,
+    ) -> Self {
+
+        // let packed_move = PackedMove::convert_from_move(best_move).pack().unwrap();
+        // let packed_move = (packed_move[0],packed_move[1]);
+
+        // let mv = [packed_move.0, packed_move.1];
+
+        // let mv = PackedMove::unpack(&mv).unwrap().convert_to_move(ts, g);
+        // assert_eq!(best_move, mv);
+
+        Self {
+            // best_move: packed_move,
+            best_move,
+            depth_searched,
+            node_type,
+            score,
+            // eval,
+            // eval: 0,
         }
     }
 }
@@ -257,37 +292,6 @@ impl ExHelper {
         false
     }
 
-}
-
-impl SearchInfo {
-    // pub fn new(mv: Move, moves: Vec<Move>, depth_searched: Depth, node_type: Node, score: Score) -> Self {
-    //     let moves = VMoves::from_vec(moves).into();
-    pub fn new(
-        best_move:          Move,
-        // moves:              Vec<Move>,
-        depth_searched:     Depth,
-        node_type:          Node,
-        score:              Score,
-    ) -> Self {
-
-        let packed_move = PackedMove::convert_from_move(best_move).pack().unwrap();
-        let packed_move = (packed_move[0],packed_move[1]);
-
-        // let mv = [packed_move.0, packed_move.1];
-
-        // let mv = PackedMove::unpack(&mv).unwrap().convert_to_move(ts, g);
-        // assert_eq!(best_move, mv);
-
-        Self {
-            best_move: packed_move,
-            // best_move,
-            depth_searched,
-            node_type,
-            score,
-            // moves,
-            // ..Default::default()
-        }
-    }
 }
 
 impl std::cmp::PartialOrd for SICanUse {

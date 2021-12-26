@@ -38,7 +38,7 @@ impl ABResult {
         Self {
             mv: Move::NullMove,
             // score: 0,
-            score: i32::MIN,
+            score: Score::MIN,
         }
     }
 
@@ -464,21 +464,37 @@ impl ExHelper {
         /// when in check, skip early pruning
         let in_check = g.state.checkers.is_not_empty();
 
-        // let static_eval = if in_check {
-        //     None
-        // } else if let Some(nnue) = &self.nnue {
-        //     let mut nn = nnue.borrow_mut();
-        //     let score = nn.evaluate(&g, true);
-        //     stack.with(ply, |st| st.static_eval = Some(score));
-        //     Some(score)
-        // } else {
-        //     let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
-        //     let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
-        //     stack.with(ply, |st| st.static_eval = Some(score));
-        //     Some(score)
-        // };
+        let mut improving   = !in_check;
+        let mut improvement = 0;
 
-        // // let mut can
+        /// Static eval of position
+        let static_eval = if in_check {
+            stack.with(ply, |st| st.in_check = true);
+            None
+        } else if let Some(nnue) = &self.nnue {
+            let mut nn = nnue.borrow_mut();
+            let score = nn.evaluate(&g, true);
+            stack.with(ply, |st| st.static_eval = Some(score));
+            Some(score)
+        } else {
+            let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
+            let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
+            stack.with(ply, |st| st.static_eval = Some(score));
+            Some(score)
+        };
+        stack.with(ply, |st| st.static_eval = static_eval);
+
+        if let Some(eval) = static_eval {
+            if let Some(prev1) = stack.get(ply - 2).map(|st| st.static_eval).flatten() {
+                improvement = eval - prev1;
+                improving   = improvement > 0;
+            } else if let Some(prev2) = stack.get(ply - 4).map(|st| st.static_eval).flatten() {
+                improvement = eval - prev2;
+                improving   = improvement > 0;
+            }
+        }
+
+        // // let mut can_fut
         // // TODO: futility pruning
         // if depth == 1
         //     && !is_pv_node
@@ -527,15 +543,11 @@ impl ExHelper {
 
         let m_hashmove: Option<Move> = msi.map(|si| {
             let mv = si.best_move;
-            let mv = PackedMove::unpack(&[mv.0,mv.1]).unwrap().convert_to_move(ts, g);
+            // let mv = PackedMove::unpack(&[mv.0,mv.1]).unwrap().convert_to_move(ts, g);
             mv
         });
         let mut movegen = MoveGen::new(ts, &g, m_hashmove, stack, depth, ply);
-        // let mut movegen = MoveGen::new_all(ts, &g, m_hashmove, depth, ply);
 
-        // self.order_moves(ts, g, ply, &mut stack, &mut gs[..]);
-
-        // let mut do_pvs = false;
         /// true until a move is found that raises alpha
         let mut search_pvs_all = true;
 

@@ -24,9 +24,15 @@ pub struct ABStack {
     pub pvs:            [Move; 128],
 }
 
+/// Get, push, with
 impl ABStack {
-    pub fn get_or_push(&mut self, ply: Depth) -> &mut ABStackPly {
-        unimplemented!()
+
+    // pub fn get_or_push(&mut self, ply: Depth) -> &mut ABStackPly {
+    //     unimplemented!()
+    // }
+
+    pub fn get(&self, ply: Depth) -> Option<&ABStackPly> {
+        self.stacks.get(ply as usize)
     }
 
     pub fn push_if_empty(&mut self, g: &Game, ply: Depth) {
@@ -69,6 +75,7 @@ pub struct ABStackPly {
     pub killers:          [Option<Move>; 2],
     pub static_eval:      Option<Score>,
     pub material:         Material,
+    pub in_check:         bool
 }
 
 /// New
@@ -81,6 +88,7 @@ impl ABStackPly {
             killers:        [None; 2],
             static_eval:    None,
             material:       g.state.material,
+            in_check:       false,
         }
     }
 }

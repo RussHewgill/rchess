@@ -40,6 +40,12 @@ pub static PIECES: [Piece; 6] = [Pawn,Knight,Bishop,Rook,Queen,King];
 // }
 
 pub type Score = i32;
+// pub type Score = i16;
+
+// pub fn scale_score_to_i8(s: i16) -> i8 {
+//     const K: i16 = 258;
+//     (s / K) as i8
+// }
 
 pub fn scale_score_to_i8(s: i32) -> i8 {
     const K: i32 = 16909320;
