@@ -467,22 +467,22 @@ impl ExHelper {
         // let mut improving   = !in_check;
         // let mut improvement = 0;
 
-        // /// Static eval of position
-        // let static_eval = if in_check {
-        //     stack.with(ply, |st| st.in_check = true);
-        //     None
-        // } else if let Some(nnue) = &self.nnue {
-        //     let mut nn = nnue.borrow_mut();
-        //     let score = nn.evaluate(&g, true);
-        //     stack.with(ply, |st| st.static_eval = Some(score));
-        //     Some(score)
-        // } else {
-        //     let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
-        //     let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
-        //     stack.with(ply, |st| st.static_eval = Some(score));
-        //     Some(score)
-        // };
-        // stack.with(ply, |st| st.static_eval = static_eval);
+        /// Static eval of position
+        let static_eval = if in_check {
+            stack.with(ply, |st| st.in_check = true);
+            None
+        } else if let Some(nnue) = &self.nnue {
+            let mut nn = nnue.borrow_mut();
+            let score = nn.evaluate(&g, true);
+            stack.with(ply, |st| st.static_eval = Some(score));
+            Some(score)
+        } else {
+            let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
+            let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
+            stack.with(ply, |st| st.static_eval = Some(score));
+            Some(score)
+        };
+        stack.with(ply, |st| st.static_eval = static_eval);
 
         // if let Some(eval) = static_eval {
         //     if let Some(prev1) = stack.get(ply - 2).map(|st| st.static_eval).flatten() {
@@ -500,17 +500,18 @@ impl ExHelper {
         //     && !in_check
         //     && 
 
-        // // let mut can_fut
-        // // TODO: futility pruning
-        // if depth == 1
-        //     && !is_pv_node
-        //     && !in_check
-        //     // && static_eval - FUTILITY_MARGIN >= beta
-        //     && static_eval + FUTILITY_MARGIN <= alpha
-        // {
-        //     stats.fut_prunes += 1;
-        //     return ABPrune(static_eval, Prune::Futility);
-        // }
+        // let mut can_futility_prune = false;
+        /// TODO: futility pruning
+        #[cfg(feature = "futility_pruning")]
+        if depth == 1
+            && !is_pv_node
+            && !in_check
+            // && static_eval - FUTILITY_MARGIN >= beta
+            && static_eval.unwrap() + FUTILITY_MARGIN <= alpha
+        {
+            stats.fut_prunes += 1;
+            return ABPrune(static_eval.unwrap(), Prune::Futility);
+        }
 
         /// null move pruning
         #[cfg(feature = "null_pruning")]
