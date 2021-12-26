@@ -70,7 +70,7 @@ pub struct GameState {
     pub king_blocks_b:      BitBoard,
     pub check_block_mask:   BitBoard,
 
-    pub pinners:            [BitBoard; 2],
+    // pub pinners:            [BitBoard; 2],
 
 }
 
@@ -672,6 +672,7 @@ impl Game {
 
     }
 
+    /// XXX: possibly twice as slow as needed
     fn update_pins_mut(&mut self, ts: &Tables) {
 
         let c0 = self.get(King, White);
@@ -693,8 +694,8 @@ impl Game {
         self.state.king_blocks_w = bs_w;
         self.state.king_blocks_b = bs_b;
 
-        self.state.pinners[White] = ps_w;
-        self.state.pinners[Black] = ps_b;
+        // self.state.pinners[White] = ps_w;
+        // self.state.pinners[Black] = ps_b;
 
     }
 
@@ -1215,7 +1216,8 @@ impl Game {
     }
 
     pub fn get_pinners(&self, side: Color) -> BitBoard {
-        self.state.pinners[side]
+        // self.state.pinners[side]
+        unimplemented!()
     }
 
     // pub fn get_blockers(&self, side: Color) -> BitBoard {

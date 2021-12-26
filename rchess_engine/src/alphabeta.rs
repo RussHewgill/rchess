@@ -324,6 +324,7 @@ impl ExHelper {
 
         // let mut current_stack: &mut ABStackPly = stack.get_or_push(ply);
         stack.push_if_empty(g, ply);
+        stack.with(ply, |st| st.material = g.state.material);
 
         #[cfg(feature = "pvs_search")]
         let mut is_pv_node = NODE_TYPE != NonPV;
