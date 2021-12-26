@@ -498,22 +498,22 @@ impl Game {
     ) -> GameResult<Game> {
         let calc_zb = use_zb.is_none();
 
-        if mv != Move::NullMove {
-            match self.get_at(mv.sq_from()) {
-                Some((side,_)) => if self.state.side_to_move != side {
-                    trace!("non legal move: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
-                    // return Err(GameEnd::Error);
-                    // panic!();
-                    return Err(GameEnd::Error);
-                },
-                None => {
-                    trace!("non legal move, no piece?: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
-                    // return Err(GameEnd::Error);
-                    // panic!();
-                    return Err(GameEnd::Stalemate);
-                }
-            }
-        }
+        // if mv != Move::NullMove {
+        //     match self.get_at(mv.sq_from()) {
+        //         Some((side,_)) => if self.state.side_to_move != side {
+        //             trace!("non legal move: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
+        //             // return Err(GameEnd::Error);
+        //             panic!();
+        //             // return Err(GameEnd::Error);
+        //         },
+        //         None => {
+        //             trace!("non legal move, no piece?: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
+        //             // return Err(GameEnd::Error);
+        //             panic!();
+        //             // return Err(GameEnd::Stalemate);
+        //         }
+        //     }
+        // }
 
         match self._apply_move_unchecked(&ts, mv, calc_zb) {
             Some(mut next) => {
@@ -1379,6 +1379,16 @@ impl Game {
 
 /// get_at
 impl Game {
+
+    pub fn get_side_at(&self, c0: Coord) -> Option<Color> {
+        if self.state.white.is_one_at(c0) {
+            Some(White)
+        } else if self.state.black.is_one_at(c0) {
+            Some(Black)
+        } else {
+            None
+        }
+    }
 
     pub fn get_at(&self, c0: Coord) -> Option<(Color, Piece)> {
         let b0 = BitBoard::single(c0);

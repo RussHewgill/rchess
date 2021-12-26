@@ -27,7 +27,7 @@ pub enum MoveGenType {
 pub enum MoveGenStage {
     // Init = 0,
     Hash,
-    CounterMove,
+    // CounterMove,
 
     CapturesInit,
     Captures,
@@ -55,8 +55,8 @@ impl MoveGenStage {
     pub fn next(self) -> Option<Self> {
         use MoveGenStage::*;
         match self {
-            Hash         => Some(CounterMove),
-            CounterMove  => Some(CapturesInit),
+            Hash         => Some(CapturesInit),
+            // CounterMove  => Some(CapturesInit),
 
             CapturesInit => Some(Captures),
             Captures     => Some(QuietsInit),
@@ -190,7 +190,7 @@ impl<'a> MoveGen<'a> {
 
         for mv in self.buf.drain(..) {
             let score = score_move_for_sort(
-                self.ts, self.game, see_map, self.stage, st, self.ply, mv, killers);
+                self.ts, self.game, see_map, self.stage, st, self.ply, mv, killers, self.counter_move);
             self.buf_scored.push((mv, score));
         }
 
@@ -382,6 +382,12 @@ impl<'a> MoveGen<'a> {
         }
     }
 
+    pub fn next_debug(&mut self, stack: &ABStack) -> Option<(MoveGenStage,Move)> {
+        let stage = self.stage;
+        let mv = self.next(stack)?;
+        Some((stage,mv))
+    }
+
     pub fn next(&mut self, stack: &ABStack) -> Option<Move> {
         use MoveGenStage::*;
         match self.stage {
@@ -397,16 +403,20 @@ impl<'a> MoveGen<'a> {
                 self.stage = self.stage.next()?;
                 self.next(stack)
             },
-            CounterMove => {
-                if let Some(mv) = self.counter_move {
-                    if self.move_is_legal(mv) && self.move_is_pseudo_legal(mv) {
-                        self.stage = self.stage.next()?;
-                        return Some(mv);
-                    }
-                }
-                self.stage = self.stage.next()?;
-                self.next(stack)
-            },
+
+            // CounterMove => {
+            //     if let Some(mv) = self.counter_move {
+            //         if self.move_is_legal(mv) && self.move_is_pseudo_legal(mv) {
+            //             // trace!("counter move GOOD: {:?}", mv);
+            //             self.stage = self.stage.next()?;
+            //             return Some(mv);
+            //         } else {
+            //             // trace!("counter move NOPE: {:?}", mv);
+            //         }
+            //     }
+            //     self.stage = self.stage.next()?;
+            //     self.next(stack)
+            // },
 
             CapturesInit => {
                 self.generate(MoveGenType::Captures);
@@ -771,7 +781,9 @@ impl<'a> MoveGen<'a> {
     // #[cfg(feature = "nope")]
     pub fn move_is_pseudo_legal(&mut self, mv: Move) -> bool {
 
-        if mv.filter_promotion() {
+        if mv == Move::NullMove {
+            return true;
+        } else if mv.filter_promotion() {
             let mut vs = vec![];
             self._gen_promotions(MoveGenType::Captures, None, Some(&mut vs));
             self._gen_promotions(MoveGenType::Quiets, None, Some(&mut vs));
@@ -788,21 +800,57 @@ impl<'a> MoveGen<'a> {
         }
 
         /// From must be occupied by correct side
-        if let Some((side,pc)) = self.game.get_at(mv.sq_from()) {
-            if self.side != side || mv.piece() != Some(pc) {
+        match self.game.get_side_at(mv.sq_from()) {
+            Some(side) => if self.game.state.side_to_move != side {
+                // trace!("move_is_pseudo_legal: wrong side move: {:?}\n{:?}\n{:?}",
+                //        mv, self.game.to_fen(), self.game);
                 return false;
-            }
-        } else { return false; }
-
-        /// To must not be occupied by friendly
-        if let Some((side,pc)) = self.game.get_at(mv.sq_to()) {
-            if self.side == side {
-                return false;
-            } else if mv.piece() == Some(Pawn) {
-                /// Pawns can't capture with pushes
+            },
+            None => {
+                // trace!("move_is_pseudo_legal: non legal move, no piece?: {:?}\n{:?}\n{:?}",
+                //        mv, self.game.to_fen(), self.game);
                 return false;
             }
         }
+
+        /// To must not be occupied by friendly
+        /// Must be occupied by enemy if capture
+        /// Must be not occupied if quiet
+        match self.game.get_side_at(mv.sq_to()) {
+            Some(side) => {
+                if side == self.game.state.side_to_move {
+                    // trace!("move_is_pseudo_legal: self side capture: {:?}\n{:?}\n{:?}",
+                    //        mv, self.game.to_fen(), self.game);
+                    return false;
+                } else if !mv.filter_all_captures() {
+                    // trace!("move_is_pseudo_legal: non capture to occupied: {:?}\n{:?}\n{:?}",
+                    //        mv, self.game.to_fen(), self.game);
+                    return false;
+                }
+            },
+            None => {
+                if mv.filter_all_captures() {
+                    return false;
+                }
+            },
+        }
+
+        // /// From must be occupied by correct side
+        // if let Some((side,pc)) = self.game.get_at(mv.sq_from()) {
+        //     if self.side != side || mv.piece() != Some(pc) {
+        //         return false;
+        //     }
+        // } else { return false; }
+
+        // /// To must not be occupied by friendly
+        // if let Some((side,pc)) = self.game.get_at(mv.sq_to()) {
+        //     if self.side == side {
+        //         return false;
+        //     } else if mv.piece() == Some(Pawn) {
+        //         /// Pawns can't capture with pushes
+        //         return false;
+        //     }
+        // }
 
         true
         // debug!("unhandled move_is_pseudo_legal: \n{:?}\n{:?}\n{:?}",

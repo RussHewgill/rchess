@@ -20,7 +20,8 @@ pub enum OrdMove {
     PromCapture,
     Prom,
     /// GoodCapture = QxQ (119), RxR (118), NxB (117), BxB (116), BxN (115) and pxp (114).
-    GoodCapture,
+    GoodCapture(i8),
+    // GoodCapture,
     KillerMove,
     // KillerMove(u8),
     CaptureGoodSee(i8),
@@ -35,6 +36,67 @@ pub enum OrdMove {
     Other,
 }
 
+// impl OrdMove {
+//     pub fn to_score(self) -> i8 {
+//         use self::OrdMove::*;
+//         match self {
+//             Hash                => 0,
+//             KillerMate          => 1,
+//             PromCapture         => 4,
+//             Prom                => 5,
+//             /// TODO: Order?
+//             // GoodCapture         => 10,
+//             // KillerMove          => unimplemented!(),
+//             KillerMove          => 8,
+//             GoodCapture(v)      => 9 + v,
+//             CaptureGoodSee(see) => unimplemented!(),
+//             CaptureEvenSee      => unimplemented!(),
+//             Castle              => unimplemented!(),
+//             PromMinor           => unimplemented!(),
+//             CaptureBadSee(see)  => unimplemented!(),
+//             OtherScore(score)   => unimplemented!(),
+//             Other               => unimplemented!(),
+//         }
+//     }
+// }
+
+pub fn score_move_for_sort2(
+    ts:           &'static Tables,
+    g:            &Game,
+    mut see_map:  &mut HashMap<Move,Score>,
+    stage:        MoveGenStage,
+    gentype:      MoveGenType,
+    st:           &ABStack,
+    ply:          Depth,
+    mv:           Move,
+    killers:      (Option<Move>,Option<Move>),
+    countermove:  Option<Move>,
+) -> Score {
+    use self::OrdMove::*;
+    let mut bonus = 0;
+    match gentype {
+        MoveGenType::Captures    => {
+            if let Some(victim) = mv.victim() {
+                return victim.score() * 6;
+            }
+            unimplemented!()
+        },
+        MoveGenType::Quiets      => {
+            unimplemented!()
+        },
+        MoveGenType::Evasions    => {
+            if mv.filter_all_captures() {
+                unimplemented!()
+            } else {
+                unimplemented!()
+            }
+        },
+        MoveGenType::QuietChecks => {
+            unimplemented!()
+        },
+    }
+}
+
 pub fn score_move_for_sort(
     ts:           &'static Tables,
     g:            &Game,
@@ -44,21 +106,33 @@ pub fn score_move_for_sort(
     ply:          Depth,
     mv:           Move,
     killers:      (Option<Move>,Option<Move>),
+    countermove:  Option<Move>,
 ) -> OrdMove {
     use self::OrdMove::*;
+
+    // let mut bonus = 0;
 
     match mv {
         Move::PromotionCapture { .. }            => return PromCapture,
         Move::Promotion { new_piece: Queen, .. } => return Prom,
         Move::Promotion { .. }                   => return PromMinor,
-        Move::EnPassant { .. }                   => return GoodCapture,
+        Move::EnPassant { .. }                   => return GoodCapture(0),
+        // Move::EnPassant { .. }                   => return GoodCapture,
         Move::Capture { pc, victim, .. } => match (pc,victim) {
-            (Queen,Queen)   => return GoodCapture,
-            (Rook,Rook)     => return GoodCapture,
-            (Knight,Bishop) => return GoodCapture,
-            (Bishop,Bishop) => return GoodCapture,
-            (Bishop,Knight) => return GoodCapture,
-            (Pawn,Pawn)     => return GoodCapture,
+
+            (Queen,Queen)   => return GoodCapture(1),
+            (Rook,Rook)     => return GoodCapture(2),
+            (Knight,Bishop) => return GoodCapture(3),
+            (Bishop,Bishop) => return GoodCapture(4),
+            (Bishop,Knight) => return GoodCapture(5),
+            (Pawn,Pawn)     => return GoodCapture(6),
+
+            // (Queen,Queen)   => return GoodCapture,
+            // (Rook,Rook)     => return GoodCapture,
+            // (Knight,Bishop) => return GoodCapture,
+            // (Bishop,Bishop) => return GoodCapture,
+            // (Bishop,Knight) => return GoodCapture,
+            // (Pawn,Pawn)     => return GoodCapture,
 
             // _ => return CaptureEvenSee,
 
@@ -105,6 +179,10 @@ pub fn score_move_for_sort(
             return OtherScore(scale_score_to_i8(hist));
         }
     }
+
+    // #[cfg(feature = "countermove_heuristic")]
+    // if Some(mv) == countermove {
+    // }
 
     Other
 }

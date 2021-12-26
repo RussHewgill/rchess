@@ -501,7 +501,8 @@ impl Game {
                 blockers |= b;
 
                 // XXX: not used ??
-                if let Some((col1,_)) = self.get_at(sq) {
+                // if let Some((col1,_)) = self.get_at(sq) {
+                if let Some(col1) = self.get_side_at(sq) {
                     if col != col1 {
                         pinners.set_one_mut(sq);
                     }
