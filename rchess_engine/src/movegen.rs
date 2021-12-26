@@ -242,8 +242,9 @@ impl<'a> MoveGen<'a> {
     }
 }
 
-/// New, getters
+/// New
 impl<'a> MoveGen<'a> {
+
     pub fn new(
         ts:             &'static Tables,
         game:           &'a Game,
@@ -258,7 +259,8 @@ impl<'a> MoveGen<'a> {
 
         // let counter_move = None;
         let counter_move = if let Some(prev_mv) = game.last_move {
-            stack.counter_moves.get_counter_move(prev_mv, game.state.side_to_move)
+            // stack.counter_moves.get_counter_move(prev_mv, game.state.side_to_move)
+            stack.counter_moves.get_counter_move(prev_mv)
         } else { None };
 
         let mut out = Self {
@@ -302,7 +304,8 @@ impl<'a> MoveGen<'a> {
         let side = game.state.side_to_move;
 
         let counter_move = if let Some(prev_mv) = game.last_move {
-            stack.counter_moves.get_counter_move(prev_mv, game.state.side_to_move)
+            // stack.counter_moves.get_counter_move(prev_mv, game.state.side_to_move)
+            stack.counter_moves.get_counter_move(prev_mv)
         } else { None };
 
         let mut out = Self {
@@ -343,14 +346,6 @@ impl<'a> MoveGen<'a> {
         let mut out = Self::new(ts, game, hashmove, stack, depth, ply);
         out.stage = MoveGenStage::GenAllInit;
         out
-    }
-
-    pub fn buf(&self) -> &[Move] {
-        &self.buf
-    }
-
-    pub fn buf_legal(&self) -> impl Iterator<Item = &Move> {
-        self.buf.iter().filter(move |mv| self.move_is_legal(**mv))
     }
 
 }

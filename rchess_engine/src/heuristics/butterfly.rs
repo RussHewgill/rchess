@@ -35,7 +35,16 @@ impl ButterflyHistory {
     }
 
     fn _increment(&mut self, from: Coord, to: Coord, side: Color, add: Score) {
-        self.buf[side][from][to] += add;
+        // self.buf[side][from][to] += add;
+
+        /// XXX: ??? stockfish magic
+        const D: Score = 14_000;
+
+        assert!(add.abs() <= D);
+
+        let x = &mut self.buf[side][from][to];
+        *x += add - *x * add.abs() / D;
+
     }
 
 }

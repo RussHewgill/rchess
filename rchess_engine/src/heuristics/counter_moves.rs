@@ -8,7 +8,8 @@ impl Default for CounterMoves {
         Self {
             // buf:      [[[0; 64]; 64]; 2],
             // buf:      [[[None; 64]; 64]; 2],
-            buf:      [[[None; 64]; 6]; 2],
+            // buf:      [[[None; 64]; 6]; 2],
+            buf:      [[None; 64]; 6],
         }
     }
 }
@@ -16,31 +17,21 @@ impl Default for CounterMoves {
 
 impl CounterMoves {
 
-    // pub fn _get_move(&self, from: Coord, to: Coord, side: Color) -> Option<Score> {
-    //     let x = self.buf[side][from][to];
-    //     if x == 0 { None } else { Some(x) }
-    // }
-
-    pub fn insert_counter_move(&mut self, prev_mv: Move, mv: Move, side: Color) {
+    // pub fn insert_counter_move(&mut self, prev_mv: Move, mv: Move, side: Color) {
+    pub fn insert_counter_move(&mut self, prev_mv: Move, mv: Move) {
+        assert!(mv != Move::NullMove);
         if let Some(pc) = prev_mv.piece() {
-            self.buf[side][pc][prev_mv.sq_to()] = Some(mv);
+            // self.buf[side][pc][prev_mv.sq_to()] = Some(mv);
+            self.buf[pc][prev_mv.sq_to()] = Some(mv);
         }
     }
 
-    pub fn get_counter_move(&self, prev_mv: Move, side: Color) -> Option<Move> {
+    // pub fn get_counter_move(&self, prev_mv: Move, side: Color) -> Option<Move> {
+    pub fn get_counter_move(&self, prev_mv: Move) -> Option<Move> {
         let pc = prev_mv.piece()?;
-        self.buf[side][pc][prev_mv.sq_to()]
+        // self.buf[side][pc][prev_mv.sq_to()]
+        self.buf[pc][prev_mv.sq_to()]
     }
-
-    // pub fn insert_counter_move(&mut self, prev_mv: Move, mv: Move, side: Color) {
-    //     if mv.filter_quiet() || mv.filter_pawndouble() {
-    //         self.buf[side][prev_mv.sq_from()][prev_mv.sq_to()] = Some(mv);
-    //     }
-    // }
-
-    // pub fn get_counter_move(&self, ts: &'static Tables, g: &Game, mv: Move) -> Option<Move> {
-    //     unimplemented!()
-    // }
 
 }
 

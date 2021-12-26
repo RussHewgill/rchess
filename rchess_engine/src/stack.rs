@@ -7,21 +7,23 @@ use arrayvec::ArrayVec;
 
 #[derive(Debug,Clone)]
 pub struct ABStack {
-    // pub history:        [[[Score; 64]; 64]; 2],
-    pub history:        crate::heuristics::ButterflyHistory,
-    // pub killers:        crate::heuristics::KillerMoves,
-    pub counter_moves:  crate::heuristics::CounterMoves,
+    // pub history:            [[[Score; 64]; 64]; 2],
+    pub history:            crate::heuristics::ButterflyHistory,
+    // pub killers:            crate::heuristics::KillerMoves,
+    pub counter_moves:      crate::heuristics::CounterMoves,
 
-    pub inside_null:    bool,
+    // pub capture_history:    crate::heuristics::CaptureHistory,
 
-    // pub stacks:         ArrayVec<ABStackPly,128>,
-    pub stacks:         Vec<ABStackPly>,
+    pub inside_null:        bool,
 
-    // pub move_history:   ArrayVec<(Zobrist, Move), 128>,
-    pub move_history:   Vec<(Zobrist, Move)>,
-    // pub move_history:   HashSet<Zobrist>,
+    // pub stacks:             ArrayVec<ABStackPly,128>,
+    pub stacks:             Vec<ABStackPly>,
 
-    pub pvs:            [Move; 128],
+    // pub move_history:       ArrayVec<(Zobrist, Move), 128>,
+    pub move_history:       Vec<(Zobrist, Move)>,
+    // pub move_history:       HashSet<Zobrist>,
+
+    pub pvs:                [Move; 128],
 }
 
 /// Get, push, with
@@ -56,9 +58,21 @@ impl ABStack {
 
     pub fn update_stats(
         &mut self,
-        g: &Game,
-        best: Move,
-        beta: Score,
+        g:          &Game,
+        best:       Move,
+        beta:       Score,
+        ply:        Depth,
+        depth:      Depth,
+    ) {
+        unimplemented!()
+    }
+
+
+    pub fn update_quiet_stats(
+        &mut self,
+        g:          &Game,
+        mv:         Move,
+        depth:      Depth,
     ) {
         unimplemented!()
     }

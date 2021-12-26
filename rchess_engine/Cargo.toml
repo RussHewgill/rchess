@@ -39,7 +39,7 @@ default = [
 
     # "null_pruning",
     "history_heuristic",
-    # "countermove_heuristic",
+    "countermove_heuristic",
     # "futility_pruning",
 
     "late_move_reduction",

@@ -464,35 +464,35 @@ impl ExHelper {
         /// when in check, skip early pruning
         let in_check = g.state.checkers.is_not_empty();
 
-        let mut improving   = !in_check;
-        let mut improvement = 0;
+        // let mut improving   = !in_check;
+        // let mut improvement = 0;
 
-        /// Static eval of position
-        let static_eval = if in_check {
-            stack.with(ply, |st| st.in_check = true);
-            None
-        } else if let Some(nnue) = &self.nnue {
-            let mut nn = nnue.borrow_mut();
-            let score = nn.evaluate(&g, true);
-            stack.with(ply, |st| st.static_eval = Some(score));
-            Some(score)
-        } else {
-            let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
-            let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
-            stack.with(ply, |st| st.static_eval = Some(score));
-            Some(score)
-        };
-        stack.with(ply, |st| st.static_eval = static_eval);
+        // /// Static eval of position
+        // let static_eval = if in_check {
+        //     stack.with(ply, |st| st.in_check = true);
+        //     None
+        // } else if let Some(nnue) = &self.nnue {
+        //     let mut nn = nnue.borrow_mut();
+        //     let score = nn.evaluate(&g, true);
+        //     stack.with(ply, |st| st.static_eval = Some(score));
+        //     Some(score)
+        // } else {
+        //     let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
+        //     let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
+        //     stack.with(ply, |st| st.static_eval = Some(score));
+        //     Some(score)
+        // };
+        // stack.with(ply, |st| st.static_eval = static_eval);
 
-        if let Some(eval) = static_eval {
-            if let Some(prev1) = stack.get(ply - 2).map(|st| st.static_eval).flatten() {
-                improvement = eval - prev1;
-                improving   = improvement > 0;
-            } else if let Some(prev2) = stack.get(ply - 4).map(|st| st.static_eval).flatten() {
-                improvement = eval - prev2;
-                improving   = improvement > 0;
-            }
-        }
+        // if let Some(eval) = static_eval {
+        //     if let Some(prev1) = stack.get(ply - 2).map(|st| st.static_eval).flatten() {
+        //         improvement = eval - prev1;
+        //         improving   = improvement > 0;
+        //     } else if let Some(prev2) = stack.get(ply - 4).map(|st| st.static_eval).flatten() {
+        //         improvement = eval - prev2;
+        //         improving   = improvement > 0;
+        //     }
+        // }
 
         // /// Futility pruning
         // if depth == 1
@@ -588,7 +588,11 @@ impl ExHelper {
 
             // TODO: 
             /// Shallow pruning
-            if !is_root_node {
+            if !is_root_node
+                && g.state.material.any_non_pawn(g.state.side_to_move)
+            {
+                if capture_or_promotion || gives_check {
+                }
             }
 
             // TODO: 
@@ -772,7 +776,8 @@ impl ExHelper {
 
                         #[cfg(feature = "countermove_heuristic")]
                         if let Some(prev_mv) = g.last_move {
-                            stack.counter_moves.insert_counter_move(prev_mv, mv, g.state.side_to_move);
+                            // stack.counter_moves.insert_counter_move(prev_mv, mv, g.state.side_to_move);
+                            stack.counter_moves.insert_counter_move(prev_mv, mv);
                         }
 
                     }

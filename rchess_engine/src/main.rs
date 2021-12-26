@@ -2925,20 +2925,23 @@ fn main9() {
     // eprintln!("k0 = {:?}", k0);
     // return;
 
-    // let fen = "2n2rk1/5pp1/1p1B2b1/1B2P3/6Q1/4P3/3K1PP1/R6R b - -";
-    // let mut g = Game::from_fen(&ts, fen).unwrap();
-    // let mut movegen = MoveGen::new(&ts, &g, None, &ABStack::new(), 0, 0);
-    // // let mv = Move::new_quiet("g6", "f7", Bishop);
-    // // let mv = Move::new_capture("b4", "d6", Bishop, Queen);
-    // // let mv = Move::new_quiet("g4", "g3", Queen);
-    // let mv = Move::new_capture("a1", "h1", Rook, Rook);
+    let fen = "5Bk1/2q2pp1/1p4b1/1B2pN2/3P4/4P3/5PP1/R3K2R b KQ -";
+    let mut g = Game::from_fen(&ts, fen).unwrap();
 
-    // let k0 = movegen.move_is_legal(mv);
-    // eprintln!("k0 = {:?}", k0);
-    // let k1 = movegen.move_is_pseudo_legal(mv);
-    // eprintln!("k1 = {:?}", k1);
+    let mut movegen = MoveGen::new(&ts, &g, None, &ABStack::new(), 0, 0);
 
-    // return;
+    // let mv = Move::new_quiet("g6", "f7", Bishop);
+    // let mv = Move::new_capture("b4", "d6", Bishop, Queen);
+    // let mv = Move::new_quiet("g4", "g3", Queen);
+    let mv = Move::new_capture("f5", "d4", Knight, Pawn);
+
+    let k0 = movegen.move_is_legal(mv);
+    eprintln!("k0 = {:?}", k0);
+
+    let k1 = movegen.move_is_pseudo_legal(mv);
+    eprintln!("k1 = {:?}", k1);
+
+    return;
 
     // let mut xs = [0i32; 64];
     // for n in 0..64 {
