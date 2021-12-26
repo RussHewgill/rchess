@@ -51,6 +51,20 @@ impl ABStack {
 
 }
 
+/// Update stats
+impl ABStack {
+
+    pub fn update_stats(
+        &mut self,
+        g: &Game,
+        best: Move,
+        beta: Score,
+    ) {
+        unimplemented!()
+    }
+
+}
+
 /// Killers
 impl ABStack {
     pub fn killer_get(&self, ply: Depth) -> (Option<Move>,Option<Move>) {

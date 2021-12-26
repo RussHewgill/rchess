@@ -494,6 +494,12 @@ impl ExHelper {
             }
         }
 
+        // /// Futility pruning
+        // if depth == 1
+        //     && !is_pv_node
+        //     && !in_check
+        //     && 
+
         // // let mut can_fut
         // // TODO: futility pruning
         // if depth == 1

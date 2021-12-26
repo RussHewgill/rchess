@@ -188,6 +188,10 @@ impl Material {
         sum
     }
 
+    pub fn any_non_pawn(&self, side: Color) -> bool {
+        self.buf[side].iter().any(|&x| x > 0)
+    }
+
     pub fn min_like_man(&self) -> u8 {
         let c0 = Piece::iter_pieces()
             .map(|pc| self.buf[Black][pc.index()]);
