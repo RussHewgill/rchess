@@ -250,6 +250,19 @@ mod td_builder {
             sfen_n:     Arc<(AtomicU64,AtomicU64)>,
             tx:         Sender<TrainingData>,
         ) {
+            unimplemented!()
+        }
+
+        #[cfg(feature = "nope")]
+        pub fn _do_explore(
+            &self,
+            ts:         &'static Tables,
+            ob:         &OpeningBook,
+            count:      u64,
+            mut rng:    StdRng,
+            sfen_n:     Arc<(AtomicU64,AtomicU64)>,
+            tx:         Sender<TrainingData>,
+        ) {
 
             let opening_ply = 16;
 

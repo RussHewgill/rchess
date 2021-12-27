@@ -472,7 +472,8 @@ impl Explorer {
         let (ress,moves,stats) = self.lazy_smp_2(ts);
         if let Some(best) = ress.get_result() {
             debug!("explore: best move = {:?}", best.mv);
-            (Some((best.mv,best)),stats)
+            // (Some((best.mv,best)),stats)
+            (Some((best.mv.unwrap(),best)),stats)
         } else {
             debug!("explore: no best move? = {:?}", ress);
             // panic!();
@@ -633,7 +634,7 @@ impl Explorer {
         stats.ph_misses = self.ph_rw.misses.load(Ordering::Relaxed);
 
         if let Some(res) = out.get_result() {
-            let out = if self.game.move_is_legal(ts, res.mv, self.game.state.side_to_move) {
+            let out = if self.game.move_is_legal(ts, res.mv.unwrap(), self.game.state.side_to_move) {
                 out
             } else {
                 debug!("best move wasn't legal? {:?}\n{:?}\n{:?}", self.game, self.game.to_fen(), res);

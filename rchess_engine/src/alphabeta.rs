@@ -19,7 +19,7 @@ use std::sync::atomic::Ordering::{SeqCst,Relaxed};
 
 #[derive(Debug,PartialEq,PartialOrd,Clone,Copy)]
 pub struct ABResult {
-    pub mv:       Move,
+    pub mv:       Option<Move>,
     pub score:    Score,
 }
 
@@ -32,26 +32,35 @@ impl std::ops::Neg for ABResult {
     }
 }
 
+/// New
 impl ABResult {
 
     pub fn new_null() -> Self {
         Self {
-            mv: Move::NullMove,
+            // mv: Move::NullMove,
+            mv: None,
             // score: 0,
             score: Score::MIN,
         }
     }
 
+    pub fn new_null_score(score: Score) -> Self {
+        Self {
+            mv: None,
+            score,
+        }
+    }
+
     pub fn new_single(mv: Move, score: Score) -> Self {
         Self {
-            mv: mv,
+            mv: Some(mv),
             score,
         }
     }
 
     pub fn neg_score(&mut self, mv: Move) {
         self.score = -self.score;
-        self.mv = mv;
+        self.mv = Some(mv);
     }
 
 }
@@ -79,21 +88,24 @@ impl std::ops::Neg for ABResults {
     }
 }
 
+/// Get
 impl ABResults {
 
     pub fn get_result_mv(&self, mv: Move) -> Option<ABResult> {
         let mut res = self.get_result()?;
-        res.mv = mv;
+        // res.mv = mv;
+        res.mv = Some(mv);
         Some(res)
     }
 
     pub fn get_result(&self) -> Option<ABResult> {
         match self {
-            Self::ABSingle(res)  => Some(*res),
-            Self::ABList(res, _) => Some(*res),
-            Self::ABSyzygy(res)  => Some(*res),
-            Self::ABPrune(_, _)  => None,
-            Self::ABNone         => None,
+            Self::ABSingle(res)     => Some(*res),
+            Self::ABList(res, _)    => Some(*res),
+            Self::ABSyzygy(res)     => Some(*res),
+            // Self::ABPrune(score, _) => None,
+            Self::ABPrune(score, _) => Some(ABResult::new_null_score(*score)),
+            Self::ABNone            => None,
         }
     }
 
@@ -811,7 +823,8 @@ impl ExHelper {
 
                 }
 
-                if res.mv == Move::NullMove {
+                // if res.mv == Move::NullMove {
+                if res.mv.is_none() {
                     panic!();
                     // continue 'outer;
                 }
@@ -906,20 +919,24 @@ impl ExHelper {
         match &best_val.0 {
             Some((zb,res)) => {
 
+                let mv = res.mv.unwrap();
+
                 // if !is_root_node && current_node_type == Node::PV {
                 if current_node_type == Node::PV {
                     // stack.pvs.push(res.mv);
-                    stack.pvs[ply as usize] = res.mv
+                    stack.pvs[ply as usize] = mv
                 }
 
-                if !is_root_node && Some(res.mv) != movegen.hashmove {
+                // if !is_root_node && Some(res.mv) != movegen.hashmove {
+                if !is_root_node && Some(mv) != movegen.hashmove {
                 // if !is_root {
 
 
                     self.tt_insert_deepest(
                         g.zobrist,
                         SearchInfo::new(
-                            res.mv,
+                            // res.mv,
+                            mv,
                             // res.moves.len() as u8,
                             depth - 1,
                             // depth,
