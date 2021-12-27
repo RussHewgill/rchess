@@ -51,6 +51,12 @@ impl ABStack {
         }
     }
 
+    pub fn get_with<F,T>(&self, ply: Depth, mut f: F) -> T
+        where F: FnMut(&mut ABStackPly) -> T
+    {
+        unimplemented!()
+    }
+
 }
 
 /// Update stats
@@ -103,7 +109,8 @@ pub struct ABStackPly {
     pub killers:          [Option<Move>; 2],
     pub static_eval:      Option<Score>,
     pub material:         Material,
-    pub in_check:         bool
+    pub in_check:         bool,
+    pub forbidden_move:   Option<Move>,
 }
 
 /// New
@@ -117,6 +124,7 @@ impl ABStackPly {
             static_eval:    None,
             material:       g.state.material,
             in_check:       false,
+            forbidden_move: None,
         }
     }
 }

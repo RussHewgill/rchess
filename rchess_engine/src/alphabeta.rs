@@ -435,7 +435,8 @@ impl ExHelper {
                         Ok(Some((mv,dtz)))  => {
                             // trace!("dtz,ply = {:?}, {:?}", dtz, ply);
                             // let score = CHECKMATE_VALUE - ply as Score - dtz.0 as Score;
-                            let score = CHECKMATE_VALUE - dtz.add_plies(ply as i32).0.abs() as Score;
+                            // let score = CHECKMATE_VALUE - dtz.add_plies(ply as i32).0.abs() as Score;
+                            let score = TB_WIN_VALUE - dtz.add_plies(ply as i32).0.abs() as Score;
 
                             // XXX: wrong, but matches with other wrong mate in x count
                             let score = score + 1;
@@ -496,23 +497,27 @@ impl ExHelper {
         // }
 
         // /// Futility pruning
-        // if depth == 1
+        // let can_futility_prune = depth == 1
         //     && !is_pv_node
         //     && !in_check
-        //     && 
+        //     && static_eval.unwrap() 
 
-        // let mut can_futility_prune = false;
+        let mut can_futility_prune = false;
         /// TODO: futility pruning
         #[cfg(feature = "futility_pruning")]
         if depth == 1
             && !is_pv_node
             && !in_check
-            // && static_eval - FUTILITY_MARGIN >= beta
-            && static_eval.unwrap() + FUTILITY_MARGIN <= alpha
+            && static_eval.unwrap() - FUTILITY_MARGIN >= beta
+            // && static_eval.unwrap() + FUTILITY_MARGIN <= alpha
+            && static_eval.unwrap() < FUTILITY_MIN_ALPHA
         {
-            stats.fut_prunes += 1;
-            return ABPrune(static_eval.unwrap(), Prune::Futility);
-        }
+            // let eval = self.cfg.evaluate(ts, g, &self.ph_rw);
+            // if eval + FUTILITY_MARGIN 
+            // stats.fut_prunes += 1;
+            // return ABPrune(static_eval.unwrap(), Prune::Futility);
+            can_futility_prune = true;
+        };
 
         /// null move pruning
         #[cfg(feature = "null_pruning")]
@@ -587,21 +592,44 @@ impl ExHelper {
 
             let capture_or_promotion = mv.filter_all_captures() || mv.filter_promotion();
             let gives_check = movegen.gives_check(mv);
+            // let gives_check = false;
 
-            // TODO: 
-            /// Shallow pruning
-            if !is_root_node
-                && g.state.material.any_non_pawn(g.state.side_to_move)
+            /// Futility prune
+            #[cfg(feature = "futility_pruning")]
+            if can_futility_prune
+                && moves_searched > 1
+                && best_val.0.is_some()
+                && !in_check
+                && !gives_check
+                && !mv.filter_all_captures()
+                && !mv.filter_promotion()
             {
-                if capture_or_promotion || gives_check {
-                }
+                stats.fut_prunes += 1;
+                continue;
             }
+
+            // // TODO: 
+            // /// Shallow pruning
+            // if !is_root_node
+            //     && g.state.material.any_non_pawn(g.state.side_to_move)
+            // {
+            //     if capture_or_promotion || gives_check {
+            //     }
+            // }
 
             // TODO: 
             /// Singular extension
-            if !is_root_node {
+            if let Some(si) = msi {
+                if !is_root_node
+                    && depth >= 7
+                    && Some(mv) == m_hashmove
+                    && si.node_type == Node::Cut // lower bound
+                    && si.depth_searched >= depth - 3
+                {
+                }
             }
 
+            /// Make move
             let g2 = if let Some(g2) = self.make_move(ts, g, mv, Some(zb0), stack) {
                 g2
             } else { continue 'outer; };

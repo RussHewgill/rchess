@@ -22,6 +22,9 @@ mod const_params {
 
     pub const MAX_SEARCH_PLY: Depth = 220;
 
+    pub static TB_WIN_VALUE: Score = 110_000_000;
+    pub static KNOWN_WIN_VALUE: Score = 90_000_000;
+
     pub static CHECKMATE_VALUE: Score = 100_000_000;
 
     // pub static STALEMATE_VALUE: Score = 20_000_000;
@@ -46,6 +49,7 @@ mod const_params {
     pub const NULL_PRUNE_MIN_PHASE: Phase = 200;
     pub const NULL_PRUNE_REDUCTION: Depth = 2;
 
+    pub static FUTILITY_MIN_ALPHA: Score = 95_000_000;
     // pub static FUTILITY_MARGIN: Score = 200;
     pub static FUTILITY_MARGIN: Score = 300;
 
