@@ -3021,7 +3021,7 @@ fn main9() {
 
     eprintln!();
 
-    stats0.print_ebf(false);
+    stats0.print_ebf(true);
 
     // return;
 

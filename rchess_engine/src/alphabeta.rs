@@ -555,12 +555,30 @@ impl ExHelper {
 
         }
 
+        let mut depth = depth;
+
+        /// Lower depth for positions not in TT
+        if !is_root_node
+            && is_pv_node
+            && depth >= 6
+            && msi.is_none() {
+                depth -= 2;
+            }
+
+        if !is_root_node
+            && is_cut_node
+            && depth >= 9
+            && msi.is_none() {
+                depth -= 1;
+            }
+
         let m_hashmove: Option<Move> = msi.map(|si| {
             let mv = si.best_move;
             // let mv = PackedMove::unpack(&[mv.0,mv.1]).unwrap().convert_to_move(ts, g);
             mv
         });
         let mut movegen = MoveGen::new(ts, &g, m_hashmove, stack, depth, ply);
+
 
         /// true until a move is found that raises alpha
         let mut search_pvs_all = true;
