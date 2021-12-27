@@ -520,7 +520,16 @@ impl ExHelper {
             can_futility_prune = true;
         };
 
-        /// null move pruning
+        /// Reverse Futility Pruning, Static Null Pruning
+        if !is_pv_node
+            && !in_check
+            && depth <= RFP_MIN_DEPTH
+            && static_eval.unwrap() - RFP_MARGIN * depth as Score > beta
+        {
+            return ABPrune(static_eval.unwrap(), Prune::Futility);
+        }
+
+        /// Null move pruning
         #[cfg(feature = "null_pruning")]
         if !is_pv_node
             // && !stack.inside_null

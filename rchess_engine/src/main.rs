@@ -2921,7 +2921,8 @@ fn main9() {
     //     }});
     // return;
 
-    // let k0 = std::mem::size_of::<SearchInfo>();
+    // use rchess_engine_lib::lockless_map::*;
+    // let k0 = std::mem::size_of::<TTEntry>();
     // eprintln!("k0 = {:?}", k0);
     // return;
 
@@ -2942,7 +2943,6 @@ fn main9() {
 
     // let k0 = movegen.move_is_legal(mv);
     // eprintln!("k0 = {:?}", k0);
-
     // let k1 = movegen.move_is_pseudo_legal(mv);
     // eprintln!("k1 = {:?}", k1);
 

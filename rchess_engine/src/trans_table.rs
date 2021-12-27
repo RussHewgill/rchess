@@ -113,13 +113,16 @@ pub enum SICanUse {
 
 #[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize)]
 pub struct SearchInfo {
-    pub best_move:          Move,
+    pub best_move:          Move,            // 5
     // pub best_move:          (u8,u8),
-    pub depth_searched:     Depth,
-    pub node_type:          Node,
-    pub score:              Score,
-    // pub eval:               Score,
-    pub eval:               Option<Score>,
+    pub depth_searched:     Depth,           // 1
+    pub node_type:          Node,            // 1
+    pub score:              Score,           // 4
+    pub eval:               Option<Score>,   // 4, 8?
+    // pub eval:               Score,   // 4, 8?
+}
+
+pub struct PackedSearchInfo {
 }
 
 impl SearchInfo {
@@ -131,6 +134,7 @@ impl SearchInfo {
             node_type:      Node::Empty,
             score:          0,
             eval:           None,
+            // eval:           0,
         }
     }
 }
