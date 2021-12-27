@@ -42,6 +42,8 @@ default = [
     # "countermove_heuristic",
     "futility_pruning",
 
+    "singular_extensions",
+
     "late_move_reduction",
     "killer_moves",
 
@@ -79,6 +81,7 @@ history_heuristic = []
 countermove_heuristic = []
 killer_moves = []
 futility_pruning = []
+singular_extensions = []
 
 new_search = []
 

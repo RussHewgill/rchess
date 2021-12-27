@@ -110,6 +110,7 @@ impl ABResults {
 pub enum Prune {
     NullMove,
     Futility,
+    MultiCut,
 }
 
 #[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
@@ -198,7 +199,7 @@ impl ExHelper {
         //     false);
 
         #[cfg(feature = "new_search")]
-        let res = self._ab_search_negamax2::<{ABNodeType::Root}>(
+        let res = self.ab_search::<{ABNodeType::Root}>(
             ts,
             &g,
             (depth,0),
@@ -308,7 +309,7 @@ impl ExHelper {
 /// Negamax AB Refactor
 impl ExHelper {
     #[allow(unused_doc_comments,unused_labels)]
-    pub fn _ab_search_negamax2<const NODE_TYPE: ABNodeType>(
+    pub fn ab_search<const NODE_TYPE: ABNodeType>(
         &self,
         ts:                      &'static Tables,
         g:                       &Game,
@@ -617,15 +618,40 @@ impl ExHelper {
             //     }
             // }
 
-            // TODO: 
             /// Singular extension
+            #[cfg(feature = "singular_extensions")]
             if let Some(si) = msi {
                 if !is_root_node
                     && depth >= 7
                     && Some(mv) == m_hashmove
                     && si.node_type == Node::Cut // lower bound
                     && si.depth_searched >= depth - 3
+                    && si.eval.is_some()
                 {
+                    let tt_eval = si.eval.unwrap(); // TODO: let_chains
+
+                    let sing_beta  = tt_eval - 3 * depth as Score;
+                    let sing_depth = (depth - 1) / 2;
+
+                    stack.with(ply, |st| st.forbidden_move = Some(mv));
+
+                    let res2 = self.ab_search::<{NonPV}>(
+                        ts, &g, (sing_depth,ply+1), (sing_beta-1,sing_beta), stats, stack, is_cut_node);
+                    stack.with(ply, |st| st.forbidden_move = None);
+                    if let Some(res) = res2.get_result_mv(mv) {
+
+                        if res.score < sing_beta {
+                            extensions = 1;
+                            // TODO: limit LMR?
+                            // TODO: limit explosion?
+                        } else if sing_beta >= beta {
+
+                            return ABPrune(sing_beta, Prune::MultiCut);
+                        } else if tt_eval >= beta {
+                            extensions -= 2;
+                        }
+
+                    }
                 }
             }
 
@@ -676,9 +702,9 @@ impl ExHelper {
                     let (a2,b2) = (-(alpha+1),-alpha); // XXX: ??
 
                     // trace!("search 0");
-                    let res2 = -self._ab_search_negamax2::<{NonPV}>(
+                    let res2 = -self.ab_search::<{NonPV}>(
                         ts, &g2, (depth_r,ply+1), (a2,b2), stats, stack, true);
-                    res = if let Some(mut r) = res2.get_result_mv(mv) { r } else {
+                    res = if let Some(r) = res2.get_result_mv(mv) { r } else {
                         self.pop_nnue(stack);
                         continue 'outer;
                     };
@@ -715,9 +741,9 @@ impl ExHelper {
                     res = {
                         let next_cut_node = !is_cut_node;
                         // trace!("search 1");
-                        let res2 = -self._ab_search_negamax2::<{NonPV}>(
+                        let res2 = -self.ab_search::<{NonPV}>(
                             ts, &g2, (next_depth,ply+1), (a2,b2), stats, stack, next_cut_node);
-                        if let Some(mut r) = res2.get_result_mv(mv) { r } else {
+                        if let Some(r) = res2.get_result_mv(mv) { r } else {
                             self.pop_nnue(stack);
                             continue 'outer;
                             // panic!();
@@ -730,9 +756,9 @@ impl ExHelper {
                         res = {
                             // let next_cut_node = !is_cut_node;
                             // trace!("search 2");
-                            let res2 = -self._ab_search_negamax2::<{PV}>(
+                            let res2 = -self.ab_search::<{PV}>(
                                 ts, &g2, (next_depth,ply+1), (-beta,-alpha), stats, stack, false);
-                            if let Some(mut r) = res2.get_result_mv(mv) { r } else {
+                            if let Some(r) = res2.get_result_mv(mv) { r } else {
                                 self.pop_nnue(stack);
                                 continue 'outer;
                             }
@@ -749,7 +775,7 @@ impl ExHelper {
                 if is_pv_node && search_pvs_all {
 
                     // trace!("search 3");
-                    let res2 = -self._ab_search_negamax2::<{PV}>(
+                    let res2 = -self.ab_search::<{PV}>(
                         ts, &g2, (next_depth,ply+1), (-beta, -alpha), stats, stack, false);
                     res = if let Some(mut r) = res2.get_result_mv(mv) { r } else {
                         self.pop_nnue(stack);
@@ -849,6 +875,7 @@ impl ExHelper {
         stats!(stats.inc_nodes_arr(ply));
         stats!(stats.nodes += 1);
 
+        /// Update hash table and return
         match &best_val.0 {
             Some((zb,res)) => {
 
@@ -872,6 +899,7 @@ impl ExHelper {
                             // node_type,
                             current_node_type,
                             res.score,
+                            static_eval,
                         ));
 
                 }

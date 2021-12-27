@@ -52,9 +52,13 @@ impl ABStack {
     }
 
     pub fn get_with<F,T>(&self, ply: Depth, mut f: F) -> T
-        where F: FnMut(&mut ABStackPly) -> T
+        where F: FnMut(&ABStackPly) -> T
     {
-        unimplemented!()
+        if let Some(st) = self.stacks.get(ply as usize) {
+            unimplemented!()
+        } else {
+            panic!("ABStack get_with bad ply");
+        }
     }
 
 }

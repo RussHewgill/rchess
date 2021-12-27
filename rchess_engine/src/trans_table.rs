@@ -119,6 +119,7 @@ pub struct SearchInfo {
     pub node_type:          Node,
     pub score:              Score,
     // pub eval:               Score,
+    pub eval:               Option<Score>,
 }
 
 impl SearchInfo {
@@ -129,7 +130,7 @@ impl SearchInfo {
             depth_searched: 0,
             node_type:      Node::Empty,
             score:          0,
-            // eval:           0,
+            eval:           None,
         }
     }
 }
@@ -144,7 +145,7 @@ impl SearchInfo {
         depth_searched:     Depth,
         node_type:          Node,
         score:              Score,
-        // eval:               Option<Score>,
+        eval:               Option<Score>,
     ) -> Self {
 
         // let packed_move = PackedMove::convert_from_move(best_move).pack().unwrap();
@@ -161,7 +162,7 @@ impl SearchInfo {
             depth_searched,
             node_type,
             score,
-            // eval,
+            eval,
             // eval: 0,
         }
     }
