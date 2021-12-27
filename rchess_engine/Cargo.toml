@@ -40,7 +40,7 @@ default = [
     # "null_pruning",
     "history_heuristic",
     # "countermove_heuristic",
-    "futility_pruning",
+    # "futility_pruning",
 
     "singular_extensions",
 

@@ -88,7 +88,7 @@ impl std::ops::Neg for ABResults {
     }
 }
 
-/// Get
+/// Get results
 impl ABResults {
 
     pub fn get_result_mv(&self, mv: Move) -> Option<ABResult> {
@@ -508,12 +508,6 @@ impl ExHelper {
         //         improving   = improvement > 0;
         //     }
         // }
-
-        // /// Futility pruning
-        // let can_futility_prune = depth == 1
-        //     && !is_pv_node
-        //     && !in_check
-        //     && static_eval.unwrap() 
 
         let mut can_futility_prune = false;
         /// TODO: futility pruning
