@@ -10,6 +10,7 @@ impl Default for KillerMoves {
         Self {
             primary:    [None; 100],
             secondary:  [None; 100],
+            // tertiary:   [None; 100],
             // counter:    [[[[0; 2]; 64]; 64]; 100],
         }
     }
@@ -22,7 +23,11 @@ impl KillerMoves {
     }
 
     pub fn get(&self, side: Color, ply: Depth) -> (Option<Move>,Option<Move>) {
-        (self.primary[ply as usize],self.secondary[ply as usize])
+    // pub fn get(&self, side: Color, ply: Depth) -> (Option<Move>,Option<Move>,Option<Move>) {
+        (self.primary[ply as usize],
+         self.secondary[ply as usize],
+         // self.tertiary[ply as usize],
+        )
         // (self.primary.get(ply as usize).unwrap(),self.secondary.get(ply as usize).unwrap())
     }
 

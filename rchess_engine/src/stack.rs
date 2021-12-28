@@ -7,21 +7,15 @@ use arrayvec::ArrayVec;
 
 #[derive(Debug,Clone)]
 pub struct ABStack {
-    // pub history:            [[[Score; 64]; 64]; 2],
     pub history:            crate::heuristics::ButterflyHistory,
-    // pub killers:            crate::heuristics::KillerMoves,
     pub counter_moves:      crate::heuristics::CounterMoves,
-
     pub capture_history:    crate::heuristics::CaptureHistory,
 
     pub inside_null:        bool,
 
-    // pub stacks:             ArrayVec<ABStackPly,128>,
     pub stacks:             Vec<ABStackPly>,
 
-    // pub move_history:       ArrayVec<(Zobrist, Move), 128>,
     pub move_history:       Vec<(Zobrist, Move)>,
-    // pub move_history:       HashSet<Zobrist>,
 
     pub pvs:                [Move; 128],
 }

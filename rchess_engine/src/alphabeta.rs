@@ -486,6 +486,9 @@ impl ExHelper {
         let static_eval = if in_check {
             stack.with(ply, |st| st.in_check = true);
             None
+        } else if let Some(score) = msi.map(|si| si.score) {
+            unimplemented!()
+            // Some(score)
         } else if let Some(nnue) = &self.nnue {
             let mut nn = nnue.borrow_mut();
             let score = nn.evaluate(&g, true);
@@ -536,19 +539,24 @@ impl ExHelper {
         }
 
         /// Null move pruning
+        /// skip when TT hit suggests it will fail
         #[cfg(feature = "null_pruning")]
         if !is_pv_node
-            // && !stack.inside_null
-            && g.last_move != Some(Move::NullMove)
-            && depth >= NULL_PRUNE_MIN_DEPTH
+            // && !stack.inside_null // don't ever recursively null prune
             && !in_check
+            && g.last_move != Some(Move::NullMove) // don't null prune twice in a row
+            && depth >= NULL_PRUNE_MIN_DEPTH
             && g.state.phase < NULL_PRUNE_MIN_PHASE
+            && g.state.material.any_non_pawn(g.state.side_to_move)
+            && msi.map(|si| si.node_type != Node::All || si.score >= beta).unwrap_or(false)
         {
-            let r = NULL_PRUNE_REDUCTION; // 2
+            // let r = NULL_PRUNE_REDUCTION; // 2
+            let r = 3 + depth / 6;
 
-            assert!(depth - 1 >= r);
+            // assert!(depth - 1 >= r);
 
-            let null_depth = depth - 1 - r;
+            // let null_depth = depth - 1 - r;
+            let null_depth = (depth - 1).checked_sub(r).unwrap_or(0);
 
             // if let Ok(g2) = g.make_move_unchecked(ts, Move::NullMove) {
             if let Some(g2) = self.make_move(ts, g, Move::NullMove, None, stack) {

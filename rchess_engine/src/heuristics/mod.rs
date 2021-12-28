@@ -19,6 +19,7 @@ pub type ButterflyBoard = [[[Score; 64]; 64]; 2];
 pub struct KillerMoves {
     primary:       [Option<Move>; 100],
     secondary:     [Option<Move>; 100],
+    // tertiary:      [Option<Move>; 100],
     // counter:       [[[[u8; 2]; 64]; 64]; 100],
 }
 
