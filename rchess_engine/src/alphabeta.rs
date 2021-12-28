@@ -554,7 +554,7 @@ impl ExHelper {
             if let Some(g2) = self.make_move(ts, g, Move::NullMove, None, stack) {
 
                 // stack.inside_null = true;
-                let res = -self._ab_search_negamax2::<{NonPV}>(
+                let res = -self.ab_search::<{NonPV}>(
                     ts, &g2, (null_depth,ply+1), (-beta,-beta+1), stats, stack, !is_cut_node);
                 // stack.inside_null = false;
 
@@ -609,6 +609,10 @@ impl ExHelper {
         let mut best_val: (Option<(Zobrist,ABResult)>,Score) = (None,val);
         let mut list = vec![];
 
+        let counter_move = if let Some(prev_mv) = g.last_move {
+            stack.counter_moves.get_counter_move(prev_mv, g.state.side_to_move)
+        } else { None };
+
         /// Loop over moves
         'outer: while let Some(mv) = movegen.next(&stack) {
 
@@ -618,6 +622,8 @@ impl ExHelper {
             /// Prefetch hash table bucket
             let zb0 = g.zobrist.update_move_unchecked(ts, g, mv);
             self.ptr_tt.prefetch(zb0);
+
+            if Some(mv) == counter_move { stats.counter_moves += 1; }
 
             /// Skip blocked moves
             if is_root_node && self.cfg.blocked_moves.contains(&mv) {
@@ -866,8 +872,8 @@ impl ExHelper {
 
                         #[cfg(feature = "countermove_heuristic")]
                         if let Some(prev_mv) = g.last_move {
-                            // stack.counter_moves.insert_counter_move(prev_mv, mv, g.state.side_to_move);
-                            stack.counter_moves.insert_counter_move(prev_mv, mv);
+                            stack.counter_moves.insert_counter_move(prev_mv, mv, g.state.side_to_move);
+                            // stack.counter_moves.insert_counter_move(prev_mv, mv);
                         }
 
                     }

@@ -66,6 +66,16 @@ impl ABStack {
 /// Update stats
 impl ABStack {
 
+    pub fn update_stats_fail_high(
+        &mut self,
+        g:          &Game,
+        beta:       Score,
+        ply:        Depth,
+        depth:      Depth,
+    ) {
+        unimplemented!()
+    }
+
     pub fn update_stats(
         &mut self,
         g:          &Game,

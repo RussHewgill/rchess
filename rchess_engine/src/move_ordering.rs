@@ -23,6 +23,7 @@ pub enum OrdMove {
     GoodCapture(i8),
     // GoodCapture,
     KillerMove,
+    CounterMove,
     // KillerMove(u8),
     CaptureGoodSee(i8),
     // CaptureGoodSee,
@@ -173,16 +174,17 @@ pub fn score_move_for_sort(
         return KillerMove;
     }
 
+    #[cfg(feature = "countermove_heuristic")]
+    if Some(mv) == countermove {
+        return CounterMove;
+    }
+
     #[cfg(feature = "history_heuristic")]
     if mv.filter_quiet() || mv.filter_pawndouble() {
         if let Some(hist) = st.history.get_move(mv, g.state.side_to_move) {
             return OtherScore(scale_score_to_i8(hist));
         }
     }
-
-    // #[cfg(feature = "countermove_heuristic")]
-    // if Some(mv) == countermove {
-    // }
 
     Other
 }

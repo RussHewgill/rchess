@@ -259,8 +259,8 @@ impl<'a> MoveGen<'a> {
 
         // let counter_move = None;
         let counter_move = if let Some(prev_mv) = game.last_move {
-            // stack.counter_moves.get_counter_move(prev_mv, game.state.side_to_move)
-            stack.counter_moves.get_counter_move(prev_mv)
+            stack.counter_moves.get_counter_move(prev_mv, game.state.side_to_move)
+            // stack.counter_moves.get_counter_move(prev_mv)
         } else { None };
 
         let mut out = Self {
@@ -304,8 +304,8 @@ impl<'a> MoveGen<'a> {
         let side = game.state.side_to_move;
 
         let counter_move = if let Some(prev_mv) = game.last_move {
-            // stack.counter_moves.get_counter_move(prev_mv, game.state.side_to_move)
-            stack.counter_moves.get_counter_move(prev_mv)
+            stack.counter_moves.get_counter_move(prev_mv, game.state.side_to_move)
+            // stack.counter_moves.get_counter_move(prev_mv)
         } else { None };
 
         let mut out = Self {

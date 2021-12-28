@@ -91,6 +91,7 @@ mod ss {
         pub ns_cut:         u32,
         pub null_prunes:    u32,
         pub fut_prunes:     u32,
+        pub counter_moves:  u32,
         pub window_fails:   (u32,u32),
         pub lmrs:           (u32,u32),
         pub beta_cut_first: (u32,u32),
@@ -140,6 +141,7 @@ mod ss {
                 ns_cut:             self.ns_cut + other.ns_cut,
                 null_prunes:        self.null_prunes + other.null_prunes,
                 fut_prunes:         self.fut_prunes + other.fut_prunes,
+                counter_moves:      self.counter_moves + other.counter_moves,
                 window_fails:       Self::_add_2(self.window_fails, other.window_fails),
                 lmrs:               Self::_add_2(self.lmrs, other.lmrs),
                 beta_cut_first:     Self::_add_2(self.beta_cut_first, other.beta_cut_first),
@@ -179,9 +181,10 @@ mod ss {
             eprintln!("qt nodes    = {}", pretty_print_si(self.qt_nodes as i64));
             eprintln!("q_max_depth = {:?}", self.q_max_depth);
 
-            eprintln!("null prunes = {:?}", self.null_prunes);
-            eprintln!("fut prunes  = {:?}", self.fut_prunes);
-            eprintln!("lmrs        = {:?}", self.lmrs);
+            eprintln!("null prunes   = {:?}", self.null_prunes);
+            eprintln!("fut prunes    = {:?}", self.fut_prunes);
+            eprintln!("counter_moves = {:?}", self.counter_moves);
+            eprintln!("lmrs          = {:?}", self.lmrs);
 
             let bcs = self.beta_cut_first;
             eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);

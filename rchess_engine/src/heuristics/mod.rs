@@ -35,8 +35,7 @@ pub struct CaptureHistory {
 
 #[derive(Debug,Clone)]
 pub struct CounterMoves {
-    // buf:        [[[Option<Move>; 64]; 64]; 2],
-    // buf:        [[[Option<Move>; 64]; 6]; 2],
-    buf:        [[Option<Move>; 64]; 6],
+    buf:        [[[Option<Move>; 64]; 6]; 2],
+    // buf:        [[Option<Move>; 64]; 6],
 }
 
