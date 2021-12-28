@@ -30,7 +30,7 @@ pub struct ButterflyHistory {
 /// [Piece][To][CapturedPiece]
 #[derive(Debug,Clone)]
 pub struct CaptureHistory {
-    buf:        [[[i16; 5]; 64]; 6],
+    buf:        [[[Score; 5]; 64]; 6],
 }
 
 #[derive(Debug,Clone)]

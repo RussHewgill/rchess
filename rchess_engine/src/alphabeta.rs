@@ -609,6 +609,9 @@ impl ExHelper {
         let mut best_val: (Option<(Zobrist,ABResult)>,Score) = (None,val);
         let mut list = vec![];
 
+        let mut captures_searched: ArrayVec<Move, 64> = ArrayVec::new();
+        let mut quiets_searched: ArrayVec<Move, 64>   = ArrayVec::new();
+
         let counter_move = if let Some(prev_mv) = g.last_move {
             stack.counter_moves.get_counter_move(prev_mv, g.state.side_to_move)
         } else { None };
@@ -697,7 +700,9 @@ impl ExHelper {
             /// Make move
             let g2 = if let Some(g2) = self.make_move(ts, g, mv, Some(zb0), stack) {
                 g2
-            } else { continue 'outer; };
+            } else {
+                continue 'outer;
+            };
             moves_searched += 1;
 
             next_depth += extensions;
@@ -858,6 +863,11 @@ impl ExHelper {
                     // { do_pvs = true; }
                 }
 
+                let x = best_val.0.map(|x| x.1.mv);
+
+                // if !b && Some(mv) != best_val.0.map(|x| x.1.mv) {
+                // }
+
                 /// Fail high, update stats
                 if b {
                     // node_type = Some(Node::Cut);
@@ -920,6 +930,8 @@ impl ExHelper {
             Some((zb,res)) => {
 
                 let mv = res.mv.unwrap();
+
+                stack.update_stats(g, mv, res.score, beta, ply, depth);
 
                 // if !is_root_node && current_node_type == Node::PV {
                 if current_node_type == Node::PV {

@@ -2922,7 +2922,7 @@ fn main9() {
     // return;
 
     // use rchess_engine_lib::lockless_map::*;
-    // let k0 = std::mem::size_of::<TTEntry>();
+    // let k0 = std::mem::size_of::<[[[i32; 64]; 64]; 2]>();
     // eprintln!("k0 = {:?}", k0);
     // return;
 

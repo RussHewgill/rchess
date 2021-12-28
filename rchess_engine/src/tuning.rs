@@ -52,9 +52,11 @@ mod const_params {
     pub const RFP_MIN_DEPTH: Depth = 8;
     pub const RFP_MARGIN: Score = 100;
 
-    pub static FUTILITY_MIN_ALPHA: Score = 95_000_000;
-    // pub static FUTILITY_MARGIN: Score = 200;
-    pub static FUTILITY_MARGIN: Score = 300;
+    pub const FUTILITY_MIN_ALPHA: Score = 95_000_000;
+    // pub const FUTILITY_MARGIN: Score = 200;
+    pub const FUTILITY_MARGIN: Score = 300;
+
+    pub const HISTORY_MAX: Score = 400; // 20 * 20
 
 }
 

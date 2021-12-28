@@ -18,5 +18,11 @@ min(x,y) = (x > y) ? y : x
 
 # plot min((6 * x + 229) * x - 215, 2000)
 
-plot ((21.9 + log(1)) / 2) * log(x)
+# plot ((21.9 + log(1)) / 2) * log(x)
+
+current = 100
+multiplier = 32
+divisor = 512
+
+plot current + multiplier * (x*x) - current * abs(x*x) / divisor
 

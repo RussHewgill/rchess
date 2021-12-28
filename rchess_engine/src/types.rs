@@ -484,6 +484,10 @@ impl Move {
         }
     }
 
+    pub fn filter_capture_or_promotion(&self) -> bool {
+        self.filter_all_captures() | self.filter_promotion()
+    }
+
     pub fn filter_en_passant(&self) -> bool {
         match self {
             &Move::EnPassant { .. }        => true,

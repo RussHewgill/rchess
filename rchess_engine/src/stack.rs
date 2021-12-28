@@ -1,7 +1,7 @@
 
 use std::collections::HashSet;
 
-use crate::types::*;
+use crate::{types::*, tables::HISTORY_MAX};
 
 use arrayvec::ArrayVec;
 
@@ -12,7 +12,7 @@ pub struct ABStack {
     // pub killers:            crate::heuristics::KillerMoves,
     pub counter_moves:      crate::heuristics::CounterMoves,
 
-    // pub capture_history:    crate::heuristics::CaptureHistory,
+    pub capture_history:    crate::heuristics::CaptureHistory,
 
     pub inside_null:        bool,
 
@@ -66,27 +66,34 @@ impl ABStack {
 /// Update stats
 impl ABStack {
 
-    pub fn update_stats_fail_high(
-        &mut self,
-        g:          &Game,
-        beta:       Score,
-        ply:        Depth,
-        depth:      Depth,
-    ) {
-        unimplemented!()
-    }
+    // pub fn update_stats_fail_high(
+    //     &mut self,
+    //     g:          &Game,
+    //     beta:       Score,
+    //     ply:        Depth,
+    //     depth:      Depth,
+    // ) {
+    //     unimplemented!()
+    // }
 
     pub fn update_stats(
         &mut self,
         g:          &Game,
-        best:       Move,
+        best_move:  Move,
+        best_score: Score,
         beta:       Score,
         ply:        Depth,
         depth:      Depth,
     ) {
+
+        let bonus = Self::stat_bonus(depth);
+
+        if best_move.filter_capture_or_promotion() {
+            self.capture_history.increment(best_move, bonus);
+        }
+
         unimplemented!()
     }
-
 
     pub fn update_quiet_stats(
         &mut self,
@@ -96,6 +103,24 @@ impl ABStack {
     ) {
         unimplemented!()
     }
+
+    fn stat_bonus(depth: Depth) -> Score {
+        let depth = depth as Score;
+        Score::min(HISTORY_MAX, depth * depth)
+    }
+
+    // /// Stockfish magic
+    // fn stat_bonus(depth: Depth) -> Score {
+    //     let d = depth as Score;
+    //     Score::min((6 * d + 200) * d - 215, 2000)
+    // }
+
+    // /// from Ethereal
+    // fn history_bonus_decay(current: Score, delta: Score) -> Score {
+    //     let mult = 32;
+    //     let div = 512;
+    //     current + mult * delta - current * delta.abs() / div
+    // }
 
 }
 
@@ -171,21 +196,16 @@ impl ABStack {
     }
     pub fn new() -> Self {
         Self {
-            history:        crate::heuristics::ButterflyHistory::default(),
-            // killers:        crate::heuristics::KillerMoves::default(),
-            counter_moves:  crate::heuristics::CounterMoves::default(),
+            history:            crate::heuristics::ButterflyHistory::default(),
+            counter_moves:      crate::heuristics::CounterMoves::default(),
+            capture_history:    crate::heuristics::CaptureHistory::default(),
 
-            inside_null:    false,
+            inside_null:        false,
 
-            stacks:         Vec::with_capacity(64),
-            move_history:   Vec::with_capacity(64),
-            // move_history:   HashSet::default(),
-            // stacks:         ArrayVec::new(),
-            // move_history:   ArrayVec::new(),
+            stacks:             Vec::with_capacity(64),
+            move_history:       Vec::with_capacity(64),
 
-            // pvs:            Vec::with_capacity(64),
-            // pvs:            vec![Move::NullMove; 64],
-            pvs:            [Move::NullMove; 128],
+            pvs:                [Move::NullMove; 128],
         }
     }
 }
