@@ -2833,6 +2833,8 @@ fn main9() {
 
     // let (fen,correct) = &games_sts(10, 4); // fen, set
 
+    // let (fen,correct) = &games_sts(91, 11); // fen, set
+
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
@@ -2926,10 +2928,10 @@ fn main9() {
     // eprintln!("k0 = {:?}", k0);
     // return;
 
-    let fen0 = "5Bk1/2q2pp1/1p4b1/1B2pN2/3P4/4P3/5PP1/R3K2R b KQ -";
-    let mut g0 = Game::from_fen(&ts, fen0).unwrap();
+    // let fen0 = "5Bk1/2q2pp1/1p4b1/1B2pN2/3P4/4P3/5PP1/R3K2R b KQ -";
+    // let mut g0 = Game::from_fen(&ts, fen0).unwrap();
 
-    let mut st = ABStack::new();
+    // let mut st = ABStack::new();
 
     // // let mv = Move::new_quiet("g6", "f7", Bishop);
     // // let mv = Move::new_capture("b4", "d6", Bishop, Queen);

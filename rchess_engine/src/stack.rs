@@ -63,6 +63,28 @@ impl ABStack {
 
 }
 
+/// Get score for move ordering
+impl ABStack {
+    pub fn get_score_for_ordering(&self, mv: Move, side: Color) -> Option<Score> {
+        if mv.filter_quiet() || mv.filter_pawndouble() {
+            self.get_score_quiet(mv, side)
+        } else if mv.filter_capture_or_promotion() {
+            self.get_score_capture_promotion(mv, side)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_score_capture_promotion(&self, mv: Move, side: Color) -> Option<Score> {
+        self.capture_history.get(mv)
+    }
+
+    pub fn get_score_quiet(&self, mv: Move, side: Color) -> Option<Score> {
+        self.history.get_move(mv, side)
+    }
+
+}
+
 /// Update stats
 impl ABStack {
 
@@ -76,38 +98,56 @@ impl ABStack {
     //     unimplemented!()
     // }
 
-    pub fn update_stats(
+    pub fn update_history(
         &mut self,
-        g:          &Game,
-        best_move:  Move,
-        best_score: Score,
-        beta:       Score,
-        ply:        Depth,
-        depth:      Depth,
+        g:                    &Game,
+        best_mv:              Move,
+        best_score:           Score,
+        beta:                 Score,
+        captures_searched:    ArrayVec<Move,64>,
+        quiets_searched:      ArrayVec<Move,64>,
+        ply:                  Depth,
+        depth:                Depth,
     ) {
 
-        let bonus = Self::stat_bonus(depth);
+        let side        = g.state.side_to_move;
+        let bonus       = Self::stat_bonus(depth);
+        let bonus_quiet = Self::stat_bonus(depth - 1);
 
-        if best_move.filter_capture_or_promotion() {
-            self.capture_history.increment(best_move, bonus);
+        if best_mv.filter_capture_or_promotion() {
+            self.capture_history.update(best_mv, bonus);
+        } else {
+            self.history.update(best_mv, side, bonus_quiet);
+
+            for mv in quiets_searched.into_iter() {
+                if mv != best_mv {
+                    self.history.update(mv, side, -bonus_quiet);
+                }
+            }
+
         }
 
-        unimplemented!()
+        /// decrease stats for all captures other than the best one
+        for mv in captures_searched.into_iter() {
+            if mv != best_mv {
+                self.capture_history.update(mv, -bonus);
+            }
+        }
     }
 
-    pub fn update_quiet_stats(
-        &mut self,
-        g:          &Game,
-        mv:         Move,
-        depth:      Depth,
-    ) {
-        unimplemented!()
-    }
-
-    fn stat_bonus(depth: Depth) -> Score {
+    pub fn stat_bonus(depth: Depth) -> Score {
         let depth = depth as Score;
         Score::min(HISTORY_MAX, depth * depth)
     }
+
+    // pub fn update_quiet_stats(
+    //     &mut self,
+    //     g:          &Game,
+    //     mv:         Move,
+    //     depth:      Depth,
+    // ) {
+    //     unimplemented!()
+    // }
 
     // /// Stockfish magic
     // fn stat_bonus(depth: Depth) -> Score {

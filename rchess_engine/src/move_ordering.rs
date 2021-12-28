@@ -103,6 +103,7 @@ pub fn score_move_for_sort(
     g:            &Game,
     mut see_map:  &mut HashMap<Move,Score>,
     stage:        MoveGenStage,
+    gen_type:     MoveGenType,
     st:           &ABStack,
     ply:          Depth,
     mv:           Move,
@@ -118,7 +119,6 @@ pub fn score_move_for_sort(
         Move::Promotion { new_piece: Queen, .. } => return Prom,
         Move::Promotion { .. }                   => return PromMinor,
         Move::EnPassant { .. }                   => return GoodCapture(0),
-        // Move::EnPassant { .. }                   => return GoodCapture,
         Move::Capture { pc, victim, .. } => match (pc,victim) {
 
             (Queen,Queen)   => return GoodCapture(1),
@@ -128,40 +128,16 @@ pub fn score_move_for_sort(
             (Bishop,Knight) => return GoodCapture(5),
             (Pawn,Pawn)     => return GoodCapture(6),
 
-            // (Queen,Queen)   => return GoodCapture,
-            // (Rook,Rook)     => return GoodCapture,
-            // (Knight,Bishop) => return GoodCapture,
-            // (Bishop,Bishop) => return GoodCapture,
-            // (Bishop,Knight) => return GoodCapture,
-            // (Pawn,Pawn)     => return GoodCapture,
-
-            // _ => return CaptureEvenSee,
-
             _               => {
-
-                // /// XXX: ??
-                // let threshold = 1;
-                // if g.static_exchange_ge(ts, mv, threshold) {
-                //     return CaptureGoodSee;
-                // } else {
-                //     return CaptureBadSee;
-                // }
-
-                // return CaptureEvenSee;
-
                 if let Some(see) = MoveGen::_static_exchange(ts, g, see_map, mv) {
-                // if let Some(see) = g.static_exchange(ts, mv) {
                     if see == 0 {
                         return CaptureEvenSee;
                     } else if see > 0 {
-                        // return CaptureGoodSee((see / 1000).clamp(-127,127) as i8);
                         return CaptureGoodSee(scale_score_to_i8(see));
                     } else if see < 0 {
-                        // return CaptureBadSee((see / 1000).clamp(-127,127) as i8);
                         return CaptureBadSee(scale_score_to_i8(see));
                     }
                 }
-
             },
 
         }
@@ -180,11 +156,16 @@ pub fn score_move_for_sort(
     }
 
     #[cfg(feature = "history_heuristic")]
-    if mv.filter_quiet() || mv.filter_pawndouble() {
-        if let Some(hist) = st.history.get_move(mv, g.state.side_to_move) {
-            return OtherScore(scale_score_to_i8(hist));
-        }
+    if let Some(hist_score) = st.get_score_for_ordering(mv, g.state.side_to_move) {
+        return OtherScore(scale_score_to_i8(hist_score));
     }
+
+    // #[cfg(feature = "history_heuristic")]
+    // if mv.filter_quiet() || mv.filter_pawndouble() {
+    //     if let Some(hist) = st.history.get_move(mv, g.state.side_to_move) {
+    //         return OtherScore(scale_score_to_i8(hist));
+    //     }
+    // }
 
     Other
 }

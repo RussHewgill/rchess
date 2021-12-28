@@ -606,7 +606,8 @@ impl ExHelper {
 
         let mut moves_searched = 0;
         let mut val = Score::MIN + 200;
-        let mut best_val: (Option<(Zobrist,ABResult)>,Score) = (None,val);
+        // let mut best_val: (Option<(Zobrist,ABResult)>,Score) = (None,val);
+        let mut best_val: (Option<ABResult>,Score) = (None,val);
         let mut list = vec![];
 
         let mut captures_searched: ArrayVec<Move, 64> = ArrayVec::new();
@@ -844,7 +845,8 @@ impl ExHelper {
 
             if res.score > best_val.1 {
                 best_val.1 = res.score;
-                best_val.0 = Some((g.zobrist, res))
+                // best_val.0 = Some((g.zobrist, res))
+                best_val.0 = Some(res);
             }
 
             #[cfg(not(feature = "negamax_only"))]
@@ -863,10 +865,16 @@ impl ExHelper {
                     // { do_pvs = true; }
                 }
 
-                let x = best_val.0.map(|x| x.1.mv);
-
-                // if !b && Some(mv) != best_val.0.map(|x| x.1.mv) {
-                // }
+                // if !b && Some(mv) != best_val.0.map(|x| x.mv).flatten() {
+                if !b {
+                    if mv.filter_capture_or_promotion() {
+                        // captures_searched.push(mv);
+                        captures_searched.try_push(mv).unwrap_or_else(|_| {});
+                    } else {
+                        // quiets_searched.push(mv);
+                        quiets_searched.try_push(mv).unwrap_or_else(|_| {});
+                    }
+                }
 
                 /// Fail high, update stats
                 if b {
@@ -874,8 +882,9 @@ impl ExHelper {
                     current_node_type = Node::Cut;
 
                     if !mv.filter_all_captures() {
-                        #[cfg(feature = "history_heuristic")]
-                        stack.history.increment(mv, ply, g.state.side_to_move);
+
+                        // #[cfg(feature = "history_heuristic")]
+                        // stack.history.update(mv, g.state.side_to_move, ABStack::stat_bonus(depth));
 
                         #[cfg(feature = "killer_moves")]
                         stack.killer_store(ply, mv);
@@ -927,11 +936,12 @@ impl ExHelper {
 
         /// Update hash table and return
         match &best_val.0 {
-            Some((zb,res)) => {
+            Some(res) => {
 
                 let mv = res.mv.unwrap();
 
-                stack.update_stats(g, mv, res.score, beta, ply, depth);
+                stack.update_history(
+                    g, mv, res.score, beta, captures_searched, quiets_searched, ply, depth);
 
                 // if !is_root_node && current_node_type == Node::PV {
                 if current_node_type == Node::PV {

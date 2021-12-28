@@ -64,11 +64,11 @@ pub use self::misc_functions::*;
 mod misc_functions {
     use crate::types::*;
 
-    // TODO: tune
-    pub fn depth_stat_bonus(ply: Depth) -> Score {
-        let ply = ply as Score;
-        (ply * ply).min(250)
-    }
+    // // TODO: tune
+    // pub fn depth_stat_bonus(ply: Depth) -> Score {
+    //     let ply = ply as Score;
+    //     (ply * ply).min(250)
+    // }
 
     pub fn lmr_reduction(d: Depth, ms: u8) -> Depth {
         if ms < 4 {

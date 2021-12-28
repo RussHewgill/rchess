@@ -12,19 +12,25 @@ impl Default for CaptureHistory {
 impl CaptureHistory {
 
     /// [Piece][To][CapturedPiece]
-    pub fn increment(&mut self, mv: Move, bonus: Score) {
+    pub fn update(&mut self, mv: Move, bonus: Score) {
         if let (Some(pc),Some(victim)) = (mv.piece(),mv.victim()) {
-            self._increment(pc, mv.sq_to(), victim, bonus);
+            self._update(pc, mv.sq_to(), victim, bonus);
         }
     }
 
-    pub fn _increment(&mut self, pc: Piece, to: Coord, victim: Piece, bonus: Score) {
-        assert!(pc != King);
+    pub fn _update(&mut self, pc: Piece, to: Coord, victim: Piece, bonus: Score) {
+        // assert!(pc != King);
         self.buf[pc][to][victim] += bonus;
     }
 
-    pub fn get(&self, pc: Piece, to: Coord, victim: Piece) -> Option<Score> {
-        assert!(pc != King);
+    pub fn get(&self, mv: Move) -> Option<Score> {
+        let pc = mv.piece()?;
+        let victim = mv.victim()?;
+        self._get(pc, mv.sq_to(), victim)
+    }
+
+    pub fn _get(&self, pc: Piece, to: Coord, victim: Piece) -> Option<Score> {
+        // assert!(pc != King);
         let x = self.buf[pc][to][victim];
         if x == 0 { None } else { Some(x) }
     }

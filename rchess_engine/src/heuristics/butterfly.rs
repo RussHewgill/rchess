@@ -1,5 +1,4 @@
 
-use crate::tuning::depth_stat_bonus;
 use crate::types::*;
 use crate::tables::*;
 use crate::heuristics::KillerMoves;
@@ -26,16 +25,20 @@ impl ButterflyHistory {
         if x == 0 { None } else { Some(x) }
     }
 
-    pub fn increment(&mut self, mv: Move, ply: Depth, side: Color) {
-        // assert!(mv.filter_quiet() || mv.filter_pawndouble());
-        if !(mv.filter_quiet() || mv.filter_pawndouble()) {
-            return;
-        }
-        self._increment(mv.sq_from(), mv.sq_to(), side, depth_stat_bonus(ply));
+    // pub fn increment(&mut self, mv: Move, depth: Depth, side: Color) {
+    //     // assert!(mv.filter_quiet() || mv.filter_pawndouble());
+    //     if !(mv.filter_quiet() || mv.filter_pawndouble()) {
+    //         return;
+    //     }
+    //     self._increment(mv.sq_from(), mv.sq_to(), side, depth_stat_bonus(depth));
+    // }
+
+    pub fn update(&mut self, mv: Move, side: Color, bonus: Score) {
+        self._update(mv.sq_from(), mv.sq_to(), side, bonus);
     }
 
-    fn _increment(&mut self, from: Coord, to: Coord, side: Color, add: Score) {
-        self.buf[side][from][to] += add;
+    fn _update(&mut self, from: Coord, to: Coord, side: Color, bonus: Score) {
+        self.buf[side][from][to] += bonus;
 
         // /// XXX: ??? stockfish magic
         // const D: Score = 14_000;

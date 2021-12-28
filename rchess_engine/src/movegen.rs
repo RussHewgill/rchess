@@ -45,8 +45,8 @@ pub enum MoveGenStage {
 
     // QSearchRecaps,
 
-    GenAllInit,
-    GenAll,
+    // GenAllInit,
+    // GenAll,
 
     Finished,
 }
@@ -71,8 +71,8 @@ impl MoveGenStage {
             QSearchInit  => Some(QSearch),
             QSearch      => Some(Finished),
 
-            GenAllInit   => Some(GenAll),
-            GenAll       => None,
+            // GenAllInit   => Some(GenAll),
+            // GenAll       => None,
 
             Finished     => None,
         }
@@ -179,7 +179,7 @@ impl<'a> MoveGen<'a> {
     }
 
     // #[cfg(feature = "nope")]
-    pub fn sort(&mut self, st: &ABStack) {
+    pub fn sort(&mut self, st: &ABStack, gen_type: MoveGenType) {
         let mut see_map = &mut self.see_map;
 
         #[cfg(feature = "killer_moves")]
@@ -190,7 +190,16 @@ impl<'a> MoveGen<'a> {
 
         for mv in self.buf.drain(..) {
             let score = score_move_for_sort(
-                self.ts, self.game, see_map, self.stage, st, self.ply, mv, killers, self.counter_move);
+                self.ts,
+                self.game,
+                see_map,
+                self.stage,
+                gen_type,
+                st,
+                self.ply,
+                mv,
+                killers,
+                self.counter_move);
             self.buf_scored.push((mv, score));
         }
 
@@ -335,52 +344,52 @@ impl<'a> MoveGen<'a> {
         out
     }
 
-    pub fn new_all(
-        ts:             &'static Tables,
-        game:           &'a Game,
-        stack:          &ABStack,
-        hashmove:       Option<Move>,
-        depth:          Depth,
-        ply:            Depth,
-    ) -> Self {
-        let mut out = Self::new(ts, game, hashmove, stack, depth, ply);
-        out.stage = MoveGenStage::GenAllInit;
-        out
-    }
+    // pub fn new_all(
+    //     ts:             &'static Tables,
+    //     game:           &'a Game,
+    //     stack:          &ABStack,
+    //     hashmove:       Option<Move>,
+    //     depth:          Depth,
+    //     ply:            Depth,
+    // ) -> Self {
+    //     let mut out = Self::new(ts, game, hashmove, stack, depth, ply);
+    //     out.stage = MoveGenStage::GenAllInit;
+    //     out
+    // }
 
 }
 
 /// Not quite Iter
 impl<'a> MoveGen<'a> {
 
-    pub fn next_all(&mut self, stack: &ABStack) -> Option<Move> {
-        match self.stage {
-            MoveGenStage::GenAll => {
-                if let Some(mv) = self.buf.pop() {
-                    if self.move_is_legal(mv) {
-                        return Some(mv);
-                    } else {
-                        return self.next_all(stack);
-                    }
-                }
-                self.stage = MoveGenStage::Finished;
-                None
-            },
-            MoveGenStage::GenAllInit => {
-                if self.in_check {
-                    self.generate(MoveGenType::Evasions);
-                } else {
-                    self.generate(MoveGenType::Captures);
-                    self.generate(MoveGenType::Quiets);
-                }
-                self.sort(stack);
-                self.stage = self.stage.next()?;
-                self.next_all(stack)
-            }
-            _ => unimplemented!(),
-            // _ => None,
-        }
-    }
+    // pub fn next_all(&mut self, stack: &ABStack) -> Option<Move> {
+    //     match self.stage {
+    //         MoveGenStage::GenAll => {
+    //             if let Some(mv) = self.buf.pop() {
+    //                 if self.move_is_legal(mv) {
+    //                     return Some(mv);
+    //                 } else {
+    //                     return self.next_all(stack);
+    //                 }
+    //             }
+    //             self.stage = MoveGenStage::Finished;
+    //             None
+    //         },
+    //         MoveGenStage::GenAllInit => {
+    //             if self.in_check {
+    //                 self.generate(MoveGenType::Evasions);
+    //             } else {
+    //                 self.generate(MoveGenType::Captures);
+    //                 self.generate(MoveGenType::Quiets);
+    //             }
+    //             self.sort(stack, );
+    //             self.stage = self.stage.next()?;
+    //             self.next_all(stack)
+    //         }
+    //         _ => unimplemented!(),
+    //         // _ => None,
+    //     }
+    // }
 
     pub fn next_debug(&mut self, stack: &ABStack) -> Option<(MoveGenStage,Move)> {
         let stage = self.stage;
@@ -428,7 +437,7 @@ impl<'a> MoveGen<'a> {
                 }
 
                 /// Sort
-                self.sort(stack);
+                self.sort(stack, MoveGenType::Captures);
 
                 self.stage = self.stage.next()?;
                 self.next(stack)
@@ -449,7 +458,7 @@ impl<'a> MoveGen<'a> {
             QuietsInit => {
                 self.generate(MoveGenType::Quiets);
                 // TODO: sort here?
-                self.sort(stack);
+                self.sort(stack, MoveGenType::Quiets);
 
                 self.stage = self.stage.next()?;
                 self.next(stack)
@@ -480,7 +489,7 @@ impl<'a> MoveGen<'a> {
             },
             EvasionInit => {
                 self.generate(MoveGenType::Evasions);
-                self.sort(stack);
+                self.sort(stack, MoveGenType::Evasions);
 
                 self.stage = self.stage.next()?;
                 self.next(stack)
@@ -516,7 +525,7 @@ impl<'a> MoveGen<'a> {
                         self.buf.retain(|mv| mv.sq_to() == prev);
 
                         // assert!(self.buf.len() <= 1);
-                        self.sort(stack);
+                        self.sort(stack, MoveGenType::Captures);
                         self.stage = self.stage.next()?;
                         return self.next(stack);
                     } else {
@@ -527,7 +536,7 @@ impl<'a> MoveGen<'a> {
                 }
 
                 self.generate(MoveGenType::Captures);
-                self.sort(stack);
+                self.sort(stack, MoveGenType::Captures);
 
                 self.stage = self.stage.next()?;
                 self.next(stack)
@@ -545,8 +554,8 @@ impl<'a> MoveGen<'a> {
                 None
             },
 
-            GenAll     => self.next_all(stack),
-            GenAllInit => self.next_all(stack),
+            // GenAll     => self.next_all(stack),
+            // GenAllInit => self.next_all(stack),
 
             Finished => {
             // _ => {
