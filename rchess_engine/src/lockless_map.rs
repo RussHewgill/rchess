@@ -42,6 +42,9 @@ use std::alloc::{Layout, handle_alloc_error, self};
 
 use super::*;
 
+/// https://www.chess2u.com/t1820-setting-correct-hashtable-size?highlight=hash+size
+/// HT[KB] = 2.0 * PFreq[MHz] * t[s]
+
 // pub const DEFAULT_TT_SIZE_MB: usize = 1024;
 // pub const DEFAULT_TT_SIZE_MB: usize = 256;
 // pub const DEFAULT_TT_SIZE_MB: usize = 128;
