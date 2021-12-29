@@ -268,10 +268,10 @@ impl ExHelper {
         // if let Some(si) = self.tt_r.get_one(zb) {
             if si.depth_searched >= depth {
                 stats!(stats.tt_hits += 1);
-                Some((SICanUse::UseScore,*si))
+                Some((SICanUse::UseScore,si))
             } else {
                 stats!(stats.tt_halfmiss += 1);
-                Some((SICanUse::UseOrdering,*si))
+                Some((SICanUse::UseOrdering,si))
             }
         } else {
             // if g.zobrist == Zobrist(0x1eebfbac03c62e9d) { println!("wat wat 3"); }
@@ -297,7 +297,7 @@ impl ExHelper {
             } else {
                 stats!(stats.tt_halfmiss += 1);
             }
-            Some(*si)
+            Some(si)
         } else {
             stats!(stats.tt_misses += 1);
             None
@@ -487,8 +487,9 @@ impl ExHelper {
             stack.with(ply, |st| st.in_check = true);
             None
         } else if let Some(score) = msi.map(|si| si.score) {
-            unimplemented!()
-            // Some(score)
+            // unimplemented!()
+            stack.with(ply, |st| st.static_eval = Some(score));
+            Some(score)
         } else if let Some(nnue) = &self.nnue {
             let mut nn = nnue.borrow_mut();
             let score = nn.evaluate(&g, true);

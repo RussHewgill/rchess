@@ -63,14 +63,15 @@ pub struct TTEntry {
     // pub depth_searched:     Depth, // u8
     // pub node_type:          Node, // 1
     // pub score:              Score, // 4
-    pub entry:              SearchInfo,
+    pub entry:              Option<SearchInfo>,
 }
 
 impl TTEntry {
     pub fn empty() -> Self {
         Self {
             verification:  0,
-            entry:         SearchInfo::empty(),
+            // entry:         SearchInfo::empty(),
+            entry:         None,
         }
     }
 }
@@ -98,23 +99,38 @@ impl Bucket {
     pub fn store(&mut self, ver: u32, si: SearchInfo, used_entries: &mut usize) {
         let mut idx_lowest_depth = 0;
 
-        for entry in 1..ENTRIES_PER_BUCKET {
-            if self.bucket[entry].entry.depth_searched < si.depth_searched {
-                idx_lowest_depth = entry;
+        for entry_idx in 1..ENTRIES_PER_BUCKET {
+
+            if let Some(entry) = self.bucket[entry_idx].entry {
+                if entry.depth_searched < si.depth_searched {
+                    idx_lowest_depth = entry_idx;
+                }
             }
+
+            // if let Some(entry) = entry {
+            //     if self.bucket[entry].entry.depth_searched < si.depth_searched {
+            //         idx_lowest_depth = entry;
+            //     }
+            // }
+
         }
 
         if self.bucket[idx_lowest_depth].verification == 0 {
             *used_entries += 1;
         }
 
-        self.bucket[idx_lowest_depth] = TTEntry::new(ver, si);
+        self.bucket[idx_lowest_depth] = TTEntry::new(ver, Some(si));
     }
 
-    pub fn find(&self, ver: u32) -> Option<&SearchInfo> {
-        for e in self.bucket.iter() {
+    // pub fn find(&self, ver: u32) -> Option<&SearchInfo> {
+    pub fn find(&self, ver: u32) -> Option<SearchInfo> {
+        for e in self.bucket.iter(){
             if e.verification == ver {
-                return Some(&e.entry);
+                return e.entry;
+                // if let Some(si) = e.entry {
+                //     return Some(si);
+                // }
+                // return Some(&e.entry);
             }
         }
         None
@@ -237,14 +253,16 @@ impl TransTable {
         (*self.vec.get()).get_mut(idx)
     }
 
-    pub fn probe(&self, zb: Zobrist) -> Option<&SearchInfo> {
+    // pub fn probe(&self, zb: Zobrist) -> Option<&SearchInfo> {
+    pub fn probe(&self, zb: Zobrist) -> Option<SearchInfo> {
         let idx = self.calc_index(zb);
         let ver = self.calc_verification(zb);
 
         unsafe {
             let ptr = self.bucket(idx)?;
             let si = ptr.find(ver)?;
-            Some(&si)
+            // Some(&si)
+            Some(si)
             // let ptr = self.bucket(idx);
             // (*ptr).find(ver)
         }
