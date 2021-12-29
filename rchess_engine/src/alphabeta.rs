@@ -271,10 +271,10 @@ impl ExHelper {
         // if let Some(si) = self.tt_r.get_one(zb) {
             if si.depth_searched >= depth {
                 stats!(stats.tt_hits += 1);
-                Some((SICanUse::UseScore,si))
+                Some((SICanUse::UseScore,*si))
             } else {
                 stats!(stats.tt_halfmiss += 1);
-                Some((SICanUse::UseOrdering,si))
+                Some((SICanUse::UseOrdering,*si))
             }
         } else {
             // if g.zobrist == Zobrist(0x1eebfbac03c62e9d) { println!("wat wat 3"); }
@@ -300,7 +300,7 @@ impl ExHelper {
             } else {
                 stats!(stats.tt_halfmiss += 1);
             }
-            Some(si)
+            Some(*si)
         } else {
             stats!(stats.tt_misses += 1);
             None
@@ -659,29 +659,29 @@ impl ExHelper {
                 continue;
             }
 
-            /// Shallow pruning
-            if !is_root_node
-                && g.state.material.any_non_pawn(g.state.side_to_move)
-            {
-                let lmr_depth = next_depth - lmr_reduction(depth, moves_searched);
+            // /// Shallow pruning
+            // if !is_root_node
+            //     && g.state.material.any_non_pawn(g.state.side_to_move)
+            // {
+            //     let lmr_depth = next_depth - lmr_reduction(depth, moves_searched);
 
-                if capture_or_promotion || gives_check {
+            //     if capture_or_promotion || gives_check {
 
-                    if !gives_check
-                        && lmr_depth < 1
-                        && stack.capture_history.get(mv) < 0
-                    {
-                        continue;
-                    }
+            //         if !gives_check
+            //             && lmr_depth < 1
+            //             && stack.capture_history.get(mv) < 0
+            //         {
+            //             continue;
+            //         }
 
-                    // if !movegen.static_exchange_ge(mv, 200 * depth as Score) {
-                    //     continue;
-                    // }
+            //         // if !movegen.static_exchange_ge(mv, 200 * depth as Score) {
+            //         //     continue;
+            //         // }
 
-                } else {
+            //     } else {
 
-                }
-            }
+            //     }
+            // }
 
             /// Singular extension
             #[cfg(feature = "singular_extensions")]
@@ -691,9 +691,11 @@ impl ExHelper {
                     && Some(mv) == m_hashmove
                     && si.node_type == Node::Cut // lower bound
                     && si.depth_searched >= depth - 3
-                    && si.eval.is_some()
+                    // && si.eval.is_some()
+                    && static_eval.is_some()
                 {
-                    let tt_eval = si.eval.unwrap(); // TODO: let_chains
+                    // let tt_eval = si.eval.unwrap(); // TODO: let_chains
+                    let tt_eval = static_eval.unwrap(); // TODO: let_chains
 
                     let sing_beta  = tt_eval - 3 * depth as Score;
                     let sing_depth = (depth - 1) / 2;
@@ -987,7 +989,7 @@ impl ExHelper {
                             // node_type,
                             current_node_type,
                             res.score,
-                            static_eval,
+                            // static_eval,
                         ));
 
                 }

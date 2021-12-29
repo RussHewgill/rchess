@@ -74,6 +74,62 @@ pub struct Explorer {
     // pub pos_history:   HashMap<Zobrist,u8>,
 }
 
+/// New
+impl Explorer {
+    pub fn new(
+        side:          Color,
+        game:          Game,
+        max_depth:     Depth,
+        settings:      TimeSettings,
+    ) -> Self {
+
+        let stop = Arc::new(AtomicBool::new(false));
+
+        #[cfg(not(feature = "lockless_hashmap"))]
+        let (tt_rf, tt_w) = new_hash_table();
+
+        let ph_rw = PHTableFactory::new();
+
+        let mut cfg = ExConfig::default();
+        cfg.max_depth = max_depth;
+
+        Self {
+            side,
+            game,
+            // timer:          Timer::new(side, stop.clone(), settings),
+            current_ply:    None,
+            timer:          Timer::new(settings),
+            stop,
+            best_mate:      Arc::new(RwLock::new(None)),
+
+            cfg,
+
+            // move_history:   VecDeque::default(),
+            // syzygy:         Arc::new(None),
+            #[cfg(feature = "syzygy")]
+            syzygy:         None,
+            opening_book:   None,
+
+            nnue:           None,
+
+            #[cfg(feature = "lockless_hashmap")]
+            ptr_tt:         Arc::new(TransTable::new_mb(DEFAULT_TT_SIZE_MB)),
+
+            #[cfg(not(feature = "lockless_hashmap"))]
+            tt_rf,
+            #[cfg(not(feature = "lockless_hashmap"))]
+            tt_w,
+
+            // ph_rw:          (ph_rf,ph_w),
+            ph_rw,
+
+            move_history:   vec![],
+            // pos_history:    HashMap::default(),
+        }
+    }
+
+}
+
 #[derive(Debug,Clone)]
 pub struct ExConfig {
     pub max_depth:             Depth,
@@ -242,60 +298,8 @@ impl ABConfig {
     }
 }
 
-/// New, misc
+/// misc
 impl Explorer {
-    pub fn new(
-        side:          Color,
-        game:          Game,
-        max_depth:     Depth,
-        settings:      TimeSettings,
-    ) -> Self {
-
-        let stop = Arc::new(AtomicBool::new(false));
-
-        #[cfg(not(feature = "lockless_hashmap"))]
-        let (tt_rf, tt_w) = new_hash_table();
-
-        let ph_rw = PHTableFactory::new();
-
-        let mut cfg = ExConfig::default();
-        cfg.max_depth = max_depth;
-
-        Self {
-            side,
-            game,
-            // timer:          Timer::new(side, stop.clone(), settings),
-            current_ply:    None,
-            timer:          Timer::new(settings),
-            stop,
-            best_mate:      Arc::new(RwLock::new(None)),
-
-            cfg,
-
-            // move_history:   VecDeque::default(),
-            // syzygy:         Arc::new(None),
-            #[cfg(feature = "syzygy")]
-            syzygy:         None,
-            opening_book:   None,
-
-            nnue:           None,
-
-            #[cfg(feature = "lockless_hashmap")]
-            ptr_tt:         Arc::new(TransTable::new_mb(DEFAULT_TT_SIZE_MB)),
-
-            #[cfg(not(feature = "lockless_hashmap"))]
-            tt_rf,
-            #[cfg(not(feature = "lockless_hashmap"))]
-            tt_w,
-
-            // ph_rw:          (ph_rf,ph_w),
-            ph_rw,
-
-            move_history:   vec![],
-            // pos_history:    HashMap::default(),
-        }
-    }
-
     // pub fn add_move_to_history(&mut self, zb: Zobrist, mv: Move) {
     //     self.move_history.push((zb,mv));
     // }

@@ -14,6 +14,7 @@ use crate::types::*;
 use arrayvec::ArrayVec;
 
 pub type ButterflyBoard = [[[Score; 64]; 64]; 2];
+// type HistoryPieceTo = [[[Score; 64]; 6]; 2],
 
 #[derive(Debug,Clone)]
 pub struct KillerMoves {
@@ -26,7 +27,14 @@ pub struct KillerMoves {
 #[derive(Debug,Clone)]
 pub struct ButterflyHistory {
     buf:        ButterflyBoard,
+    // buf:           [[[(Score,Score); 64]; 64]; 2]
 }
+
+// #[derive(Debug,Clone)]
+// pub struct ContinuationHistory {
+//     buf:        [HistoryPieceTo; 64],
+//     // buf:           [[[(Score,Score); 64]; 64]; 2]
+// }
 
 /// [Piece][To][CapturedPiece]
 #[derive(Debug,Clone)]

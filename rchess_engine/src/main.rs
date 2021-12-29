@@ -2924,7 +2924,7 @@ fn main9() {
     // return;
 
     // use rchess_engine_lib::lockless_map::*;
-    // let k0 = std::mem::size_of::<TTEntry2>();
+    // let k0 = std::mem::size_of::<Bucket>();
     // eprintln!("k0 = {:?}", k0);
     // return;
 
@@ -3012,6 +3012,17 @@ fn main9() {
     debug!("Best move = {:>8} {:?}", best.score, best.mv);
     debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth, t2);
 
+    println!();
+
+    let tt = ex.ptr_tt;
+
+    let used = tt.used_entries();
+    let tot  = tt.total_entries();
+
+    // eprintln!("used = {:?}", used);
+    // eprintln!("tot  = {:?}", tot);
+    eprintln!("tt use ratio = {:.3}", used as f64 / tot as f64);
+
     // return;
 
     // println!();
@@ -3023,7 +3034,7 @@ fn main9() {
 
     eprintln!();
 
-    stats0.print_ebf(true);
+    stats0.print_ebf(false);
 
     // return;
 

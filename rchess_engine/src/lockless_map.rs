@@ -44,7 +44,10 @@ use super::*;
 
 // pub const DEFAULT_TT_SIZE_MB: usize = 1024;
 // pub const DEFAULT_TT_SIZE_MB: usize = 256;
-pub const DEFAULT_TT_SIZE_MB: usize = 64;
+// pub const DEFAULT_TT_SIZE_MB: usize = 128;
+// pub const DEFAULT_TT_SIZE_MB: usize = 64;
+// pub const DEFAULT_TT_SIZE_MB: usize = 32;
+pub const DEFAULT_TT_SIZE_MB: usize = 16;
 
 const ENTRIES_PER_BUCKET: usize = 3;
 
@@ -122,11 +125,11 @@ impl Bucket {
         self.bucket[idx_lowest_depth] = TTEntry::new(ver, Some(si));
     }
 
-    // pub fn find(&self, ver: u32) -> Option<&SearchInfo> {
-    pub fn find(&self, ver: u32) -> Option<SearchInfo> {
+    pub fn find(&self, ver: u32) -> Option<&SearchInfo> {
+    // pub fn find(&self, ver: u32) -> Option<SearchInfo> {
         for e in self.bucket.iter(){
             if e.verification == ver {
-                return e.entry;
+                return e.entry.as_ref();
                 // if let Some(si) = e.entry {
                 //     return Some(si);
                 // }
@@ -228,6 +231,14 @@ impl TransTable {
     }
 }
 
+/// Resize
+impl TransTable {
+    pub fn resize_mb(&mut self, size: usize) {
+        let new = Self::new_mb(size);
+        *self = new;
+    }
+}
+
 /// Insert
 impl TransTable {
     pub fn insert(&self, zb: Zobrist, si: SearchInfo) {
@@ -253,8 +264,8 @@ impl TransTable {
         (*self.vec.get()).get_mut(idx)
     }
 
-    // pub fn probe(&self, zb: Zobrist) -> Option<&SearchInfo> {
-    pub fn probe(&self, zb: Zobrist) -> Option<SearchInfo> {
+    pub fn probe(&self, zb: Zobrist) -> Option<&SearchInfo> {
+    // pub fn probe(&self, zb: Zobrist) -> Option<SearchInfo> {
         let idx = self.calc_index(zb);
         let ver = self.calc_verification(zb);
 
@@ -273,6 +284,17 @@ impl TransTable {
 
 /// Query
 impl TransTable {
+
+    pub fn total_entries(&self) -> usize {
+        self.tot_entries.get()
+    }
+
+    pub fn used_entries(&self) -> usize {
+        unsafe {
+            *self.used_entries.get()
+        }
+    }
+
     // pub fn bucket_count(&self) -> usize {
     // }
 }

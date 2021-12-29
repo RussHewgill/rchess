@@ -9,6 +9,7 @@ impl Default for ButterflyHistory {
     fn default() -> Self {
         Self {
             buf:      [[[0; 64]; 64]; 2],
+            // buf:      [[[(0,0); 64]; 64]; 2],
         }
     }
 }
@@ -23,9 +24,13 @@ impl ButterflyHistory {
 
     // pub fn _get_move(&self, from: Coord, to: Coord, side: Color) -> Option<Score> {
     pub fn _get_move(&self, from: Coord, to: Coord, side: Color) -> Score {
-        let x = self.buf[side][from][to];
+        // let x = self.buf[side][from][to];
         // if x == 0 { None } else { Some(x) }
-        x
+
+        self.buf[side][from][to]
+
+        // let (good,all) = self.good[side][from][to];
+        // good / all
     }
 
     // pub fn increment(&mut self, mv: Move, depth: Depth, side: Color) {
