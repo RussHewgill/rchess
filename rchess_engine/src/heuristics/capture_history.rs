@@ -23,16 +23,23 @@ impl CaptureHistory {
         self.buf[pc][to][victim] += bonus;
     }
 
-    pub fn get(&self, mv: Move) -> Option<Score> {
-        let pc = mv.piece()?;
-        let victim = mv.victim()?;
-        self._get(pc, mv.sq_to(), victim)
+    // pub fn get(&self, mv: Move) -> Option<Score> {
+    pub fn get(&self, mv: Move) -> Score {
+        if let (Some(pc),Some(victim)) = (mv.piece(),mv.victim()) {
+            self._get(pc, mv.sq_to(), victim)
+        } else {
+            unimplemented!()
+        }
+        // let pc = mv.piece()?;
+        // let victim = mv.victim()?;
     }
 
-    pub fn _get(&self, pc: Piece, to: Coord, victim: Piece) -> Option<Score> {
+    // pub fn _get(&self, pc: Piece, to: Coord, victim: Piece) -> Option<Score> {
+    pub fn _get(&self, pc: Piece, to: Coord, victim: Piece) -> Score {
         // assert!(pc != King);
-        let x = self.buf[pc][to][victim];
-        if x == 0 { None } else { Some(x) }
+        // let x = self.buf[pc][to][victim];
+        // if x == 0 { None } else { Some(x) }
+        self.buf[pc][to][victim]
     }
 
 }

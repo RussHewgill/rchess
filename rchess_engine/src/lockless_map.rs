@@ -63,15 +63,16 @@ pub struct TTEntry {
     // pub depth_searched:     Depth, // u8
     // pub node_type:          Node, // 1
     // pub score:              Score, // 4
-    pub entry:              Option<SearchInfo>,
+    // pub entry:              Option<SearchInfo>,
+    pub entry:              SearchInfo,
 }
 
 impl TTEntry {
     pub fn empty() -> Self {
         Self {
             verification:  0,
-            // entry:         SearchInfo::empty(),
-            entry:         None,
+            entry:         SearchInfo::empty(),
+            // entry:         None,
         }
     }
 }
@@ -101,17 +102,15 @@ impl Bucket {
 
         for entry_idx in 1..ENTRIES_PER_BUCKET {
 
-            if let Some(entry) = self.bucket[entry_idx].entry {
-                if entry.depth_searched < si.depth_searched {
-                    idx_lowest_depth = entry_idx;
-                }
-            }
-
-            // if let Some(entry) = entry {
-            //     if self.bucket[entry].entry.depth_searched < si.depth_searched {
-            //         idx_lowest_depth = entry;
+            // if let Some(entry) = self.bucket[entry_idx].entry {
+            //     if entry.depth_searched < si.depth_searched {
+            //         idx_lowest_depth = entry_idx;
             //     }
             // }
+
+            if self.bucket[entry_idx].entry.depth_searched < si.depth_searched {
+                idx_lowest_depth = entry_idx;
+            }
 
         }
 
@@ -119,18 +118,19 @@ impl Bucket {
             *used_entries += 1;
         }
 
-        self.bucket[idx_lowest_depth] = TTEntry::new(ver, Some(si));
+        self.bucket[idx_lowest_depth] = TTEntry::new(ver, si);
+        // self.bucket[idx_lowest_depth] = TTEntry::new(ver, Some(si));
     }
 
-    // pub fn find(&self, ver: u32) -> Option<&SearchInfo> {
-    pub fn find(&self, ver: u32) -> Option<SearchInfo> {
+    pub fn find(&self, ver: u32) -> Option<&SearchInfo> {
+    // pub fn find(&self, ver: u32) -> Option<SearchInfo> {
         for e in self.bucket.iter(){
             if e.verification == ver {
-                return e.entry;
+                // return e.entry;
                 // if let Some(si) = e.entry {
                 //     return Some(si);
                 // }
-                // return Some(&e.entry);
+                return Some(&e.entry);
             }
         }
         None
@@ -261,11 +261,12 @@ impl TransTable {
         unsafe {
             let ptr = self.bucket(idx)?;
             let si = ptr.find(ver)?;
+            Some(*si)
             // Some(&si)
-            Some(si)
             // let ptr = self.bucket(idx);
             // (*ptr).find(ver)
         }
+
     }
 
 }

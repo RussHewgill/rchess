@@ -15,14 +15,17 @@ impl Default for ButterflyHistory {
 
 impl ButterflyHistory {
 
-    pub fn get_move(&self, mv: Move, side: Color) -> Option<Score> {
+    // pub fn get_move(&self, mv: Move, side: Color) -> Option<Score> {
+    pub fn get_move(&self, mv: Move, side: Color) -> Score {
         // assert!(mv.filter_quiet() || mv.filter_pawndouble());
         self._get_move(mv.sq_from(), mv.sq_to(), side)
     }
 
-    pub fn _get_move(&self, from: Coord, to: Coord, side: Color) -> Option<Score> {
+    // pub fn _get_move(&self, from: Coord, to: Coord, side: Color) -> Option<Score> {
+    pub fn _get_move(&self, from: Coord, to: Coord, side: Color) -> Score {
         let x = self.buf[side][from][to];
-        if x == 0 { None } else { Some(x) }
+        // if x == 0 { None } else { Some(x) }
+        x
     }
 
     // pub fn increment(&mut self, mv: Move, depth: Depth, side: Color) {

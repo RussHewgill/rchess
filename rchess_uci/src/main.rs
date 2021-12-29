@@ -341,51 +341,9 @@ fn format_move(mv: Move) -> String {
     }
 }
 
-// fn handle_command(line: &str) -> std::io::Result<()> {
-//     let mut params = line.split_whitespace();
-
-//     match params.next().unwrap() {
-//         "uci"        => {
-//             uci();
-//             Ok(())
-//         },
-//         "isready"    => unimplemented!(),
-//         "ucinewgame" => unimplemented!(),
-//         "position"   => unimplemented!(),
-//         "go"         => unimplemented!(),
-//         "stop"       => unimplemented!(),
-//         "ponderhit"  => unimplemented!(),
-//         "quit"       => unimplemented!(),
-//         _            => unimplemented!(),
-//     }
-// }
-
 fn uci() {
     println!("id name RChess");
     println!("id author me");
     println!("uciok");
 }
-
-// fn spawn_stdout_channel() -> Sender<String> {
-//     let (tx, rx) = mpsc::channel::<String>();
-//     thread::spawn(move || loop {
-//         match rx.try_recv() {
-//             Ok(line) => println!("{}", line),
-//             _        => unimplemented!(),
-//         }
-//         // io::stdin().read_line(&mut buffer).unwrap();
-//         // tx.send(buffer).unwrap();
-//     });
-//     tx
-// }
-
-// fn spawn_stdin_channel() -> Receiver<String> {
-//     let (tx, rx) = mpsc::channel::<String>();
-//     thread::spawn(move || loop {
-//         let mut buffer = String::new();
-//         io::stdin().read_line(&mut buffer).unwrap();
-//         tx.send(buffer).unwrap();
-//     });
-//     rx
-// }
 

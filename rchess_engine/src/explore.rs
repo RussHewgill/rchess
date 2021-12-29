@@ -85,7 +85,9 @@ pub struct ExConfig {
     pub late_move_reductions:  bool,
 
     pub return_moves:          bool,
+
     pub clear_table:           bool,
+    pub hash_size_mb:          Option<usize>,
 
     pub eval_params_mid:       EvalParams,
     pub eval_params_end:       EvalParams,
@@ -103,7 +105,9 @@ impl Default for ExConfig {
             late_move_reductions:  cfg!(feature = "late_move_reduction"),
 
             return_moves:          false,
+
             clear_table:           true,
+            hash_size_mb:          None,
 
             eval_params_mid:       EvalParams::default(),
             eval_params_end:       EvalParams::default(),

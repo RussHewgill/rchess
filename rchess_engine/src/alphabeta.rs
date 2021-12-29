@@ -618,7 +618,6 @@ impl ExHelper {
 
         let mut moves_searched = 0;
         let mut val = Score::MIN + 200;
-        // let mut best_val: (Option<(Zobrist,ABResult)>,Score) = (None,val);
         let mut best_val: (Option<ABResult>,Score) = (None,val);
         let mut list = vec![];
 
@@ -642,7 +641,6 @@ impl ExHelper {
 
             let capture_or_promotion = mv.filter_all_captures() || mv.filter_promotion();
             let gives_check = movegen.gives_check(mv);
-            // let gives_check = false;
 
             /// Futility prune
             #[cfg(feature = "futility_pruning")]
@@ -658,14 +656,28 @@ impl ExHelper {
                 continue;
             }
 
-            // // TODO: 
-            // /// Shallow pruning
-            // if !is_root_node
-            //     && g.state.material.any_non_pawn(g.state.side_to_move)
-            // {
-            //     if capture_or_promotion || gives_check {
-            //     }
-            // }
+            // TODO: 
+            /// Shallow pruning
+            if !is_root_node
+                && g.state.material.any_non_pawn(g.state.side_to_move)
+            {
+                let lmr_depth = next_depth - lmr_reduction(depth, moves_searched);
+
+                if capture_or_promotion || gives_check {
+                    if !gives_check
+                        && lmr_depth < 1
+                        && stack.capture_history.get(mv) < 0
+                    {
+                        continue;
+                    }
+
+                    if !movegen.static_exchange_ge(mv, 200 * depth as Score) {
+                        continue;
+                    }
+
+                } else {
+                }
+            }
 
             /// Singular extension
             #[cfg(feature = "singular_extensions")]
