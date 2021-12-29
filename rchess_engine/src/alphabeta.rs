@@ -140,13 +140,16 @@ impl ExHelper {
         &self,
         ts:           &Tables,
         g:            &Game,
+        ply:          Depth,
         mv:           Move,
         zb0:          Option<Zobrist>,
         mut stack:    &mut ABStack,
     ) -> Option<Game> {
         if let Ok(g2) = g._make_move_unchecked(ts, mv, zb0) {
 
-            // push NNUE
+            stack.with(ply, |st| st.current_move = Some(mv));
+
+            /// push NNUE
             #[cfg(feature = "nnue")]
             if let Some(nnue) = &self.nnue {
                 let mut nn = nnue.borrow_mut();
@@ -622,10 +625,6 @@ impl ExHelper {
         let mut captures_searched: ArrayVec<Move, 64> = ArrayVec::new();
         let mut quiets_searched: ArrayVec<Move, 64>   = ArrayVec::new();
 
-        let counter_move = if let Some(prev_mv) = g.last_move {
-            stack.counter_moves.get_counter_move(prev_mv, g.state.side_to_move)
-        } else { None };
-
         /// Loop over moves
         'outer: while let Some(mv) = movegen.next(&stack) {
 
@@ -635,8 +634,6 @@ impl ExHelper {
             /// Prefetch hash table bucket
             let zb0 = g.zobrist.update_move_unchecked(ts, g, mv);
             self.ptr_tt.prefetch(zb0);
-
-            if Some(mv) == counter_move { stats.counter_moves += 1; }
 
             /// Skip blocked moves
             if is_root_node && self.cfg.blocked_moves.contains(&mv) {
@@ -708,7 +705,7 @@ impl ExHelper {
             }
 
             /// Make move
-            let g2 = if let Some(g2) = self.make_move(ts, g, mv, Some(zb0), stack) {
+            let g2 = if let Some(g2) = self.make_move(ts, g, ply, mv, Some(zb0), stack) {
                 g2
             } else {
                 continue 'outer;

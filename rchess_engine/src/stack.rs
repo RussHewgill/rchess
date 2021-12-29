@@ -183,6 +183,7 @@ pub struct ABStackPly {
     pub static_eval:      Option<Score>,
     pub material:         Material,
     pub in_check:         bool,
+    pub current_move:     Option<Move>,
     pub forbidden_move:   Option<Move>,
 }
 
@@ -197,6 +198,7 @@ impl ABStackPly {
             static_eval:    None,
             material:       g.state.material,
             in_check:       false,
+            current_move:   None,
             forbidden_move: None,
         }
     }
