@@ -487,13 +487,16 @@ impl ExHelper {
 
         /// Static eval of position
         let static_eval = if in_check {
+            /// In check, no static eval
             stack.with(ply, |st| st.in_check = true);
             None
         } else if let Some(score) = msi.map(|si| si.score) {
-            // unimplemented!()
+            /// Get search score from TT
             stack.with(ply, |st| st.static_eval = Some(score));
             Some(score)
         } else if let Some(nnue) = &self.nnue {
+            /// NNUE Eval, cheap-ish
+            /// TODO: bench vs evaluate
             let mut nn = nnue.borrow_mut();
             let score = nn.evaluate(&g, true);
             stack.with(ply, |st| st.static_eval = Some(score));
@@ -656,7 +659,6 @@ impl ExHelper {
                 continue;
             }
 
-            // TODO: 
             /// Shallow pruning
             if !is_root_node
                 && g.state.material.any_non_pawn(g.state.side_to_move)
@@ -664,6 +666,7 @@ impl ExHelper {
                 let lmr_depth = next_depth - lmr_reduction(depth, moves_searched);
 
                 if capture_or_promotion || gives_check {
+
                     if !gives_check
                         && lmr_depth < 1
                         && stack.capture_history.get(mv) < 0
@@ -671,11 +674,12 @@ impl ExHelper {
                         continue;
                     }
 
-                    if !movegen.static_exchange_ge(mv, 200 * depth as Score) {
-                        continue;
-                    }
+                    // if !movegen.static_exchange_ge(mv, 200 * depth as Score) {
+                    //     continue;
+                    // }
 
                 } else {
+
                 }
             }
 
