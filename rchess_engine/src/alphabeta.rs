@@ -551,7 +551,9 @@ impl ExHelper {
         if !is_pv_node
             // && !stack.inside_null // don't ever recursively null prune
             && !in_check
-            && g.last_move != Some(Move::NullMove) // don't null prune twice in a row
+            // && g.last_move != Some(Move::NullMove) // don't null prune twice in a row
+            && stack.get_with(ply - 1, |st| st.current_move != Some(Move::NullMove)).unwrap_or(true)
+            && stack.get_with(ply - 2, |st| st.current_move != Some(Move::NullMove)).unwrap_or(true)
             && depth >= NULL_PRUNE_MIN_DEPTH
             && g.state.phase < NULL_PRUNE_MIN_PHASE
             && g.state.material.any_non_pawn(g.state.side_to_move)
@@ -566,7 +568,7 @@ impl ExHelper {
             let null_depth = (depth - 1).checked_sub(r).unwrap_or(0);
 
             // if let Ok(g2) = g.make_move_unchecked(ts, Move::NullMove) {
-            if let Some(g2) = self.make_move(ts, g, Move::NullMove, None, stack) {
+            if let Some(g2) = self.make_move(ts, g, ply, Move::NullMove, None, stack) {
 
                 // stack.inside_null = true;
                 let res = -self.ab_search::<{NonPV}>(
@@ -664,22 +666,16 @@ impl ExHelper {
             //     && g.state.material.any_non_pawn(g.state.side_to_move)
             // {
             //     let lmr_depth = next_depth - lmr_reduction(depth, moves_searched);
-
             //     if capture_or_promotion || gives_check {
-
             //         if !gives_check
             //             && lmr_depth < 1
-            //             && stack.capture_history.get(mv) < 0
-            //         {
-            //             continue;
-            //         }
-
+            //             && (mv.filter_all_captures() && stack.capture_history.get(mv) < 0) {
+            //                 continue;
+            //             }
             //         // if !movegen.static_exchange_ge(mv, 200 * depth as Score) {
             //         //     continue;
             //         // }
-
             //     } else {
-
             //     }
             // }
 

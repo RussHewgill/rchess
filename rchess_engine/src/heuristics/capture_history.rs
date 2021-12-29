@@ -28,7 +28,8 @@ impl CaptureHistory {
         if let (Some(pc),Some(victim)) = (mv.piece(),mv.victim()) {
             self._get(pc, mv.sq_to(), victim)
         } else {
-            unimplemented!()
+            // unimplemented!()
+            panic!("CaptureHistory: get {:?}", mv);
         }
         // let pc = mv.piece()?;
         // let victim = mv.victim()?;
