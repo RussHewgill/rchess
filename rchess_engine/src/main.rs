@@ -2019,7 +2019,7 @@ fn _main_nn() -> std::io::Result<()> {
         eprintln!("v0 = {:?}", v0);
         eprintln!("v0 == -599 = {:?}", v0 == -599);
 
-        // return Ok(());
+        return Ok(());
 
         // let mv1 = Move::new_capture("a8", "a3", Rook, Pawn);
         // let mv2 = Move::new_capture("e5", "d4", Pawn, Pawn);
@@ -2965,15 +2965,16 @@ fn main9() {
     // }
     // return;
 
-    let n = 7;
+    let n = 8;
+    // let n = 7;
 
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
-    // ex.cfg.num_threads = Some(6);
-    ex.cfg.num_threads = Some(1);
+    ex.cfg.num_threads = Some(6);
+    // ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();

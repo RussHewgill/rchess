@@ -766,9 +766,9 @@ impl Explorer {
 }
 
 /// Lazy SMP Iterative Deepening with Aspiration window
+#[cfg(feature = "nope")]
 impl ExHelper {
 
-    #[cfg(feature = "nope")]
     fn lazy_smp_single(
         &self,
         ts:               &'static Tables,

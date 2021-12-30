@@ -250,6 +250,7 @@ mod nn_affine {
     }
 
     /// Approach 1:
+    #[cfg(feature = "nope")]
     impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
 
         // const INPUT_SIMD_WIDTH: usize = 32; // AVX2
@@ -662,6 +663,40 @@ mod nn_affine {
             self.buffer.as_ref()
         }
 
+        #[cfg(feature = "nope")]
+        pub fn _propagate_avx2_small<'a>(
+            &'a mut self, trans_features: &'a [u8]
+        ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
+            use safe_arch::*;
+            use crate::simd_utils::safe_arch::*;
+
+            let input = self.prev.propagate(trans_features);
+            let input = &input[..Self::SIZE_INPUT]; // TODO: bench
+
+            eprintln!("Self::SIZE_INPUT = {:?}", Self::SIZE_INPUT);
+            eprintln!("Self::SIZE_OUTPUT = {:?}", Self::SIZE_OUTPUT);
+            eprintln!("self.weights.len() = {:?}", self.weights.len());
+
+            eprintln!("IS * OS = {:?}", IS * OS);
+
+            for i in 0..Self::SIZE_OUTPUT {
+                let offset = i * Self::SIZE_INPUT_PADDED;
+                let mut sum: i32 = self.biases[i];
+                for (j,x) in input.iter().enumerate() {
+                    let x: i32 = x.as_();
+                    let x0 = self.weights[offset + j] as i32 * x;
+                    sum += x0;
+                }
+                self.buffer[i] = sum as i32;
+            }
+
+            self.buffer.as_ref()
+        }
+
+    }
+
+    impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
+
         pub fn _propagate_avx2_small_nosimd<'a>(
             &'a mut self,
             trans_features: &'a [u8]
@@ -797,36 +832,6 @@ mod nn_affine {
             self.buffer.as_ref()
         }
 
-        #[cfg(feature = "nope")]
-        pub fn _propagate_avx2_small<'a>(
-            &'a mut self, trans_features: &'a [u8]
-        ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
-            use safe_arch::*;
-            use crate::simd_utils::safe_arch::*;
-
-            let input = self.prev.propagate(trans_features);
-            let input = &input[..Self::SIZE_INPUT]; // TODO: bench
-
-            eprintln!("Self::SIZE_INPUT = {:?}", Self::SIZE_INPUT);
-            eprintln!("Self::SIZE_OUTPUT = {:?}", Self::SIZE_OUTPUT);
-            eprintln!("self.weights.len() = {:?}", self.weights.len());
-
-            eprintln!("IS * OS = {:?}", IS * OS);
-
-            for i in 0..Self::SIZE_OUTPUT {
-                let offset = i * Self::SIZE_INPUT_PADDED;
-                let mut sum: i32 = self.biases[i];
-                for (j,x) in input.iter().enumerate() {
-                    let x: i32 = x.as_();
-                    let x0 = self.weights[offset + j] as i32 * x;
-                    sum += x0;
-                }
-                self.buffer[i] = sum as i32;
-            }
-
-            self.buffer.as_ref()
-        }
-
         pub fn _propagate_avx2_large<'a>(
             &'a mut self, trans_features: &'a [u8]
         ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
@@ -941,8 +946,8 @@ mod nn_affine {
             if Self::SIZE_INPUT_PADDED >= 128 {
                 self._propagate_avx2_large(trans_features)
             } else {
-                // self._propagate_avx2_small(trans_features)
-                self._propagate_avx2_small_nosimd(trans_features)
+                self._propagate_avx2_small(trans_features)
+                // self._propagate_avx2_small_nosimd(trans_features)
             }
         }
 
