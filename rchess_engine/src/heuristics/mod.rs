@@ -3,18 +3,20 @@ pub mod killer_moves;
 pub mod butterfly;
 pub mod counter_moves;
 pub mod capture_history;
+pub mod continuation_history;
 
 pub use self::killer_moves::*;
 pub use self::butterfly::*;
 pub use self::counter_moves::*;
 pub use self::capture_history::*;
+pub use self::continuation_history::*;
 
 use crate::types::*;
 
 use arrayvec::ArrayVec;
 
 pub type ButterflyBoard = [[[Score; 64]; 64]; 2];
-// type HistoryPieceTo = [[[Score; 64]; 6]; 2],
+type HistoryPieceTo = [[Score; 64]; 6];
 
 #[derive(Debug,Clone)]
 pub struct KillerMoves {
@@ -30,11 +32,11 @@ pub struct ButterflyHistory {
     // buf:           [[[(Score,Score); 64]; 64]; 2]
 }
 
-// #[derive(Debug,Clone)]
-// pub struct ContinuationHistory {
-//     buf:        [HistoryPieceTo; 64],
-//     // buf:           [[[(Score,Score); 64]; 64]; 2]
-// }
+#[derive(Debug,Clone)]
+pub struct ContinuationHistory {
+    buf:        [[HistoryPieceTo; 64]; 6],
+    // buf:           [[[(Score,Score); 64]; 64]; 2]
+}
 
 /// [Piece][To][CapturedPiece]
 #[derive(Debug,Clone)]

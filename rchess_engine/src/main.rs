@@ -2966,14 +2966,14 @@ fn main9() {
 
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
-    ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+    // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(6);
     ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
-    // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+    ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
     ex.cfg.late_move_reductions = true;
 

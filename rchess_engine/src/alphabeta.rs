@@ -716,6 +716,18 @@ impl ExHelper {
 
                     }
                 }
+            } else if (is_pv_node || is_cut_node)
+                && capture_or_promotion
+                && moves_searched != 1
+            {
+                // Capture extensions for pv node
+                extensions += 1;
+            } else if gives_check
+                && depth > 6
+                && static_eval.map(|s| s.abs() > 100).unwrap_or(false)
+            {
+                // Check extensions
+                extensions += 1;
             }
 
             /// Make move
@@ -760,7 +772,10 @@ impl ExHelper {
                     // let depth_r = next_depth.checked_sub(LMR_REDUCTION).unwrap();
                     // // let depth_r = next_depth.checked_sub(1).unwrap();
 
-                    let r = lmr_reduction(next_depth, moves_searched);
+                    let mut r = lmr_reduction(next_depth, moves_searched);
+
+                    // if 
+
                     let depth_r = next_depth.checked_sub(r).unwrap();
 
                     // let (a2,b2) = (-beta,-alpha);

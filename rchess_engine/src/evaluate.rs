@@ -184,7 +184,8 @@ impl Game {
 
 impl ExConfig {
     pub fn evaluate(&self, ts: &Tables, g: &Game, ph_rw: &PHTable) -> Score {
-        g.sum_evaluate(ts, &self.eval_params_mid, &self.eval_params_mid, Some(ph_rw))
+        // g.sum_evaluate(ts, &self.eval_params_mid, &self.eval_params_mid, Some(ph_rw))
+        g.sum_evaluate(ts, &self.eval_params_mid, &self.eval_params_mid, None)
         // g.sum_evaluate2(ts)
     }
 }

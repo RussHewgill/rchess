@@ -126,6 +126,9 @@ mod table {
 
 }
 
+mod new_table {
+}
+
 #[derive(Debug,Default,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize,new)]
 pub struct PHScore {
     pub score_mid:            ByColor<Score>,
