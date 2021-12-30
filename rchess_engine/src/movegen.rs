@@ -48,6 +48,8 @@ pub enum MoveGenStage {
     // GenAllInit,
     // GenAll,
 
+    RootMoves,
+
     Finished,
 }
 
@@ -73,6 +75,8 @@ impl MoveGenStage {
 
             // GenAllInit   => Some(GenAll),
             // GenAll       => None,
+
+            RootMoves    => Some(Finished),
 
             Finished     => None,
         }
@@ -110,6 +114,8 @@ pub struct MoveGen<'a> {
     ts:                  &'static Tables,
     game:                &'a Game,
 
+    // root_moves:          Option<Vec<Move>>,
+
     pub see_map:         HashMap<Move,Score>,
 
     in_check:            bool,
@@ -122,8 +128,6 @@ pub struct MoveGen<'a> {
     buf_scored:          ArrayVec<(Move,OrdMove),256>,
 
     // buf_set:             BinaryHeap<MGKey>,
-
-    cur:                 usize,
 
     pub hashmove:        Option<Move>,
     pub counter_move:    Option<Move>,
@@ -258,7 +262,6 @@ impl<'a> MoveGen<'a> {
         ts:             &'static Tables,
         game:           &'a Game,
         hashmove:       Option<Move>,
-        // counter_move:   Option<Move>,
         stack:          &ABStack,
         depth:          Depth,
         ply:            Depth,
@@ -275,17 +278,14 @@ impl<'a> MoveGen<'a> {
         let mut out = Self {
             ts,
             game,
+            // root_moves: None,
             see_map:  HashMap::default(),
             in_check,
             side,
             stage:     if in_check { MoveGenStage::EvasionHash } else { MoveGenStage::Hash },
             buf:       ArrayVec::new(),
-            // buf:       Vec::with_capacity(128),
 
             buf_scored: ArrayVec::new(),
-            // buf_set:      BinaryHeap::new(),
-
-            cur: 0,
 
             hashmove,
             counter_move,
@@ -320,18 +320,15 @@ impl<'a> MoveGen<'a> {
         let mut out = Self {
             ts,
             game,
+            // root_moves: None,
             see_map:  HashMap::default(),
             in_check,
             side,
             stage:     if in_check { MoveGenStage::EvasionHash } else { MoveGenStage::QSearchHash },
             // stage:     MoveGenStage::Finished,
             buf:       ArrayVec::new(),
-            // buf:       Vec::with_capacity(128),
 
             buf_scored: ArrayVec::new(),
-            // buf_set:      BinaryHeap::new(),
-
-            cur: 0,
 
             hashmove,
             counter_move,
@@ -344,58 +341,71 @@ impl<'a> MoveGen<'a> {
         out
     }
 
-    // pub fn new_all(
-    //     ts:             &'static Tables,
-    //     game:           &'a Game,
-    //     stack:          &ABStack,
-    //     hashmove:       Option<Move>,
-    //     depth:          Depth,
-    //     ply:            Depth,
-    // ) -> Self {
-    //     let mut out = Self::new(ts, game, hashmove, stack, depth, ply);
-    //     out.stage = MoveGenStage::GenAllInit;
-    //     out
-    // }
+}
+
+/// Gen All
+impl<'a> MoveGen<'a> {
+
+    pub fn new_root(
+        ts:             &'static Tables,
+        game:           &'a Game,
+        root_moves:     &[Move],
+    ) -> Self {
+
+        let in_check = game.state.checkers.is_not_empty();
+        let side = game.state.side_to_move;
+
+        let mut buf = ArrayVec::new();
+        // buf.copy_from_slice(root_moves);
+        buf.try_extend_from_slice(root_moves).unwrap();
+
+        let mut out = Self {
+            ts,
+            game,
+            // root_moves: Some(root_moves),
+            see_map:  HashMap::default(),
+            in_check,
+            side,
+
+            stage:      MoveGenStage::RootMoves,
+            // stage:     if in_check { MoveGenStage::EvasionHash } else { MoveGenStage::Hash },
+            buf,
+            buf_scored: ArrayVec::new(),
+
+            hashmove:     None,
+            counter_move: None,
+            killer_moves:   ArrayVec::new(),
+
+            depth: 0,
+            ply: 0,
+
+        };
+        out
+    }
+
+    pub fn gen_all(ts: &'static Tables, g: &'a Game) -> Vec<Move> {
+        let st = ABStack::new();
+        let mut movegen = Self::new(ts, g, None, &st, 0, 0);
+        let mut mvs = vec![];
+        while let Some(mv) = movegen.next(&st) {
+            mvs.push(mv);
+        }
+        mvs
+    }
 
 }
 
 /// Not quite Iter
 impl<'a> MoveGen<'a> {
 
-    // pub fn next_all(&mut self, stack: &ABStack) -> Option<Move> {
-    //     match self.stage {
-    //         MoveGenStage::GenAll => {
-    //             if let Some(mv) = self.buf.pop() {
-    //                 if self.move_is_legal(mv) {
-    //                     return Some(mv);
-    //                 } else {
-    //                     return self.next_all(stack);
-    //                 }
-    //             }
-    //             self.stage = MoveGenStage::Finished;
-    //             None
-    //         },
-    //         MoveGenStage::GenAllInit => {
-    //             if self.in_check {
-    //                 self.generate(MoveGenType::Evasions);
-    //             } else {
-    //                 self.generate(MoveGenType::Captures);
-    //                 self.generate(MoveGenType::Quiets);
-    //             }
-    //             self.sort(stack, );
-    //             self.stage = self.stage.next()?;
-    //             self.next_all(stack)
-    //         }
-    //         _ => unimplemented!(),
-    //         // _ => None,
-    //     }
-    // }
-
     pub fn next_debug(&mut self, stack: &ABStack) -> Option<(MoveGenStage,Move)> {
         let stage = self.stage;
         let mv = self.next(stack)?;
         Some((stage,mv))
     }
+
+    // pub fn next(&mut self, stack: &ABStack) -> Option<Move> {
+    // }
 
     pub fn next(&mut self, stack: &ABStack) -> Option<Move> {
         use MoveGenStage::*;
@@ -412,20 +422,6 @@ impl<'a> MoveGen<'a> {
                 self.stage = self.stage.next()?;
                 self.next(stack)
             },
-
-            // CounterMove => {
-            //     if let Some(mv) = self.counter_move {
-            //         if self.move_is_legal(mv) && self.move_is_pseudo_legal(mv) {
-            //             // trace!("counter move GOOD: {:?}", mv);
-            //             self.stage = self.stage.next()?;
-            //             return Some(mv);
-            //         } else {
-            //             // trace!("counter move NOPE: {:?}", mv);
-            //         }
-            //     }
-            //     self.stage = self.stage.next()?;
-            //     self.next(stack)
-            // },
 
             CapturesInit => {
                 self.generate(MoveGenType::Captures);
@@ -556,6 +552,14 @@ impl<'a> MoveGen<'a> {
 
             // GenAll     => self.next_all(stack),
             // GenAllInit => self.next_all(stack),
+
+            RootMoves => {
+                if let Some(mv) = self.buf.pop() {
+                    return Some(mv);
+                }
+                self.stage = self.stage.next()?;
+                None
+            },
 
             Finished => {
             // _ => {

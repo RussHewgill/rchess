@@ -71,7 +71,7 @@ impl PGN {
 // }
 
 pub fn load_pgns_tx<P: AsRef<Path>>(
-    ts:             &Tables,
+    ts:             &'static Tables,
     mut exhelper:   &mut ExHelper,
     count:          Option<usize>,
     path:           P,
@@ -90,7 +90,7 @@ pub fn load_pgns_tx<P: AsRef<Path>>(
 }
 
 pub fn process_pgns_tx(
-    ts:             &Tables,
+    ts:             &'static Tables,
     exhelper:       &mut ExHelper,
     count:          Option<usize>,
     pgns:           &[PGN]
@@ -106,7 +106,7 @@ pub fn process_pgns_tx(
         let mut games = vec![];
 
         let mut stats = SearchStats::default();
-        let mut exhelper2 = exhelper_once(&g, g.state.side_to_move, &ev_mid, &ev_end, None, None);
+        let mut exhelper2 = exhelper_once(ts, &g, g.state.side_to_move, &ev_mid, &ev_end, None, None);
 
         for mv0 in pgn.moves.iter() {
             let mv0 = mv0.chars().filter(|c| *c != '+' && *c != '#').collect::<String>();
@@ -153,7 +153,7 @@ pub fn process_pgns_tx(
 }
 
 pub fn process_pgns_td(
-    ts:               &Tables,
+    ts:               &'static Tables,
     (ev_mid,ev_end):  &(EvalParams,EvalParams),
     pgns:             &[PGN]
 ) -> Vec<TrainingData> {
@@ -164,7 +164,7 @@ pub fn process_pgns_td(
 
     let pgns2 = pgns.chunks(pgns.len() / ncpus).map(|xs| {
         let ph_rw = ph_factory.handle();
-        let exhelper = exhelper_once(&g0, White, ev_mid, ev_end, Some(&ph_rw), None);
+        let exhelper = exhelper_once(ts, &g0, White, ev_mid, ev_end, Some(&ph_rw), None);
         (exhelper.clone(), xs)
     }).collect::<Vec<(ExHelper, &[PGN])>>();
 
@@ -281,7 +281,7 @@ pub fn _process_pgn_td(
 }
 
 pub fn process_pgns_td_par<P: AsRef<Path> + Send>(
-    ts:               &Tables,
+    ts:               &'static Tables,
     (ev_mid,ev_end):  &(EvalParams,EvalParams),
     pgn_path:        P,
     out_path:        P,
@@ -318,7 +318,7 @@ pub fn process_pgns_td_par<P: AsRef<Path> + Send>(
 }
 
 pub fn _process_pgns_td_par(
-    ts:               &Tables,
+    ts:               &'static Tables,
     (ev_mid,ev_end):  (&EvalParams,&EvalParams),
     rx:               Receiver<PGN>,
     tx_save:          Sender<TrainingData>,
@@ -328,7 +328,7 @@ pub fn _process_pgns_td_par(
     let ncpus = num_cpus::get();
     let ph_factory = PHTableFactory::new();
     let ph_rw = ph_factory.handle();
-    let exhelper = exhelper_once(&g0, White, ev_mid, ev_end, Some(&ph_rw), None);
+    let exhelper = exhelper_once(ts, &g0, White, ev_mid, ev_end, Some(&ph_rw), None);
 
     loop {
         match rx.recv() {

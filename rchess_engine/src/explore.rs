@@ -1,6 +1,7 @@
 
 use crate::evmap_tables::*;
 use crate::lockless_map::*;
+use crate::movegen::MoveGen;
 use crate::searchstats;
 use crate::types::*;
 use crate::tables::*;
@@ -179,6 +180,9 @@ pub struct ExHelper {
     pub side:            Color,
     pub game:            Game,
 
+    // pub root_moves:      Vec<Move>,
+    pub root_moves:      RefCell<Vec<Move>>,
+
     pub stop:            Arc<AtomicBool>,
     pub best_mate:       Arc<RwLock<Option<Depth>>>,
 
@@ -225,6 +229,7 @@ impl Explorer {
         id:               usize,
         max_depth:        Depth,
         best_depth:       Arc<AtomicU8>,
+        root_moves:       Vec<Move>,
         tx:               ExSender,
     ) -> ExHelper {
         ExHelper {
@@ -232,6 +237,8 @@ impl Explorer {
 
             side:            self.side,
             game:            self.game.clone(),
+
+            root_moves:      RefCell::new(root_moves),
 
             stop:            self.stop.clone(),
             best_mate:       self.best_mate.clone(),
@@ -490,7 +497,7 @@ impl Explorer {
     }
 }
 
-/// Lazy SMP Negamax 2
+/// Lazy SMP Dispatcher
 impl Explorer {
 
     pub fn reset_stop(&self) {
@@ -507,12 +514,12 @@ impl Explorer {
         ts:         &'static Tables,
     ) -> (ABResults,Vec<Move>,SearchStats) {
 
+        #[cfg(feature = "one_thread")]
+        let max_threads = 1;
+        #[cfg(not(feature = "one_thread"))]
         let max_threads = if let Some(x) = self.cfg.num_threads {
             x
         } else {
-            #[cfg(feature = "one_thread")]
-            let max_threads = 1;
-            #[cfg(not(feature = "one_thread"))]
             let max_threads = 6;
             max_threads
         };
@@ -550,6 +557,8 @@ impl Explorer {
         debug!("searching with t_max = {:?}", t_max);
 
         // let t_max = self.timer.allocate_time()
+
+        let root_moves = MoveGen::gen_all(ts, &self.game);
 
         crossbeam::scope(|s| {
 
@@ -607,7 +616,11 @@ impl Explorer {
                     trace!("Spawning thread, id = {}", thread_id);
 
                     let helper = self.build_exhelper(
-                        thread_id, self.cfg.max_depth, best_depth.clone(), tx.clone());
+                        thread_id,
+                        self.cfg.max_depth,
+                        best_depth.clone(),
+                        root_moves.clone(),
+                        tx.clone());
 
                     s.builder()
                         // .stack_size(size)
@@ -653,6 +666,11 @@ impl Explorer {
             (out,moves,stats)
         }
     }
+
+}
+
+/// Lazy SMP Listener
+impl Explorer {
 
     fn lazy_smp_listener(
         &self,
@@ -745,24 +763,138 @@ impl Explorer {
         }
         trace!("exiting listener");
     }
+}
+
+/// Lazy SMP Iterative Deepening with Aspiration window
+impl ExHelper {
+
+    #[cfg(feature = "nope")]
+    fn lazy_smp_single(
+        &self,
+        ts:               &'static Tables,
+    ) {
+
+        let mut stack = ABStack::new_with_moves(&self.move_history);
+        let mut stats = SearchStats::default();
+
+        let skip_size = Self::SKIP_SIZE[self.id % Self::SKIP_LEN];
+        let start_ply = Self::START_PLY[self.id % Self::SKIP_LEN];
+
+        let mut cur_depth = start_ply + 1;
+
+        let mut best_value;
+        let mut delta = -CHECKMATE_VALUE;
+        let mut alpha = -CHECKMATE_VALUE;
+        let mut beta  = CHECKMATE_VALUE;
+
+        /// Iterative deepening
+        while !self.stop.load(SeqCst)
+            && cur_depth <= self.cfg.max_depth
+            && self.best_mate.read().is_none()
+        {
+            if cur_depth >= 4 {
+            }
+
+            let mut res;
+
+            let mut failed_high = 0;
+            loop {
+                stack.pvs.fill(Move::NullMove);
+
+                let res2 = self.ab_search_single(ts, &mut stats, &mut stack, Some((alpha,beta)), cur_depth);
+
+                let res3 = match res2 {
+                    ABResults::ABList(r,_) => r.clone(),
+                    _                      => unimplemented!()
+                };
+                res = Some(res2);
+
+                best_value = res3.score;
+
+                {
+                    let mut mvs = self.root_moves.borrow_mut();
+                    let pv_mv  = stack.pvs[0];
+                    let pv_idx = mvs.iter().position(|&mv| mv == pv_mv).unwrap();
+                    mvs.swap(0, pv_idx);
+                }
+
+                if self.stop.load(SeqCst) { break; }
+
+                if best_value <= alpha {
+
+                    // beta = (alpha + beta) / 2;
+                    // alpha = (best_value - delta).max(-CHECKMATE_VALUE);
+
+                    beta = alpha.checked_add(beta).unwrap() / 2;
+                    alpha = best_value.checked_sub(delta).unwrap().max(-CHECKMATE_VALUE);
+
+                } else if best_value >= beta {
+                    // beta = (best_value + delta).min(CHECKMATE_VALUE);
+                    beta = best_value.checked_add(delta).unwrap().min(CHECKMATE_VALUE);
+                    failed_high += 1;
+                } else {
+                    break;
+                }
+
+                delta += delta / 4 + 5;
+
+                assert!(alpha >= -CHECKMATE_VALUE);
+                assert!(beta <= CHECKMATE_VALUE);
+            }
+
+
+            // let depth2 = 
+
+            /// Send result to listener
+            if !self.stop.load(SeqCst) && cur_depth >= self.best_depth.load(SeqCst) {
+                let moves = if self.cfg.return_moves {
+                    let mut v = stack.pvs.to_vec();
+                    v.retain(|&mv| mv != Move::NullMove);
+                    v
+                } else { vec![] };
+
+                if let Some(res) = res {
+                    match self.tx.try_send(ExMessage::Message(cur_depth, res, moves, stats)) {
+                        Ok(_)  => {
+                            stats = SearchStats::default();
+                        },
+                        Err(_) => {
+                            trace!("tx send error 0: id: {}, depth {}", self.id, cur_depth);
+                            break;
+                        },
+                    }
+                }
+            }
+
+            // cur_depth += skip_size;
+            cur_depth += 1;
+        }
+
+        match self.tx.try_send(ExMessage::End(self.id)) {
+            Ok(_)  => {},
+            Err(_) => {
+                trace!("tx send error 1: id: {}, depth {}", self.id, cur_depth);
+            },
+        }
+
+        trace!("exiting lazy_smp_single, id = {}", self.id);
+    }
 
 }
 
-/// Lazy SMP Negamax 2
+/// Lazy SMP Iterative Deepening loop
 impl ExHelper {
 
     const SKIP_LEN: usize = 20;
     const SKIP_SIZE: [Depth; Self::SKIP_LEN] = [1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4];
     const START_PLY: [Depth; Self::SKIP_LEN] = [0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7];
 
-    #[allow(unused_doc_comments)]
+    // #[cfg(feature = "nope")]
     fn lazy_smp_single(
         &self,
         ts:               &'static Tables,
     ) {
 
-        // let mut history = [[[0; 64]; 64]; 2];
-        // let mut tracking = ABStack::new();
         let mut stack = ABStack::new_with_moves(&self.move_history);
         let mut stats = SearchStats::default();
 
@@ -770,36 +902,22 @@ impl ExHelper {
         let start_ply = Self::START_PLY[self.id % Self::SKIP_LEN];
         let mut depth = start_ply + 1;
 
-        // trace!("self.max_depth = {:?}", self.max_depth);
-        // trace!("iterative skip_size {}", skip_size);
-        // trace!("iterative start_ply {}", start_ply);
-
         /// Iterative deepening
         while !self.stop.load(SeqCst)
             && depth <= self.cfg.max_depth
             && self.best_mate.read().is_none()
         {
-            // trace!("iterative depth {}", depth);
 
+            // XXX: needed?
             stack.pvs.fill(Move::NullMove);
-            let res = self.ab_search_single(ts, &mut stats, &mut stack, depth);
-            // debug!("res = {:?}", res);
-            // trace!("finished res, id = {}, depth = {}", self.id, depth);
+
+            let res = self.ab_search_single(ts, &mut stats, &mut stack, None, depth);
 
             if !self.stop.load(SeqCst) && depth >= self.best_depth.load(SeqCst) {
                 let moves = if self.cfg.return_moves {
-                    // self.get_pv(ts, &stack)
                     let mut v = stack.pvs.to_vec();
                     v.retain(|&mv| mv != Move::NullMove);
                     v
-                    // #[cfg(feature = "lockless_hashmap")]
-                    // {
-                    //     Explorer::_get_pv_lockless(ts, &self.game, self.ptr_tt.clone())
-                    // }
-                    // #[cfg(not(feature = "lockless_hashmap"))]
-                    // {
-                    //     Explorer::_get_pv(ts, &self.game, &self.tt_r)
-                    // }
                 } else { vec![] };
                 match self.tx.try_send(ExMessage::Message(depth, res, moves, stats)) {
                     Ok(_)  => {

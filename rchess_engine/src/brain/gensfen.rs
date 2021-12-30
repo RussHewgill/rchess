@@ -533,7 +533,7 @@ impl TrainingData {
 impl TrainingData {
 
     pub fn filter_quiet(
-        ts:               &Tables,
+        ts:               &'static Tables,
         (ev_mid,ev_end):  &(EvalParams,EvalParams),
         tds:              Vec<TrainingData>,
     ) -> Vec<TrainingData> {
@@ -545,7 +545,7 @@ impl TrainingData {
 
         let tds = tds.chunks(tds.len() / ncpus).map(|xs| {
             let ph_rw = ph_factory.handle();
-            let exhelper = exhelper_once(&g, White, ev_mid, ev_end, Some(&ph_rw), None);
+            let exhelper = exhelper_once(ts, &g, White, ev_mid, ev_end, Some(&ph_rw), None);
             (exhelper, xs)
         }).collect::<Vec<(ExHelper, &[TrainingData])>>();
 

@@ -181,11 +181,16 @@ impl ExHelper {
         ts:             &'static Tables,
         mut stats:      &mut SearchStats,
         mut stack:      &mut ABStack,
+        ab:             Option<(Score,Score)>,
         depth:          Depth,
     ) -> ABResults {
 
-        let (alpha,beta) = (Score::MIN,Score::MAX);
-        let (alpha,beta) = (alpha + 200,beta - 200);
+        // let (alpha,beta) = (Score::MIN,Score::MAX);
+        // let (alpha,beta) = (alpha + 200,beta - 200);
+
+        let (alpha,beta) = if let Some(ab) = ab { ab } else {
+            (Score::MIN + 200, Score::MAX - 200)
+        };
 
         let mut g = self.game.clone();
 
@@ -609,8 +614,15 @@ impl ExHelper {
             // let mv = PackedMove::unpack(&[mv.0,mv.1]).unwrap().convert_to_move(ts, g);
             mv
         });
+
         let mut movegen = MoveGen::new(ts, &g, m_hashmove, stack, depth, ply);
 
+        // let mut movegen = if is_root_node {
+        //     let root_moves = self.root_moves.borrow();
+        //     MoveGen::new_root(ts, &g, &root_moves)
+        // } else {
+        //     MoveGen::new(ts, &g, m_hashmove, stack, depth, ply)
+        // };
 
         /// true until a move is found that raises alpha
         let mut search_pvs_all = true;

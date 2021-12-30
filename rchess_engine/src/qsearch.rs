@@ -16,6 +16,7 @@ use std::sync::atomic::Ordering::SeqCst;
 use parking_lot::{Mutex,RwLock};
 
 pub fn exhelper_once(
+    ts:       &'static Tables,
     g:        &Game,
     side:     Color,
     ev_mid:   &EvalParams,
@@ -52,10 +53,13 @@ pub fn exhelper_once(
     #[cfg(feature = "lockless_hashmap")]
     let ptr_tt = Arc::new(crate::lockless_map::TransTable::new_mb(256));
 
+    let root_moves = MoveGen::gen_all(ts, g);
+
     let helper = ExHelper {
         id:              0,
         side,
         game:            g.clone(),
+        root_moves:      RefCell::new(root_moves),
         stop,
         best_mate,
         #[cfg(feature = "syzygy")]

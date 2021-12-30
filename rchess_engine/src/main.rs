@@ -1225,7 +1225,8 @@ fn main_tuning() {
     use rchess_engine_lib::pawn_hash_table::*;
     use rchess_engine_lib::pgn::*;
 
-    let ts = Tables::read_from_file_def().unwrap();
+    // let ts = Tables::read_from_file_def().unwrap();
+    let ts = &_TABLES;
 
     let ob = OpeningBook::read_from_file(&ts, "tables/Perfect_2021/BIN/Perfect2021.bin").unwrap();
 
@@ -1310,7 +1311,7 @@ fn main_tuning() {
     let ph_rw = ph_factory.handle();
 
     let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
-    let mut exhelper = exhelper_once(&g, g.state.side_to_move, &ev_mid, &ev_end, Some(&ph_rw), None);
+    let mut exhelper = exhelper_once(&ts, &g, g.state.side_to_move, &ev_mid, &ev_end, Some(&ph_rw), None);
 
     let fen_path = "./training_data/tuner/quiet-labeled.epd";
 
@@ -2963,6 +2964,8 @@ fn main9() {
     //     eprintln!("x = {:?}", x);
     // }
     // return;
+
+    let n = 7;
 
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
