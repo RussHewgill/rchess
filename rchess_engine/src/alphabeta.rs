@@ -487,9 +487,6 @@ impl ExHelper {
         /// when in check, skip early pruning
         let in_check = g.state.checkers.is_not_empty();
 
-        // let mut improving   = !in_check;
-        // let mut improvement = 0;
-
         /// Static eval of position
         let static_eval = if in_check {
             /// In check, no static eval
@@ -514,15 +511,14 @@ impl ExHelper {
         };
         stack.with(ply, |st| st.static_eval = static_eval);
 
-        // if let Some(eval) = static_eval {
-        //     if let Some(prev1) = stack.get(ply - 2).map(|st| st.static_eval).flatten() {
-        //         improvement = eval - prev1;
-        //         improving   = improvement > 0;
-        //     } else if let Some(prev2) = stack.get(ply - 4).map(|st| st.static_eval).flatten() {
-        //         improvement = eval - prev2;
-        //         improving   = improvement > 0;
-        //     }
-        // }
+        let mut improving   = !in_check;
+        if let Some(eval) = static_eval {
+            if let Some(prev1) = stack.get(ply - 2).map(|st| st.static_eval).flatten() {
+                improving = eval > prev1;
+            } else if let Some(prev2) = stack.get(ply - 4).map(|st| st.static_eval).flatten() {
+                improving = eval > prev2;
+            }
+        }
 
         let mut can_futility_prune = false;
         /// TODO: futility pruning
@@ -624,8 +620,8 @@ impl ExHelper {
         //     MoveGen::new(ts, &g, m_hashmove, stack, depth, ply)
         // };
 
-        /// true until a move is found that raises alpha
-        let mut search_pvs_all = true;
+        // /// true until a move is found that raises alpha
+        // let mut search_pvs_all = true;
 
         // #[cfg(feature = "pvs_search")]
         // if depth < 3 {
@@ -658,6 +654,14 @@ impl ExHelper {
 
             let capture_or_promotion = mv.filter_all_captures() || mv.filter_promotion();
             let gives_check = movegen.gives_check(mv);
+
+            /// Move Count pruning
+            if best_val.1 > -CHECKMATE_VALUE
+                // && depth <= LMR_MIN_DEPTH
+                && depth <= 8 // XXX: ??
+                && moves_searched >= futility_move_count(improving, depth) {
+                    movegen.skip_quiets = true;
+                }
 
             /// Futility prune
             #[cfg(feature = "futility_pruning")]
@@ -784,22 +788,39 @@ impl ExHelper {
                     // let depth_r = next_depth.checked_sub(LMR_REDUCTION).unwrap();
                     // // let depth_r = next_depth.checked_sub(1).unwrap();
 
-                    let mut r = lmr_reduction(next_depth, moves_searched);
+                    let mut r = lmr_reduction(next_depth, moves_searched) as i16;
 
-                    // if 
+                    if mv.filter_quiet() {
 
+                        if !is_pv_node { r += 1; }
+
+                        if !improving { r += 1; }
+
+                        /// King evasions
+                        if in_check && mv.piece() == Some(King) {
+                            r += 1;
+                        }
+
+                        if movegen.is_killer(stack, mv) || movegen.is_counter(stack, mv) {
+                            r -= 1;
+                        }
+
+                    }
+
+                    let r = (r as Depth).clamp(1, next_depth + 1);
                     let depth_r = next_depth.checked_sub(r).unwrap();
 
-                    // let (a2,b2) = (-beta,-alpha);
                     let (a2,b2) = (-(alpha+1),-alpha); // XXX: ??
 
                     // trace!("search 0");
                     let res2 = -self.ab_search::<{NonPV}>(
                         ts, &g2, (depth_r,ply+1), (a2,b2), stats, stack, true);
+
                     res = if let Some(r) = res2.get_result_mv(mv) { r } else {
                         self.pop_nnue(stack);
                         continue 'outer;
                     };
+
                     if res.score <= alpha {
                         stats!(stats.lmrs.0 += 1);
                         break 'search res;
@@ -812,96 +833,124 @@ impl ExHelper {
 
                 } else {
                     // do_full_depth = is_root_node || !is_pv_node || moves_searched > 1;
-                    do_full_depth = !is_pv_node || moves_searched > 1;
+                    // do_full_depth = !is_pv_node || moves_searched > 1;
+                    do_full_depth = !(is_pv_node && moves_searched == 1);
                 }
                 // #[cfg(not(feature = "late_move_reduction"))]
                 // { do_full_depth = true; }
 
-                ///   Full depth search
-                /// If LMR failed or was skipped
-                // if do_full_depth {
-                if false && do_full_depth {
-
-                    // let (a2,b2) = if search_pvs_all || cfg!(not(feature = "pvs_search")) {
-                    //     (-beta, -alpha)
-                    // } else {
-                    //     (-(alpha + 1), -alpha)
-                    // };
-
-                    #[cfg(feature = "pvs_search")]
-                    let (a2,b2) = if search_pvs_all {
-                        (-beta, -alpha)
-                    } else {
-                        (-(alpha + 1), -alpha)
-                    };
-                    #[cfg(not(feature = "pvs_search"))]
-                    let (a2,b2) = (-beta, -alpha);
-
+                /// Full depth search if no LMR and not PV Node's first search
+                if do_full_depth {
+                    let (a2,b2) = (-(alpha+1),-alpha); // XXX: ??
                     let res2 = -self.ab_search::<{NonPV}>(
                         ts, &g2, (next_depth,ply+1), (a2,b2), stats, stack, !is_cut_node);
-
                     res = if let Some(r) = res2.get_result_mv(mv) { r } else {
                         self.pop_nnue(stack);
                         continue 'outer;
                     };
-
                 }
 
-                // if false && do_full_depth && (!search_pvs_all || !is_pv_node) {
-                // if do_full_depth && (!search_pvs_all || !is_pv_node) {
-                if do_full_depth {
-
-                    #[cfg(feature = "pvs_search")]
-                    let (a2,b2) = if search_pvs_all {
-                        (-beta, -alpha)
-                    } else {
-                        (-(alpha + 1), -alpha)
+                /// Search PV with full window
+                if is_pv_node && (moves_searched == 1 || res.score > alpha) {
+                    let res2 = -self.ab_search::<{PV}>(
+                        ts, &g2, (next_depth,ply+1), (-beta, -alpha), stats, stack, false);
+                    res = if let Some(r) = res2.get_result_mv(mv) { r } else {
+                        self.pop_nnue(stack);
+                        continue 'outer;
                     };
-                    #[cfg(not(feature = "pvs_search"))]
-                    let (a2,b2) = (-beta, -alpha);
+                }
 
-                    res = {
-                        let next_cut_node = !is_cut_node;
-                        // trace!("search 1");
+                /// Prev
+                #[cfg(feature = "nope")]
+                {
+
+                    ///   Full depth search
+                    /// If LMR failed or was skipped
+                    // if do_full_depth {
+                    if false && do_full_depth {
+
+                        // let (a2,b2) = if search_pvs_all || cfg!(not(feature = "pvs_search")) {
+                        //     (-beta, -alpha)
+                        // } else {
+                        //     (-(alpha + 1), -alpha)
+                        // };
+
+                        #[cfg(feature = "pvs_search")]
+                        let (a2,b2) = if search_pvs_all {
+                            (-beta, -alpha)
+                        } else {
+                            (-(alpha + 1), -alpha)
+                        };
+                        #[cfg(not(feature = "pvs_search"))]
+                        let (a2,b2) = (-beta, -alpha);
+
                         let res2 = -self.ab_search::<{NonPV}>(
-                            ts, &g2, (next_depth,ply+1), (a2,b2), stats, stack, next_cut_node);
-                        if let Some(r) = res2.get_result_mv(mv) { r } else {
+                            ts, &g2, (next_depth,ply+1), (a2,b2), stats, stack, !is_cut_node);
+
+                        res = if let Some(r) = res2.get_result_mv(mv) { r } else {
                             self.pop_nnue(stack);
                             continue 'outer;
-                        }
-                    };
+                        };
 
-                    /// Re-seach if limited window PV search failed
-                    #[cfg(feature = "pvs_search")]
-                    if !search_pvs_all && res.score > alpha && res.score < beta {
+                    }
+
+                    // if false && do_full_depth && (!search_pvs_all || !is_pv_node) {
+                    // if do_full_depth && (!search_pvs_all || !is_pv_node) {
+                    if do_full_depth {
+
+                        #[cfg(feature = "pvs_search")]
+                        let (a2,b2) = if search_pvs_all {
+                            (-beta, -alpha)
+                        } else {
+                            (-(alpha + 1), -alpha)
+                        };
+                        #[cfg(not(feature = "pvs_search"))]
+                        let (a2,b2) = (-beta, -alpha);
+
                         res = {
-                            // let next_cut_node = !is_cut_node;
-                            // trace!("search 2");
-                            let res2 = -self.ab_search::<{PV}>(
-                                ts, &g2, (next_depth,ply+1), (-beta,-alpha), stats, stack, false);
+                            let next_cut_node = !is_cut_node;
+                            // trace!("search 1");
+                            let res2 = -self.ab_search::<{NonPV}>(
+                                ts, &g2, (next_depth,ply+1), (a2,b2), stats, stack, next_cut_node);
                             if let Some(r) = res2.get_result_mv(mv) { r } else {
                                 self.pop_nnue(stack);
                                 continue 'outer;
                             }
                         };
+
+                        /// Re-seach if limited window PV search failed
+                        #[cfg(feature = "pvs_search")]
+                        if !search_pvs_all && res.score > alpha && res.score < beta {
+                            res = {
+                                // let next_cut_node = !is_cut_node;
+                                // trace!("search 2");
+                                let res2 = -self.ab_search::<{PV}>(
+                                    ts, &g2, (next_depth,ply+1), (-beta,-alpha), stats, stack, false);
+                                if let Some(r) = res2.get_result_mv(mv) { r } else {
+                                    self.pop_nnue(stack);
+                                    continue 'outer;
+                                }
+                            };
+                        }
+
                     }
 
-                }
+                    let search_pv = moves_searched == 1
+                        || (res.score > alpha && (is_root_node || res.score < beta));
 
-                let search_pv = moves_searched == 1
-                    || (res.score > alpha && (is_root_node || res.score < beta));
+                    /// Do full PV Search until a move is found that raises alpha
+                    #[cfg(feature = "pvs_search")]
+                    // if is_pv_node && search_pvs_all {
+                    if is_pv_node && search_pv {
+                        let res2 = -self.ab_search::<{PV}>(
+                            ts, &g2, (next_depth,ply+1), (-beta, -alpha), stats, stack, false);
 
-                /// Do full PV Search until a move is found that raises alpha
-                #[cfg(feature = "pvs_search")]
-                // if is_pv_node && search_pvs_all {
-                if is_pv_node && search_pv {
-                    let res2 = -self.ab_search::<{PV}>(
-                        ts, &g2, (next_depth,ply+1), (-beta, -alpha), stats, stack, false);
+                        res = if let Some(r) = res2.get_result_mv(mv) { r } else {
+                            self.pop_nnue(stack);
+                            continue 'outer;
+                        };
 
-                    res = if let Some(r) = res2.get_result_mv(mv) { r } else {
-                        self.pop_nnue(stack);
-                        continue 'outer;
-                    };
+                    }
 
                 }
 
@@ -936,9 +985,8 @@ impl ExHelper {
                     current_node_type = Node::PV;
                     alpha = best_val.1;
 
-                    #[cfg(feature = "pvs_search")]
-                    { search_pvs_all = false; }
-                    // { do_pvs = true; }
+                    // #[cfg(feature = "pvs_search")]
+                    // { search_pvs_all = false; }
                 }
 
                 // if !b && Some(mv) != best_val.0.map(|x| x.mv).flatten() {

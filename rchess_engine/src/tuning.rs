@@ -72,6 +72,11 @@ mod misc_functions {
     //     (ply * ply).min(250)
     // }
 
+    pub const fn futility_move_count(improving: bool, depth: Depth) -> Depth {
+        let i = if improving { 1 } else { 0 };
+        (3 + depth * depth) / (2 - i)
+    }
+
     pub fn lmr_reduction(d: Depth, ms: u8) -> Depth {
         if ms < 4 {
             return 1;

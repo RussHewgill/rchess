@@ -121,6 +121,8 @@ pub struct MoveGen<'a> {
     in_check:            bool,
     side:                Color,
 
+    pub skip_quiets:     bool,
+
     stage:               MoveGenStage,
 
     buf:                 ArrayVec<Move,256>,
@@ -282,6 +284,7 @@ impl<'a> MoveGen<'a> {
             see_map:  HashMap::default(),
             in_check,
             side,
+            skip_quiets: false,
             stage:     if in_check { MoveGenStage::EvasionHash } else { MoveGenStage::Hash },
             buf:       ArrayVec::new(),
 
@@ -324,6 +327,7 @@ impl<'a> MoveGen<'a> {
             see_map:  HashMap::default(),
             in_check,
             side,
+            skip_quiets: false,
             stage:     if in_check { MoveGenStage::EvasionHash } else { MoveGenStage::QSearchHash },
             // stage:     MoveGenStage::Finished,
             buf:       ArrayVec::new(),
@@ -366,6 +370,7 @@ impl<'a> MoveGen<'a> {
             see_map:  HashMap::default(),
             in_check,
             side,
+            skip_quiets: false,
 
             stage:      MoveGenStage::RootMoves,
             // stage:     if in_check { MoveGenStage::EvasionHash } else { MoveGenStage::Hash },
@@ -391,6 +396,23 @@ impl<'a> MoveGen<'a> {
             mvs.push(mv);
         }
         mvs
+    }
+
+}
+
+/// Move queries
+impl<'a> MoveGen<'a> {
+
+    pub fn is_killer(&self, stack: &ABStack, mv: Move) -> bool {
+        if let Some(ks) = stack.get_with(self.ply, |st| st.killers) {
+            Some(mv) == ks[0] || Some(mv) == ks[1]
+        } else {
+            false
+        }
+    }
+
+    pub fn is_counter(&self, stack: &ABStack, mv: Move) -> bool {
+        Some(mv) == self.counter_move
     }
 
 }
@@ -452,14 +474,20 @@ impl<'a> MoveGen<'a> {
                 self.next(stack)
             },
             QuietsInit => {
-                self.generate(MoveGenType::Quiets);
-                // TODO: sort here?
-                self.sort(stack, MoveGenType::Quiets);
+                if !self.skip_quiets {
+                    self.generate(MoveGenType::Quiets);
+                    // TODO: sort here?
+                    self.sort(stack, MoveGenType::Quiets);
+                }
 
                 self.stage = self.stage.next()?;
                 self.next(stack)
             },
             Quiets => {
+                if self.skip_quiets {
+                    self.stage = self.stage.next()?;
+                    return None;
+                }
                 if let Some(mv) = self.pick_next(stack) {
                 // if let Some(mv) = self.buf.pop() {
                     if Some(mv) != self.hashmove && self.move_is_legal(mv) {
