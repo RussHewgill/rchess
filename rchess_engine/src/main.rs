@@ -2857,19 +2857,35 @@ fn main9() {
 
     // let t = 10.0;
     // let t = 6.0;
-    let t = 4.0;
+    // let t = 4.0;
     // let t = 2.0;
-    // let t = 0.5;
+    let t = 0.5;
     // let t = 0.3;
 
-    // let n = 35;
-    let n = 8;
+    let n = 35;
+    // let n = 8;
     // let n = 2;
 
     // use rchess_engine_lib::lockless_map::*;
     // let k0 = std::mem::size_of::<Bucket>();
     // eprintln!("k0 = {:?}", k0);
     // return;
+
+    let fen = "8/6kp/r7/p7/1n1R1P2/7P/6PK/8 b - - 0 46";
+    let mut g = Game::from_fen(&ts, fen).unwrap();
+
+    let mvs = vec![
+        "b4c6",
+        "d4a4",
+        "a6b6",
+        "a4c4",
+        "b6a6",
+        "c4a4",
+    ];
+
+    g = g.run_moves(ts, mvs);
+
+    eprintln!("g = {:?}", g);
 
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
@@ -2923,14 +2939,13 @@ fn main9() {
 
     println!();
 
-    let tt = ex.ptr_tt;
-
-    let used = tt.used_entries();
-    let tot  = tt.total_entries();
-
-    // eprintln!("used = {:?}", used);
-    // eprintln!("tot  = {:?}", tot);
-    eprintln!("tt use ratio = {:.3}", used as f64 / tot as f64);
+    #[cfg(feature = "lockless_hashmap")]
+    {
+        let tt = ex.ptr_tt;
+        let used = tt.used_entries();
+        let tot  = tt.total_entries();
+        eprintln!("tt use ratio = {:.3}", used as f64 / tot as f64);
+    }
 
     // return;
 

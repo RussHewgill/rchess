@@ -662,6 +662,7 @@ impl ExHelper {
 
             /// Prefetch hash table bucket
             let zb0 = g.zobrist.update_move_unchecked(ts, g, mv);
+            #[cfg(feature = "lockless_hashmap")]
             self.ptr_tt.prefetch(zb0);
 
             /// Skip blocked moves

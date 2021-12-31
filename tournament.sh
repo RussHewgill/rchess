@@ -39,8 +39,8 @@ echo Elo diff = $ELO1, 0.05
 ENGINE2=rchess_prev
 # ENGINE2=stockfish
 
-echo ENGINE1=rchess
-echo ENGINE2=rchess_prev
+echo ENGINE1 = rchess
+echo ENGINE2 = $ENGINE2
 
 cutechess-cli \
     -tournament gauntlet \
@@ -58,6 +58,6 @@ cutechess-cli \
     -draw movenumber=40 movecount=4 score=8 \
     -resign movecount=4 score=500 \
     -ratinginterval 1 \
-    -sprt elo0=0 elo1=50 alpha=0.05 beta=0.05
+    -sprt elo0=$ELO0 elo1=$ELO1 alpha=0.05 beta=0.05
 
 
