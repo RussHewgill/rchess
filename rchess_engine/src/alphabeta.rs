@@ -819,7 +819,37 @@ impl ExHelper {
 
                 ///   Full depth search
                 /// If LMR failed or was skipped
-                if do_full_depth && (!search_pvs_all || !is_pv_node) {
+                // if do_full_depth {
+                if do_full_depth {
+                    let (a2,b2) = (-(alpha + 1), -alpha);
+
+                    let res2 = -self.ab_search::<{NonPV}>(
+                        ts, &g2, (next_depth,ply+1), (a2,b2), stats, stack, !is_cut_node);
+
+                    res = if let Some(r) = res2.get_result_mv(mv) { r } else {
+                        self.pop_nnue(stack);
+                        continue 'outer;
+                    };
+
+                }
+
+                let search_pv = moves_searched == 1
+                    || (res.score > alpha && (is_root_node || res.score < beta));
+
+                /// Do full PV Search until a move is found that raises alpha
+                #[cfg(feature = "pvs_search")]
+                if is_pv_node && search_pv {
+                    let res2 = -self.ab_search::<{PV}>(
+                        ts, &g2, (next_depth,ply+1), (-beta, -alpha), stats, stack, false);
+
+                    res = if let Some(r) = res2.get_result_mv(mv) { r } else {
+                        self.pop_nnue(stack);
+                        continue 'outer;
+                    };
+
+                }
+
+                if false && do_full_depth && (!search_pvs_all || !is_pv_node) {
 
                     #[cfg(feature = "pvs_search")]
                     let (a2,b2) = if search_pvs_all {
@@ -859,12 +889,8 @@ impl ExHelper {
 
                 }
 
-                // /// Do full PV Search on the first move
-                /// Do full PV Search until a move is found that raises alpha
                 #[cfg(feature = "pvs_search")]
-                // if !do_full_depth && is_pv_node && moves_searched == 1 {
-                // if !do_full_depth && is_pv_node && search_pvs_all {
-                if is_pv_node && search_pvs_all {
+                if false && is_pv_node && search_pvs_all {
 
                     // trace!("search 3");
                     let res2 = -self.ab_search::<{PV}>(
@@ -1023,7 +1049,8 @@ impl ExHelper {
                     ABSingle(*res)
                 }
             },
-            _                    => ABNone,
+            // _                    => ABNone,
+            _                    => panic!("no moves found at node?"),
         }
 
     }
