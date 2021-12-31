@@ -2832,26 +2832,13 @@ fn main9() {
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
 
-    // let (fen,correct) = &games_sts(10, 1); // fen, set
+    // let (fen,correct) = &games_sts(3, 1); // fen, set
 
     // let (fen,correct) = &games_sts(91, 11); // fen, set
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
-
-    // let mut movegen = MoveGen::new_all(&ts, &g, None, 0, 0);
-    // let stack = ABStack::new();
-    // while let Some(mv) = movegen.next_all(&stack) {
-    //     eprintln!("mv = {:?}", mv);
-    // }
-
-    // g.last_move = Some(Move::new_capture("D1", "D2", King, Queen));
-
-    // let mvs = vec![
-    //     "h3h5",
-    // ];
-    // g = g.run_moves(&ts, mvs);
 
     eprintln!("g.to_fen() = {:?}", g.to_fen());
     eprintln!("g = {:?}", g);
@@ -2879,94 +2866,10 @@ fn main9() {
     let n = 8;
     // let n = 2;
 
-    // // let fen = "1k6/2n5/8/3p4/4P3/4N3/8/K7 w - - 0 1";
-    // // let fen = "1k6/2n5/2p5/3p4/4P3/4N3/8/K7 w - - 0 1";
-    // // let fen = "1k6/2n5/8/3n4/4P3/4N3/8/K7 w - - 0 1";
-    // let fen = "1k6/2n5/2p5/3n4/4P3/2N1N3/8/K7 w - - 0 1";
-    // let mut g = Game::from_fen(&ts, fen).unwrap();
-    // // let mv0 = Move::new_capture("e4", "d5", Pawn, Knight);
-    // let mv0 = Move::new_capture("c3", "d5", Knight, Knight);
-    // let k0 = g.static_exchange(&ts, mv0);
-    // eprintln!("k0 = {:?}", k0);
-    // let val = 1;
-    // let k1 = g.static_exchange_ge(ts, mv0, val);
-    // eprintln!("k1 = {:?}", k1);
-    // return;
-
-    // let mut movegen = MoveGen::new(&ts, &g, None, &ABStack::new(), 0, 0);
-    // while let Some(mv) = movegen.next(&ABStack::new()) {
-    //     eprintln!("mv = {:?}", mv);
-    //     let see0 = g.static_exchange(&ts, mv);
-    //     eprintln!("see 0 = {:?}", see0);
-    //     let threshold = 1;
-    //     let see1 = g.static_exchange_ge(&ts, mv, threshold);
-    //     eprintln!("see 1 = {:?}", see1);
-    // }
-    // return;
-
-    // let mut wacs = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
-    // let mut wacs: Vec<Game> = wacs.into_iter().map(|(fen,_)| {
-    //     Game::from_fen(&ts, &fen).unwrap()
-    // }).collect();
-    // let st = ABStack::new();
-    // timer!({
-    //     for k in 0..10_000 {
-    //         if k % 1000 == 0 {
-    //             eprintln!("k = {:?}", k);
-    //         }
-    //         for g in wacs.iter() {
-    //             let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
-    //             let mut x = 0;
-    //             while let Some(mv) = movegen.next(&st) {
-    //                 x += 1;
-    //             }
-    //         }
-    //     }});
-    // return;
-
     // use rchess_engine_lib::lockless_map::*;
     // let k0 = std::mem::size_of::<Bucket>();
     // eprintln!("k0 = {:?}", k0);
     // return;
-
-    // let fen0 = "5Bk1/2q2pp1/1p4b1/1B2pN2/3P4/4P3/5PP1/R3K2R b KQ -";
-    // let mut g0 = Game::from_fen(&ts, fen0).unwrap();
-
-    // let mut st = ABStack::new();
-
-    // // let mv = Move::new_quiet("g6", "f7", Bishop);
-    // // let mv = Move::new_capture("b4", "d6", Bishop, Queen);
-    // // let mv = Move::new_quiet("g4", "g3", Queen);
-    // let mv0 = Move::new_capture("a3", "f8", Bishop, Rook);
-    // let mv1 = Move::new_capture("f5", "e3", Knight, Pawn);
-
-    // st.counter_moves.insert_counter_move(prev_mv, mv)
-
-    // let mut movegen = MoveGen::new(&ts, &g0, None, &st, 0, 0);
-
-    // let k0 = movegen.move_is_legal(mv);
-    // eprintln!("k0 = {:?}", k0);
-    // let k1 = movegen.move_is_pseudo_legal(mv);
-    // eprintln!("k1 = {:?}", k1);
-
-    // while let Some((stage,mv)) = movegen.next_debug(&st) {
-    //     eprintln!("{:?} mv = {:?}", stage, mv);
-    // }
-
-    // return;
-
-    // let mut xs = [0i32; 64];
-    // for n in 0..64 {
-    //     let x = (21.9 + f32::ln(0.5) / 2.0) * f32::ln(n as f32);
-    //     xs[n] = x as i32;
-    // }
-    // for x in xs {
-    //     eprintln!("x = {:?}", x);
-    // }
-    // return;
-
-    let n = 8;
-    // let n = 7;
 
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
@@ -2982,6 +2885,8 @@ fn main9() {
     ex.cfg.late_move_reductions = true;
 
     let mut ex2 = ex.clone();
+
+    // ex.timer.settings.increment = [0.118; 2];
 
     let t0 = std::time::Instant::now();
     ex.update_game(g.clone());

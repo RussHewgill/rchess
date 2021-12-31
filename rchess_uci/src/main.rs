@@ -76,6 +76,18 @@ fn main() -> std::io::Result<()> {
     WriteLogger::init(LevelFilter::Debug, cfg, logfile).unwrap();
     // WriteLogger::init(LevelFilter::Trace, cfg, logfile).unwrap();
 
+    let mut errfile = std::fs::File::create("/home/me/code/rust/rchess/panic.log").unwrap();
+    let err_redirect = Redirect::stderr(errfile).unwrap();
+
+    // let hook = std::panic::take_hook();
+    // std::panic::set_hook(Box::new(move |panicinfo| {
+    //     let loc = panicinfo.location();
+    //     let mut file = std::fs::File::create("/home/me/code/rust/rchess/panic.log").unwrap();
+    //     let s = format!("Panicking, Location: {:?}", loc);
+    //     file.write(s.as_bytes()).unwrap();
+    //     hook(panicinfo)
+    // }));
+
     // let timer = Timer::default(should_stop.clone());
     // let searcher = Arc::new(Mutex::new(Searcher::new(EngineSettings::default(), timer)));
 

@@ -820,8 +820,22 @@ impl ExHelper {
                 ///   Full depth search
                 /// If LMR failed or was skipped
                 // if do_full_depth {
-                if do_full_depth {
-                    let (a2,b2) = (-(alpha + 1), -alpha);
+                if false && do_full_depth {
+
+                    // let (a2,b2) = if search_pvs_all || cfg!(not(feature = "pvs_search")) {
+                    //     (-beta, -alpha)
+                    // } else {
+                    //     (-(alpha + 1), -alpha)
+                    // };
+
+                    #[cfg(feature = "pvs_search")]
+                    let (a2,b2) = if search_pvs_all {
+                        (-beta, -alpha)
+                    } else {
+                        (-(alpha + 1), -alpha)
+                    };
+                    #[cfg(not(feature = "pvs_search"))]
+                    let (a2,b2) = (-beta, -alpha);
 
                     let res2 = -self.ab_search::<{NonPV}>(
                         ts, &g2, (next_depth,ply+1), (a2,b2), stats, stack, !is_cut_node);
@@ -833,23 +847,9 @@ impl ExHelper {
 
                 }
 
-                let search_pv = moves_searched == 1
-                    || (res.score > alpha && (is_root_node || res.score < beta));
-
-                /// Do full PV Search until a move is found that raises alpha
-                #[cfg(feature = "pvs_search")]
-                if is_pv_node && search_pv {
-                    let res2 = -self.ab_search::<{PV}>(
-                        ts, &g2, (next_depth,ply+1), (-beta, -alpha), stats, stack, false);
-
-                    res = if let Some(r) = res2.get_result_mv(mv) { r } else {
-                        self.pop_nnue(stack);
-                        continue 'outer;
-                    };
-
-                }
-
-                if false && do_full_depth && (!search_pvs_all || !is_pv_node) {
+                // if false && do_full_depth && (!search_pvs_all || !is_pv_node) {
+                // if do_full_depth && (!search_pvs_all || !is_pv_node) {
+                if do_full_depth {
 
                     #[cfg(feature = "pvs_search")]
                     let (a2,b2) = if search_pvs_all {
@@ -868,7 +868,6 @@ impl ExHelper {
                         if let Some(r) = res2.get_result_mv(mv) { r } else {
                             self.pop_nnue(stack);
                             continue 'outer;
-                            // panic!();
                         }
                     };
 
@@ -889,16 +888,20 @@ impl ExHelper {
 
                 }
 
-                #[cfg(feature = "pvs_search")]
-                if false && is_pv_node && search_pvs_all {
+                let search_pv = moves_searched == 1
+                    || (res.score > alpha && (is_root_node || res.score < beta));
 
-                    // trace!("search 3");
+                /// Do full PV Search until a move is found that raises alpha
+                #[cfg(feature = "pvs_search")]
+                // if is_pv_node && search_pvs_all {
+                if is_pv_node && search_pv {
                     let res2 = -self.ab_search::<{PV}>(
                         ts, &g2, (next_depth,ply+1), (-beta, -alpha), stats, stack, false);
-                    res = if let Some(mut r) = res2.get_result_mv(mv) { r } else {
+
+                    res = if let Some(r) = res2.get_result_mv(mv) { r } else {
                         self.pop_nnue(stack);
                         continue 'outer;
-                    }
+                    };
 
                 }
 
@@ -985,13 +988,13 @@ impl ExHelper {
         }
 
         /// Filter checkmate, stalemate
-        if in_check && moves_searched == 0 {
+        if in_check && (moves_searched == 0 || best_val.0.is_none()) {
             let score = CHECKMATE_VALUE - ply as Score;
             stats.leaves += 1;
             stats.checkmates += 1;
             let mv = g.last_move.unwrap();
             return ABSingle(ABResult::new_single(mv, -score));
-        } else if moves_searched == 0 {
+        } else if moves_searched == 0 || best_val.0.is_none() {
             let score = -STALEMATE_VALUE + ply as Score;
             stats.leaves += 1;
             stats.stalemates += 1;
@@ -1002,6 +1005,12 @@ impl ExHelper {
                 return ABNone;
             }
         }
+
+        // if best_val.0.is_none() {
+        //     eprintln!("moves_searched = {:?}", moves_searched);
+        //     eprintln!("(alpha,beta) = {:?}", (alpha,beta));
+        //     panic!("wat");
+        // }
 
         /// XXX: stat padding by including nodes found in TT
         stats!(stats.inc_nodes_arr(ply));

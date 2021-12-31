@@ -31,3 +31,4 @@ c_testing/test
 c_testing/test2
 oprofile_data/*
 OpenBench/*
+panic.log
