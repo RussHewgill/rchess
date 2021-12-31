@@ -441,9 +441,21 @@ impl ExHelper {
 
         /// Check for returnable TT score
         if let Some(si) = msi {
-            if !is_pv_node && si.depth_searched >= depth { // XXX: depth or depth-1 ??
-                return ABResults::ABSingle(ABResult::new_single(g.last_move.unwrap(), si.score));
+            // if !is_pv_node && si.depth_searched >= depth { // XXX: depth or depth-1 ??
+            //     return ABResults::ABSingle(ABResult::new_single(g.last_move.unwrap(), si.score));
+            // }
+
+            if si.depth_searched >= depth && (depth == 0 || !is_pv_node) {
+
+                if si.node_type == Node::PV
+                    || (si.node_type == Node::Cut && si.score >= beta)
+                    || (si.node_type == Node::All && si.score <= alpha)
+                {
+                    return ABResults::ABSingle(ABResult::new_single(g.last_move.unwrap(), si.score));
+                }
+
             }
+
         }
 
         /// Syzygy Probe
@@ -492,7 +504,9 @@ impl ExHelper {
             /// In check, no static eval
             stack.with(ply, |st| st.in_check = true);
             None
-        } else if let Some(score) = msi.map(|si| si.score) {
+        } else if msi.map(|si| si.depth_searched >= depth).unwrap_or(false) {
+            let score = msi.unwrap().score;
+        // } else if let Some(score) = msi.map(|si| si.score) {
             /// Get search score from TT
             stack.with(ply, |st| st.static_eval = Some(score));
             Some(score)
@@ -605,8 +619,8 @@ impl ExHelper {
                 depth -= 1;
             }
 
-        /// Reset killers for next ply
-        stack.killers_clear(ply + 2);
+        // /// Reset killers for next ply
+        // stack.killers_clear(ply + 2);
 
         let m_hashmove: Option<Move> = msi.map(|si| {
             let mv = si.best_move;
