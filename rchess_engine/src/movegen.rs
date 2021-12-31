@@ -189,7 +189,7 @@ impl<'a> MoveGen<'a> {
         let mut see_map = &mut self.see_map;
 
         #[cfg(feature = "killer_moves")]
-        let killers = st.killer_get(self.ply);
+        let killers = st.killers_get(self.ply);
 
         #[cfg(not(feature = "killer_moves"))]
         let killers = (None,None);

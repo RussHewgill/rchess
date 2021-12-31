@@ -605,6 +605,9 @@ impl ExHelper {
                 depth -= 1;
             }
 
+        /// Reset killers for next ply
+        stack.killers_clear(ply + 2);
+
         let m_hashmove: Option<Move> = msi.map(|si| {
             let mv = si.best_move;
             // let mv = PackedMove::unpack(&[mv.0,mv.1]).unwrap().convert_to_move(ts, g);
@@ -655,13 +658,13 @@ impl ExHelper {
             let capture_or_promotion = mv.filter_all_captures() || mv.filter_promotion();
             let gives_check = movegen.gives_check(mv);
 
-            /// Move Count pruning
-            if best_val.1 > -CHECKMATE_VALUE
-                // && depth <= LMR_MIN_DEPTH
-                && depth <= 8 // XXX: ??
-                && moves_searched >= futility_move_count(improving, depth) {
-                    movegen.skip_quiets = true;
-                }
+            // /// Move Count pruning
+            // if best_val.1 > -CHECKMATE_VALUE
+            //     // && depth <= LMR_MIN_DEPTH
+            //     && depth <= 8 // XXX: ??
+            //     && moves_searched >= futility_move_count(improving, depth) {
+            //         movegen.skip_quiets = true;
+            //     }
 
             /// Futility prune
             #[cfg(feature = "futility_pruning")]
@@ -1011,7 +1014,7 @@ impl ExHelper {
                         // stack.history.update(mv, g.state.side_to_move, ABStack::stat_bonus(depth));
 
                         #[cfg(feature = "killer_moves")]
-                        stack.killer_store(ply, mv);
+                        stack.killers_store(ply, mv);
 
                         #[cfg(feature = "countermove_heuristic")]
                         if let Some(prev_mv) = g.last_move {

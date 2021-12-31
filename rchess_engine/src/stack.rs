@@ -161,7 +161,12 @@ impl ABStack {
 
 /// Killers
 impl ABStack {
-    pub fn killer_get(&self, ply: Depth) -> (Option<Move>,Option<Move>) {
+
+    pub fn killers_clear(&mut self, ply: Depth) {
+        self.with(ply, |st| st.killers = [None; 2]);
+    }
+
+    pub fn killers_get(&self, ply: Depth) -> (Option<Move>,Option<Move>) {
         if let Some(st) = self.stacks.get(ply as usize) {
             st.killer_get()
         } else {
@@ -169,7 +174,7 @@ impl ABStack {
         }
     }
 
-    pub fn killer_store(&mut self, ply: Depth, mv: Move) {
+    pub fn killers_store(&mut self, ply: Depth, mv: Move) {
         if let Some(st) = self.stacks.get_mut(ply as usize) {
             st.killer_store(mv);
         }
