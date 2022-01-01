@@ -492,10 +492,10 @@ impl ExHelper {
             //         // debug!("found cycle but no return, {:?}, {:?}", alpha, beta);
             //     }
             // } else {
-            //     let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
-            //     if cycle {
-            //         // debug!("found cycle but alpha < DRAW_VALUE, {:?}, {:?}", alpha, beta);
-            //     }
+            //     // let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
+            //     // if cycle {
+            //     //     // debug!("found cycle but alpha < DRAW_VALUE, {:?}, {:?}", alpha, beta);
+            //     // }
             // }
 
             /// Halted search
