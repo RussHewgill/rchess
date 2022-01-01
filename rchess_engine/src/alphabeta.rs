@@ -147,7 +147,10 @@ impl ExHelper {
     ) -> Option<Game> {
         if let Ok(g2) = g._make_move_unchecked(ts, mv, zb0) {
 
-            stack.with(ply, |st| st.current_move = Some(mv));
+            stack.with(ply, |st| {
+                // st.zobrist = g2.zobrist;
+                st.current_move = Some(mv);
+            });
 
             /// push NNUE
             #[cfg(feature = "nnue")]
@@ -156,7 +159,8 @@ impl ExHelper {
                 nn.ft.make_move(&g2, mv);
             }
 
-            stack.move_history.push((g.zobrist,mv));
+            // stack.move_history.push((g.zobrist,mv));
+            stack.move_history.push((g2.zobrist,mv));
 
             Some(g2)
         } else { None }
@@ -334,40 +338,93 @@ impl ExHelper {
         ts:                      &'static Tables,
         g:                       &Game,
         (alpha, beta):           (Score,Score),
+        (ply,depth):             (Depth,Depth),
         mut stats:               &mut SearchStats,
         mut stack:               &mut ABStack,
     ) -> bool {
+        use crate::cuckoo::*;
 
-        // let end = 
+        // let end = Depth::min(g.halfmove)
+        let end = g.halfmove as usize;
+        if end < 3 { return false };
 
-        // let mut i = 3;
-        // while i <= end {
-        //     // let zb      = stack.move_history[i];
-        //     // let zb_prev = stack.move_history[i+2];
-        // }
+        let key0 = g.zobrist;
 
+        // let cuckoo = &CUCKOO_TABLE;
 
-        /// Repetition checking
-        if alpha < DRAW_VALUE {
-            // for (zb,_) in stack.move_history.iter().step_by(2) {
-            let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
-            // let cycle = stack.move_history.contains(&zb2);
-            if cycle && alpha >= beta {
-                debug!("found cycle, {:?}, {:?}", alpha, beta);
-                // return ABSingle(ABResult::new_single(g.last_move.unwrap(), DRAW_VALUE));
-                return true;
-            } else {
-                debug!("found cycle but no return, {:?}, {:?}", alpha, beta);
+        let last = stack.move_history.len() - 1;
+
+        assert_eq!(g.zobrist, stack.move_history[last].0);
+
+        // let mut key_other = !(g.zobrist ^ stack.move_history[last - 1].0);
+
+        let mut i = 3;
+        while i <= end {
+
+            // let zb      = stack.move_history[i];
+            // let zb_prev = stack.move_history[i+2];
+
+            let zb_prev = if let Some(zb_prev) = stack.move_history.get(i+2) { zb_prev } else {
+                break;
+            };
+
+            let mv_key = key0 ^ zb_prev.0;
+
+            if let Some(k) = CUCKOO_TABLE.get_key(mv_key) {
+
+                /// XXX: from,to OR to,from ??
+                if let Some((from,to)) = CUCKOO_TABLE.cuckoo_move[k] {
+                    if ((ts.between(from, to) ^ BitBoard::single(to)) & g.all_occupied()).is_empty() {
+
+                        if ply > i as Depth {
+                            return true;
+                        }
+
+                        // For nodes before or at the root, check that the move is a
+                        // repetition rather than a move to the current position.
+                        // In the cuckoo table, both moves Rc1c5 and Rc5c1 are stored in
+                        // the same location, so we have to select which square to check.
+
+                        let ss = if g.all_occupied().is_one_at(from) {
+                            from
+                        } else if g.all_occupied().is_one_at(to) {
+                            to
+                        } else {
+                            panic!("wat");
+                        };
+
+                        if Some(g.state.side_to_move) != g.get_side_at(ss) {
+                            continue;
+                        }
+
+                        // TODO: need extra repetition at root
+
+                    }
+                }
             }
 
-        } else {
-            let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
-
-            if cycle {
-                debug!("found cycle but alpha < DRAW_VALUE, {:?}, {:?}", alpha, beta);
-            }
-
+            i += 2;
         }
+
+
+        // /// Repetition checking
+        // if alpha < DRAW_VALUE {
+        //     // for (zb,_) in stack.move_history.iter().step_by(2) {
+        //     let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
+        //     // let cycle = stack.move_history.contains(&zb2);
+        //     if cycle && alpha >= beta {
+        //         debug!("found cycle, {:?}, {:?}", alpha, beta);
+        //         // return ABSingle(ABResult::new_single(g.last_move.unwrap(), DRAW_VALUE));
+        //         return true;
+        //     } else {
+        //         debug!("found cycle but no return, {:?}, {:?}", alpha, beta);
+        //     }
+        // } else {
+        //     let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
+        //     if cycle {
+        //         debug!("found cycle but alpha < DRAW_VALUE, {:?}, {:?}", alpha, beta);
+        //     }
+        // }
 
         false
     }
@@ -417,9 +474,9 @@ impl ExHelper {
         /// Repetition, Halting
         if !is_root_node {
 
-            let cycle = self.has_cycle(ts, g, (alpha,beta), stats, stack);
-
+            let cycle = self.has_cycle(ts, g, (alpha,beta), (ply,depth), stats, stack);
             if cycle {
+                // eprintln!("cycle = {:?}", cycle);
                 return ABSingle(ABResult::new_single(g.last_move.unwrap(), DRAW_VALUE));
             }
 
@@ -429,15 +486,15 @@ impl ExHelper {
             //     let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
             //     // let cycle = stack.move_history.contains(&zb2);
             //     if cycle && alpha >= beta {
-            //         debug!("found cycle, {:?}, {:?}", alpha, beta);
+            //         // debug!("found cycle, {:?}, {:?}", alpha, beta);
             //         return ABSingle(ABResult::new_single(g.last_move.unwrap(), DRAW_VALUE));
             //     } else {
-            //         debug!("found cycle but no return, {:?}, {:?}", alpha, beta);
+            //         // debug!("found cycle but no return, {:?}, {:?}", alpha, beta);
             //     }
             // } else {
             //     let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
             //     if cycle {
-            //         debug!("found cycle but alpha < DRAW_VALUE, {:?}, {:?}", alpha, beta);
+            //         // debug!("found cycle but alpha < DRAW_VALUE, {:?}, {:?}", alpha, beta);
             //     }
             // }
 

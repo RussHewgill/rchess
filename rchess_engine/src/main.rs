@@ -2866,11 +2866,9 @@ fn main9() {
     // let n = 8;
     // let n = 2;
 
-    use rchess_engine_lib::cuckoo::*;
-
-    let cc = CuckooTable::new(&ts);
-
-    return;
+    // use rchess_engine_lib::cuckoo::*;
+    // let cc = CuckooTable::new(&ts);
+    // return;
 
     // use rchess_engine_lib::lockless_map::*;
     // let k0 = std::mem::size_of::<Bucket>();
@@ -2880,26 +2878,26 @@ fn main9() {
     let fen = "8/6kp/r7/p7/1n1R1P2/7P/6PK/8 b - - 0 46";
     let mut g = Game::from_fen(&ts, fen).unwrap();
 
-    let mvs = vec![
-        "b4c6",
-        "d4a4",
-        "a6b6",
-        "a4c4",
-        "b6a6",
-        // "c4a4",
-    ];
-
-    g = g.run_moves(ts, mvs.clone());
+    // let mvs = vec![
+    //     "b4c6",
+    //     "d4a4",
+    //     "a6b6",
+    //     "a4c4",
+    //     "b6a6",
+    //     // "c4a4",
+    // ];
+    // g = g.run_moves(ts, mvs.clone());
 
     eprintln!("g = {:?}", g);
+    eprintln!("g.halfmove = {:?}", g.halfmove);
 
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
-    ex.cfg.num_threads = Some(6);
-    // ex.cfg.num_threads = Some(1);
+    // ex.cfg.num_threads = Some(6);
+    ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
@@ -2910,9 +2908,8 @@ fn main9() {
 
     // ex.timer.settings.increment = [0.118; 2];
 
-    // ex.update_game_movelist(&ts, fen, mvs.iter());
-    let moves = mvs.into_iter();
-    ex.update_game_movelist(&ts, fen, moves);
+    // let moves = mvs.into_iter();
+    // ex.update_game_movelist(&ts, fen, moves);
 
     // let zb0 = Game::from_fen(&ts, "8/6kp/r1n5/p7/R4P2/7P/6PK/8 b - - 10 51").unwrap().zobrist;
     // eprintln!("zb0 = {:?}", zb0);

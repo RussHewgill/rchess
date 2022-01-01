@@ -34,7 +34,7 @@ pub struct Game {
     // // pub history:      HashMap<Zobrist, u8>,
     // pub history:      FxHashMap<Zobrist, u8>,
 
-    pub halfmove:     u8,
+    pub halfmove:     Depth,
 }
 
 #[derive(Debug,Default,PartialOrd,Clone,Copy,Serialize,Deserialize)]
@@ -1120,7 +1120,7 @@ impl Game {
 
 }
 
-/// Misc Queries
+/// Iter
 impl Game {
 
     pub fn iter_all_pieces(&self) -> Vec<(Piece,Coord)> {
@@ -1139,6 +1139,11 @@ impl Game {
         }
         out
     }
+
+}
+
+/// Misc Queries
+impl Game {
 
     pub fn in_check(&self) -> bool {
         self.state.checkers.is_not_empty()

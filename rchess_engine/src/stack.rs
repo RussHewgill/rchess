@@ -183,6 +183,7 @@ impl ABStack {
 
 #[derive(Debug,Clone)]
 pub struct ABStackPly {
+    // pub zobrist:          Zobrist,
     pub ply:              Depth,
     pub moves_searched:   u8,
     pub killers:          [Option<Move>; 2],
@@ -197,6 +198,7 @@ pub struct ABStackPly {
 impl ABStackPly {
     pub fn new(g: &Game, ply: Depth) -> Self {
         Self {
+            // zobrist:        g.zobrist,
             ply,
             moves_searched: 0,
             // killers:        ArrayVec::default(),

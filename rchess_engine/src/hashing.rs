@@ -6,15 +6,16 @@ use crate::types::*;
 use crate::tables::*;
 
 use serde::{Serialize,Deserialize};
+use derive_more::*;
 
 use rand::{Rng,SeedableRng};
 use rand::prelude::StdRng;
 
-// use evmap_derive::ShallowCopy;
-
-// #[derive(Hash,Eq,PartialEq,Ord,PartialOrd,ShallowCopy,Clone,Copy)]
-#[derive(Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy,Serialize,Deserialize)]
-// #[derive(Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
+// #[derive(Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy,Serialize,Deserialize)]
+#[derive(Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy,Serialize,Deserialize,
+         Index,Add,Mul,Div,Sum,AddAssign,MulAssign,
+         Not,BitXor,BitXorAssign,BitAnd,BitAndAssign,BitOr,BitOrAssign
+)]
 pub struct Zobrist(pub u64);
 
 impl Default for Zobrist {

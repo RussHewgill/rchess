@@ -23,7 +23,9 @@ impl Game {
         let (s,castle) = parse_castle(&s).unwrap();
         let (s,ep) = parse_enpassant(&s).unwrap();
 
-        let mut g = build_from_fen(ss, side, castle, ep);
+        let (s,halfmove) = parse_halfmove_fullmove(&s).unwrap();
+
+        let mut g = build_from_fen(ss, side, castle, ep, halfmove);
         // g.recalc_gameinfo_mut();
 
         let _ = g.recalc_gameinfo_mut(&ts);
@@ -41,6 +43,7 @@ fn build_from_fen(
     col:        Color,
     castling:   Castling,
     ep:         Option<Coord>,
+    halfmove:   Depth,
 ) -> Game {
     // let mut out = Game::empty();
     let mut out = Game::default();
@@ -59,6 +62,18 @@ fn build_from_fen(
     out.state.castling = castling;
     out.state.en_passant = ep;
     out
+}
+
+fn parse_halfmove_fullmove(s: &str) -> IResult<&str, Depth> {
+    let (s,_) = tag(" ")(s)?;
+    let (s,hm) = nom::character::complete::digit1(s)?;
+    let (s,_) = tag(" ")(s)?;
+    let (s,fm) = nom::character::complete::digit1(s)?;
+
+    let hm: Depth = Depth::from_str(&hm).unwrap();
+    let fm: Depth = Depth::from_str(&fm).unwrap();
+
+    Ok((s,hm))
 }
 
 fn parse_side(s: &str) -> IResult<&str, Color> {
