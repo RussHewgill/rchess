@@ -82,6 +82,7 @@ pub mod attack_maps;
 // pub mod material_table;
 pub mod pawn_hash_table;
 pub mod evmap_tables;
+pub mod cuckoo;
 
 pub mod brain;
 pub mod sf_compat;

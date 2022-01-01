@@ -446,6 +446,18 @@ impl Tables {
 
 }
 
+/// Sliding moves
+impl Tables {
+    pub fn get_sliding(&self, pc: Piece, sq: Coord, occ: BitBoard) -> BitBoard {
+        match pc {
+            Rook   => self.attacks_rook(sq, occ),
+            Bishop => self.attacks_bishop(sq, occ),
+            Queen  => self.attacks_bishop(sq, occ) | self.attacks_rook(sq, occ),
+            _      => panic!("search sliding: {:?}", pc),
+        }
+    }
+}
+
 /// Rooks
 impl Tables {
 

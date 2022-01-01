@@ -326,6 +326,54 @@ impl ExHelper {
 
 }
 
+/// Repetition checking
+impl ExHelper {
+
+    pub fn has_cycle(
+        &self,
+        ts:                      &'static Tables,
+        g:                       &Game,
+        (alpha, beta):           (Score,Score),
+        mut stats:               &mut SearchStats,
+        mut stack:               &mut ABStack,
+    ) -> bool {
+
+        // let end = 
+
+        // let mut i = 3;
+        // while i <= end {
+        //     // let zb      = stack.move_history[i];
+        //     // let zb_prev = stack.move_history[i+2];
+        // }
+
+
+        /// Repetition checking
+        if alpha < DRAW_VALUE {
+            // for (zb,_) in stack.move_history.iter().step_by(2) {
+            let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
+            // let cycle = stack.move_history.contains(&zb2);
+            if cycle && alpha >= beta {
+                debug!("found cycle, {:?}, {:?}", alpha, beta);
+                // return ABSingle(ABResult::new_single(g.last_move.unwrap(), DRAW_VALUE));
+                return true;
+            } else {
+                debug!("found cycle but no return, {:?}, {:?}", alpha, beta);
+            }
+
+        } else {
+            let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
+
+            if cycle {
+                debug!("found cycle but alpha < DRAW_VALUE, {:?}, {:?}", alpha, beta);
+            }
+
+        }
+
+        false
+    }
+
+}
+
 /// Negamax AB Refactor
 impl ExHelper {
     #[allow(unused_doc_comments,unused_labels)]
@@ -369,17 +417,29 @@ impl ExHelper {
         /// Repetition, Halting
         if !is_root_node {
 
-            /// Repetition checking
-            if alpha < DRAW_VALUE {
-                // for (zb,_) in stack.move_history.iter().step_by(2) {
+            let cycle = self.has_cycle(ts, g, (alpha,beta), stats, stack);
 
-                let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
-                // let cycle = stack.move_history.contains(&zb2);
-                if cycle && alpha >= beta {
-                    return ABSingle(ABResult::new_single(g.last_move.unwrap(), 0));
-                }
-
+            if cycle {
+                return ABSingle(ABResult::new_single(g.last_move.unwrap(), DRAW_VALUE));
             }
+
+            // /// Repetition checking
+            // if alpha < DRAW_VALUE {
+            //     // for (zb,_) in stack.move_history.iter().step_by(2) {
+            //     let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
+            //     // let cycle = stack.move_history.contains(&zb2);
+            //     if cycle && alpha >= beta {
+            //         debug!("found cycle, {:?}, {:?}", alpha, beta);
+            //         return ABSingle(ABResult::new_single(g.last_move.unwrap(), DRAW_VALUE));
+            //     } else {
+            //         debug!("found cycle but no return, {:?}, {:?}", alpha, beta);
+            //     }
+            // } else {
+            //     let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
+            //     if cycle {
+            //         debug!("found cycle but alpha < DRAW_VALUE, {:?}, {:?}", alpha, beta);
+            //     }
+            // }
 
             /// Halted search
             if self.stop.load(std::sync::atomic::Ordering::Relaxed) {

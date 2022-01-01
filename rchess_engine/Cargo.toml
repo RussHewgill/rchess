@@ -207,3 +207,5 @@ bytemuck = { version = "^1.7", features = ["extern_crate_alloc"] }
 
 # strum = { version = "^0.23", features = ["derive"] }
 
+# bloomfilter = "^1.0"
+

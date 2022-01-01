@@ -2866,6 +2866,12 @@ fn main9() {
     // let n = 8;
     // let n = 2;
 
+    use rchess_engine_lib::cuckoo::*;
+
+    let cc = CuckooTable::new(&ts);
+
+    return;
+
     // use rchess_engine_lib::lockless_map::*;
     // let k0 = std::mem::size_of::<Bucket>();
     // eprintln!("k0 = {:?}", k0);
@@ -2880,10 +2886,10 @@ fn main9() {
         "a6b6",
         "a4c4",
         "b6a6",
-        "c4a4",
+        // "c4a4",
     ];
 
-    g = g.run_moves(ts, mvs);
+    g = g.run_moves(ts, mvs.clone());
 
     eprintln!("g = {:?}", g);
 
@@ -2900,9 +2906,22 @@ fn main9() {
 
     ex.cfg.late_move_reductions = true;
 
-    let mut ex2 = ex.clone();
+    // let mut ex2 = ex.clone();
 
     // ex.timer.settings.increment = [0.118; 2];
+
+    // ex.update_game_movelist(&ts, fen, mvs.iter());
+    let moves = mvs.into_iter();
+    ex.update_game_movelist(&ts, fen, moves);
+
+    // let zb0 = Game::from_fen(&ts, "8/6kp/r1n5/p7/R4P2/7P/6PK/8 b - - 10 51").unwrap().zobrist;
+    // eprintln!("zb0 = {:?}", zb0);
+    // let cycle = ex.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
+    // eprintln!("cycle = {:?}", cycle);
+
+    // for (zb,mv) in ex.move_history.iter() {
+    //     // eprintln!("mv = {:?}", mv);
+    // }
 
     let t0 = std::time::Instant::now();
     ex.update_game(g.clone());

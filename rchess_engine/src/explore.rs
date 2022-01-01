@@ -343,7 +343,8 @@ impl Explorer {
         &mut self,
         ts:          &Tables,
         fen:         &str,
-        mut moves:   impl Iterator<Item = &'a str>) {
+        mut moves:   impl Iterator<Item = &'a str>
+    ) {
         let mut g = Game::from_fen(&ts, &fen).unwrap();
         for m in moves {
             let from = &m[0..2];

@@ -51,6 +51,10 @@ impl Sq {
 
 impl Coord {
 
+    pub const fn new_int_const(sq: u8) -> Self {
+        Coord(sq)
+    }
+
     pub fn new_int<T: PrimInt + AsPrimitive<u8>>(sq: T) -> Self {
         // assert!(x < 64);
         // Self(x.into())
@@ -118,6 +122,82 @@ impl<T> std::ops::IndexMut<Coord> for [T; 64] {
         let sq: usize = c1.into();
         &mut self[sq]
     }
+}
+
+/// Iter
+impl Coord {
+
+    // // pub fn iter_coords() -> impl Iterator<Item = Coord> {
+    // pub fn iter_coords() -> &[Coord] {
+    //     const COORDS: [Coord; 64] = [
+    //         Coord(0),
+    //         Coord(1),
+    //         Coord(2),
+    //         Coord(3),
+    //         Coord(4),
+    //         Coord(5),
+    //         Coord(6),
+    //         Coord(7),
+    //         Coord(8),
+    //         Coord(9),
+    //         Coord(10),
+    //         Coord(11),
+    //         Coord(12),
+    //         Coord(13),
+    //         Coord(14),
+    //         Coord(15),
+    //         Coord(16),
+    //         Coord(17),
+    //         Coord(18),
+    //         Coord(19),
+    //         Coord(20),
+    //         Coord(21),
+    //         Coord(22),
+    //         Coord(23),
+    //         Coord(24),
+    //         Coord(25),
+    //         Coord(26),
+    //         Coord(27),
+    //         Coord(28),
+    //         Coord(29),
+    //         Coord(30),
+    //         Coord(31),
+    //         Coord(32),
+    //         Coord(33),
+    //         Coord(34),
+    //         Coord(35),
+    //         Coord(36),
+    //         Coord(37),
+    //         Coord(38),
+    //         Coord(39),
+    //         Coord(40),
+    //         Coord(41),
+    //         Coord(42),
+    //         Coord(43),
+    //         Coord(44),
+    //         Coord(45),
+    //         Coord(46),
+    //         Coord(47),
+    //         Coord(48),
+    //         Coord(49),
+    //         Coord(50),
+    //         Coord(51),
+    //         Coord(52),
+    //         Coord(53),
+    //         Coord(54),
+    //         Coord(55),
+    //         Coord(56),
+    //         Coord(57),
+    //         Coord(58),
+    //         Coord(59),
+    //         Coord(60),
+    //         Coord(61),
+    //         Coord(62),
+    //         Coord(63),
+    //     ];
+    //     &COORDS
+    // }
+
 }
 
 impl Coord {
