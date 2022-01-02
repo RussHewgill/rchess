@@ -23,7 +23,7 @@ impl Game {
         let (s,castle) = parse_castle(&s).unwrap();
         let (s,ep) = parse_enpassant(&s).unwrap();
 
-        let (s,halfmove) = parse_halfmove_fullmove(&s).unwrap();
+        let (s,halfmove) = parse_halfmove_fullmove(&s).unwrap_or((s,0));
 
         let mut g = build_from_fen(ss, side, castle, ep, halfmove);
         // g.recalc_gameinfo_mut();

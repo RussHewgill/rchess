@@ -2836,6 +2836,8 @@ fn main9() {
 
     // let (fen,correct) = &games_sts(91, 11); // fen, set
 
+    let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
+
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
@@ -2858,91 +2860,48 @@ fn main9() {
     // let t = 10.0;
     // let t = 6.0;
     // let t = 4.0;
-    // let t = 2.0;
-    let t = 0.5;
+    let t = 2.0;
+    // let t = 0.5;
     // let t = 0.3;
 
-    // let n = 35;
-    let n = 8;
+    let n = 35;
+    // let n = 8;
+    // let n = 10;
     // let n = 2;
 
-    // use rchess_engine_lib::cuckoo::*;
-    // let cc = CuckooTable::new(&ts);
-    // return;
+    use rchess_engine_lib::lockless_map::*;
 
-    // use rchess_engine_lib::lockless_map::*;
-    // let k0 = std::mem::size_of::<Bucket>();
-    // eprintln!("k0 = {:?}", k0);
-    // return;
+    let k0 = std::mem::size_of::<Bucket>();
+    let k1 = std::mem::size_of::<TTEntry>();
 
-    let fen = "8/6kp/r7/p7/1n1R1P2/7P/6PK/8 b - - 0 46";
-    let mut g = Game::from_fen(&ts, fen).unwrap();
+    eprintln!("Bucket  = {:?}", k0);
+    eprintln!("TTEntry = {:?}", k1);
 
-    let mvs = vec![
-        "b4c6", //     Nc6 b
-        "d4a4", // 47. Ra4 w
-        "a6b6", //     Rb6 b
-        "a4c4", // 48. Rc4 w
-        // "b6a6", //     Ra6 b, 2 fold rep allowed
-        // "c4a4", // 49. Ra4 w
-        // "a6b6", // Rb6 b
-        // "a4c4", // Rc4 w
-        // "b6a6", // Ra6, mistake, draw
-        // "c4a4"  // draw
-    ];
-    // g = g.run_moves(ts, mvs.clone());
+    return;
 
-    // let mut moves = vec![];
-
-    // for m in mvs.iter() {
-    //     let from = &m[0..2];
-    //     let to = &m[2..4];
-    //     let other = &m[4..];
-    //     let mm = g.convert_move(from, to, other).unwrap();
-    //     g = g.make_move_unchecked(&ts, mm).unwrap();
-    //     // self.move_history.push((g.zobrist,mm));
-    //     moves.push((g.zobrist,mm));
-    // }
-
-    // let stack = ABStack::new_with_moves(&moves);
-    // let mut stats = SearchStats::default();
-    // let last = stack.move_history.len() as i32 - 1;
-    // eprintln!("last = {:?}", last);
-    // let end = g.halfmove as i32;
-    // eprintln!("g.halfmove = {:?}", g.halfmove);
-    // let end = end - last;
-    // eprintln!("end = {:?}", end);
-    // let zb0 = g.zobrist;
-    // eprintln!("zb0 = {:?}", zb0);
-    // // for (n,(zb,mv)) in stack.move_history.iter().enumerate() {
-    // //     eprintln!("(n,zb,mv) = {:?}", (n,zb,mv));
-    // // }
-
-    // let mut cycle = false;
-    // let mut i = last - 2;
-    // while i >= end {
-    //     let zb_prev = if let Some(zb) = stack.move_history.get(i as usize) {
-    //         zb.0
-    //     } else { break; };
-    //     eprintln!("i,zb = {:?} = {:?}", i, zb_prev);
-    //     if zb_prev == zb0 {
-    //         cycle = true;
-    //     }
-    //     i -= 2;
-    // }
-
-    // let cycle = ExHelper::has_cycle(ts, &g, 0, &mut stats, &stack);
-
-    // eprintln!("cycle = {:?}", cycle);
-    // return;
+    // let fen = "8/6kp/r7/p7/1n1R1P2/7P/6PK/8 b - - 0 46";
+    // let mut g = Game::from_fen(&ts, fen).unwrap();
+    // let mvs = vec![
+    //     "b4c6", //     Nc6 b
+    //     "d4a4", // 47. Ra4 w
+    //     "a6b6", //     Rb6 b
+    //     "a4c4", // 48. Rc4 w
+    //     // "b6a6", //     Ra6 b, 2 fold rep allowed
+    //     // "c4a4", // 49. Ra4 w
+    //     // "a6b6", // Rb6 b
+    //     // "a4c4", // Rc4 w
+    //     // "b6a6", // Ra6, mistake, draw
+    //     // "c4a4"  // draw
+    // ];
 
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
-    // ex.cfg.num_threads = Some(6);
-    ex.cfg.num_threads = Some(1);
+    // ex.cfg.num_threads = Some(12);
+    ex.cfg.num_threads = Some(6);
+    // ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
@@ -2953,14 +2912,12 @@ fn main9() {
 
     // ex.timer.settings.increment = [0.118; 2];
 
-    let moves = mvs.into_iter();
-    ex.update_game_movelist(&ts, fen, moves);
-
-    let g = ex.game.clone();
-
-    eprintln!("g = {:?}", g);
-    eprintln!("g.halfmove = {:?}", g.halfmove);
-    eprintln!("g.to_fen() = {:?}", g.to_fen());
+    // let moves = mvs.into_iter();
+    // ex.update_game_movelist(&ts, fen, moves);
+    // let g = ex.game.clone();
+    // eprintln!("g = {:?}", g);
+    // eprintln!("g.halfmove = {:?}", g.halfmove);
+    // eprintln!("g.to_fen() = {:?}", g.to_fen());
 
     // let zb0 = Game::from_fen(&ts, "8/6kp/r1n5/p7/R4P2/7P/6PK/8 b - - 10 51").unwrap().zobrist;
     // eprintln!("zb0 = {:?}", zb0);
@@ -3004,7 +2961,7 @@ fn main9() {
     debug!("Best move = {:>8} {:?}", best.score, best.mv);
     debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth, t2);
 
-    return;
+    // return;
 
     println!();
 
@@ -3013,7 +2970,16 @@ fn main9() {
         let tt = ex.ptr_tt;
         let used = tt.used_entries();
         let tot  = tt.total_entries();
-        eprintln!("tt use ratio = {:.3}", used as f64 / tot as f64);
+        eprintln!("tt use ratio = {:.3}, used = {:?}", used as f64 / tot as f64, used);
+    }
+
+    #[cfg(not(feature = "lockless_hashmap"))]
+    {
+        let tt_r = ex.tt_rf.handle();
+        eprintln!("tt_r.len() = {:?}", tt_r.len());
+        let size = tt_r.len() * std::mem::size_of::<SearchInfo>();
+        let size = size / 1024;
+        eprintln!("mem used = {:?} KB", size);
     }
 
     // return;

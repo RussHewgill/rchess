@@ -22,6 +22,9 @@ mod const_params {
 
     pub const MAX_SEARCH_PLY: Depth = 220;
 
+    /// -2147482414
+    pub const VALUE_INVALID: Score   = Score::MIN + 1234;
+
     pub const TB_WIN_VALUE: Score    = 90_000_000;
     pub const KNOWN_WIN_VALUE: Score = 80_000_000;
 
