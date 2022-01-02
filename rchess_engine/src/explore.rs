@@ -27,7 +27,7 @@ use std::cell::RefCell;
 use std::path::Path;
 use std::collections::{VecDeque,HashMap,HashSet};
 use std::hash::BuildHasher;
-use std::sync::atomic::{Ordering,Ordering::SeqCst,AtomicU8};
+use std::sync::atomic::{Ordering,Ordering::SeqCst,Ordering::Relaxed,AtomicU8,AtomicI8};
 use std::time::{Instant,Duration};
 
 use arrayvec::ArrayVec;
@@ -519,10 +519,10 @@ impl Explorer {
         let max_threads = 1;
         #[cfg(not(feature = "one_thread"))]
         let max_threads = if let Some(x) = self.cfg.num_threads {
-            x
+            x as i8
         } else {
-            let max_threads = 6;
-            max_threads
+            let max_threads = num_cpus::get_physical();
+            max_threads as i8
         };
 
         debug!("lazy_smp_2 max_threads = {:?}", max_threads);
@@ -540,7 +540,7 @@ impl Explorer {
         let out: Arc<RwLock<(Depth,ABResults,Vec<Move>, SearchStats)>> =
             Arc::new(RwLock::new((0, ABResults::ABNone, vec![], SearchStats::default())));
 
-        let thread_counter = Arc::new(AtomicU8::new(0));
+        let thread_counter = Arc::new(AtomicI8::new(0));
         let best_depth     = Arc::new(AtomicU8::new(0));
 
         let t0 = Instant::now();
@@ -575,12 +575,14 @@ impl Explorer {
 
             let mut thread_id = 0;
 
+            // let ord = SeqCst;
+
             'outer: loop {
 
                 // let t1 = t0.elapsed();
                 let t1 = Instant::now().checked_duration_since(t0).unwrap();
 
-                let d = best_depth.load(SeqCst);
+                let d = best_depth.load(Relaxed);
 
                 /// Found mate, halt
                 if self.best_mate.read().is_some() {
@@ -635,7 +637,8 @@ impl Explorer {
                     // std::thread::sleep(Duration::from_millis(1));
                 }
 
-                if self.stop.load(SeqCst) {
+                // if self.stop.load(SeqCst) {
+                if self.stop.load(Relaxed) {
                     break 'outer;
                 }
 
@@ -677,7 +680,7 @@ impl Explorer {
         &self,
         rx:               ExReceiver,
         best_depth:       Arc<AtomicU8>,
-        thread_counter:   Arc<AtomicU8>,
+        thread_counter:   Arc<AtomicI8>,
         t0:               Instant,
         out:              Arc<RwLock<(Depth,ABResults,Vec<Move>,SearchStats)>>,
     ) {
@@ -904,7 +907,8 @@ impl ExHelper {
         let mut depth = start_ply + 1;
 
         /// Iterative deepening
-        while !self.stop.load(SeqCst)
+        // while !self.stop.load(SeqCst)
+        while !self.stop.load(Relaxed)
             && depth <= self.cfg.max_depth
             && self.best_mate.read().is_none()
         {
@@ -914,7 +918,8 @@ impl ExHelper {
 
             let res = self.ab_search_single(ts, &mut stats, &mut stack, None, depth);
 
-            if !self.stop.load(SeqCst) && depth >= self.best_depth.load(SeqCst) {
+            // if !self.stop.load(SeqCst) && depth >= self.best_depth.load(SeqCst) {
+            if !self.stop.load(Relaxed) && depth >= self.best_depth.load(Relaxed) {
                 let moves = if self.cfg.return_moves {
                     let mut v = stack.pvs.to_vec();
                     v.retain(|&mv| mv != Move::NullMove);

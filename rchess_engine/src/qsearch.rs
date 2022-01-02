@@ -12,7 +12,7 @@ use crate::evmap_tables::*;
 
 use std::cell::RefCell;
 use std::sync::atomic::AtomicU8;
-use std::sync::atomic::Ordering::SeqCst;
+use std::sync::atomic::Ordering::{SeqCst,Relaxed};
 use parking_lot::{Mutex,RwLock};
 
 pub fn exhelper_once(
@@ -139,7 +139,8 @@ impl ExHelper {
         };
 
         /// early halt
-        if self.stop.load(SeqCst) { return stand_pat; }
+        // if self.stop.load(SeqCst) { return stand_pat; }
+        if self.stop.load(Relaxed) { return stand_pat; }
 
         stats.qt_nodes += 1;
 

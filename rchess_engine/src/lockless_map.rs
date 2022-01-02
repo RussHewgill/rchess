@@ -52,7 +52,8 @@ use super::*;
 pub const DEFAULT_TT_SIZE_MB: usize = 32;
 // pub const DEFAULT_TT_SIZE_MB: usize = 16;
 
-const ENTRIES_PER_BUCKET: usize = 3;
+// const ENTRIES_PER_BUCKET: usize = 3;
+const ENTRIES_PER_BUCKET: usize = 2;
 
 const KILOBYTE: usize = 1024;
 const MEGABYTE: usize = 1024 * KILOBYTE;
@@ -84,7 +85,8 @@ impl TTEntry {
 }
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
-#[repr(align(64))]
+// #[repr(align(64))]
+#[repr(align(32))]
 pub struct Bucket {
     // pub x:  usize,
     bucket: [TTEntry; ENTRIES_PER_BUCKET],
@@ -131,18 +133,39 @@ impl Bucket {
     pub fn find(&self, ver: u32) -> Option<&SearchInfo> {
     // pub fn find(&self, ver: u32) -> Option<SearchInfo> {
         for e in self.bucket.iter(){
-            if e.verification == ver {
-                return e.entry.as_ref();
-                // if let Some(si) = e.entry {
-                //     return Some(si);
-                // }
-                // return Some(&e.entry);
+
+            if let Some(si) = e.entry {
+
+                /// e.key ^ e.data
+                let ver2 = TransTable::verify(&si, e.verification);
+
+                if ver2 == ver {
+                    return e.entry.as_ref();
+                } else {
+                    panic!("wat: si = {:?}", si);
+                    // return None;
+                }
             }
+
+            // } else if e.verification == ver {
+            //     // return e.entry.as_ref();
+            //     return None;
+            // }
+
+            // if e.verification == ver {
+            //     return e.entry.as_ref();
+            //     // if let Some(si) = e.entry {
+            //     //     return Some(si);
+            //     // }
+            //     // return Some(&e.entry);
+            // }
+
         }
         None
     }
 }
 
+// #[derive(Clone)]
 pub struct TransTable {
     // ptr:           UnsafeCell<NonNull<Bucket>>,
     vec:           UnsafeCell<Vec<Bucket>>,
@@ -242,11 +265,56 @@ impl TransTable {
     }
 }
 
+/// Verify
+impl TransTable {
+
+    pub unsafe fn any_as_u8_slice<T: Sized>(p: &T) -> &[u8] {
+        ::std::slice::from_raw_parts(
+            (p as *const T) as *const u8,
+            ::std::mem::size_of::<T>(),
+        )
+    }
+
+    pub fn get_ver2(si: &SearchInfo) -> &[u32] {
+        const D: usize = std::mem::size_of::<SearchInfo>();
+        use std::convert::TryInto;
+
+        let data: &[u8] = unsafe {
+            // std::slice::from_raw_parts(si as *const u8, D)
+            Self::any_as_u8_slice(si)
+        };
+
+        // let data: Vec<u8> = bincode::serialize(&si).unwrap();
+        // eprintln!("data.len() = {:?}", data.len());
+        let data: &[u32] = bytemuck::cast_slice(&data);
+
+        data
+    }
+
+    pub fn verify(si: &SearchInfo, mut ver: u32) -> u32 {
+        let data = Self::get_ver2(si);
+
+        Self::_verify(data, ver)
+    }
+
+    pub fn _verify(si: &[u32], mut ver: u32) -> u32 {
+        for d in si {
+            ver ^= d;
+        }
+        ver
+    }
+
+
+}
+
 /// Insert
 impl TransTable {
     pub fn insert(&self, zb: Zobrist, si: SearchInfo) {
-        let idx = self.calc_index(zb);
-        let ver = self.calc_verification(zb);
+        let idx: usize = self.calc_index(zb);
+        let ver: u32   = self.calc_verification(zb);
+
+        let ver = Self::verify(&si, ver);
+
         unsafe {
             let ptr = self.bucket(idx).unwrap();
             // let ptr = self.bucket(idx);

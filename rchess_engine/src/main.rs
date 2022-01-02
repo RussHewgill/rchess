@@ -2768,17 +2768,6 @@ fn main9() {
 
     // let fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "; // Position 2
 
-    // let fen = "4r1k1/4nppp/2b5/1r2N3/5P2/3Q4/6PP/5RK1 w - - 0 1"; // QS test,
-    // let fen = "4r1k1/4nppp/2N5/1r6/5P2/3Q4/6PP/5RK1 b - - 0 1"; // After N e5c6
-    // // let fen = "4r1k1/5ppp/2n5/1r6/5P2/3Q4/6PP/5RK1 w - - 0 2"; // After N e7c6, recapture, WRONG
-    // // let fen = "4r1k1/1r2nppp/2N5/8/5P2/3Q4/6PP/5RK1 w - - 1 2"; // After R b5b7, Correct
-
-    // let fen = "5rk1/4npp1/1p4b1/1B2p3/1P1P2Q1/4P3/5PP1/r3K2R w K - 0 3"; // base
-    // // let fen = "5rk1/4npp1/1p4b1/1B2p3/1P1P2Q1/4P3/4KPP1/r6R b - - 1 3"; // evade with K e1e2
-    // // let fen = "5rk1/4npp1/1p4b1/1B2p3/1P1P4/4P3/5PP1/r2QK2R b K - 1 3"; // block with Q g4d1
-    // // let fen = "5rk1/4npp1/1p4b1/1B2p3/1P1P2Q1/4P3/4KPP1/7r w - - 0 4"; // after evade, -320
-    // // let fen = "5rk1/4npp1/1p4b1/1B2p3/1P1P4/4P3/5PP1/3K3R b - - 0 4"; // after block, -220
-
     // // let fen = "7k/8/8/8/8/8/4Q3/7K w - - 0 1"; // Queen endgame, #7
     // // let fen = "7k/4Q3/8/8/8/8/8/7K w - - 4 3"; // Queen endgame, #6
     // let fen = "7k/4Q3/8/8/8/8/6K1/8 w - - 4 3"; // Queen endgame, #5
@@ -2788,30 +2777,12 @@ fn main9() {
 
     // let fen = &games(8); // Qt R e7f7, #7
 
-    // let fen = &games(2); // STS2 002, Qt R a7E7
-    // let fen = &games(2); // STS15 001, Qt Q d3d1
-
-    // let fen = "r3rbk1/1pq2ppp/p1n3b1/3BpNP1/4P3/P1Q1B2P/1PP2P2/3RR1K1 b - - 0 1"; // repetition
-    // let fen = "r3rbk1/1pq2ppp/p1n5/3BpNPb/4P3/P1Q1B2P/1PP2P2/3RR1K1 w - - 1 2"; // repetition
-    // let fen = "r3rbk1/1pq2ppp/p1n5/3BpNPb/4P3/P1QRB2P/1PP2P2/4R1K1 b - - 2 2"; // repetition
-    // let fen = "r3rbk1/1pq2ppp/p1n3b1/3BpNP1/4P3/P1QRB2P/1PP2P2/4R1K1 w - - 3 3"; // repetition
-
     // let fen = "r1b2rk1/1pq1bppp/p2ppn2/2n3B1/3NP3/2N2Q2/PPP1BPPP/R4RK1 w - - 8 12"; // ??
     // let fen = "8/1p1b1pq1/3Npk2/2Q1p3/P4rp1/1PP5/K6p/4R3 w - - 2 45"; // Q cap c5e5
 
     // let fen = "7k/6pp/8/8/8/8/8/RK6 w - - 0 1"; // #1, Qt R a1a8
 
-    // let fen = "r1bqk2r/ppp2ppp/2np1n2/4p3/1PP1P3/P1NPbN2/5PPP/R2QKB1R w KQkq -";
-
     // let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
-
-    // let fen = "rnbqkb1r/p4p2/2p1pn1p/1p2P1p1/2pP3B/2N2N2/PP3PPP/R2QKB1R w KQkq g6"; // rand opening
-
-    // let fen = "rnb2r2/p1q2pQk/2p1pB1p/1p2P3/1bpPN3/2N5/PP3PPP/R3KB1R b KQ -"; // Mate
-
-    // let fen = "4k3/r2bbprp/3p1p1N/2qBpP2/ppP1P1P1/1P1R3P/P7/1KR1Q3 w - - "; // STS 1 56
-
-    // let fen = "8/5R2/1r3npk/1p2p1Np/p3P2P/P2K2P1/1P6/8 w - - 1 35"; // Qt K d3c3
 
     // let fen = "8/8/p1p5/1p5p/1P5p/8/PPP2K1p/4R1rk w - - 0 1";    // Qt R e1f1
     // let fen = "1q1k4/2Rr4/8/2Q3K1/8/8/8/8 w - - 0 1";            // Kh6
@@ -2819,24 +2790,12 @@ fn main9() {
     // let fen = "8/6B1/p5p1/Pp4kp/1P5r/5P1Q/4q1PK/8 w - - 0 32";   // Qxh4
     // let fen = "8/8/1p1r1k2/p1pPN1p1/P3KnP1/1P6/8/3R4 b - - 0 1"; // Nxd5
 
-    // let fen = "8/8/8/8/8/7p/3k1pr1/7K w - -"; // non legal ??
-
-    // let fen = "2r3r1/pp1b4/1bn2pk1/3pP2p/1P5P/5NP1/P1NB1P2/2RKR3 b - - 0 23"; // ??
-
-    // let fen = "6k1/5pp1/3p1n2/3P3Q/5Rn1/P5P1/1PPq2KP/8 w - - 0 1"; // ??
-    // let fen = "6k1/5pp1/3p1n2/3P3r/5Rn1/P5PQ/1PP2q1P/7K w - - 0 33"; // ??
-
-    // let fen = "r1b1k2r/ppppnppp/2n2q2/2b5/3NP3/2P1B3/PP3PPP/RN1QKB1R w KQkq - 0 1";
-    // let fen = "6k1/3q1pp1/pp5p/1r5n/8/1P3PP1/PQ4BP/2R3K1 w - - 0 1"; // killer test
-
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
 
     // let (fen,correct) = &games_sts(3, 1); // fen, set
 
     // let (fen,correct) = &games_sts(91, 11); // fen, set
-
-    let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -2864,19 +2823,58 @@ fn main9() {
     // let t = 0.5;
     // let t = 0.3;
 
-    let n = 35;
+    // let n = 35;
     // let n = 8;
-    // let n = 10;
+    let n = 10;
     // let n = 2;
 
     use rchess_engine_lib::lockless_map::*;
+    // let k0 = std::mem::size_of::<Bucket>();
+    // let k1 = std::mem::size_of::<TTEntry>();
+    // let k2 = std::mem::size_of::<SearchInfo>();
+    // eprintln!("Bucket  = {:?}", k0);
+    // eprintln!("TTEntry = {:?}", k1);
+    // eprintln!("SearchInfo = {:?}", k2);
+    // return;
 
-    let k0 = std::mem::size_of::<Bucket>();
-    let k1 = std::mem::size_of::<TTEntry>();
+    let zb = g.zobrist;
 
-    eprintln!("Bucket  = {:?}", k0);
-    eprintln!("TTEntry = {:?}", k1);
+    let mut tt = TransTable::new_mb(DEFAULT_TT_SIZE_MB);
 
+    let idx  = tt.calc_index(zb);
+    let ver0 = tt.calc_verification(zb);
+
+    eprintln!("idx  = {:?}", idx);
+    eprintln!("ver0 = {:?}", ver0);
+
+    let si = SearchInfo::new(Move::NullMove, 1, Node::PV, 123);
+
+    let data: &[u8] = unsafe {
+        TransTable::any_as_u8_slice(&si)
+    };
+
+    let data: &[u32] = bytemuck::cast_slice(&data);
+
+    let mut ver = ver0;
+    for x in data.iter() {
+        // eprintln!("x = {:?}", x);
+        ver ^= x;
+    }
+
+    eprintln!("ver = {:?}", ver);
+
+    // let mut ver2 = ver
+    // for x in 
+
+    let mut ver2 = ver;
+    for x in data.iter() {
+        ver2 ^= x;
+    }
+
+    eprintln!("ver2 == ver0 = {:?}", ver2 == ver0);
+
+    // let data = bincode::serialize(&si).unwrap();
+    // eprintln!("data.len() = {:?}", data.len());
     return;
 
     // let fen = "8/6kp/r7/p7/1n1R1P2/7P/6PK/8 b - - 0 46";
@@ -2900,11 +2898,11 @@ fn main9() {
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(12);
-    ex.cfg.num_threads = Some(6);
-    // ex.cfg.num_threads = Some(1);
+    // ex.cfg.num_threads = Some(6);
+    ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
-    ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+    // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
     ex.cfg.late_move_reductions = true;
 
