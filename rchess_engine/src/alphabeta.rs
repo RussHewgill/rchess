@@ -333,14 +333,71 @@ impl ExHelper {
 /// Repetition checking
 impl ExHelper {
 
+    // #[cfg(feature = "nope")]
     pub fn has_cycle(
-        &self,
         ts:                      &'static Tables,
         g:                       &Game,
-        (alpha, beta):           (Score,Score),
-        (ply,depth):             (Depth,Depth),
+        ply:                     Depth,
         mut stats:               &mut SearchStats,
-        mut stack:               &mut ABStack,
+        stack:                   &ABStack,
+    ) -> bool {
+
+        // /// Repetition checking
+        // if alpha < DRAW_VALUE {
+        //     // for (zb,_) in stack.move_history.iter().step_by(2) {
+        //     let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
+        //     // let cycle = stack.move_history.contains(&zb2);
+        //     if cycle && alpha >= beta {
+        //         debug!("found cycle, {:?}, {:?}", alpha, beta);
+        //         // return ABSingle(ABResult::new_single(g.last_move.unwrap(), DRAW_VALUE));
+        //         return true;
+        //     } else {
+        //         debug!("found cycle but no return, {:?}, {:?}", alpha, beta);
+        //     }
+        // } else {
+        //     let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
+        //     if cycle {
+        //         debug!("found cycle but alpha < DRAW_VALUE, {:?}, {:?}", alpha, beta);
+        //     }
+        // }
+
+        let end = g.halfmove as usize;
+        if end < 3 { return false };
+
+        let last = stack.move_history.len() as i32 - 1;
+
+        assert_eq!(g.zobrist, stack.move_history[last as usize].0);
+
+        let end = end as i32 - last;
+
+        let mut zb0 = g.zobrist;
+        // let mut zb1 = if let Some(zb) = stack.get_with(ply, f)
+
+        let mut i = last - 2;
+        while i >= end {
+
+            let zb_prev = if let Some(zb) = stack.move_history.get(i as usize) {
+                zb.0
+            } else { break; };
+
+            if zb_prev == zb0 {
+                return true;
+            }
+
+            i -= 2;
+        }
+
+        false
+    }
+
+    #[cfg(feature = "nope")]
+    pub fn has_cycle(
+        // &self,
+        ts:                      &'static Tables,
+        g:                       &Game,
+        ply:                     Depth,
+        mut stats:               &mut SearchStats,
+        stack:                   &ABStack,
     ) -> bool {
         use crate::cuckoo::*;
 
@@ -352,6 +409,7 @@ impl ExHelper {
 
         // let cuckoo = &CUCKOO_TABLE;
 
+        if stack.move_history.len() == 0 { return false; }
         let last = stack.move_history.len() - 1;
 
         assert_eq!(g.zobrist, stack.move_history[last].0);
@@ -406,26 +464,6 @@ impl ExHelper {
             i += 2;
         }
 
-
-        // /// Repetition checking
-        // if alpha < DRAW_VALUE {
-        //     // for (zb,_) in stack.move_history.iter().step_by(2) {
-        //     let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
-        //     // let cycle = stack.move_history.contains(&zb2);
-        //     if cycle && alpha >= beta {
-        //         debug!("found cycle, {:?}, {:?}", alpha, beta);
-        //         // return ABSingle(ABResult::new_single(g.last_move.unwrap(), DRAW_VALUE));
-        //         return true;
-        //     } else {
-        //         debug!("found cycle but no return, {:?}, {:?}", alpha, beta);
-        //     }
-        // } else {
-        //     let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
-        //     if cycle {
-        //         debug!("found cycle but alpha < DRAW_VALUE, {:?}, {:?}", alpha, beta);
-        //     }
-        // }
-
         false
     }
 
@@ -471,14 +509,17 @@ impl ExHelper {
             assert!(!(is_pv_node && is_cut_node));
         }
 
-        /// Repetition, Halting
-        if !is_root_node {
+        /// Repetition
+        // let cycle = Self::has_cycle(ts, g, (alpha,beta), (ply,depth), stats, stack);
+        let cycle = Self::has_cycle(ts, g, ply, stats, stack);
+        if cycle && alpha < DRAW_VALUE {
+        // if cycle {
+            eprintln!("ply, mv, cycle = {:?}, {:?}, {}", ply, g.last_move.unwrap(), cycle);
+            return ABSingle(ABResult::new_single(g.last_move.unwrap(), DRAW_VALUE));
+        }
 
-            let cycle = self.has_cycle(ts, g, (alpha,beta), (ply,depth), stats, stack);
-            if cycle {
-                // eprintln!("cycle = {:?}", cycle);
-                return ABSingle(ABResult::new_single(g.last_move.unwrap(), DRAW_VALUE));
-            }
+        /// Halting
+        if !is_root_node {
 
             // /// Repetition checking
             // if alpha < DRAW_VALUE {
