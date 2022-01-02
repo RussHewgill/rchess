@@ -512,9 +512,9 @@ impl ExHelper {
         /// Repetition
         // let cycle = Self::has_cycle(ts, g, (alpha,beta), (ply,depth), stats, stack);
         let cycle = Self::has_cycle(ts, g, ply, stats, stack);
-        if cycle && alpha < DRAW_VALUE {
-        // if cycle {
-            eprintln!("ply, mv, cycle = {:?}, {:?}, {}", ply, g.last_move.unwrap(), cycle);
+        // if cycle && alpha < DRAW_VALUE {
+        if cycle {
+            // eprintln!("ply, mv, cycle = {:?}, {:?}, {}", ply, g.last_move.unwrap(), cycle);
             return ABSingle(ABResult::new_single(g.last_move.unwrap(), DRAW_VALUE));
         }
 

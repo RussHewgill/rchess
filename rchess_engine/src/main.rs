@@ -2863,8 +2863,8 @@ fn main9() {
     // let t = 0.3;
 
     // let n = 35;
-    // let n = 8;
-    let n = 2;
+    let n = 8;
+    // let n = 2;
 
     // use rchess_engine_lib::cuckoo::*;
     // let cc = CuckooTable::new(&ts);
@@ -2879,12 +2879,12 @@ fn main9() {
     let mut g = Game::from_fen(&ts, fen).unwrap();
 
     let mvs = vec![
-        "b4c6", // Nc6 b
-        "d4a4", // Ra4 w
-        "a6b6", // Rb6 b
-        "a4c4", // Rc4 w
-        // "b6a6", // Ra6 b, 2 fold rep
-        // "c4a4", // Ra4 w
+        "b4c6", //     Nc6 b
+        "d4a4", // 47. Ra4 w
+        "a6b6", //     Rb6 b
+        "a4c4", // 48. Rc4 w
+        // "b6a6", //     Ra6 b, 2 fold rep allowed
+        // "c4a4", // 49. Ra4 w
         // "a6b6", // Rb6 b
         // "a4c4", // Rc4 w
         // "b6a6", // Ra6, mistake, draw
@@ -2905,23 +2905,18 @@ fn main9() {
     // }
 
     // let stack = ABStack::new_with_moves(&moves);
-
     // let mut stats = SearchStats::default();
-
     // let last = stack.move_history.len() as i32 - 1;
     // eprintln!("last = {:?}", last);
-
     // let end = g.halfmove as i32;
+    // eprintln!("g.halfmove = {:?}", g.halfmove);
     // let end = end - last;
-
     // eprintln!("end = {:?}", end);
-
     // let zb0 = g.zobrist;
     // eprintln!("zb0 = {:?}", zb0);
-
-    // for (n,(zb,mv)) in stack.move_history.iter().enumerate() {
-    //     eprintln!("(n,zb,mv) = {:?}", (n,zb,mv));
-    // }
+    // // for (n,(zb,mv)) in stack.move_history.iter().enumerate() {
+    // //     eprintln!("(n,zb,mv) = {:?}", (n,zb,mv));
+    // // }
 
     // let mut cycle = false;
     // let mut i = last - 2;
@@ -2937,6 +2932,7 @@ fn main9() {
     // }
 
     // let cycle = ExHelper::has_cycle(ts, &g, 0, &mut stats, &stack);
+
     // eprintln!("cycle = {:?}", cycle);
     // return;
 
