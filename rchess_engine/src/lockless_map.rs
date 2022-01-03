@@ -39,7 +39,7 @@ use std::cell::{UnsafeCell, Cell};
 use std::ptr::NonNull;
 use std::mem;
 use std::alloc::{Layout, handle_alloc_error, self};
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicUsize};
 // use std::sync::atomic::AtomicUsize;
 
 use super::*;
@@ -102,27 +102,36 @@ pub struct Bucket {
     bucket: [RwLock<TTEntry>; ENTRIES_PER_BUCKET],
 }
 
-/// New
+/// New, clear
 impl Bucket {
     pub fn new() -> Self {
         use rand::Rng;
         Self {
             // x:      rand::thread_rng().gen(),
             // bucket: [TTEntry::empty(); ENTRIES_PER_BUCKET],
-            // bucket: [RwLock::new(TTEntry::empty()); ENTRIES_PER_BUCKET],
             bucket: array_init::array_init(|_| RwLock::new(TTEntry::empty())),
+        }
+    }
+
+    pub fn clear(&self) {
+        for e in self.bucket.iter() {
+            let mut w = e.write();
+            *w = TTEntry::empty();
         }
     }
 }
 
 /// store, find
 impl Bucket {
-    pub fn store(&mut self, ver: u32, si: SearchInfo, used_entries: &mut usize) {
+
+    // pub fn store(&self, ver: u32, si: SearchInfo, used_entries: &mut usize) {
+    pub fn store(&self, ver: u32, si: SearchInfo, used_entries: &AtomicUsize) {
         let mut idx_lowest_depth = 0;
 
         for entry_idx in 1..ENTRIES_PER_BUCKET {
 
             if let Some(entry) = self.bucket[entry_idx].read().entry {
+            // if let Some(entry) = self.bucket[entry_idx].entry {
                 if entry.depth_searched < si.depth_searched {
                     idx_lowest_depth = entry_idx;
                 }
@@ -135,7 +144,9 @@ impl Bucket {
         }
 
         if self.bucket[idx_lowest_depth].read().verification == 0 {
-            *used_entries += 1;
+        // if self.bucket[idx_lowest_depth].verification == 0 {
+            // *used_entries += 1;
+            used_entries.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         }
 
         // // self.bucket[idx_lowest_depth] = TTEntry::new(ver, si);
@@ -186,9 +197,11 @@ impl Bucket {
 // #[derive(Clone)]
 pub struct TransTable {
     // ptr:           UnsafeCell<NonNull<Bucket>>,
-    vec:           UnsafeCell<Vec<Bucket>>,
+    // vec:           UnsafeCell<Vec<Bucket>>,
+    vec:           Vec<Bucket>,
     megabytes:     Cell<usize>,
-    used_entries:  UnsafeCell<usize>,
+    // used_entries:  UnsafeCell<usize>,
+    used_entries:  AtomicUsize,
     tot_buckets:   Cell<usize>,
     tot_entries:   Cell<usize>,
 }
@@ -246,7 +259,9 @@ impl TransTable {
         for _ in 0..tot_buckets {
             v.push(Bucket::new());
         }
-        let vec = UnsafeCell::new(v);
+
+        // let vec = UnsafeCell::new(v);
+        let vec = v;
 
         // let ptr = UnsafeCell::new(unsafe { Self::alloc_room(tot_buckets) });
         // unsafe {
@@ -262,7 +277,8 @@ impl TransTable {
             // ptr,
             vec,
             megabytes:    Cell::new(megabytes),
-            used_entries: UnsafeCell::new(0),
+            // used_entries: UnsafeCell::new(0),
+            used_entries: AtomicUsize::new(0),
             tot_buckets:  Cell::new(tot_buckets),
             tot_entries:  Cell::new(tot_entries),
         }
@@ -272,12 +288,21 @@ impl TransTable {
 
 /// Clear
 impl TransTable {
-    pub unsafe fn clear_table(&self) {
-        let mut vec = &mut *self.vec.get();
-        for b in vec.iter_mut() {
-            *b = Bucket::new();
+
+    pub fn clear_table(&self) {
+        for bucket in self.vec.iter() {
+            bucket.clear();
         }
+        self.used_entries.store(0, std::sync::atomic::Ordering::SeqCst);
     }
+
+    // pub unsafe fn clear_table(&self) {
+    //     let mut vec = &mut *self.vec.get();
+    //     for b in vec.iter_mut() {
+    //         *b = Bucket::new();
+    //     }
+    // }
+
 }
 
 /// Resize
@@ -327,7 +352,6 @@ impl TransTable {
         ver
     }
 
-
 }
 
 /// Insert
@@ -338,24 +362,33 @@ impl TransTable {
 
         // let ver = Self::verify(&si, ver);
 
-        unsafe {
-            let ptr = self.bucket(idx).unwrap();
-            // let ptr = self.bucket(idx);
-            let mut used_entries: &mut usize = &mut (*self.used_entries.get());
-            // (*ptr).store(ver, si, used_entries);
-            ptr.store(ver, si, used_entries);
-        }
+        let ptr = self.bucket(idx).unwrap();
+        ptr.store(ver, si, &self.used_entries);
+
+        // unsafe {
+        //     let ptr = self.bucket(idx).unwrap();
+        //     // let ptr = self.bucket(idx);
+        //     // let mut used_entries: &mut usize = &mut (*self.used_entries.get());
+        //     // let mut used_entries: &mut usize = &mut (*self.used_entries.get());
+        //     // (*ptr).store(ver, si, used_entries);
+        //     ptr.store(ver, si, &self.used_entries);
+        // }
+
     }
 }
 
 /// Probe
 impl TransTable {
 
-    // unsafe fn bucket(&self, idx: usize) -> *mut Bucket {
-    unsafe fn bucket(&self, idx: usize) -> Option<&mut Bucket> {
-        // (*self.ptr.get()).as_ptr()
-        // .add(idx)
-        (*self.vec.get()).get_mut(idx)
+    // // unsafe fn bucket(&self, idx: usize) -> *mut Bucket {
+    // unsafe fn bucket(&self, idx: usize) -> Option<&mut Bucket> {
+    //     // (*self.ptr.get()).as_ptr()
+    //     // .add(idx)
+    //     (*self.vec.get()).get_mut(idx)
+    // }
+
+    fn bucket(&self, idx: usize) -> Option<&Bucket> {
+        self.vec.get(idx)
     }
 
     // pub fn probe(&self, zb: Zobrist) -> Option<&SearchInfo> {
@@ -363,14 +396,18 @@ impl TransTable {
         let idx = self.calc_index(zb);
         let ver = self.calc_verification(zb);
 
-        unsafe {
-            let ptr = self.bucket(idx)?;
-            let si = ptr.find(ver)?;
-            Some(si)
-            // Some(&si)
-            // let ptr = self.bucket(idx);
-            // (*ptr).find(ver)
-        }
+        // unsafe {
+        //     let ptr = self.bucket(idx)?;
+        //     let si = ptr.find(ver)?;
+        //     Some(si)
+        //     // Some(&si)
+        //     // let ptr = self.bucket(idx);
+        //     // (*ptr).find(ver)
+        // }
+
+        let ptr = self.bucket(idx)?;
+        let si = ptr.find(ver)?;
+        Some(si)
 
     }
 
@@ -384,9 +421,13 @@ impl TransTable {
     }
 
     pub fn used_entries(&self) -> usize {
-        unsafe {
-            *self.used_entries.get()
-        }
+
+        self.used_entries.load(std::sync::atomic::Ordering::Relaxed)
+
+        // unsafe {
+        //     *self.used_entries.get()
+        // }
+
     }
 
     // pub fn bucket_count(&self) -> usize {
@@ -414,13 +455,26 @@ impl TransTable {
 
 /// Prefetch
 impl TransTable {
+
+    // pub fn prefetch(&self, zb: Zobrist) {
+    //     let idx = self.calc_index(zb);
+    //     unsafe {
+    //         let ptr = (*self.vec.get()).as_ptr().add(idx);
+    //         crate::prefetch::prefetch_write(ptr);
+    //     }
+    // }
+
     pub fn prefetch(&self, zb: Zobrist) {
         let idx = self.calc_index(zb);
+
         unsafe {
-            let ptr = (*self.vec.get()).as_ptr().add(idx);
+            // let ptr = (*self.vec.get()).as_ptr().add(idx);
+            let ptr = self.vec.as_ptr().add(idx);
             crate::prefetch::prefetch_write(ptr);
         }
+
     }
+
 }
 
 /// Unsafe Alloc, De-alloc
