@@ -2797,6 +2797,25 @@ fn main9() {
 
     // let (fen,correct) = &games_sts(91, 11); // fen, set
 
+    let fen = STARTPOS;
+
+    // let mvs = vec![
+    //     "e2e4",
+    //     "c7c5",
+    //     "g1f3",
+    //     "d7d6",
+    //     "d2d4",
+    //     "c5d4",
+    //     "f3d4",
+    //     "g8f6",
+    //     "b1c3",
+    //     "a7a6",
+    //     "a2a4",
+    //     "e7e5",
+    //     "d4f3",
+    //     "f8e7",
+    // ];
+
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
@@ -2816,66 +2835,16 @@ fn main9() {
 
     // let mv = Move::Capture { from: "H5".into(), to: "G4".into(), pc: Pawn, victim: Pawn };
 
-    // let t = 10.0;
-    // let t = 6.0;
-    // let t = 4.0;
-    let t = 2.0;
-    // let t = 0.5;
-    // let t = 0.3;
-
-    // let n = 35;
-    // let n = 8;
-    let n = 10;
-    // let n = 2;
-
-    use rchess_engine_lib::lockless_map::*;
-
+    // use rchess_engine_lib::lockless_map::*;
+    // use parking_lot::RwLock;
+    // // let k0 = std::mem::size_of::<RwLock<()>>();
     // let k0 = std::mem::size_of::<Bucket>();
     // let k1 = std::mem::size_of::<TTEntry>();
-    // let k2 = std::mem::size_of::<SearchInfo>();
+    // let k2 = std::mem::size_of::<RwLock<TTEntry>>();
+    // // let k2 = std::mem::size_of::<SearchInfo>();
     // eprintln!("Bucket  = {:?}", k0);
-    // eprintln!("TTEntry = {:?}", k1);
-    // eprintln!("SearchInfo = {:?}", k2);
-    // return;
-
-    let zb = g.zobrist;
-
-    let mut tt = TransTable::new_mb(DEFAULT_TT_SIZE_MB);
-
-    let idx  = tt.calc_index(zb);
-    let ver0 = tt.calc_verification(zb);
-
-    eprintln!("idx  = {:?}", idx);
-    eprintln!("ver0 = {:?}", ver0);
-
-    let si = SearchInfo::new(Move::NullMove, 1, Node::PV, 123);
-
-    let data: &[u8] = unsafe {
-        TransTable::any_as_u8_slice(&si)
-    };
-
-    let data: &[u32] = bytemuck::cast_slice(&data);
-
-    let mut ver = ver0;
-    for x in data.iter() {
-        // eprintln!("x = {:?}", x);
-        ver ^= x;
-    }
-
-    eprintln!("ver = {:?}", ver);
-
-    // let mut ver2 = ver
-    // for x in 
-
-    let mut ver2 = ver;
-    for x in data.iter() {
-        ver2 ^= x;
-    }
-
-    eprintln!("ver2 == ver0 = {:?}", ver2 == ver0);
-
-    // // let data = bincode::serialize(&si).unwrap();
-    // // eprintln!("data.len() = {:?}", data.len());
+    // eprintln!("k1 = {:?}", k1);
+    // eprintln!("k2 = {:?}", k2);
     // return;
 
     // let fen = "8/6kp/r7/p7/1n1R1P2/7P/6PK/8 b - - 0 46";
@@ -2893,17 +2862,29 @@ fn main9() {
     //     // "c4a4"  // draw
     // ];
 
+    // let t = 10.0;
+    // let t = 6.0;
+    // let t = 4.0;
+    let t = 2.0;
+    // let t = 0.5;
+    // let t = 0.3;
+
+    // let n = 35;
+    // let n = 8;
+    let n = 10;
+    // let n = 2;
+
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(12);
-    // ex.cfg.num_threads = Some(6);
-    ex.cfg.num_threads = Some(1);
+    ex.cfg.num_threads = Some(6);
+    // ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
-    // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+    ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
     ex.cfg.late_move_reductions = true;
 
@@ -2913,10 +2894,23 @@ fn main9() {
 
     // let moves = mvs.into_iter();
     // ex.update_game_movelist(&ts, fen, moves);
-    // let g = ex.game.clone();
-    // eprintln!("g = {:?}", g);
-    // eprintln!("g.halfmove = {:?}", g.halfmove);
-    // eprintln!("g.to_fen() = {:?}", g.to_fen());
+
+    let moves = vec![
+        Move::new_quiet("g1", "f3", Knight),
+        Move::new_quiet("g8", "f6", Knight),
+        Move::new_quiet("b1", "c3", Knight),
+        Move::new_quiet("b8", "c6", Knight),
+        Move::new_quiet("f3", "g5", Knight),
+        Move::new_quiet("c6", "b4", Knight),
+        // Move::NullMove,
+    ];
+
+    ex._update_game_movelist(&ts, &moves);
+
+    let g = ex.game.clone();
+    eprintln!("g = {:?}", g);
+    eprintln!("g.halfmove = {:?}", g.halfmove);
+    eprintln!("g.to_fen() = {:?}", g.to_fen());
 
     // let zb0 = Game::from_fen(&ts, "8/6kp/r1n5/p7/R4P2/7P/6PK/8 b - - 10 51").unwrap().zobrist;
     // eprintln!("zb0 = {:?}", zb0);

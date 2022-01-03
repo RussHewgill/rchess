@@ -199,11 +199,11 @@ pub struct TransTable {
     // ptr:           UnsafeCell<NonNull<Bucket>>,
     // vec:           UnsafeCell<Vec<Bucket>>,
     vec:           Vec<Bucket>,
-    megabytes:     Cell<usize>,
+    megabytes:     usize,
     // used_entries:  UnsafeCell<usize>,
     used_entries:  AtomicUsize,
-    tot_buckets:   Cell<usize>,
-    tot_entries:   Cell<usize>,
+    tot_buckets:   usize,
+    tot_entries:   usize,
 }
 
 /// Not actually safe, but at least it's a bit faster
@@ -276,11 +276,14 @@ impl TransTable {
             // tt: vec![Bucket::new(); tot_buckets],
             // ptr,
             vec,
-            megabytes:    Cell::new(megabytes),
+            // megabytes:    Cell::new(megabytes),
+            megabytes:    megabytes,
             // used_entries: UnsafeCell::new(0),
             used_entries: AtomicUsize::new(0),
-            tot_buckets:  Cell::new(tot_buckets),
-            tot_entries:  Cell::new(tot_entries),
+            // tot_buckets:  Cell::new(tot_buckets),
+            // tot_entries:  Cell::new(tot_entries),
+            tot_buckets:  tot_buckets,
+            tot_entries:  tot_entries,
         }
     }
 
@@ -417,7 +420,8 @@ impl TransTable {
 impl TransTable {
 
     pub fn total_entries(&self) -> usize {
-        self.tot_entries.get()
+        // self.tot_entries.get()
+        self.tot_entries
     }
 
     pub fn used_entries(&self) -> usize {
@@ -445,7 +449,8 @@ impl TransTable {
 
     pub fn calc_index(&self, zb: Zobrist) -> usize {
         let key = (zb.0 & HIGH_FOUR_BYTES) >> SHIFT_TO_LOWER;
-        let total = self.tot_buckets.get() as u64;
+        // let total = self.tot_buckets.get() as u64;
+        let total = self.tot_buckets as u64;
         (key % total) as usize
     }
     pub fn calc_verification(&self, zb: Zobrist) -> u32 {

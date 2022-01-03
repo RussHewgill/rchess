@@ -370,6 +370,20 @@ impl ExHelper {
         let last = stack.move_history.len() as i32 - 1;
         if last <= 0 { return false; }
 
+        if g.zobrist != stack.move_history[last as usize].0 {
+            eprintln!("has_cycle wat = {:?}\n{:?}\nzb = {:?}",
+                      g, g.to_fen(), g.zobrist);
+            eprintln!();
+            eprintln!("last = {:?}", last);
+
+            for (n,(zb,mv)) in stack.move_history.iter().enumerate() {
+                eprintln!("{:>2} = (zb,mv) = {:?}", n, (zb,mv));
+            }
+
+            eprintln!("stack.move_history.len() = {:?}", stack.move_history.len());
+            eprintln!("stack.move_history[0] = {:?}", stack.move_history[0]);
+        }
+
         assert_eq!(g.zobrist, stack.move_history[last as usize].0);
 
         let end = end as i32 - last;
@@ -380,11 +394,11 @@ impl ExHelper {
         let mut i = last - 2;
         while i >= end {
 
-            let zb_prev = if let Some(zb) = stack.move_history.get(i as usize) {
-                zb.0
+            let (zb_prev,mv) = if let Some(zb) = stack.move_history.get(i as usize) {
+                zb
             } else { break; };
 
-            if zb_prev == zb0 {
+            if *zb_prev == zb0 {
                 return true;
             }
 
@@ -513,7 +527,7 @@ impl ExHelper {
             assert!(!(is_pv_node && is_cut_node));
         }
 
-        /// Repetition
+        /// Step 1. Repetition
         // let cycle = Self::has_cycle(ts, g, (alpha,beta), (ply,depth), stats, stack);
         let cycle = Self::has_cycle(ts, g, ply, stats, stack);
         // if cycle && alpha < DRAW_VALUE {
@@ -522,7 +536,7 @@ impl ExHelper {
             return ABSingle(ABResult::new_single(g.last_move.unwrap(), DRAW_VALUE));
         }
 
-        /// Halting
+        /// Step 2. Halting for mate, time, etc
         if !is_root_node {
 
             // /// Repetition checking
@@ -559,7 +573,7 @@ impl ExHelper {
 
         }
 
-        /// Qsearch
+        /// Step 3. Qsearch at zero depth
         if depth == 0 {
             // if !self.tt_r.contains_key(&g.zobrist) {
             // }
@@ -597,11 +611,12 @@ impl ExHelper {
             return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
         }
 
+        /// Step 4. Transposition Table probe
         let msi: Option<SearchInfo> = if is_root_node { None } else {
             self.check_tt2(ts, g.zobrist, depth, stats)
         };
 
-        /// Check for returnable TT score
+        /// Step 4b. Check for returnable TT score
         if let Some(si) = msi {
             // if !is_pv_node && si.depth_searched >= depth { // XXX: depth or depth-1 ??
             //     return ABResults::ABSingle(ABResult::new_single(g.last_move.unwrap(), si.score));
@@ -620,7 +635,7 @@ impl ExHelper {
 
         }
 
-        /// Syzygy Probe
+        /// Step 5. Syzygy Probe
         #[cfg(feature = "syzygy")]
         if let Some(tb) = &self.syzygy {
             match tb.probe_wdl(ts, g) {
@@ -697,7 +712,7 @@ impl ExHelper {
         }
 
         let mut can_futility_prune = false;
-        /// TODO: futility pruning
+        /// Step 6. Futility pruning check
         #[cfg(feature = "futility_pruning")]
         if depth == 1
             && !is_pv_node
@@ -713,7 +728,7 @@ impl ExHelper {
             can_futility_prune = true;
         };
 
-        /// Reverse Futility Pruning, Static Null Pruning
+        /// Step 7. Reverse Futility Pruning, Static Null Pruning
         if !is_pv_node
             && !in_check
             && depth <= RFP_MIN_DEPTH
@@ -722,7 +737,7 @@ impl ExHelper {
             return ABPrune(static_eval.unwrap(), Prune::Futility);
         }
 
-        /// Null move pruning
+        /// Step 8. Null move pruning
         /// skip when TT hit suggests it will fail
         #[cfg(feature = "null_pruning")]
         if !is_pv_node
@@ -755,6 +770,7 @@ impl ExHelper {
                 if let Some(res) = res.get_result() {
                     if res.score >= beta {
                         stats!(stats.null_prunes += 1);
+                        self.pop_nnue(stack);
                         return ABPrune(beta, Prune::NullMove);
                     }
                 }
@@ -766,7 +782,8 @@ impl ExHelper {
 
         let mut depth = depth;
 
-        /// Lower depth for positions not in TT
+        /// Step 9. Lower depth for positions not in TT
+        /// Stockfish does this, not sure why. Seems to work
         if !is_root_node
             && is_pv_node
             && depth >= 6
@@ -790,6 +807,7 @@ impl ExHelper {
             mv
         });
 
+        /// Step 10. initialize move generator
         let mut movegen = MoveGen::new(ts, &g, m_hashmove, stack, depth, ply);
 
         // let mut movegen = if is_root_node {
@@ -816,7 +834,7 @@ impl ExHelper {
         let mut captures_searched: ArrayVec<Move, 64> = ArrayVec::new();
         let mut quiets_searched: ArrayVec<Move, 64>   = ArrayVec::new();
 
-        /// Loop over moves
+        /// Step 11. Loop over moves
         'outer: while let Some(mv) = movegen.next(&stack) {
 
             let mut next_depth = depth - 1;
@@ -835,7 +853,7 @@ impl ExHelper {
             let capture_or_promotion = mv.filter_all_captures() || mv.filter_promotion();
             let gives_check = movegen.gives_check(mv);
 
-            // /// Move Count pruning
+            // /// Step _. Move Count pruning
             // if best_val.1 > -CHECKMATE_VALUE
             //     // && depth <= LMR_MIN_DEPTH
             //     && depth <= 8 // XXX: ??
@@ -843,7 +861,7 @@ impl ExHelper {
             //         movegen.skip_quiets = true;
             //     }
 
-            /// Futility prune
+            /// Step 12. Futility prune
             #[cfg(feature = "futility_pruning")]
             if can_futility_prune
                 && moves_searched > 1
@@ -857,7 +875,7 @@ impl ExHelper {
                 continue;
             }
 
-            // /// Shallow pruning
+            // /// Step _. Shallow pruning
             // if !is_root_node
             //     && g.state.material.any_non_pawn(g.state.side_to_move)
             // {
@@ -875,7 +893,7 @@ impl ExHelper {
             //     }
             // }
 
-            /// Singular extension
+            /// Step 13. Singular extension
             #[cfg(feature = "singular_extensions")]
             if let Some(si) = msi {
                 if !is_root_node
@@ -926,7 +944,7 @@ impl ExHelper {
                 extensions += 1;
             }
 
-            /// Make move
+            /// Step 14. Make move
             let g2 = if let Some(g2) = self.make_move(ts, g, ply, mv, Some(zb0), stack) {
                 g2
             } else {
@@ -936,6 +954,7 @@ impl ExHelper {
 
             next_depth += extensions;
 
+            /// Step 15. Recursively search for each move
             let res: ABResult = 'search: {
                 let mut res: ABResult = ABResult::new_null();
 
@@ -943,6 +962,7 @@ impl ExHelper {
 
                 let mut do_full_depth = true; // XXX: ??
 
+                /// Step 16a. Skip LMR for good static exchanges
                 if lmr && mv.filter_all_captures() {
                     // let see = g.static_exchange(&ts, mv).unwrap(); // XXX: g or g2?
                     let see = movegen.static_exchange_ge(mv, 1);
@@ -953,7 +973,7 @@ impl ExHelper {
                     }
                 }
 
-                /// Late Move Reductions
+                /// Step 16b. Late Move Reductions
                 if lmr
                     && !is_pv_node
                     && moves_searched >= (if is_root_node { 2 + LMR_MIN_MOVES } else { LMR_MIN_MOVES })
@@ -1019,7 +1039,7 @@ impl ExHelper {
                 // #[cfg(not(feature = "late_move_reduction"))]
                 // { do_full_depth = true; }
 
-                /// Full depth search if no LMR and not PV Node's first search
+                /// Step 17a. Full depth search if no LMR and not PV Node's first search
                 if do_full_depth {
                     let (a2,b2) = (-(alpha+1),-alpha); // XXX: ??
                     let res2 = -self.ab_search::<{NonPV}>(
@@ -1030,7 +1050,7 @@ impl ExHelper {
                     };
                 }
 
-                /// Search PV with full window
+                /// Step 17b. Search PV with full window
                 if is_pv_node && (moves_searched == 1 || res.score > alpha) {
                     let res2 = -self.ab_search::<{PV}>(
                         ts, &g2, (next_depth,ply+1), (-beta, -alpha), stats, stack, false);
@@ -1154,6 +1174,7 @@ impl ExHelper {
                 best_val.0 = Some(res);
             }
 
+            /// Step 18. update alpha, beta, stats
             #[cfg(not(feature = "negamax_only"))]
             {
                 if res.score >= beta { // Fail Soft
@@ -1215,7 +1236,7 @@ impl ExHelper {
             self.pop_nnue(stack);
         }
 
-        /// Filter checkmate, stalemate
+        /// Step 19. Filter checkmate, stalemate
         if in_check && (moves_searched == 0 || best_val.0.is_none()) {
             let score = CHECKMATE_VALUE - ply as Score;
             stats.leaves += 1;

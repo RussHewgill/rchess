@@ -340,6 +340,19 @@ impl Explorer {
         self.game = g;
     }
 
+    pub fn _update_game_movelist<'a>(
+        &mut self,
+        ts:          &Tables,
+        moves:       &[Move],
+    ) {
+        let mut g = self.game;
+        for &mv in moves.iter() {
+            g = g.make_move_unchecked(&ts, mv).unwrap();
+            self.move_history.push((g.zobrist,mv));
+        }
+        self.update_game(g);
+    }
+
     pub fn update_game_movelist<'a>(
         &mut self,
         ts:          &Tables,
