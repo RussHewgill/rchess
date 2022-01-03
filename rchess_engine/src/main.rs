@@ -2797,25 +2797,6 @@ fn main9() {
 
     // let (fen,correct) = &games_sts(91, 11); // fen, set
 
-    let fen = STARTPOS;
-
-    // let mvs = vec![
-    //     "e2e4",
-    //     "c7c5",
-    //     "g1f3",
-    //     "d7d6",
-    //     "d2d4",
-    //     "c5d4",
-    //     "f3d4",
-    //     "g8f6",
-    //     "b1c3",
-    //     "a7a6",
-    //     "a2a4",
-    //     "e7e5",
-    //     "d4f3",
-    //     "f8e7",
-    // ];
-
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
@@ -2871,7 +2852,7 @@ fn main9() {
 
     // let n = 35;
     // let n = 8;
-    let n = 10;
+    let n = 9;
     // let n = 2;
 
     let timesettings = TimeSettings::new_f64(0.0,t);
@@ -2880,8 +2861,8 @@ fn main9() {
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(12);
-    ex.cfg.num_threads = Some(6);
-    // ex.cfg.num_threads = Some(1);
+    // ex.cfg.num_threads = Some(6);
+    ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
@@ -2895,22 +2876,20 @@ fn main9() {
     // let moves = mvs.into_iter();
     // ex.update_game_movelist(&ts, fen, moves);
 
-    let moves = vec![
-        Move::new_quiet("g1", "f3", Knight),
-        Move::new_quiet("g8", "f6", Knight),
-        Move::new_quiet("b1", "c3", Knight),
-        Move::new_quiet("b8", "c6", Knight),
-        Move::new_quiet("f3", "g5", Knight),
-        Move::new_quiet("c6", "b4", Knight),
-        // Move::NullMove,
-    ];
-
-    ex._update_game_movelist(&ts, &moves);
-
-    let g = ex.game.clone();
-    eprintln!("g = {:?}", g);
-    eprintln!("g.halfmove = {:?}", g.halfmove);
-    eprintln!("g.to_fen() = {:?}", g.to_fen());
+    // let moves = vec![
+    //     Move::new_quiet("g1", "f3", Knight),
+    //     Move::new_quiet("g8", "f6", Knight),
+    //     Move::new_quiet("b1", "c3", Knight),
+    //     Move::new_quiet("b8", "c6", Knight),
+    //     Move::new_quiet("f3", "g5", Knight),
+    //     Move::new_quiet("c6", "b4", Knight),
+    //     // Move::NullMove,
+    // ];
+    // ex._update_game_movelist(&ts, &moves);
+    // let g = ex.game.clone();
+    // eprintln!("g = {:?}", g);
+    // eprintln!("g.halfmove = {:?}", g.halfmove);
+    // eprintln!("g.to_fen() = {:?}", g.to_fen());
 
     // let zb0 = Game::from_fen(&ts, "8/6kp/r1n5/p7/R4P2/7P/6PK/8 b - - 10 51").unwrap().zobrist;
     // eprintln!("zb0 = {:?}", zb0);

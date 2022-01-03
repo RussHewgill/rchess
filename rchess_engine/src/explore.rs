@@ -163,7 +163,8 @@ impl Default for ExConfig {
 
             return_moves:          false,
 
-            clear_table:           true,
+            // clear_table:           true,
+            clear_table:           false,
             hash_size_mb:          None,
 
             eval_params_mid:       EvalParams::default(),
@@ -544,6 +545,8 @@ impl Explorer {
         if self.cfg.clear_table {
             debug!("clearing tt");
             self.clear_tt();
+        } else {
+            self.ptr_tt.increment_cycle();
         }
 
         self.reset_stop();

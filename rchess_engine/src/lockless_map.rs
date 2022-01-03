@@ -39,7 +39,7 @@ use std::cell::{UnsafeCell, Cell};
 use std::ptr::NonNull;
 use std::mem;
 use std::alloc::{Layout, handle_alloc_error, self};
-use std::sync::atomic::{AtomicBool, AtomicUsize};
+use std::sync::atomic::{AtomicUsize, AtomicU8};
 // use std::sync::atomic::AtomicUsize;
 
 use super::*;
@@ -66,22 +66,24 @@ const SHIFT_TO_LOWER: u64 = 32;
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy,new)]
 pub struct TTEntry {
-    // pub lock:               AtomicBool,
-    pub verification:       u32,
+    verification:       u32,
+    age:                u8,
+    entry:              Option<SearchInfo>,
     // pub partial_key:        u16,
     // pub best_move:          [u8; 2],
     // pub depth_searched:     Depth, // u8
     // pub node_type:          Node, // 1
     // pub score:              Score, // 4
-    pub entry:              Option<SearchInfo>,
     // pub entry:              SearchInfo,
 }
 
+/// Empty
 impl TTEntry {
     pub fn empty() -> Self {
         Self {
             // lock:          AtomicBool::new(false),
             verification:  0,
+            age:           0,
             // entry:         SearchInfo::empty(),
             entry:         None,
         }
@@ -125,12 +127,15 @@ impl Bucket {
 impl Bucket {
 
     // pub fn store(&self, ver: u32, si: SearchInfo, used_entries: &mut usize) {
-    pub fn store(&self, ver: u32, si: SearchInfo, used_entries: &AtomicUsize) {
+    pub fn store(&self, ver: u32, si: SearchInfo, used_entries: &AtomicUsize, age: &AtomicU8) {
+
+        // let age = age.load(std::sync::atomic::Ordering::Relaxed);
         let mut idx_lowest_depth = 0;
 
         for entry_idx in 1..ENTRIES_PER_BUCKET {
 
-            if let Some(entry) = self.bucket[entry_idx].read().entry {
+            let e = self.bucket[entry_idx].read();
+            if let Some(entry) = e.entry {
             // if let Some(entry) = self.bucket[entry_idx].entry {
                 if entry.depth_searched < si.depth_searched {
                     idx_lowest_depth = entry_idx;
@@ -152,13 +157,31 @@ impl Bucket {
         // // self.bucket[idx_lowest_depth] = TTEntry::new(ver, si);
         // self.bucket[idx_lowest_depth] = TTEntry::new(ver, Some(si));
 
+        let age = age.load(std::sync::atomic::Ordering::Relaxed);
         let mut w = self.bucket[idx_lowest_depth].write();
-        *w = TTEntry::new(ver, Some(si));
+        *w = TTEntry::new(ver, age, Some(si));
 
     }
 
     // pub fn find(&self, ver: u32) -> Option<&SearchInfo> {
-    pub fn find(&self, ver: u32) -> Option<SearchInfo> {
+    // pub fn find(&self, ver: u32, age: &AtomicU8) -> Option<SearchInfo> {
+    pub fn find(&self, ver: u32, age: &AtomicU8) -> Option<(bool,SearchInfo)> {
+
+        // for e in self.bucket.iter() {
+        //     let e = e.read();
+        //     if let Some(ee) = e.entry {
+        //         let x = ee.depth_searched - 4 * (age - e.age);
+        //         // idx_best = idx_best.max(x);
+        //         if x > best {
+        //             best = 
+        //             idx_best = x;
+        //         }
+        //     }
+        //     // let x = e.
+        //     // if e.read().age 
+        // }
+
+
         for e in self.bucket.iter(){
 
             // if let Some(si) = e.entry {
@@ -180,8 +203,12 @@ impl Bucket {
             let e = e.read();
             if e.verification == ver {
 
-                return e.entry;
-                // return e.entry.as_ref();
+                if let Some(ee) = e.entry {
+                    let age = age.load(std::sync::atomic::Ordering::Relaxed);
+                    return Some((age == e.age, ee));
+                }
+
+                // // return e.entry.as_ref();
 
                 // if let Some(si) = e.entry {
                 //     return Some(si);
@@ -195,6 +222,7 @@ impl Bucket {
 }
 
 // #[derive(Clone)]
+/// XXX: TT
 pub struct TransTable {
     // ptr:           UnsafeCell<NonNull<Bucket>>,
     // vec:           UnsafeCell<Vec<Bucket>>,
@@ -204,6 +232,7 @@ pub struct TransTable {
     used_entries:  AtomicUsize,
     tot_buckets:   usize,
     tot_entries:   usize,
+    cycles:        AtomicU8,
 }
 
 /// Not actually safe, but at least it's a bit faster
@@ -226,24 +255,6 @@ impl std::fmt::Debug for TransTable {
 /// New
 impl TransTable {
 
-    // pub fn new_mb(mb: usize) -> Self {
-    //     let mut num_clusters: usize = (mb * MEGABYTE) / mem::size_of::<Bucket>();
-    //     num_clusters = num_clusters.next_power_of_two() / 2;
-    //     Self::new_num_clusters(num_clusters)
-    // }
-    // pub fn new_num_entries(num_clusters: usize) -> Self {
-    //     Self::new_num_clusters(num_clusters * ENTRIES_PER_BUCKET)
-    // }
-    // pub fn new_num_clusters(num_clusters: usize) -> Self {
-    //     Self::_new(num_clusters.next_power_of_two())
-    // }
-    // pub fn _new(size: usize) -> Self {
-    //     let ptr = UnsafeCell::new(unsafe { Self::alloc_room(size)});
-    //     Self {
-    //         ptr,
-    //     }
-    // }
-
     pub fn new_mb(megabytes: usize) -> Self {
         assert!(megabytes > 0);
 
@@ -254,42 +265,26 @@ impl TransTable {
         let b_size = e_size * ENTRIES_PER_BUCKET;
         let tot_entries = tot_buckets * ENTRIES_PER_BUCKET;
 
-        // let vec = UnsafeCell::new(vec![Bucket::new(); tot_buckets]);
         let mut v = vec![];
         for _ in 0..tot_buckets {
             v.push(Bucket::new());
         }
 
-        // let vec = UnsafeCell::new(v);
         let vec = v;
 
-        // let ptr = UnsafeCell::new(unsafe { Self::alloc_room(tot_buckets) });
-        // unsafe {
-        //     let mut p: *mut Bucket = (*ptr.get()).as_ptr();
-        //     for n in 0..tot_buckets {
-        //         *p = Bucket::new();
-        //         p = p.add(1);
-        //     }
-        // }
-
         Self {
-            // tt: vec![Bucket::new(); tot_buckets],
-            // ptr,
             vec,
-            // megabytes:    Cell::new(megabytes),
             megabytes:    megabytes,
-            // used_entries: UnsafeCell::new(0),
             used_entries: AtomicUsize::new(0),
-            // tot_buckets:  Cell::new(tot_buckets),
-            // tot_entries:  Cell::new(tot_entries),
             tot_buckets:  tot_buckets,
             tot_entries:  tot_entries,
+            cycles:       AtomicU8::new(0),
         }
     }
 
 }
 
-/// Clear
+/// Clear, increment cycle counter
 impl TransTable {
 
     pub fn clear_table(&self) {
@@ -297,6 +292,7 @@ impl TransTable {
             bucket.clear();
         }
         self.used_entries.store(0, std::sync::atomic::Ordering::SeqCst);
+        self.cycles.store(0, std::sync::atomic::Ordering::SeqCst);
     }
 
     // pub unsafe fn clear_table(&self) {
@@ -305,6 +301,10 @@ impl TransTable {
     //         *b = Bucket::new();
     //     }
     // }
+
+    pub fn increment_cycle(&self) {
+        self.cycles.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    }
 
 }
 
@@ -366,7 +366,7 @@ impl TransTable {
         // let ver = Self::verify(&si, ver);
 
         let ptr = self.bucket(idx).unwrap();
-        ptr.store(ver, si, &self.used_entries);
+        ptr.store(ver, si, &self.used_entries, &self.cycles);
 
         // unsafe {
         //     let ptr = self.bucket(idx).unwrap();
@@ -395,7 +395,8 @@ impl TransTable {
     }
 
     // pub fn probe(&self, zb: Zobrist) -> Option<&SearchInfo> {
-    pub fn probe(&self, zb: Zobrist) -> Option<SearchInfo> {
+    // pub fn probe(&self, zb: Zobrist) -> Option<SearchInfo> {
+    pub fn probe(&self, zb: Zobrist) -> Option<(bool,SearchInfo)> {
         let idx = self.calc_index(zb);
         let ver = self.calc_verification(zb);
 
@@ -409,8 +410,8 @@ impl TransTable {
         // }
 
         let ptr = self.bucket(idx)?;
-        let si = ptr.find(ver)?;
-        Some(si)
+        let (same_age, si) = ptr.find(ver, &self.cycles)?;
+        Some((same_age, si))
 
     }
 

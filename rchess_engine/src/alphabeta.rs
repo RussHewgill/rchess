@@ -147,10 +147,7 @@ impl ExHelper {
     ) -> Option<Game> {
         if let Ok(g2) = g._make_move_unchecked(ts, mv, zb0) {
 
-            stack.with(ply, |st| {
-                // st.zobrist = g2.zobrist;
-                st.current_move = Some(mv);
-            });
+            stack.with(ply, |st| { st.current_move = Some(mv); });
 
             /// push NNUE
             #[cfg(feature = "nnue")]
@@ -159,7 +156,6 @@ impl ExHelper {
                 nn.ft.make_move(&g2, mv);
             }
 
-            // stack.move_history.push((g.zobrist,mv));
             stack.move_history.push((g2.zobrist,mv));
 
             Some(g2)
@@ -266,6 +262,7 @@ impl ExHelper {
         }
     }
 
+    /// XXX: Not used
     #[cfg(feature = "lockless_hashmap")]
     pub fn check_tt_negamax(
         &self,
@@ -276,7 +273,7 @@ impl ExHelper {
     ) -> Option<(SICanUse,SearchInfo)> {
         // if let Some(si) = tt_r.get_one(&g.zobrist) {
 
-        if let Some(si) = self.ptr_tt.probe(zb) {
+        if let Some((same_age, si)) = self.ptr_tt.probe(zb) {
         // if let Some(si) = self.tt_r.get_one(zb) {
             if si.depth_searched >= depth {
                 stats!(stats.tt_hits += 1);
@@ -305,7 +302,7 @@ impl ExHelper {
         mut stats:      &mut SearchStats,
     ) -> Option<SearchInfo> {
         #[cfg(feature = "lockless_hashmap")]
-        if let Some(si) = self.ptr_tt.probe(zb) {
+        if let Some((same_age, si)) = self.ptr_tt.probe(zb) {
             if si.depth_searched >= depth {
                 stats!(stats.tt_hits += 1);
             } else {
@@ -345,51 +342,17 @@ impl ExHelper {
         stack:                   &ABStack,
     ) -> bool {
 
-        // /// Repetition checking
-        // if alpha < DRAW_VALUE {
-        //     // for (zb,_) in stack.move_history.iter().step_by(2) {
-        //     let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
-        //     // let cycle = stack.move_history.contains(&zb2);
-        //     if cycle && alpha >= beta {
-        //         debug!("found cycle, {:?}, {:?}", alpha, beta);
-        //         // return ABSingle(ABResult::new_single(g.last_move.unwrap(), DRAW_VALUE));
-        //         return true;
-        //     } else {
-        //         debug!("found cycle but no return, {:?}, {:?}", alpha, beta);
-        //     }
-        // } else {
-        //     let cycle = stack.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
-        //     if cycle {
-        //         debug!("found cycle but alpha < DRAW_VALUE, {:?}, {:?}", alpha, beta);
-        //     }
-        // }
-
         let end = g.halfmove as usize;
         if end < 3 { return false; }
 
         let last = stack.move_history.len() as i32 - 1;
         if last <= 0 { return false; }
 
-        if g.zobrist != stack.move_history[last as usize].0 {
-            eprintln!("has_cycle wat = {:?}\n{:?}\nzb = {:?}",
-                      g, g.to_fen(), g.zobrist);
-            eprintln!();
-            eprintln!("last = {:?}", last);
-
-            for (n,(zb,mv)) in stack.move_history.iter().enumerate() {
-                eprintln!("{:>2} = (zb,mv) = {:?}", n, (zb,mv));
-            }
-
-            eprintln!("stack.move_history.len() = {:?}", stack.move_history.len());
-            eprintln!("stack.move_history[0] = {:?}", stack.move_history[0]);
-        }
-
         assert_eq!(g.zobrist, stack.move_history[last as usize].0);
 
         let end = end as i32 - last;
 
         let mut zb0 = g.zobrist;
-        // let mut zb1 = if let Some(zb) = stack.get_with(ply, f)
 
         let mut i = last - 2;
         while i >= end {
@@ -528,7 +491,6 @@ impl ExHelper {
         }
 
         /// Step 1. Repetition
-        // let cycle = Self::has_cycle(ts, g, (alpha,beta), (ply,depth), stats, stack);
         let cycle = Self::has_cycle(ts, g, ply, stats, stack);
         // if cycle && alpha < DRAW_VALUE {
         if cycle {
@@ -1265,7 +1227,7 @@ impl ExHelper {
         stats!(stats.inc_nodes_arr(ply));
         stats!(stats.nodes += 1);
 
-        /// Update hash table and return
+        /// Step 20. Update hash table and return
         match &best_val.0 {
             Some(res) => {
 
