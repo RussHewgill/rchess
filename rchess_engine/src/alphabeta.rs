@@ -280,10 +280,12 @@ impl ExHelper {
         // if let Some(si) = self.tt_r.get_one(zb) {
             if si.depth_searched >= depth {
                 stats!(stats.tt_hits += 1);
-                Some((SICanUse::UseScore,*si))
+                // Some((SICanUse::UseScore,*si))
+                Some((SICanUse::UseScore,si))
             } else {
                 stats!(stats.tt_halfmiss += 1);
-                Some((SICanUse::UseOrdering,*si))
+                // Some((SICanUse::UseOrdering,*si))
+                Some((SICanUse::UseOrdering,si))
             }
         } else {
             // if g.zobrist == Zobrist(0x1eebfbac03c62e9d) { println!("wat wat 3"); }
@@ -309,7 +311,8 @@ impl ExHelper {
             } else {
                 stats!(stats.tt_halfmiss += 1);
             }
-            Some(*si)
+            // Some(*si)
+            Some(si)
         } else {
             stats!(stats.tt_misses += 1);
             None
@@ -362,9 +365,10 @@ impl ExHelper {
         // }
 
         let end = g.halfmove as usize;
-        if end < 3 { return false };
+        if end < 3 { return false; }
 
         let last = stack.move_history.len() as i32 - 1;
+        if last <= 0 { return false; }
 
         assert_eq!(g.zobrist, stack.move_history[last as usize].0);
 

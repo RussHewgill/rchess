@@ -2829,6 +2829,7 @@ fn main9() {
     // let n = 2;
 
     use rchess_engine_lib::lockless_map::*;
+
     // let k0 = std::mem::size_of::<Bucket>();
     // let k1 = std::mem::size_of::<TTEntry>();
     // let k2 = std::mem::size_of::<SearchInfo>();
@@ -2873,9 +2874,9 @@ fn main9() {
 
     eprintln!("ver2 == ver0 = {:?}", ver2 == ver0);
 
-    // let data = bincode::serialize(&si).unwrap();
-    // eprintln!("data.len() = {:?}", data.len());
-    return;
+    // // let data = bincode::serialize(&si).unwrap();
+    // // eprintln!("data.len() = {:?}", data.len());
+    // return;
 
     // let fen = "8/6kp/r7/p7/1n1R1P2/7P/6PK/8 b - - 0 46";
     // let mut g = Game::from_fen(&ts, fen).unwrap();

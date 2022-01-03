@@ -5,6 +5,7 @@ use crate::explore::SearchInfo;
 use crate::hashing::Zobrist;
 
 use derive_new::new;
+use parking_lot::RwLock;
 
 // use std::alloc::{Layout, handle_alloc_error, self};
 // use std::ptr::NonNull;
@@ -38,6 +39,7 @@ use std::cell::{UnsafeCell, Cell};
 use std::ptr::NonNull;
 use std::mem;
 use std::alloc::{Layout, handle_alloc_error, self};
+use std::sync::atomic::AtomicBool;
 // use std::sync::atomic::AtomicUsize;
 
 use super::*;
@@ -64,6 +66,7 @@ const SHIFT_TO_LOWER: u64 = 32;
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy,new)]
 pub struct TTEntry {
+    // pub lock:               AtomicBool,
     pub verification:       u32,
     // pub partial_key:        u16,
     // pub best_move:          [u8; 2],
@@ -77,6 +80,7 @@ pub struct TTEntry {
 impl TTEntry {
     pub fn empty() -> Self {
         Self {
+            // lock:          AtomicBool::new(false),
             verification:  0,
             // entry:         SearchInfo::empty(),
             entry:         None,
@@ -84,12 +88,18 @@ impl TTEntry {
     }
 }
 
-#[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
-// #[repr(align(64))]
-#[repr(align(32))]
+// #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,Clone,Copy)]
+// // #[repr(align(64))]
+// // #[repr(align(32))]
+// pub struct Bucket {
+//     // pub x:  usize,
+//     bucket: [TTEntry; ENTRIES_PER_BUCKET],
+// }
+
+#[derive(Debug)]
+#[repr(align(64))]
 pub struct Bucket {
-    // pub x:  usize,
-    bucket: [TTEntry; ENTRIES_PER_BUCKET],
+    bucket: [RwLock<TTEntry>; ENTRIES_PER_BUCKET],
 }
 
 /// New
@@ -98,7 +108,9 @@ impl Bucket {
         use rand::Rng;
         Self {
             // x:      rand::thread_rng().gen(),
-            bucket: [TTEntry::empty(); ENTRIES_PER_BUCKET],
+            // bucket: [TTEntry::empty(); ENTRIES_PER_BUCKET],
+            // bucket: [RwLock::new(TTEntry::empty()); ENTRIES_PER_BUCKET],
+            bucket: array_init::array_init(|_| RwLock::new(TTEntry::empty())),
         }
     }
 }
@@ -110,7 +122,7 @@ impl Bucket {
 
         for entry_idx in 1..ENTRIES_PER_BUCKET {
 
-            if let Some(entry) = self.bucket[entry_idx].entry {
+            if let Some(entry) = self.bucket[entry_idx].read().entry {
                 if entry.depth_searched < si.depth_searched {
                     idx_lowest_depth = entry_idx;
                 }
@@ -122,43 +134,49 @@ impl Bucket {
 
         }
 
-        if self.bucket[idx_lowest_depth].verification == 0 {
+        if self.bucket[idx_lowest_depth].read().verification == 0 {
             *used_entries += 1;
         }
 
-        // self.bucket[idx_lowest_depth] = TTEntry::new(ver, si);
-        self.bucket[idx_lowest_depth] = TTEntry::new(ver, Some(si));
+        // // self.bucket[idx_lowest_depth] = TTEntry::new(ver, si);
+        // self.bucket[idx_lowest_depth] = TTEntry::new(ver, Some(si));
+
+        let mut w = self.bucket[idx_lowest_depth].write();
+        *w = TTEntry::new(ver, Some(si));
+
     }
 
-    pub fn find(&self, ver: u32) -> Option<&SearchInfo> {
-    // pub fn find(&self, ver: u32) -> Option<SearchInfo> {
+    // pub fn find(&self, ver: u32) -> Option<&SearchInfo> {
+    pub fn find(&self, ver: u32) -> Option<SearchInfo> {
         for e in self.bucket.iter(){
 
-            if let Some(si) = e.entry {
-
-                /// e.key ^ e.data
-                let ver2 = TransTable::verify(&si, e.verification);
-
-                if ver2 == ver {
-                    return e.entry.as_ref();
-                } else {
-                    panic!("wat: si = {:?}", si);
-                    // return None;
-                }
-            }
+            // if let Some(si) = e.entry {
+            //     /// e.key ^ e.data
+            //     let ver2 = TransTable::verify(&si, e.verification);
+            //     if ver2 == ver {
+            //         return e.entry.as_ref();
+            //     } else {
+            //         panic!("wat: si = {:?}", si);
+            //         // return None;
+            //     }
+            // }
 
             // } else if e.verification == ver {
             //     // return e.entry.as_ref();
             //     return None;
             // }
 
-            // if e.verification == ver {
-            //     return e.entry.as_ref();
-            //     // if let Some(si) = e.entry {
-            //     //     return Some(si);
-            //     // }
-            //     // return Some(&e.entry);
-            // }
+            let e = e.read();
+            if e.verification == ver {
+
+                return e.entry;
+                // return e.entry.as_ref();
+
+                // if let Some(si) = e.entry {
+                //     return Some(si);
+                // }
+                // return Some(&e.entry);
+            }
 
         }
         None
@@ -223,7 +241,12 @@ impl TransTable {
         let b_size = e_size * ENTRIES_PER_BUCKET;
         let tot_entries = tot_buckets * ENTRIES_PER_BUCKET;
 
-        let vec = UnsafeCell::new(vec![Bucket::new(); tot_buckets]);
+        // let vec = UnsafeCell::new(vec![Bucket::new(); tot_buckets]);
+        let mut v = vec![];
+        for _ in 0..tot_buckets {
+            v.push(Bucket::new());
+        }
+        let vec = UnsafeCell::new(v);
 
         // let ptr = UnsafeCell::new(unsafe { Self::alloc_room(tot_buckets) });
         // unsafe {
@@ -313,7 +336,7 @@ impl TransTable {
         let idx: usize = self.calc_index(zb);
         let ver: u32   = self.calc_verification(zb);
 
-        let ver = Self::verify(&si, ver);
+        // let ver = Self::verify(&si, ver);
 
         unsafe {
             let ptr = self.bucket(idx).unwrap();
@@ -335,8 +358,8 @@ impl TransTable {
         (*self.vec.get()).get_mut(idx)
     }
 
-    pub fn probe(&self, zb: Zobrist) -> Option<&SearchInfo> {
-    // pub fn probe(&self, zb: Zobrist) -> Option<SearchInfo> {
+    // pub fn probe(&self, zb: Zobrist) -> Option<&SearchInfo> {
+    pub fn probe(&self, zb: Zobrist) -> Option<SearchInfo> {
         let idx = self.calc_index(zb);
         let ver = self.calc_verification(zb);
 
