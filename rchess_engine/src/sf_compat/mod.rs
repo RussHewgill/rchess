@@ -245,14 +245,16 @@ impl NNUE4 {
             // }
 
             out_psqt[bucket] = psqt / OUTPUT_SCALE;
-            out_positional[bucket] = positional as i32 / OUTPUT_SCALE;
+            // out_positional[bucket] = positional as i32 / OUTPUT_SCALE;
+            out_positional[bucket] = positional as Score / 16;
 
             // out_psqt[bucket] = psqt;
             // out_positional[bucket] = positional as i32;
 
         }
 
-        (out_psqt,out_positional,correct_bucket)
+        // (out_psqt,out_positional,correct_bucket)
+        unimplemented!()
     }
 
     // TODO: check for correctness with trace_eval

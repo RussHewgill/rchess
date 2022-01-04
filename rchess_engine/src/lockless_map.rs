@@ -1,5 +1,5 @@
 
-use crate::trans_table::Node;
+use crate::{trans_table::Node, explore::PackedSearchInfo};
 use crate::explore::SearchInfo;
 use crate::hashing::Zobrist;
 
@@ -106,10 +106,11 @@ impl TransTable {
     }
 }
 
-#[derive(Debug,Default,Eq,PartialEq,PartialOrd,Hash,Clone,Copy,new)]
+#[derive(Debug,Default,Clone,Copy,new)]
 pub struct TTEntry {
     age:                u8,
     entry:              Option<SearchInfo>,
+    // entry:              Option<PackedSearchInfo>,
 }
 
 #[derive(Debug)]

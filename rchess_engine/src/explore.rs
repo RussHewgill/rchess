@@ -545,8 +545,10 @@ impl Explorer {
         if self.cfg.clear_table {
             debug!("clearing tt");
             self.clear_tt();
+            #[cfg(feature = "lockless_hashmap")]
             self.ptr_tt.increment_cycle();
         } else {
+            #[cfg(feature = "lockless_hashmap")]
             self.ptr_tt.increment_cycle();
         }
 

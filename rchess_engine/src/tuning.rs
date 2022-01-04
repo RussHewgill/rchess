@@ -25,20 +25,23 @@ mod const_params {
     /// -2147482414
     pub const VALUE_INVALID: Score   = Score::MIN + 1234;
 
-    pub const TB_WIN_VALUE: Score    = 90_000_000;
-    pub const KNOWN_WIN_VALUE: Score = 80_000_000;
+    // pub const TB_WIN_VALUE: Score    = 90_000_000;
+    // pub const KNOWN_WIN_VALUE: Score = 80_000_000;
 
     // pub const TB_WIN_MAX: Score = TB_WIN_VALUE 
 
-    pub const CHECKMATE_VALUE: Score = 100_000_000;
+    // pub const CHECKMATE_VALUE: Score = 100_000_000;
 
     // pub const STALEMATE_VALUE: Score = 20_000_000;
     // pub const DRAW_VALUE: Score = 20_000_000;
     pub const STALEMATE_VALUE: Score = 0;
     pub const DRAW_VALUE: Score = 0;
 
-    // pub const CHECKMATE_VALUE: Score = 32000;
+    pub const CHECKMATE_VALUE: Score = 32000;
     // pub const STALEMATE_VALUE: Score = 31000;
+
+    // pub const TB_WIN_VALUE: Score    = 90_000_000;
+    // pub const KNOWN_WIN_VALUE: Score = 80_000_000;
 
     pub const LMR_MIN_MOVES: Depth = 2;
     pub const LMR_MIN_PLY: Depth = 3;
@@ -57,7 +60,8 @@ mod const_params {
     pub const RFP_MIN_DEPTH: Depth = 8;
     pub const RFP_MARGIN: Score = 100;
 
-    pub const FUTILITY_MIN_ALPHA: Score = 95_000_000;
+    // pub const FUTILITY_MIN_ALPHA: Score = 95_000_000;
+    pub const FUTILITY_MIN_ALPHA: Score = 31000;
     // pub const FUTILITY_MARGIN: Score = 200;
     pub const FUTILITY_MARGIN: Score = 300;
 

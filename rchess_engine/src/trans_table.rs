@@ -122,6 +122,25 @@ pub struct SearchInfo {
     // pub eval:               Score,   // 4, 8?
 }
 
+#[derive(Debug,Clone,Copy)]
+pub struct PackedSearchInfo {
+    pub best_move:          [u8; 2],
+    pub depth_searched:     Depth,
+    pub node_type:          Node,
+    pub score:              u32,
+}
+
+/// Pack, unpack
+impl PackedSearchInfo {
+    pub fn pack(si: SearchInfo) -> Self {
+        unimplemented!()
+    }
+    pub fn unpack(&self, ts: &'static Tables, g: &Game) -> Option<SearchInfo> {
+        // let mv = PackedMove::unpack(&self.best_move).unwrap().convert_to_move(ts, g);
+        unimplemented!()
+    }
+}
+
 impl SearchInfo {
     pub fn empty() -> Self {
         Self {

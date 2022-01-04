@@ -276,12 +276,12 @@ fn main_tt() {
     // let k0 = std::mem::size_of::<RwLock<()>>();
     let k0 = std::mem::size_of::<Bucket>();
     let k1 = std::mem::size_of::<TTEntry>();
-    let k2 = std::mem::size_of::<RwLock<TTEntry>>();
+    // let k2 = std::mem::size_of::<RwLock<TTEntry>>();
     // let k2 = std::mem::size_of::<SearchInfo>();
+    let k2 = std::mem::size_of::<PackedSearchInfo>();
     eprintln!("Bucket  = {:?}", k0);
     eprintln!("k1 = {:?}", k1);
     eprintln!("k2 = {:?}", k2);
-    return;
 
     return;
 
@@ -2831,13 +2831,14 @@ fn main9() {
     // ];
 
     // let t = 10.0;
-    let t = 6.0;
+    // let t = 6.0;
     // let t = 4.0;
-    // let t = 2.0;
+    let t = 2.0;
     // let t = 0.5;
     // let t = 0.3;
 
-    let n = 35;
+    // let n = 35;
+    let n = 20;
     // let n = 8;
     // let n = 9;
     // let n = 2;
@@ -2847,9 +2848,9 @@ fn main9() {
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
-    ex.cfg.num_threads = Some(12);
+    // ex.cfg.num_threads = Some(12);
     // ex.cfg.num_threads = Some(6);
-    // ex.cfg.num_threads = Some(1);
+    ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
