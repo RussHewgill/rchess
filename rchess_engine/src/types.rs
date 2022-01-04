@@ -3,7 +3,7 @@ pub use crate::bitboard::*;
 pub use crate::coords::*;
 pub use crate::game::*;
 pub use crate::hashing::*;
-pub use self::packed_move::*;
+// pub use self::packed_move::*;
 
 // pub use crate::evaluate::Score;
 
@@ -109,14 +109,14 @@ pub enum Move {
 
     Quiet              { from: Coord, to: Coord, pc: Piece },
     PawnDouble         { from: Coord, to: Coord },
-    Capture            { from: Coord, to: Coord, pc: Piece, victim: Piece },
-    // Capture            { from: Coord, to: Coord, pcs: PackedPieces },
+    // Capture            { from: Coord, to: Coord, pc: Piece, victim: Piece },
+    Capture            { from: Coord, to: Coord, pcs: PackedPieces },
     EnPassant          { from: Coord, to: Coord, capture: Coord },
     // Castle             { from: Coord, to: Coord, rook_from: Coord, rook_to: Coord },
     Castle             { side: Color, kingside: bool },
     Promotion          { from: Coord, to: Coord, new_piece: Piece },
-    PromotionCapture   { from: Coord, to: Coord, new_piece: Piece, victim: Piece },
-    // PromotionCapture   { from: Coord, to: Coord, pcs: PackedPieces },
+    // PromotionCapture   { from: Coord, to: Coord, new_piece: Piece, victim: Piece },
+    PromotionCapture   { from: Coord, to: Coord, pcs: PackedPieces },
     NullMove,
 
 
@@ -286,13 +286,12 @@ impl Move {
 /// Conveninience builders
 impl Move {
 
-
     pub fn new_quiet<T: Into<Coord>>(from: T, to: T, pc: Piece) -> Move {
         Move::Quiet { from: from.into(), to: to.into(), pc }
     }
     pub fn new_capture<T: Into<Coord>>(from: T, to: T, pc: Piece, victim: Piece) -> Move {
-        Move::Capture { from: from.into(), to: to.into(), pc, victim }
-        // Move::Capture { from: from.into(), to: to.into(), pcs: PackedPieces::new(pc, victim) }
+        // Move::Capture { from: from.into(), to: to.into(), pc, victim }
+        Move::Capture { from: from.into(), to: to.into(), pcs: PackedPieces::new(pc, victim) }
     }
     pub fn new_double<T: Into<Coord>>(from: T, to: T) -> Move {
         Move::PawnDouble { from: from.into(), to: to.into() }
@@ -304,7 +303,7 @@ impl Move {
 
 }
 
-// #[cfg(feature = "nope")]
+#[cfg(feature = "nope")]
 mod packed_move {
     use super::*;
     use crate::tables::Tables;
@@ -652,12 +651,13 @@ impl Move {
 
     pub fn piece(&self) -> Option<Piece> {
         match self {
-            &Move::Capture { pc, .. }              => Some(pc),
+            // &Move::Capture { pc, .. }              => Some(pc),
+            &Move::Capture { pcs, .. }             => Some(pcs.first()),
             &Move::EnPassant { .. }                => Some(Pawn),
 
             // XXX: pawn or new_piece ???
-            &Move::PromotionCapture { victim, .. } => Some(Pawn),
-            &Move::Promotion { new_piece, .. }     => Some(Pawn),
+            &Move::PromotionCapture { .. }         => Some(Pawn),
+            &Move::Promotion { .. }                => Some(Pawn),
 
             &Move::PawnDouble { .. }               => Some(Pawn),
             &Move::Quiet { pc, .. }                => Some(pc),
@@ -669,9 +669,11 @@ impl Move {
 
     pub fn victim(&self) -> Option<Piece> {
         match self {
-            &Move::Capture { victim, .. }          => Some(victim),
+            // &Move::Capture { victim, .. }          => Some(victim),
+            &Move::Capture { pcs, .. }             => Some(pcs.second()),
             &Move::EnPassant { .. }                => Some(Pawn),
-            &Move::PromotionCapture { victim, .. } => Some(victim),
+            // &Move::PromotionCapture { victim, .. } => Some(victim),
+            &Move::PromotionCapture { pcs, .. }    => Some(pcs.second()),
             _                                      => None,
         }
     }
@@ -679,7 +681,8 @@ impl Move {
     pub fn new_piece(&self) -> Option<Piece> {
         match self {
             Move::Promotion { new_piece, .. }        => Some(*new_piece),
-            Move::PromotionCapture { new_piece, .. } => Some(*new_piece),
+            // Move::PromotionCapture { new_piece, .. } => Some(*new_piece),
+            Move::PromotionCapture { pcs, .. }       => Some(pcs.first()),
             _                                        => None,
         }
     }
@@ -729,7 +732,18 @@ impl Move {
 
     pub fn to_long_algebraic(&self) -> String {
         match self {
-            Move::Promotion { new_piece, .. } | Move::PromotionCapture { new_piece, .. } => {
+            Move::Promotion { new_piece, .. } => {
+                let c = match new_piece {
+                    Queen  => 'q',
+                    Knight => 'n',
+                    Rook   => 'r',
+                    Bishop => 'b',
+                    _      => panic!("Bad promotion"),
+                };
+                format!("{:?}{:?}{}", self.sq_from(), self.sq_to(), c).to_ascii_lowercase()
+            },
+            Move::PromotionCapture { pcs, .. } => {
+                let new_piece = pcs.first();
                 let c = match new_piece {
                     Queen  => 'q',
                     Knight => 'n',
@@ -996,8 +1010,10 @@ impl std::fmt::Debug for Move {
             PawnDouble         { from, to } => {
                 f.write_str(&format!("Db   {:?}{:?}", from, to))?;
             },
-            Capture            { from, to, pc, victim } => {
-                f.write_str(&format!("Cp {} {:?}{:?}", pc.print_char(), from, to))?;
+            // Capture            { from, to, pc, victim } => {
+            Capture { from, to, pcs } => {
+                // f.write_str(&format!("Cp {} {:?}{:?}", pc.print_char(), from, to))?;
+                f.write_str(&format!("Cp {} {:?}{:?}", pcs.first().print_char(), from, to))?;
             },
             EnPassant          { from, to, capture } => {
                 f.write_str(&format!("EP   {:?}{:?}", from, to))?;
@@ -1005,8 +1021,10 @@ impl std::fmt::Debug for Move {
             Promotion          { from, to, new_piece } => {
                 f.write_str(&format!("Prom {:?}{:?}={}", from, to, new_piece.print_char()))?;
             },
-            PromotionCapture   { from, to, new_piece, victim } => {
-                f.write_str(&format!("PCap {:?}{:?}={}", from, to, new_piece.print_char()))?;
+            // PromotionCapture   { from, to, new_piece, victim } => {
+            PromotionCapture   { from, to, pcs } => {
+                // f.write_str(&format!("PCap {:?}{:?}={}", from, to, new_piece.print_char()))?;
+                f.write_str(&format!("PCap {:?}{:?}={}", from, to, pcs.first().print_char()))?;
             },
             Castle             { .. } => {
                 let (from, to) = self.castle_king_mv();

@@ -365,9 +365,12 @@ impl NNFeatureTrans {
                 out.push(a[0]);
                 out.push(a[1]);
             },
-            Move::Capture { from, to, pc, victim } => {
-                let a = self.make_move_move(ksqs, pc, side, from, to);
-                let b = self.make_move_rem(ksqs, victim, !side, to);
+            // Move::Capture { from, to, pc, victim } => {
+            Move::Capture { from, to, pcs } => {
+                // let a = self.make_move_move(ksqs, pc, side, from, to);
+                // let b = self.make_move_rem(ksqs, victim, !side, to);
+                let a = self.make_move_move(ksqs, pcs.first(), side, from, to);
+                let b = self.make_move_rem(ksqs, pcs.second(), !side, to);
                 out.push(a[0]);
                 out.push(a[1]);
                 out.push(b);
@@ -395,10 +398,13 @@ impl NNFeatureTrans {
                 out.push(a);
                 out.push(b);
             },
-            Move::PromotionCapture { from, to, new_piece, victim } => {
+            // Move::PromotionCapture { from, to, new_piece, victim } => {
+            Move::PromotionCapture { from, to, pcs } => {
                 let a = self.make_move_rem(ksqs, Pawn, side, from);
-                let b = self.make_move_add(ksqs, new_piece, side, to);
-                let c = self.make_move_rem(ksqs, victim, !side, to);
+                // let b = self.make_move_add(ksqs, new_piece, side, to);
+                // let c = self.make_move_rem(ksqs, victim, !side, to);
+                let b = self.make_move_add(ksqs, pcs.first(), side, to);
+                let c = self.make_move_rem(ksqs, pcs.second(), !side, to);
                 out.push(a);
                 out.push(b);
                 out.push(c);

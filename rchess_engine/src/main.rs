@@ -272,17 +272,28 @@ fn main_tt() {
 
     // let tt2 = TransTable::new_mb(32);
 
-    let k0 = std::mem::size_of::<Move2>();
-    eprintln!("k0 = {:?}", k0);
-    return;
+    // let (from, to) = self.castle_king_mv();
+    // let (rook_from, rook_to) = self.castle_rook_mv();
+    // let ((from, to),(rook_from,rook_to)) = self.castle_moves();
+
+    // Move::Capture { from: from.into(), to: to.into(), pcs: PackedPieces::new(pc, victim) }
+    // // Capture { from, to, pcs }
+    // // PromotionCapture   { from, to, pcs }
+    // let mv = Move::new_capture(from, to, Pawn, victim);
+
+    // let k0 = std::mem::size_of::<Move>();
+    // eprintln!("k0 = {:?}", k0);
+    // return;
 
     use parking_lot::RwLock;
     // let k0 = std::mem::size_of::<RwLock<()>>();
-    let k0 = std::mem::size_of::<Bucket>();
+    let k0 = std::mem::size_of::<Bucket2>();
     let k1 = std::mem::size_of::<TTEntry>();
-    // let k2 = std::mem::size_of::<RwLock<TTEntry>>();
+    let k2 = std::mem::size_of::<RwLock<TTEntry>>();
+    // let k1 = std::mem::align_of::<TTEntry>();
+    // let k2 = std::mem::align_of::<RwLock<TTEntry>>();
     // let k2 = std::mem::size_of::<SearchInfo>();
-    let k2 = std::mem::size_of::<PackedSearchInfo>();
+    // let k2 = std::mem::size_of::<PackedSearchInfo>();
     eprintln!("Bucket  = {:?}", k0);
     eprintln!("k1 = {:?}", k1);
     eprintln!("k2 = {:?}", k2);
@@ -3812,17 +3823,17 @@ fn main_perft(depth: Option<u64>) {
     // eprintln!("k0 = {:?}", k0);
     // let k1 = Coord::new_int(k0);
 
-    println!("starting");
-    let t0 = std::time::Instant::now();
-    for (k,fen) in fens.iter().enumerate() {
-        let mut g = Game::from_fen(&ts, fen).unwrap();
-        let (tot,_) = MoveGen::perft(&ts, &g, d);
-        eprintln!("{} = {:>8?}", k, tot);
-    }
-    let t1 = t0.elapsed().as_secs_f64();
-    println!("perft done in {} seconds.", t1);
+    // println!("starting");
+    // let t0 = std::time::Instant::now();
+    // for (k,fen) in fens.iter().enumerate() {
+    //     let mut g = Game::from_fen(&ts, fen).unwrap();
+    //     let (tot,_) = MoveGen::perft(&ts, &g, d);
+    //     eprintln!("{} = {:>8?}", k, tot);
+    // }
+    // let t1 = t0.elapsed().as_secs_f64();
+    // println!("perft done in {} seconds.", t1);
 
-    return;
+    // return;
 
     println!("starting");
     for (k,fen) in fens.iter().enumerate() {

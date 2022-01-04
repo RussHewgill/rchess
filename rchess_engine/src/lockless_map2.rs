@@ -124,7 +124,7 @@ impl Bucket {
 }
 
 /// store, find
-#[cfg(feature = "nope")]
+// #[cfg(feature = "nope")]
 impl Bucket {
 
     // pub fn store(&self, ver: u32, si: SearchInfo, used_entries: &mut usize) {
@@ -222,6 +222,7 @@ impl Bucket {
     }
 }
 
+#[cfg(feature = "nope")]
 impl Bucket {
 
     pub fn store(&self, ver: u32, si: SearchInfo, used_entries: &AtomicUsize, age: &AtomicU8) {

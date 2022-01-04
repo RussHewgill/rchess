@@ -93,10 +93,14 @@ impl Zobrist {
                 .update_piece(ts, Pawn, g.state.side_to_move, from)
                 .update_piece(ts, Pawn, g.state.side_to_move, to)
                 .update_ep(ts, to),
-            Move::Capture { from, to, pc, victim }          => self
-                .update_piece(ts, pc, g.state.side_to_move, from)
-                .update_piece(ts, pc, g.state.side_to_move, to)
-                .update_piece(ts, victim, !g.state.side_to_move, to)
+            // Move::Capture { from, to, pc, victim }          => self
+            Move::Capture { from, to, pcs }         => self
+                // .update_piece(ts, pc, g.state.side_to_move, from)
+                // .update_piece(ts, pc, g.state.side_to_move, to)
+                // .update_piece(ts, victim, !g.state.side_to_move, to)
+                .update_piece(ts, pcs.first(), g.state.side_to_move, from)
+                .update_piece(ts, pcs.first(), g.state.side_to_move, to)
+                .update_piece(ts, pcs.second(), !g.state.side_to_move, to)
                 .update_move_castles(ts, g, mv),
             Move::EnPassant { from, to, capture }   => self
                 .update_piece(ts, Pawn, g.state.side_to_move, from)
@@ -114,10 +118,13 @@ impl Zobrist {
             Move::Promotion { from, to, new_piece } => self
                 .update_piece(ts, Pawn, g.state.side_to_move, from)
                 .update_piece(ts, new_piece, g.state.side_to_move, to),
-            Move::PromotionCapture { from, to, new_piece, victim } => self
+            // Move::PromotionCapture { from, to, new_piece, victim } => self
+            Move::PromotionCapture { from, to, pcs } => self
                 .update_piece(ts, Pawn, g.state.side_to_move, from)
-                .update_piece(ts, victim, !g.state.side_to_move, to)
-                .update_piece(ts, new_piece, g.state.side_to_move, to),
+                // .update_piece(ts, victim, !g.state.side_to_move, to)
+                // .update_piece(ts, new_piece, g.state.side_to_move, to),
+                .update_piece(ts, pcs.second(), !g.state.side_to_move, to)
+                .update_piece(ts, pcs.first(), g.state.side_to_move, to),
             Move::NullMove                          => self,
         }
     }
@@ -125,7 +132,9 @@ impl Zobrist {
     fn update_move_castles(mut self, ts: &Tables, g: &Game, mv: Move) -> Self {
         let mut castling = g.state.castling.clone();
         match mv {
-            Move::Quiet { from, pc, .. } | Move::Capture { from, pc, .. } => {
+            // Move::Quiet { from, pc, .. } | Move::Capture { from, pc, .. } => {
+            Move::Quiet { from, .. } | Move::Capture { from, .. } => {
+                let pc = mv.piece().unwrap();
                 // XXX: side changed prior in make_move
                 match (g.state.side_to_move, pc) {
                     (side, King) => {

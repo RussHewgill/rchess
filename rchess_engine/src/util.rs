@@ -329,13 +329,19 @@ pub fn test_stockfish(
     let mut nodes0: HashMap<String, (Move,i64)> = HashMap::new();
     for (m,k) in ms.into_iter() {
         match m {
-            Move::Promotion { new_piece, .. } | Move::PromotionCapture { new_piece, .. } => {
+            Move::Promotion { .. } | Move::PromotionCapture { .. } => {
+                // let new_piece = m.piece().unwrap();
+                let new_piece = match m {
+                    Move::Promotion { new_piece, .. }  => new_piece,
+                    Move::PromotionCapture { pcs, .. } => pcs.first(),
+                    _                                  => unimplemented!(),
+                };
                 let c = match new_piece {
                     Queen  => 'q',
                     Knight => 'n',
                     Rook   => 'r',
                     Bishop => 'b',
-                    _      => panic!("Bad promotion"),
+                    _      => panic!("Bad promotion: mv = {:?}", m),
                 };
                 let mm = format!("{:?}{:?}{}", m.sq_from(), m.sq_to(), c).to_ascii_lowercase();
                 nodes0.insert(mm, (m,k as i64));

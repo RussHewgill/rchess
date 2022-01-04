@@ -117,6 +117,11 @@ impl NNUE {
     }
 
     pub fn _update_move(&mut self, g: &Game, mv: Move) {
+        unimplemented!()
+    }
+
+    #[cfg(feature = "nope")]
+    pub fn _update_move(&mut self, g: &Game, mv: Move) {
         let s = if g.state.side_to_move != self.side { self.side } else { !self.side };
         let king_sq_own   = g.get(King, s).bitscan();
         let king_sq_other = g.get(King, !s).bitscan();

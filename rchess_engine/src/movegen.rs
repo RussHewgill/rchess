@@ -984,7 +984,8 @@ mod pieces {
                     for to in bw.into_iter() {
                         let (_,victim) = self.game.get_at(to).unwrap();
                         if let Some(from) = (!dw).shift_coord(to) {
-                            let mv = Move::Capture { from, to, pc: Pawn, victim };
+                            // let mv = Move::Capture { from, to, pc: Pawn, victim };
+                            let mv = Move::new_capture(from, to, Pawn, victim);
                             self.buf.push(mv);
                         }
                     }
@@ -992,7 +993,8 @@ mod pieces {
                     for to in be.into_iter() {
                         let (_,victim) = self.game.get_at(to).unwrap();
                         if let Some(from) = (!de).shift_coord(to) {
-                            let mv = Move::Capture { from, to, pc: Pawn, victim };
+                            // let mv = Move::Capture { from, to, pc: Pawn, victim };
+                            let mv = Move::new_capture(from, to, Pawn, victim);
                             self.buf.push(mv);
                         }
                     }
@@ -1110,14 +1112,18 @@ mod pieces {
                 for to in cs.into_iter() {
                     let (_,victim) = self.game.get_at(to).unwrap();
                     if gen == MoveGenType::Captures {
-                        let mv = Move::PromotionCapture { from, to, new_piece: Queen, victim };
+                        // let mv = Move::PromotionCapture { from, to, new_piece: Queen, victim };
+                        let mv = Move::PromotionCapture { from, to, pcs: PackedPieces::new(Queen,victim) };
                         if let Some(mut buf) = buf.as_mut() {buf.push(mv);} else {self.buf.push(mv);}
                     } else if gen == MoveGenType::Quiets {
-                        let mv = Move::PromotionCapture { from, to, new_piece: Knight, victim };
+                        // let mv = Move::PromotionCapture { from, to, new_piece: Knight, victim };
+                        let mv = Move::PromotionCapture { from, to, pcs: PackedPieces::new(Knight,victim) };
                         if let Some(mut buf) = buf.as_mut() {buf.push(mv);} else {self.buf.push(mv);}
-                        let mv = Move::PromotionCapture { from, to, new_piece: Bishop, victim };
+                        // let mv = Move::PromotionCapture { from, to, new_piece: Bishop, victim };
+                        let mv = Move::PromotionCapture { from, to, pcs: PackedPieces::new(Bishop,victim) };
                         if let Some(mut buf) = buf.as_mut() {buf.push(mv);} else {self.buf.push(mv);}
-                        let mv = Move::PromotionCapture { from, to, new_piece: Rook, victim };
+                        // let mv = Move::PromotionCapture { from, to, new_piece: Rook, victim };
+                        let mv = Move::PromotionCapture { from, to, pcs: PackedPieces::new(Rook,victim) };
                         if let Some(mut buf) = buf.as_mut() {buf.push(mv);} else {self.buf.push(mv);}
                     }
                 }
@@ -1143,7 +1149,8 @@ mod pieces {
                         if let Some(tgt) = target { captures &= tgt; }
                         captures.into_iter().for_each(|to| {
                             let (_,victim) = self.game.get_at(to).unwrap();
-                            let mv = Move::Capture { from, to, pc: Knight, victim };
+                            // let mv = Move::Capture { from, to, pc: Knight, victim };
+                            let mv = Move::new_capture(from, to, Knight, victim);
                             self.buf.push(mv);
                         });
                     });
@@ -1184,7 +1191,8 @@ mod pieces {
                         if let Some(tgt) = target { captures &= tgt; }
                         captures.into_iter().for_each(|to| {
                             let (_,victim) = self.game.get_at(to).unwrap();
-                            let mv = Move::Capture { from: sq, to, pc, victim };
+                            // let mv = Move::Capture { from: sq, to, pc, victim };
+                            let mv = Move::new_capture(sq, to, pc, victim);
                             self.buf.push(mv);
                         });
                     }
@@ -1314,7 +1322,8 @@ mod pieces {
                     let captures = moves & self.game.get_color(!self.side);
                     captures.into_iter().for_each(|to| {
                         let (_,victim) = self.game.get_at(to).unwrap();
-                        let mv = Move::Capture { from, to, pc: King, victim };
+                        // let mv = Move::Capture { from, to, pc: King, victim };
+                        let mv = Move::new_capture(from, to, King, victim);
                         self.buf.push(mv);
                     });
                 },

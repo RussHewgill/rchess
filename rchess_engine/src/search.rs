@@ -607,7 +607,8 @@ impl Game {
                 // };
 
                 // out.push(Move::Capture { from: sq.into(), to, pc, victim });
-                let m = Move::Capture { from: sq.into(), to, pc, victim };
+                // let m = Move::Capture { from: sq.into(), to, pc, victim };
+                let m = Move::new_capture(sq, to, pc, victim);
                 if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
                 // out.push(m);
             });
@@ -803,9 +804,10 @@ impl Game {
             };
             if go {
                 let (_,victim) = self.get_at(to).unwrap();
-                let m = Move::Capture { from: p0.into(), to, pc: King, victim };
+                // let m = Move::Capture { from: p0.into(), to, pc: King, victim };
+                let mv = Move::new_capture(p0, to, King, victim);
                 // if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
-                out.push(m);
+                out.push(mv);
                 // out.push(Move::Capture { from: p0.into(), to, pc: King, victim });
                 // out.push(Move::Capture { from: p0.into(), to});
             }
@@ -860,7 +862,8 @@ impl Game {
                 let (_,victim) = self.get_at(t.into()).unwrap();
                 // out.push(Move::Capture { from: sq.into(), to: t.into(), pc: Knight, victim});
                 // out.push(Move::Capture { from: sq.into(), to: t.into()});
-                let m = Move::Capture { from: sq.into(), to: t.into(), pc: Knight, victim};
+                // let m = Move::Capture { from: sq.into(), to: t.into(), pc: Knight, victim};
+                let m = Move::new_capture(sq, t, Knight, victim);
                 if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
             });
 
@@ -934,7 +937,8 @@ impl Game {
             while cs.0 != 0 {
                 let t = cs.bitscan_reset_mut();
                 let (_,victim) = self.get_at(t.into()).unwrap();
-                let m = Move::Capture { from: f, to: t.into(), pc: Pawn, victim };
+                // let m = Move::Capture { from: f, to: t.into(), pc: Pawn, victim };
+                let m = Move::new_capture(f, t, Pawn, victim);
                 if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
             }
         }
@@ -1010,7 +1014,8 @@ impl Game {
                 let (_,victim) = self.get_at(t.into()).unwrap();
                 // out.push(Move::Capture { from: f, to: t.into(), pc: Pawn, victim });
                 // out.push(Move::Capture { from: f, to: t.into()});
-                let m = Move::Capture { from: f, to: t.into(), pc: Pawn, victim };
+                // let m = Move::Capture { from: f, to: t.into(), pc: Pawn, victim };
+                let m = Move::new_capture(f, t, Pawn, victim);
                 if self.move_is_legal(&ts, m, self.state.side_to_move) { out.push(m); }
             }
         });
@@ -1033,6 +1038,17 @@ impl Game {
         out
     }
 
+    pub fn _search_promotions(
+        &self,
+        ts:         &Tables,
+        single:     Option<Coord>,
+        col:        Color,
+        only_caps:  bool,
+    ) -> Vec<Move> {
+        unimplemented!()
+    }
+
+    #[cfg(feature = "nope")]
     pub fn _search_promotions(
         &self,
         ts:         &Tables,

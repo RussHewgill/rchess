@@ -428,15 +428,14 @@ impl Game {
                 Some(out)
             },
             // &Move::Capture    { from, to } => {
-            Move::Capture    { from, to, pc, victim } => {
+            // Move::Capture    { from, to, pc, victim } => {
+            Move::Capture    { from, to, pcs } => {
                 let col = self.state.side_to_move;
-                // let (c0,_) = self.get_at(from)?;
-                // let (c1,_) = self.get_at(to)?;
                 let mut out = self.clone();
-                // out.delete_piece_mut_unchecked(&ts, from, pc, col);
-                // out.insert_piece_mut_unchecked(&ts, to, pc, col);
-                out.delete_piece_mut_unchecked(&ts, to, victim, !col, calc_zb);
-                out.move_piece_mut_unchecked(&ts, from, to, pc, col, calc_zb);
+                // out.delete_piece_mut_unchecked(&ts, to, victim, !col, calc_zb);
+                // out.move_piece_mut_unchecked(&ts, from, to, pc, col, calc_zb);
+                out.delete_piece_mut_unchecked(&ts, to, pcs.second(), !col, calc_zb);
+                out.move_piece_mut_unchecked(&ts, from, to, pcs.first(), col, calc_zb);
                 Some(out)
             },
             Move::EnPassant  { from, to, capture } => {
@@ -459,14 +458,17 @@ impl Game {
                 out.insert_piece_mut_unchecked(&ts, to, new_piece, col, calc_zb);
                 Some(out)
             },
-            Move::PromotionCapture  { from, to, new_piece, victim } => {
+            // Move::PromotionCapture  { from, to, new_piece, victim } => {
+            Move::PromotionCapture  { from, to, pcs } => {
                 let col = self.state.side_to_move;
                 // let (c0,pc0) = self.get_at(from)?;
                 // let (c1,pc1) = self.get_at(to)?;
                 let mut out = self.clone();
                 out.delete_piece_mut_unchecked(&ts, from, Pawn, col, calc_zb);
-                out.delete_piece_mut_unchecked(&ts, to, victim, !col, calc_zb);
-                out.insert_piece_mut_unchecked(&ts, to, new_piece, col, calc_zb);
+                // out.delete_piece_mut_unchecked(&ts, to, victim, !col, calc_zb);
+                // out.insert_piece_mut_unchecked(&ts, to, new_piece, col, calc_zb);
+                out.delete_piece_mut_unchecked(&ts, to, pcs.second(), !col, calc_zb);
+                out.insert_piece_mut_unchecked(&ts, to, pcs.first(), col, calc_zb);
                 Some(out)
             },
             Move::Castle     { .. } => {
@@ -732,7 +734,8 @@ impl Game {
 
     fn update_castles(&self, ts: &Tables, m: Move, x: &mut Self, calc_zb: bool) {
         match m {
-            Move::Quiet { from, pc, .. } | Move::Capture { from, pc, .. } => {
+            Move::Quiet { from, .. } | Move::Capture { from, .. } => {
+                let pc = m.piece().unwrap();
                 match (self.state.side_to_move, pc) {
                     (col, King) => {
                         if calc_zb { x.zobrist = x.zobrist.update_castling(&ts, x.state.castling); }
@@ -967,10 +970,12 @@ impl Game {
                 let cc = if col0 == White { 7 } else { 0 };
                 if (pc0 == Pawn) & (to.rank() == cc) {
                     let (_,victim) = self.get_at(to).unwrap();
-                    Some(Move::PromotionCapture { from, to, new_piece: Queen, victim })
+                    // Some(Move::PromotionCapture { from, to, new_piece: Queen, victim })
+                    Some(Move::PromotionCapture { from, to, pcs: PackedPieces::new(Queen,victim) })
                 } else {
                     let (_,victim) = self.get_at(to).unwrap();
-                    Some(Move::Capture { from, to, pc: pc0, victim })
+                    // Some(Move::Capture { from, to, pc: pc0, victim })
+                    Some(Move::Capture { from, to, pcs: PackedPieces::new(pc0, victim)})
                 }
             },
             (None,None) => None,
@@ -1031,8 +1036,10 @@ impl Game {
 
                 if bs.get(4) == Some(&('=' as u8)) {
                     let new_piece = Piece::from_char(bs[5] as char);
-                    Some(Move::PromotionCapture { from, to, new_piece, victim })
+                    // Some(Move::PromotionCapture { from, to, new_piece, victim })
+                    Some(Move::PromotionCapture { from, to, pcs: PackedPieces::new(new_piece, victim)})
                 } else {
+                    // Some(Move::new_capture(from, to, Pawn, victim))
                     Some(Move::new_capture(from, to, Pawn, victim))
                 }
             } else {

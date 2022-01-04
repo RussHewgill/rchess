@@ -119,7 +119,8 @@ pub fn score_move_for_sort(
         Move::Promotion { new_piece: Queen, .. } => return Prom,
         Move::Promotion { .. }                   => return PromMinor,
         Move::EnPassant { .. }                   => return GoodCapture(0),
-        Move::Capture { pc, victim, .. } => match (pc,victim) {
+        // Move::Capture { pc, victim, .. } => match (pc,victim) {
+        Move::Capture { pcs, .. } => match (pcs.first(), pcs.second()) {
 
             (Queen,Queen)   => return GoodCapture(1),
             (Rook,Rook)     => return GoodCapture(2),
