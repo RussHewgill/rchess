@@ -545,6 +545,7 @@ impl Explorer {
         if self.cfg.clear_table {
             debug!("clearing tt");
             self.clear_tt();
+            self.ptr_tt.increment_cycle();
         } else {
             self.ptr_tt.increment_cycle();
         }

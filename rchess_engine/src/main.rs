@@ -270,7 +270,7 @@ fn main_tt() {
     // let s0 = std::mem::size_of::<Score>();
     // eprintln!("s0 = {:?}", s0);
 
-    let tt2 = TransTable::new_mb(32);
+    // let tt2 = TransTable::new_mb(32);
 
     use parking_lot::RwLock;
     // let k0 = std::mem::size_of::<RwLock<()>>();
@@ -307,13 +307,13 @@ fn main_tt() {
     si0.depth_searched = 22;
     si1.depth_searched = 33;
 
-    let si2 = tt2.probe(zb1);
-    eprintln!("si2 = {:?}", si2);
-    let si2 = tt2.probe(zb2);
-    eprintln!("si2 = {:?}", si2);
+    // let si2 = tt2.probe(zb1);
+    // eprintln!("si2 = {:?}", si2);
+    // let si2 = tt2.probe(zb2);
+    // eprintln!("si2 = {:?}", si2);
 
-    tt2.insert(zb1, si0);
-    tt2.insert(zb2, si1);
+    // tt2.insert(zb1, si0);
+    // tt2.insert(zb2, si1);
 
     // unsafe {
     //     let b0 = *tt2.bucket(201644);
@@ -323,10 +323,10 @@ fn main_tt() {
     //     eprintln!("si2 = {:?}", si2);
     // }
 
-    let si2 = tt2.probe(zb1);
-    eprintln!("si2 = {:?}", si2);
-    let si2 = tt2.probe(zb2);
-    eprintln!("si2 = {:?}", si2);
+    // let si2 = tt2.probe(zb1);
+    // eprintln!("si2 = {:?}", si2);
+    // let si2 = tt2.probe(zb2);
+    // eprintln!("si2 = {:?}", si2);
 
     return;
 
