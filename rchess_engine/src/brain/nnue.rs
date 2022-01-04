@@ -137,7 +137,8 @@ impl NNUE {
                 self.update_move_piece(king_sq_own,king_sq_other, Pawn, from, to,side);
                 self.update_delete_piece(king_sq_own,king_sq_other, Pawn, capture, side);
             },
-            Move::Castle { from, to, rook_from, rook_to } => {
+            // Move::Castle { from, to, rook_from, rook_to } => {
+            Move::Castle { .. } => {
                 // return self.run_fresh(&g);
                 unimplemented!()
             },

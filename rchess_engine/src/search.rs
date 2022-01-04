@@ -651,7 +651,12 @@ impl Game {
 /// King + Castles
 impl Game {
 
+    pub fn _search_castles(&self, ts: &Tables) -> ArrayVec<Move, 4> {
+        unimplemented!("_search_castles")
+    }
+
     // pub fn _search_castles(&self, ts: &Tables) -> Vec<Move> {
+    #[cfg(feature = "nope")]
     pub fn _search_castles(&self, ts: &Tables) -> ArrayVec<Move, 4> {
         // let mut out = vec![];
         let mut out = ArrayVec::new();

@@ -102,12 +102,15 @@ impl Zobrist {
                 .update_piece(ts, Pawn, g.state.side_to_move, from)
                 .update_piece(ts, Pawn, g.state.side_to_move, to)
                 .update_piece(ts, Pawn, !g.state.side_to_move, capture),
-            Move::Castle { from, to, rook_from, rook_to } => self
-                .update_piece(ts, King, g.state.side_to_move, from)
-                .update_piece(ts, King, g.state.side_to_move, to)
-                .update_piece(ts, Rook, g.state.side_to_move, rook_from)
-                .update_piece(ts, Rook, g.state.side_to_move, rook_to)
-                .update_move_castles(ts, g, mv),
+            // Move::Castle { from, to, rook_from, rook_to } => self
+            Move::Castle { .. } => {
+                let ((from, to),(rook_from,rook_to)) = mv.castle_moves();
+                self.update_piece(ts, King, g.state.side_to_move, from)
+                    .update_piece(ts, King, g.state.side_to_move, to)
+                    .update_piece(ts, Rook, g.state.side_to_move, rook_from)
+                    .update_piece(ts, Rook, g.state.side_to_move, rook_to)
+                    .update_move_castles(ts, g, mv)
+            },
             Move::Promotion { from, to, new_piece } => self
                 .update_piece(ts, Pawn, g.state.side_to_move, from)
                 .update_piece(ts, new_piece, g.state.side_to_move, to),

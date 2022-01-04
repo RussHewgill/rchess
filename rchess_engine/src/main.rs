@@ -272,6 +272,10 @@ fn main_tt() {
 
     // let tt2 = TransTable::new_mb(32);
 
+    let k0 = std::mem::size_of::<Move2>();
+    eprintln!("k0 = {:?}", k0);
+    return;
+
     use parking_lot::RwLock;
     // let k0 = std::mem::size_of::<RwLock<()>>();
     let k0 = std::mem::size_of::<Bucket>();

@@ -109,8 +109,8 @@ impl TransTable {
 #[derive(Debug,Default,Clone,Copy,new)]
 pub struct TTEntry {
     age:                u8,
-    entry:              Option<SearchInfo>,
-    // entry:              Option<PackedSearchInfo>,
+    // entry:              Option<SearchInfo>,
+    entry:              Option<PackedSearchInfo>,
 }
 
 #[derive(Debug)]

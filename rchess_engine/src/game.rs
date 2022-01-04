@@ -469,7 +469,8 @@ impl Game {
                 out.insert_piece_mut_unchecked(&ts, to, new_piece, col, calc_zb);
                 Some(out)
             },
-            Move::Castle     { from, to, rook_from, rook_to } => {
+            Move::Castle     { .. } => {
+                let ((from, to),(rook_from,rook_to)) = mv.castle_moves();
                 let mut out = self.clone();
                 let col = self.state.side_to_move;
                 out.delete_piece_mut_unchecked(&ts, from, King, col, calc_zb);
@@ -897,17 +898,21 @@ impl Game {
             (Some((col,pc)),None) => {
                 let cc = if col == White { 7 } else { 0 };
                 if (pc == King) & (from.file_dist(to) == 2) {
-                    // Queenside
-                    let (rook_from,rook_to) = if to.file() == 2 {
-                        (0,3)
-                    } else if to.file() == 6 {
-                        (7,5)
-                    } else {
-                        panic!("bad castle?");
-                    };
-                    let r = if col == White { 0 } else { 7 };
-                    let (rook_from,rook_to) = (Coord::new(rook_from,r),Coord::new(rook_to,r));
-                    Some(Move::Castle { from, to, rook_from, rook_to })
+
+                    // // Queenside
+                    // let (rook_from,rook_to) = if to.file() == 2 {
+                    //     (0,3)
+                    // } else if to.file() == 6 {
+                    //     (7,5)
+                    // } else {
+                    //     panic!("bad castle?");
+                    // };
+                    // let r = if col == White { 0 } else { 7 };
+                    // let (rook_from,rook_to) = (Coord::new(rook_from,r),Coord::new(rook_to,r));
+                    // Some(Move::Castle { from, to, rook_from, rook_to })
+
+                    unimplemented!("TODO: _convert_move castle");
+
                 } else if pc == Pawn && Some(to) == self.state.en_passant {
                     let capture = if col == White { S.shift_coord(to).unwrap() }
                         else { N.shift_coord(to).unwrap() };
@@ -949,8 +954,9 @@ impl Game {
                         };
 
                         // panic!("convert move polyglot castle");
+                        unimplemented!("TODO: _convert_move castle");
 
-                        return Some(Move::Castle { from, to: king_to, rook_from, rook_to });
+                        // return Some(Move::Castle { from, to: king_to, rook_from, rook_to });
 
                     } else {
                         eprintln!("g.to_fen() = {:?}", self.to_fen());
@@ -976,27 +982,29 @@ impl Game {
         let bs = mv.as_bytes();
         let side = self.state.side_to_move;
         if mv == "O-O" {
-            let from = if side == White { Coord::new_const(4,0) } else { Coord::new_const(4,7) };
-            let to   = if side == White { Coord::new_const(6,0) } else { Coord::new_const(6,7) };
-            let rook_from = if side == White { Coord::new_const(7,0) } else { Coord::new_const(7,7) };
-            let rook_to   = if side == White { Coord::new_const(5,0) } else { Coord::new_const(5,7) };
-            Some(Move::Castle {
-                from,
-                to,
-                rook_from,
-                rook_to,
-            })
+            // let from = if side == White { Coord::new_const(4,0) } else { Coord::new_const(4,7) };
+            // let to   = if side == White { Coord::new_const(6,0) } else { Coord::new_const(6,7) };
+            // let rook_from = if side == White { Coord::new_const(7,0) } else { Coord::new_const(7,7) };
+            // let rook_to   = if side == White { Coord::new_const(5,0) } else { Coord::new_const(5,7) };
+            // Some(Move::Castle {
+            //     from,
+            //     to,
+            //     rook_from,
+            //     rook_to,
+            // })
+            Some(Move::new_castle(side, true))
         } else if mv == "O-O-O" {
-            let from = if side == White { Coord::new_const(4,0) } else { Coord::new_const(4,7) };
-            let to   = if side == White { Coord::new_const(2,0) } else { Coord::new_const(2,7) };
-            let rook_from = if side == White { Coord::new_const(0,0) } else { Coord::new_const(0,7) };
-            let rook_to   = if side == White { Coord::new_const(3,0) } else { Coord::new_const(3,7) };
-            Some(Move::Castle {
-                from,
-                to,
-                rook_from,
-                rook_to,
-            })
+            // let from = if side == White { Coord::new_const(4,0) } else { Coord::new_const(4,7) };
+            // let to   = if side == White { Coord::new_const(2,0) } else { Coord::new_const(2,7) };
+            // let rook_from = if side == White { Coord::new_const(0,0) } else { Coord::new_const(0,7) };
+            // let rook_to   = if side == White { Coord::new_const(3,0) } else { Coord::new_const(3,7) };
+            // Some(Move::Castle {
+            //     from,
+            //     to,
+            //     rook_from,
+            //     rook_to,
+            // })
+            Some(Move::new_castle(side, false))
         } else if bs[0].is_ascii_lowercase() {
             // pawn move
             if bs[1] as char == 'x' {

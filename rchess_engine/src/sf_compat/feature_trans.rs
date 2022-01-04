@@ -379,7 +379,8 @@ impl NNFeatureTrans {
                 out.push(a[1]);
                 out.push(b);
             },
-            Move::Castle { from, to, rook_from, rook_to } => {
+            // Move::Castle { from, to, rook_from, rook_to } => {
+            Move::Castle { .. } => {
                 // let a = self.make_move_move(ksqs, King, side, from, to);
                 // let b = self.make_move_move(ksqs, Rook, side, rook_from, rook_to);
                 // out.push(a[0]);

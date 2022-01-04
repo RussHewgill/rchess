@@ -776,7 +776,9 @@ impl<'a> MoveGen<'a> {
         let ksq_enemy = g.get(King, !g.state.side_to_move).bitscan();
 
         /// Castle
-        if let Move::Castle { rook_to, .. } = mv {
+        // if let Move::Castle { rook_to, .. } = mv {
+        if let Move::Castle { .. } = mv {
+            let (rook_from, rook_to) = mv.castle_rook_mv();
             return g.state.check_squares[Rook].is_one_at(rook_to);
         }
 
@@ -1250,40 +1252,52 @@ mod pieces {
             }
 
             if kingside {
-                if let mv@Move::Castle { from, to, rook_from, rook_to } = Move::CASTLE_KINGSIDE[self.side] {
-                    if self.game.get(Rook,self.side).is_one_at(rook_from) {
-                        let between = self.ts.between_exclusive(from, rook_from);
-                        if (between & self.game.all_occupied()).is_empty() {
-                            if !between.into_iter().any(
-                                |sq| self.game.find_attacks_by_side(self.ts, sq, !self.side, true)) {
-                                if let Some(mut buf) = buf.as_mut() {
-                                    buf.push(mv);
-                                } else {
-                                    self.buf.push(mv);
-                                }
+
+                let mv = Move::new_castle(self.side, true);
+                let ((from, to),(rook_from,rook_to)) = mv.castle_moves();
+
+                // if let mv@Move::Castle { from, to, rook_from, rook_to } = Move::CASTLE_KINGSIDE[self.side] {
+                // }
+
+                if self.game.get(Rook,self.side).is_one_at(rook_from) {
+                    let between = self.ts.between_exclusive(from, rook_from);
+                    if (between & self.game.all_occupied()).is_empty() {
+                        if !between.into_iter().any(
+                            |sq| self.game.find_attacks_by_side(self.ts, sq, !self.side, true)) {
+                            if let Some(mut buf) = buf.as_mut() {
+                                buf.push(mv);
+                            } else {
+                                self.buf.push(mv);
                             }
                         }
                     }
                 }
+
             }
 
             if queenside {
-                if let mv@Move::Castle { from, to, rook_from, rook_to } = Move::CASTLE_QUEENSIDE[self.side] {
-                    if self.game.get(Rook,self.side).is_one_at(rook_from) {
-                        let between_blocks  = self.ts.between_exclusive(from, rook_from);
-                        let between_attacks = Move::CASTLE_QUEENSIDE_BETWEEN[self.side];
-                        if (between_blocks & self.game.all_occupied()).is_empty() {
-                            if !between_attacks.into_iter().any(
-                                |sq| self.game.find_attacks_by_side(self.ts, sq, !self.side, true)) {
-                                if let Some(mut buf) = buf.as_mut() {
-                                    buf.push(mv);
-                                } else {
-                                    self.buf.push(mv);
-                                }
+
+                let mv = Move::new_castle(self.side, false);
+                let ((from, to),(rook_from,rook_to)) = mv.castle_moves();
+
+                // if let mv@Move::Castle { from, to, rook_from, rook_to } = Move::CASTLE_QUEENSIDE[self.side] {
+                // }
+
+                if self.game.get(Rook,self.side).is_one_at(rook_from) {
+                    let between_blocks  = self.ts.between_exclusive(from, rook_from);
+                    let between_attacks = Move::CASTLE_QUEENSIDE_BETWEEN[self.side];
+                    if (between_blocks & self.game.all_occupied()).is_empty() {
+                        if !between_attacks.into_iter().any(
+                            |sq| self.game.find_attacks_by_side(self.ts, sq, !self.side, true)) {
+                            if let Some(mut buf) = buf.as_mut() {
+                                buf.push(mv);
+                            } else {
+                                self.buf.push(mv);
                             }
                         }
                     }
                 }
+
             }
 
         }

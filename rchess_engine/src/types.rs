@@ -110,10 +110,13 @@ pub enum Move {
     Quiet              { from: Coord, to: Coord, pc: Piece },
     PawnDouble         { from: Coord, to: Coord },
     Capture            { from: Coord, to: Coord, pc: Piece, victim: Piece },
+    // Capture            { from: Coord, to: Coord, pcs: PackedPieces },
     EnPassant          { from: Coord, to: Coord, capture: Coord },
-    Castle             { from: Coord, to: Coord, rook_from: Coord, rook_to: Coord },
+    // Castle             { from: Coord, to: Coord, rook_from: Coord, rook_to: Coord },
+    Castle             { side: Color, kingside: bool },
     Promotion          { from: Coord, to: Coord, new_piece: Piece },
     PromotionCapture   { from: Coord, to: Coord, new_piece: Piece, victim: Piece },
+    // PromotionCapture   { from: Coord, to: Coord, pcs: PackedPieces },
     NullMove,
 
 
@@ -125,6 +128,45 @@ pub enum Move {
     // Promotion          { side: Color, from: Coord, to: Coord, new_piece: Piece },
     // PromotionCapture   { side: Color, from: Coord, to: Coord, new_piece: Piece, victim: Piece },
 }
+
+#[derive(Serialize,Deserialize,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
+pub struct PackedPieces(u8);
+
+impl PackedPieces {
+    pub fn new(pc1: Piece, pc2: Piece) -> Self {
+        let first = pc1.index() as u8;
+        let second = (pc2.index() as u8) << 3;
+        Self(first | second)
+    }
+
+    pub fn get(&self) -> (Piece,Piece) {
+        (self.first(),self.second())
+    }
+
+    pub fn first(&self) -> Piece {
+        Piece::from_index(self.0 & 0b111)
+    }
+
+    pub fn second(&self) -> Piece {
+        Piece::from_index((self.0 & 0b111000) >> 3)
+    }
+
+}
+
+// #[derive(Serialize,Deserialize,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
+// pub enum Move2 {
+//     Quiet              { from: Coord, to: Coord, pc: Piece },
+//     PawnDouble         { from: Coord, to: Coord },
+//     // Capture            { from: Coord, to: Coord, pc: Piece, victim: Piece },
+//     Capture            { from: Coord, to: Coord, pcs: PackedPieces },
+//     EnPassant          { from: Coord, to: Coord, capture: Coord },
+//     // Castle             { from: Coord, to: Coord, rook_from: Coord, rook_to: Coord },
+//     Castle             { side: Color, kingside: bool },
+//     Promotion          { from: Coord, to: Coord, new_piece: Piece },
+//     // PromotionCapture   { from: Coord, to: Coord, new_piece: Piece, victim: Piece },
+//     PromotionCapture   { from: Coord, to: Coord, pcs: PackedPieces },
+//     NullMove,
+// }
 
 /// Const Castles
 impl Move {
@@ -146,34 +188,98 @@ impl Move {
     ];
 
     pub const CASTLE_KINGSIDE: [Move; 2] = [
-        Move::Castle {
-            from:      Sq::E1.to(),
-            to:        Sq::G1.to(),
-            rook_from: Sq::H1.to(),
-            rook_to:   Sq::F1.to(),
-        },
-        Move::Castle {
-            from:      Sq::E8.to(),
-            to:        Sq::G8.to(),
-            rook_from: Sq::H8.to(),
-            rook_to:   Sq::F8.to(),
-        },
+        Move::Castle { side: White, kingside: true },
+        Move::Castle { side: Black, kingside: true },
     ];
 
     pub const CASTLE_QUEENSIDE: [Move; 2] = [
-        Move::Castle {
-            from:      Sq::E1.to(),
-            to:        Sq::C1.to(),
-            rook_from: Sq::A1.to(),
-            rook_to:   Sq::D1.to(),
-        },
-        Move::Castle {
-            from:      Sq::E8.to(),
-            to:        Sq::C8.to(),
-            rook_from: Sq::A8.to(),
-            rook_to:   Sq::D8.to(),
-        },
+        Move::Castle { side: White, kingside: false },
+        Move::Castle { side: Black, kingside: false },
     ];
+
+    // pub const CASTLE_KINGSIDE: [Move; 2] = [
+    //     Move::Castle {
+    //         from:      Sq::E1.to(),
+    //         to:        Sq::G1.to(),
+    //         rook_from: Sq::H1.to(),
+    //         rook_to:   Sq::F1.to(),
+    //     },
+    //     Move::Castle {
+    //         from:      Sq::E8.to(),
+    //         to:        Sq::G8.to(),
+    //         rook_from: Sq::H8.to(),
+    //         rook_to:   Sq::F8.to(),
+    //     },
+    // ];
+
+    // pub const CASTLE_QUEENSIDE: [Move; 2] = [
+    //     Move::Castle {
+    //         from:      Sq::E1.to(),
+    //         to:        Sq::C1.to(),
+    //         rook_from: Sq::A1.to(),
+    //         rook_to:   Sq::D1.to(),
+    //     },
+    //     Move::Castle {
+    //         from:      Sq::E8.to(),
+    //         to:        Sq::C8.to(),
+    //         rook_from: Sq::A8.to(),
+    //         rook_to:   Sq::D8.to(),
+    //     },
+    // ];
+
+}
+
+/// Castle getters
+impl Move {
+
+    const CASTLE_KINGSIDE_SQUARES: [((Coord,Coord),(Coord,Coord)); 2] = [
+        ((Sq::E1.to(), Sq::G1.to()), (Sq::H1.to(), Sq::F1.to())),
+        ((Sq::E8.to(), Sq::G8.to()), (Sq::H8.to(), Sq::F8.to())),
+    ];
+
+    const CASTLE_QUEENSIDE_SQUARES: [((Coord,Coord),(Coord,Coord)); 2] = [
+        ((Sq::E1.to(), Sq::C1.to()), (Sq::A1.to(), Sq::D1.to())),
+        ((Sq::E8.to(), Sq::C8.to()), (Sq::A8.to(), Sq::D8.to())),
+    ];
+
+    pub fn castle_moves(self) -> ((Coord,Coord),(Coord,Coord)) {
+        match self {
+            Move::Castle { side, kingside } => {
+                if kingside {
+                    Self::CASTLE_KINGSIDE_SQUARES[side]
+                } else {
+                    Self::CASTLE_QUEENSIDE_SQUARES[side]
+                }
+            },
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn castle_king_mv(self) -> (Coord,Coord) {
+        match self {
+            Move::Castle { side, kingside } => {
+                if kingside {
+                    Self::CASTLE_KINGSIDE_SQUARES[side].0
+                } else {
+                    Self::CASTLE_QUEENSIDE_SQUARES[side].0
+                }
+            },
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn castle_rook_mv(self) -> (Coord,Coord) {
+        match self {
+            Move::Castle { side, kingside } => {
+                if kingside {
+                    Self::CASTLE_KINGSIDE_SQUARES[side].1
+                } else {
+                    Self::CASTLE_QUEENSIDE_SQUARES[side].1
+                }
+            },
+            _ => unimplemented!(),
+        }
+    }
 
 }
 
@@ -186,12 +292,19 @@ impl Move {
     }
     pub fn new_capture<T: Into<Coord>>(from: T, to: T, pc: Piece, victim: Piece) -> Move {
         Move::Capture { from: from.into(), to: to.into(), pc, victim }
+        // Move::Capture { from: from.into(), to: to.into(), pcs: PackedPieces::new(pc, victim) }
     }
     pub fn new_double<T: Into<Coord>>(from: T, to: T) -> Move {
         Move::PawnDouble { from: from.into(), to: to.into() }
     }
+
+    pub fn new_castle(side: Color, kingside: bool) -> Self {
+        Move::Castle { side, kingside }
+    }
+
 }
 
+// #[cfg(feature = "nope")]
 mod packed_move {
     use super::*;
     use crate::tables::Tables;
@@ -515,7 +628,8 @@ impl Move {
             &Move::EnPassant { from, .. }        => from,
             &Move::Promotion { from, .. }        => from,
             &Move::PromotionCapture { from, .. } => from,
-            &Move::Castle { from, .. }           => from,
+            // &Move::Castle { .. }                 => from,
+            &Move::Castle { .. }                 => self.castle_king_mv().0,
             &Move::NullMove                      => unimplemented!(),
         }
     }
@@ -528,7 +642,8 @@ impl Move {
             &Move::EnPassant { to, .. }        => to,
             &Move::Promotion { to, .. }        => to,
             &Move::PromotionCapture { to, .. } => to,
-            &Move::Castle { to, .. }           => to,
+            // &Move::Castle { to, .. }           => to,
+            &Move::Castle { .. }               => self.castle_king_mv().1,
             &Move::NullMove                    => unimplemented!(),
         }
     }
@@ -546,7 +661,7 @@ impl Move {
 
             &Move::PawnDouble { .. }               => Some(Pawn),
             &Move::Quiet { pc, .. }                => Some(pc),
-            &Move::Castle { to, .. }               => Some(King),
+            &Move::Castle { .. }                   => Some(King),
             // _                                   => None,
             &Move::NullMove                        => None,
         }
@@ -573,44 +688,44 @@ impl Move {
 
 impl Move {
 
-    pub fn reverse(&self, g: &Game) -> Option<Self> {
-        match *self {
-            Move::Quiet      { from, to, pc } => {
-                if pc == Pawn {
-                    None
-                } else {
-                    Some(Move::Quiet { from: to, to: from, pc })
-                }
-            },
-            Move::PawnDouble { from, to } => {
-                // Move::PawnDouble { from: to, to: from }
-                None
-            },
-            Move::Capture    { from, to, pc, victim } => {
-                // Move::Capture    { from: to, to: from, pc: victim, victim: pc }
-                None
-            },
-            Move::EnPassant  { from, to, capture } => {
-                // Move::EnPassant  { from: to, to: from, capture }
-                // panic!("reverse en passant?")
-                None
-            },
-            Move::Promotion  { from, to, new_piece } => {
-                // Move::Promotion  { from: to, to: from, new_piece }
-                None
-            },
-            Move::PromotionCapture  { from, to, new_piece, victim } => {
-                // Move::PromotionCapture  { from: to, to: from, new_piece }
-                // panic!("reverse promotion capture?")
-                None
-            },
-            Move::Castle     { from, to, rook_from, rook_to } => {
-                // Move::Castle     { from: to, to: from, rook_from, rook_to }
-                None
-            },
-            Move::NullMove                    => unimplemented!(),
-        }
-    }
+    // pub fn reverse(&self, g: &Game) -> Option<Self> {
+    //     match *self {
+    //         Move::Quiet      { from, to, pc } => {
+    //             if pc == Pawn {
+    //                 None
+    //             } else {
+    //                 Some(Move::Quiet { from: to, to: from, pc })
+    //             }
+    //         },
+    //         Move::PawnDouble { from, to } => {
+    //             // Move::PawnDouble { from: to, to: from }
+    //             None
+    //         },
+    //         Move::Capture    { from, to, pc, victim } => {
+    //             // Move::Capture    { from: to, to: from, pc: victim, victim: pc }
+    //             None
+    //         },
+    //         Move::EnPassant  { from, to, capture } => {
+    //             // Move::EnPassant  { from: to, to: from, capture }
+    //             // panic!("reverse en passant?")
+    //             None
+    //         },
+    //         Move::Promotion  { from, to, new_piece } => {
+    //             // Move::Promotion  { from: to, to: from, new_piece }
+    //             None
+    //         },
+    //         Move::PromotionCapture  { from, to, new_piece, victim } => {
+    //             // Move::PromotionCapture  { from: to, to: from, new_piece }
+    //             // panic!("reverse promotion capture?")
+    //             None
+    //         },
+    //         Move::Castle     { .. } => {
+    //             // Move::Castle     { from: to, to: from, rook_from, rook_to }
+    //             None
+    //         },
+    //         Move::NullMove                    => unimplemented!(),
+    //     }
+    // }
 
     pub fn to_long_algebraic(&self) -> String {
         match self {
@@ -893,7 +1008,9 @@ impl std::fmt::Debug for Move {
             PromotionCapture   { from, to, new_piece, victim } => {
                 f.write_str(&format!("PCap {:?}{:?}={}", from, to, new_piece.print_char()))?;
             },
-            Castle             { from, to, rook_from, rook_to } => {
+            Castle             { .. } => {
+                let (from, to) = self.castle_king_mv();
+                let (rook_from, rook_to) = self.castle_rook_mv();
                 f.write_str(&format!("Cast {:?}{:?}", from, to))?;
             },
             NullMove => {

@@ -117,17 +117,19 @@ pub struct SearchInfo {
     // pub best_move:          (u8,u8),
     pub depth_searched:     Depth,           // 1
     pub node_type:          Node,            // 1
-    pub score:              Score,           // 4
+    pub score:              Score,           // 4, 2 if i16
     // pub eval:               Option<Score>,   // 4, 8?
     // pub eval:               Score,   // 4, 8?
 }
 
 #[derive(Debug,Clone,Copy)]
 pub struct PackedSearchInfo {
-    pub best_move:          [u8; 2],
+    // pub best_move:          [u8; 2],
+    pub best_move:          Move,
     pub depth_searched:     Depth,
     pub node_type:          Node,
-    pub score:              u32,
+    // pub score:              u32,
+    pub score:              u16,
 }
 
 /// Pack, unpack
