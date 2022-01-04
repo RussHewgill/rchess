@@ -122,9 +122,6 @@ pub struct SearchInfo {
     // pub eval:               Score,   // 4, 8?
 }
 
-pub struct PackedSearchInfo {
-}
-
 impl SearchInfo {
     pub fn empty() -> Self {
         Self {

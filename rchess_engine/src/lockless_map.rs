@@ -99,7 +99,7 @@ impl TTEntry {
 // }
 
 #[derive(Debug)]
-#[repr(align(64))]
+// #[repr(align(64))]
 pub struct Bucket {
     bucket: [RwLock<TTEntry>; ENTRIES_PER_BUCKET],
 }
@@ -224,33 +224,18 @@ impl Bucket {
 // #[derive(Clone)]
 /// XXX: TT
 pub struct TransTable {
-    // ptr:           UnsafeCell<NonNull<Bucket>>,
-    // vec:           UnsafeCell<Vec<Bucket>>,
     vec:           Vec<Bucket>,
     megabytes:     usize,
-    // used_entries:  UnsafeCell<usize>,
     used_entries:  AtomicUsize,
     tot_buckets:   usize,
     tot_entries:   usize,
     cycles:        AtomicU8,
+    hashmask:      u64,
 }
 
 /// Not actually safe, but at least it's a bit faster
 unsafe impl Send for TransTable {}
 unsafe impl Sync for TransTable {}
-
-// impl Drop for TransTable {
-//     fn drop(&mut self) {
-//         unsafe { self.de_alloc(); }
-//     }
-// }
-
-impl std::fmt::Debug for TransTable {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("TransTable"))?;
-        Ok(())
-    }
-}
 
 /// New
 impl TransTable {
@@ -272,6 +257,11 @@ impl TransTable {
 
         let vec = v;
 
+        eprintln!("tot_buckets = {:b}", tot_buckets);
+        eprintln!("tot_entries = {:b}", tot_entries);
+
+        let hashmask = 1;
+
         Self {
             vec,
             megabytes:    megabytes,
@@ -279,6 +269,7 @@ impl TransTable {
             tot_buckets:  tot_buckets,
             tot_entries:  tot_entries,
             cycles:       AtomicU8::new(0),
+            hashmask,
         }
     }
 
@@ -439,8 +430,21 @@ impl TransTable {
     // }
 }
 
-/// Misc
+/// Calc index, ver
 impl TransTable {
+
+    pub fn calc_index2(&self, zb: Zobrist) -> usize {
+
+        // const SLOT_NB = 1024;
+        // const BLOCK_SIZE = 4;
+
+        // let address = zb.0 & (1024 - 1) ^ 
+
+        // slotNb == 1024(powerOf2), blocksize== 4
+        // address = key & (1024-1) ^ 0, 1, 2, 3;
+
+        unimplemented!()
+    }
 
     // /// Stockfish ??
     // pub fn calc_index2(&self, zb: Zobrist) -> usize {
@@ -483,30 +487,13 @@ impl TransTable {
 
 }
 
-/// Unsafe Alloc, De-alloc
-impl TransTable {
-
-    // unsafe fn de_alloc(&self) {
-    //     // assert!()
-    //     let layout = Layout::from_size_align(self.tot_buckets.get(), 2).unwrap();
-    //     let ptr: *mut Bucket = (*self.ptr.get()).as_ptr();
-    //     // let ptr = ptr as *mut u8;
-    //     let ptr: *mut u8 = mem::transmute(ptr);
-    //     alloc::dealloc(ptr, layout);
-    // }
-
-    // unsafe fn alloc_room(size: usize) -> NonNull<Bucket> {
-    //     let size         = size * mem::size_of::<Bucket>();
-    //     let layout       = Layout::from_size_align(size, 2).unwrap();
-    //     let ptr: *mut u8 = alloc::alloc_zeroed(layout);
-    //     let new_ptr: NonNull<Bucket> = match NonNull::new(ptr) {
-    //         Some(ptr) => ptr.cast(),
-    //         _         => handle_alloc_error(layout),
-    //     };
-    //     new_ptr
-    // }
-
+impl std::fmt::Debug for TransTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("TransTable"))?;
+        Ok(())
+    }
 }
+
 
 #[cfg(feature = "nope")]
 mod prev_pleco {

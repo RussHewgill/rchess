@@ -272,29 +272,16 @@ fn main_tt() {
 
     let tt2 = TransTable::new_mb(32);
 
-    // let mut b0 = Bucket::new();
-
-    // let idx = tt.calc_index(zb);
-    // let ver = tt.calc_verification(zb);
-
-    // let mut x = 0;
-
-    use std::cell::UnsafeCell;
-    use std::ptr::NonNull;
-    use std::mem;
-    use std::alloc::{Layout, handle_alloc_error, self};
-
-    // Bucket     = 36
-    // SearchInfo = 8
-    // TTEntry    = 12
-
-    // let k0: u128 = 0;
-
-    // let k0 = std::mem::size_of::<rchess_engine_lib::lockless_map::Bucket>();
-    // eprintln!("k0 = {:?}", k0);
-
-    // let k1 = std::mem::size_of::<TTEntry>();
-    // eprintln!("k1 = {:?}", k1);
+    use parking_lot::RwLock;
+    // let k0 = std::mem::size_of::<RwLock<()>>();
+    let k0 = std::mem::size_of::<Bucket>();
+    let k1 = std::mem::size_of::<TTEntry>();
+    let k2 = std::mem::size_of::<RwLock<TTEntry>>();
+    // let k2 = std::mem::size_of::<SearchInfo>();
+    eprintln!("Bucket  = {:?}", k0);
+    eprintln!("k1 = {:?}", k1);
+    eprintln!("k2 = {:?}", k2);
+    return;
 
     return;
 
@@ -2782,7 +2769,7 @@ fn main9() {
 
     // let fen = "7k/6pp/8/8/8/8/8/RK6 w - - 0 1"; // #1, Qt R a1a8
 
-    // let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
+    let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
 
     // let fen = "8/8/p1p5/1p5p/1P5p/8/PPP2K1p/4R1rk w - - 0 1";    // Qt R e1f1
     // let fen = "1q1k4/2Rr4/8/2Q3K1/8/8/8/8 w - - 0 1";            // Kh6
@@ -2844,15 +2831,15 @@ fn main9() {
     // ];
 
     // let t = 10.0;
-    // let t = 6.0;
+    let t = 6.0;
     // let t = 4.0;
-    let t = 2.0;
+    // let t = 2.0;
     // let t = 0.5;
     // let t = 0.3;
 
-    // let n = 35;
+    let n = 35;
     // let n = 8;
-    let n = 9;
+    // let n = 9;
     // let n = 2;
 
     let timesettings = TimeSettings::new_f64(0.0,t);
@@ -2860,9 +2847,9 @@ fn main9() {
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
-    // ex.cfg.num_threads = Some(12);
+    ex.cfg.num_threads = Some(12);
     // ex.cfg.num_threads = Some(6);
-    ex.cfg.num_threads = Some(1);
+    // ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
