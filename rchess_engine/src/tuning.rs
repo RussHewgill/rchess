@@ -16,6 +16,26 @@ use serde::{Serialize,Deserialize};
 use serde_big_array::BigArray;
 use derive_new::new;
 
+#[derive(Debug,Clone,Copy)]
+pub struct SParams {
+    max_ply:            Depth,
+
+    value_checkmate:    Score,
+    value_stalemate:    Score,
+
+}
+
+impl Default for SParams {
+    fn default() -> Self {
+        Self {
+            max_ply:    220,
+
+            value_checkmate:    32000,
+            value_stalemate:    0,
+        }
+    }
+}
+
 pub use self::const_params::*;
 mod const_params {
     use crate::types::*;

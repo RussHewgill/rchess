@@ -89,9 +89,7 @@ impl TransTable {
     /// https://en.wikipedia.org/wiki/Hash_function#Multiplicative_hashing
     pub fn calc_index(&self, zb: Zobrist) -> (usize, u32) {
         let key = (zb.0 as u128 * self.num_buckets as u128).overflowing_shr(64).0;
-
         let ver = (zb.0 & LOW_FOUR_BYTES) as u32;
-
         (key as usize, ver)
     }
 
@@ -99,7 +97,9 @@ impl TransTable {
     pub fn calc_index(&self, zb: Zobrist) -> (usize, u32) {
         let key = (zb.0 & HIGH_FOUR_BYTES) >> SHIFT_TO_LOWER;
         let total = self.num_buckets as u64;
-        (key % total) as usize
+        let key = (key % total) as usize;
+        let ver = (zb.0 & LOW_FOUR_BYTES) as u32;
+        (key,ver)
     }
 
     #[cfg(feature = "nope")]
@@ -155,10 +155,7 @@ impl TransTable {
 #[derive(Debug,Default,Clone,Copy,new)]
 pub struct TTEntry {
     age:                u8,
-    // zb:                 Option<u32>,
     entry:              Option<(u32,SearchInfo)>,
-    // entry:              SearchInfo,
-    // entry:              Option<PackedSearchInfo>,
 }
 
 // #[derive(Debug)]
