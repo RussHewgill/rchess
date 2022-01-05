@@ -137,8 +137,8 @@ impl NNFeatureTrans {
 
         // eprintln!("x = {:?}", x);
 
-        // psqt
-        psqt.clamp(i16::MIN as i32,i16::MAX as i32) as i16
+        psqt
+        // psqt.clamp(i16::MIN as i32,i16::MAX as i32) as i16
     }
 
 }
