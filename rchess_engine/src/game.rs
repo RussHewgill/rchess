@@ -942,6 +942,12 @@ impl Game {
                 let cc = if col == White { 7 } else { 0 };
                 if (pc == King) & (from.file_dist(to) == 2) {
 
+                    if to.file() == 2 {
+                        Some(Move::new_castle(self.state.side_to_move, false))
+                    } else {
+                        Some(Move::new_castle(self.state.side_to_move, true))
+                    }
+
                     // // Queenside
                     // let (rook_from,rook_to) = if to.file() == 2 {
                     //     (0,3)
@@ -954,7 +960,7 @@ impl Game {
                     // let (rook_from,rook_to) = (Coord::new(rook_from,r),Coord::new(rook_to,r));
                     // Some(Move::Castle { from, to, rook_from, rook_to })
 
-                    unimplemented!("TODO: _convert_move castle");
+                    // unimplemented!("TODO: _convert_move castle");
 
                 } else if pc == Pawn && Some(to) == self.state.en_passant {
                     let capture = if col == White { S.shift_coord(to).unwrap() }
@@ -974,27 +980,33 @@ impl Game {
                 if col0 == col1 {
                     if ob_castle && pc0 == King && pc1 == Rook && col0 == col1 {
 
-                        let king_to = match to.to_rankfile() {
-                            (0,0) => Coord::new_const(2,0),
-                            (7,0) => Coord::new_const(6,0),
-                            (0,7) => Coord::new_const(2,7),
-                            (7,7) => Coord::new_const(6,7),
-                            _          =>
-                                panic!("polyglot castle king_to ??: ({:?},{:?})",
-                                       from, to,
-                                ),
-                        };
-                        let rook_from = to;
-                        let rook_to   = match to.to_rankfile() {
-                            (0,0) => Coord::new_const(3,0),
-                            (7,0) => Coord::new_const(5,0),
-                            (0,7) => Coord::new_const(0,7),
-                            (7,7) => Coord::new_const(0,7),
-                            _          =>
-                                panic!("polyglot castle rook_to ??: ({:?},{:?})",
-                                    from, to,
-                                ),
-                        };
+                        // if to.file() == 2 {
+                        //     Some(Move::new_castle(self.state.side_to_move, false));
+                        // } else {
+                        //     Some(Move::new_castle(self.state.side_to_move, true));
+                        // }
+
+                        // let king_to = match to.to_rankfile() {
+                        //     (0,0) => Coord::new_const(2,0),
+                        //     (7,0) => Coord::new_const(6,0),
+                        //     (0,7) => Coord::new_const(2,7),
+                        //     (7,7) => Coord::new_const(6,7),
+                        //     _          =>
+                        //         panic!("polyglot castle king_to ??: ({:?},{:?})",
+                        //                from, to,
+                        //         ),
+                        // };
+                        // let rook_from = to;
+                        // let rook_to   = match to.to_rankfile() {
+                        //     (0,0) => Coord::new_const(3,0),
+                        //     (7,0) => Coord::new_const(5,0),
+                        //     (0,7) => Coord::new_const(0,7),
+                        //     (7,7) => Coord::new_const(0,7),
+                        //     _          =>
+                        //         panic!("polyglot castle rook_to ??: ({:?},{:?})",
+                        //             from, to,
+                        //         ),
+                        // };
 
                         // panic!("convert move polyglot castle");
                         unimplemented!("TODO: _convert_move castle");

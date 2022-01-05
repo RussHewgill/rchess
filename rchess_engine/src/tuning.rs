@@ -18,20 +18,63 @@ use derive_new::new;
 
 #[derive(Debug,Clone,Copy)]
 pub struct SParams {
-    max_ply:            Depth,
+    max_ply:                  Depth,
 
-    value_checkmate:    Score,
-    value_stalemate:    Score,
+    value_checkmate:          Score,
+    value_stalemate:          Score,
+
+    lmr_min_moves:            Depth,
+    lmr_min_ply:              Depth,
+    lmr_min_depth:            Depth,
+
+    lmr_reduction:            Depth,
+    lmr_ply_const:            Depth,
+
+    qs_recaps_only:           Depth,
+
+    null_prune_min_depth:     Depth,
+    null_prune_min_phase:     Phase,
+    null_prune_reduction:     Depth,
+
+    rfp_min_depth:            Depth,
+    rfp_margin:               Score,
+
+    futility_min_alpha:       Score,
+    futility_margin:          Score,
+
+    history_max:              Score, // 20 * 20
 
 }
 
 impl Default for SParams {
     fn default() -> Self {
         Self {
-            max_ply:    220,
+            max_ply:                 220,
 
-            value_checkmate:    32000,
-            value_stalemate:    0,
+            value_checkmate:         32000,
+            value_stalemate:         0,
+
+            lmr_min_moves:           2,
+            lmr_min_ply:             3,
+            lmr_min_depth:           3,
+
+            lmr_reduction:           3,
+            lmr_ply_const:           6,
+
+            qs_recaps_only:          5,
+
+            null_prune_min_depth:    3,
+            null_prune_min_phase:    200,
+            null_prune_reduction:    2,
+
+            rfp_min_depth:           8,
+            rfp_margin:              100,
+
+            futility_min_alpha:      31000,
+            futility_margin:         300,
+
+            history_max:             400, // 20 * 20
+
         }
     }
 }
