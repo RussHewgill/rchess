@@ -232,14 +232,21 @@ impl Bucket {
 
     pub fn find(&self, age: &AtomicU8) -> Option<(bool,SearchInfo)> {
 
-        for (entry_idx,e) in self.bucket.read().iter().enumerate() {
-            if let Some(ee) = e.entry {
-                let age = age.load(std::sync::atomic::Ordering::Relaxed);
-                return Some((age == e.age, ee));
-            }
-        }
+        // for (entry_idx,e) in self.bucket.read().iter().enumerate() {
+        //     if let Some(ee) = e.entry {
+        //         let age = age.load(std::sync::atomic::Ordering::Relaxed);
+        //         return Some((age == e.age, ee));
+        //     }
+        // }
 
-        unimplemented!()
+        if let Some(e) = self.bucket.read().iter()
+            .filter(|e| e.entry.is_some())
+            .max_by_key(|e| e.entry.unwrap().depth_searched) {
+
+                let age = age.load(std::sync::atomic::Ordering::Relaxed);
+                return Some((age == e.age, e.entry.unwrap()));
+
+            } else { None }
     }
 
 }

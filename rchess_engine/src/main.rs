@@ -285,18 +285,18 @@ fn main_tt() {
     // eprintln!("k0 = {:?}", k0);
     // return;
 
-    use parking_lot::RwLock;
-    // let k0 = std::mem::size_of::<RwLock<()>>();
-    let k0 = std::mem::size_of::<Bucket2>();
-    let k1 = std::mem::size_of::<TTEntry>();
-    let k2 = std::mem::size_of::<RwLock<TTEntry>>();
-    // let k1 = std::mem::align_of::<TTEntry>();
-    // let k2 = std::mem::align_of::<RwLock<TTEntry>>();
-    // let k2 = std::mem::size_of::<SearchInfo>();
-    // let k2 = std::mem::size_of::<PackedSearchInfo>();
-    eprintln!("Bucket  = {:?}", k0);
-    eprintln!("k1 = {:?}", k1);
-    eprintln!("k2 = {:?}", k2);
+    // use parking_lot::RwLock;
+    // // let k0 = std::mem::size_of::<RwLock<()>>();
+    // let k0 = std::mem::size_of::<Bucket2>();
+    // let k1 = std::mem::size_of::<TTEntry>();
+    // let k2 = std::mem::size_of::<RwLock<TTEntry>>();
+    // // let k1 = std::mem::align_of::<TTEntry>();
+    // // let k2 = std::mem::align_of::<RwLock<TTEntry>>();
+    // // let k2 = std::mem::size_of::<SearchInfo>();
+    // // let k2 = std::mem::size_of::<PackedSearchInfo>();
+    // eprintln!("Bucket  = {:?}", k0);
+    // eprintln!("k1 = {:?}", k1);
+    // eprintln!("k2 = {:?}", k2);
 
     return;
 
