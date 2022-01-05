@@ -60,20 +60,21 @@ impl TransTable {
     }
 
     pub fn insert(&self, zb: Zobrist, si: SearchInfo) {
-        let idx: usize = self.calc_index(zb);
+        let (idx,ver) = self.calc_index(zb);
 
         if let Some(bucket) = self.buf.get(idx) {
-            bucket.store(si, &self.used_entries, &self.cycles);
+            // bucket.store(si, &self.used_entries, &self.cycles);
+            bucket.store(ver, si, &self.used_entries, &self.cycles);
         } else {
             panic!("TT insert, bad bucket idx: {:?}, zb = {:?}", idx, zb);
         }
     }
 
     pub fn probe(&self, zb: Zobrist) -> Option<(bool,SearchInfo)> {
-        let idx: usize = self.calc_index(zb);
+        let (idx,ver) = self.calc_index(zb);
 
         if let Some(bucket) = self.buf.get(idx) {
-            bucket.find(&self.cycles)
+            bucket.find(ver, &self.cycles)
         } else {
             panic!("TT probe, bad bucket idx: {:?}, zb = {:?}", idx, zb);
         }
@@ -81,28 +82,36 @@ impl TransTable {
 
 }
 
-/// Calc index, clear, increment
+/// Calc index
 impl TransTable {
 
-    #[cfg(feature = "nope")]
+    // #[cfg(feature = "nope")]
     /// https://en.wikipedia.org/wiki/Hash_function#Multiplicative_hashing
-    pub fn calc_index(&self, zb: Zobrist) -> usize {
+    pub fn calc_index(&self, zb: Zobrist) -> (usize, u32) {
         let key = (zb.0 as u128 * self.num_buckets as u128).overflowing_shr(64).0;
-        key as usize
+
+        let ver = (zb.0 & LOW_FOUR_BYTES) as u32;
+
+        (key as usize, ver)
     }
 
     #[cfg(feature = "nope")]
-    pub fn calc_index(&self, zb: Zobrist) -> usize {
+    pub fn calc_index(&self, zb: Zobrist) -> (usize, u32) {
         let key = (zb.0 & HIGH_FOUR_BYTES) >> SHIFT_TO_LOWER;
         let total = self.num_buckets as u64;
         (key % total) as usize
     }
 
-    // #[cfg(feature = "nope")]
-    pub fn calc_index(&self, zb: Zobrist) -> usize {
+    #[cfg(feature = "nope")]
+    pub fn calc_index(&self, zb: Zobrist) -> (usize, u32) {
         let key = zb.0 % self.num_buckets as u64;
         key as usize
     }
+
+}
+
+/// clear, increment
+impl TransTable {
 
     pub fn clear_table(&self) {
         for bucket in self.buf.iter() {
@@ -134,7 +143,7 @@ impl TransTable {
 /// Prefetch
 impl TransTable {
     pub fn prefetch(&self, zb: Zobrist) {
-        let idx = self.calc_index(zb);
+        let (idx,_) = self.calc_index(zb);
         unsafe {
             // let ptr = (*self.vec.get()).as_ptr().add(idx);
             let ptr = self.buf.as_ptr().add(idx);
@@ -146,7 +155,8 @@ impl TransTable {
 #[derive(Debug,Default,Clone,Copy,new)]
 pub struct TTEntry {
     age:                u8,
-    entry:              Option<SearchInfo>,
+    // zb:                 Option<u32>,
+    entry:              Option<(u32,SearchInfo)>,
     // entry:              SearchInfo,
     // entry:              Option<PackedSearchInfo>,
 }
@@ -190,7 +200,7 @@ impl Bucket {
 /// store, find
 impl Bucket {
 
-    pub fn store(&self, si: SearchInfo, used_entries: &AtomicUsize, age: &AtomicU8) {
+    pub fn store(&self, ver: u32, si: SearchInfo, used_entries: &AtomicUsize, age: &AtomicU8) {
 
         let mut idx_lowest_depth = None;
 
@@ -204,7 +214,7 @@ impl Bucket {
         // }
 
         for (entry_idx,e) in self.bucket.read().iter().enumerate() {
-            if let Some(e_si) = e.entry {
+            if let Some((ver,e_si)) = e.entry {
                 if e_si.depth_searched < si.depth_searched {
                     idx_lowest_depth = Some(entry_idx);
                 }
@@ -224,16 +234,18 @@ impl Bucket {
 
         let mut w = self.bucket.write();
         let mut w = w.get_mut(idx).unwrap();
-        *w = TTEntry::new(age, Some(si));
+        *w = TTEntry::new(age, Some((ver,si)));
 
     }
 
-    pub fn find(&self, age: &AtomicU8) -> Option<(bool,SearchInfo)> {
+    pub fn find(&self, ver: u32, age: &AtomicU8) -> Option<(bool,SearchInfo)> {
 
         for (entry_idx,e) in self.bucket.read().iter().enumerate() {
-            if let Some(ee) = e.entry {
-                let age = age.load(std::sync::atomic::Ordering::Relaxed);
-                return Some((age == e.age, ee));
+            if let Some((ver2,ee)) = e.entry {
+                if ver2 == ver {
+                    let age = age.load(std::sync::atomic::Ordering::Relaxed);
+                    return Some((age == e.age, ee));
+                }
             }
         }
         None

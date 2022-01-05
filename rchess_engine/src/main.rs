@@ -285,18 +285,18 @@ fn main_tt() {
     // eprintln!("k0 = {:?}", k0);
     // return;
 
-    // use parking_lot::RwLock;
-    // // let k0 = std::mem::size_of::<RwLock<()>>();
-    // let k0 = std::mem::size_of::<Bucket2>();
-    // let k1 = std::mem::size_of::<TTEntry>();
-    // let k2 = std::mem::size_of::<RwLock<TTEntry>>();
-    // // let k1 = std::mem::align_of::<TTEntry>();
-    // // let k2 = std::mem::align_of::<RwLock<TTEntry>>();
-    // // let k2 = std::mem::size_of::<SearchInfo>();
-    // // let k2 = std::mem::size_of::<PackedSearchInfo>();
-    // eprintln!("Bucket  = {:?}", k0);
-    // eprintln!("k1 = {:?}", k1);
-    // eprintln!("k2 = {:?}", k2);
+    use parking_lot::RwLock;
+    // let k0 = std::mem::size_of::<RwLock<()>>();
+    let k0 = std::mem::size_of::<Bucket>();
+    let k1 = std::mem::size_of::<TTEntry>();
+    let k2 = std::mem::size_of::<RwLock<TTEntry>>();
+    // let k1 = std::mem::align_of::<TTEntry>();
+    // let k2 = std::mem::align_of::<RwLock<TTEntry>>();
+    // let k2 = std::mem::size_of::<SearchInfo>();
+    // let k2 = std::mem::size_of::<PackedSearchInfo>();
+    eprintln!("Bucket  = {:?}", k0);
+    eprintln!("k1 = {:?}", k1);
+    eprintln!("k2 = {:?}", k2);
 
     return;
 
@@ -2795,7 +2795,7 @@ fn main9() {
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
 
-    let (fen,correct) = &games_sts(40, 1); // fen, set
+    // let (fen,correct) = &games_sts(40, 1); // fen, set
 
     // let (fen,correct) = &games_sts(91, 11); // fen, set
 
@@ -2855,7 +2855,7 @@ fn main9() {
     // let t = 0.3;
 
     // let n = 35;
-    let n = 20;
+    let n = 22;
     // let n = 8;
     // let n = 9;
     // let n = 2;
@@ -2866,8 +2866,8 @@ fn main9() {
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(12);
-    // ex.cfg.num_threads = Some(6);
-    ex.cfg.num_threads = Some(1);
+    ex.cfg.num_threads = Some(6);
+    // ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
