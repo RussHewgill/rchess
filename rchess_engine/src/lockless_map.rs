@@ -84,17 +84,24 @@ impl TransTable {
 /// Calc index, clear, increment
 impl TransTable {
 
-    fn calc_index(&self, zb: Zobrist) -> usize {
-
-        // slotNb == 1024(powerOf2), blocksize== 4
-        // address = key & (1024-1) ^ 0, 1, 2, 3;
-
-        // return ((uint128)a * (uint128)b) >> 64;
-        // let key = (zb.0 as u128 * self.num_buckets as u128).overflowing_shr(64).0 as u64;
+    #[cfg(feature = "nope")]
+    /// https://en.wikipedia.org/wiki/Hash_function#Multiplicative_hashing
+    pub fn calc_index(&self, zb: Zobrist) -> usize {
         let key = (zb.0 as u128 * self.num_buckets as u128).overflowing_shr(64).0;
-
         key as usize
-        // unimplemented!()
+    }
+
+    #[cfg(feature = "nope")]
+    pub fn calc_index(&self, zb: Zobrist) -> usize {
+        let key = (zb.0 & HIGH_FOUR_BYTES) >> SHIFT_TO_LOWER;
+        let total = self.num_buckets as u64;
+        (key % total) as usize
+    }
+
+    // #[cfg(feature = "nope")]
+    pub fn calc_index(&self, zb: Zobrist) -> usize {
+        let key = zb.0 % self.num_buckets as u64;
+        key as usize
     }
 
     pub fn clear_table(&self) {
@@ -144,15 +151,6 @@ pub struct TTEntry {
     // entry:              Option<PackedSearchInfo>,
 }
 
-// impl Default for TTEntry {
-//     fn default() -> Self {
-//         Self {
-//             age: 0,
-//             entry: SearchInfo::empty(),
-//         }
-//     }
-// }
-
 // #[derive(Debug)]
 // // #[repr(align(64))]
 // pub struct Bucket {
@@ -160,7 +158,7 @@ pub struct TTEntry {
 // }
 
 #[derive(Debug)]
-// #[repr(align(64))]
+#[repr(align(64))]
 pub struct Bucket {
     // bucket: [RwLock<TTEntry>; ENTRIES_PER_BUCKET],
     bucket: RwLock<[TTEntry; ENTRIES_PER_BUCKET]>,
@@ -232,21 +230,21 @@ impl Bucket {
 
     pub fn find(&self, age: &AtomicU8) -> Option<(bool,SearchInfo)> {
 
-        // for (entry_idx,e) in self.bucket.read().iter().enumerate() {
-        //     if let Some(ee) = e.entry {
-        //         let age = age.load(std::sync::atomic::Ordering::Relaxed);
-        //         return Some((age == e.age, ee));
-        //     }
-        // }
-
-        if let Some(e) = self.bucket.read().iter()
-            .filter(|e| e.entry.is_some())
-            .max_by_key(|e| e.entry.unwrap().depth_searched) {
-
+        for (entry_idx,e) in self.bucket.read().iter().enumerate() {
+            if let Some(ee) = e.entry {
                 let age = age.load(std::sync::atomic::Ordering::Relaxed);
-                return Some((age == e.age, e.entry.unwrap()));
+                return Some((age == e.age, ee));
+            }
+        }
+        None
 
-            } else { None }
+        // if let Some(e) = self.bucket.read().iter()
+        //     .filter(|e| e.entry.is_some())
+        //     .max_by_key(|e| e.entry.unwrap().depth_searched) {
+        //         let age = age.load(std::sync::atomic::Ordering::Relaxed);
+        //         return Some((age == e.age, e.entry.unwrap()));
+        //     } else { None }
+
     }
 
 }

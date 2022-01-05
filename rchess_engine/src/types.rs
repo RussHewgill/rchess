@@ -132,6 +132,7 @@ pub enum Move {
 #[derive(Serialize,Deserialize,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
 pub struct PackedPieces(u8);
 
+/// New, get
 impl PackedPieces {
     pub fn new(pc1: Piece, pc2: Piece) -> Self {
         let first = pc1.index() as u8;
@@ -150,6 +151,15 @@ impl PackedPieces {
     pub fn second(&self) -> Piece {
         Piece::from_index((self.0 & 0b111000) >> 3)
     }
+
+}
+
+/// Specific getter aliases
+impl PackedPieces {
+
+    pub fn new_piece(&self) -> Piece { self.first() }
+
+    pub fn victim(&self) -> Piece { self.second() }
 
 }
 

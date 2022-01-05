@@ -406,13 +406,15 @@ impl Game {
             Move::Quiet      { from, to, pc } => {
                 let (side,pc) = self.get_at(from)?;
                 let mut out = self.clone();
-                out.move_piece_mut_unchecked(&ts, from, to, pc, side, calc_zb);
+                // out.move_piece_mut_unchecked(&ts, from, to, pc, side, calc_zb);
+                out.move_piece_mut_unchecked(&ts, mv, from, to, pc, side, calc_zb);
                 Some(out)
             },
             Move::PawnDouble { from, to } => {
                 let (side,pc) = self.get_at(from)?;
                 let mut out = self.clone();
-                out.move_piece_mut_unchecked(&ts, from, to, pc, side, calc_zb);
+                // out.move_piece_mut_unchecked(&ts, from, to, pc, side, calc_zb);
+                out.move_piece_mut_unchecked(&ts, mv, from, to, pc, side, calc_zb);
 
                 let ep = ts.between_exclusive(from, to).bitscan().into();
                 if calc_zb {
@@ -430,12 +432,17 @@ impl Game {
             // &Move::Capture    { from, to } => {
             // Move::Capture    { from, to, pc, victim } => {
             Move::Capture    { from, to, pcs } => {
-                let col = self.state.side_to_move;
+                let side = self.state.side_to_move;
                 let mut out = self.clone();
                 // out.delete_piece_mut_unchecked(&ts, to, victim, !col, calc_zb);
                 // out.move_piece_mut_unchecked(&ts, from, to, pc, col, calc_zb);
-                out.delete_piece_mut_unchecked(&ts, to, pcs.second(), !col, calc_zb);
-                out.move_piece_mut_unchecked(&ts, from, to, pcs.first(), col, calc_zb);
+
+                // out.delete_piece_mut_unchecked(&ts, to, pcs.second(), !side, calc_zb);
+                // out.move_piece_mut_unchecked(&ts, from, to, pcs.first(), side, calc_zb);
+
+                out.delete_piece_mut_unchecked(&ts, mv, to, pcs.second(), !side, calc_zb);
+                out.move_piece_mut_unchecked(&ts, mv, from, to, pcs.first(), side, calc_zb);
+
                 Some(out)
             },
             Move::EnPassant  { from, to, capture } => {
@@ -446,15 +453,18 @@ impl Game {
                 let mut out = self.clone();
                 // out.delete_piece_mut_unchecked(&ts, from, Pawn, col);
                 // out.insert_piece_mut_unchecked(&ts, to, Pawn, col);
-                out.delete_piece_mut_unchecked(&ts, capture, Pawn, !col, calc_zb);
-                out.move_piece_mut_unchecked(&ts, from, to, Pawn, col, calc_zb);
+                // out.delete_piece_mut_unchecked(&ts, capture, Pawn, !col, calc_zb);
+                // out.move_piece_mut_unchecked(&ts, from, to, Pawn, col, calc_zb);
+                out.delete_piece_mut_unchecked(&ts, mv, capture, Pawn, !col, calc_zb);
+                out.move_piece_mut_unchecked(&ts, mv, from, to, Pawn, col, calc_zb);
                 Some(out)
             },
             Move::Promotion  { from, to, new_piece } => {
                 let col = self.state.side_to_move;
                 // let (c0,pc0) = self.get_at(from)?;
                 let mut out = self.clone();
-                out.delete_piece_mut_unchecked(&ts, from, Pawn, col, calc_zb);
+                // out.delete_piece_mut_unchecked(&ts, from, Pawn, col, calc_zb);
+                out.delete_piece_mut_unchecked(&ts, mv, from, Pawn, col, calc_zb);
                 out.insert_piece_mut_unchecked(&ts, to, new_piece, col, calc_zb);
                 Some(out)
             },
@@ -464,10 +474,11 @@ impl Game {
                 // let (c0,pc0) = self.get_at(from)?;
                 // let (c1,pc1) = self.get_at(to)?;
                 let mut out = self.clone();
-                out.delete_piece_mut_unchecked(&ts, from, Pawn, col, calc_zb);
-                // out.delete_piece_mut_unchecked(&ts, to, victim, !col, calc_zb);
-                // out.insert_piece_mut_unchecked(&ts, to, new_piece, col, calc_zb);
-                out.delete_piece_mut_unchecked(&ts, to, pcs.second(), !col, calc_zb);
+                // out.delete_piece_mut_unchecked(&ts, from, Pawn, col, calc_zb);
+                // out.delete_piece_mut_unchecked(&ts, to, pcs.second(), !col, calc_zb);
+                // out.insert_piece_mut_unchecked(&ts, to, pcs.first(), col, calc_zb);
+                out.delete_piece_mut_unchecked(&ts, mv, from, Pawn, col, calc_zb);
+                out.delete_piece_mut_unchecked(&ts, mv, to, pcs.second(), !col, calc_zb);
                 out.insert_piece_mut_unchecked(&ts, to, pcs.first(), col, calc_zb);
                 Some(out)
             },
@@ -475,8 +486,10 @@ impl Game {
                 let ((from, to),(rook_from,rook_to)) = mv.castle_moves();
                 let mut out = self.clone();
                 let col = self.state.side_to_move;
-                out.delete_piece_mut_unchecked(&ts, from, King, col, calc_zb);
-                out.delete_piece_mut_unchecked(&ts, rook_from, Rook, col, calc_zb);
+                // out.delete_piece_mut_unchecked(&ts, from, King, col, calc_zb);
+                // out.delete_piece_mut_unchecked(&ts, rook_from, Rook, col, calc_zb);
+                out.delete_piece_mut_unchecked(&ts, mv, from, King, col, calc_zb);
+                out.delete_piece_mut_unchecked(&ts, mv, rook_from, Rook, col, calc_zb);
                 out.insert_pieces_mut_unchecked(&ts, &[(to,King,col),(rook_to,Rook,col)], true, calc_zb);
                 Some(out)
             },
@@ -572,6 +585,10 @@ impl Game {
 
                 match next.recalc_gameinfo_mut(&ts) {
                     // Err(win) => panic!("wot"),
+                    // Err(GameEnd::Error) => {
+                    //     // panic!("recalc_gameinfo_mut error: {:?}", e);
+                    //     panic!("recalc_gameinfo_mut");
+                    // },
                     Err(win) => Err(win),
                     Ok(_)    => {
                         // if self._check_history() {
@@ -676,11 +693,20 @@ impl Game {
     }
 
     /// XXX: possibly twice as slow as needed
+    // fn update_pins_mut(&mut self, ts: &Tables) -> GameResult<()> {
     fn update_pins_mut(&mut self, ts: &Tables) {
 
         let c0 = self.get(King, White);
         if c0.is_empty() {
-            panic!("No King? g = {:?}", self);
+
+            debug!("update_pins_mut, no King?: {:?}\n{:?}",
+                   self.to_fen(),
+                   self,
+            );
+
+            panic!();
+            // return Err(GameEnd::Error);
+            // panic!("No King? g = {:?}", self);
         }
         let c0 = c0.bitscan().into();
         let (bs_w, ps_b) = self.find_slider_blockers(&ts, c0, White);
@@ -688,7 +714,13 @@ impl Game {
 
         let c1 = self.get(King, Black);
         if c1.is_empty() {
-            panic!("No King? g = {:?}", self);
+            // panic!("No King? g = {:?}", self);
+            debug!("update_pins_mut, no King?: {:?}\n{:?}",
+                   self.to_fen(),
+                   self,
+            );
+            // return Err(GameEnd::Error);
+            panic!();
         }
         let c1 = c1.bitscan().into();
         let (bs_b, ps_w) = self.find_slider_blockers(&ts, c1, Black);
@@ -700,6 +732,7 @@ impl Game {
         // self.state.pinners[White] = ps_w;
         // self.state.pinners[Black] = ps_b;
 
+        // Ok(())
     }
 
     fn update_checkers_mut(&mut self, ts: &Tables) {
@@ -786,18 +819,22 @@ impl Game {
 impl Game {
 
     pub fn move_piece_mut_unchecked<T: Into<Coord>>(
-        &mut self, ts: &Tables, from: T, to: T, pc: Piece, side: Color, calc_zb: bool) {
-        self._delete_piece_mut_unchecked(&ts, from, pc, side, false, calc_zb);
+        // &mut self, ts: &Tables, from: T, to: T, pc: Piece, side: Color, calc_zb: bool) {
+        &mut self, ts: &Tables, mv: Move, from: T, to: T, pc: Piece, side: Color, calc_zb: bool) {
+        // self._delete_piece_mut_unchecked(&ts, from, pc, side, false, calc_zb);
+        self._delete_piece_mut_unchecked(&ts, mv, from, pc, side, false, calc_zb);
         self._insert_piece_mut_unchecked(&ts, to, pc, side, false, calc_zb);
     }
 
     pub fn delete_piece_mut_unchecked<T: Into<Coord>>(
-        &mut self, ts: &Tables, at: T, pc: Piece, side: Color, calc_zb: bool) {
-        self._delete_piece_mut_unchecked(&ts, at, pc, side, true, calc_zb);
+        // &mut self, ts: &Tables, at: T, pc: Piece, side: Color, calc_zb: bool) {
+        &mut self, ts: &Tables, mv: Move, at: T, pc: Piece, side: Color, calc_zb: bool) {
+        self._delete_piece_mut_unchecked(&ts, mv, at, pc, side, true, calc_zb);
     }
 
     fn _delete_piece_mut_unchecked<T: Into<Coord>>(
-        &mut self, ts: &Tables, at: T, pc: Piece, side: Color, mat: bool, calc_zb: bool) {
+        // &mut self, ts: &Tables, at: T, pc: Piece, side: Color, mat: bool, calc_zb: bool) {
+        &mut self, ts: &Tables, mv: Move, at: T, pc: Piece, side: Color, mat: bool, calc_zb: bool) {
         let at = at.into();
 
         let mut bc = self.get_color_mut(side);
@@ -809,8 +846,10 @@ impl Game {
         if mat && pc != King {
 
             if !(self.state.material.buf[side][pc.index()] > 0) {
-                debug!("wat: \n{:?}\n{:?}\n{:?}",
-                       self.to_fen(), self, (Coord::from(at), pc, side));
+                debug!("wat: \n{:?}\n{:?}\n{:?}\n{:?}\n{:?}",
+                       self.to_fen(), self,
+                       (Coord::from(at), pc, side, mat),
+                       mv, self.state.material);
             }
 
             assert!(self.state.material.buf[side][pc.index()] > 0);
@@ -1623,7 +1662,11 @@ impl std::fmt::Debug for Material {
 impl std::fmt::Debug for Game {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 
-        f.write_str(&format!("{:?} to move\n", self.state.side_to_move))?;
+        if self.state.checkers.is_empty() {
+            f.write_str(&format!("{:?} to move\n", self.state.side_to_move))?;
+        } else {
+            f.write_str(&format!("{:?} to move, in check\n", self.state.side_to_move))?;
+        }
 
         for y0 in 0..8 {
             let y = 7-y0;

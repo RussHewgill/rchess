@@ -336,7 +336,14 @@ fn print_info(ex: &Explorer, (mv,res): (Move, ABResult), stats: SearchStats) {
 
 fn format_move(mv: Move) -> String {
     match mv {
-        m@Move::Promotion { new_piece, .. } | m@Move::PromotionCapture { new_piece, .. } => {
+        m@Move::Promotion { .. } | m@Move::PromotionCapture { .. } => {
+
+            let new_piece = match mv {
+                Move::Promotion { new_piece, .. }  => new_piece,
+                Move::PromotionCapture { pcs, .. } => pcs.first(),
+                _                                  => unimplemented!(),
+            };
+
             let c = match new_piece {
                 Queen  => 'q',
                 Knight => 'n',

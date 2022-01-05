@@ -2795,9 +2795,11 @@ fn main9() {
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
 
-    // let (fen,correct) = &games_sts(3, 1); // fen, set
+    let (fen,correct) = &games_sts(40, 1); // fen, set
 
     // let (fen,correct) = &games_sts(91, 11); // fen, set
+
+    // let fen = "8/5k1p/4r3/p3B1p1/Pp1p4/1r1P1BPP/2Q5/5K2 b - -"; // XXX: ???
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();

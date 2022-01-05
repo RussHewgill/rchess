@@ -1185,25 +1185,24 @@ mod pieces {
 
             match gen {
                 MoveGenType::Captures => {
-                    for sq in pieces.into_iter() {
-                        let moves   = self._gen_sliding_single(pc, sq.into(), None);
+                    for from in pieces.into_iter() {
+                        let moves   = self._gen_sliding_single(pc, from, None);
                         let mut captures = moves & self.game.get_color(!self.side);
                         if let Some(tgt) = target { captures &= tgt; }
                         captures.into_iter().for_each(|to| {
                             let (_,victim) = self.game.get_at(to).unwrap();
-                            // let mv = Move::Capture { from: sq, to, pc, victim };
-                            let mv = Move::new_capture(sq, to, pc, victim);
+                            let mv = Move::new_capture(from, to, pc, victim);
                             self.buf.push(mv);
                         });
                     }
                 },
                 MoveGenType::Quiets => {
-                    for sq in pieces.into_iter() {
-                        let moves   = self._gen_sliding_single(pc, sq.into(), None);
+                    for from in pieces.into_iter() {
+                        let moves   = self._gen_sliding_single(pc, from, None);
                         let mut quiets  = moves & self.game.all_empty();
                         if let Some(tgt) = target { quiets &= tgt; }
                         quiets.into_iter().for_each(|sq2| {
-                            let mv = Move::Quiet { from: sq, to: sq2, pc };
+                            let mv = Move::Quiet { from, to: sq2, pc };
                             self.buf.push(mv);
                         });
                     }
@@ -1357,7 +1356,10 @@ mod pieces {
                     // });
 
                 },
-                MoveGenType::QuietChecks => unimplemented!(),
+                // MoveGenType::QuietChecks => unimplemented!(),
+                MoveGenType::QuietChecks => {
+                    // XXX: King can't give check
+                },
             }
         }
     }
