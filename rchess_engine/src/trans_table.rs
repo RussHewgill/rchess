@@ -130,7 +130,7 @@ pub struct SearchInfo {
     pub depth_searched:     Depth,           // 1
     pub node_type:          Node,            // 1
     pub score:              Score,           // 4, 2 if i16
-    // pub eval:               Option<Score>,   // 4, 8?
+    pub eval:               Option<Score>,   // 4, 8?
     // pub eval:               Score,   // 4, 8?
 }
 
@@ -205,7 +205,7 @@ impl SearchInfo {
             depth_searched: 0,
             node_type:      Node::Empty,
             score:          0,
-            // eval:           None,
+            eval:           None,
             // eval:           0,
         }
     }
@@ -238,7 +238,7 @@ impl SearchInfo {
             depth_searched,
             node_type,
             score,
-            // eval,
+            eval,
             // eval: 0,
         }
     }

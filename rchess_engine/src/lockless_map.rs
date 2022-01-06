@@ -6,8 +6,9 @@ use crate::hashing::Zobrist;
 use derive_new::new;
 use parking_lot::RwLock;
 
-use aligned::{Aligned,A64};
+use aligned::{Aligned,A64,A32};
 
+use std::cell::UnsafeCell;
 use std::sync::atomic::{AtomicUsize, AtomicU8};
 
 /// https://www.chess2u.com/t1820-setting-correct-hashtable-size?highlight=hash+size
@@ -32,12 +33,18 @@ const SHIFT_TO_LOWER: u64 = 32;
 
 #[derive(Debug)]
 pub struct TransTable {
-    // buf:           Vec<Bucket>,
-    buf:           Aligned<A64,Vec<Bucket>>,
+    buf:           Vec<Bucket>,
+    // buf:           Aligned<A64,Vec<Bucket>>,
+    // buf:           Aligned<A32,Vec<Bucket>>,
+    // buf:           UnsafeCell<Aligned<A64,Vec<Bucket>>>,
+    // buf:           UnsafeCell<Vec<Bucket>>,
     num_buckets:   usize,
     used_entries:  AtomicUsize,
     cycles:        AtomicU8,
 }
+
+// unsafe impl Send for TransTable {}
+// unsafe impl Sync for TransTable {}
 
 /// New, Insert, Probe
 impl TransTable {
@@ -54,7 +61,8 @@ impl TransTable {
             buf.push(Bucket::new());
         }
 
-        let buf = Aligned(buf);
+        // let buf = Aligned(buf);
+        // let buf = UnsafeCell::new(buf);
 
         Self {
             buf,
@@ -68,11 +76,17 @@ impl TransTable {
         let (idx,ver) = self.calc_index(zb);
 
         if let Some(bucket) = self.buf.get(idx) {
-            // bucket.store(si, &self.used_entries, &self.cycles);
             bucket.store(ver, si, &self.used_entries, &self.cycles);
         } else {
             panic!("TT insert, bad bucket idx: {:?}, zb = {:?}", idx, zb);
         }
+
+        // if let Some(bucket) = unsafe { (*self.buf.get()).get_mut(idx) } {
+        //     bucket.store(ver, si, &self.used_entries, &self.cycles);
+        // } else {
+        //     panic!("TT insert, bad bucket idx: {:?}, zb = {:?}", idx, zb);
+        // }
+
     }
 
     pub fn probe(&self, zb: Zobrist) -> Option<(bool,SearchInfo)> {
@@ -83,6 +97,13 @@ impl TransTable {
         } else {
             panic!("TT probe, bad bucket idx: {:?}, zb = {:?}", idx, zb);
         }
+
+        // if let Some(bucket) = unsafe { (*self.buf.get()).get(idx) } {
+        //     bucket.find(ver, &self.cycles)
+        // } else {
+        //     panic!("TT probe, bad bucket idx: {:?}, zb = {:?}", idx, zb);
+        // }
+
     }
 
 }
@@ -119,9 +140,17 @@ impl TransTable {
 impl TransTable {
 
     pub fn clear_table(&self) {
+
         for bucket in self.buf.iter() {
             bucket.clear();
         }
+
+        // unsafe {
+        //     for bucket in (*self.buf.get()).iter_mut() {
+        //         bucket.clear();
+        //     }
+        // }
+
         self.used_entries.store(0, std::sync::atomic::Ordering::SeqCst);
         self.cycles.store(0, std::sync::atomic::Ordering::SeqCst);
     }
@@ -152,6 +181,7 @@ impl TransTable {
         unsafe {
             // let ptr = (*self.vec.get()).as_ptr().add(idx);
             let ptr = self.buf.as_ptr().add(idx);
+            // let ptr = (*self.buf.get()).as_ptr().add(idx);
             crate::prefetch::prefetch_write(ptr);
         }
     }
@@ -171,10 +201,14 @@ pub struct TTEntry {
 
 #[derive(Debug)]
 // #[repr(align(64))]
-#[repr(align(32))] // XXX: this is faster than 64 for some reason ??
+// #[repr(align(32))] // XXX: this is faster than 64 for some reason ??
 pub struct Bucket {
     // bucket: [RwLock<TTEntry>; ENTRIES_PER_BUCKET],
+
     bucket: RwLock<[TTEntry; ENTRIES_PER_BUCKET]>,
+    // bucket: RwLock<Aligned<A64,[TTEntry; ENTRIES_PER_BUCKET]>>, // XXX: much slower
+
+    // bucket: [TTEntry; ENTRIES_PER_BUCKET],
 }
 
 /// New, clear
@@ -183,12 +217,14 @@ impl Bucket {
         Self {
             // bucket: array_init::array_init(|_| RwLock::new(TTEntry::default())),
             bucket: RwLock::new(array_init::array_init(|_| TTEntry::default())),
+            // bucket: array_init::array_init(|_| TTEntry::default()),
         }
     }
 
     pub fn clear(&self) {
 
         for e in self.bucket.write().iter_mut() {
+        // for e in self.bucket.iter_mut() {
             *e = TTEntry::default();
         }
 
@@ -217,6 +253,7 @@ impl Bucket {
         // }
 
         for (entry_idx,e) in self.bucket.read().iter().enumerate() {
+        // for (entry_idx,e) in self.bucket.iter().enumerate() {
             if let Some((ver,e_si)) = e.entry {
                 if e_si.depth_searched < si.depth_searched {
                     idx_lowest_depth = Some(entry_idx);
@@ -239,11 +276,16 @@ impl Bucket {
         let mut w = w.get_mut(idx).unwrap();
         *w = TTEntry::new(age, Some((ver,si)));
 
+        // self.bucket[idx] = TTEntry::new(age, Some((ver,si)));
+
+        // unimplemented!()
+
     }
 
     pub fn find(&self, ver: u32, age: &AtomicU8) -> Option<(bool,SearchInfo)> {
 
         for (entry_idx,e) in self.bucket.read().iter().enumerate() {
+        // for (entry_idx,e) in self.bucket.iter().enumerate() {
             if let Some((ver2,ee)) = e.entry {
                 if ver2 == ver {
                     let age = age.load(std::sync::atomic::Ordering::Relaxed);
