@@ -2845,7 +2845,7 @@ fn main9() {
     // let t = 0.3;
 
     // let n = 35;
-    let n = 17;
+    let n = 22;
     // let n = 8;
     // let n = 9;
     // let n = 2;
@@ -2896,25 +2896,24 @@ fn main9() {
     // }
 
 
-    const N: usize = 5;
-    let mut times = vec![];
-    for n in 0..N {
-        let mut ex2 = ex.clone();
-        ex2.clear_tt();
-        ex2.update_game(g.clone());
-        let t0 = std::time::Instant::now();
-        let (res,moves,stats0) = ex2.lazy_smp_2(&ts);
-        let t1 = t0.elapsed();
-        let t2 = t1.as_secs_f64();
-        times.push(t2);
-        let best0 = res.get_result().unwrap();
-        eprintln!("run {} = {:.3}", n, t2);
-    }
-
-    let avg = times.iter().sum::<f64>() / N as f64;
-    eprintln!("avg = {:.3}", avg);
-
-    return;
+    // // XXX: avg of 5
+    // const N: usize = 5;
+    // let mut times = vec![];
+    // for n in 0..N {
+    //     let mut ex2 = ex.clone();
+    //     ex2.clear_tt();
+    //     ex2.update_game(g.clone());
+    //     let t0 = std::time::Instant::now();
+    //     let (res,moves,stats0) = ex2.lazy_smp_2(&ts);
+    //     let t1 = t0.elapsed();
+    //     let t2 = t1.as_secs_f64();
+    //     times.push(t2);
+    //     let best0 = res.get_result().unwrap();
+    //     eprintln!("run {} = {:.3}", n, t2);
+    // }
+    // let avg = times.iter().sum::<f64>() / N as f64;
+    // eprintln!("avg = {:.3}", avg);
+    // return;
 
     let t0 = std::time::Instant::now();
     ex.update_game(g.clone());
@@ -4215,7 +4214,7 @@ fn main2() {
 #[allow(unreachable_code)]
 fn init_logger() {
 
-    return;
+    // return;
 
     let cfg = ConfigBuilder::new()
         .set_time_level(LevelFilter::Off)

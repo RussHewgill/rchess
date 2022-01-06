@@ -467,21 +467,31 @@ impl ExHelper {
                 st.in_check    = true;
                 st.static_eval = None;
             });
-            return None;
+            None
         } else if let Some(si) = msi {
 
-            // if si.score > 
+            let mut eval = if let Some(eval) = si.eval { eval } else {
+                self.eval_nn_or_hce(ts, g, ply)
+            };
 
-            if si.depth_searched >= depth {
-                stack.with(ply, |st| st.static_eval = Some(si.score));
-                return Some(si.score);
+            let bb = if si.score > eval { Node::Lower } else { Node::Upper };
+            if si.node_type == bb {
+                eval = si.score;
             }
 
-        }
+            // if si.depth_searched >= depth {
+            //     stack.with(ply, |st| st.static_eval = Some(eval));
+            //     return Some(eval);
+            // }
 
-        let eval = self.eval_nn_or_hce(ts, g, ply);
-        stack.with(ply, |st| st.static_eval = Some(eval));
-        Some(eval)
+            stack.with(ply, |st| st.static_eval = Some(eval));
+
+            Some(eval)
+        } else {
+            let eval = self.eval_nn_or_hce(ts, g, ply);
+            stack.with(ply, |st| st.static_eval = Some(eval));
+            Some(eval)
+        }
 
     }
 
@@ -717,42 +727,10 @@ impl ExHelper {
         /// when in check, skip early pruning
         let in_check = g.state.checkers.is_not_empty();
 
-        // /// Static eval of position
-        // let static_eval = if in_check {
-        //     /// In check, no static eval
-        //     stack.with(ply, |st| st.in_check = true);
-        //     None
-        // } else if let Some(si) = msi {
-        //     // let eval = 
-        // // } else if msi.map(|si| {
-        // //     si.depth_searched >= depth
-        // // }).unwrap_or(false) {
-        // //     let score = msi.unwrap().score;
-        // // // } else if let Some(score) = msi.map(|si| si.score) {
-        // //     /// Get search score from TT
-        // //     stack.with(ply, |st| st.static_eval = Some(score));
-        // //     Some(score)
-        //     unimplemented!()
-        // } else if let Some(nnue) = &self.nnue {
-        //     /// NNUE Eval, cheap-ish
-        //     /// TODO: bench vs evaluate
-        //     let mut nn = nnue.borrow_mut();
-        //     let score = nn.evaluate(&g, true);
-        //     stack.with(ply, |st| st.static_eval = Some(score));
-        //     Some(score)
-        // } else {
-        //     let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
-        //     let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
-        //     stack.with(ply, |st| st.static_eval = Some(score));
-        //     Some(score)
-        // };
-        // stack.with(ply, |st| st.static_eval = static_eval);
-
-        let mut eval = VALUE_INVALID;
-        // let static_eval = self.get_static_eval(g, ply, stack, &mut eval, msi);
+        /// Static eval, possibly from TT
         let static_eval = self.get_static_eval(ts, g, (depth,ply), stack, msi);
 
-        let mut improving   = !in_check;
+        let mut improving = !in_check;
         if let Some(eval) = static_eval {
             if let Some(prev1) = stack.get(ply - 2).map(|st| st.static_eval).flatten() {
                 improving = eval > prev1;
