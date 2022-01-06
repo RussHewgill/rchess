@@ -51,7 +51,7 @@ impl Default for SParams {
         Self {
             max_ply:                 220,
 
-            value_checkmate:         32000,
+            value_checkmate:         100_000_000,
             value_stalemate:         0,
 
             lmr_min_moves:           2,
@@ -88,19 +88,19 @@ mod const_params {
     /// -2147482414
     pub const VALUE_INVALID: Score   = Score::MIN + 1234;
 
-    // pub const TB_WIN_VALUE: Score    = 90_000_000;
+    pub const CHECKMATE_VALUE: Score = 100_000_000;
+    pub const TB_WIN_VALUE: Score    = 90_000_000;
     // pub const KNOWN_WIN_VALUE: Score = 80_000_000;
 
     // pub const TB_WIN_MAX: Score = TB_WIN_VALUE 
 
-    // pub const CHECKMATE_VALUE: Score = 100_000_000;
 
     // pub const STALEMATE_VALUE: Score = 20_000_000;
     // pub const DRAW_VALUE: Score = 20_000_000;
     pub const STALEMATE_VALUE: Score = 0;
     pub const DRAW_VALUE: Score = 0;
 
-    pub const CHECKMATE_VALUE: Score = 32000;
+    // pub const CHECKMATE_VALUE: Score = 32000;
     // pub const STALEMATE_VALUE: Score = 31000;
 
     // pub const TB_WIN_VALUE: Score    = 90_000_000;

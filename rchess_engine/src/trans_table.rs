@@ -17,6 +17,7 @@ use std::sync::Arc;
 use std::hash::Hash;
 
 use serde::{Serialize,Deserialize};
+use num_derive::FromPrimitive;
 
 use evmap::{ReadHandle,ReadHandleFactory,WriteHandle};
 use evmap_derive::ShallowCopy;
@@ -111,6 +112,17 @@ pub enum SICanUse {
     UseOrdering,
 }
 
+// #[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize)]
+// pub struct SearchInfo {
+//     pub best_move:          Move,            // 4
+//     // pub best_move:          (u8,u8),
+//     pub depth_searched:     Depth,           // 1
+//     pub node_type:          Node,            // 1
+//     pub score:              Score,           // 4, 2 if i16
+//     // pub eval:               Option<Score>,   // 4, 8?
+//     // pub eval:               Score,   // 4, 8?
+// }
+
 #[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize)]
 pub struct SearchInfo {
     pub best_move:          Move,            // 4
@@ -120,6 +132,48 @@ pub struct SearchInfo {
     pub score:              Score,           // 4, 2 if i16
     // pub eval:               Option<Score>,   // 4, 8?
     // pub eval:               Score,   // 4, 8?
+}
+
+// use num_traits::FromPrimitive;
+
+#[derive(Debug,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize)]
+pub struct SearchInfo2 {
+    // pub best_move:          Move,            // 4
+    // pub depth_searched:     Depth,           // 1
+    // pub node_type:          Node,            // 1
+
+    pub packed_node_pv:         u8,
+
+    // pub score:              Score,           // 4, 2 if i16
+}
+
+impl SearchInfo2 {
+
+    const MASK_NODE_TYPE: u8 = 0b11;
+    const MASK_PV: u8        = 0b1 << 2;
+
+    pub fn set_node_type(&mut self, node_type: Node) {
+        self.packed_node_pv &= !Self::MASK_NODE_TYPE;
+        self.packed_node_pv |= node_type as u8;
+    }
+
+    pub fn node_type(&self) -> Node {
+        let b = self.packed_node_pv & Self::MASK_NODE_TYPE;
+        num_traits::FromPrimitive::from_u8(b).unwrap()
+    }
+
+    pub fn set_pv(&mut self, pv: bool) {
+        if pv {
+            self.packed_node_pv |= Self::MASK_PV;
+        } else {
+            self.packed_node_pv &= !Self::MASK_PV;
+        }
+    }
+
+    pub fn is_pv(&self) -> bool {
+        let b = self.packed_node_pv & Self::MASK_PV;
+        b == Self::MASK_PV
+    }
 }
 
 #[derive(Debug,Clone,Copy)]
@@ -167,7 +221,7 @@ impl SearchInfo {
         depth_searched:     Depth,
         node_type:          Node,
         score:              Score,
-        // eval:               Option<Score>,
+        eval:               Option<Score>,
     ) -> Self {
 
         // let packed_move = PackedMove::convert_from_move(best_move).pack().unwrap();
@@ -205,22 +259,36 @@ impl PartialOrd for SearchInfo {
     }
 }
 
-/// PV,  // Exact
-/// All, // UpperBound, Fail low, evaluation never exceeded alpha
-/// Cut, // LowerBound, Fail high, evaluation caused cutoff
-/// Quiet,
-/// // Root,
-// #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
-#[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize)]
+// /// PV,  // Exact
+// /// All, // UpperBound, Fail low, evaluation never exceeded alpha
+// /// Cut, // LowerBound, Fail high, evaluation caused cutoff
+// /// Quiet,
+// /// // Root,
+// // #[derive(Debug,Eq,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
+// #[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize)]
+// pub enum Node {
+//     PV,
+//     All, // UpperBound
+//     Cut, // LowerBound
+//     // Quiet, // XXX: ?
+//     // Root, // XXX: ??
+//     // NodeAll(Score), // Score = upper bound
+//     // NodeCut(Score), // Score = lower bound
+//     Empty,
+// }
+
+/// Exact = PV
+/// UpperBound = All Node, Fail low, evaluation never exceeded alpha
+/// LowerBound = Cut Node, Fail high, evaluation caused cutoff
+#[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize,FromPrimitive)]
 pub enum Node {
-    PV,
-    All, // UpperBound
-    Cut, // LowerBound
-    // Quiet, // XXX: ?
-    // Root, // XXX: ??
-    // NodeAll(Score), // Score = upper bound
-    // NodeCut(Score), // Score = lower bound
     Empty,
+    // Exact,
+    // Upper,
+    // Lower,
+    Exact,
+    Upper,
+    Lower,
 }
 
 // impl MvTable {

@@ -230,11 +230,11 @@ mod ss {
             let tt_r2 = tt_r.read().unwrap();
 
             let n_pv = tt_r2.iter().filter(|(_,sis)| {
-                sis.iter().next().unwrap().node_type == Node::PV});
+                sis.iter().next().unwrap().node_type == Node::Exact});
             let n_all = tt_r2.iter().filter(|(_,sis)| {
-                sis.iter().next().unwrap().node_type == Node::All});
+                sis.iter().next().unwrap().node_type == Node::Upper});
             let n_cut = tt_r2.iter().filter(|(_,sis)| {
-                sis.iter().next().unwrap().node_type == Node::Cut});
+                sis.iter().next().unwrap().node_type == Node::Lower});
             // let n_root = tt_r2.iter().filter(|(_,sis)| {
             //     sis.iter().next().unwrap().node_type == Node::Root});
 

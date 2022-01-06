@@ -290,9 +290,7 @@ fn main_tt() {
     let k0 = std::mem::size_of::<Bucket>();
     let k1 = std::mem::size_of::<TTEntry>();
     let k2 = std::mem::size_of::<RwLock<TTEntry>>();
-    // let k1 = std::mem::align_of::<TTEntry>();
-    // let k2 = std::mem::align_of::<RwLock<TTEntry>>();
-    // let k2 = std::mem::size_of::<SearchInfo>();
+    let k2 = std::mem::size_of::<SearchInfo>();
     // let k2 = std::mem::size_of::<PackedSearchInfo>();
     eprintln!("Bucket  = {:?}", k0);
     eprintln!("k1 = {:?}", k1);
@@ -2784,7 +2782,7 @@ fn main9() {
 
     // let fen = "7k/6pp/8/8/8/8/8/RK6 w - - 0 1"; // #1, Qt R a1a8
 
-    // let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
+    let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
 
     // let fen = "8/8/p1p5/1p5p/1P5p/8/PPP2K1p/4R1rk w - - 0 1";    // Qt R e1f1
     // let fen = "1q1k4/2Rr4/8/2Q3K1/8/8/8/8 w - - 0 1";            // Kh6
@@ -2820,16 +2818,8 @@ fn main9() {
 
     // let mv = Move::Capture { from: "H5".into(), to: "G4".into(), pc: Pawn, victim: Pawn };
 
-    // use rchess_engine_lib::lockless_map::*;
-    // use parking_lot::RwLock;
-    // // let k0 = std::mem::size_of::<RwLock<()>>();
-    // let k0 = std::mem::size_of::<Bucket>();
-    // let k1 = std::mem::size_of::<TTEntry>();
-    // let k2 = std::mem::size_of::<RwLock<TTEntry>>();
-    // // let k2 = std::mem::size_of::<SearchInfo>();
-    // eprintln!("Bucket  = {:?}", k0);
-    // eprintln!("k1 = {:?}", k1);
-    // eprintln!("k2 = {:?}", k2);
+    // let k0 = std::mem::size_of::<SearchInfo>();
+    // eprintln!("k0 = {:?}", k0);
     // return;
 
     // let fen = "8/6kp/r7/p7/1n1R1P2/7P/6PK/8 b - - 0 46";
@@ -2855,8 +2845,8 @@ fn main9() {
     // let t = 0.3;
 
     // let n = 35;
-    // let n = 22;
-    let n = 8;
+    let n = 16;
+    // let n = 8;
     // let n = 9;
     // let n = 2;
 
@@ -2866,8 +2856,8 @@ fn main9() {
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(12);
-    ex.cfg.num_threads = Some(6);
-    // ex.cfg.num_threads = Some(1);
+    // ex.cfg.num_threads = Some(6);
+    ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
@@ -2904,6 +2894,27 @@ fn main9() {
     // for (zb,mv) in ex.move_history.iter() {
     //     // eprintln!("mv = {:?}", mv);
     // }
+
+
+    const N: usize = 5;
+    let mut times = vec![];
+    for n in 0..N {
+        let mut ex2 = ex.clone();
+        ex2.clear_tt();
+        ex2.update_game(g.clone());
+        let t0 = std::time::Instant::now();
+        let (res,moves,stats0) = ex2.lazy_smp_2(&ts);
+        let t1 = t0.elapsed();
+        let t2 = t1.as_secs_f64();
+        times.push(t2);
+        let best0 = res.get_result().unwrap();
+        eprintln!("run {} = {:.3}", n, t2);
+    }
+
+    let avg = times.iter().sum::<f64>() / N as f64;
+    eprintln!("avg = {:.3}", avg);
+
+    return;
 
     let t0 = std::time::Instant::now();
     ex.update_game(g.clone());
@@ -4201,7 +4212,11 @@ fn main2() {
     // main2()
 }
 
+#[allow(unreachable_code)]
 fn init_logger() {
+
+    return;
+
     let cfg = ConfigBuilder::new()
         .set_time_level(LevelFilter::Off)
         .set_time_format_str("%H-%M-%S %.6f")

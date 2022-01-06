@@ -6,6 +6,8 @@ use crate::hashing::Zobrist;
 use derive_new::new;
 use parking_lot::RwLock;
 
+use aligned::{Aligned,A64};
+
 use std::sync::atomic::{AtomicUsize, AtomicU8};
 
 /// https://www.chess2u.com/t1820-setting-correct-hashtable-size?highlight=hash+size
@@ -30,7 +32,8 @@ const SHIFT_TO_LOWER: u64 = 32;
 
 #[derive(Debug)]
 pub struct TransTable {
-    buf:           Vec<Bucket>,
+    // buf:           Vec<Bucket>,
+    buf:           Aligned<A64,Vec<Bucket>>,
     num_buckets:   usize,
     used_entries:  AtomicUsize,
     cycles:        AtomicU8,
@@ -50,6 +53,8 @@ impl TransTable {
         for _ in 0..num_buckets {
             buf.push(Bucket::new());
         }
+
+        let buf = Aligned(buf);
 
         Self {
             buf,
@@ -165,7 +170,8 @@ pub struct TTEntry {
 // }
 
 #[derive(Debug)]
-#[repr(align(64))]
+// #[repr(align(64))]
+#[repr(align(32))] // XXX: this is faster than 64 for some reason ??
 pub struct Bucket {
     // bucket: [RwLock<TTEntry>; ENTRIES_PER_BUCKET],
     bucket: RwLock<[TTEntry; ENTRIES_PER_BUCKET]>,

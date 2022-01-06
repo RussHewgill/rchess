@@ -450,6 +450,64 @@ impl ExHelper {
 
 }
 
+/// Get eval
+impl ExHelper {
+
+    pub fn get_static_eval(
+        &self,
+        ts:           &'static Tables,
+        g:            &Game,
+        (depth,ply):  (Depth,Depth),
+        mut stack:    &mut ABStack,
+        msi:          Option<SearchInfo>,
+    ) -> Option<Score> {
+
+        if g.in_check() {
+            stack.with(ply, |st| {
+                st.in_check    = true;
+                st.static_eval = None;
+            });
+            return None;
+        } else if let Some(si) = msi {
+
+            // if si.score > 
+
+            if si.depth_searched >= depth {
+                stack.with(ply, |st| st.static_eval = Some(si.score));
+                return Some(si.score);
+            }
+
+        }
+
+        let eval = self.eval_nn_or_hce(ts, g, ply);
+        stack.with(ply, |st| st.static_eval = Some(eval));
+        Some(eval)
+
+    }
+
+    pub fn eval_nn_or_hce(
+        &self,
+        ts:           &'static Tables,
+        g:            &Game,
+        ply:          Depth,
+    ) -> Score {
+
+        if let Some(nnue) = &self.nnue {
+            /// NNUE Eval, cheap-ish
+            /// TODO: bench vs evaluate
+            let mut nn = nnue.borrow_mut();
+            let score = nn.evaluate(&g, true);
+            score
+        } else {
+            let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
+            let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
+            score
+        }
+
+    }
+
+}
+
 /// Negamax AB Refactor
 impl ExHelper {
     #[allow(unused_doc_comments,unused_labels)]
@@ -481,7 +539,7 @@ impl ExHelper {
 
         let is_root_node: bool = NODE_TYPE == Root;
 
-        let mut current_node_type = Node::All;
+        let mut current_node_type = Node::Upper;
 
         /// Misc assertions
         #[cfg(feature = "pvs_search")]
@@ -586,9 +644,9 @@ impl ExHelper {
 
             if si.depth_searched >= depth && (depth == 0 || !is_pv_node) {
 
-                if si.node_type == Node::PV
-                    || (si.node_type == Node::Cut && si.score >= beta)
-                    || (si.node_type == Node::All && si.score <= alpha)
+                if si.node_type == Node::Exact
+                    || (si.node_type == Node::Lower && si.score >= beta)
+                    || (si.node_type == Node::Upper && si.score <= alpha)
                 {
                     return ABResults::ABSingle(ABResult::new_single(g.last_move.unwrap(), si.score));
                 }
@@ -600,6 +658,9 @@ impl ExHelper {
         /// Step 5. Syzygy Probe
         #[cfg(feature = "syzygy")]
         if let Some(tb) = &self.syzygy {
+
+            debug!("// TODO: syzygy probe handling");
+
             match tb.probe_wdl(ts, g) {
                 Ok(Wdl::Win) => {
                     // trace!("found WDL win: {:?}", Wdl::Win);
@@ -613,6 +674,24 @@ impl ExHelper {
                             // XXX: wrong, but matches with other wrong mate in x count
                             let score = score + 1;
                             // return ABResults::ABSingle(ABResult::new_single(mv, score));
+
+                            let draw_score = 0;
+
+                            let bound = if wdl < -draw_score {
+                                Node::Upper
+                            } else if wdl > draw_score {
+                                Node::Lower
+                            } else {
+                                Node::Exact
+                            };
+
+                            self.tt_insert_deepest(g.zobrist, SearchInfo::new(
+                                mv,
+                                depth + 6, // XXX: stockfish does + 6, not sure why
+                                bound,
+                                score,
+                            ));
+
                             return ABResults::ABSyzygy(ABResult::new_single(mv, score));
                             // return ABResults::ABSyzygy(ABResult::new_single(mv, score));
                         },
@@ -638,31 +717,40 @@ impl ExHelper {
         /// when in check, skip early pruning
         let in_check = g.state.checkers.is_not_empty();
 
-        /// Static eval of position
-        let static_eval = if in_check {
-            /// In check, no static eval
-            stack.with(ply, |st| st.in_check = true);
-            None
-        } else if msi.map(|si| si.depth_searched >= depth).unwrap_or(false) {
-            let score = msi.unwrap().score;
-        // } else if let Some(score) = msi.map(|si| si.score) {
-            /// Get search score from TT
-            stack.with(ply, |st| st.static_eval = Some(score));
-            Some(score)
-        } else if let Some(nnue) = &self.nnue {
-            /// NNUE Eval, cheap-ish
-            /// TODO: bench vs evaluate
-            let mut nn = nnue.borrow_mut();
-            let score = nn.evaluate(&g, true);
-            stack.with(ply, |st| st.static_eval = Some(score));
-            Some(score)
-        } else {
-            let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
-            let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
-            stack.with(ply, |st| st.static_eval = Some(score));
-            Some(score)
-        };
-        stack.with(ply, |st| st.static_eval = static_eval);
+        // /// Static eval of position
+        // let static_eval = if in_check {
+        //     /// In check, no static eval
+        //     stack.with(ply, |st| st.in_check = true);
+        //     None
+        // } else if let Some(si) = msi {
+        //     // let eval = 
+        // // } else if msi.map(|si| {
+        // //     si.depth_searched >= depth
+        // // }).unwrap_or(false) {
+        // //     let score = msi.unwrap().score;
+        // // // } else if let Some(score) = msi.map(|si| si.score) {
+        // //     /// Get search score from TT
+        // //     stack.with(ply, |st| st.static_eval = Some(score));
+        // //     Some(score)
+        //     unimplemented!()
+        // } else if let Some(nnue) = &self.nnue {
+        //     /// NNUE Eval, cheap-ish
+        //     /// TODO: bench vs evaluate
+        //     let mut nn = nnue.borrow_mut();
+        //     let score = nn.evaluate(&g, true);
+        //     stack.with(ply, |st| st.static_eval = Some(score));
+        //     Some(score)
+        // } else {
+        //     let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
+        //     let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
+        //     stack.with(ply, |st| st.static_eval = Some(score));
+        //     Some(score)
+        // };
+        // stack.with(ply, |st| st.static_eval = static_eval);
+
+        let mut eval = VALUE_INVALID;
+        // let static_eval = self.get_static_eval(g, ply, stack, &mut eval, msi);
+        let static_eval = self.get_static_eval(ts, g, (depth,ply), stack, msi);
 
         let mut improving   = !in_check;
         if let Some(eval) = static_eval {
@@ -861,7 +949,7 @@ impl ExHelper {
                 if !is_root_node
                     && depth >= 7
                     && Some(mv) == m_hashmove
-                    && si.node_type == Node::Cut // lower bound
+                    && si.node_type == Node::Lower // lower bound
                     && si.depth_searched >= depth - 3
                     // && si.eval.is_some()
                     && static_eval.is_some()
@@ -1145,7 +1233,7 @@ impl ExHelper {
                 }
 
                 if !b && best_val.1 > alpha {
-                    current_node_type = Node::PV;
+                    // current_node_type = Node::Exact;
                     alpha = best_val.1;
 
                     // #[cfg(feature = "pvs_search")]
@@ -1165,8 +1253,8 @@ impl ExHelper {
 
                 /// Fail high, update stats
                 if b {
-                    // node_type = Some(Node::Cut);
-                    current_node_type = Node::Cut;
+                    // // node_type = Some(Node::Cut);
+                    // current_node_type = Node::Lower;
 
                     if !mv.filter_all_captures() {
 
@@ -1236,16 +1324,26 @@ impl ExHelper {
                 stack.update_history(
                     g, mv, res.score, beta, captures_searched, quiets_searched, ply, depth);
 
+                let bound = if res.score >= beta {
+                    Node::Lower
+                } else if is_pv_node {
+                    Node::Exact
+                } else {
+                    Node::Upper
+                };
+
                 // if !is_root_node && current_node_type == Node::PV {
-                if current_node_type == Node::PV {
+                // if current_node_type == Node::Exact {
+                if bound == Node::Exact {
                     // stack.pvs.push(res.mv);
                     stack.pvs[ply as usize] = mv
                 }
 
-                // if !is_root_node && Some(res.mv) != movegen.hashmove {
                 if !is_root_node && Some(mv) != movegen.hashmove {
+                // if !is_root_node {
                 // if !is_root {
 
+                    // assert_eq!(bound, current_node_type);
 
                     self.tt_insert_deepest(
                         g.zobrist,
@@ -1256,9 +1354,10 @@ impl ExHelper {
                             depth - 1,
                             // depth,
                             // node_type,
-                            current_node_type,
+                            // current_node_type,
+                            bound,
                             res.score,
-                            // static_eval,
+                            static_eval,
                         ));
 
                 }
