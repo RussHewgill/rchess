@@ -69,7 +69,7 @@ pub fn process_txdata(
                 if !te.skip
                     && !te.mv.filter_all_captures()
                     && g.state.checkers.is_empty()
-                    && te.eval.abs() < STALEMATE_VALUE - 100
+                    && te.eval.abs() < DRAW_VALUE - 100
                 {
                     let (ev_mid,ev_end) = (&exhelper.cfg.eval_params_mid,&exhelper.cfg.eval_params_end);
                     let score   = g.sum_evaluate(&ts, &ev_mid, &ev_end, None);

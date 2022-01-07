@@ -21,7 +21,7 @@ pub struct SParams {
     max_ply:                  Depth,
 
     value_checkmate:          Score,
-    value_stalemate:          Score,
+    value_draw:               Score,
 
     lmr_min_moves:            Depth,
     lmr_min_ply:              Depth,
@@ -52,7 +52,7 @@ impl Default for SParams {
             max_ply:                 220,
 
             value_checkmate:         100_000_000,
-            value_stalemate:         0,
+            value_draw:              0,
 
             lmr_min_moves:           2,
             lmr_min_ply:             3,
@@ -97,7 +97,7 @@ mod const_params {
 
     // pub const STALEMATE_VALUE: Score = 20_000_000;
     // pub const DRAW_VALUE: Score = 20_000_000;
-    pub const STALEMATE_VALUE: Score = 0;
+    // pub const STALEMATE_VALUE: Score = 0;
     pub const DRAW_VALUE: Score = 0;
 
     // pub const CHECKMATE_VALUE: Score = 32000;
@@ -134,13 +134,19 @@ mod const_params {
 
 pub use self::misc_functions::*;
 mod misc_functions {
-    use crate::types::*;
+    use crate::{types::*, searchstats::SearchStats, tables::DRAW_VALUE};
 
     // // TODO: tune
     // pub fn depth_stat_bonus(ply: Depth) -> Score {
     //     let ply = ply as Score;
     //     (ply * ply).min(250)
     // }
+
+    pub fn draw_value(stats: &SearchStats) -> Score {
+        let score = DRAW_VALUE + (2 * (stats.nodes as i32 & 1) - 1);
+        // let score = 0;
+        score
+    }
 
     pub const fn futility_move_count(improving: bool, depth: Depth) -> Depth {
         let i = if improving { 1 } else { 0 };

@@ -2840,15 +2840,15 @@ fn main9() {
 
     // let t = 10.0;
     // let t = 6.0;
-    // let t = 4.0;
-    let t = 2.0;
+    let t = 4.0;
+    // let t = 2.0;
     // let t = 0.5;
     // let t = 0.3;
 
     // let n = 35;
     // let n = 22;
     // let n = 8;
-    let n = 9;
+    let n = 10;
     // let n = 2;
 
     let timesettings = TimeSettings::new_f64(0.0,t);

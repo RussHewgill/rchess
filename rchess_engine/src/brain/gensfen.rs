@@ -595,7 +595,7 @@ impl TrainingData {
 
                         if score != q_score {
                             te.skip = true;
-                        } else if score.abs() > STALEMATE_VALUE - 100 {
+                        } else if score.abs() > DRAW_VALUE - 100 {
                             te.skip = true;
                             done = true;
                         }

@@ -563,7 +563,10 @@ impl ExHelper {
         // if cycle && alpha < DRAW_VALUE {
         if cycle {
             // eprintln!("ply, mv, cycle = {:?}, {:?}, {}", ply, g.last_move.unwrap(), cycle);
-            return ABSingle(ABResult::new_single(g.last_move.unwrap(), DRAW_VALUE));
+
+            let score = draw_value(stats);
+
+            return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
         }
 
         /// Step 2. Halting for mate, time, etc
@@ -1275,12 +1278,14 @@ impl ExHelper {
             let mv = g.last_move.unwrap();
             return ABSingle(ABResult::new_single(mv, -score));
         } else if moves_searched == 0 || best_val.0.is_none() {
-            let score = -STALEMATE_VALUE + ply as Score;
+            // let score = -DRAW_VALUE + ply as Score;
+            let score = draw_value(stats);
+
             stats.leaves += 1;
             stats.stalemates += 1;
             if let Some(mv) = g.last_move {
                 // TODO: adjust stalemate value when winning/losing
-                return ABSingle(ABResult::new_single(mv, 0));
+                return ABSingle(ABResult::new_single(mv, score));
             } else {
                 return ABNone;
             }
