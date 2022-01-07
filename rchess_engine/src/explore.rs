@@ -68,6 +68,8 @@ pub struct Explorer {
     #[cfg(not(feature = "lockless_hashmap"))]
     pub tt_w:          TTWrite,
 
+    // pub eval_hashmap:  (EVReadFactory<Score>,EVWrite<Score>),
+
     // pub ph_rw:         (PHReadFactory,PHWrite),
     pub ph_rw:         PHTableFactory,
 

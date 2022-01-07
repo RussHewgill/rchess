@@ -289,8 +289,9 @@ fn main_tt() {
     // let k0 = std::mem::size_of::<RwLock<()>>();
     let k0 = std::mem::size_of::<Bucket>();
     let k1 = std::mem::size_of::<TTEntry>();
-    let k2 = std::mem::size_of::<RwLock<TTEntry>>();
-    let k2 = std::mem::size_of::<SearchInfo>();
+    let k2 = std::mem::size_of::<TTEntry2>();
+    // let k2 = std::mem::size_of::<RwLock<TTEntry>>();
+    // let k2 = std::mem::size_of::<SearchInfo>();
     // let k2 = std::mem::size_of::<PackedSearchInfo>();
     eprintln!("Bucket  = {:?}", k0);
     eprintln!("k1 = {:?}", k1);

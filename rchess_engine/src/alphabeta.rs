@@ -777,7 +777,10 @@ impl ExHelper {
             && depth >= NULL_PRUNE_MIN_DEPTH
             && g.state.phase < NULL_PRUNE_MIN_PHASE
             && g.state.material.any_non_pawn(g.state.side_to_move)
-            && msi.map(|si| si.node_type != Node::Upper || si.score >= beta).unwrap_or(false)
+            // && msi.map(|si| si.node_type != Node::Upper || si.score >= beta).unwrap_or(false)
+            && (msi.is_none()
+                || msi.unwrap().node_type != Node::Upper
+                || msi.unwrap().score >= beta) // from Ethereal
         {
             // let r = NULL_PRUNE_REDUCTION; // 2
             let r = 3 + depth / 6;

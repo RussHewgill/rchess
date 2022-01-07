@@ -116,7 +116,7 @@ impl ExHelper {
 
 }
 
-/// Quiescence 2
+/// Quiescence
 impl ExHelper {
 
     #[allow(unused_doc_comments)]
