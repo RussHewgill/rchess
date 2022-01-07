@@ -1,4 +1,5 @@
 
+use crate::types::Score;
 use crate::{trans_table::Node, explore::PackedSearchInfo};
 use crate::explore::SearchInfo;
 use crate::hashing::Zobrist;
@@ -191,6 +192,24 @@ impl TransTable {
 pub struct TTEntry {
     age:                u8,
     entry:              Option<(u32,SearchInfo)>,
+}
+
+#[derive(Debug,Clone,Copy)]
+pub enum TTEntry2 {
+    Eval { ver: u32, eval: Score },
+    SI   { ver: u32, si: SearchInfo },
+    Both { ver: u32, eval: Score, si: SearchInfo },
+}
+
+impl TTEntry2 {
+    pub fn new(ver: u32, eval: Option<Score>, si: Option<SearchInfo>) -> Option<Self> {
+        match (eval,si) {
+            (Some(eval),None)     => Some(Self::Eval { ver, eval }),
+            (None,Some(si))       => Some(Self::SI { ver, si }),
+            (Some(eval),Some(si)) => Some(Self::Both { ver, eval, si }),
+            (None,None)           => None,
+        }
+    }
 }
 
 // #[derive(Debug)]

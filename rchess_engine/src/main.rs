@@ -2782,7 +2782,7 @@ fn main9() {
 
     // let fen = "7k/6pp/8/8/8/8/8/RK6 w - - 0 1"; // #1, Qt R a1a8
 
-    let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
+    // let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
 
     // let fen = "8/8/p1p5/1p5p/1P5p/8/PPP2K1p/4R1rk w - - 0 1";    // Qt R e1f1
     // let fen = "1q1k4/2Rr4/8/2Q3K1/8/8/8/8 w - - 0 1";            // Kh6
@@ -2845,9 +2845,9 @@ fn main9() {
     // let t = 0.3;
 
     // let n = 35;
-    let n = 22;
+    // let n = 22;
     // let n = 8;
-    // let n = 9;
+    let n = 9;
     // let n = 2;
 
     let timesettings = TimeSettings::new_f64(0.0,t);

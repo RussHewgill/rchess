@@ -28,7 +28,7 @@ do
     esac
 done
 
-OUTPUT_FILE=out_"$OUTPUT_EXTRA"_pgn_$(date +"%Y-%M-%d_%H:%M:%S").pgn
+OUTPUT_FILE=out_"$OUTPUT_EXTRA"_pgn_$(date +"%Y-%m-%d_%H:%M:%S").pgn
 
 echo output = $OUTPUT_FILE
 echo Elo diff = $ELO1, 0.05

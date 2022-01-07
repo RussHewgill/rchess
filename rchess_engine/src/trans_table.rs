@@ -278,8 +278,8 @@ impl PartialOrd for SearchInfo {
 // }
 
 /// Exact = PV
-/// UpperBound = All Node, Fail low, evaluation never exceeded alpha
-/// LowerBound = Cut Node, Fail high, evaluation caused cutoff
+/// Upper = All Node, Fail low, evaluation never exceeded alpha
+/// Lower = Cut Node, Fail high, evaluation caused cutoff
 #[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize,FromPrimitive)]
 pub enum Node {
     Empty,
