@@ -130,7 +130,7 @@ pub struct SearchInfo {
     pub depth_searched:     Depth,           // 1
     pub node_type:          Node,            // 1
     pub score:              Score,           // 4, 2 if i16
-    pub eval:               Option<Score>,   // 4, 8?
+    // pub eval:               Option<Score>,   // 4, 8?
     // pub eval:               Score,   // 4, 8?
 }
 
@@ -205,7 +205,7 @@ impl SearchInfo {
             depth_searched: 0,
             node_type:      Node::Empty,
             score:          0,
-            eval:           None,
+            // eval:           None,
             // eval:           0,
         }
     }
@@ -238,7 +238,7 @@ impl SearchInfo {
             depth_searched,
             node_type,
             score,
-            eval,
+            // eval,
             // eval: 0,
         }
     }
@@ -325,9 +325,15 @@ pub enum Node {
 impl ExHelper {
 
     #[cfg(feature = "lockless_hashmap")]
-    pub fn tt_insert_deepest(&self, zb: Zobrist, si: SearchInfo) {
+    pub fn tt_insert_deepest(&self, zb: Zobrist, meval: Option<Score>, si: SearchInfo) {
         // trace!("inserting zb = {:?}, si = {:?}", zb, si);
-        self.ptr_tt.insert(zb, si);
+        self.ptr_tt.insert(zb, meval, Some(si));
+    }
+
+    #[cfg(feature = "lockless_hashmap")]
+    pub fn tt_insert_deepest_eval(&self, zb: Zobrist, meval: Option<Score>) {
+        // trace!("inserting zb = {:?}, si = {:?}", zb, si);
+        self.ptr_tt.insert(zb, meval, None);
     }
 
     #[allow(unused_doc_comments)]

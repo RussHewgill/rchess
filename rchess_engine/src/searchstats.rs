@@ -79,6 +79,7 @@ mod ss {
         pub tt_hits:        u32,
         pub tt_halfmiss:    u32,
         pub tt_misses:      u32,
+        pub tt_eval:        u32,
         pub ph_hits:        u32,
         pub ph_misses:      u32,
         pub qt_nodes:       u32,
@@ -129,6 +130,7 @@ mod ss {
                 tt_hits:            self.tt_hits + other.tt_hits,
                 tt_halfmiss:            self.tt_halfmiss + other.tt_halfmiss,
                 tt_misses:          self.tt_misses + other.tt_misses,
+                tt_eval:            self.tt_eval + other.tt_eval,
                 ph_hits:            self.ph_hits + other.ph_hits,
                 ph_misses:          self.ph_misses + other.ph_misses,
                 qt_nodes:           self.qt_nodes + other.qt_nodes,
@@ -173,6 +175,7 @@ mod ss {
                      self.tt_halfmiss as f64 / tot,
                      self.tt_misses as f64 / tot,
             );
+            println!("tt_eval      = {}", Self::_print(self.tt_eval as i32));
             // println!("qt_nodes     = {}", Self::_print(self.qt_nodes as i32));
             // println!("qt_hits      = {}", Self::_print(self.qt_hits as i32));
             // println!("qt_misses    = {}", Self::_print(self.qt_misses as i32));

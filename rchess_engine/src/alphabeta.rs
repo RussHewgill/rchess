@@ -235,84 +235,33 @@ impl ExHelper {
 /// TT Probe
 impl ExHelper {
 
-    /// returns (can_use, SearchInfo)
-    #[cfg(not(feature = "lockless_hashmap"))]
-    pub fn check_tt_negamax(
-        &self,
-        ts:             &Tables,
-        zb:             Zobrist,
-        depth:          Depth,
-        mut stats:      &mut SearchStats,
-    ) -> Option<(SICanUse,SearchInfo)> {
-        // if let Some(si) = tt_r.get_one(&g.zobrist) {
-        if let Some(si) = self.tt_r.get_one(&zb) {
-            if si.depth_searched >= depth {
-                stats!(stats.tt_hits += 1);
-                Some((SICanUse::UseScore,*si))
-            } else {
-                stats!(stats.tt_halfmiss += 1);
-                Some((SICanUse::UseOrdering,*si))
-            }
-        } else {
-            // if g.zobrist == Zobrist(0x1eebfbac03c62e9d) { println!("wat wat 3"); }
-            stats!(stats.tt_misses += 1);
-            // let score = self._ab_search(&ts, &g, depth - 1, k + 1, alpha, beta, !maximizing);
-            // score
-            None
-        }
-    }
-
-    /// XXX: Not used
-    #[cfg(feature = "lockless_hashmap")]
-    pub fn check_tt_negamax(
-        &self,
-        ts:             &Tables,
-        zb:             Zobrist,
-        depth:          Depth,
-        mut stats:      &mut SearchStats,
-    ) -> Option<(SICanUse,SearchInfo)> {
-        // if let Some(si) = tt_r.get_one(&g.zobrist) {
-
-        if let Some((same_age, si)) = self.ptr_tt.probe(zb) {
-        // if let Some(si) = self.tt_r.get_one(zb) {
-            if si.depth_searched >= depth {
-                stats!(stats.tt_hits += 1);
-                // Some((SICanUse::UseScore,*si))
-                Some((SICanUse::UseScore,si))
-            } else {
-                stats!(stats.tt_halfmiss += 1);
-                // Some((SICanUse::UseOrdering,*si))
-                Some((SICanUse::UseOrdering,si))
-            }
-        } else {
-            // if g.zobrist == Zobrist(0x1eebfbac03c62e9d) { println!("wat wat 3"); }
-            stats!(stats.tt_misses += 1);
-            // let score = self._ab_search(&ts, &g, depth - 1, k + 1, alpha, beta, !maximizing);
-            // score
-            None
-        }
-
-    }
-
     pub fn check_tt2(
         &self,
         ts:             &Tables,
         zb:             Zobrist,
         depth:          Depth,
         mut stats:      &mut SearchStats,
-    ) -> Option<SearchInfo> {
+    // ) -> Option<SearchInfo> {
+    ) -> (Option<Score>, Option<SearchInfo>) {
         #[cfg(feature = "lockless_hashmap")]
-        if let Some((same_age, si)) = self.ptr_tt.probe(zb) {
-            if si.depth_searched >= depth {
-                stats!(stats.tt_hits += 1);
-            } else {
-                stats!(stats.tt_halfmiss += 1);
+        {
+            let (meval,msi) = self.ptr_tt.probe(zb);
+            match (meval,msi) {
+                (None,None) => {
+                    stats!(stats.tt_misses += 1);
+                },
+                (Some(eval),None) => {
+                    stats.tt_eval += 1;
+                },
+                (_,Some(si)) => {
+                    if si.depth_searched >= depth {
+                        stats!(stats.tt_hits += 1);
+                    } else {
+                        stats!(stats.tt_halfmiss += 1);
+                    }
+                },
             }
-            // Some(*si)
-            Some(si)
-        } else {
-            stats!(stats.tt_misses += 1);
-            None
+            (meval,msi)
         }
         #[cfg(not(feature = "lockless_hashmap"))]
         if let Some(si) = self.tt_r.get_one(&zb) {
@@ -459,6 +408,7 @@ impl ExHelper {
         g:            &Game,
         (depth,ply):  (Depth,Depth),
         mut stack:    &mut ABStack,
+        meval:        Option<Score>,
         msi:          Option<SearchInfo>,
     ) -> Option<Score> {
 
@@ -468,15 +418,18 @@ impl ExHelper {
                 st.static_eval = None;
             });
             None
-        } else if let Some(si) = msi {
+        // } else if let Some(si) = msi {
+        } else if msi.is_some() || meval.is_some() {
 
-            let mut eval = if let Some(eval) = si.eval { eval } else {
+            let mut eval = if let Some(eval) = meval { eval } else {
                 self.eval_nn_or_hce(ts, g, ply)
             };
 
-            let bb = if si.score > eval { Node::Lower } else { Node::Upper };
-            if si.node_type == bb {
-                eval = si.score;
+            if let Some(si) = msi {
+                let bb = if si.score > eval { Node::Lower } else { Node::Upper };
+                if si.node_type == bb {
+                    eval = si.score;
+                }
             }
 
             // if si.depth_searched >= depth {
@@ -645,7 +598,8 @@ impl ExHelper {
         }
 
         /// Step 4. Transposition Table probe
-        let msi: Option<SearchInfo> = if is_root_node { None } else {
+        // let msi: Option<SearchInfo> = if is_root_node { None } else {
+        let (meval,msi): (Option<Score>,Option<SearchInfo>) = if is_root_node { (None,None) } else {
             self.check_tt2(ts, g.zobrist, depth, stats)
         };
 
@@ -731,7 +685,7 @@ impl ExHelper {
         let in_check = g.state.checkers.is_not_empty();
 
         /// Static eval, possibly from TT
-        let static_eval = self.get_static_eval(ts, g, (depth,ply), stack, msi);
+        let static_eval = self.get_static_eval(ts, g, (depth,ply), stack, meval, msi);
 
         let mut improving = !in_check;
         if let Some(eval) = static_eval {
@@ -1333,6 +1287,7 @@ impl ExHelper {
 
                     self.tt_insert_deepest(
                         g.zobrist,
+                        static_eval,
                         SearchInfo::new(
                             // res.mv,
                             mv,

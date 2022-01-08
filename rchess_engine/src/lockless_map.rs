@@ -73,11 +73,11 @@ impl TransTable {
         }
     }
 
-    pub fn insert(&self, zb: Zobrist, si: SearchInfo) {
+    pub fn insert(&self, zb: Zobrist, meval: Option<Score>, msi: Option<SearchInfo>) {
         let (idx,ver) = self.calc_index(zb);
 
         if let Some(bucket) = self.buf.get(idx) {
-            bucket.store(ver, si, &self.used_entries, &self.cycles);
+            bucket.store(ver, meval, msi, &self.used_entries, &self.cycles);
         } else {
             panic!("TT insert, bad bucket idx: {:?}, zb = {:?}", idx, zb);
         }
@@ -90,7 +90,8 @@ impl TransTable {
 
     }
 
-    pub fn probe(&self, zb: Zobrist) -> Option<(bool,SearchInfo)> {
+    // pub fn probe(&self, zb: Zobrist) -> Option<(bool,SearchInfo)> {
+    pub fn probe(&self, zb: Zobrist) -> (Option<Score>, Option<SearchInfo>) {
         let (idx,ver) = self.calc_index(zb);
 
         if let Some(bucket) = self.buf.get(idx) {
@@ -191,23 +192,72 @@ impl TransTable {
 #[derive(Debug,Default,Clone,Copy,new)]
 pub struct TTEntry {
     age:                u8,
-    entry:              Option<(u32,SearchInfo)>,
+    // entry:              Option<(u32,SearchInfo)>,
+    entry:              Option<TTEntry2>,
 }
 
 #[derive(Debug,Clone,Copy)]
 pub enum TTEntry2 {
-    Eval { ver: u32, eval: Score },
-    SI   { ver: u32, si: SearchInfo },
-    Both { ver: u32, eval: Score, si: SearchInfo },
+    Eval { ver: u32, eval: TTEval },
+    // SI   { ver: u32, si: SearchInfo },
+    Both { ver: u32, eval: TTEval, si: SearchInfo },
 }
 
+#[derive(Debug,Clone,Copy)]
+pub enum TTEval {
+    // None,
+    Check,
+    Some(Score),
+}
+
+/// New
 impl TTEntry2 {
     pub fn new(ver: u32, eval: Option<Score>, si: Option<SearchInfo>) -> Option<Self> {
         match (eval,si) {
-            (Some(eval),None)     => Some(Self::Eval { ver, eval }),
-            (None,Some(si))       => Some(Self::SI { ver, si }),
-            (Some(eval),Some(si)) => Some(Self::Both { ver, eval, si }),
+            (Some(eval),None)     => Some(Self::Eval { ver, eval: TTEval::Some(eval) }),
+            (None,Some(si))       => Some(Self::Both { ver, eval: TTEval::Check, si }),
+            (Some(eval),Some(si)) => Some(Self::Both { ver, eval: TTEval::Some(eval), si }),
             (None,None)           => None,
+        }
+    }
+}
+
+/// Getters
+impl TTEntry {
+    pub fn get_searchinfo(self) -> Option<SearchInfo> {
+        self.entry.map(|x| x.get_searchinfo()).flatten()
+    }
+
+    pub fn get_eval(self) -> Option<TTEval> {
+        self.entry.map(|x| x.get_eval())
+    }
+
+    pub fn get_ver(&self) -> Option<u32> {
+        self.entry.map(|x| x.get_ver())
+    }
+}
+
+/// Getters
+impl TTEntry2 {
+
+    pub fn get_searchinfo(self) -> Option<SearchInfo> {
+        match self {
+            Self::Eval { .. }     => None,
+            Self::Both { si, .. } => Some(si),
+        }
+    }
+
+    pub fn get_eval(self) -> TTEval {
+        match self {
+            Self::Eval { eval, .. } => eval,
+            Self::Both { eval, .. } => eval,
+        }
+    }
+
+    pub fn get_ver(self) -> u32 {
+        match self {
+            Self::Eval { ver, .. } => ver,
+            Self::Both { ver, .. } => ver,
         }
     }
 }
@@ -258,6 +308,70 @@ impl Bucket {
 /// store, find
 impl Bucket {
 
+    pub fn store(
+        &self,
+        ver:              u32,
+        meval:            Option<Score>,
+        msi:              Option<SearchInfo>,
+        used_entries:     &AtomicUsize,
+        age:              &AtomicU8,
+    ) {
+
+        // match (meval,msi) {
+        //     (None,None)       => panic!(),
+        //     (Some(eval),None) => {
+        //         // TODO: eval only, insert as new
+        //     },
+        //     (_,Some(si))    => {
+        //         // TODO: insert new si
+        //     },
+        // }
+
+        let mut idx_lowest_depth = None;
+
+        for (entry_idx,e) in self.bucket.read().iter().enumerate() {
+            if let Some(ver2) = e.get_ver() {
+                match e.get_searchinfo() {
+                    Some(e_si) => {
+                        if let Some(si) = msi {
+                            if e_si.depth_searched < si.depth_searched {
+                                idx_lowest_depth = Some(entry_idx);
+                            }
+                        }
+                    },
+                    None => {
+                        idx_lowest_depth = Some(entry_idx);
+                        /// only eval is stored, so this slot is best to overwrite
+                        break;
+                    },
+                }
+            }
+        }
+
+        // for (entry_idx,e) in self.bucket.read().iter().enumerate() {
+        //     if let Some((ver,e_si)) = e.entry {
+        //         if e_si.depth_searched < si.depth_searched {
+        //             idx_lowest_depth = Some(entry_idx);
+        //         }
+        //     }
+        // }
+
+        let idx = if let Some(idx) = idx_lowest_depth {
+            used_entries.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            idx
+        } else { 0 };
+
+        let age = age.load(std::sync::atomic::Ordering::Relaxed);
+
+        let mut w = self.bucket.write();
+        let mut w = w.get_mut(idx).unwrap();
+        // *w = TTEntry::new(age, Some((ver,si)));
+
+        unimplemented!()
+
+    }
+
+    #[cfg(feature = "nope")]
     pub fn store(&self, ver: u32, si: SearchInfo, used_entries: &AtomicUsize, age: &AtomicU8) {
 
         let mut idx_lowest_depth = None;
@@ -301,18 +415,26 @@ impl Bucket {
 
     }
 
-    pub fn find(&self, ver: u32, age: &AtomicU8) -> Option<(bool,SearchInfo)> {
+    pub fn find(&self, ver: u32, age: &AtomicU8) -> (Option<Score>,Option<SearchInfo>) {
+
+        unimplemented!()
+    }
+
+    // pub fn find(&self, ver: u32, age: &AtomicU8) -> Option<(bool,SearchInfo)> {
+    #[cfg(feature = "nope")]
+    pub fn find(&self, ver: u32, age: &AtomicU8) -> (Option<Score>,Option<SearchInfo>) {
 
         for (entry_idx,e) in self.bucket.read().iter().enumerate() {
         // for (entry_idx,e) in self.bucket.iter().enumerate() {
             if let Some((ver2,ee)) = e.entry {
                 if ver2 == ver {
                     let age = age.load(std::sync::atomic::Ordering::Relaxed);
-                    return Some((age == e.age, ee));
+                    // return Some((age == e.age, ee));
+                    unimplemented!()
                 }
             }
         }
-        None
+        (None,None)
 
         // if let Some(e) = self.bucket.read().iter()
         //     .filter(|e| e.entry.is_some())

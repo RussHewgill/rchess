@@ -20,6 +20,8 @@ use derive_new::new;
 pub struct SParams {
     max_ply:                  Depth,
 
+    value_invalid:            Score,
+
     value_checkmate:          Score,
     value_draw:               Score,
 
@@ -50,6 +52,8 @@ impl Default for SParams {
     fn default() -> Self {
         Self {
             max_ply:                 220,
+
+            value_invalid:           Score::MIN + 1234,
 
             value_checkmate:         100_000_000,
             value_draw:              0,
