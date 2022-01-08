@@ -410,7 +410,7 @@ impl ExHelper {
         &self,
         ts:           &'static Tables,
         g:            &Game,
-        (depth,ply):  (Depth,Depth),
+        ply:          Depth,
         mut stack:    &mut ABStack,
         meval:        Option<Score>,
         msi:          Option<SearchInfo>,
@@ -426,7 +426,7 @@ impl ExHelper {
         } else if msi.is_some() || meval.is_some() {
 
             let mut eval = if let Some(eval) = meval { eval } else {
-                self.eval_nn_or_hce(ts, g, ply)
+                self.eval_nn_or_hce(ts, g)
             };
 
             if let Some(si) = msi {
@@ -445,7 +445,7 @@ impl ExHelper {
 
             Some(eval)
         } else {
-            let eval = self.eval_nn_or_hce(ts, g, ply);
+            let eval = self.eval_nn_or_hce(ts, g);
             stack.with(ply, |st| st.static_eval = Some(eval));
 
             self.tt_insert_deepest_eval(g.zobrist, Some(eval));
@@ -459,7 +459,6 @@ impl ExHelper {
         &self,
         ts:           &'static Tables,
         g:            &Game,
-        ply:          Depth,
     ) -> Score {
 
         if let Some(nnue) = &self.nnue {
@@ -695,7 +694,7 @@ impl ExHelper {
         let in_check = g.state.checkers.is_not_empty();
 
         /// Static eval, possibly from TT
-        let static_eval = self.get_static_eval(ts, g, (depth,ply), stack, meval, msi);
+        let static_eval = self.get_static_eval(ts, g, ply, stack, meval, msi);
 
         let mut improving = !in_check;
         if let Some(eval) = static_eval {

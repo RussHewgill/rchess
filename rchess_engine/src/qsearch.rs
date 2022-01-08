@@ -119,7 +119,166 @@ impl ExHelper {
 /// Quiescence with TT
 impl ExHelper {
 
-    #[allow(unused_doc_comments)]
+    #[cfg(feature = "tt_in_qsearch")]
+    pub fn qsearch<const NODE_TYPE: ABNodeType>(
+        &self,
+        ts:                       &'static Tables,
+        g:                        &Game,
+        (ply,qply):               (Depth,Depth),
+        (mut alpha, mut beta):    (Score,Score),
+        mut stack:                &mut ABStack,
+        mut stats:                &mut SearchStats,
+    ) -> Score {
+        use ABNodeType::*;
+
+        stack.push_if_empty(g, ply);
+        stack.with(ply, |st| st.material = g.state.material);
+
+        stats.qt_nodes += 1;
+        stats.q_max_depth = stats.q_max_depth.max(ply as u8);
+
+        let in_check = g.in_check();
+        let mut allow_stand_pat = true;
+
+        /// check repetition
+        if Self::has_cycle(ts, g, stats, stack) || ply >= MAX_SEARCH_PLY {
+            return draw_value(stats);
+        }
+
+        /// TODO: ??
+        let tt_depth = 1;
+
+        /// TT Lookup
+        let (meval,msi): (Option<Score>,Option<SearchInfo>) = self.check_tt2(ts, g.zobrist, tt_depth, stats);
+
+        /// Check for returnable TT value
+        if let Some(si) = msi {
+            if NODE_TYPE != PV
+            // && si.node_type == if si.score >= beta { Node::Lower } else { Node::Upper }
+            {
+                stats.qt_tt_returns += 1;
+                return si.score;
+            }
+        }
+
+        let mut best_score = Score::MIN;
+
+        if in_check {
+            allow_stand_pat = false;
+        }
+
+        let stand_pat = self.get_static_eval(ts, g, ply, stack, meval, msi);
+
+        let stand_pat = if let Some(s) = stand_pat { s } else {
+            allow_stand_pat = false;
+            Score::MIN
+        };
+
+        /// early halt
+        if allow_stand_pat && self.stop.load(Relaxed) { return stand_pat; }
+
+        // /// early halt
+        // if allow_stand_pat && self.stop.load(Relaxed) {
+        //     if let Some(s) = stand_pat {
+        //         return s;
+        //     } else {
+        //         /// XXX: this might break things?
+        //         return Score::MIN;
+        //     }
+        // }
+
+        if allow_stand_pat && stand_pat >= beta {
+            self.tt_insert_deepest_eval(g.zobrist, Some(stand_pat));
+            // return beta; // fail hard
+            return stand_pat; // fail soft, is faster ??
+        }
+
+        // if NODE_TYPE == PV && stand_pat > alpha {
+        // if stand_pat > alpha {
+        if allow_stand_pat && stand_pat > alpha {
+            alpha = stand_pat;
+        }
+
+        /// TODO: Delta Pruning
+
+        let mut movegen = MoveGen::new_qsearch(ts, g, None, stack, qply);
+
+        // let mut best_score = Score::MIN;
+        let mut best_move  = None;
+
+        while let Some(mv) = movegen.next(stack) {
+            if let Some(g2) = self.make_move(ts, g, ply, mv, None, stack) {
+
+                let see = movegen.static_exchange_ge(mv, 1);
+                if !see {
+                    self.pop_nnue(stack);
+                    continue;
+                }
+
+                let score = -self.qsearch::<{NODE_TYPE}>(
+                    &ts, &g2, (ply + 1,qply + 1), (-beta, -alpha), stack, stats);
+
+                if score >= beta && allow_stand_pat {
+                    self.pop_nnue(stack);
+                    // return beta; // fail hard
+                    return stand_pat; // fail soft
+                }
+
+                if score > alpha {
+                    alpha = score;
+                }
+
+                // /// XXX: from stockfish
+                // if score > best_score {
+                //     best_score = score;
+                //     if score > alpha {
+                //         best_move = Some(mv);
+                //         if NODE_TYPE == PV && score < beta {
+                //             alpha = score;
+                //         } else {
+                //             self.pop_nnue(stack);
+                //             break;
+                //         }
+                //     }
+                // }
+
+                self.pop_nnue(stack);
+            }
+        }
+
+        if in_check && best_move.is_none() {
+            let score = CHECKMATE_VALUE - ply as Score;
+            // return -score; // XXX: backward ?
+            return score;
+        }
+
+        if let Some(mv) = best_move {
+            let eval = if in_check { Some(stand_pat) } else { None };
+            let bound = if best_score >= beta {
+                Node::Lower
+            } else if NODE_TYPE == PV {
+                Node::Exact
+            } else {
+                Node::Upper
+            };
+            self.tt_insert_deepest(
+                g.zobrist,
+                eval,
+                SearchInfo::new(
+                    mv,
+                    tt_depth,
+                    bound,
+                    best_score,
+                    eval
+                )
+            );
+        }
+
+        alpha
+        // stand_pat
+    }
+
+    #[cfg(feature = "tt_in_qsearch")]
     pub fn qsearch2<const NODE_TYPE: ABNodeType>(
         &self,
         ts:                       &'static Tables,
@@ -203,7 +362,7 @@ impl ExHelper {
 
         let mut movegen = MoveGen::new_qsearch(ts, g, None, stack, qply);
 
-        /// TODO: Delta Pruning
+        // /// TODO: Delta Pruning
         // let mut big_delta = Queen.score();
         // if moves.iter().any(|mv| mv.filter_promotion()) {
         //     big_delta += Queen.score() - Pawn.score();
@@ -267,6 +426,106 @@ impl ExHelper {
         //         )
         //     );
         // }
+
+        alpha
+    }
+
+}
+
+/// Quiescence
+impl ExHelper {
+
+    #[cfg(not(feature = "tt_in_qsearch"))]
+    pub fn qsearch<const NODE_TYPE: ABNodeType>(
+        &self,
+        ts:                       &'static Tables,
+        g:                        &Game,
+        (ply,qply):               (Depth,Depth),
+        (mut alpha, mut beta):    (Score,Score),
+        mut stack:                &mut ABStack,
+        mut stats:                &mut SearchStats,
+    ) -> Score {
+
+        let stand_pat = if let Some(nnue) = &self.nnue {
+            let mut nn = nnue.borrow_mut();
+            nn.evaluate(&g, true)
+        } else {
+            let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
+            if g.state.side_to_move == Black { -stand_pat } else { stand_pat }
+        };
+
+        /// early halt
+        // if self.stop.load(SeqCst) { return stand_pat; }
+        if self.stop.load(Relaxed) { return stand_pat; }
+
+        stats.qt_nodes += 1;
+
+        // if ply > stats.q_max_depth {
+        //     eprintln!("new max depth = {:?}", ply);
+        // }
+
+        stats!(stats.q_max_depth = stats.q_max_depth.max(ply as u8));
+
+        let mut allow_stand_pat = true;
+
+        if stand_pat >= beta {
+            return beta; // fail hard
+            // return stand_pat; // fail soft
+        }
+
+        if stand_pat > alpha {
+            alpha = stand_pat;
+        }
+
+        let mut movegen = MoveGen::new_qsearch(ts, g, None, stack, qply);
+
+        /// TODO: Delta Pruning
+        // let mut big_delta = Queen.score();
+        // if moves.iter().any(|mv| mv.filter_promotion()) {
+        //     big_delta += Queen.score() - Pawn.score();
+        // }
+        // if stand_pat < alpha - big_delta {
+        //     // trace!("qsearch: delta prune: {}", alpha);
+        //     return alpha;
+        // }
+
+        // let mut moves_searched = 0;
+
+        while let Some(mv) = movegen.next(stack) {
+            if let Some(g2) = self.make_move(ts, g, ply, mv, None, stack) {
+
+                // moves_searched += 1;
+
+                // if let Some(see) = movegen.static_exchange_ge(mv) {
+                //     if see < 0 {
+                //         self.pop_nnue(stack);
+                //         continue;
+                //     }
+                // }
+
+                let see = movegen.static_exchange_ge(mv, 1);
+                // let see = g.static_exchange_ge(ts, mv, 1);
+                if !see {
+                    self.pop_nnue(stack);
+                    continue;
+                }
+
+                let score = -self.qsearch::<{NODE_TYPE}>(
+                    &ts, &g2, (ply + 1,qply + 1), (-beta, -alpha), stack, stats);
+
+                if score >= beta && allow_stand_pat {
+                    self.pop_nnue(stack);
+                    return beta; // fail hard
+                    // return stand_pat; // fail soft
+                }
+
+                if score > alpha {
+                    alpha = score;
+                }
+
+                self.pop_nnue(stack);
+            }
+        }
 
         alpha
     }
