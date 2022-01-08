@@ -27,6 +27,8 @@ default = [
 
     "lockless_hashmap",
 
+    "tt_in_qsearch",
+
     # "backtrace",
 
     "keep_stats",
@@ -64,6 +66,8 @@ smallstack = []
 basic_time = []
 
 lockless_hashmap = []
+
+tt_in_qsearch = []
 
 backtrace = []
 

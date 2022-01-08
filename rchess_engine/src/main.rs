@@ -2949,15 +2949,7 @@ fn main9() {
     debug!("Best move = {:>8} {:?}", best.score, best.mv);
     debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth, t2);
 
-    let tt = ex.ptr_tt;
-
-    let (used_total,used_eval,used_si) = tt.used_entries_eval_si();
-
-    eprintln!("used_total = {:?}", used_total);
-    eprintln!("used_eval  = {:?}", used_eval);
-    eprintln!("used_si    = {:?}", used_si);
-
-    return;
+    // return;
 
     println!();
 
@@ -2967,6 +2959,12 @@ fn main9() {
         let used = tt.used_entries();
         let tot  = tt.total_entries();
         eprintln!("tt use ratio = {:.3}, used = {:?}", used as f64 / tot as f64, used);
+
+        // let (used_total,used_eval,used_si) = tt.used_entries_eval_si();
+        // eprintln!("used_total = {:?}", used_total);
+        // eprintln!("used_eval  = {:?}", used_eval);
+        // eprintln!("used_si    = {:?}", used_si);
+
     }
 
     #[cfg(not(feature = "lockless_hashmap"))]

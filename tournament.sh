@@ -36,8 +36,10 @@ echo Elo diff = $ELO1, 0.05
 # echo $time
 # echo $games
 
-ENGINE2=rchess_prev
+# ENGINE2=rchess_prev
 # ENGINE2=stockfish
+# ENGINE2=arasan
+ENGINE2=gnuchess
 
 echo ENGINE1 = rchess
 echo ENGINE2 = $ENGINE2

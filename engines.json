@@ -18,5 +18,15 @@
             { "name": "UCI_LimitStrength", "value": true },
             { "name": "UCI_Elo", "value": 2000 }
         ]
+    },
+    {
+        "name": "arasan",
+        "command": "/home/me/code/builds/chess_engines/arasan-chess/bin/arasanx-64",
+        "protocol": "uci"
+    },
+    {
+        "name": "gnuchess",
+        "command": "/usr/bin/gnuchessu",
+        "protocol": "uci"
     }
 ]

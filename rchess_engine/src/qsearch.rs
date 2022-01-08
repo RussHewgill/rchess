@@ -116,11 +116,11 @@ impl ExHelper {
 
 }
 
-/// Quiescence
+/// Quiescence with TT
 impl ExHelper {
 
     #[allow(unused_doc_comments)]
-    pub fn qsearch<const NODE_TYPE: ABNodeType>(
+    pub fn qsearch2<const NODE_TYPE: ABNodeType>(
         &self,
         ts:                       &'static Tables,
         g:                        &Game,
@@ -129,8 +129,38 @@ impl ExHelper {
         mut stack:                &mut ABStack,
         mut stats:                &mut SearchStats,
     ) -> Score {
+        use ABNodeType::*;
 
-        let stand_pat = if let Some(nnue) = &self.nnue {
+        // stack.push_if_empty(g, ply);
+        // stack.with(ply, |st| st.material = g.state.material);
+
+        let in_check = g.in_check();
+        let mut allow_stand_pat = true;
+
+        /// TODO: ??
+        // let tt_depth = ply;
+        // let tt_depth = if in_check { 1 } else { 0 };
+        let tt_depth = 1;
+
+        // /// TT Lookup
+        // #[cfg(feature = "tt_in_qsearch")]
+        // let (meval,msi): (Option<Score>,Option<SearchInfo>) = self.check_tt2(ts, g.zobrist, tt_depth, stats);
+
+        // /// Check for returnable TT value
+        // #[cfg(feature = "tt_in_qsearch")]
+        // if let Some(si) = msi {
+        //     if NODE_TYPE != PV
+        //     // && si.node_type == if si.score >= beta { Node::Lower } else { Node::Upper }
+        //     {
+        //         stats.qt_tt_returns += 1;
+        //         return si.score;
+        //     }
+        // }
+
+        let stand_pat = if in_check {
+            allow_stand_pat = false;
+            Score::MIN
+        } else if let Some(nnue) = &self.nnue {
             let mut nn = nnue.borrow_mut();
             nn.evaluate(&g, true)
         } else {
@@ -139,8 +169,15 @@ impl ExHelper {
         };
 
         /// early halt
-        // if self.stop.load(SeqCst) { return stand_pat; }
-        if self.stop.load(Relaxed) { return stand_pat; }
+        // if self.stop.load(Relaxed) { return stand_pat; }
+        if allow_stand_pat && self.stop.load(Relaxed) { return stand_pat; }
+
+        /// check repetition
+        if Self::has_cycle(ts, g, stats, stack) {
+            let score = draw_value(stats);
+            // return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
+            return score;
+        }
 
         stats.qt_nodes += 1;
 
@@ -150,14 +187,17 @@ impl ExHelper {
 
         stats!(stats.q_max_depth = stats.q_max_depth.max(ply as u8));
 
-        let mut allow_stand_pat = true;
+        // if stand_pat >= beta {
+        if allow_stand_pat && stand_pat >= beta {
 
-        if stand_pat >= beta {
+            // self.tt_insert_deepest_eval(g.zobrist, Some(stand_pat));
+
             return beta; // fail hard
             // return stand_pat; // fail soft
         }
 
-        if stand_pat > alpha {
+        // if stand_pat > alpha {
+        if allow_stand_pat && stand_pat > alpha {
             alpha = stand_pat;
         }
 
@@ -175,20 +215,15 @@ impl ExHelper {
 
         // let mut moves_searched = 0;
 
+        // let mut best_move  = None;
+        // let mut best_score = Score::MIN;
+
         while let Some(mv) = movegen.next(stack) {
             if let Some(g2) = self.make_move(ts, g, ply, mv, None, stack) {
 
                 // moves_searched += 1;
 
-                // if let Some(see) = movegen.static_exchange_ge(mv) {
-                //     if see < 0 {
-                //         self.pop_nnue(stack);
-                //         continue;
-                //     }
-                // }
-
                 let see = movegen.static_exchange_ge(mv, 1);
-                // let see = g.static_exchange_ge(ts, mv, 1);
                 if !see {
                     self.pop_nnue(stack);
                     continue;
@@ -211,7 +246,32 @@ impl ExHelper {
             }
         }
 
+        // if let Some(mv) = best_move {
+        //     let eval = if in_check { Some(stand_pat) } else { None };
+        //     let bound = if best_score >= beta {
+        //         Node::Lower
+        //     } else if NODE_TYPE == PV {
+        //         Node::Exact
+        //     } else {
+        //         Node::Upper
+        //     };
+        //     self.tt_insert_deepest(
+        //         g.zobrist,
+        //         eval,
+        //         SearchInfo::new(
+        //             mv,
+        //             tt_depth,
+        //             bound,
+        //             best_score,
+        //             eval
+        //         )
+        //     );
+        // }
+
         alpha
     }
 
 }
+
+
+

@@ -85,6 +85,7 @@ mod ss {
         pub qt_nodes:       u32,
         pub qt_hits:        u32,
         pub qt_misses:      u32,
+        pub qt_tt_returns:  u32,
         pub alpha:          i32,
         pub beta:           i32,
         pub ns_pv:          u32,
@@ -136,6 +137,7 @@ mod ss {
                 qt_nodes:           self.qt_nodes + other.qt_nodes,
                 qt_hits:            self.qt_hits + other.qt_hits,
                 qt_misses:          self.qt_misses + other.qt_misses,
+                qt_tt_returns:      self.qt_tt_returns + other.qt_tt_returns,
                 alpha:              i32::max(self.alpha, other.alpha),
                 beta:               i32::min(self.beta, other.beta),
                 ns_pv:              self.ns_pv + other.ns_pv,
@@ -183,6 +185,7 @@ mod ss {
             eprintln!("nodes/qt nodes = {:.1?}", self.qt_nodes as f64 / self.nodes as f64);
             eprintln!("qt nodes    = {}", pretty_print_si(self.qt_nodes as i64));
             eprintln!("q_max_depth = {:?}", self.q_max_depth);
+            eprintln!("q_tt_returns = {}", pretty_print_si(self.qt_tt_returns as i64));
 
             eprintln!("null prunes   = {:?}", self.null_prunes);
             eprintln!("fut prunes    = {:?}", self.fut_prunes);

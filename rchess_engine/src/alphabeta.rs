@@ -291,7 +291,6 @@ impl ExHelper {
     pub fn has_cycle(
         ts:                      &'static Tables,
         g:                       &Game,
-        ply:                     Depth,
         mut stats:               &mut SearchStats,
         stack:                   &ABStack,
     ) -> bool {
@@ -520,7 +519,7 @@ impl ExHelper {
         }
 
         /// Step 1. Repetition
-        let cycle = Self::has_cycle(ts, g, ply, stats, stack);
+        let cycle = Self::has_cycle(ts, g, stats, stack);
         // if cycle && alpha < DRAW_VALUE {
         if cycle {
             // eprintln!("ply, mv, cycle = {:?}, {:?}, {}", ply, g.last_move.unwrap(), cycle);
@@ -617,7 +616,10 @@ impl ExHelper {
             //     return ABResults::ABSingle(ABResult::new_single(g.last_move.unwrap(), si.score));
             // }
 
-            if si.depth_searched >= depth && (depth == 0 || !is_pv_node) {
+            /// Only return if the TT entry has a greater depth
+            if si.depth_searched >= depth
+                && (depth == 0 || !is_pv_node)
+            {
 
                 if si.node_type == Node::Exact
                     || (si.node_type == Node::Lower && si.score >= beta)
