@@ -91,7 +91,7 @@ impl TransTable {
     }
 
     // pub fn probe(&self, zb: Zobrist) -> Option<(bool,SearchInfo)> {
-    pub fn probe(&self, zb: Zobrist) -> (Option<Score>, Option<SearchInfo>) {
+    pub fn probe(&self, zb: Zobrist) -> (Option<TTEval>, Option<SearchInfo>) {
         let (idx,ver) = self.calc_index(zb);
 
         if let Some(bucket) = self.buf.get(idx) {
@@ -166,6 +166,28 @@ impl TransTable {
 /// Queries
 impl TransTable {
 
+    pub fn used_entries_eval_si(&self) -> (usize,usize,usize) {
+
+        let mut used_total = 0;
+        let mut used_eval  = 0;
+        let mut used_si    = 0;
+
+        for bucket in self.buf.iter() {
+            for e in bucket.bucket.read().iter() {
+                if let Some(e) = e.entry {
+                    used_total += 1;
+
+                    match (e.get_eval(), e.get_searchinfo()) {
+                        (TTEval::Check | TTEval::Some(_),None) => used_eval += 1,
+                        (_,Some(si))                           => used_si += 1,
+                    }
+                }
+            }
+        }
+
+        (used_total,used_eval,used_si)
+    }
+
     pub fn total_entries(&self) -> usize {
         self.num_buckets * ENTRIES_PER_BUCKET
     }
@@ -210,10 +232,18 @@ pub enum TTEval {
     Some(Score),
 }
 
+impl TTEval {
+    pub fn to_option(self) -> Option<Score> {
+        if let Self::Some(score) = self {
+            Some(score)
+        } else { None }
+    }
+}
+
 /// New
 impl TTEntry2 {
-    pub fn new(ver: u32, eval: Option<Score>, si: Option<SearchInfo>) -> Option<Self> {
-        match (eval,si) {
+    pub fn new(ver: u32, meval: Option<Score>, msi: Option<SearchInfo>) -> Option<Self> {
+        match (meval,msi) {
             (Some(eval),None)     => Some(Self::Eval { ver, eval: TTEval::Some(eval) }),
             (None,Some(si))       => Some(Self::Both { ver, eval: TTEval::Check, si }),
             (Some(eval),Some(si)) => Some(Self::Both { ver, eval: TTEval::Some(eval), si }),
@@ -317,15 +347,7 @@ impl Bucket {
         age:              &AtomicU8,
     ) {
 
-        // match (meval,msi) {
-        //     (None,None)       => panic!(),
-        //     (Some(eval),None) => {
-        //         // TODO: eval only, insert as new
-        //     },
-        //     (_,Some(si))    => {
-        //         // TODO: insert new si
-        //     },
-        // }
+        assert!(meval.is_some() || msi.is_some());
 
         let mut idx_lowest_depth = None;
 
@@ -334,7 +356,9 @@ impl Bucket {
                 match e.get_searchinfo() {
                     Some(e_si) => {
                         if let Some(si) = msi {
-                            if e_si.depth_searched < si.depth_searched {
+                            if e_si.depth_searched < si.depth_searched
+                                // && e_si.node_type != Node::Exact
+                            {
                                 idx_lowest_depth = Some(entry_idx);
                             }
                         }
@@ -348,14 +372,6 @@ impl Bucket {
             }
         }
 
-        // for (entry_idx,e) in self.bucket.read().iter().enumerate() {
-        //     if let Some((ver,e_si)) = e.entry {
-        //         if e_si.depth_searched < si.depth_searched {
-        //             idx_lowest_depth = Some(entry_idx);
-        //         }
-        //     }
-        // }
-
         let idx = if let Some(idx) = idx_lowest_depth {
             used_entries.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             idx
@@ -367,7 +383,8 @@ impl Bucket {
         let mut w = w.get_mut(idx).unwrap();
         // *w = TTEntry::new(age, Some((ver,si)));
 
-        unimplemented!()
+        let new = TTEntry::new(age, TTEntry2::new(ver, meval, msi));
+        *w = new;
 
     }
 
@@ -415,9 +432,16 @@ impl Bucket {
 
     }
 
-    pub fn find(&self, ver: u32, age: &AtomicU8) -> (Option<Score>,Option<SearchInfo>) {
+    pub fn find(&self, ver: u32, age: &AtomicU8) -> (Option<TTEval>,Option<SearchInfo>) {
 
-        unimplemented!()
+        for (entry_idx,e) in self.bucket.read().iter().enumerate() {
+            if let Some(ver2) = e.get_ver() {
+                if ver2 == ver {
+                    return (e.get_eval(),e.get_searchinfo());
+                }
+            }
+        }
+        (None,None)
     }
 
     // pub fn find(&self, ver: u32, age: &AtomicU8) -> Option<(bool,SearchInfo)> {

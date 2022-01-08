@@ -289,7 +289,7 @@ fn main_tt() {
     // let k0 = std::mem::size_of::<RwLock<()>>();
     let k0 = std::mem::size_of::<Bucket>();
     let k1 = std::mem::size_of::<TTEntry>();
-    let k2 = std::mem::size_of::<TTEntry3>();
+    let k2 = std::mem::size_of::<TTEntry2>();
     // let k2 = std::mem::size_of::<RwLock<TTEntry>>();
     // let k2 = std::mem::size_of::<SearchInfo>();
     // let k2 = std::mem::size_of::<PackedSearchInfo>();
@@ -2949,7 +2949,15 @@ fn main9() {
     debug!("Best move = {:>8} {:?}", best.score, best.mv);
     debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth, t2);
 
-    // return;
+    let tt = ex.ptr_tt;
+
+    let (used_total,used_eval,used_si) = tt.used_entries_eval_si();
+
+    eprintln!("used_total = {:?}", used_total);
+    eprintln!("used_eval  = {:?}", used_eval);
+    eprintln!("used_si    = {:?}", used_si);
+
+    return;
 
     println!();
 

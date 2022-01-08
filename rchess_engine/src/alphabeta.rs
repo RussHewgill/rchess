@@ -1,4 +1,5 @@
 
+use crate::lockless_map::TTEval;
 // use crate::heuristics::*;
 use crate::movegen::*;
 use crate::searchstats;
@@ -247,6 +248,9 @@ impl ExHelper {
         {
             let (meval,msi) = self.ptr_tt.probe(zb);
             match (meval,msi) {
+                (Some(TTEval::Check),None) => {
+                    stats.tt_eval += 1;
+                },
                 (None,None) => {
                     stats!(stats.tt_misses += 1);
                 },
@@ -261,6 +265,7 @@ impl ExHelper {
                     }
                 },
             }
+            let meval = meval.map(|x| x.to_option()).flatten();
             (meval,msi)
         }
         #[cfg(not(feature = "lockless_hashmap"))]
@@ -443,6 +448,9 @@ impl ExHelper {
         } else {
             let eval = self.eval_nn_or_hce(ts, g, ply);
             stack.with(ply, |st| st.static_eval = Some(eval));
+
+            self.tt_insert_deepest_eval(g.zobrist, Some(eval));
+
             Some(eval)
         }
 
@@ -1225,13 +1233,17 @@ impl ExHelper {
         }
 
         /// Step 19. Filter checkmate, stalemate
-        if in_check && (moves_searched == 0 || best_val.0.is_none()) {
+        if in_check
+            && (moves_searched == 0 || best_val.0.is_none())
+        {
             let score = CHECKMATE_VALUE - ply as Score;
             stats.leaves += 1;
             stats.checkmates += 1;
             let mv = g.last_move.unwrap();
             return ABSingle(ABResult::new_single(mv, -score));
-        } else if moves_searched == 0 || best_val.0.is_none() {
+        } else if moves_searched == 0
+            || best_val.0.is_none()
+        {
             // let score = -DRAW_VALUE + ply as Score;
             let score = draw_value(stats);
 
