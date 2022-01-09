@@ -28,6 +28,7 @@ pub struct SParams {
     pub lmr_ply_const:            Depth,
 
     pub qs_recaps_only:           Depth,
+    pub qs_delta_margin:          Score,
 
     pub null_prune_min_depth:     Depth,
     pub null_prune_min_phase:     Phase,
@@ -46,28 +47,29 @@ pub struct SParams {
 impl Default for SParams {
     fn default() -> Self {
         Self {
-            max_ply:                 220,
+            max_ply:                  220,
 
-            lmr_min_moves:           2,
-            lmr_min_ply:             3,
-            lmr_min_depth:           3,
+            lmr_min_moves:            2,
+            lmr_min_ply:              3,
+            lmr_min_depth:            3,
 
-            lmr_reduction:           3,
-            lmr_ply_const:           6,
+            lmr_reduction:            3,
+            lmr_ply_const:            6,
 
-            qs_recaps_only:          5,
+            qs_recaps_only:           5,
+            qs_delta_margin:          150, // one and a half Pawns
 
-            null_prune_min_depth:    3,
-            null_prune_min_phase:    200,
-            null_prune_reduction:    2,
+            null_prune_min_depth:     3,
+            null_prune_min_phase:     200,
+            null_prune_reduction:     2,
 
-            rfp_min_depth:           8,
-            rfp_margin:              100,
+            rfp_min_depth:            8,
+            rfp_margin:               100,
 
-            futility_min_alpha:      31000,
-            futility_margin:         300,
+            futility_min_alpha:       31000,
+            futility_margin:          300,
 
-            history_max:             400, // 20 * 20
+            history_max:              400, // 20 * 20
 
         }
     }

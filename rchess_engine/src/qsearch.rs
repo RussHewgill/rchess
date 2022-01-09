@@ -166,6 +166,36 @@ impl ExHelper {
 
 }
 
+/// Quiescence static eval
+impl ExHelper {
+    pub fn best_case_move(
+        &self,
+        ts:         &'static Tables,
+        g:          &Game,
+    ) -> Score {
+        const PCS: [Piece; 4] = [Queen,Rook,Bishop,Knight];
+
+        let mut score = Pawn.score();
+        let side = g.state.side_to_move;
+
+        for pc in PCS {
+            if g.state.material.get(pc, side) > 0 {
+                score = pc.score();
+                break;
+            }
+        }
+
+        let rank7 = if side == White { BitBoard::mask_rank(6) } else { BitBoard::mask_rank(1) };
+
+        let proms = g.get(Pawn, side) & rank7;
+        if proms.is_not_empty() {
+            score += Queen.score() - Pawn.score();
+        }
+
+        score
+    }
+}
+
 /// Quiescence with TT
 impl ExHelper {
 
@@ -210,6 +240,7 @@ impl ExHelper {
 
         /// Check for returnable TT value
         if let Some(si) = msi {
+
             if NODE_TYPE != PV
                 && si.depth_searched >= tt_depth
                 && si.node_type == if si.score >= beta { Node::Lower } else { Node::Upper }
@@ -217,9 +248,15 @@ impl ExHelper {
                 stats.qt_tt_returns += 1;
                 return si.score;
             }
-        }
 
-        let mut best_score = Score::MIN;
+            // if si.node_type == Node::Exact
+            //     || (si.node_type == Node::Lower && si.score >= beta)
+            //     || (si.node_type == Node::Upper && si.score <= alpha) {
+            //         stats.qt_tt_returns += 1;
+            //         return si.score;
+            //     }
+
+        }
 
         let stand_pat = self.get_static_eval_qsearch(ts, g, ply, stack, meval, msi, &mut allow_stand_pat);
 
@@ -232,8 +269,14 @@ impl ExHelper {
                 self.tt_insert_deepest_eval(g.zobrist, Some(stand_pat));
             }
 
-            // return beta; // fail hard
-            return stand_pat; // fail soft // XXX: is faster ??
+            return beta; // fail hard
+            // return stand_pat; // fail soft // XXX: is faster ??
+        }
+
+        /// TODO: Delta Pruning
+        if self.params.qs_delta_margin.max(self.best_case_move(ts, g)) < alpha - stand_pat {
+            // return alpha; // XXX: doesn't work at all?
+            return stand_pat;
         }
 
         // if NODE_TYPE == PV && stand_pat > alpha {
@@ -242,15 +285,13 @@ impl ExHelper {
             alpha = stand_pat;
         }
 
-        /// TODO: Delta Pruning
-
         /// TODO: use hashmove or not?
         // let m_hashmove = msi.map(|si| si.best_move);
         // let mut movegen = MoveGen::new_qsearch(ts, g, m_hashmove, stack, qply);
         let mut movegen = MoveGen::new_qsearch(ts, g, None, stack, qply);
 
-        // let mut best_score = Score::MIN;
-        let mut best_move: Option<Move>  = None;
+        let mut best_score = Score::MIN;
+        let mut best_move: Option<Move> = None;
 
         while let Some(mv) = movegen.next(stack) {
             if let Some(g2) = self.make_move(ts, g, ply, mv, None, stack) {
@@ -266,17 +307,22 @@ impl ExHelper {
 
                 if score >= beta && allow_stand_pat {
                     self.pop_nnue(stack);
-                    // return beta; // fail hard // XXX: works better, but shouldn't ??
-                    return stand_pat; // fail soft
+                    return beta; // fail hard // XXX: works better, but shouldn't ??
+                    // return stand_pat; // fail soft
                 }
 
-                if score > alpha {
-                    best_move = Some(mv);
-                    alpha = score;
-                    // // XXX: why?
-                    // if score < beta {
-                    //     alpha = score;
-                    // }
+                if score > best_score {
+                    best_score = score;
+
+                    if score > alpha {
+                        best_move = Some(mv);
+                        alpha = score;
+                        // // XXX: why?
+                        // if score < beta {
+                        //     alpha = score;
+                        // }
+                    }
+
                 }
 
                 // /// XXX: from stockfish
@@ -492,11 +538,19 @@ impl ExHelper {
         &self,
         ts:                       &'static Tables,
         g:                        &Game,
-        (ply,qply):               (Depth,Depth),
+        (ply,qply,_):             (Depth,Depth,Depth),
         (mut alpha, mut beta):    (Score,Score),
         mut stack:                &mut ABStack,
         mut stats:                &mut SearchStats,
     ) -> Score {
+
+        stats.qt_nodes += 1;
+        stats!(stats.q_max_depth = stats.q_max_depth.max(ply as u8));
+
+        // /// check repetition
+        // if Self::has_cycle(ts, g, stats, stack) || ply >= MAX_SEARCH_PLY {
+        //     return draw_value(stats);
+        // }
 
         let stand_pat = if let Some(nnue) = &self.nnue {
             let mut nn = nnue.borrow_mut();
@@ -509,14 +563,6 @@ impl ExHelper {
         /// early halt
         // if self.stop.load(SeqCst) { return stand_pat; }
         if self.stop.load(Relaxed) { return stand_pat; }
-
-        stats.qt_nodes += 1;
-
-        // if ply > stats.q_max_depth {
-        //     eprintln!("new max depth = {:?}", ply);
-        // }
-
-        stats!(stats.q_max_depth = stats.q_max_depth.max(ply as u8));
 
         let mut allow_stand_pat = true;
 
@@ -541,7 +587,15 @@ impl ExHelper {
         //     return alpha;
         // }
 
+        // /// TODO: Delta Pruning
+        // if self.params.qs_delta_margin.max(self.best_case_move(ts, g)) < alpha - stand_pat {
+        //     // return alpha; // XXX: doesn't work at all?
+        //     return stand_pat;
+        // }
+
         // let mut moves_searched = 0;
+
+        // let mut best_move: Option<Move> = None;
 
         while let Some(mv) = movegen.next(stack) {
             if let Some(g2) = self.make_move(ts, g, ply, mv, None, stack) {
@@ -563,7 +617,7 @@ impl ExHelper {
                 }
 
                 let score = -self.qsearch::<{NODE_TYPE}>(
-                    &ts, &g2, (ply + 1,qply + 1), (-beta, -alpha), stack, stats);
+                    &ts, &g2, (ply + 1,qply + 1,0), (-beta, -alpha), stack, stats);
 
                 if score >= beta && allow_stand_pat {
                     self.pop_nnue(stack);
@@ -572,12 +626,19 @@ impl ExHelper {
                 }
 
                 if score > alpha {
+                    // best_move = Some(mv);
                     alpha = score;
                 }
 
                 self.pop_nnue(stack);
             }
         }
+
+        // if g.in_check() && best_move.is_none() {
+        //     let score = CHECKMATE_VALUE - ply as Score;
+        //     // return -score; // XXX: backward ?
+        //     return score;
+        // }
 
         alpha
     }
