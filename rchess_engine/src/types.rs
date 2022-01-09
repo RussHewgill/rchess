@@ -52,7 +52,7 @@ pub fn scale_score_to_i8(s: i32) -> i8 {
     (s / K) as i8
 }
 
-pub type Depth = u8;
+pub type Depth = i16;
 
 #[derive(Serialize,Deserialize,Debug,Hash,Eq,PartialEq,PartialOrd,Ord,ShallowCopy,Clone,Copy)]
 // #[derive(Debug,Hash,Eq,PartialEq,PartialOrd,Clone,Copy)]

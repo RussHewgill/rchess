@@ -27,6 +27,7 @@ use std::cell::RefCell;
 use std::path::Path;
 use std::collections::{VecDeque,HashMap,HashSet};
 use std::hash::BuildHasher;
+use std::sync::atomic::AtomicI16;
 use std::sync::atomic::{Ordering,Ordering::SeqCst,Ordering::Relaxed,AtomicU8,AtomicI8};
 use std::time::{Instant,Duration};
 
@@ -197,9 +198,9 @@ pub struct ExHelper {
     pub nnue:            Option<RefCell<NNUE4>>,
 
     pub cfg:             ExConfig,
-    pub search_params:   SParams,
+    pub params:          SParams,
 
-    pub best_depth:      Arc<AtomicU8>,
+    pub best_depth:      Arc<AtomicI16>,
     pub tx:              ExSender,
     // pub thread_dec:      Sender<usize>,
 
@@ -235,7 +236,7 @@ impl Explorer {
         &self,
         id:               usize,
         max_depth:        Depth,
-        best_depth:       Arc<AtomicU8>,
+        best_depth:       Arc<AtomicI16>,
         root_moves:       Vec<Move>,
         tx:               ExSender,
     ) -> ExHelper {
@@ -251,7 +252,7 @@ impl Explorer {
             best_mate:       self.best_mate.clone(),
 
             cfg:             self.cfg.clone(),
-            search_params:   self.search_params.clone(),
+            params:          self.search_params.clone(),
 
             #[cfg(feature = "syzygy")]
             syzygy:          self.syzygy.clone(),
@@ -568,7 +569,7 @@ impl Explorer {
             Arc::new(RwLock::new((0, ABResults::ABNone, vec![], SearchStats::default())));
 
         let thread_counter = Arc::new(AtomicI8::new(0));
-        let best_depth     = Arc::new(AtomicU8::new(0));
+        let best_depth     = Arc::new(AtomicI16::new(0));
 
         let t0 = Instant::now();
         // std::thread::sleep(Duration::from_micros(100));
@@ -680,7 +681,7 @@ impl Explorer {
             let r = out.read();
             r.clone()
         };
-        stats.max_depth = d;
+        stats.max_depth = d as u8;
 
         stats.ph_hits   = self.ph_rw.hits.load(Ordering::Relaxed);
         stats.ph_misses = self.ph_rw.misses.load(Ordering::Relaxed);
@@ -706,7 +707,7 @@ impl Explorer {
     fn lazy_smp_listener(
         &self,
         rx:               ExReceiver,
-        best_depth:       Arc<AtomicU8>,
+        best_depth:       Arc<AtomicI16>,
         thread_counter:   Arc<AtomicI8>,
         t0:               Instant,
         out:              Arc<RwLock<(Depth,ABResults,Vec<Move>,SearchStats)>>,
@@ -747,7 +748,7 @@ impl Explorer {
                                            // bestres.score, bestres.moves.front());
                                            k, depth, bestres.mv);
                                     let mut best = self.best_mate.write();
-                                    *best = Some(k as u8);
+                                    *best = Some(k as Depth);
 
                                     self.stop.store(true, SeqCst);
 

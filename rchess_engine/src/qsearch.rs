@@ -11,6 +11,7 @@ use crate::pawn_hash_table::*;
 use crate::evmap_tables::*;
 
 use std::cell::RefCell;
+use std::sync::atomic::AtomicI16;
 use std::sync::atomic::AtomicU8;
 use std::sync::atomic::Ordering::{SeqCst,Relaxed};
 use parking_lot::{Mutex,RwLock};
@@ -48,7 +49,7 @@ pub fn exhelper_once(
 
     let stop = Arc::new(AtomicBool::new(false));
     let best_mate = Arc::new(RwLock::new(None));
-    let best_depth = Arc::new(AtomicU8::new(0));
+    let best_depth = Arc::new(AtomicI16::new(0));
 
     #[cfg(feature = "lockless_hashmap")]
     let ptr_tt = Arc::new(crate::lockless_map::TransTable::new_mb(256));
@@ -66,7 +67,7 @@ pub fn exhelper_once(
         syzygy:          None,
         nnue: nnue.map(|x| RefCell::new(x)),
         cfg,
-        search_params: SParams::default(),
+        params: SParams::default(),
         best_depth,
         tx,
         #[cfg(feature = "lockless_hashmap")]
@@ -117,6 +118,30 @@ impl ExHelper {
 
 }
 
+/// Quiescence static eval
+impl ExHelper {
+
+    pub fn get_static_eval_qsearch(
+        &self,
+        ts:           &'static Tables,
+        g:            &Game,
+        ply:          Depth,
+        mut stack:    &mut ABStack,
+        meval:        Option<Score>,
+        msi:          Option<SearchInfo>,
+        allow_sp:     &mut bool,
+    ) -> Score {
+        if let Some(nnue) = &self.nnue {
+            let mut nn = nnue.borrow_mut();
+            nn.evaluate(&g, true)
+        } else {
+            let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
+            if g.state.side_to_move == Black { -stand_pat } else { stand_pat }
+        }
+    }
+
+}
+
 /// Quiescence with TT
 impl ExHelper {
 
@@ -125,7 +150,7 @@ impl ExHelper {
         &self,
         ts:                       &'static Tables,
         g:                        &Game,
-        (ply,qply):               (Depth,Depth),
+        (ply,qply,depth):         (Depth,Depth,Depth),
         (mut alpha, mut beta):    (Score,Score),
         mut stack:                &mut ABStack,
         mut stats:                &mut SearchStats,
@@ -147,7 +172,14 @@ impl ExHelper {
         }
 
         /// TODO: ??
-        let tt_depth = 1;
+        // let tt_depth = 1;
+        let tt_depth = if in_check {
+            1
+        } else if depth >= DEPTH_QSEARCH_CHECKS {
+            DEPTH_QSEARCH_CHECKS
+        } else {
+            DEPTH_QSEARCH_NOCHECKS
+        };
 
         /// TT Lookup
         let (meval,msi): (Option<Score>,Option<SearchInfo>) = self.check_tt2(ts, g.zobrist, tt_depth, stats);
@@ -155,7 +187,8 @@ impl ExHelper {
         /// Check for returnable TT value
         if let Some(si) = msi {
             if NODE_TYPE != PV
-            // && si.node_type == if si.score >= beta { Node::Lower } else { Node::Upper }
+                && si.depth_searched >= tt_depth
+                && si.node_type == if si.score >= beta { Node::Lower } else { Node::Upper }
             {
                 stats.qt_tt_returns += 1;
                 return si.score;
@@ -164,34 +197,19 @@ impl ExHelper {
 
         let mut best_score = Score::MIN;
 
-        if in_check {
-            allow_stand_pat = false;
-        }
-
-        let stand_pat = self.get_static_eval(ts, g, ply, stack, meval, msi);
-
-        let stand_pat = if let Some(s) = stand_pat { s } else {
-            allow_stand_pat = false;
-            Score::MIN
-        };
+        let stand_pat = self.get_static_eval_qsearch(ts, g, ply, stack, meval, msi, &mut allow_stand_pat);
 
         /// early halt
         if allow_stand_pat && self.stop.load(Relaxed) { return stand_pat; }
 
-        // /// early halt
-        // if allow_stand_pat && self.stop.load(Relaxed) {
-        //     if let Some(s) = stand_pat {
-        //         return s;
-        //     } else {
-        //         /// XXX: this might break things?
-        //         return Score::MIN;
-        //     }
-        // }
-
         if allow_stand_pat && stand_pat >= beta {
-            self.tt_insert_deepest_eval(g.zobrist, Some(stand_pat));
+
+            if meval.is_none() && msi.is_none() {
+                self.tt_insert_deepest_eval(g.zobrist, Some(stand_pat));
+            }
+
             // return beta; // fail hard
-            return stand_pat; // fail soft, is faster ??
+            return stand_pat; // fail soft // XXX: is faster ??
         }
 
         // if NODE_TYPE == PV && stand_pat > alpha {
@@ -202,10 +220,13 @@ impl ExHelper {
 
         /// TODO: Delta Pruning
 
+        /// TODO: use hashmove or not?
+        // let m_hashmove = msi.map(|si| si.best_move);
+        // let mut movegen = MoveGen::new_qsearch(ts, g, m_hashmove, stack, qply);
         let mut movegen = MoveGen::new_qsearch(ts, g, None, stack, qply);
 
         // let mut best_score = Score::MIN;
-        let mut best_move  = None;
+        let mut best_move: Option<Move>  = None;
 
         while let Some(mv) = movegen.next(stack) {
             if let Some(g2) = self.make_move(ts, g, ply, mv, None, stack) {
@@ -217,16 +238,21 @@ impl ExHelper {
                 }
 
                 let score = -self.qsearch::<{NODE_TYPE}>(
-                    &ts, &g2, (ply + 1,qply + 1), (-beta, -alpha), stack, stats);
+                    &ts, &g2, (ply + 1,qply + 1, depth - 1), (-beta, -alpha), stack, stats);
 
                 if score >= beta && allow_stand_pat {
                     self.pop_nnue(stack);
-                    // return beta; // fail hard
-                    return stand_pat; // fail soft
+                    return beta; // fail hard // XXX: works better, but shouldn't ??
+                    // return stand_pat; // fail soft
                 }
 
                 if score > alpha {
+                    best_move = Some(mv);
                     alpha = score;
+                    // // XXX: why?
+                    // if score < beta {
+                    //     alpha = score;
+                    // }
                 }
 
                 // /// XXX: from stockfish
@@ -279,7 +305,8 @@ impl ExHelper {
         // stand_pat
     }
 
-    #[cfg(feature = "tt_in_qsearch")]
+    // #[cfg(feature = "tt_in_qsearch")]
+    #[cfg(feature = "nope")]
     pub fn qsearch2<const NODE_TYPE: ABNodeType>(
         &self,
         ts:                       &'static Tables,

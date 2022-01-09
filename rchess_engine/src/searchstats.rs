@@ -163,7 +163,7 @@ mod ss {
             // println!("max depth    = {}", self.max_depth);
             // println!("leaves       = {}", Self::_print(self.leaves as i32));
             // println!("quiet_leaves = {}", Self::_print(self.quiet_leaves as i32));
-            println!("checkmates   = {}", Self::_print(self.checkmates as i32));
+            // println!("checkmates   = {}", Self::_print(self.checkmates as i32));
             // println!("stalemates   = {}", Self::_print(self.stalemates as i32));
 
             let tot = self.tt_hits + self.tt_halfmiss + self.tt_misses;
@@ -177,20 +177,20 @@ mod ss {
                      self.tt_halfmiss as f64 / tot,
                      self.tt_misses as f64 / tot,
             );
-            println!("tt_eval      = {}", Self::_print(self.tt_eval as i32));
+            // println!("tt_eval      = {}", Self::_print(self.tt_eval as i32));
             // println!("qt_nodes     = {}", Self::_print(self.qt_nodes as i32));
             // println!("qt_hits      = {}", Self::_print(self.qt_hits as i32));
             // println!("qt_misses    = {}", Self::_print(self.qt_misses as i32));
 
-            eprintln!("nodes/qt nodes = {:.1?}", self.qt_nodes as f64 / self.nodes as f64);
+            // eprintln!("nodes/qt nodes = {:.1?}", self.qt_nodes as f64 / self.nodes as f64);
             eprintln!("qt nodes    = {}", pretty_print_si(self.qt_nodes as i64));
             eprintln!("q_max_depth = {:?}", self.q_max_depth);
             eprintln!("q_tt_returns = {}", pretty_print_si(self.qt_tt_returns as i64));
 
-            eprintln!("null prunes   = {:?}", self.null_prunes);
-            eprintln!("fut prunes    = {:?}", self.fut_prunes);
-            eprintln!("counter_moves = {:?}", self.counter_moves);
-            eprintln!("lmrs          = {:?}", self.lmrs);
+            // eprintln!("null prunes   = {:?}", self.null_prunes);
+            // eprintln!("fut prunes    = {:?}", self.fut_prunes);
+            // eprintln!("counter_moves = {:?}", self.counter_moves);
+            // eprintln!("lmrs          = {:?}", self.lmrs);
 
             let bcs = self.beta_cut_first;
             eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);

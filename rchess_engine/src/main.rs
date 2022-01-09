@@ -2794,7 +2794,7 @@ fn main9() {
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
 
-    // let (fen,correct) = &games_sts(40, 1); // fen, set
+    // let (fen,correct) = &games_sts(8, 3); // fen, set
 
     // let (fen,correct) = &games_sts(91, 11); // fen, set
 
@@ -2817,38 +2817,21 @@ fn main9() {
     //     hook(panicinfo)
     // }));
 
-    // let mv = Move::Capture { from: "H5".into(), to: "G4".into(), pc: Pawn, victim: Pawn };
-
     // let k0 = std::mem::size_of::<SearchInfo>();
     // eprintln!("k0 = {:?}", k0);
     // return;
 
-    // let fen = "8/6kp/r7/p7/1n1R1P2/7P/6PK/8 b - - 0 46";
-    // let mut g = Game::from_fen(&ts, fen).unwrap();
-    // let mvs = vec![
-    //     "b4c6", //     Nc6 b
-    //     "d4a4", // 47. Ra4 w
-    //     "a6b6", //     Rb6 b
-    //     "a4c4", // 48. Rc4 w
-    //     // "b6a6", //     Ra6 b, 2 fold rep allowed
-    //     // "c4a4", // 49. Ra4 w
-    //     // "a6b6", // Rb6 b
-    //     // "a4c4", // Rc4 w
-    //     // "b6a6", // Ra6, mistake, draw
-    //     // "c4a4"  // draw
-    // ];
-
     // let t = 10.0;
     // let t = 6.0;
-    let t = 4.0;
+    let t = 5.0;
     // let t = 2.0;
     // let t = 0.5;
     // let t = 0.3;
 
     // let n = 35;
     // let n = 22;
-    // let n = 8;
-    let n = 10;
+    let n = 7;
+    // let n = 10;
     // let n = 2;
 
     let timesettings = TimeSettings::new_f64(0.0,t);
@@ -2868,34 +2851,6 @@ fn main9() {
     // let mut ex2 = ex.clone();
 
     // ex.timer.settings.increment = [0.118; 2];
-
-    // let moves = mvs.into_iter();
-    // ex.update_game_movelist(&ts, fen, moves);
-
-    // let moves = vec![
-    //     Move::new_quiet("g1", "f3", Knight),
-    //     Move::new_quiet("g8", "f6", Knight),
-    //     Move::new_quiet("b1", "c3", Knight),
-    //     Move::new_quiet("b8", "c6", Knight),
-    //     Move::new_quiet("f3", "g5", Knight),
-    //     Move::new_quiet("c6", "b4", Knight),
-    //     // Move::NullMove,
-    // ];
-    // ex._update_game_movelist(&ts, &moves);
-    // let g = ex.game.clone();
-    // eprintln!("g = {:?}", g);
-    // eprintln!("g.halfmove = {:?}", g.halfmove);
-    // eprintln!("g.to_fen() = {:?}", g.to_fen());
-
-    // let zb0 = Game::from_fen(&ts, "8/6kp/r1n5/p7/R4P2/7P/6PK/8 b - - 10 51").unwrap().zobrist;
-    // eprintln!("zb0 = {:?}", zb0);
-    // let cycle = ex.move_history.iter().any(|&(zb2,_)| g.zobrist == zb2);
-    // eprintln!("cycle = {:?}", cycle);
-
-    // for (zb,mv) in ex.move_history.iter() {
-    //     // eprintln!("mv = {:?}", mv);
-    // }
-
 
     // // XXX: avg of 5
     // const N: usize = 5;
@@ -2960,10 +2915,12 @@ fn main9() {
         let tot  = tt.total_entries();
         eprintln!("tt use ratio = {:.3}, used = {:?}", used as f64 / tot as f64, used);
 
-        // let (used_total,used_eval,used_si) = tt.used_entries_eval_si();
+        let (used_total,used_eval,used_si) = tt.used_entries_eval_si();
         // eprintln!("used_total = {:?}", used_total);
         // eprintln!("used_eval  = {:?}", used_eval);
         // eprintln!("used_si    = {:?}", used_si);
+
+        eprintln!("eval / total = {:.3}", used_eval as f64 / used_total as f64);
 
     }
 

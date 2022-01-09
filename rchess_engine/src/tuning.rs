@@ -79,6 +79,9 @@ mod const_params {
 
     pub const MAX_SEARCH_PLY: Depth = 220;
 
+    pub const DEPTH_QSEARCH_CHECKS: Depth   = 0;
+    pub const DEPTH_QSEARCH_NOCHECKS: Depth = -1;
+
     /// -2147482414
     pub const VALUE_INVALID: Score   = Score::MIN + 1234;
 
@@ -147,7 +150,7 @@ mod misc_functions {
         (3 + depth * depth) / (2 - i)
     }
 
-    pub fn lmr_reduction(d: Depth, ms: u8) -> Depth {
+    pub fn lmr_reduction(d: Depth, ms: i16) -> Depth {
         if ms < 4 {
             return 1;
         }

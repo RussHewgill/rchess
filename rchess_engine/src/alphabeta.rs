@@ -581,11 +581,11 @@ impl ExHelper {
                 // // let score = self.qsearch::<{NT}>(&ts, &g, (ply,0), (alpha, beta), stack, stats);
 
                 let score = if NODE_TYPE == PV {
-                    self.qsearch::<{PV}>(&ts, &g, (ply,0), (alpha, beta), stack, stats)
-                    // self.qsearch2::<{PV}>(&ts, &g, (ply,0), (alpha, beta), stack, stats)
+                    // self.qsearch::<{PV}>(&ts, &g, (ply,0), (alpha, beta), stack, stats)
+                    self.qsearch::<{PV}>(&ts, &g, (ply,0,0), (alpha, beta), stack, stats)
                 } else {
-                    self.qsearch::<{PV}>(&ts, &g, (ply,0), (alpha, beta), stack, stats)
-                    // self.qsearch2::<{PV}>(&ts, &g, (ply,0), (alpha, beta), stack, stats)
+                    // self.qsearch::<{NonPV}>(&ts, &g, (ply,0), (alpha, beta), stack, stats)
+                    self.qsearch::<{NonPV}>(&ts, &g, (ply,0,0), (alpha, beta), stack, stats)
                 };
 
                 // trace!("    returned from qsearch, score = {}", score);
@@ -974,7 +974,8 @@ impl ExHelper {
                 if lmr
                     && !is_pv_node
                     && moves_searched >= (if is_root_node { 2 + LMR_MIN_MOVES } else { LMR_MIN_MOVES })
-                    && next_depth >= LMR_MIN_DEPTH
+                    // && next_depth >= LMR_MIN_DEPTH
+                    && next_depth >= self.params.lmr_min_depth
                     && !mv.filter_promotion()
                     // && !mv.filter_all_captures()
                     && !in_check
