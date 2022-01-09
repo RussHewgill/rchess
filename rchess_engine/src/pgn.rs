@@ -193,7 +193,8 @@ pub fn process_pgns_td(
 
                                 if score == q_score {
                                     (false,score)
-                                } else if score.abs() > DRAW_VALUE - 100 {
+                                // } else if score.abs() > DRAW_VALUE - 100 {
+                                } else if score.abs() > 0 - 100 {
                                     (true, 0)
                                 } else {
                                     (true, 0)
@@ -252,7 +253,8 @@ pub fn _process_pgn_td(
 
                         if score == q_score {
                             (false,score)
-                        } else if score.abs() > DRAW_VALUE - 100 {
+                        // } else if score.abs() > DRAW_VALUE - 100 {
+                        } else if score.abs() > 0 - 100 {
                             (true, 0)
                         } else {
                             (true, 0)

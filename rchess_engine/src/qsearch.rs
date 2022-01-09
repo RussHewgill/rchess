@@ -66,6 +66,7 @@ pub fn exhelper_once(
         syzygy:          None,
         nnue: nnue.map(|x| RefCell::new(x)),
         cfg,
+        search_params: SParams::default(),
         best_depth,
         tx,
         #[cfg(feature = "lockless_hashmap")]

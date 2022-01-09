@@ -1180,29 +1180,19 @@ impl ExHelper {
                 }
 
                 if !b && best_val.1 > alpha {
-                    // current_node_type = Node::Exact;
                     alpha = best_val.1;
-
-                    // #[cfg(feature = "pvs_search")]
-                    // { search_pvs_all = false; }
                 }
 
-                // if !b && Some(mv) != best_val.0.map(|x| x.mv).flatten() {
                 if !b {
                     if mv.filter_capture_or_promotion() {
-                        // captures_searched.push(mv);
                         captures_searched.try_push(mv).unwrap_or_else(|_| {});
                     } else {
-                        // quiets_searched.push(mv);
                         quiets_searched.try_push(mv).unwrap_or_else(|_| {});
                     }
                 }
 
                 /// Fail high, update stats
                 if b {
-                    // // node_type = Some(Node::Cut);
-                    // current_node_type = Node::Lower;
-
                     if !mv.filter_all_captures() {
 
                         // #[cfg(feature = "history_heuristic")]

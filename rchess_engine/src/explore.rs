@@ -54,6 +54,8 @@ pub struct Explorer {
 
     pub cfg:           ExConfig,
 
+    pub search_params: SParams,
+
     #[cfg(feature = "syzygy")]
     pub syzygy:        Option<Arc<SyzygyTB>>,
     pub opening_book:  Option<Arc<OpeningBook>>,
@@ -106,6 +108,7 @@ impl Explorer {
             best_mate:      Arc::new(RwLock::new(None)),
 
             cfg,
+            search_params:  SParams::default(),
 
             // move_history:   VecDeque::default(),
             // syzygy:         Arc::new(None),
@@ -194,6 +197,7 @@ pub struct ExHelper {
     pub nnue:            Option<RefCell<NNUE4>>,
 
     pub cfg:             ExConfig,
+    pub search_params:   SParams,
 
     pub best_depth:      Arc<AtomicU8>,
     pub tx:              ExSender,
@@ -247,6 +251,7 @@ impl Explorer {
             best_mate:       self.best_mate.clone(),
 
             cfg:             self.cfg.clone(),
+            search_params:   self.search_params.clone(),
 
             #[cfg(feature = "syzygy")]
             syzygy:          self.syzygy.clone(),
