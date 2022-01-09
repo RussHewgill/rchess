@@ -2794,7 +2794,7 @@ fn main9() {
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
 
-    // let (fen,correct) = &games_sts(8, 3); // fen, set
+    let (fen,correct) = &games_sts(8, 3); // fen, set
 
     // let (fen,correct) = &games_sts(91, 11); // fen, set
 

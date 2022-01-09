@@ -131,6 +131,29 @@ impl ExHelper {
         msi:          Option<SearchInfo>,
         allow_sp:     &mut bool,
     ) -> Score {
+
+        if g.in_check() {
+            *allow_sp = false;
+            return Score::MIN;
+        }
+
+        if msi.is_some() || meval.is_some() {
+
+            let mut eval = if let Some(eval) = meval { eval } else {
+                self.eval_nn_or_hce(ts, g)
+            };
+
+            if let Some(si) = msi {
+                let bb = if si.score > eval { Node::Lower } else { Node::Upper };
+                if si.node_type == bb {
+                    eval = si.score;
+                }
+            }
+            return eval;
+        } else if let Some(eval) = meval {
+            return eval;
+        }
+
         if let Some(nnue) = &self.nnue {
             let mut nn = nnue.borrow_mut();
             nn.evaluate(&g, true)
@@ -138,6 +161,7 @@ impl ExHelper {
             let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
             if g.state.side_to_move == Black { -stand_pat } else { stand_pat }
         }
+
     }
 
 }
@@ -242,8 +266,8 @@ impl ExHelper {
 
                 if score >= beta && allow_stand_pat {
                     self.pop_nnue(stack);
-                    return beta; // fail hard // XXX: works better, but shouldn't ??
-                    // return stand_pat; // fail soft
+                    // return beta; // fail hard // XXX: works better, but shouldn't ??
+                    return stand_pat; // fail soft
                 }
 
                 if score > alpha {
