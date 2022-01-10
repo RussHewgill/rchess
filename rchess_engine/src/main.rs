@@ -2794,11 +2794,14 @@ fn main9() {
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
 
-    let (fen,correct) = &games_sts(8, 3); // fen, set
+    // let (fen,correct) = &games_sts(8, 3); // fen, set
 
     // let (fen,correct) = &games_sts(91, 11); // fen, set
 
-    // let fen = "8/5k1p/4r3/p3B1p1/Pp1p4/1r1P1BPP/2Q5/5K2 b - -"; // XXX: ???
+    // let fen = "4k3/8/8/1p6/8/2N5/2R5/4K3 w - - 0 1"; // QChecks
+    // let fen = "4k3/8/8/1p6/8/2N1N3/4R3/4K3 w - - 0 1"; // QChecks
+    // let fen = "4k3/8/5P2/1pP5/4N3/2N3P1/3PRP2/4K3 w - - 0 1"; // QChecks
+    let fen = "4k3/8/2PP2P1/7B/8/8/8/4K3 w - - 0 1"; // QChecks
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -2809,6 +2812,17 @@ fn main9() {
 
     // eprintln!();
     // eprintln!("correct = {:?}", correct);
+
+    let st = ABStack::new();
+
+    let mut movegen = MoveGen::new_qsearch(&ts, &g, None, &st, 0);
+
+    eprintln!();
+    while let Some(mv) = movegen.next(&st) {
+        eprintln!("mv = {:?}", mv);
+    }
+
+    return;
 
     // let hook = std::panic::take_hook();
     // std::panic::set_hook(Box::new(move |panicinfo| {

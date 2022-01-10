@@ -41,7 +41,8 @@ pub enum MoveGenStage {
     QSearchHash,
     QSearchInit,
     QSearch,
-    // QChecks,
+    QChecksInit,
+    QChecks,
 
     // QSearchRecaps,
 
@@ -71,7 +72,9 @@ impl MoveGenStage {
 
             QSearchHash  => Some(QSearchInit),
             QSearchInit  => Some(QSearch),
-            QSearch      => Some(Finished),
+            QSearch      => Some(QChecksInit),
+            QChecksInit  => Some(QChecks),
+            QChecks      => Some(Finished),
 
             // GenAllInit   => Some(GenAll),
             // GenAll       => None,
@@ -426,9 +429,6 @@ impl<'a> MoveGen<'a> {
         Some((stage,mv))
     }
 
-    // pub fn next(&mut self, stack: &ABStack) -> Option<Move> {
-    // }
-
     pub fn next(&mut self, stack: &ABStack) -> Option<Move> {
         use MoveGenStage::*;
         match self.stage {
@@ -575,7 +575,27 @@ impl<'a> MoveGen<'a> {
                     }
                 }
                 self.stage = self.stage.next()?;
-                None
+                self.next(stack)
+            },
+
+            QChecksInit => {
+                self.generate(MoveGenType::QuietChecks);
+
+                self.sort(stack, MoveGenType::QuietChecks);
+
+                self.stage = self.stage.next()?;
+                self.next(stack)
+            },
+            QChecks => {
+                if let Some(mv) = self.pick_best(stack) {
+                    if self.move_is_legal(mv) {
+                        return Some(mv);
+                    } else {
+                        return self.next(stack);
+                    }
+                }
+                self.stage = self.stage.next()?;
+                self.next(stack)
             },
 
             // GenAll     => self.next_all(stack),
@@ -969,7 +989,7 @@ mod pieces {
             let ps = ps & !rank7;
 
             match gen {
-                MoveGenType::Captures => {
+                MoveGenType::Captures    => {
 
                     let enemies = self.game.get_color(!self.side);
 
@@ -1003,7 +1023,7 @@ mod pieces {
 
                     self.gen_promotions(gen, target);
                 },
-                MoveGenType::Quiets => {
+                MoveGenType::Quiets      => {
                     let pushes = ps.shift_dir(dir);
                     let mut pushes = pushes & !(occ);
                     if let Some(tgt) = target { pushes &= tgt; }
@@ -1014,8 +1034,8 @@ mod pieces {
                     if let Some(tgt) = target { doubles &= tgt; }
 
                     for to in pushes.into_iter() {
-                        if let Some(f) = (!dir).shift_coord(to) {
-                            let mv = Move::Quiet { from: f, to, pc: Pawn };
+                        if let Some(from) = (!dir).shift_coord(to) {
+                            let mv = Move::new_quiet(from, to, Pawn);
                             self.buf.push(mv);
                         }
                     };
@@ -1032,7 +1052,31 @@ mod pieces {
                     self.gen_pawns(MoveGenType::Captures, target);
                     self.gen_pawns(MoveGenType::Quiets, target);
                 },
-                MoveGenType::QuietChecks => unimplemented!(),
+                MoveGenType::QuietChecks => {
+
+                    let ps  = self.game.get(Pawn, self.side);
+                    let ksq = self.game.get(King, !self.side).bitscan();
+
+                    let mut ms = ps.shift_dir(dir);
+
+                    ms &= self.game.state.check_squares[Pawn];
+
+                    let blockers = ps & self.game.get_pins(!self.side);
+                    let blockers = blockers.shift_dir(dir);
+
+                    ms |= blockers;
+
+                    ms &= !(occ);
+                    if let Some(tgt) = target { ms &= tgt; }
+
+                    for to in ms.into_iter() {
+                        if let Some(from) = (!dir).shift_coord(to) {
+                            let mv = Move::new_quiet(from, to, Pawn);
+                            self.buf.push(mv);
+                        }
+                    };
+
+                },
             }
         }
 
@@ -1170,7 +1214,25 @@ mod pieces {
                     self.gen_knights(MoveGenType::Captures, target);
                     self.gen_knights(MoveGenType::Quiets, target);
                 },
-                MoveGenType::QuietChecks => unimplemented!(),
+                MoveGenType::QuietChecks => {
+
+                    let check_squares = self.game.state.check_squares[Knight];
+                    let blockers = self.game.get_pins(!self.side);
+
+                    ks.into_iter().for_each(|from| {
+                        let mut ms = self.ts.get_knight(from);
+                        ms &= !occ;
+                        if blockers.is_zero_at(from) {
+                            ms &= check_squares;
+                        }
+                        if let Some(tgt) = target { ms &= tgt; }
+                        ms.into_iter().for_each(|to| {
+                            let mv = Move::Quiet { from, to, pc: Knight };
+                            self.buf.push(mv);
+                        });
+                    });
+
+                },
             }
 
         }
@@ -1211,7 +1273,26 @@ mod pieces {
                     self.gen_sliding(MoveGenType::Captures, pc, target);
                     self.gen_sliding(MoveGenType::Quiets, pc, target);
                 },
-                MoveGenType::QuietChecks => unimplemented!(),
+                MoveGenType::QuietChecks => {
+
+                    let check_squares = self.game.state.check_squares[pc];
+                    let blockers = self.game.get_pins(!self.side);
+
+                    pieces.into_iter().for_each(|from| {
+                        let mut ms = self._gen_sliding_single(pc, from, None);
+                        ms &= self.game.all_empty();
+                        if blockers.is_zero_at(from) {
+                            ms &= check_squares;
+                        }
+                        if let Some(tgt) = target { ms &= tgt; }
+                        ms.into_iter().for_each(|to| {
+                            let mv = Move::Quiet { from, to, pc };
+                            self.buf.push(mv);
+                        });
+                    });
+
+
+                },
             }
 
 

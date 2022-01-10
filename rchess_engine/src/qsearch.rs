@@ -561,7 +561,6 @@ impl ExHelper {
         };
 
         /// early halt
-        // if self.stop.load(SeqCst) { return stand_pat; }
         if self.stop.load(Relaxed) { return stand_pat; }
 
         let mut allow_stand_pat = true;
