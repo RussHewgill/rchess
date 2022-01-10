@@ -565,44 +565,6 @@ impl ExHelper {
 
         }
 
-        /// Step 3. Qsearch at zero depth
-        if depth == 0 {
-            // if !self.tt_r.contains_key(&g.zobrist) {
-            // }
-            stats.leaves += 1;
-
-            #[cfg(feature = "qsearch")]
-            let score = {
-                // trace!("    beginning qsearch, {:?}, a/b: {:?},{:?}",
-                //        prev_mvs.front().unwrap().1, alpha, beta);
-
-                // let nt: ABNodeType = if NODE_TYPE == PV { PV } else { NonPV };
-                // let score = self.qsearch(&ts, &g, (ply,0), (alpha, beta), stack, stats, nt);
-                // // let score = self.qsearch::<{NT}>(&ts, &g, (ply,0), (alpha, beta), stack, stats);
-
-                let score = if NODE_TYPE == PV {
-                    // self.qsearch::<{PV}>(&ts, &g, (ply,0), (alpha, beta), stack, stats)
-                    self.qsearch::<{PV}>(&ts, &g, (ply,0,0), (alpha, beta), stack, stats)
-                } else {
-                    // self.qsearch::<{NonPV}>(&ts, &g, (ply,0), (alpha, beta), stack, stats)
-                    self.qsearch::<{NonPV}>(&ts, &g, (ply,0,0), (alpha, beta), stack, stats)
-                };
-
-                // trace!("    returned from qsearch, score = {}", score);
-                score
-            };
-
-            #[cfg(not(feature = "qsearch"))]
-            let score = if g.state.side_to_move == Black {
-                -g.evaluate(&ts).sum()
-            } else {
-                g.evaluate(&ts).sum()
-            };
-
-            // return ABSingle(ABResult::new_empty(score));
-            return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
-        }
-
         /// Step 4. Transposition Table probe
         // let msi: Option<SearchInfo> = if is_root_node { None } else {
         let (meval,msi): (Option<Score>,Option<SearchInfo>) = if is_root_node { (None,None) } else {
@@ -629,6 +591,42 @@ impl ExHelper {
 
             }
 
+        }
+
+        /// Step 3. Qsearch at zero depth
+        if depth == 0 {
+            // if !self.tt_r.contains_key(&g.zobrist) {
+            // }
+            stats.leaves += 1;
+
+            #[cfg(feature = "qsearch")]
+            let score = {
+                // trace!("    beginning qsearch, {:?}, a/b: {:?},{:?}",
+                //        prev_mvs.front().unwrap().1, alpha, beta);
+
+                // let nt: ABNodeType = if NODE_TYPE == PV { PV } else { NonPV };
+                // let score = self.qsearch(&ts, &g, (ply,0), (alpha, beta), stack, stats, nt);
+                // // let score = self.qsearch::<{NT}>(&ts, &g, (ply,0), (alpha, beta), stack, stats);
+
+                let score = if NODE_TYPE == PV {
+                    self.qsearch::<{PV}>(&ts, &g, (ply,0,0), (alpha, beta), stack, stats)
+                } else {
+                    self.qsearch::<{NonPV}>(&ts, &g, (ply,0,0), (alpha, beta), stack, stats)
+                };
+
+                // trace!("    returned from qsearch, score = {}", score);
+                score
+            };
+
+            #[cfg(not(feature = "qsearch"))]
+            let score = if g.state.side_to_move == Black {
+                -g.evaluate(&ts).sum()
+            } else {
+                g.evaluate(&ts).sum()
+            };
+
+            // return ABSingle(ABResult::new_empty(score));
+            return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
         }
 
         /// Step 5. Syzygy Probe

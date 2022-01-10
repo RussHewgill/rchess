@@ -538,19 +538,26 @@ impl ExHelper {
         &self,
         ts:                       &'static Tables,
         g:                        &Game,
-        (ply,qply,_):             (Depth,Depth,Depth),
+        (ply,qply,depth):         (Depth,Depth,Depth),
         (mut alpha, mut beta):    (Score,Score),
         mut stack:                &mut ABStack,
         mut stats:                &mut SearchStats,
     ) -> Score {
+        use ABNodeType::*;
+
+        let is_pv_node = NODE_TYPE != NonPV;
+
+        assert!(alpha < beta);
+        assert!(is_pv_node || (alpha == beta - 1));
+        assert!(depth <= 0);
 
         stats.qt_nodes += 1;
-        stats!(stats.q_max_depth = stats.q_max_depth.max(ply as u8));
+        stats.q_max_depth = stats.q_max_depth.max(ply as u8);
 
-        // /// check repetition
-        // if Self::has_cycle(ts, g, stats, stack) || ply >= MAX_SEARCH_PLY {
-        //     return draw_value(stats);
-        // }
+        /// check repetition
+        if Self::has_cycle(ts, g, stats, stack) || ply >= MAX_SEARCH_PLY {
+            return draw_value(stats);
+        }
 
         let stand_pat = if let Some(nnue) = &self.nnue {
             let mut nn = nnue.borrow_mut();
@@ -616,7 +623,7 @@ impl ExHelper {
                 }
 
                 let score = -self.qsearch::<{NODE_TYPE}>(
-                    &ts, &g2, (ply + 1,qply + 1,0), (-beta, -alpha), stack, stats);
+                    &ts, &g2, (ply + 1,qply + 1,depth - 1), (-beta, -alpha), stack, stats);
 
                 if score >= beta && allow_stand_pat {
                     self.pop_nnue(stack);

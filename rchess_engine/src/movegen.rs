@@ -579,8 +579,8 @@ impl<'a> MoveGen<'a> {
             },
 
             QChecksInit => {
-                self.generate(MoveGenType::QuietChecks);
 
+                self.generate(MoveGenType::QuietChecks);
                 self.sort(stack, MoveGenType::QuietChecks);
 
                 self.stage = self.stage.next()?;
