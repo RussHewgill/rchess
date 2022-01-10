@@ -580,18 +580,22 @@ impl<'a> MoveGen<'a> {
 
             QChecksInit => {
 
-                self.generate(MoveGenType::QuietChecks);
-                self.sort(stack, MoveGenType::QuietChecks);
+                if !self.skip_quiets {
+                    self.generate(MoveGenType::QuietChecks);
+                    self.sort(stack, MoveGenType::QuietChecks);
+                }
 
                 self.stage = self.stage.next()?;
                 self.next(stack)
             },
             QChecks => {
-                if let Some(mv) = self.pick_best(stack) {
-                    if self.move_is_legal(mv) {
-                        return Some(mv);
-                    } else {
-                        return self.next(stack);
+                if !self.skip_quiets {
+                    if let Some(mv) = self.pick_best(stack) {
+                        if self.move_is_legal(mv) {
+                            return Some(mv);
+                        } else {
+                            return self.next(stack);
+                        }
                     }
                 }
                 self.stage = self.stage.next()?;

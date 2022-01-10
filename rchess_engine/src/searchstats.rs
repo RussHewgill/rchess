@@ -67,36 +67,37 @@ mod ss {
 
     #[derive(Debug,Default,PartialEq,PartialOrd,Clone,Copy)]
     pub struct SearchStats {
-        pub nodes:          u32,
-        pub nodes_arr:      NArr,
-        // pub nodes_zb:       NHashes,
-        pub leaves:         u32,
-        pub quiet_leaves:   u32,
-        pub max_depth:      u8,
-        pub q_max_depth:    u8,
-        pub checkmates:     u32,
-        pub stalemates:     u32,
-        pub tt_hits:        u32,
-        pub tt_halfmiss:    u32,
-        pub tt_misses:      u32,
-        pub tt_eval:        u32,
-        pub ph_hits:        u32,
-        pub ph_misses:      u32,
-        pub qt_nodes:       u32,
-        pub qt_hits:        u32,
-        pub qt_misses:      u32,
-        pub qt_tt_returns:  u32,
-        pub alpha:          i32,
-        pub beta:           i32,
-        pub ns_pv:          u32,
-        pub ns_all:         u32,
-        pub ns_cut:         u32,
-        pub null_prunes:    u32,
-        pub fut_prunes:     u32,
-        pub counter_moves:  u32,
-        pub window_fails:   (u32,u32),
-        pub lmrs:           (u32,u32),
-        pub beta_cut_first: (u32,u32),
+        pub nodes:              u32,
+        pub nodes_arr:          NArr,
+        // pub nodes_zb:           NHashes,
+        pub leaves:             u32,
+        pub quiet_leaves:       u32,
+        pub max_depth:          u8,
+        pub q_max_depth:        u8,
+        pub checkmates:         u32,
+        pub stalemates:         u32,
+        pub tt_hits:            u32,
+        pub tt_halfmiss:        u32,
+        pub tt_misses:          u32,
+        pub tt_eval:            u32,
+        pub ph_hits:            u32,
+        pub ph_misses:          u32,
+        pub qt_nodes:           u32,
+        pub qt_hits:            u32,
+        pub qt_misses:          u32,
+        pub qs_tt_returns:      u32,
+        pub qs_delta_prunes:    u32,
+        pub alpha:              i32,
+        pub beta:               i32,
+        pub ns_pv:              u32,
+        pub ns_all:             u32,
+        pub ns_cut:             u32,
+        pub null_prunes:        u32,
+        pub fut_prunes:         u32,
+        pub counter_moves:      u32,
+        pub window_fails:       (u32,u32),
+        pub lmrs:               (u32,u32),
+        pub beta_cut_first:     (u32,u32),
         // #[cfg(feature = "pvs_search")]
         // pub pvs_
     }
@@ -137,7 +138,8 @@ mod ss {
                 qt_nodes:           self.qt_nodes + other.qt_nodes,
                 qt_hits:            self.qt_hits + other.qt_hits,
                 qt_misses:          self.qt_misses + other.qt_misses,
-                qt_tt_returns:      self.qt_tt_returns + other.qt_tt_returns,
+                qs_tt_returns:      self.qs_tt_returns + other.qs_tt_returns,
+                qs_delta_prunes:    self.qs_delta_prunes + other.qs_delta_prunes,
                 alpha:              i32::max(self.alpha, other.alpha),
                 beta:               i32::min(self.beta, other.beta),
                 ns_pv:              self.ns_pv + other.ns_pv,
@@ -185,7 +187,8 @@ mod ss {
             // eprintln!("nodes/qt nodes = {:.1?}", self.qt_nodes as f64 / self.nodes as f64);
             eprintln!("qt nodes    = {}", pretty_print_si(self.qt_nodes as i64));
             eprintln!("q_max_depth = {:?}", self.q_max_depth);
-            eprintln!("q_tt_returns = {}", pretty_print_si(self.qt_tt_returns as i64));
+            eprintln!("q_tt_returns = {}", pretty_print_si(self.qs_tt_returns as i64));
+            eprintln!("q_delta_prunes = {}", pretty_print_si(self.qs_delta_prunes as i64));
 
             // eprintln!("null prunes   = {:?}", self.null_prunes);
             // eprintln!("fut prunes    = {:?}", self.fut_prunes);

@@ -480,6 +480,8 @@ impl ExHelper {
 /// Negamax AB Refactor
 impl ExHelper {
     #[allow(unused_doc_comments,unused_labels)]
+    /// alpha: the MIN score that the maximizing player is assured of
+    /// beta:  the MAX score that the minimizing player is assured of
     pub fn ab_search<const NODE_TYPE: ABNodeType>(
         &self,
         ts:                      &'static Tables,
@@ -565,13 +567,13 @@ impl ExHelper {
 
         }
 
-        /// Step 4. Transposition Table probe
+        /// Step 3. Transposition Table probe
         // let msi: Option<SearchInfo> = if is_root_node { None } else {
         let (meval,msi): (Option<Score>,Option<SearchInfo>) = if is_root_node { (None,None) } else {
             self.check_tt2(ts, g.zobrist, depth, stats)
         };
 
-        /// Step 4b. Check for returnable TT score
+        /// Step 3b. Check for returnable TT score
         if let Some(si) = msi {
             // if !is_pv_node && si.depth_searched >= depth { // XXX: depth or depth-1 ??
             //     return ABResults::ABSingle(ABResult::new_single(g.last_move.unwrap(), si.score));
@@ -593,7 +595,7 @@ impl ExHelper {
 
         }
 
-        /// Step 3. Qsearch at zero depth
+        /// Step 4. Qsearch at zero depth
         if depth == 0 {
             // if !self.tt_r.contains_key(&g.zobrist) {
             // }

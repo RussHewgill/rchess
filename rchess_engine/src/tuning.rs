@@ -29,6 +29,7 @@ pub struct SParams {
 
     pub qs_recaps_only:           Depth,
     pub qs_delta_margin:          Score,
+    pub qs_delta_max_phase:       Phase,
 
     pub null_prune_min_depth:     Depth,
     pub null_prune_min_phase:     Phase,
@@ -58,6 +59,7 @@ impl Default for SParams {
 
             qs_recaps_only:           5,
             qs_delta_margin:          150, // one and a half Pawns
+            qs_delta_max_phase:       200,
 
             null_prune_min_depth:     3,
             null_prune_min_phase:     200,

@@ -583,44 +583,38 @@ impl ExHelper {
 
         let mut movegen = MoveGen::new_qsearch(ts, g, None, stack, qply);
 
-        /// TODO: Delta Pruning
-        // let mut big_delta = Queen.score();
-        // if moves.iter().any(|mv| mv.filter_promotion()) {
-        //     big_delta += Queen.score() - Pawn.score();
-        // }
-        // if stand_pat < alpha - big_delta {
-        //     // trace!("qsearch: delta prune: {}", alpha);
-        //     return alpha;
-        // }
+        if qply > 0 { movegen.skip_quiets = true; }
 
-        // /// TODO: Delta Pruning
-        // if self.params.qs_delta_margin.max(self.best_case_move(ts, g)) < alpha - stand_pat {
-        //     // return alpha; // XXX: doesn't work at all?
-        //     return stand_pat;
-        // }
+        /// TODO: Delta Pruning
+        if !g.in_check()
+            && g.state.phase < self.params.qs_delta_max_phase
+            && self.params.qs_delta_margin.max(self.best_case_move(ts, g)) < alpha - stand_pat
+        {
+            stats.qs_delta_prunes += 1;
+            // return alpha; // XXX: doesn't work at all?
+            return stand_pat;
+            // return beta; // XXX: much faster, but shouldn't work
+        }
 
         // let mut moves_searched = 0;
-
         // let mut best_move: Option<Move> = None;
 
         while let Some(mv) = movegen.next(stack) {
+
+            let see = movegen.static_exchange_ge(mv, 1);
+            if !see {
+                continue;
+            }
+
             if let Some(g2) = self.make_move(ts, g, ply, mv, None, stack) {
 
                 // moves_searched += 1;
 
-                // if let Some(see) = movegen.static_exchange_ge(mv) {
-                //     if see < 0 {
-                //         self.pop_nnue(stack);
-                //         continue;
-                //     }
+                // let see = movegen.static_exchange_ge(mv, 1);
+                // if !see {
+                //     self.pop_nnue(stack);
+                //     continue;
                 // }
-
-                let see = movegen.static_exchange_ge(mv, 1);
-                // let see = g.static_exchange_ge(ts, mv, 1);
-                if !see {
-                    self.pop_nnue(stack);
-                    continue;
-                }
 
                 let score = -self.qsearch::<{NODE_TYPE}>(
                     &ts, &g2, (ply + 1,qply + 1,depth - 1), (-beta, -alpha), stack, stats);
