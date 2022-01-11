@@ -67,7 +67,7 @@ mod ss {
 
     #[derive(Debug,Default,PartialEq,PartialOrd,Clone,Copy)]
     pub struct SearchStats {
-        pub nodes:              u32,
+        pub nodes:              u64,
         pub nodes_arr:          NArr,
         // pub nodes_zb:           NHashes,
         pub leaves:             u32,

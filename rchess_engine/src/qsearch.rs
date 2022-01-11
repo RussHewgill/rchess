@@ -585,16 +585,16 @@ impl ExHelper {
 
         if qply > 0 { movegen.skip_quiets = true; }
 
-        /// TODO: Delta Pruning
-        if !g.in_check()
-            && g.state.phase < self.params.qs_delta_max_phase
-            && self.params.qs_delta_margin.max(self.best_case_move(ts, g)) < alpha - stand_pat
-        {
-            stats.qs_delta_prunes += 1;
-            // return alpha; // XXX: doesn't work at all?
-            return stand_pat;
-            // return beta; // XXX: much faster, but shouldn't work
-        }
+        // /// TODO: Delta Pruning
+        // if !g.in_check()
+        //     && g.state.phase < self.params.qs_delta_max_phase
+        //     && self.params.qs_delta_margin.max(self.best_case_move(ts, g)) < alpha - stand_pat
+        // {
+        //     stats.qs_delta_prunes += 1;
+        //     // return alpha; // XXX: doesn't work at all?
+        //     return stand_pat;
+        //     // return beta; // XXX: much faster, but shouldn't work
+        // }
 
         // let mut moves_searched = 0;
         // let mut best_move: Option<Move> = None;

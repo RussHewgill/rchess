@@ -437,28 +437,28 @@ fn main_tt() {
     ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
-    let (t_opt,t_max) = ex.timer.allocate_time(g.state.side_to_move, 1);
-    eprintln!("t_opt = {:?}", t_opt);
-    eprintln!("t_max = {:?}", t_max);
+    // let (t_opt,t_max) = ex.timer.allocate_time(g.state.side_to_move, 1);
+    // eprintln!("t_opt = {:?}", t_opt);
+    // eprintln!("t_max = {:?}", t_max);
 
     return;
 
     debug!("ex.cfg.num_threads = {:?}", ex.cfg.num_threads);
 
-    let (res,moves,stats0) = ex.lazy_smp_2(&ts);
-    let t1 = t0.elapsed();
-    let t2 = t1.as_secs_f64();
+    // let (res,moves,stats0) = ex.lazy_smp_2(&ts);
+    // let t1 = t0.elapsed();
+    // let t2 = t1.as_secs_f64();
 
-    let best   = res.get_result().unwrap();
-    let scores = res.get_scores().unwrap_or_default();
+    // let best   = res.get_result().unwrap();
+    // let scores = res.get_scores().unwrap_or_default();
 
-    // for m in best.moves.iter() { eprintln!("\t{:?}", m); }
-    // eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
-    eprintln!("\nBest move = {:>8} {:?}", best.score, best.mv);
-    println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
-             stats0.max_depth, t2);
+    // // for m in best.moves.iter() { eprintln!("\t{:?}", m); }
+    // // eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
+    // eprintln!("\nBest move = {:>8} {:?}", best.score, best.mv);
+    // println!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.",
+    //          stats0.max_depth, t2);
 
-    stats0.print(t1);
+    // stats0.print(t1);
 
 }
 
@@ -2841,7 +2841,7 @@ fn main9() {
 
     // let n = 35;
     // let n = 22;
-    let n = 8;
+    let n = 10;
     // let n = 10;
     // let n = 2;
 
@@ -2852,6 +2852,7 @@ fn main9() {
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(12);
     // ex.cfg.num_threads = Some(6);
+    // ex.cfg.num_threads = Some(1);
     ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
@@ -2880,6 +2881,23 @@ fn main9() {
     // }
     // let avg = times.iter().sum::<f64>() / N as f64;
     // eprintln!("avg = {:.3}", avg);
+    // return;
+
+
+    ex.time_settings.move_time             = 1100;
+    ex.time_settings.time_remaining[White] = 1100;
+    ex.time_settings.increment             = 100;
+
+    eprintln!("ex.time_settings.move_time = {:?}", ex.time_settings.move_time);
+
+    // let mut timer = TimeManager::new(ex.time_settings);
+    // debug!("searching with time limit (soft,hard) = ({:.3},{:.3})",
+    //        timer.limit_soft as f64 / 1000.0,
+    //        timer.limit_hard as f64 / 1000.0);
+    // return;
+
+    // let mut timer = TimeManager::new(ex.time_settings);
+    // eprintln!("timer = {:?}", timer);
     // return;
 
     let t0 = std::time::Instant::now();
@@ -3370,9 +3388,9 @@ fn main7() {
 
     let t = 2.0;
 
-    timesettings.increment = [t, t];
-    // let mut ex0 = Explorer::new(g0.state.side_to_move, g0.clone(), n, stop.clone(), timesettings);
-    let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, timesettings);
+    // timesettings.increment = [t, t];
+    // // let mut ex0 = Explorer::new(g0.state.side_to_move, g0.clone(), n, stop.clone(), timesettings);
+    // let mut ex2 = Explorer::new(g2.state.side_to_move, g2.clone(), n, timesettings);
 
     // let moves = vec![
     //     Move::Quiet { from: "E2".into(), to: "E4".into() },

@@ -49,7 +49,12 @@ pub struct Explorer {
     pub side:          Color,
     pub game:          Game,
     pub current_ply:   Option<Depth>,
+
+    #[cfg(feature = "basic_time")]
     pub timer:         Timer,
+    #[cfg(not(feature = "basic_time"))]
+    pub time_settings: TimeSettings,
+
     pub stop:          Arc<AtomicBool>,
     pub best_mate:     Arc<RwLock<Option<Depth>>>,
 
@@ -86,7 +91,7 @@ impl Explorer {
         side:          Color,
         game:          Game,
         max_depth:     Depth,
-        settings:      TimeSettings,
+        time_settings: TimeSettings,
     ) -> Self {
 
         let stop = Arc::new(AtomicBool::new(false));
@@ -104,7 +109,12 @@ impl Explorer {
             game,
             // timer:          Timer::new(side, stop.clone(), settings),
             current_ply:    None,
-            timer:          Timer::new(settings),
+
+            #[cfg(feature = "basic_time")]
+            timer:          Timer::new(time_settings),
+            #[cfg(not(feature = "basic_time"))]
+            time_settings,
+
             stop,
             best_mate:      Arc::new(RwLock::new(None)),
 
@@ -577,13 +587,21 @@ impl Explorer {
         #[cfg(feature = "basic_time")]
         let t_max = Duration::from_secs_f64(self.timer.settings.increment[self.side]);
 
-        #[cfg(not(feature = "basic_time"))]
-        let cur_ply = self.current_ply.unwrap_or(1);
-        #[cfg(not(feature = "basic_time"))]
-        let (t_opt,t_max) = self.timer.allocate_time(self.game.state.side_to_move, cur_ply);
-        // debug!("searching with (t_opt,t_max) = ({:?},{:?})", t_opt, t_max);
-
+        #[cfg(feature = "basic_time")]
         debug!("searching with t_max = {:?}", t_max);
+
+        // #[cfg(not(feature = "basic_time"))]
+        // let cur_ply = self.current_ply.unwrap_or(1);
+        // #[cfg(not(feature = "basic_time"))]
+        // let (t_opt,t_max) = self.timer.allocate_time(self.game.state.side_to_move, cur_ply);
+        // // debug!("searching with (t_opt,t_max) = ({:?},{:?})", t_opt, t_max);
+
+        #[cfg(not(feature = "basic_time"))]
+        let mut timer = TimeManager::new(self.time_settings);
+        #[cfg(not(feature = "basic_time"))]
+        debug!("searching with time limit (soft,hard) = ({:.3},{:.3})",
+               timer.limit_soft as f64 / 1000.0,
+               timer.limit_hard as f64 / 1000.0);
 
         // let t_max = self.timer.allocate_time()
 
@@ -608,12 +626,15 @@ impl Explorer {
             'outer: loop {
 
                 // let t1 = t0.elapsed();
+                #[cfg(feature = "basic_time")]
                 let t1 = Instant::now().checked_duration_since(t0).unwrap();
 
                 let d = best_depth.load(Relaxed);
 
                 /// Found mate, halt
                 if self.best_mate.read().is_some() {
+                    #[cfg(not(feature = "basic_time"))]
+                    let t1 = Instant::now().checked_duration_since(t0).unwrap();
                     debug!("breaking loop (Mate),  d: {}, t0: {:.3}",
                             d, t1.as_secs_f64());
                     self.stop.store(true, SeqCst);
@@ -626,7 +647,18 @@ impl Explorer {
                 // }
 
                 /// Out of time, halt
+                #[cfg(feature = "basic_time")]
                 if t1 > t_max {
+                    debug!("breaking loop (Time),  d: {}, t0: {:.3}", d, t1.as_secs_f64());
+                    // XXX: Only force threads to stop if out of time ?
+                    self.stop.store(true, SeqCst);
+                    // drop(tx);
+                    break 'outer;
+                }
+
+                #[cfg(not(feature = "basic_time"))]
+                if timer.should_stop(out.read().3.nodes) {
+                    let t1 = Instant::now().checked_duration_since(t0).unwrap();
                     debug!("breaking loop (Time),  d: {}, t0: {:.3}", d, t1.as_secs_f64());
                     // XXX: Only force threads to stop if out of time ?
                     self.stop.store(true, SeqCst);

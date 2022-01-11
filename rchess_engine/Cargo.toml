@@ -23,7 +23,7 @@ default = [
     # "one_thread",
     "smallstack",
 
-    "basic_time",
+    # "basic_time",
 
     "lockless_hashmap",
 

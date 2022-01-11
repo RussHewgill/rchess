@@ -250,28 +250,40 @@ fn parse_go(mut ex: &mut Explorer,params: Vec<&str>) {
                 unimplemented!()
             },
             "wtime"       => {
-                let val = u32::from_str(ps.next().unwrap()).unwrap();
-                let t = val as f64 / 1000.0;
-                ex.timer.time_left[White] = t;
+                let val = u64::from_str(ps.next().unwrap()).unwrap();
+                // let t = val as f64 / 1000.0;
+                // ex.timer.time_left[White] = t;
+                // ex.time_settings.time_remaining[White] = val;
+                // if ex.side == White { ex.time_settings.move_time = val; }
+
+                ex.time_settings.update_time_remaining(val, White, ex.side == White);
             },
             "btime"       => {
-                let val = u32::from_str(ps.next().unwrap()).unwrap();
-                let t = val as f64 / 1000.0;
-                ex.timer.time_left[Black] = t;
+                let val = u64::from_str(ps.next().unwrap()).unwrap();
+                // let t = val as f64 / 1000.0;
+                // ex.timer.time_left[Black] = t;
+
+                // ex.time_settings.time_remaining[Black] = val;
+                // if ex.side == Black { ex.time_settings.move_time = val; }
+
+                ex.time_settings.update_time_remaining(val, Black, ex.side == Black);
             },
             "winc"        => {
-                let val = u32::from_str(ps.next().unwrap()).unwrap();
-                let t = val as f64 / 1000.0;
-                ex.timer.settings.increment[White] = t;
+                let val = u64::from_str(ps.next().unwrap()).unwrap();
+                // let t = val as f64 / 1000.0;
+                // ex.timer.settings.increment[White] = t;
+                ex.time_settings.increment = val;
             },
             "binc"        => {
-                let val = u32::from_str(ps.next().unwrap()).unwrap();
+                let val = u64::from_str(ps.next().unwrap()).unwrap();
                 let t = val as f64 / 1000.0;
-                ex.timer.settings.increment[White] = t;
+                // ex.timer.settings.increment[White] = t;
+                ex.time_settings.increment = val;
             },
             "movestogo"   => {
                 let val = u32::from_str(ps.next().unwrap()).unwrap();
-                ex.timer.moves_to_go = Some(val);
+                // ex.timer.moves_to_go = Some(val);
+                ex.time_settings.moves_to_go = Some(val);
             },
             "depth"       => {
                 let val = u32::from_str(ps.next().unwrap()).unwrap();
@@ -283,9 +295,16 @@ fn parse_go(mut ex: &mut Explorer,params: Vec<&str>) {
                 let val = u32::from_str(ps.next().unwrap()).unwrap();
             },
             "movetime"    => {
-                let val = u32::from_str(ps.next().unwrap()).unwrap();
-                let t = val as f64 / 1000.0;
-                ex.timer.settings.increment = [t; 2];
+                let val = u64::from_str(ps.next().unwrap()).unwrap();
+
+                // let t = val as f64 / 1000.0;
+                // ex.timer.settings.increment   = [t; 2];
+                // ex.timer.settings.increment_m = val as u64;
+                // ex.timer.move_time = val as u64;
+
+                ex.time_settings.move_time = val;
+                ex.time_settings.is_per_move = true;
+
             },
             "infinite"    => {
                 // ex.timer.settings.infinite = true;
