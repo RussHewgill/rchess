@@ -41,15 +41,22 @@ ENGINE2=rchess_prev
 # ENGINE2=arasan
 # ENGINE2=gnuchess
 
+    # -engine conf=rchess st=$time timemargin=50 restart=off \
+    # -engine conf=$ENGINE2 st=$time timemargin=50 restart=off \
+
+# TC="tc=1+0.1"
+TC="st=$time"
+
 echo ENGINE1 = rchess
 echo ENGINE2 = $ENGINE2
+echo "$TC"
 
 cutechess-cli \
     -tournament gauntlet \
     -concurrency 1 \
     -pgnout $OUTPUT_FILE \
-    -engine conf=rchess st=$time timemargin=50 restart=off \
-    -engine conf=$ENGINE2 st=$time timemargin=50 restart=off \
+    -engine conf=rchess $TC timemargin=50 restart=off \
+    -engine conf=$ENGINE2 $TC timemargin=50 restart=off \
     -each proto=uci \
     -openings file=tables/openings-10ply-100k.pgn policy=round \
     -tb tables/syzygy/ \
