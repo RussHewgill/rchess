@@ -967,8 +967,15 @@ impl Game {
                         else { N.shift_coord(to).unwrap() };
                     Some(Move::EnPassant { from, to, capture })
                 } else if (pc == Pawn) && (to.rank() == cc) {
-                    // XXX: bad
-                    let new_piece = Queen;
+                    // let new_piece = Queen;
+                    let new_piece = match other {
+                        "q" => Queen,
+                        "r" => Rook,
+                        "b" => Bishop,
+                        "n" => Knight,
+                        _   => panic!("convert_move: promotion without new_piece ?")
+                    };
+
                     Some(Move::Promotion { from, to, new_piece })
                 } else if (pc == Pawn) && SQUAREDIST[from][to] == 2 {
                     Some(Move::PawnDouble { from, to })
@@ -1022,8 +1029,17 @@ impl Game {
                 let cc = if col0 == White { 7 } else { 0 };
                 if (pc0 == Pawn) & (to.rank() == cc) {
                     let (_,victim) = self.get_at(to).unwrap();
+
+                    let new_piece = match other {
+                        "q" => Queen,
+                        "r" => Rook,
+                        "b" => Bishop,
+                        "n" => Knight,
+                        _   => panic!("convert_move: promotion without new_piece ?")
+                    };
+
                     // Some(Move::PromotionCapture { from, to, new_piece: Queen, victim })
-                    Some(Move::PromotionCapture { from, to, pcs: PackedPieces::new(Queen,victim) })
+                    Some(Move::PromotionCapture { from, to, pcs: PackedPieces::new(new_piece,victim) })
                 } else {
                     let (_,victim) = self.get_at(to).unwrap();
                     // Some(Move::Capture { from, to, pc: pc0, victim })

@@ -3,6 +3,8 @@ use crate::types::*;
 
 #[cfg(feature = "basic_time")]
 pub use self::old::*;
+#[cfg(not(feature = "basic_time"))]
+pub use self::new::*;
 
 pub use std::sync::{
     Arc,
@@ -67,123 +69,131 @@ use std::time::{Instant,Duration};
 //     }
 // }
 
-#[derive(Debug,Default,Clone,Copy)]
-pub struct TimeSettings {
-    pub time_remaining:   [u64; 2],
-    pub move_time:        u64,
-    pub increment:        u64,
-    pub moves_to_go:      Option<u32>,
-    pub is_per_move:      bool,
-    pub ponder:           bool,
-}
+#[cfg(not(feature = "basic_time"))]
+mod new {
+    use crate::types::Color;
 
-/// new
-impl TimeSettings {
+    use std::time::{Instant,Duration};
 
-    pub fn new_f64(_: f64, increment: f64) -> Self {
-        Self::new_increment((increment * 1000.0) as u64)
+    #[derive(Debug,Default,Clone,Copy)]
+    pub struct TimeSettings {
+        pub time_remaining:   [u64; 2],
+        pub move_time:        u64,
+        pub increment:        u64,
+        pub moves_to_go:      Option<u32>,
+        pub is_per_move:      bool,
+        pub ponder:           bool,
     }
 
-    pub fn new_increment(increment: u64) -> Self {
-        let mut out = Self {
-            move_time: increment,
-            increment,
-            ..Default::default()
-        };
-        // out.time_remaining = [increment; 2];
-        out
-    }
-}
+    /// new
+    impl TimeSettings {
 
-impl TimeSettings {
-
-    pub fn update_time_remaining(&mut self, time: u64, side: Color, update_move_time: bool) {
-        self.time_remaining[side] = time;
-        self.is_per_move = false;
-        if update_move_time {
-            self.move_time = time;
+        pub fn new_f64(_: f64, increment: f64) -> Self {
+            Self::new_increment((increment * 1000.0) as u64)
         }
-    }
 
-}
-
-#[derive(Debug,Clone,Copy)]
-pub struct TimeManager {
-    pub start_time:    Instant,
-    pub limit_hard:    u64,
-    pub limit_soft:    u64,
-    pub is_per_move:   bool,
-    pub ponder:        bool,
-    pub node_counter:  u64,
-}
-
-/// New
-impl TimeManager {
-    pub fn new(
-        settings:       TimeSettings,
-    ) -> Self {
-
-        let start_time = Instant::now();
-
-        let move_time = settings.move_time;
-
-        let mut limit_hard;
-        let mut limit_soft;
-
-        if settings.is_per_move {
-            limit_soft = move_time;
-            limit_hard = limit_soft;
-        } else {
-            let mtg = if let Some(mtg) = settings.moves_to_go { mtg as u64 } else {
-                30
+        pub fn new_increment(increment: u64) -> Self {
+            let mut out = Self {
+                move_time: increment,
+                increment,
+                ..Default::default()
             };
-
-            limit_soft = move_time / mtg;
-            limit_soft = u64::min(limit_soft + settings.increment, move_time);
-
-            limit_hard = u64::min(limit_soft * 10, move_time);
-        }
-
-        Self {
-            start_time,
-            limit_hard,
-            limit_soft,
-            is_per_move: settings.is_per_move,
-            ponder: settings.ponder,
-            node_counter:   0,
+            // out.time_remaining = [increment; 2];
+            out
         }
     }
-}
 
-/// should_stop
-impl TimeManager {
+    impl TimeSettings {
 
-    // const NODES_PER_TIME_CHECK: u64 = 2000;
-    const LOOPS_PER_TIME_CHECK: u64 = 10;
-
-    pub fn should_stop(&mut self, nodes: u64) -> bool {
-
-        // eprintln!("should_stop = {:?}", nodes);
-
-        if self.ponder {
-            false
-        // } else if self.node_next > nodes {
-        } else if self.node_counter < Self::LOOPS_PER_TIME_CHECK {
-            self.node_counter += 1;
-            false
-        } else {
-            self.node_counter = 0;
-            // self.node_counter = nodes + Self::LOOPS_PER_TIME_CHECK;
-
-            // let elapsed = self.start_time.elapsed().as_millis() as u64;
-
-            let elapsed = Instant::now().checked_duration_since(self.start_time)
-                .unwrap()
-                .as_millis() as u64;
-
-            elapsed >= self.limit_hard
-
+        pub fn update_time_remaining(&mut self, time: u64, side: Color, update_move_time: bool) {
+            self.time_remaining[side] = time;
+            self.is_per_move = false;
+            if update_move_time {
+                self.move_time = time;
+            }
         }
+
+    }
+
+    #[derive(Debug,Clone,Copy)]
+    pub struct TimeManager {
+        pub start_time:    Instant,
+        pub limit_hard:    u64,
+        pub limit_soft:    u64,
+        pub is_per_move:   bool,
+        pub ponder:        bool,
+        pub node_counter:  u64,
+    }
+
+    /// New
+    impl TimeManager {
+        pub fn new(
+            settings:       TimeSettings,
+        ) -> Self {
+
+            let start_time = Instant::now();
+
+            let move_time = settings.move_time;
+
+            let mut limit_hard;
+            let mut limit_soft;
+
+            if settings.is_per_move {
+                limit_soft = move_time;
+                limit_hard = limit_soft;
+            } else {
+                let mtg = if let Some(mtg) = settings.moves_to_go { mtg as u64 } else {
+                    30
+                };
+
+                limit_soft = move_time / mtg;
+                limit_soft = u64::min(limit_soft + settings.increment, move_time);
+
+                limit_hard = u64::min(limit_soft * 10, move_time);
+            }
+
+            Self {
+                start_time,
+                limit_hard,
+                limit_soft,
+                is_per_move: settings.is_per_move,
+                ponder: settings.ponder,
+                node_counter:   0,
+            }
+        }
+    }
+
+    /// should_stop
+    impl TimeManager {
+
+        // const NODES_PER_TIME_CHECK: u64 = 2000;
+        const LOOPS_PER_TIME_CHECK: u64 = 10;
+
+        pub fn should_stop(&mut self, nodes: u64) -> bool {
+
+            // eprintln!("should_stop = {:?}", nodes);
+
+            if self.ponder {
+                false
+            // } else if self.node_next > nodes {
+            } else if self.node_counter < Self::LOOPS_PER_TIME_CHECK {
+                self.node_counter += 1;
+                false
+            } else {
+                self.node_counter = 0;
+                // self.node_counter = nodes + Self::LOOPS_PER_TIME_CHECK;
+
+                // let elapsed = self.start_time.elapsed().as_millis() as u64;
+
+                let elapsed = Instant::now().checked_duration_since(self.start_time)
+                    .unwrap()
+                    .as_millis() as u64;
+
+                elapsed >= self.limit_hard
+
+            }
+        }
+
     }
 
 }
