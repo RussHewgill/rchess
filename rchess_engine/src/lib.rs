@@ -71,6 +71,7 @@ pub mod hashing;
 pub mod trans_table;
 pub mod stack;
 pub mod endgame;
+pub mod threading;
 
 pub mod opening_book;
 #[cfg(feature = "syzygy")]

@@ -125,8 +125,11 @@ mod new {
         pub node_counter:  u64,
     }
 
+    const BUFFER_TIME: u64 = 20;
+
     /// New
     impl TimeManager {
+
         pub fn new(
             settings:       TimeSettings,
         ) -> Self {
@@ -139,7 +142,7 @@ mod new {
             let mut limit_soft;
 
             if settings.is_per_move {
-                limit_soft = move_time;
+                limit_soft = move_time - BUFFER_TIME;
                 limit_hard = limit_soft;
             } else {
                 let mtg = if let Some(mtg) = settings.moves_to_go { mtg as u64 } else {
@@ -147,7 +150,7 @@ mod new {
                 };
 
                 limit_soft = move_time / mtg;
-                limit_soft = u64::min(limit_soft + settings.increment, move_time);
+                limit_soft = u64::min(limit_soft + settings.increment - BUFFER_TIME, move_time - BUFFER_TIME);
 
                 limit_hard = u64::min(limit_soft * 10, move_time);
             }
@@ -169,7 +172,7 @@ mod new {
         // const NODES_PER_TIME_CHECK: u64 = 2000;
         const LOOPS_PER_TIME_CHECK: u64 = 10;
 
-        pub fn should_stop(&mut self, nodes: u64) -> bool {
+        pub fn should_stop(&mut self) -> bool {
 
             // eprintln!("should_stop = {:?}", nodes);
 

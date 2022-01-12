@@ -27,8 +27,7 @@ use std::cell::RefCell;
 use std::path::Path;
 use std::collections::{VecDeque,HashMap,HashSet};
 use std::hash::BuildHasher;
-use std::sync::atomic::AtomicI16;
-use std::sync::atomic::{Ordering,Ordering::SeqCst,Ordering::Relaxed,AtomicU8,AtomicI8};
+use std::sync::atomic::{Ordering,Ordering::SeqCst,Ordering::Relaxed,AtomicU8,AtomicI8,AtomicI16};
 use std::time::{Instant,Duration};
 
 use arrayvec::ArrayVec;
@@ -623,6 +622,33 @@ impl Explorer {
 
             // let ord = SeqCst;
 
+            /// Dispatch threads
+            while thread_counter.load(SeqCst) < max_threads {
+
+                trace!("Spawning thread, id = {}", thread_id);
+
+                let helper = self.build_exhelper(
+                    thread_id,
+                    self.cfg.max_depth,
+                    best_depth.clone(),
+                    root_moves.clone(),
+                    tx.clone());
+
+                let tm = if thread_id == 0 { Some(timer) } else { None };
+
+                s.builder()
+                // .stack_size(size)
+                    .spawn(move |_| {
+                        helper.lazy_smp_single(ts, tm);
+                    }).unwrap();
+
+                thread_id += 1;
+                thread_counter.fetch_add(1, SeqCst);
+                trace!("Spawned thread, count = {}", thread_counter.load(SeqCst));
+                // std::thread::sleep(Duration::from_millis(1));
+            }
+
+            #[cfg(feature = "nope")]
             'outer: loop {
 
                 // let t1 = t0.elapsed();
@@ -657,7 +683,7 @@ impl Explorer {
                 }
 
                 #[cfg(not(feature = "basic_time"))]
-                if timer.should_stop(out.read().3.nodes) {
+                if timer.should_stop() {
                     let t1 = Instant::now().checked_duration_since(t0).unwrap();
                     debug!("breaking loop (Time),  d: {}, t0: {:.3}", d, t1.as_secs_f64());
                     // XXX: Only force threads to stop if out of time ?
@@ -702,8 +728,9 @@ impl Explorer {
                     break 'outer;
                 }
 
-                std::thread::sleep(Duration::from_millis(1));
+                // std::thread::sleep(Duration::from_millis(1));
             }
+
             trace!("exiting lazy_smp_2 loop");
 
         }).unwrap();
@@ -957,6 +984,7 @@ impl ExHelper {
     fn lazy_smp_single(
         &self,
         ts:               &'static Tables,
+        timer:            Option<TimeManager>,
     ) {
 
         let mut stack = ABStack::new_with_moves(&self.move_history);
@@ -997,6 +1025,21 @@ impl ExHelper {
             }
 
             depth += skip_size;
+
+            /// Skip rest if not main thread
+            if self.id != 0 {
+                continue;
+            }
+
+            /// Check for out of time stop
+            if let Some(timer) = timer {
+                if timer.should_stop() {
+                    debug!("breaking loop (Time),  d: {}", self.best_depth.load(Relaxed));
+                    self.stop.store(true, SeqCst);
+                    break;
+                }
+            }
+
         }
 
         match self.tx.try_send(ExMessage::End(self.id)) {

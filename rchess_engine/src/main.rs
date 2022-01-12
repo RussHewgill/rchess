@@ -2794,7 +2794,7 @@ fn main9() {
     // let fen = &games_sts(2, 8);
     // let fen = &games_sts(1, 15);
 
-    let (fen,correct) = &games_sts(23, 2); // fen, set
+    // let (fen,correct) = &games_sts(23, 2); // fen, set
 
     // let (fen,correct) = &games_sts(91, 11); // fen, set
 
@@ -2802,9 +2802,6 @@ fn main9() {
     // // let fen = "4k3/8/8/1p6/8/2N1N3/4R3/4K3 w - - 0 1"; // QChecks
     // // let fen = "4k3/8/5P2/1pP5/4N3/2N3P1/3PRP2/4K3 w - - 0 1"; // QChecks
     // let fen = "4k3/8/2PP2P1/7B/8/8/8/4K3 w - - 0 1"; // QChecks
-
-    // let fen = "3Nk3/4q3/3RK3/4p1p1/8/5P2/6r1/8 w - - 5 56";
-    let fen = "8/3P1k2/6R1/4pKp1/8/5P2/6r1/7q w - - 4 53";
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -2815,16 +2812,6 @@ fn main9() {
 
     // eprintln!();
     // eprintln!("correct = {:?}", correct);
-
-    let moves = vec![
-        "d7d8n",
-    ];
-
-    let g = g.run_moves(&ts, moves);
-
-    eprintln!("g = {:?}", g);
-
-    return;
 
     // let st = ABStack::new();
     // // let mut movegen = MoveGen::new_qsearch(&ts, &g, None, &st, 0);
@@ -2855,7 +2842,7 @@ fn main9() {
 
     // let n = 35;
     // let n = 22;
-    let n = 10;
+    let n = 8;
     // let n = 10;
     // let n = 2;
 
@@ -2898,10 +2885,10 @@ fn main9() {
     // return;
 
 
-    // ex.time_settings.move_time             = 1100;
-    // ex.time_settings.time_remaining[White] = 1100;
-    // ex.time_settings.increment             = 100;
-    // eprintln!("ex.time_settings.move_time = {:?}", ex.time_settings.move_time);
+    ex.time_settings.move_time             = 1100;
+    ex.time_settings.time_remaining[White] = 1100;
+    ex.time_settings.increment             = 100;
+    eprintln!("ex.time_settings.move_time = {:?}", ex.time_settings.move_time);
 
     // let mut timer = TimeManager::new(ex.time_settings);
     // debug!("searching with time limit (soft,hard) = ({:.3},{:.3})",
