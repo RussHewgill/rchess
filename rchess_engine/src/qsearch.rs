@@ -81,6 +81,7 @@ pub fn exhelper_once(
         tt_w,
         ph_rw,
         move_history: vec![],
+        // prev_best_move: None,
     };
 
     helper

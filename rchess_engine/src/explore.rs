@@ -230,6 +230,8 @@ pub struct ExHelper {
     pub move_history:    Vec<(Zobrist, Move)>,
     // pub stack:           Cell<ABStack>,
 
+    // pub prev_best_move:  Option<Move>,
+
 }
 
 /// Load EvalParams
@@ -287,6 +289,8 @@ impl Explorer {
             ph_rw:           self.ph_rw.handle(),
 
             move_history:    self.move_history.clone(),
+
+            // prev_best_move:  None,
 
         }
     }
@@ -545,10 +549,7 @@ impl Explorer {
     }
 
     #[allow(unused_labels,unused_doc_comments)]
-    pub fn lazy_smp_2(
-        &self,
-        ts:         &'static Tables,
-    ) -> (ABResults,Vec<Move>,SearchStats) {
+    pub fn lazy_smp_2(&self, ts: &'static Tables) -> (ABResults,Vec<Move>,SearchStats) {
 
         #[cfg(feature = "one_thread")]
         let max_threads = 1;
@@ -602,6 +603,7 @@ impl Explorer {
 
         #[cfg(not(feature = "basic_time"))]
         let mut timer = TimeManager::new(self.time_settings);
+        // let mut timer = TimeManager::new(self.time_settings);
         #[cfg(not(feature = "basic_time"))]
         debug!("searching with time limit (soft,hard) = ({:.3},{:.3})",
                timer.limit_soft as f64 / 1000.0,
@@ -654,6 +656,8 @@ impl Explorer {
             /// stoppage checking loop
             'outer: loop {
 
+                // let best_move_instability = 1 + 2 * best_move_changes / max_threads as u32;
+
                 /// Check for out of time stop
                 if timer.should_stop() {
                     debug!("breaking loop (Time),  d: {}", best_depth.load(Relaxed));
@@ -683,8 +687,8 @@ impl Explorer {
                     break 'outer;
                 }
 
-                // std::thread::sleep(Duration::from_millis(1));
-                std::thread::sleep(Duration::from_millis(10));
+                std::thread::sleep(Duration::from_millis(1));
+                // std::thread::sleep(Duration::from_millis(10));
             }
 
             #[cfg(feature = "nope")]
@@ -1016,13 +1020,16 @@ impl ExHelper {
 impl ExHelper {
 
     const SKIP_LEN: usize = 20;
-    const SKIP_SIZE: [Depth; Self::SKIP_LEN] = [1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4];
-    const START_PLY: [Depth; Self::SKIP_LEN] = [0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7];
+    const SKIP_SIZE: [Depth; Self::SKIP_LEN] =
+        [1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4];
+    const START_PLY: [Depth; Self::SKIP_LEN] =
+        [0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7];
 
     // #[cfg(feature = "nope")]
     fn lazy_smp_single(
         &self,
         ts:               &'static Tables,
+        // max_threads:      i8,
     ) {
 
         let mut stack = ABStack::new_with_moves(&self.move_history);
@@ -1031,6 +1038,9 @@ impl ExHelper {
         let skip_size = Self::SKIP_SIZE[self.id % Self::SKIP_LEN];
         let start_ply = Self::START_PLY[self.id % Self::SKIP_LEN];
         let mut depth = start_ply + 1;
+
+        // let mut prev_best_move: Option<Move> = None;
+        // let mut best_move_changes = 0;
 
         /// Iterative deepening
         // while !self.stop.load(SeqCst)
@@ -1043,6 +1053,14 @@ impl ExHelper {
             stack.pvs.fill(Move::NullMove);
 
             let res = self.ab_search_single(ts, &mut stats, &mut stack, None, depth);
+
+            // /// If the best move hasn't changed for several iterations, use less time
+            // if let Some(mv) = res.get_result().and_then(|res| res.mv) {
+            //     if Some(mv) != prev_best_move {
+            //         best_move_changes += 1;
+            //     }
+            //     prev_best_move = Some(mv);
+            // }
 
             // if !self.stop.load(SeqCst) && depth >= self.best_depth.load(SeqCst) {
             if !self.stop.load(Relaxed) && depth >= self.best_depth.load(Relaxed) {

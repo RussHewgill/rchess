@@ -2842,8 +2842,8 @@ fn main9() {
 
     // let n = 35;
     // let n = 22;
-    let n = 8;
-    // let n = 10;
+    // let n = 8;
+    let n = 10;
     // let n = 2;
 
     let timesettings = TimeSettings::new_f64(0.0,t);
@@ -2885,6 +2885,7 @@ fn main9() {
     // return;
 
 
+    ex.time_settings.is_per_move           = true;
     ex.time_settings.move_time             = 1100;
     ex.time_settings.time_remaining[White] = 1100;
     ex.time_settings.increment             = 100;

@@ -123,6 +123,9 @@ mod new {
         pub is_per_move:   bool,
         pub ponder:        bool,
         pub node_counter:  u64,
+
+        pub should_stop:   bool,
+        pub abort_now:     bool,
     }
 
     const BUFFER_TIME: u64 = 20;
@@ -162,6 +165,8 @@ mod new {
                 is_per_move: settings.is_per_move,
                 ponder: settings.ponder,
                 node_counter:   0,
+                should_stop:    false,
+                abort_now:      false,
             }
         }
     }
@@ -171,6 +176,22 @@ mod new {
 
         // const NODES_PER_TIME_CHECK: u64 = 2000;
         const LOOPS_PER_TIME_CHECK: u64 = 10;
+
+        // pub fn _should_stop(&self, mut n: &mut u64) -> bool {
+        //     if self.ponder {
+        //         false
+        //     } else if *n < Self::LOOPS_PER_TIME_CHECK {
+        //         // self.should_stop
+        //         *n += 1;
+        //         false
+        //     } else {
+        //         *n = 0;
+        //         let elapsed = Instant::now().checked_duration_since(self.start_time)
+        //             .unwrap()
+        //             .as_millis() as u64;
+        //         elapsed >= self.limit_hard
+        //     }
+        // }
 
         pub fn should_stop(&mut self) -> bool {
 
@@ -194,6 +215,28 @@ mod new {
 
                 elapsed >= self.limit_hard
 
+            }
+        }
+
+        /// From zahak
+        pub fn can_do_next_iter(&self) -> bool {
+            if self.ponder {
+                true
+            } else if self.should_stop || self.abort_now {
+                false
+            } else if self.is_per_move {
+                let elapsed = Instant::now().checked_duration_since(self.start_time)
+                    .unwrap()
+                    .as_millis() as u64;
+
+                elapsed <= self.limit_soft
+            } else {
+                let elapsed = Instant::now().checked_duration_since(self.start_time)
+                    .unwrap()
+                    .as_millis() as u64;
+
+                let limit = 70 * self.limit_soft / 100;
+                elapsed <= limit
             }
         }
 
