@@ -634,18 +634,45 @@ impl Explorer {
                     root_moves.clone(),
                     tx.clone());
 
-                let tm = if thread_id == 0 { Some(timer) } else { None };
-
                 s.builder()
-                // .stack_size(size)
+                    // .stack_size(size)
                     .spawn(move |_| {
-                        helper.lazy_smp_single(ts, tm);
+                        helper.lazy_smp_single(ts);
                     }).unwrap();
 
                 thread_id += 1;
                 thread_counter.fetch_add(1, SeqCst);
                 trace!("Spawned thread, count = {}", thread_counter.load(SeqCst));
                 // std::thread::sleep(Duration::from_millis(1));
+            }
+
+            /// stoppage checking loop
+            loop {
+
+                /// Check for out of time stop
+                if timer.should_stop() {
+                    debug!("breaking loop (Time),  d: {}", best_depth.load(Relaxed));
+                    self.stop.store(true, SeqCst);
+                    break;
+                }
+
+                let d = best_depth.load(Relaxed);
+                /// Max depth reached, halt
+                if d >= self.cfg.max_depth {
+                    debug!("max depth reached, breaking");
+                    self.stop.store(true, SeqCst);
+                    break;
+                }
+
+                /// Found mate, halt
+                if self.best_mate.read().is_some() {
+                    #[cfg(not(feature = "basic_time"))]
+                    // let t1 = Instant::now().checked_duration_since(t0).unwrap();
+                    debug!("breaking loop (Mate),  d: {}", d);
+                    self.stop.store(true, SeqCst);
+                    break;
+                }
+
             }
 
             #[cfg(feature = "nope")]
@@ -984,7 +1011,6 @@ impl ExHelper {
     fn lazy_smp_single(
         &self,
         ts:               &'static Tables,
-        timer:            Option<TimeManager>,
     ) {
 
         let mut stack = ABStack::new_with_moves(&self.move_history);
@@ -1026,19 +1052,36 @@ impl ExHelper {
 
             depth += skip_size;
 
-            /// Skip rest if not main thread
-            if self.id != 0 {
-                continue;
-            }
+            // /// Skip rest if not main thread
+            // if self.id != 0 {
+            //     continue;
+            // }
 
-            /// Check for out of time stop
-            if let Some(timer) = timer {
-                if timer.should_stop() {
-                    debug!("breaking loop (Time),  d: {}", self.best_depth.load(Relaxed));
-                    self.stop.store(true, SeqCst);
-                    break;
-                }
-            }
+            // /// Check for out of time stop
+            // if let Some(timer) = timer.as_mut() {
+            //     if timer.should_stop() {
+            //         debug!("breaking loop (Time),  d: {}", self.best_depth.load(Relaxed));
+            //         self.stop.store(true, SeqCst);
+            //         break;
+            //     }
+            // }
+
+            // let d = self.best_depth.load(Relaxed);
+            // /// Max depth reached, halt
+            // if d >= self.cfg.max_depth {
+            //     debug!("max depth reached, breaking");
+            //     self.stop.store(true, SeqCst);
+            //     break;
+            // }
+
+            // /// Found mate, halt
+            // if self.best_mate.read().is_some() {
+            //     #[cfg(not(feature = "basic_time"))]
+            //     // let t1 = Instant::now().checked_duration_since(t0).unwrap();
+            //     debug!("breaking loop (Mate),  d: {}", d);
+            //     self.stop.store(true, SeqCst);
+            //     break;
+            // }
 
         }
 
