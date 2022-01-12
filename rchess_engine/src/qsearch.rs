@@ -14,6 +14,7 @@ use std::cell::RefCell;
 use std::sync::atomic::AtomicI16;
 use std::sync::atomic::AtomicU8;
 use std::sync::atomic::Ordering::{SeqCst,Relaxed};
+use crossbeam::utils::CachePadded;
 use parking_lot::{Mutex,RwLock};
 
 pub fn exhelper_once(
@@ -47,9 +48,11 @@ pub fn exhelper_once(
 
     let (tx,rx): (ExSender,ExReceiver) = crossbeam::channel::unbounded();
 
-    let stop = Arc::new(AtomicBool::new(false));
+    // let stop = Arc::new(AtomicBool::new(false));
+    let stop = Arc::new(CachePadded::new(AtomicBool::new(false)));
     let best_mate = Arc::new(RwLock::new(None));
-    let best_depth = Arc::new(AtomicI16::new(0));
+    // let best_depth = Arc::new(AtomicI16::new(0));
+    let best_depth = Arc::new(CachePadded::new(AtomicI16::new(0)));
 
     #[cfg(feature = "lockless_hashmap")]
     let ptr_tt = Arc::new(crate::lockless_map::TransTable::new_mb(256));

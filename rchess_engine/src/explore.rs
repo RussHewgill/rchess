@@ -33,6 +33,7 @@ use std::time::{Instant,Duration};
 use arrayvec::ArrayVec;
 use crossbeam::channel::{Sender,Receiver,RecvError,TryRecvError};
 use crossbeam::thread::ScopedJoinHandle;
+use crossbeam::utils::CachePadded;
 
 use itertools::Itertools;
 use parking_lot::{Mutex,RwLock};
@@ -54,7 +55,8 @@ pub struct Explorer {
     #[cfg(not(feature = "basic_time"))]
     pub time_settings: TimeSettings,
 
-    pub stop:          Arc<AtomicBool>,
+    // pub stop:          Arc<AtomicBool>,
+    pub stop:          Arc<CachePadded<AtomicBool>>,
     pub best_mate:     Arc<RwLock<Option<Depth>>>,
 
     pub cfg:           ExConfig,
@@ -93,7 +95,8 @@ impl Explorer {
         time_settings: TimeSettings,
     ) -> Self {
 
-        let stop = Arc::new(AtomicBool::new(false));
+        // let stop = Arc::new(AtomicBool::new(false));
+        let stop = Arc::new(CachePadded::new(AtomicBool::new(false)));
 
         #[cfg(not(feature = "lockless_hashmap"))]
         let (tt_rf, tt_w) = new_hash_table();
@@ -199,7 +202,7 @@ pub struct ExHelper {
     // pub root_moves:      Vec<Move>,
     pub root_moves:      RefCell<Vec<Move>>,
 
-    pub stop:            Arc<AtomicBool>,
+    pub stop:            Arc<CachePadded<AtomicBool>>,
     pub best_mate:       Arc<RwLock<Option<Depth>>>,
 
     #[cfg(feature = "syzygy")]
@@ -209,7 +212,7 @@ pub struct ExHelper {
     pub cfg:             ExConfig,
     pub params:          SParams,
 
-    pub best_depth:      Arc<AtomicI16>,
+    pub best_depth:      Arc<CachePadded<AtomicI16>>,
     pub tx:              ExSender,
     // pub thread_dec:      Sender<usize>,
 
@@ -245,7 +248,7 @@ impl Explorer {
         &self,
         id:               usize,
         max_depth:        Depth,
-        best_depth:       Arc<AtomicI16>,
+        best_depth:       Arc<CachePadded<AtomicI16>>,
         root_moves:       Vec<Move>,
         tx:               ExSender,
     ) -> ExHelper {
@@ -577,8 +580,10 @@ impl Explorer {
         let out: Arc<RwLock<(Depth,ABResults,Vec<Move>, SearchStats)>> =
             Arc::new(RwLock::new((0, ABResults::ABNone, vec![], SearchStats::default())));
 
-        let thread_counter = Arc::new(AtomicI8::new(0));
-        let best_depth     = Arc::new(AtomicI16::new(0));
+        // let thread_counter = Arc::new(AtomicI8::new(0));
+        // let best_depth     = Arc::new(AtomicI16::new(0));
+        let thread_counter = Arc::new(CachePadded::new(AtomicI8::new(0)));
+        let best_depth     = Arc::new(CachePadded::new(AtomicI16::new(0)));
 
         let t0 = Instant::now();
         // std::thread::sleep(Duration::from_micros(100));
@@ -647,13 +652,14 @@ impl Explorer {
             }
 
             /// stoppage checking loop
-            loop {
+            'outer: loop {
 
                 /// Check for out of time stop
                 if timer.should_stop() {
                     debug!("breaking loop (Time),  d: {}", best_depth.load(Relaxed));
                     self.stop.store(true, SeqCst);
-                    break;
+                    drop(tx);
+                    break 'outer;
                 }
 
                 let d = best_depth.load(Relaxed);
@@ -661,7 +667,7 @@ impl Explorer {
                 if d >= self.cfg.max_depth {
                     debug!("max depth reached, breaking");
                     self.stop.store(true, SeqCst);
-                    break;
+                    break 'outer;
                 }
 
                 /// Found mate, halt
@@ -670,9 +676,15 @@ impl Explorer {
                     // let t1 = Instant::now().checked_duration_since(t0).unwrap();
                     debug!("breaking loop (Mate),  d: {}", d);
                     self.stop.store(true, SeqCst);
-                    break;
+                    break 'outer;
                 }
 
+                if self.stop.load(Relaxed) {
+                    break 'outer;
+                }
+
+                // std::thread::sleep(Duration::from_millis(1));
+                std::thread::sleep(Duration::from_millis(10));
             }
 
             #[cfg(feature = "nope")]
@@ -793,8 +805,8 @@ impl Explorer {
     fn lazy_smp_listener(
         &self,
         rx:               ExReceiver,
-        best_depth:       Arc<AtomicI16>,
-        thread_counter:   Arc<AtomicI8>,
+        best_depth:       Arc<CachePadded<AtomicI16>>,
+        thread_counter:   Arc<CachePadded<AtomicI8>>,
         t0:               Instant,
         out:              Arc<RwLock<(Depth,ABResults,Vec<Move>,SearchStats)>>,
     ) {
@@ -1051,38 +1063,6 @@ impl ExHelper {
             }
 
             depth += skip_size;
-
-            // /// Skip rest if not main thread
-            // if self.id != 0 {
-            //     continue;
-            // }
-
-            // /// Check for out of time stop
-            // if let Some(timer) = timer.as_mut() {
-            //     if timer.should_stop() {
-            //         debug!("breaking loop (Time),  d: {}", self.best_depth.load(Relaxed));
-            //         self.stop.store(true, SeqCst);
-            //         break;
-            //     }
-            // }
-
-            // let d = self.best_depth.load(Relaxed);
-            // /// Max depth reached, halt
-            // if d >= self.cfg.max_depth {
-            //     debug!("max depth reached, breaking");
-            //     self.stop.store(true, SeqCst);
-            //     break;
-            // }
-
-            // /// Found mate, halt
-            // if self.best_mate.read().is_some() {
-            //     #[cfg(not(feature = "basic_time"))]
-            //     // let t1 = Instant::now().checked_duration_since(t0).unwrap();
-            //     debug!("breaking loop (Mate),  d: {}", d);
-            //     self.stop.store(true, SeqCst);
-            //     break;
-            // }
-
         }
 
         match self.tx.try_send(ExMessage::End(self.id)) {
