@@ -522,11 +522,11 @@ impl ExHelper {
         /// Step 1. Repetition
         let cycle = Self::has_cycle(ts, g, stats, stack);
         // if cycle && alpha < DRAW_VALUE {
-        if cycle {
+        // if cycle {
+        if !is_root_node && alpha < DRAW_VALUE && cycle {
             // eprintln!("ply, mv, cycle = {:?}, {:?}, {}", ply, g.last_move.unwrap(), cycle);
 
             let score = draw_value(stats);
-
             return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
         }
 

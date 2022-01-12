@@ -43,7 +43,7 @@ fn main() -> std::io::Result<()> {
     //     .build_global()
     //     .unwrap();
 
-    let depth = 35;
+    // let depth = 35;
     // let depth = 25;
 
     let now = chrono::Local::now();
@@ -104,7 +104,7 @@ fn main() -> std::io::Result<()> {
 
     // let explorer = Arc::new(Mutex::new(
     //     Explorer::new(White,Game::empty(), depth, should_stop.clone(), timesettings)));
-    let mut explorer = Explorer::new(White,Game::default(), depth, timesettings);
+    let mut explorer = Explorer::new(White,Game::default(), MAX_SEARCH_PLY, timesettings);
     // let ts = Tables::new();
     let ts = &_TABLES;
 
@@ -188,17 +188,24 @@ fn main() -> std::io::Result<()> {
                                 // let moves = moves.join(" ");
                                 // println!("moves = {:?}", moves);
                                 let mut g = g0.clone();
-                                for m in moves {
-                                    let from = &m[0..2];
-                                    let to = &m[2..4];
-                                    let other = &m[4..];
-                                    let mm = g.convert_move(from, to, other).unwrap();
-                                    g = g.make_move_unchecked(&ts, mm).unwrap();
-                                }
-                                debug!("setting game FEN = {}", g.to_fen());
+
+                                // for m in moves {
+                                //     let from = &m[0..2];
+                                //     let to = &m[2..4];
+                                //     let other = &m[4..];
+                                //     let mm = g.convert_move(from, to, other).unwrap();
+                                //     g = g.make_move_unchecked(&ts, mm).unwrap();
+                                // }
+
                                 // explorer.side = g.state.side_to_move;
                                 // explorer.game = g;
-                                explorer.update_game(g.clone());
+                                // explorer.update_game(g.clone());
+
+                                let moves = moves.into_iter();
+                                explorer.update_game_movelist(&ts, STARTPOS, moves);
+
+                                debug!("setting game FEN = {}", explorer.game.to_fen());
+
                             },
                             x => panic!("Position not fen? {:?},  {:?}", x, params),
                         }

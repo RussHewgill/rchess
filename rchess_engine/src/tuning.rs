@@ -144,7 +144,10 @@ mod misc_functions {
     // }
 
     pub fn draw_value(stats: &SearchStats) -> Score {
-        let score = DRAW_VALUE + (2 * (stats.nodes as i32 & 1) - 1);
+
+        let val = stats.nodes as i32 + stats.leaves as i32 + stats.qt_nodes as i32;
+
+        let score = DRAW_VALUE + (2 * (val as i32 & 1) - 1);
         // let score = 0;
         score
     }

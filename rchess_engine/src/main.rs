@@ -2840,10 +2840,11 @@ fn main9() {
     // let t = 0.5;
     // let t = 0.3;
 
+    let n = MAX_SEARCH_PLY;
     // let n = 35;
     // let n = 22;
     // let n = 8;
-    let n = 10;
+    // let n = 10;
     // let n = 2;
 
     let timesettings = TimeSettings::new_f64(0.0,t);
@@ -2885,11 +2886,11 @@ fn main9() {
     // return;
 
 
-    ex.time_settings.is_per_move           = true;
-    ex.time_settings.move_time             = 1100;
-    ex.time_settings.time_remaining[White] = 1100;
-    ex.time_settings.increment             = 100;
-    eprintln!("ex.time_settings.move_time = {:?}", ex.time_settings.move_time);
+    // ex.time_settings.is_per_move           = true;
+    // ex.time_settings.move_time             = 1100;
+    // ex.time_settings.time_remaining[White] = 1100;
+    // ex.time_settings.increment             = 100;
+    // eprintln!("ex.time_settings.move_time = {:?}", ex.time_settings.move_time);
 
     // let mut timer = TimeManager::new(ex.time_settings);
     // debug!("searching with time limit (soft,hard) = ({:.3},{:.3})",
@@ -2901,8 +2902,46 @@ fn main9() {
     // eprintln!("timer = {:?}", timer);
     // return;
 
+
+    // let fen = "8/P5pk/7p/4Q3/5B1K/5b1P/6q1/8 w - - 1 55";
+    // let mut g = Game::from_fen(&ts, fen).unwrap();
+
+    // let moves = vec![
+    //     "c7c6",
+    //     "f3e4", // 43.
+    //     "a5a4",
+    //     "e4d3", // 44.
+    //     "a4a3",
+    //     // "d3e4", // 45.
+    //     // "a3a4",
+    //     // "e4d3",
+    //     // "a4a3",
+    //     // "d3e4", // mistake, allows draw
+    //     // "a3a4", // drawn
+    // ];
+
+    // let moves = vec![
+    //     "e5f5", // 55.
+    //     "h7g8",
+    //     "f5e6", // 56.
+    //     "g8h7",
+    //     "e6f5", // 57.
+    // ];
+
+    let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
+
+    let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 c1g5 b8d7 f1d3 e7e6 e1g1 h7h6 g5e3 b7b5 a2a4 b5a4 f2f3 c8b7 a1a4 d7c5 a4a2 f8e7 d3e2 e8g8 d1a1 a6a5 e2b5 d8c7 e3d2 d6d5 e4d5 f6d5 c3d5 b7d5 a2a5 e7f6 b2b4 a8a5 b4a5 f8b8 f1b1 c7e5 c2c3 c5b3 d4b3 b8b5 b3d4 b5b1 a1b1 f6d8 a5a6 d8c7 f3f4 e5d6 b1b5 d6a3 b5e8 g8h7 e8f7 c7b6 f4f5 b6d4 c3d4 a3a1 g1f2 a1d4 d2e3 d4b2 f2e1 b2c3 e1e2 c3c2 e2e1 c2b1 e1d2 b1b4 d2d1 d5b3 d1e2 b4c4 e2e1 c4c3 e1f2 c3c2 f2g3 e6f5 f7b7 b3a4 b7f3 a4c6 f3f2 f5f4 e3f4 c2g6 g3h4 c6g2 f2e2 g2h1 a6a7 h1d5 e2e5 d5f3 h2h3 g6g2 e5f5 h7g8 f5e6 g8h7 e6f5";
+    let mut params = params.split_whitespace();
+
+    let moves: Vec<&str> = params.collect();
+
+    ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
+    let g = ex.game;
+
+    eprintln!("g = {:?}", g);
+
+    // ex.update_game(g.clone());
     let t0 = std::time::Instant::now();
-    ex.update_game(g.clone());
     let (res,moves,stats0) = ex.lazy_smp_2(&ts);
     let t1 = t0.elapsed();
     let t2 = t1.as_secs_f64();
