@@ -128,7 +128,7 @@ mod new {
         pub abort_now:     bool,
     }
 
-    const BUFFER_TIME: u64 = 20;
+    const BUFFER_TIME: u64 = 50;
 
     /// New
     impl TimeManager {

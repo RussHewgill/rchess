@@ -126,7 +126,7 @@ mod ss {
                 leaves:             self.leaves + other.leaves,
                 quiet_leaves:       self.quiet_leaves + other.quiet_leaves,
                 max_depth:          u8::max(self.max_depth, other.max_depth),
-                q_max_depth:          u8::max(self.q_max_depth, other.q_max_depth),
+                q_max_depth:        u8::max(self.q_max_depth, other.q_max_depth),
                 checkmates:         self.checkmates + other.checkmates,
                 stalemates:         self.stalemates + other.stalemates,
                 tt_hits:            self.tt_hits + other.tt_hits,
@@ -155,6 +155,7 @@ mod ss {
         }
     }
 
+    /// Print
     impl SearchStats {
 
         pub fn print(&self, dt: Duration) {
@@ -211,6 +212,25 @@ mod ss {
             // println!("Cut Nodes  = {:?}", self.ns_cut);
         }
 
+        pub fn print_prunes(&self) {
+
+            println!("null prunes = {:?}, {:.3}",
+                     self.null_prunes, self.null_prunes as f64 / self.nodes as f64);
+            println!("fut prunes  = {:?}, {:.3}",
+                     self.fut_prunes, self.null_prunes as f64 / self.nodes as f64);
+            println!("lmrs        = {:?}, {:.3}",
+                     self.lmrs.0, self.lmrs.0 as f64 / self.nodes as f64);
+
+            // println!("fut prunes    = {:?}", self.fut_prunes);
+            // println!("counter_moves = {:?}", self.counter_moves);
+            // println!("lmrs          = {:?}", self.lmrs);
+
+        }
+
+    }
+
+    /// Misc
+    impl SearchStats {
 
         fn _add_2<T: std::ops::Add<Output = T>>(a: (T,T), b: (T,T)) -> (T,T) {
             (a.0 + b.0, a.1 + b.1)
@@ -278,39 +298,6 @@ mod ss {
             }
             let s: f64 = xs.iter().sum();
             debug!("Average EBF: {:.2}", s / xs.len() as f64);
-
-        }
-
-        fn print_ebf2(&self, full: bool) {
-            let mut arr = self.nodes_arr;
-            let k = arr.0.len();
-            let dmax = self.max_depth as usize;
-            // let mut arr2 = &mut arr[1..((self.max_depth as usize) + 1)];
-            let mut arr2 = &mut arr.0[..dmax + 2];
-            arr2.reverse();
-
-            // for (depth,n) in arr2.iter().enumerate() {
-            //     eprintln!("depth, n = {:>2}: {:>8}", depth, n);
-            // }
-
-            let mut xs = vec![];
-            for depth in 1..arr2.len() {
-                let n = arr2[depth];
-                let ebf = n as f64 / arr2[depth - 1] as f64;
-                xs.push(ebf);
-                if full {
-                    debug!("EBF depth {:>2} = {:>8} nodes, {:.2?}", depth, n, ebf);
-                }
-            }
-            let s: f64 = xs.iter().sum();
-            debug!("Average EBF: {:.2}", s / xs.len() as f64);
-
-            // let xs = arr.clone().iter()
-            //     // .filter(|x| **x != 0)
-            //     .enumerate()
-            //     .for_each(|(depth,x)| {
-            //     eprintln!("x {} = {:?}", depth, x);
-            // });
 
         }
 

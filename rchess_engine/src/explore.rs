@@ -651,30 +651,6 @@ impl Explorer {
                 trace!("Spawned thread, count = {}", thread_counter.load(SeqCst));
             }
 
-            /// Dispatch threads
-            #[cfg(feature = "nope")]
-            while thread_counter.load(SeqCst) < max_threads {
-                trace!("Spawning thread, id = {}", thread_id);
-
-                let helper = self.build_exhelper(
-                    thread_id,
-                    self.cfg.max_depth,
-                    best_depth.clone(),
-                    root_moves.clone(),
-                    tx.clone());
-
-                s.builder()
-                    // .stack_size(size)
-                    .spawn(move |_| {
-                        helper.lazy_smp_single(ts);
-                    }).unwrap();
-
-                thread_id += 1;
-                thread_counter.fetch_add(1, SeqCst);
-                trace!("Spawned thread, count = {}", thread_counter.load(SeqCst));
-                // std::thread::sleep(Duration::from_millis(1));
-            }
-
             /// stoppage checking loop
             'outer: loop {
 

@@ -2836,14 +2836,14 @@ fn main9() {
     // let t = 10.0;
     // let t = 6.0;
     // let t = 5.0;
-    // let t = 2.0;
-    let t = 0.5;
+    let t = 2.0;
+    // let t = 0.5;
     // let t = 0.3;
 
-    let n = MAX_SEARCH_PLY;
+    // let n = MAX_SEARCH_PLY;
     // let n = 35;
     // let n = 22;
-    // let n = 8;
+    let n = 8;
     // let n = 10;
     // let n = 2;
 
@@ -2854,19 +2854,20 @@ fn main9() {
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(12);
     // ex.cfg.num_threads = Some(6);
-    // ex.cfg.num_threads = Some(1);
+    ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
-    ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+    // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
     ex.cfg.late_move_reductions = true;
 
+    ex.time_settings.is_per_move = true;
+    ex.time_settings.move_time = (t * 1000.0) as u64;
+
     // let mut ex2 = ex.clone();
 
-    // ex.timer.settings.increment = [0.118; 2];
-
-    // // XXX: avg of 5
-    // const N: usize = 5;
+    // // XXX: avg of N runs
+    // const N: usize = 10;
     // let mut times = vec![];
     // for n in 0..N {
     //     let mut ex2 = ex.clone();
@@ -2884,67 +2885,14 @@ fn main9() {
     // eprintln!("avg = {:.3}", avg);
     // return;
 
+    // let params = "d2d4 g8f6";
+    // let params = params.split(" ");
+    // let moves: Vec<&str> = params.collect();
+    // ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
+    // let g = ex.game;
+    // eprintln!("g = {:?}", g);
 
-    // let mut timer = TimeManager::new(ex.time_settings);
-    // debug!("searching with time limit (soft,hard) = ({:.3},{:.3})",
-    //        timer.limit_soft as f64 / 1000.0,
-    //        timer.limit_hard as f64 / 1000.0);
-    // return;
-
-    // let mut timer = TimeManager::new(ex.time_settings);
-    // eprintln!("timer = {:?}", timer);
-    // return;
-
-
-    // let fen = "8/P5pk/7p/4Q3/5B1K/5b1P/6q1/8 w - - 1 55";
-    // let mut g = Game::from_fen(&ts, fen).unwrap();
-
-    // let moves = vec![
-    //     "c7c6",
-    //     "f3e4", // 43.
-    //     "a5a4",
-    //     "e4d3", // 44.
-    //     "a4a3",
-    //     // "d3e4", // 45.
-    //     // "a3a4",
-    //     // "e4d3",
-    //     // "a4a3",
-    //     // "d3e4", // mistake, allows draw
-    //     // "a3a4", // drawn
-    // ];
-
-    // let moves = vec![
-    //     "e5f5", // 55.
-    //     "h7g8",
-    //     "f5e6", // 56.
-    //     "g8h7",
-    //     "e6f5", // 57.
-    // ];
-
-    let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
-
-    let params = "e2e4 c7c5 g1f3 b8c6 d2d4 c5d4 f3d4 g8f6 b1c3 d7d6 f1b5 c8d7 e1g1 c6d4 d1d4 d7b5 c3b5 a7a6 b5c3 e7e6 c1g5 f8e7 a1d1 e8g8 f1e1 a8c8 d4b4 b7b5 g5f6 g7f6 a2a4 d6d5 b4b3 b5a4 c3a4 d5d4 e1e2 d8d6 c2c3 d4d3 e2d2 d6c6 d2d3 c6e4 d3d4 e4e2 a4b6 c8b8 d4d2 e2e5 d2d4 a6a5 d4h4 h7h5 g2g4 f8d8 h4h5 b8b6 d1d8 e7d8 b3a4 e5e1 g1g2 d8e7 a4e8 e7f8 h5h8 g8h8 e8f8 h8h7 f8f7 h7h6 f7f6 h6h7 f6f7 h7h8 f7f8 h8h7 f8f7 h7h8 f7f8";
-    let mut params = params.split_whitespace();
-
-    let moves: Vec<&str> = params.collect();
-
-    ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
-    let g = ex.game;
-
-    eprintln!("g = {:?}", g);
-
-    ex.time_settings.is_per_move           = true;
-    ex.time_settings.move_time             = 73;
-    ex.time_settings.time_remaining[Black] = 73;
-    ex.time_settings.increment             = 100;
-    eprintln!("ex.time_settings.move_time = {:?}", ex.time_settings.move_time);
-
-
-    let (mres, stats) = ex.explore(&ts);
-
-    eprintln!("mv = {:?}", mres.map(|x| x.0));
-
-    return;
+    // ex.time_settings.move_time = 81;
 
     // ex.update_game(g.clone());
     let t0 = std::time::Instant::now();
@@ -3016,6 +2964,9 @@ fn main9() {
     // }
 
     stats0.print(t1);
+
+    eprintln!();
+    stats0.print_prunes();
 
     eprintln!();
 

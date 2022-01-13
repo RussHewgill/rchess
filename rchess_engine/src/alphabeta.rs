@@ -520,12 +520,11 @@ impl ExHelper {
         }
 
         /// Step 1. Repetition
-        // let cycle = Self::has_cycle(ts, g, stats, stack);
-        // if cycle && alpha < DRAW_VALUE {
-        // if cycle {
-        if !is_root_node && alpha < DRAW_VALUE && Self::has_cycle(ts, g, stats, stack) {
+        if !is_root_node
+            && alpha < DRAW_VALUE
+            && Self::has_cycle(ts, g, stats, stack)
+        {
             // eprintln!("ply, mv, cycle = {:?}, {:?}, {}", ply, g.last_move.unwrap(), cycle);
-
             let score = draw_value(stats);
             return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
         }
@@ -604,10 +603,13 @@ impl ExHelper {
         }
 
         /// Step 4. Transposition Table probe
-        // let msi: Option<SearchInfo> = if is_root_node { None } else {
+
+        // TODO: should have a vec of moves stored for root moves instead of using TT
         let (meval,msi): (Option<Score>,Option<SearchInfo>) = if is_root_node { (None,None) } else {
             self.check_tt2(ts, g.zobrist, depth, stats)
         };
+
+        // let (meval,msi): (Option<Score>,Option<SearchInfo>) = self.check_tt2(ts, g.zobrist, depth, stats);
 
         /// Step 4b. Check for returnable TT score
         if let Some(si) = msi {
@@ -960,7 +962,7 @@ impl ExHelper {
                 let mut do_full_depth = true; // XXX: ??
 
                 /// Step 16a. Skip LMR for good static exchanges
-                if lmr && mv.filter_all_captures() {
+                if lmr && mv.filter_all_captures() && !mv.filter_promotion() {
                     // let see = g.static_exchange(&ts, mv).unwrap(); // XXX: g or g2?
                     let see = movegen.static_exchange_ge(mv, 1);
                     // let see = g.static_exchange_ge(ts, mv, 1);
@@ -973,11 +975,12 @@ impl ExHelper {
                 /// Step 16b. Late Move Reductions
                 if lmr
                     && !is_pv_node
-                    && moves_searched >= (if is_root_node { 2 + LMR_MIN_MOVES } else { LMR_MIN_MOVES })
+                    && moves_searched >= (
+                        if is_root_node { 2 + self.params.lmr_min_moves } else { self.params.lmr_min_moves })
                     // && next_depth >= LMR_MIN_DEPTH
                     && next_depth >= self.params.lmr_min_depth
                     && !mv.filter_promotion()
-                    // && !mv.filter_all_captures()
+                    && !mv.filter_all_captures()
                     && !in_check
                     && !gives_check
                     && g2.state.checkers.is_empty()
@@ -986,7 +989,10 @@ impl ExHelper {
                     // let depth_r = next_depth.checked_sub(LMR_REDUCTION).unwrap();
                     // // let depth_r = next_depth.checked_sub(1).unwrap();
 
-                    let mut r = lmr_reduction(next_depth, moves_searched) as i16;
+                    // let mut r = lmr_reduction(next_depth, moves_searched) as i16;
+
+                    let mut r = self.params.lmr_table
+                        [depth.min(63) as usize][moves_searched.min(63) as usize];
 
                     if mv.filter_quiet() {
 
