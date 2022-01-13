@@ -831,9 +831,6 @@ impl ExHelper {
         let mut best_val: (Option<ABResult>,Score) = (None,val);
         let mut list = vec![];
 
-        let mut best_move: Option<Move> = None;
-        let mut best_score: Score       = Score::MIN;
-
         let mut captures_searched: ArrayVec<Move, 64> = ArrayVec::new();
         let mut quiets_searched: ArrayVec<Move, 64>   = ArrayVec::new();
 
@@ -1086,7 +1083,6 @@ impl ExHelper {
 
             /// Step 18. update alpha, beta, stats
             #[cfg(not(feature = "negamax_only"))]
-            // #[cfg(feature = "nope")]
             {
                 if res.score >= beta { // Fail Soft
                     b = true;
@@ -1107,21 +1103,21 @@ impl ExHelper {
 
                 /// Fail high, update stats
                 if b {
-                    if !mv.filter_all_captures() {
 
-                        // #[cfg(feature = "history_heuristic")]
-                        // stack.history.update(mv, g.state.side_to_move, ABStack::stat_bonus(depth));
+                    stack.update_history(
+                        g, mv, res.score, beta, captures_searched, quiets_searched, ply, depth);
 
-                        #[cfg(feature = "killer_moves")]
-                        stack.killers_store(ply, mv);
-
-                        #[cfg(feature = "countermove_heuristic")]
-                        if let Some(prev_mv) = g.last_move {
-                            stack.counter_moves.insert_counter_move(prev_mv, mv, g.state.side_to_move);
-                            // stack.counter_moves.insert_counter_move(prev_mv, mv);
-                        }
-
-                    }
+                    // if !mv.filter_all_captures() {
+                    //     // #[cfg(feature = "history_heuristic")]
+                    //     // stack.history.update(mv, g.state.side_to_move, ABStack::stat_bonus(depth));
+                    //     // #[cfg(feature = "killer_moves")]
+                    //     // stack.killers_store(ply, mv);
+                    //     // #[cfg(feature = "countermove_heuristic")]
+                    //     // if let Some(prev_mv) = g.last_move {
+                    //     //     stack.counter_moves.insert_counter_move(prev_mv, mv, g.state.side_to_move);
+                    //     //     // stack.counter_moves.insert_counter_move(prev_mv, mv);
+                    //     // }
+                    // }
 
                     if moves_searched <= 1 {
                         stats!(stats.beta_cut_first.0 += 1);
@@ -1151,7 +1147,6 @@ impl ExHelper {
         {
             // let score = -DRAW_VALUE + ply as Score;
             let score = draw_value(stats);
-
             stats.leaves += 1;
             stats.stalemates += 1;
             if let Some(mv) = g.last_move {
@@ -1178,8 +1173,8 @@ impl ExHelper {
 
                 let mv = res.mv.unwrap();
 
-                stack.update_history(
-                    g, mv, res.score, beta, captures_searched, quiets_searched, ply, depth);
+                // stack.update_history(
+                //     g, mv, res.score, beta, captures_searched, quiets_searched, ply, depth);
 
                 let bound = if res.score >= beta {
                     Node::Lower

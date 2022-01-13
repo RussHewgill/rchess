@@ -145,10 +145,16 @@ impl ABStack {
         bonus:      Score,
     ) {
 
-        // #[cfg(feature = "killer_moves")]
-        // if !mv.filter_all_captures() {
-        //     self.killers_store(ply, mv);
-        // }
+        #[cfg(feature = "killer_moves")]
+        if !mv.filter_all_captures() {
+            self.killers_store(ply, mv);
+        }
+
+        #[cfg(feature = "countermove_heuristic")]
+        if let Some(prev_mv) = g.last_move {
+            self.counter_moves.insert_counter_move(prev_mv, mv, g.state.side_to_move);
+            // stack.counter_moves.insert_counter_move(prev_mv, mv);
+        }
 
         self.history.update(mv, side, bonus);
 
