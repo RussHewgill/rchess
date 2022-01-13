@@ -694,6 +694,7 @@ impl ExHelper {
 
         /// when in check, skip early pruning
         let in_check = g.state.checkers.is_not_empty();
+        stack.with(ply, |st| st.in_check = in_check);
 
         /// Static eval, possibly from TT
         let static_eval = self.get_static_eval(ts, g, ply, stack, meval, msi);
@@ -830,6 +831,9 @@ impl ExHelper {
         let mut best_val: (Option<ABResult>,Score) = (None,val);
         let mut list = vec![];
 
+        let mut best_move: Option<Move> = None;
+        let mut best_score: Score       = Score::MIN;
+
         let mut captures_searched: ArrayVec<Move, 64> = ArrayVec::new();
         let mut quiets_searched: ArrayVec<Move, 64>   = ArrayVec::new();
 
@@ -961,6 +965,9 @@ impl ExHelper {
 
                 let mut do_full_depth = true; // XXX: ??
 
+                /// TODO: 
+                // let history = 
+
                 /// Step 16a. Skip LMR for good static exchanges
                 if lmr && mv.filter_all_captures() && !mv.filter_promotion() {
                     // let see = g.static_exchange(&ts, mv).unwrap(); // XXX: g or g2?
@@ -985,14 +992,7 @@ impl ExHelper {
                     && !gives_check
                     && g2.state.checkers.is_empty()
                 {
-
-                    // let depth_r = next_depth.checked_sub(LMR_REDUCTION).unwrap();
-                    // // let depth_r = next_depth.checked_sub(1).unwrap();
-
-                    // let mut r = lmr_reduction(next_depth, moves_searched) as i16;
-
-                    let mut r = self.params.lmr_table
-                        [depth.min(63) as usize][moves_searched.min(63) as usize];
+                    let mut r = lmr_reduction(next_depth, moves_searched) as i16;
 
                     if mv.filter_quiet() {
 
@@ -1064,100 +1064,6 @@ impl ExHelper {
                     };
                 }
 
-                /// Prev
-                #[cfg(feature = "nope")]
-                {
-
-                    ///   Full depth search
-                    /// If LMR failed or was skipped
-                    // if do_full_depth {
-                    if false && do_full_depth {
-
-                        // let (a2,b2) = if search_pvs_all || cfg!(not(feature = "pvs_search")) {
-                        //     (-beta, -alpha)
-                        // } else {
-                        //     (-(alpha + 1), -alpha)
-                        // };
-
-                        #[cfg(feature = "pvs_search")]
-                        let (a2,b2) = if search_pvs_all {
-                            (-beta, -alpha)
-                        } else {
-                            (-(alpha + 1), -alpha)
-                        };
-                        #[cfg(not(feature = "pvs_search"))]
-                        let (a2,b2) = (-beta, -alpha);
-
-                        let res2 = -self.ab_search::<{NonPV}>(
-                            ts, &g2, (next_depth,ply+1), (a2,b2), stats, stack, !is_cut_node);
-
-                        res = if let Some(r) = res2.get_result_mv(mv) { r } else {
-                            self.pop_nnue(stack);
-                            continue 'outer;
-                        };
-
-                    }
-
-                    // if false && do_full_depth && (!search_pvs_all || !is_pv_node) {
-                    // if do_full_depth && (!search_pvs_all || !is_pv_node) {
-                    if do_full_depth {
-
-                        #[cfg(feature = "pvs_search")]
-                        let (a2,b2) = if search_pvs_all {
-                            (-beta, -alpha)
-                        } else {
-                            (-(alpha + 1), -alpha)
-                        };
-                        #[cfg(not(feature = "pvs_search"))]
-                        let (a2,b2) = (-beta, -alpha);
-
-                        res = {
-                            let next_cut_node = !is_cut_node;
-                            // trace!("search 1");
-                            let res2 = -self.ab_search::<{NonPV}>(
-                                ts, &g2, (next_depth,ply+1), (a2,b2), stats, stack, next_cut_node);
-                            if let Some(r) = res2.get_result_mv(mv) { r } else {
-                                self.pop_nnue(stack);
-                                continue 'outer;
-                            }
-                        };
-
-                        /// Re-seach if limited window PV search failed
-                        #[cfg(feature = "pvs_search")]
-                        if !search_pvs_all && res.score > alpha && res.score < beta {
-                            res = {
-                                // let next_cut_node = !is_cut_node;
-                                // trace!("search 2");
-                                let res2 = -self.ab_search::<{PV}>(
-                                    ts, &g2, (next_depth,ply+1), (-beta,-alpha), stats, stack, false);
-                                if let Some(r) = res2.get_result_mv(mv) { r } else {
-                                    self.pop_nnue(stack);
-                                    continue 'outer;
-                                }
-                            };
-                        }
-
-                    }
-
-                    let search_pv = moves_searched == 1
-                        || (res.score > alpha && (is_root_node || res.score < beta));
-
-                    /// Do full PV Search until a move is found that raises alpha
-                    #[cfg(feature = "pvs_search")]
-                    // if is_pv_node && search_pvs_all {
-                    if is_pv_node && search_pv {
-                        let res2 = -self.ab_search::<{PV}>(
-                            ts, &g2, (next_depth,ply+1), (-beta, -alpha), stats, stack, false);
-
-                        res = if let Some(r) = res2.get_result_mv(mv) { r } else {
-                            self.pop_nnue(stack);
-                            continue 'outer;
-                        };
-
-                    }
-
-                }
-
                 // if res.mv == Move::NullMove {
                 if res.mv.is_none() {
                     panic!();
@@ -1180,6 +1086,7 @@ impl ExHelper {
 
             /// Step 18. update alpha, beta, stats
             #[cfg(not(feature = "negamax_only"))]
+            // #[cfg(feature = "nope")]
             {
                 if res.score >= beta { // Fail Soft
                     b = true;

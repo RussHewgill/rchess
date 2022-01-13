@@ -26,7 +26,6 @@ pub struct SParams {
 
     pub lmr_reduction:            Depth,
     pub lmr_ply_const:            Depth,
-    pub lmr_table:                [[Depth; 64]; 64],
 
     pub qs_recaps_only:           Depth,
     pub qs_delta_margin:          Score,
@@ -49,15 +48,15 @@ pub struct SParams {
 impl Default for SParams {
     fn default() -> Self {
 
-        let mut lmr_table = [[0; 64]; 64];
-
-        for depth in 1..64 {
-            for played in 1..64 {
-                /// magic from Ethereal
-                let x = 0.75 + f64::ln(depth as f64) * f64::ln(played as f64) / 2.25;
-                lmr_table[depth][played] = x as Depth;
-            }
-        }
+        // // XXX: worse than sf formula
+        // let mut lmr_table = [[0; 64]; 64];
+        // for depth in 1..64 {
+        //     for played in 1..64 {
+        //         /// magic from Ethereal
+        //         let x = 0.75 + f64::ln(depth as f64) * f64::ln(played as f64) / 2.25;
+        //         lmr_table[depth][played] = x as Depth;
+        //     }
+        // }
 
         Self {
             max_ply:                  220,
@@ -68,7 +67,6 @@ impl Default for SParams {
 
             lmr_reduction:            3,
             lmr_ply_const:            6,
-            lmr_table,
 
             qs_recaps_only:           5,
             qs_delta_margin:          150, // one and a half Pawns

@@ -33,6 +33,8 @@ pub struct ButterflyHistory {
 }
 
 #[derive(Debug,Clone)]
+/// [Piece][To][Piece][To]
+/// XXX: include side?
 pub struct ContinuationHistory {
     buf:        [[HistoryPieceTo; 64]; 6],
     // buf:           [[[(Score,Score); 64]; 64]; 2]
@@ -45,6 +47,7 @@ pub struct CaptureHistory {
 }
 
 #[derive(Debug,Clone)]
+/// [Side][Piece][To]
 pub struct CounterMoves {
     buf:        [[[Option<Move>; 64]; 6]; 2],
     // buf:        [[Option<Move>; 64]; 6],

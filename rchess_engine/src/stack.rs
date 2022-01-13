@@ -7,17 +7,18 @@ use arrayvec::ArrayVec;
 
 #[derive(Debug,Clone)]
 pub struct ABStack {
-    pub history:            crate::heuristics::ButterflyHistory,
-    pub counter_moves:      crate::heuristics::CounterMoves,
-    pub capture_history:    crate::heuristics::CaptureHistory,
+    pub history:                crate::heuristics::ButterflyHistory,
+    pub counter_moves:          crate::heuristics::CounterMoves,
+    pub capture_history:        crate::heuristics::CaptureHistory,
+    pub continuation_history:   crate::heuristics::ContinuationHistory,
 
-    pub inside_null:        bool,
+    pub inside_null:            bool,
 
-    pub stacks:             Vec<ABStackPly>,
+    pub stacks:                 Vec<ABStackPly>,
 
-    pub move_history:       Vec<(Zobrist, Move)>,
+    pub move_history:           Vec<(Zobrist, Move)>,
 
-    pub pvs:                [Move; 128],
+    pub pvs:                    [Move; 128],
 }
 
 /// Get, push, with
@@ -110,13 +111,18 @@ impl ABStack {
         let bonus_quiet = Self::stat_bonus(depth - 1);
 
         if best_mv.filter_capture_or_promotion() {
+            /// Increase Capture history for good capture
             self.capture_history.update(best_mv, bonus);
         } else {
-            self.history.update(best_mv, side, bonus_quiet);
+            /// Increase history for good quiet move
+            // self.history.update(best_mv, side, bonus_quiet);
+            self.update_quiet_stats(g, ply, best_mv, side, bonus_quiet);
 
+            /// penalty for all quiets that aren't the best move
             for mv in quiets_searched.into_iter() {
                 if mv != best_mv {
                     self.history.update(mv, side, -bonus_quiet);
+                    // self.update_continuation_history(mv, -bonus_quiet);
                 }
             }
 
@@ -130,19 +136,29 @@ impl ABStack {
         }
     }
 
+    pub fn update_quiet_stats(
+        &mut self,
+        g:          &Game,
+        ply:        Depth,
+        mv:         Move,
+        side:       Color,
+        bonus:      Score,
+    ) {
+
+        // #[cfg(feature = "killer_moves")]
+        // if !mv.filter_all_captures() {
+        //     self.killers_store(ply, mv);
+        // }
+
+        self.history.update(mv, side, bonus);
+
+        // unimplemented!()
+    }
+
     pub fn stat_bonus(depth: Depth) -> Score {
         let depth = depth as Score;
         Score::min(HISTORY_MAX, depth * depth)
     }
-
-    // pub fn update_quiet_stats(
-    //     &mut self,
-    //     g:          &Game,
-    //     mv:         Move,
-    //     depth:      Depth,
-    // ) {
-    //     unimplemented!()
-    // }
 
     // /// Stockfish magic
     // fn stat_bonus(depth: Depth) -> Score {
@@ -157,6 +173,22 @@ impl ABStack {
     //     current + mult * delta - current * delta.abs() / div
     // }
 
+}
+
+/// History
+impl ABStack {
+    pub fn get_move_history(
+        &self,
+        mv:           Move,
+        side:         Color,
+        prev_mv:      Option<Move>,
+    ) -> Score {
+        let bf = self.history.get_move(mv, side);
+
+        // let cm: [[[[[Score; 2]; 6]; 64]; 6]; 64];
+
+        unimplemented!()
+    }
 }
 
 /// Killers
@@ -240,16 +272,17 @@ impl ABStack {
     }
     pub fn new() -> Self {
         Self {
-            history:            crate::heuristics::ButterflyHistory::default(),
-            counter_moves:      crate::heuristics::CounterMoves::default(),
-            capture_history:    crate::heuristics::CaptureHistory::default(),
+            history:                crate::heuristics::ButterflyHistory::default(),
+            counter_moves:          crate::heuristics::CounterMoves::default(),
+            capture_history:        crate::heuristics::CaptureHistory::default(),
+            continuation_history:   crate::heuristics::ContinuationHistory::default(),
 
-            inside_null:        false,
+            inside_null:            false,
 
-            stacks:             Vec::with_capacity(64),
-            move_history:       Vec::with_capacity(64),
+            stacks:                 Vec::with_capacity(64),
+            move_history:           Vec::with_capacity(64),
 
-            pvs:                [Move::NullMove; 128],
+            pvs:                    [Move::NullMove; 128],
         }
     }
 }

@@ -23,7 +23,7 @@ impl ButterflyHistory {
     }
 
     // pub fn _get_move(&self, from: Coord, to: Coord, side: Color) -> Option<Score> {
-    pub fn _get_move(&self, from: Coord, to: Coord, side: Color) -> Score {
+    fn _get_move(&self, from: Coord, to: Coord, side: Color) -> Score {
         // let x = self.buf[side][from][to];
         // if x == 0 { None } else { Some(x) }
 
