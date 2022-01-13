@@ -335,26 +335,25 @@ pub fn crit_bench_1(c: &mut Criterion) {
     let timesettings = TimeSettings::new_f64(0.0,t);
 
 
-    group.bench_function("time manager 1", |b| b.iter(|| {
-        let mut timer = TimeManager::new(timesettings);
-        for _ in 0..10_000 {
-            let stop = timer.should_stop();
-        }
-    }));
+    // group.bench_function("time manager 1", |b| b.iter(|| {
+    //     let mut timer = TimeManager::new(timesettings);
+    //     for _ in 0..10_000 {
+    //         let stop = timer.should_stop();
+    //     }
+    // }));
 
-    group.bench_function("time manager 2", |b| b.iter(|| {
-        let mut timer = TimeManager::new(timesettings);
-        let mut n = 0;
-        for _ in 0..10_000 {
-            // let stop = timer._should_stop(n);
-            let stop = timer.should_stop();
-            if stop {
-                n = 0;
-            } else {
-                n += 1;
-            }
-        }
-    }));
+    // group.bench_function("time manager 2", |b| b.iter(|| {
+    //     let mut timer = TimeManager::new(timesettings);
+    //     let mut n = 0;
+    //     for _ in 0..10_000 {
+    //         let stop = timer._should_stop(&mut n);
+    //         // if stop {
+    //         //     n = 0;
+    //         // } else {
+    //         //     n += 1;
+    //         // }
+    //     }
+    // }));
 
     use rchess_engine_lib::lockless_map::*;
 

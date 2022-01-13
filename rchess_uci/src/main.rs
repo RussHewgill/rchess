@@ -73,8 +73,8 @@ fn main() -> std::io::Result<()> {
         .set_location_level(LevelFilter::Off)
         .build();
 
-    WriteLogger::init(LevelFilter::Debug, cfg, logfile).unwrap();
-    // WriteLogger::init(LevelFilter::Trace, cfg, logfile).unwrap();
+    // WriteLogger::init(LevelFilter::Debug, cfg, logfile).unwrap();
+    WriteLogger::init(LevelFilter::Trace, cfg, logfile).unwrap();
 
     let mut errfile = std::fs::File::create("/home/me/code/rust/rchess/panic.log").unwrap();
     let err_redirect = Redirect::stderr(errfile).unwrap();

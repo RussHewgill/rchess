@@ -520,10 +520,10 @@ impl ExHelper {
         }
 
         /// Step 1. Repetition
-        let cycle = Self::has_cycle(ts, g, stats, stack);
+        // let cycle = Self::has_cycle(ts, g, stats, stack);
         // if cycle && alpha < DRAW_VALUE {
         // if cycle {
-        if !is_root_node && alpha < DRAW_VALUE && cycle {
+        if !is_root_node && alpha < DRAW_VALUE && Self::has_cycle(ts, g, stats, stack) {
             // eprintln!("ply, mv, cycle = {:?}, {:?}, {}", ply, g.last_move.unwrap(), cycle);
 
             let score = draw_value(stats);

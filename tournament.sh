@@ -72,7 +72,7 @@ echo Elo diff = $ELO1, 0.05
     # -engine conf=rchess st=$time timemargin=50 restart=off \
     # -engine conf=$ENGINE2 st=$time timemargin=50 restart=off \
 
-TC="tc=1+0.1"
+TC="tc=1+0.05"
 # TC="st=$time"
 
 echo ENGINE1 = rchess
