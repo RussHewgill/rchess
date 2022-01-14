@@ -2803,6 +2803,9 @@ fn main9() {
     // // let fen = "4k3/8/5P2/1pP5/4N3/2N3P1/3PRP2/4K3 w - - 0 1"; // QChecks
     // let fen = "4k3/8/2PP2P1/7B/8/8/8/4K3 w - - 0 1"; // QChecks
 
+    // // let fen = "4k3/8/8/1p1n4/2P5/8/3P4/4K3 w - - 0 1";
+    // let fen = "4k3/8/8/1n1p4/2P5/8/3P4/4K3 w - - 0 1"; // move ordering
+
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
@@ -2813,14 +2816,14 @@ fn main9() {
     // eprintln!();
     // eprintln!("correct = {:?}", correct);
 
-    // let st = ABStack::new();
-    // // let mut movegen = MoveGen::new_qsearch(&ts, &g, None, &st, 0);
-    // let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
-    // eprintln!();
-    // while let Some(mv) = movegen.next(&st) {
-    //     eprintln!("mv = {:?}", mv);
-    // }
-    // return;
+    let st = ABStack::new();
+    // let mut movegen = MoveGen::new_qsearch(&ts, &g, None, &st, 0);
+    let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
+    eprintln!();
+    while let Some(mv) = movegen.next(&st) {
+        eprintln!("mv = {:?}", mv);
+    }
+    return;
 
     // let hook = std::panic::take_hook();
     // std::panic::set_hook(Box::new(move |panicinfo| {

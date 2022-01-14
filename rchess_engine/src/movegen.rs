@@ -9,6 +9,7 @@ use crate::move_ordering::{score_move_for_sort,score_move_for_sort3};
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use arrayvec::ArrayVec;
+use itertools::Itertools;
 
 // use strum::{IntoEnumIterator,EnumIter};
 
@@ -128,10 +129,12 @@ pub struct MoveGen<'a> {
 
     stage:               MoveGenStage,
 
-    buf:                 ArrayVec<Move,256>,
+    // buf:                 ArrayVec<Move,256>,
+    pub buf:                 ArrayVec<Move,256>,
 
     // buf_scored:          ArrayVec<(Move,OrdMove),256>,
-    buf_scored:          ArrayVec<(Move,Score),256>,
+    // buf_scored:          ArrayVec<(Move,Score),256>,
+    pub buf_scored:          ArrayVec<(Move,Score),256>,
 
     // buf_set:             BinaryHeap<MGKey>,
 
@@ -192,18 +195,49 @@ impl<'a> MoveGen<'a> {
 
     #[cfg(feature = "nope")]
     pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
-        if !best { return self.buf_scored.pop()?; }
+        if !best { return Some(self.buf_scored.pop()?.0); }
+
+        if self.cur == self.buf_scored.len() { return None; }
 
         let mut kmin = self.cur;
         for k in self.cur+1 .. self.buf_scored.len() {
-            if self.buf_scored[k].1 < self.buf_scored[kmin].1 {
+            if self.buf_scored[k].1 > self.buf_scored[kmin].1 {
                 kmin = k;
             }
         }
 
-        // if 
+        if kmin != self.cur {
+            self.buf_scored.swap(self.cur, kmin);
+        }
 
-        unimplemented!()
+        self.cur += 1;
+
+        Some(self.buf_scored.get(self.cur - 1)?.0)
+    }
+
+    #[cfg(feature = "nope")]
+    pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
+        if !best { return Some(self.buf_scored.pop()?.0); }
+
+        if self.cur == self.buf_scored.len() { return None; }
+
+        // let kmin = self.cur;
+        // for ii in self.cur+1..self.buf_scored.len() {
+        // }
+
+        while self.cur < self.buf_scored.len() {
+
+            let max = self.buf_scored.iter().position_max_by_key(|x| x.1)?;
+            self.buf_scored.swap(self.cur, max);
+
+            let mv = self.buf_scored.get(self.cur)?;
+
+            self.cur += 1;
+
+            return Some(mv.0);
+        }
+
+        None
     }
 
     // #[cfg(feature = "nope")]
@@ -244,7 +278,8 @@ impl<'a> MoveGen<'a> {
         }
 
         // crate::move_ordering::selection_sort(&mut self.buf_scored);
-        self.buf_scored.sort_unstable_by_key(|x| x.1);
+        // self.buf_scored.sort_unstable_by_key(|x| x.1);
+        self.buf_scored.sort_by_key(|x| x.1);
 
         // self.buf_scored.reverse();
 
@@ -665,7 +700,7 @@ impl<'a> MoveGen<'a> {
 impl<'a> MoveGen<'a> {
     // pub fn gen_to_vec(&mut self, gen: MoveGenType)
 
-    fn generate(&mut self, gen: MoveGenType) {
+    pub fn generate(&mut self, gen: MoveGenType) {
         if self.in_check {
             self._gen_all_in_check(gen);
         } else {

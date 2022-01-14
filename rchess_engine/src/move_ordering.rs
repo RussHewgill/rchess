@@ -84,12 +84,20 @@ pub fn score_move_for_sort3(
 
     if mv.filter_promotion() {
         if mv.piece() == Some(Queen) {
-            QueenPromotion as Score
+            if mv.filter_all_captures() {
+                QueenPromotion as Score + Capture as Score
+            } else {
+                QueenPromotion as Score
+            }
         } else {
             UnderPromotion as Score
         }
-    } else if let Some(see) = MoveGen::_static_exchange(ts, g, see_map, mv) {
-        Capture as Score + see
+    } else if mv.filter_all_captures() {
+        if let Some(see) = MoveGen::_static_exchange(ts, g, see_map, mv) {
+            Capture as Score + see
+        } else {
+            Capture as Score
+        }
     } else {
 
         let history = st.get_move_history(mv, g.state.side_to_move, g.last_move);

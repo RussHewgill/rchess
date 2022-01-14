@@ -329,48 +329,6 @@ pub fn crit_bench_1(c: &mut Criterion) {
     //     let (m,stats) = ex.explore(&ts);
     // }));
 
-    use rchess_engine_lib::timer::{TimeManager,TimeSettings};
-
-    let t = 0.1;
-    let timesettings = TimeSettings::new_f64(0.0,t);
-
-
-    // group.bench_function("time manager 1", |b| b.iter(|| {
-    //     let mut timer = TimeManager::new(timesettings);
-    //     for _ in 0..10_000 {
-    //         let stop = timer.should_stop();
-    //     }
-    // }));
-
-    // group.bench_function("time manager 2", |b| b.iter(|| {
-    //     let mut timer = TimeManager::new(timesettings);
-    //     let mut n = 0;
-    //     for _ in 0..10_000 {
-    //         let stop = timer._should_stop(&mut n);
-    //         // if stop {
-    //         //     n = 0;
-    //         // } else {
-    //         //     n += 1;
-    //         // }
-    //     }
-    // }));
-
-    use rchess_engine_lib::lockless_map::*;
-
-    let tt = TransTable::new_mb(DEFAULT_TT_SIZE_MB);
-
-    // group.bench_function("calc_index 1", |b| b.iter(|| {
-    //     for g in wacs.iter() {
-    //         let key = tt.calc_index(g.zobrist);
-    //     }
-    // }));
-
-    // group.bench_function("calc_index 2", |b| b.iter(|| {
-    //     for g in wacs.iter() {
-    //         let key = tt.calc_index2(g.zobrist);
-    //     }
-    // }));
-
     // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
     // let (n,t) = (35,1.0);
     // let timesettings = TimeSettings::new_f64(0.0,t);
@@ -383,6 +341,44 @@ pub fn crit_bench_1(c: &mut Criterion) {
     use rchess_engine_lib::movegen::*;
 
     let st = ABStack::new();
+
+    let movegens = {
+        let mut ms = vec![];
+
+        for g in wacs.iter() {
+            let st = ABStack::new();
+            let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
+
+            if g.in_check() { continue; }
+
+            movegen.generate(MoveGenType::Captures);
+            movegen.generate(MoveGenType::Quiets);
+
+            for mv in movegen.buf.drain(..) {
+                let mut see_map = &mut movegen.see_map;
+                let score = score_move_for_sort3(
+                    ts, g, see_map, &st, 0, mv, (None,None), None);
+                movegen.buf_scored.push((mv,score));
+            }
+
+            ms.push(movegen);
+        }
+
+        ms
+    };
+
+
+    group.bench_function("movegen sorting", |b| b.iter(|| {
+        for movegen in movegens.iter() {
+            let mut movegen = movegen.clone();
+
+            // selection_sort(&mut movegen.buf_scored);
+            // movegen.buf_scored.sort_unstable_by_key(|x| x.1);
+            movegen.buf_scored.sort_by_key(|x| x.1);
+
+            // movegen.sort(&st, MoveGenType::Captures);
+        }
+    }));
 
     // group.bench_function("movegen all", |b| b.iter(|| {
     //     for g in wacs.iter() {
