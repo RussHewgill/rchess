@@ -277,9 +277,9 @@ impl<'a> MoveGen<'a> {
             self.buf_scored.push((mv, score));
         }
 
-        // crate::move_ordering::selection_sort(&mut self.buf_scored);
+        crate::move_ordering::selection_sort(&mut self.buf_scored);
         // self.buf_scored.sort_unstable_by_key(|x| x.1);
-        self.buf_scored.sort_by_key(|x| x.1);
+        // self.buf_scored.sort_by_key(|x| x.1);
 
         // self.buf_scored.reverse();
 
