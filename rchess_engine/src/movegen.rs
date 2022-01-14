@@ -4,7 +4,7 @@ use crate::explore::ABStack;
 use crate::move_ordering::OrdMove;
 use crate::types::*;
 use crate::tables::*;
-use crate::move_ordering::score_move_for_sort;
+use crate::move_ordering::{score_move_for_sort,score_move_for_sort3};
 
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
@@ -129,10 +129,13 @@ pub struct MoveGen<'a> {
     stage:               MoveGenStage,
 
     buf:                 ArrayVec<Move,256>,
-    // buf:                 ArrayVec<(Move,OrdMove),256>,
-    buf_scored:          ArrayVec<(Move,OrdMove),256>,
+
+    // buf_scored:          ArrayVec<(Move,OrdMove),256>,
+    buf_scored:          ArrayVec<(Move,Score),256>,
 
     // buf_set:             BinaryHeap<MGKey>,
+
+    cur:                 usize,
 
     pub hashmove:        Option<Move>,
     pub counter_move:    Option<Move>,
@@ -187,6 +190,22 @@ impl<'a> MoveGen<'a> {
         None
     }
 
+    #[cfg(feature = "nope")]
+    pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
+        if !best { return self.buf_scored.pop()?; }
+
+        let mut kmin = self.cur;
+        for k in self.cur+1 .. self.buf_scored.len() {
+            if self.buf_scored[k].1 < self.buf_scored[kmin].1 {
+                kmin = k;
+            }
+        }
+
+        // if 
+
+        unimplemented!()
+    }
+
     // #[cfg(feature = "nope")]
     pub fn sort(&mut self, st: &ABStack, gen_type: MoveGenType) {
         let mut see_map = &mut self.see_map;
@@ -198,22 +217,36 @@ impl<'a> MoveGen<'a> {
         let killers = (None,None);
 
         for mv in self.buf.drain(..) {
-            let score = score_move_for_sort(
+
+            // let score = score_move_for_sort(
+            //     self.ts,
+            //     self.game,
+            //     see_map,
+            //     self.stage,
+            //     gen_type,
+            //     st,
+            //     self.ply,
+            //     mv,
+            //     killers,
+            //     self.counter_move);
+
+            let score = score_move_for_sort3(
                 self.ts,
                 self.game,
                 see_map,
-                self.stage,
-                gen_type,
                 st,
                 self.ply,
                 mv,
                 killers,
                 self.counter_move);
+
             self.buf_scored.push((mv, score));
         }
 
+        // crate::move_ordering::selection_sort(&mut self.buf_scored);
         self.buf_scored.sort_unstable_by_key(|x| x.1);
-        self.buf_scored.reverse();
+
+        // self.buf_scored.reverse();
 
     }
 
@@ -293,6 +326,8 @@ impl<'a> MoveGen<'a> {
 
             buf_scored: ArrayVec::new(),
 
+            cur:   0,
+
             hashmove,
             counter_move,
             killer_moves:   ArrayVec::new(),
@@ -337,6 +372,8 @@ impl<'a> MoveGen<'a> {
 
             buf_scored: ArrayVec::new(),
 
+            cur:   0,
+
             hashmove,
             counter_move,
             killer_moves:   ArrayVec::new(),
@@ -379,6 +416,8 @@ impl<'a> MoveGen<'a> {
             // stage:     if in_check { MoveGenStage::EvasionHash } else { MoveGenStage::Hash },
             buf,
             buf_scored: ArrayVec::new(),
+
+            cur:   0,
 
             hashmove:     None,
             counter_move: None,

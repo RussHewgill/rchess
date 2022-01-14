@@ -193,7 +193,7 @@ impl ABStack {
 
         // let cm: [[[[[Score; 2]; 6]; 64]; 6]; 64];
 
-        unimplemented!()
+        bf
     }
 }
 

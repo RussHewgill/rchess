@@ -61,6 +61,64 @@ pub enum OrdMove {
 //     }
 // }
 
+#[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
+pub enum OrdMove2 {
+
+    QueenPromotion = 30000,
+    Capture        = 20000,
+    UnderPromotion = -1,
+
+}
+
+pub fn score_move_for_sort3(
+    ts:           &'static Tables,
+    g:            &Game,
+    mut see_map:  &mut HashMap<Move,Score>,
+    st:           &ABStack,
+    ply:          Depth,
+    mv:           Move,
+    killers:      (Option<Move>,Option<Move>),
+    countermove:  Option<Move>,
+) -> Score {
+    use self::OrdMove2::*;
+
+    if mv.filter_promotion() {
+        if mv.piece() == Some(Queen) {
+            QueenPromotion as Score
+        } else {
+            UnderPromotion as Score
+        }
+    } else if let Some(see) = MoveGen::_static_exchange(ts, g, see_map, mv) {
+        Capture as Score + see
+    } else {
+
+        let history = st.get_move_history(mv, g.state.side_to_move, g.last_move);
+
+        history
+    }
+}
+
+// pub fn selection_sort<T: PartialOrd>(xs: &mut [T]) {
+pub fn selection_sort<T: PartialOrd>(xs: &mut [(Move,T)]) {
+
+    for ii in 0..xs.len() {
+
+        let mut kmin = ii;
+
+        for kk in ii+1 .. xs.len() {
+            if xs[kk].1 < xs[kmin].1 {
+                kmin = kk;
+            }
+        }
+
+        if kmin != ii {
+            xs.swap(ii, kmin);
+        }
+
+    }
+
+}
+
 pub fn score_move_for_sort2(
     ts:           &'static Tables,
     g:            &Game,
@@ -78,7 +136,6 @@ pub fn score_move_for_sort2(
     match gentype {
         MoveGenType::Captures    => {
             if let Some(victim) = mv.victim() {
-                return victim.score() * 6;
             }
             unimplemented!()
         },

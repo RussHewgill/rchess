@@ -2843,8 +2843,8 @@ fn main9() {
     // let n = MAX_SEARCH_PLY;
     // let n = 35;
     // let n = 22;
-    let n = 8;
-    // let n = 10;
+    // let n = 8;
+    let n = 12;
     // let n = 2;
 
     let timesettings = TimeSettings::new_f64(0.0,t);
