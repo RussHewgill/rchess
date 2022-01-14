@@ -311,6 +311,10 @@ impl Move {
         Move::Castle { side, kingside }
     }
 
+    pub fn new_promotion<T: Into<Coord>>(from: T, to: T, new_piece: Piece) -> Move {
+        Move::Promotion { from: from.into(), to: to.into(), new_piece }
+    }
+
 }
 
 #[cfg(feature = "nope")]

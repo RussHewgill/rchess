@@ -129,12 +129,11 @@ pub struct MoveGen<'a> {
 
     stage:               MoveGenStage,
 
-    // buf:                 ArrayVec<Move,256>,
-    pub buf:                 ArrayVec<Move,256>,
+    buf:                 ArrayVec<Move,256>,
 
     // buf_scored:          ArrayVec<(Move,OrdMove),256>,
-    // buf_scored:          ArrayVec<(Move,Score),256>,
-    pub buf_scored:          ArrayVec<(Move,Score),256>,
+    buf_scored:          ArrayVec<(Move,Score),256>,
+    // pub buf_scored:          ArrayVec<(Move,Score),256>,
 
     // buf_set:             BinaryHeap<MGKey>,
 
@@ -157,14 +156,6 @@ impl<'a> MoveGen<'a> {
 
     pub fn pick_best(&mut self, st: &ABStack) -> Option<Move> {
         self._pick(st, true)
-    }
-
-    // #[cfg(feature = "nope")]
-    pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
-        let (mv,_) = self.buf_scored.pop()?;
-        // let mv = self.buf.pop()?;
-        Some(mv)
-        // panic!("TODO: move pickers without sort");
     }
 
     #[cfg(feature = "nope")]
@@ -215,20 +206,59 @@ impl<'a> MoveGen<'a> {
         Some(self.buf_scored.get(self.cur - 1)?.0)
     }
 
+    // #[cfg(feature = "nope")]
+    pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
+        let (mv,_) = self.buf_scored.pop()?;
+        Some(mv)
+    }
+
     #[cfg(feature = "nope")]
     pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
-        if !best { return Some(self.buf_scored.pop()?.0); }
 
-        if self.cur == self.buf_scored.len() { return None; }
+        // eprintln!("best = {:?}", best);
+        // eprintln!("self.buf_scored.len() = {:?}", self.buf_scored.len());
 
-        // let kmin = self.cur;
-        // for ii in self.cur+1..self.buf_scored.len() {
+        // if !best {
+        //     return Some(self.buf_scored.pop()?.0);
+        //     // let mv = self.buf_scored.get(self.cur)?;
+        //     // self.cur += 1;
+        //     // return Some(mv.0);
         // }
 
+        if self.buf_scored.is_empty() { return None; }
+
+        let mut kmax = 0;
+        let mut best_score = self.buf_scored[0].1;
+        for (k,(mv,score)) in self.buf_scored.iter().enumerate() {
+
+            if *score < best_score {
+                kmax = k;
+                best_score = *score;
+            }
+
+        }
+
+        if kmax != 0 {
+            self.buf_scored.swap(0, kmax);
+        }
+
+        let mv = self.buf_scored.pop()?.0;
+
+        #[cfg(feature = "nope")]
         while self.cur < self.buf_scored.len() {
 
-            let max = self.buf_scored.iter().position_max_by_key(|x| x.1)?;
-            self.buf_scored.swap(self.cur, max);
+            // let max = self.buf_scored[self.cur..].iter().position_max_by_key(|x| x.1)?;
+
+            let mut kmax = self.cur;
+
+            for k in self.cur..self.buf_scored.len() {
+                if self.buf_scored[k] < self.buf_scored[kmax] {
+                    kmax = k;
+                }
+            }
+
+            // self.buf_scored.swap(self.cur, self.cur + max);
+            self.buf_scored.swap(self.cur, kmax);
 
             let mv = self.buf_scored.get(self.cur)?;
 
@@ -237,7 +267,9 @@ impl<'a> MoveGen<'a> {
             return Some(mv.0);
         }
 
-        None
+        Some(mv)
+
+        // None
     }
 
     // #[cfg(feature = "nope")]
@@ -277,8 +309,8 @@ impl<'a> MoveGen<'a> {
             self.buf_scored.push((mv, score));
         }
 
-        crate::move_ordering::selection_sort(&mut self.buf_scored);
-        // self.buf_scored.sort_unstable_by_key(|x| x.1);
+        // crate::move_ordering::selection_sort(&mut self.buf_scored);
+        self.buf_scored.sort_unstable_by_key(|x| x.1);
         // self.buf_scored.sort_by_key(|x| x.1);
 
         // self.buf_scored.reverse();
@@ -684,7 +716,8 @@ impl<'a> MoveGen<'a> {
                     return Some(mv);
                 }
                 self.stage = self.stage.next()?;
-                None
+                // None
+                unimplemented!()
             },
 
             Finished => {
