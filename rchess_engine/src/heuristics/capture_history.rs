@@ -27,9 +27,9 @@ impl CaptureHistory {
     pub fn get(&self, mv: Move) -> Score {
         if let (Some(pc),Some(victim)) = (mv.piece(),mv.victim()) {
 
-            if victim == King {
-                panic!("CaptureHistory: captured king?, mv = {:?}", mv);
-            }
+            // if victim == King {
+            //     panic!("CaptureHistory: captured king?, mv = {:?}", mv);
+            // }
 
             self._get(pc, mv.sq_to(), victim)
         } else {
@@ -42,7 +42,7 @@ impl CaptureHistory {
 
     // pub fn _get(&self, pc: Piece, to: Coord, victim: Piece) -> Option<Score> {
     pub fn _get(&self, pc: Piece, to: Coord, victim: Piece) -> Score {
-        // assert!(victim != King);
+        assert!(victim != King);
         // let x = self.buf[pc][to][victim];
         // if x == 0 { None } else { Some(x) }
         self.buf[pc][to][victim]

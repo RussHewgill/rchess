@@ -114,6 +114,7 @@ impl ABStack {
                 self.capture_history.update(mv, -bonus);
             }
         }
+
     }
 
     pub fn update_quiet_stats(
@@ -171,6 +172,8 @@ impl ABStack {
     ) -> Score {
         if mv.filter_all_captures() {
             self.capture_history.get(mv)
+            // -self.capture_history.get(mv)
+            // 0
         } else {
             self.history.get_move(mv, side)
         }
