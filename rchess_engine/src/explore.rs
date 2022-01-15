@@ -1081,6 +1081,11 @@ impl ExHelper {
             depth += skip_size;
         }
 
+        // for (ply,s) in stack.stacks.iter().enumerate() {
+        //     let ks = s.killers;
+        //     eprintln!("ply {} = {:?}", ply, ks);
+        // }
+
         match self.tx.try_send(ExMessage::End(self.id)) {
             Ok(_)  => {},
             Err(_) => {

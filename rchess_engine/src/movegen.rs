@@ -130,16 +130,18 @@ pub struct MoveGen<'a> {
 
     stage:               MoveGenStage,
 
-    // buf:                 ArrayVec<Move,256>,
-    pub buf:                 ArrayVec<Move,256>,
+    buf:                 ArrayVec<Move,256>,
+    // pub buf:                 ArrayVec<Move,256>,
 
     // buf_scored:          ArrayVec<(Move,OrdMove),256>,
-    // buf_scored:          ArrayVec<(Move,Score),256>,
-    pub buf_scored:          ArrayVec<(Move,Score),256>,
+    buf_scored:          ArrayVec<(Move,Score),256>,
+    // pub buf_scored:          ArrayVec<(Move,Score),256>,
 
     // buf_set:             BinaryHeap<MGKey>,
 
-    cur:                 usize,
+    // cur:                 usize,
+
+    // pub move_history:    Vec<(Zobrist, Move)>,
 
     pub hashmove:        Option<Move>,
     pub counter_move:    Option<Move>,
@@ -297,6 +299,22 @@ impl<'a> MoveGen<'a> {
         //     killers,
         //     self.counter_move);
 
+        // for mv in self.buf.iter() {
+        //     if let Some(victim) = mv.victim() {
+        //         if victim == King {
+        //             eprintln!("MoveGen: generated move that captures king?\n{:?}\n{:?}\nmv = {:?}",
+        //                    self.game.to_fen(),
+        //                    self.game,
+        //                    mv,
+        //             );
+        //             for (n,(_,mv)) in st.move_history.iter().enumerate() {
+        //                 eprintln!("mv {:>2} = {:?}", n, mv);
+        //             }
+        //             panic!();
+        //         }
+        //     }
+        // }
+
         for mv in self.buf.drain(..) {
 
             // let score = score_move_for_sort3(
@@ -343,6 +361,7 @@ impl<'a> MoveGen<'a> {
         stack:          &ABStack,
         depth:          Depth,
         ply:            Depth,
+        // move_history:   Vec<(Zobrist,Move)>,
     ) -> Self {
         let in_check = game.state.checkers.is_not_empty();
         let side = game.state.side_to_move;
@@ -354,6 +373,12 @@ impl<'a> MoveGen<'a> {
         } else { None };
 
         let killer_moves = stack.killers_get(ply);
+        // let killer_moves = (None,None);
+
+        // let killer_moves = {
+        //     let (k1,k2) = stack.killers_get(ply);
+        //     let k1 = k1.map(|mv| )
+        // };
 
         let mut out = Self {
             ts,
@@ -368,7 +393,8 @@ impl<'a> MoveGen<'a> {
 
             buf_scored: ArrayVec::new(),
 
-            cur:   0,
+            // cur:   0,
+            // move_history,
 
             hashmove,
             counter_move,
@@ -392,6 +418,7 @@ impl<'a> MoveGen<'a> {
         hashmove:       Option<Move>,
         stack:          &ABStack,
         ply:            Depth,
+        // move_history:   Vec<(Zobrist,Move)>,
     ) -> Self {
         let in_check = game.state.checkers.is_not_empty();
         let side = game.state.side_to_move;
@@ -415,7 +442,8 @@ impl<'a> MoveGen<'a> {
 
             buf_scored: ArrayVec::new(),
 
-            cur:   0,
+            // cur:   0,
+            // move_history,
 
             hashmove,
             counter_move,
@@ -461,7 +489,7 @@ impl<'a> MoveGen<'a> {
             buf,
             buf_scored: ArrayVec::new(),
 
-            cur:   0,
+            // cur:   0,
 
             hashmove:     None,
             counter_move: None,
@@ -529,7 +557,11 @@ impl<'a> MoveGen<'a> {
                 /// Killer moves
                 // self.buf.retain(|mv| !ks.contains(mv)); // killer moves are only quiets
                 for &mv in [self.killer_moves.0,self.killer_moves.1].iter().flatten() {
-                    if self.move_is_legal(mv) { self.buf.push(mv); }
+                    if self.move_is_pseudo_legal(mv) && self.move_is_legal(mv) {
+                        self.buf.push(mv);
+                    } else {
+                        // debug!("MoveGen: non legal killer move: {:?}", mv);
+                    }
                 }
 
                 /// Sort
@@ -951,12 +983,20 @@ impl<'a> MoveGen<'a> {
             return vs.contains(&mv);
         }
 
-        /// From must be occupied by correct side
+        /// From must be occupied by correct side and piece
         match self.game.get_side_at(mv.sq_from()) {
-            Some(side) => if self.game.state.side_to_move != side {
-                // trace!("move_is_pseudo_legal: wrong side move: {:?}\n{:?}\n{:?}",
-                //        mv, self.game.to_fen(), self.game);
-                return false;
+            Some(side) => {
+                if self.game.state.side_to_move != side {
+                    // trace!("move_is_pseudo_legal: wrong side move: {:?}\n{:?}\n{:?}",
+                    //        mv, self.game.to_fen(), self.game);
+                    return false;
+                } else {
+                    if let Some((_,pc)) = self.game.get_at(mv.sq_from()) {
+                        if Some(pc) != mv.piece() {
+                            return false;
+                        }
+                    }
+                }
             },
             None => {
                 // trace!("move_is_pseudo_legal: non legal move, no piece?: {:?}\n{:?}\n{:?}",
@@ -987,22 +1027,13 @@ impl<'a> MoveGen<'a> {
             },
         }
 
-        // /// From must be occupied by correct side
-        // if let Some((side,pc)) = self.game.get_at(mv.sq_from()) {
-        //     if self.side != side || mv.piece() != Some(pc) {
-        //         return false;
-        //     }
-        // } else { return false; }
-
-        // /// To must not be occupied by friendly
-        // if let Some((side,pc)) = self.game.get_at(mv.sq_to()) {
-        //     if self.side == side {
-        //         return false;
-        //     } else if mv.piece() == Some(Pawn) {
-        //         /// Pawns can't capture with pushes
-        //         return false;
-        //     }
-        // }
+        let pc = mv.piece().unwrap();
+        if pc == Bishop || pc == Rook || pc == Queen || mv.filter_pawndouble() {
+            let between = self.ts.between_exclusive(mv.sq_from(), mv.sq_to());
+            if (between & self.game.all_occupied()).is_not_empty() {
+                return false;
+            }
+        }
 
         true
         // debug!("unhandled move_is_pseudo_legal: \n{:?}\n{:?}\n{:?}",

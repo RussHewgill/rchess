@@ -809,6 +809,7 @@ impl ExHelper {
 
         /// Step 10. initialize move generator
         let mut movegen = MoveGen::new(ts, &g, m_hashmove, stack, depth, ply);
+        // let mut movegen = MoveGen::new(ts, &g, m_hashmove, stack, depth, ply, stack.move_history.clone());
 
         // let mut movegen = if is_root_node {
         //     let root_moves = self.root_moves.borrow();

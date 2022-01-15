@@ -61,28 +61,6 @@ impl ABStack {
 
 }
 
-/// Get score for move ordering
-impl ABStack {
-    pub fn get_score_for_ordering(&self, mv: Move, side: Color) -> Option<Score> {
-        if mv.filter_quiet() || mv.filter_pawndouble() {
-            Some(self.get_score_quiet(mv, side))
-        } else if mv.filter_capture_or_promotion() {
-            Some(self.get_score_capture_promotion(mv, side))
-        } else {
-            None
-        }
-    }
-
-    pub fn get_score_capture_promotion(&self, mv: Move, side: Color) -> Score {
-        self.capture_history.get(mv)
-    }
-
-    pub fn get_score_quiet(&self, mv: Move, side: Color) -> Score {
-        self.history.get_move(mv, side)
-    }
-
-}
-
 /// Update stats
 impl ABStack {
 

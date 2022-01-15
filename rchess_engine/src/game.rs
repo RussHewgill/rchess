@@ -28,6 +28,7 @@ pub struct Game {
     pub zobrist:      Zobrist,
     pub pawn_zb:      Zobrist,
     pub last_move:    Option<Move>,
+    pub last_move_2:  Option<Move>,
 
     // // pub history:      GHistory,
     // // pub history:      Vec<(Zobrist,Move)>,
@@ -83,6 +84,7 @@ impl Default for Game {
             zobrist:      Zobrist(0),
             pawn_zb:      Zobrist(0),
             last_move:    None,
+            last_move_2:  None,
             // history,
             halfmove:    0,
             // ..Default::default()
@@ -561,7 +563,8 @@ impl Game {
 
                 self.update_castles(&ts, mv, &mut next, calc_zb);
 
-                next.last_move = Some(mv);
+                next.last_move_2 = self.last_move;
+                next.last_move   = Some(mv);
 
                 // // XXX: current or prev Zobrist ??
                 // next.history.push((next.zobrist, mv));
@@ -1728,7 +1731,7 @@ impl std::fmt::Debug for Game {
         //     f.write_str(&format!("Not In Check\n"))?;
         // }
 
-        f.write_str(&format!("Last Move: {:?}\n", self.last_move))?;
+        f.write_str(&format!("Last 2 Moves: {:?}, {:?}\n", self.last_move, self.last_move_2))?;
         f.write_str(&format!("En Passant: {:?}\n", self.state.en_passant))?;
         let c = self.state.castling;
 

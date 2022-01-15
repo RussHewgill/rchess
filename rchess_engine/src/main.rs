@@ -2803,9 +2803,11 @@ fn main9() {
     // // let fen = "4k3/8/5P2/1pP5/4N3/2N3P1/3PRP2/4K3 w - - 0 1"; // QChecks
     // let fen = "4k3/8/2PP2P1/7B/8/8/8/4K3 w - - 0 1"; // QChecks
 
-    // let fen = "4k3/8/8/1p1n4/2P5/8/3P4/4K3 w - - 0 1";
-    let fen = "4k3/8/8/1n1p4/2P5/8/3P4/4K3 w - - 0 1"; // move ordering
-    // let fen = "4k3/7P/8/1n1p4/2P5/8/3P4/4K3 w - - 0 1"; // move ordering
+    // // let fen = "4k3/8/8/1p1n4/2P5/8/3P4/4K3 w - - 0 1";
+    // let fen = "4k3/8/8/1n1p4/2P5/8/3P4/4K3 w - - 0 1"; // move ordering
+    // // let fen = "4k3/7P/8/1n1p4/2P5/8/3P4/4K3 w - - 0 1"; // move ordering
+
+    // let fen = "3r2k1/5pp1/1p1B2Q1/1B3b2/8/8/5KP1/R6R b - - 4 7"; // XXX: ???
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -2823,12 +2825,17 @@ fn main9() {
     // let killer1 = Move::new_quiet("e1", "d1", King);
     // st.killers_store(0, killer1);
     // // let mut movegen = MoveGen::new_qsearch(&ts, &g, None, &st, 0);
-    // let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
+    // let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0, vec![]);
     // // let mut movegen = MoveGen::new(&ts, &g, Some(hashmove), &st, 0, 0);
     // eprintln!();
-    // while let Some(mv) = movegen.next(&st) {
-    //     eprintln!("mv = {:?}", mv);
-    // }
+    // let mv = Move::new_double("g7", "g5");
+    // let k0 = movegen.move_is_pseudo_legal(mv);
+    // let k1 = movegen.move_is_legal(mv);
+    // eprintln!("k0 = {:?}", k0);
+    // eprintln!("k1 = {:?}", k1);
+    // // while let Some(mv) = movegen.next(&st) {
+    // //     eprintln!("mv = {:?}", mv);
+    // // }
     // return;
 
     // let hook = std::panic::take_hook();
@@ -2894,10 +2901,11 @@ fn main9() {
     // eprintln!("avg = {:.3}", avg);
     // return;
 
-    // let params = "e2e4 e7e5";
+    // let params = "e5d4 b4d6 f7f6 e3d4 g6f5";
     // let params = params.split(" ");
     // let moves: Vec<&str> = params.collect();
-    // ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
+    // // ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
+    // ex.update_game_movelist(&ts, fen, moves.into_iter());
     // let g = ex.game;
     // eprintln!("g = {:?}", g);
 

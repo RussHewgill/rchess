@@ -551,6 +551,9 @@ impl ExHelper {
 
         let is_pv_node = NODE_TYPE != NonPV;
 
+        stack.push_if_empty(g, ply);
+        stack.with(ply, |st| st.material = g.state.material);
+
         assert!(alpha < beta);
         assert!(is_pv_node || (alpha == beta - 1));
         assert!(depth <= 0);
@@ -586,6 +589,7 @@ impl ExHelper {
         }
 
         let mut movegen = MoveGen::new_qsearch(ts, g, None, stack, qply);
+        // let mut movegen = MoveGen::new_qsearch(ts, g, None, stack, qply, stack.move_history.clone());
 
         if qply > 0 { movegen.skip_quiets = true; }
 
