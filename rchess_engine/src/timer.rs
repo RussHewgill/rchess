@@ -145,7 +145,8 @@ mod new {
             let mut limit_soft;
 
             if settings.is_per_move {
-                limit_soft = move_time - BUFFER_TIME;
+                // limit_soft = move_time - BUFFER_TIME;
+                limit_soft = move_time.checked_sub(BUFFER_TIME).unwrap_or(BUFFER_TIME);
                 limit_hard = limit_soft;
             } else {
                 let mtg = if let Some(mtg) = settings.moves_to_go { mtg as u64 } else {
@@ -153,8 +154,11 @@ mod new {
                 };
 
                 limit_soft = move_time / mtg;
-                limit_soft = u64::min(limit_soft + settings.increment - BUFFER_TIME, move_time - BUFFER_TIME);
 
+                let t1 = (limit_soft + settings.increment).checked_sub(BUFFER_TIME).unwrap_or(BUFFER_TIME);
+                let t2 = move_time.checked_sub(BUFFER_TIME).unwrap_or(BUFFER_TIME);
+
+                limit_soft = u64::min(t1, t2);
                 limit_hard = u64::min(limit_soft * 10, move_time);
             }
 

@@ -2803,9 +2803,9 @@ fn main9() {
     // // let fen = "4k3/8/5P2/1pP5/4N3/2N3P1/3PRP2/4K3 w - - 0 1"; // QChecks
     // let fen = "4k3/8/2PP2P1/7B/8/8/8/4K3 w - - 0 1"; // QChecks
 
-    // // let fen = "4k3/8/8/1p1n4/2P5/8/3P4/4K3 w - - 0 1";
-    // let fen = "4k3/8/8/1n1p4/2P5/8/3P4/4K3 w - - 0 1"; // move ordering
-    // // let fen = "4k3/7P/8/1n1p4/2P5/8/3P4/4K3 w - - 0 1"; // move ordering
+    // let fen = "4k3/8/8/1p1n4/2P5/8/3P4/4K3 w - - 0 1";
+    let fen = "4k3/8/8/1n1p4/2P5/8/3P4/4K3 w - - 0 1"; // move ordering
+    // let fen = "4k3/7P/8/1n1p4/2P5/8/3P4/4K3 w - - 0 1"; // move ordering
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -2818,7 +2818,10 @@ fn main9() {
     // eprintln!("correct = {:?}", correct);
 
     // let hashmove = Move::new_promotion("h7", "h8", Queen);
-    // let st = ABStack::new();
+    // let mut st = ABStack::new();
+    // st.push_if_empty(&g, 0);
+    // let killer1 = Move::new_quiet("e1", "d1", King);
+    // st.killers_store(0, killer1);
     // // let mut movegen = MoveGen::new_qsearch(&ts, &g, None, &st, 0);
     // let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
     // // let mut movegen = MoveGen::new(&ts, &g, Some(hashmove), &st, 0, 0);
@@ -2891,14 +2894,14 @@ fn main9() {
     // eprintln!("avg = {:.3}", avg);
     // return;
 
-    // let params = "d2d4 g8f6";
+    // let params = "e2e4 e7e5";
     // let params = params.split(" ");
     // let moves: Vec<&str> = params.collect();
     // ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
     // let g = ex.game;
     // eprintln!("g = {:?}", g);
 
-    // ex.time_settings.move_time = 81;
+    // ex.time_settings.move_time   = 76;
 
     // ex.update_game(g.clone());
     let t0 = std::time::Instant::now();

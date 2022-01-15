@@ -4,8 +4,9 @@ use crate::explore::ABStack;
 use crate::move_ordering::OrdMove;
 use crate::types::*;
 use crate::tables::*;
-use crate::move_ordering::{score_move_for_sort,score_move_for_sort3};
+use crate::move_ordering::*;
 
+use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
 use arrayvec::ArrayVec;
@@ -129,11 +130,12 @@ pub struct MoveGen<'a> {
 
     stage:               MoveGenStage,
 
-    buf:                 ArrayVec<Move,256>,
+    // buf:                 ArrayVec<Move,256>,
+    pub buf:                 ArrayVec<Move,256>,
 
     // buf_scored:          ArrayVec<(Move,OrdMove),256>,
-    buf_scored:          ArrayVec<(Move,Score),256>,
-    // pub buf_scored:          ArrayVec<(Move,Score),256>,
+    // buf_scored:          ArrayVec<(Move,Score),256>,
+    pub buf_scored:          ArrayVec<(Move,Score),256>,
 
     // buf_set:             BinaryHeap<MGKey>,
 
@@ -141,7 +143,8 @@ pub struct MoveGen<'a> {
 
     pub hashmove:        Option<Move>,
     pub counter_move:    Option<Move>,
-    pub killer_moves:    ArrayVec<Move,2>,
+    // pub killer_moves:    ArrayVec<Move,2>,
+    pub killer_moves:    (Option<Move>,Option<Move>),
 
     depth:               Depth,
     ply:                 Depth,
@@ -277,33 +280,44 @@ impl<'a> MoveGen<'a> {
         let mut see_map = &mut self.see_map;
 
         #[cfg(feature = "killer_moves")]
-        let killers = st.killers_get(self.ply);
+        if gen_type != MoveGenType::Captures {
+            let (k1,k2) = (self.killer_moves.0,self.killer_moves.1);
+            self.buf.retain(|mv| Some(*mv) != k1 && Some(*mv) != k2);
+        }
 
-        #[cfg(not(feature = "killer_moves"))]
-        let killers = (None,None);
+        // let score = score_move_for_sort(
+        //     self.ts,
+        //     self.game,
+        //     see_map,
+        //     self.stage,
+        //     gen_type,
+        //     st,
+        //     self.ply,
+        //     mv,
+        //     killers,
+        //     self.counter_move);
 
         for mv in self.buf.drain(..) {
 
-            // let score = score_move_for_sort(
+            // let score = score_move_for_sort3(
             //     self.ts,
             //     self.game,
             //     see_map,
-            //     self.stage,
-            //     gen_type,
             //     st,
             //     self.ply,
             //     mv,
-            //     killers,
+            //     self.killer_moves,
             //     self.counter_move);
 
-            let score = score_move_for_sort3(
+            let score = score_move_for_sort4(
                 self.ts,
                 self.game,
+                gen_type,
                 see_map,
                 st,
                 self.ply,
                 mv,
-                killers,
+                self.killer_moves,
                 self.counter_move);
 
             self.buf_scored.push((mv, score));
@@ -317,47 +331,6 @@ impl<'a> MoveGen<'a> {
 
     }
 
-}
-
-/// Sort
-impl<'a> MoveGen<'a> {
-
-    pub fn partial_sort(mut xs: &mut [(Move,OrdMove)]) {
-
-        for (n,x) in xs.iter_mut().enumerate() {
-            // let tmp = 
-        }
-
-        unimplemented!()
-    }
-
-    #[cfg(feature = "nope")]
-    pub fn sort(&mut self, st: &ABStack) {}
-
-    #[cfg(feature = "nope")]
-    pub fn sort(&mut self, st: &ABStack) {
-        let mut buf = &mut self.buf;
-        let ts      = self.ts;
-        let g       = self.game;
-        let ply     = self.ply;
-        let stage   = self.stage;
-        let mut see = &mut self.see_map;
-
-        #[cfg(feature = "killer_moves")]
-        let killers = match st.stacks.get(ply as usize) {
-            Some(ks) => (ks.killers[0],ks.killers[1]),
-            _        => (None,None)
-        };
-        #[cfg(not(feature = "killer_moves"))]
-        let killers = (None,None);
-
-        buf.sort_by_cached_key(|&mv| {
-            // std::cmp::Reverse(crate::move_ordering::score_move_for_sort(ts, g, st, ply, mv, killers))
-            score_move_for_sort(ts, g, see, stage, st, ply, mv, killers)
-        });
-        buf.reverse();
-
-    }
 }
 
 /// New
@@ -380,6 +353,8 @@ impl<'a> MoveGen<'a> {
             // stack.counter_moves.get_counter_move(prev_mv)
         } else { None };
 
+        let killer_moves = stack.killers_get(ply);
+
         let mut out = Self {
             ts,
             game,
@@ -397,7 +372,8 @@ impl<'a> MoveGen<'a> {
 
             hashmove,
             counter_move,
-            killer_moves:   ArrayVec::new(),
+            // killer_moves:   ArrayVec::new(),
+            killer_moves,
 
             depth,
             ply,
@@ -443,7 +419,8 @@ impl<'a> MoveGen<'a> {
 
             hashmove,
             counter_move,
-            killer_moves:   ArrayVec::new(),
+            // killer_moves:   ArrayVec::new(),
+            killer_moves:   (None,None),
 
             depth: 0,
             ply,
@@ -488,7 +465,8 @@ impl<'a> MoveGen<'a> {
 
             hashmove:     None,
             counter_move: None,
-            killer_moves:   ArrayVec::new(),
+            // killer_moves:   ArrayVec::new(),
+            killer_moves:   (None,None),
 
             depth: 0,
             ply: 0,
@@ -529,12 +507,6 @@ impl<'a> MoveGen<'a> {
 /// Not quite Iter
 impl<'a> MoveGen<'a> {
 
-    pub fn next_debug(&mut self, stack: &ABStack) -> Option<(MoveGenStage,Move)> {
-        let stage = self.stage;
-        let mv = self.next(stack)?;
-        Some((stage,mv))
-    }
-
     pub fn next(&mut self, stack: &ABStack) -> Option<Move> {
         use MoveGenStage::*;
         match self.stage {
@@ -556,7 +528,7 @@ impl<'a> MoveGen<'a> {
 
                 /// Killer moves
                 // self.buf.retain(|mv| !ks.contains(mv)); // killer moves are only quiets
-                for &mv in self.killer_moves.iter() {
+                for &mv in [self.killer_moves.0,self.killer_moves.1].iter().flatten() {
                     if self.move_is_legal(mv) { self.buf.push(mv); }
                 }
 
@@ -725,6 +697,12 @@ impl<'a> MoveGen<'a> {
                 None
             },
         }
+    }
+
+    pub fn next_debug(&mut self, stack: &ABStack) -> Option<(MoveGenStage,Move)> {
+        let stage = self.stage;
+        let mv = self.next(stack)?;
+        Some((stage,mv))
     }
 
 }

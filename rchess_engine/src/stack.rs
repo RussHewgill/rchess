@@ -43,6 +43,8 @@ impl ABStack {
     {
         if let Some(st) = self.stacks.get_mut(ply as usize) {
             f(st);
+        } else {
+            panic!("stack with, but missing ply");
         }
     }
 
@@ -189,11 +191,13 @@ impl ABStack {
         side:         Color,
         prev_mv:      Option<Move>,
     ) -> Score {
-        let bf = self.history.get_move(mv, side);
+        if mv.filter_all_captures() {
+            self.capture_history.get(mv)
+        } else {
+            self.history.get_move(mv, side)
+        }
 
         // let cm: [[[[[Score; 2]; 6]; 64]; 6]; 64];
-
-        bf
     }
 }
 
@@ -208,14 +212,18 @@ impl ABStack {
         if let Some(st) = self.stacks.get(ply as usize) {
             st.killer_get()
         } else {
+            debug!("stack killers_get, but missing ply: {}", ply);
             (None,None)
         }
     }
 
     pub fn killers_store(&mut self, ply: Depth, mv: Move) {
-        if let Some(st) = self.stacks.get_mut(ply as usize) {
-            st.killer_store(mv);
-        }
+
+        self.with(ply, |st| st.killer_store(mv));
+
+        // if let Some(st) = self.stacks.get_mut(ply as usize) {
+        //     st.killer_store(mv);
+        // }
     }
 }
 

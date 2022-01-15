@@ -64,10 +64,79 @@ pub enum OrdMove {
 #[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
 pub enum OrdMove2 {
 
-    QueenPromotion = 30000,
-    Capture        = 20000,
+    QueenPromotion = 30_000,
+    Capture        = 20_000,
+
+    KillerMove     = 20_001,
+    CounterMove    = 15_000,
+
     UnderPromotion = -1,
 
+}
+
+pub fn score_move_for_sort4(
+    ts:           &'static Tables,
+    g:            &Game,
+    gentype:      MoveGenType,
+    mut see_map:  &mut HashMap<Move,Score>,
+    st:           &ABStack,
+    ply:          Depth,
+    mv:           Move,
+    killers:      (Option<Move>,Option<Move>),
+    countermove:  Option<Move>,
+) -> Score {
+    use self::OrdMove2::*;
+
+    let history = st.get_move_history(mv, g.state.side_to_move, g.last_move);
+
+    match gentype {
+        MoveGenType::Captures    => {
+            if mv.filter_promotion() {
+                if mv.filter_all_captures() {
+                    let see = MoveGen::_static_exchange(ts, g, see_map, mv).unwrap_or(0);
+                    QueenPromotion as Score + Capture as Score + history + see
+                } else {
+                    QueenPromotion as Score + history
+                }
+            } else if let Some(victim) = mv.victim() {
+                let see = MoveGen::_static_exchange(ts, g, see_map, mv).unwrap_or(0);
+                // Capture as Score + history + victim.score()
+                Capture as Score + history + see
+            } else {
+                #[cfg(feature = "killer_moves")]
+                if Some(mv) == killers.0 || Some(mv) == killers.1 {
+                    return KillerMove as Score + history;
+                }
+
+                panic!("score_move_for_sort4: Captures, but quiet non-killer or counter move: {:?}", mv);
+            }
+        },
+        MoveGenType::Quiets      => {
+            if mv.filter_promotion() {
+                UnderPromotion as Score + history
+            } else {
+
+                #[cfg(feature = "countermove_heuristic")]
+                if Some(mv) == countermove {
+                    return CounterMove as Score + history;
+                }
+
+                history
+            }
+        },
+        MoveGenType::Evasions    => {
+            if let Some(victim) = mv.victim() {
+                let see = MoveGen::_static_exchange(ts, g, see_map, mv).unwrap_or(0);
+                // Capture as Score + history + victim.score()
+                Capture as Score + history + see
+            } else {
+                history
+            }
+        },
+        MoveGenType::QuietChecks => {
+            history
+        },
+    }
 }
 
 pub fn score_move_for_sort3(
@@ -85,7 +154,9 @@ pub fn score_move_for_sort3(
     if mv.filter_promotion() {
         if mv.piece() == Some(Queen) {
             if mv.filter_all_captures() {
-                QueenPromotion as Score + Capture as Score
+                let history = st.capture_history.get(mv);
+                // let history = 0;
+                QueenPromotion as Score + Capture as Score + history
             } else {
                 QueenPromotion as Score
             }
@@ -93,10 +164,13 @@ pub fn score_move_for_sort3(
             UnderPromotion as Score
         }
     } else if mv.filter_all_captures() {
+        let history = st.capture_history.get(mv);
+        // let history = 0;
+
         if let Some(see) = MoveGen::_static_exchange(ts, g, see_map, mv) {
-            Capture as Score + see
+            Capture as Score + see + history
         } else {
-            Capture as Score
+            Capture as Score + history
         }
     } else {
 
@@ -127,42 +201,7 @@ pub fn selection_sort<T: PartialOrd>(xs: &mut [(Move,T)]) {
 
 }
 
-pub fn score_move_for_sort2(
-    ts:           &'static Tables,
-    g:            &Game,
-    mut see_map:  &mut HashMap<Move,Score>,
-    stage:        MoveGenStage,
-    gentype:      MoveGenType,
-    st:           &ABStack,
-    ply:          Depth,
-    mv:           Move,
-    killers:      (Option<Move>,Option<Move>),
-    countermove:  Option<Move>,
-) -> Score {
-    use self::OrdMove::*;
-    let mut bonus = 0;
-    match gentype {
-        MoveGenType::Captures    => {
-            if let Some(victim) = mv.victim() {
-            }
-            unimplemented!()
-        },
-        MoveGenType::Quiets      => {
-            unimplemented!()
-        },
-        MoveGenType::Evasions    => {
-            if mv.filter_all_captures() {
-                unimplemented!()
-            } else {
-                unimplemented!()
-            }
-        },
-        MoveGenType::QuietChecks => {
-            unimplemented!()
-        },
-    }
-}
-
+#[cfg(feature = "nope")]
 pub fn score_move_for_sort(
     ts:           &'static Tables,
     g:            &Game,
