@@ -87,7 +87,10 @@ pub fn score_move_for_sort4(
 ) -> Score {
     use self::OrdMove2::*;
 
+    #[cfg(feature = "history_heuristic")]
     let history = st.get_move_history(mv, g.state.side_to_move, g.last_move);
+    #[cfg(not(feature = "history_heuristic"))]
+    let history = 0;
 
     match gentype {
         MoveGenType::Captures    => {

@@ -40,8 +40,13 @@ use parking_lot::{Mutex,RwLock};
 
 use rand::prelude::{SliceRandom,thread_rng};
 use rayon::prelude::*;
+use lazy_static::lazy_static;
 
-use evmap::{ReadHandle,ReadHandleFactory,WriteHandle};
+// use evmap::{ReadHandle,ReadHandleFactory,WriteHandle};
+
+lazy_static! { /// DEBUG_ABSTACK
+    pub static ref DEBUG_ABSTACK: Mutex<ABStack> = Mutex::new(ABStack::new());
+}
 
 // #[derive(Debug)]
 #[derive(Debug,Clone)]
@@ -640,8 +645,10 @@ impl Explorer {
                     root_moves.clone(),
                     tx.clone());
 
+                /// 4 MB is needed to prevent stack overflow
+                let size = 1024 * 1024 * 4;
                 s.builder()
-                // .stack_size(size)
+                    .stack_size(size)
                     .spawn(move |_| {
                         helper.lazy_smp_single(ts);
                     }).unwrap();
@@ -1091,6 +1098,11 @@ impl ExHelper {
             Err(_) => {
                 trace!("tx send error 1: id: {}, depth {}", self.id, depth);
             },
+        }
+
+        if self.id == 0 {
+            let mut w = DEBUG_ABSTACK.lock();
+            *w = stack;
         }
 
         trace!("exiting lazy_smp_single, id = {}", self.id);

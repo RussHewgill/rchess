@@ -140,7 +140,8 @@ mod const_params {
     // pub const FUTILITY_MARGIN: Score = 200;
     pub const FUTILITY_MARGIN: Score = 300;
 
-    pub const HISTORY_MAX: Score = 400; // 20 * 20
+    // pub const HISTORY_MAX: Score = 400; // 20 * 20
+    pub const HISTORY_MAX: Score = 512; // to saturate i16
 
 }
 

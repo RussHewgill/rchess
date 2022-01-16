@@ -167,6 +167,34 @@ macro_rules! eprint_self {
     }
 }
 
+pub fn print_si_bytes(x: usize) -> String {
+    if x > 1024 * 1024 {
+        format!("{:>5} MB", x / 1024 / 1024)
+    } else if x > 1024 {
+        format!("{:>5} KB", x / 1024)
+    } else {
+        format!("{:>5} B", x)
+    }
+}
+
+#[macro_export]
+macro_rules! print_size_of {
+    ($t:ty) => {
+        {
+            // eprintln!("{} = {} bytes", stringify!($t), print_si_bytes(std::mem::size_of::<$t>()));
+            let x = std::mem::size_of::<$t>();
+            let x = if x > 1024 * 1024 {
+                format!("{:>5} MB", x / 1024 / 1024)
+            } else if x > 1024 {
+                format!("{:>5} KB", x / 1024)
+            } else {
+                format!("{:>5} B", x)
+            };
+            eprintln!("{} = {}", stringify!($t), x);
+        }
+    }
+}
+
 #[macro_export]
 macro_rules! stats {
     ($e:expr) => {

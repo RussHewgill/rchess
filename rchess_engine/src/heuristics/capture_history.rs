@@ -1,7 +1,7 @@
 
 use crate::types::*;
 
-use super::CaptureHistory;
+use super::{CaptureHistory, update_stat_bonus, Score};
 
 impl Default for CaptureHistory {
     fn default() -> Self {
@@ -14,13 +14,14 @@ impl CaptureHistory {
     /// [Piece][To][CapturedPiece]
     pub fn update(&mut self, mv: Move, bonus: Score) {
         if let (Some(pc),Some(victim)) = (mv.piece(),mv.victim()) {
-            self._update(pc, mv.sq_to(), victim, bonus);
+            self._update(pc, mv.sq_to(), victim, bonus as Score);
         }
     }
 
     pub fn _update(&mut self, pc: Piece, to: Coord, victim: Piece, bonus: Score) {
         // assert!(pc != King);
-        self.buf[pc][to][victim] += bonus;
+        // self.buf[pc][to][victim] += bonus;
+        update_stat_bonus(bonus, &mut self.buf[pc][to][victim]);
     }
 
     // pub fn get(&self, mv: Move) -> Option<Score> {
@@ -31,7 +32,7 @@ impl CaptureHistory {
             //     panic!("CaptureHistory: captured king?, mv = {:?}", mv);
             // }
 
-            self._get(pc, mv.sq_to(), victim)
+            self._get(pc, mv.sq_to(), victim) as Score
         } else {
             // unimplemented!()
             panic!("CaptureHistory: get {:?}", mv);

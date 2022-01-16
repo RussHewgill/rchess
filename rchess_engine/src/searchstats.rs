@@ -188,8 +188,8 @@ mod ss {
             // eprintln!("nodes/qt nodes = {:.1?}", self.qt_nodes as f64 / self.nodes as f64);
             eprintln!("qt nodes    = {}", pretty_print_si(self.qt_nodes as i64));
             eprintln!("q_max_depth = {:?}", self.q_max_depth);
-            eprintln!("q_tt_returns = {}", pretty_print_si(self.qs_tt_returns as i64));
-            eprintln!("q_delta_prunes = {}", pretty_print_si(self.qs_delta_prunes as i64));
+            // eprintln!("q_tt_returns = {}", pretty_print_si(self.qs_tt_returns as i64));
+            // eprintln!("q_delta_prunes = {}", pretty_print_si(self.qs_delta_prunes as i64));
 
             // eprintln!("null prunes   = {:?}", self.null_prunes);
             // eprintln!("fut prunes    = {:?}", self.fut_prunes);

@@ -10,7 +10,7 @@ pub struct ABStack {
     pub history:                crate::heuristics::ButterflyHistory,
     pub counter_moves:          crate::heuristics::CounterMoves,
     pub capture_history:        crate::heuristics::CaptureHistory,
-    pub continuation_history:   crate::heuristics::ContinuationHistory,
+    // pub continuation_history:   crate::heuristics::ContinuationHistory,
 
     pub inside_null:            bool,
 
@@ -74,6 +74,21 @@ impl ABStack {
     //     unimplemented!()
     // }
 
+    #[cfg(not(feature = "history_heuristic"))]
+    pub fn update_history(
+        &mut self,
+        g:                    &Game,
+        best_mv:              Move,
+        best_score:           Score,
+        beta:                 Score,
+        captures_searched:    ArrayVec<Move,64>,
+        quiets_searched:      ArrayVec<Move,64>,
+        ply:                  Depth,
+        depth:                Depth,
+    ) {
+    }
+
+    #[cfg(feature = "history_heuristic")]
     pub fn update_history(
         &mut self,
         g:                    &Game,
@@ -102,7 +117,7 @@ impl ABStack {
             for mv in quiets_searched.into_iter() {
                 if mv != best_mv {
                     self.history.update(mv, side, -bonus_quiet);
-                    // self.update_continuation_history(mv, -bonus_quiet);
+                    // self.update_continuation_history(mv, ply, -bonus_quiet);
                 }
             }
 
@@ -138,10 +153,12 @@ impl ABStack {
         }
 
         self.history.update(mv, side, bonus);
+        // self.update_continuation_history(mv, ply, bonus);
 
         // unimplemented!()
     }
 
+    // #[cfg(feature = "nope")]
     pub fn stat_bonus(depth: Depth) -> Score {
         let depth = depth as Score;
         Score::min(HISTORY_MAX, depth * depth)
@@ -162,7 +179,7 @@ impl ABStack {
 
 }
 
-/// History
+/// Get History
 impl ABStack {
     pub fn get_move_history(
         &self,
@@ -171,9 +188,9 @@ impl ABStack {
         prev_mv:      Option<Move>,
     ) -> Score {
         if mv.filter_all_captures() {
-            self.capture_history.get(mv)
+            // self.capture_history.get(mv)
             // -self.capture_history.get(mv)
-            // 0
+            0
         } else {
             self.history.get_move(mv, side)
         }
@@ -270,7 +287,7 @@ impl ABStack {
             history:                crate::heuristics::ButterflyHistory::default(),
             counter_moves:          crate::heuristics::CounterMoves::default(),
             capture_history:        crate::heuristics::CaptureHistory::default(),
-            continuation_history:   crate::heuristics::ContinuationHistory::default(),
+            // continuation_history:   crate::heuristics::ContinuationHistory::default(),
 
             inside_null:            false,
 

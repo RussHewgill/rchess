@@ -30,7 +30,7 @@ use std::str::FromStr;
 
 use itertools::Itertools;
 
-use rchess_engine_lib::heuristics::*;
+use rchess_engine_lib::{heuristics::*, print_size_of};
 use rchess_engine_lib::{timer,timer_loop,eprint_self};
 use rchess_engine_lib::explore::*;
 use rchess_engine_lib::opening_book::*;
@@ -2809,6 +2809,15 @@ fn main9() {
 
     // let fen = "3r2k1/5pp1/1p1B2Q1/1B3b2/8/8/5KP1/R6R b - - 4 7"; // XXX: ???
 
+    // use rchess_engine_lib::heuristics::update_stat_bonus;
+    // let bonus = 512;
+    // let mut current = 0;
+    // update_stat_bonus(bonus, &mut current);
+    // eprintln!("current = {:?}", current);
+    // update_stat_bonus(bonus, &mut current);
+    // eprintln!("current = {:?}", current);
+    // return;
+
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
@@ -2845,8 +2854,18 @@ fn main9() {
     //     hook(panicinfo)
     // }));
 
-    // let k0 = std::mem::size_of::<SearchInfo>();
-    // eprintln!("k0 = {:?}", k0);
+    // // let k0 = std::mem::size_of::<SearchInfo>();
+    // // eprintln!("k0 = {:?}", k0);
+    // print_size_of!(ABStack);
+    // return;
+
+    // for depth in 0..20 {
+    //     let k0 = Score::min(HISTORY_MAX, depth * depth);
+    //     let k1 = Score::min((6 * depth + 200) * depth - 215, 2000);
+    //     let bonus = depth * depth;
+    //     let k2 = Score::min(32 * bonus, 2000);
+    //     eprintln!("{:>2} = {:>6} {:>6} {:>6}", depth, k0, k1, k2);
+    // }
     // return;
 
     // let t = 10.0;
@@ -2860,7 +2879,7 @@ fn main9() {
     // let n = 35;
     // let n = 22;
     // let n = 8;
-    let n = 12;
+    let n = 11;
     // let n = 2;
 
     let timesettings = TimeSettings::new_f64(0.0,t);
@@ -2919,20 +2938,8 @@ fn main9() {
     let time0 = t2;
     let best0 = res.get_result().unwrap();
 
-    // println!();
-    // ex2.cfg.late_move_reductions = false;
-    // ex2.update_game(g.clone());
-    // ex2.clear_tt();
-    // let t0 = std::time::Instant::now();
-    // let (res2,moves2,stats2) = ex2.lazy_smp_2(&ts);
-    // let t1 = t0.elapsed();
-    // let t2 = t1.as_secs_f64();
-    // let time2 = t2;
-    // let best2 = res2.get_result().unwrap();
-    // println!();
-    // println!("With LMR: time: {:.3} sec: {:?}", time0, best0.mv);
-    // println!("no LMR:   time: {:.3} sec: {:?}", time2, best2.mv);
-    // eprintln!("\ncorrect move = {:?}", correct);
+    // let stack: &ABStack = &DEBUG_ABSTACK.lock();
+    // let bf = stack.history[Black];
     // return;
 
     let best   = res.get_result().unwrap();

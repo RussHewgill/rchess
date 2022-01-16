@@ -5,6 +5,9 @@ use crate::heuristics::KillerMoves;
 
 use crate::heuristics::ButterflyHistory;
 
+use super::Score;
+use super::update_stat_bonus;
+
 impl Default for ButterflyHistory {
     fn default() -> Self {
         Self {
@@ -27,7 +30,7 @@ impl ButterflyHistory {
         // let x = self.buf[side][from][to];
         // if x == 0 { None } else { Some(x) }
 
-        self.buf[side][from][to]
+        self.buf[side][from][to] as Score
 
         // let (good,all) = self.good[side][from][to];
         // good / all
@@ -42,11 +45,14 @@ impl ButterflyHistory {
     // }
 
     pub fn update(&mut self, mv: Move, side: Color, bonus: Score) {
-        self._update(mv.sq_from(), mv.sq_to(), side, bonus);
+        self._update(mv.sq_from(), mv.sq_to(), side, bonus as Score);
     }
 
     fn _update(&mut self, from: Coord, to: Coord, side: Color, bonus: Score) {
-        self.buf[side][from][to] += bonus;
+
+        // self.buf[side][from][to] += bonus;
+
+        update_stat_bonus(bonus, &mut self.buf[side][from][to]);
 
         // /// XXX: ??? stockfish magic
         // const D: Score = 14_000;
