@@ -65,6 +65,9 @@ pub struct Explorer {
     pub best_mate:     Arc<RwLock<Option<Depth>>>,
     pub best_depth:    Arc<CachePadded<AtomicI16>>,
 
+    pub tx:            ExSender,
+    pub rx:            ExReceiver,
+
     pub cfg:           ExConfig,
 
     pub search_params: SParams,
@@ -112,6 +115,8 @@ impl Explorer {
         let mut cfg = ExConfig::default();
         cfg.max_depth = max_depth;
 
+        let (tx,rx): (ExSender,ExReceiver) = crossbeam::channel::unbounded();
+
         Self {
             side,
             game,
@@ -126,6 +131,9 @@ impl Explorer {
             stop,
             best_mate:      Arc::new(RwLock::new(None)),
             best_depth:     Arc::new(CachePadded::new(AtomicI16::new(0))),
+
+            tx,
+            rx,
 
             cfg,
             search_params:  SParams::default(),
@@ -583,7 +591,6 @@ impl Explorer {
         self.reset_stop();
 
         let (tx,rx): (ExSender,ExReceiver) = crossbeam::channel::unbounded();
-        // let (dec_tx,dec_rx): (Sender<usize>, Receiver<usize>) = crossbeam::channel::unbounded();
 
         let out: Arc<RwLock<(Depth,ABResults,Vec<Move>, SearchStats)>> =
             Arc::new(RwLock::new((0, ABResults::ABNone, vec![], SearchStats::default())));

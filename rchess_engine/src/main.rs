@@ -274,7 +274,7 @@ fn main_threading() {
 
     println!("wat 0");
 
-    ex.wakeup_threads(&threadpool);
+    threadpool.wakeup_threads();
 
     // for i in 0..6 {
     //     // let handle = threadpool.handles[i].clone();
