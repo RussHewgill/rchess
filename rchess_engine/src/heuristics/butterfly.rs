@@ -1,7 +1,6 @@
 
 use crate::types::*;
 use crate::tables::*;
-use crate::heuristics::KillerMoves;
 
 use crate::heuristics::ButterflyHistory;
 
@@ -18,6 +17,18 @@ impl Default for ButterflyHistory {
 }
 
 impl ButterflyHistory {
+
+    // pub fn clear(&mut self) {
+    //     for x in self.iter_mut() {
+    //         *x = 0;
+    //     }
+    // }
+
+    // fn iter_mut(&mut self) -> impl Iterator<Item = &mut Score> {
+    //     self.buf.iter_mut()
+    //         .flat_map(|x| x.iter_mut())
+    //         .flat_map(|x| x.iter_mut())
+    // }
 
     // pub fn get_move(&self, mv: Move, side: Color) -> Option<Score> {
     pub fn get_move(&self, mv: Move, side: Color) -> Score {

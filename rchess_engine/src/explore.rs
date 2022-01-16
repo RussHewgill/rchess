@@ -63,6 +63,7 @@ pub struct Explorer {
     // pub stop:          Arc<AtomicBool>,
     pub stop:          Arc<CachePadded<AtomicBool>>,
     pub best_mate:     Arc<RwLock<Option<Depth>>>,
+    pub best_depth:    Arc<CachePadded<AtomicI16>>,
 
     pub cfg:           ExConfig,
 
@@ -124,6 +125,7 @@ impl Explorer {
 
             stop,
             best_mate:      Arc::new(RwLock::new(None)),
+            best_depth:     Arc::new(CachePadded::new(AtomicI16::new(0))),
 
             cfg,
             search_params:  SParams::default(),

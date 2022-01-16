@@ -4,6 +4,7 @@ use std::collections::HashSet;
 use crate::{types::*, tables::HISTORY_MAX};
 
 use arrayvec::ArrayVec;
+use nom::InputIter;
 
 #[derive(Debug,Clone)]
 pub struct ABStack {
@@ -223,6 +224,17 @@ impl ABStack {
         //     st.killer_store(mv);
         // }
     }
+}
+
+/// Clear
+impl ABStack {
+
+    pub fn clear_history(&mut self) {
+        self.history         = Default::default();
+        self.counter_moves   = Default::default();
+        self.capture_history = Default::default();
+    }
+
 }
 
 #[derive(Debug,Clone)]

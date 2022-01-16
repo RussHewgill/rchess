@@ -17,6 +17,14 @@ impl Default for CounterMoves {
 
 impl CounterMoves {
 
+    // pub fn clear(&mut self) {
+    //     for x in self.buf.iter_mut()
+    //         .flat_map(|x| x.iter_mut())
+    //         .flat_map(|x| x.iter_mut()) {
+    //             *x = None;
+    //         }
+    // }
+
     pub fn insert_counter_move(&mut self, prev_mv: Move, mv: Move, side: Color) {
     // pub fn insert_counter_move(&mut self, prev_mv: Move, mv: Move) {
         assert!(mv != Move::NullMove);

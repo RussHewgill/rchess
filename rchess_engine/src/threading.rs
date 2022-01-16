@@ -3,9 +3,10 @@ use crate::pawn_hash_table::PHTable;
 use crate::stack::ABStack;
 use crate::tuning::SParams;
 use crate::types::*;
-use crate::explore::{ExHelper,ExSender,ExConfig};
+use crate::explore::*;
 use crate::searchstats::SearchStats;
 use crate::lockless_map::TransTable;
+use crate::pawn_hash_table::*;
 
 #[cfg(feature = "syzygy")]
 use crate::syzygy::SyzygyTB;
@@ -21,9 +22,148 @@ use itertools::Itertools;
 use parking_lot::{Mutex,RwLock,Condvar};
 use crossbeam::channel::{Sender,Receiver,RecvError,TryRecvError};
 use crossbeam::thread::ScopedJoinHandle;
+use crossbeam::utils::CachePadded;
 
+#[derive(Debug,Clone)]
+pub struct Explorer2 {
+    // pub side:          Color,
+    // pub game:          Game,
+    // pub current_ply:   Option<Depth>,
+
+    // #[cfg(feature = "basic_time")]
+    // pub timer:         Timer,
+    // #[cfg(not(feature = "basic_time"))]
+    // pub time_settings: TimeSettings,
+
+    // pub stop:          Arc<AtomicBool>,
+    pub stop:          Arc<CachePadded<AtomicBool>>,
+    pub best_mate:     Arc<RwLock<Option<Depth>>>,
+    pub best_depth:    Arc<CachePadded<AtomicI16>>,
+
+    // pub tx:            ExSender,
+    // pub rx:            ExReceiver,
+
+    // pub cfg:           ExConfig,
+
+    // pub search_params: SParams,
+
+    // #[cfg(feature = "syzygy")]
+    // pub syzygy:        Option<Arc<SyzygyTB>>,
+    // // pub opening_book:  Option<Arc<OpeningBook>>,
+
+    // pub nnue:          Option<NNUE4>,
+
+    // #[cfg(feature = "lockless_hashmap")]
+    // pub ptr_tt:        Arc<TransTable>,
+
+    // #[cfg(not(feature = "lockless_hashmap"))]
+    // pub tt_rf:         TTReadFactory,
+    // #[cfg(not(feature = "lockless_hashmap"))]
+    // pub tt_w:          TTWrite,
+
+    // pub eval_hashmap:  (EVReadFactory<Score>,EVWrite<Score>),
+
+    // // pub ph_rw:         (PHReadFactory,PHWrite),
+    // pub ph_rw:         PHTableFactory,
+
+    // pub move_history:  Vec<(Zobrist, Move)>,
+    // // pub pos_history:   HashMap<Zobrist,u8>,
+
+}
+
+#[derive(Debug)]
 pub struct ThreadPool {
-    handles:      Vec<JoinHandle<()>>,
+    pub handles:      Vec<JoinHandle<()>>,
+
+    pub waits:        Vec<Arc<(Mutex<bool>,Condvar)>>,
+    // pub wait:         (Sender<()>,Arc<Receiver<()>>),
+
+}
+
+impl ThreadPool {
+    pub fn new() -> Self {
+        // let wait = crossbeam_channel::unbounded();
+        // let wait = (wait.0,Arc::new(wait.1));
+        // let wait = Arc::new((Mutex::new(false), Condvar::new()));
+        Self {
+            handles: vec![],
+            // wait,
+            waits: vec![],
+        }
+    }
+}
+
+impl Explorer2 {
+    fn build_thread(
+        &self,
+        id:               usize,
+        // wait:             Arc<Receiver<()>>,
+    ) -> (Thread, Arc<(Mutex<bool>,Condvar)>) {
+    // ) -> Thread {
+
+        let wait = Arc::new((Mutex::new(false), Condvar::new()));
+
+        let thread = Thread {
+            id,
+            wait: wait.clone(),
+            // wait,
+        };
+
+        (thread, wait)
+        // thread
+    }
+}
+
+impl Explorer2 {
+
+    pub fn wakeup_threads(&self, threadpool: &ThreadPool) {
+        // threadpool.wait.0.send(()).unwrap();
+        // unimplemented!()
+
+        for wait in threadpool.waits.iter() {
+            let mut lock = wait.0.lock();
+            let cv = &wait.1;
+            *lock = true;
+            cv.notify_all();
+        }
+
+    }
+
+    pub fn spawn_threads(&mut self, threadpool: &mut ThreadPool) {
+
+        // #[cfg(feature = "one_thread")]
+        // let max_threads = 1;
+        // #[cfg(not(feature = "one_thread"))]
+        // let max_threads = if let Some(x) = self.cfg.num_threads {
+        //     x as i8
+        // } else {
+        //     let max_threads = num_cpus::get_physical();
+        //     max_threads as i8
+        // };
+        let max_threads = 6;
+
+        let mut thread_id = 0;
+
+        for _ in 0..max_threads {
+            trace!("Spawning thread, id = {}", thread_id);
+
+            let best_depth = self.best_depth.clone();
+
+            let (thread,wait) = self.build_thread(thread_id);
+            // let thread = self.build_thread(thread_id, threadpool.wait.1.clone());
+
+            let handle = std::thread::spawn(move || {
+                thread.idle();
+            });
+
+            threadpool.handles.push(handle);
+            threadpool.waits.push(wait);
+
+            thread_id += 1;
+        }
+
+    }
+
 }
 
 #[derive(Debug,Clone)]
@@ -31,50 +171,65 @@ pub struct Thread {
 
     pub id:              usize,
 
-    pub side:            Color,
-    pub game:            Game,
+    // pub side:            Color,
+    // pub game:            Game,
 
-    #[cfg(feature = "syzygy")]
-    pub syzygy:          Option<Arc<SyzygyTB>>,
-    pub nnue:            Option<RefCell<NNUE4>>,
+    // #[cfg(feature = "syzygy")]
+    // pub syzygy:          Option<Arc<SyzygyTB>>,
+    // pub nnue:            Option<RefCell<NNUE4>>,
 
-    pub cfg:             ExConfig,
-    pub params:          SParams,
+    // pub cfg:             ExConfig,
+    // pub params:          SParams,
 
+    // pub wait:               Arc<Receiver<()>>,
     pub wait:            Arc<(Mutex<bool>,Condvar)>,
 
-    pub stop:            Arc<AtomicBool>,
-    pub best_mate:       Arc<RwLock<Option<Depth>>>,
-    pub best_depth:      Arc<AtomicI16>,
-    pub tx:              ExSender,
+    // pub stop:            Arc<AtomicBool>,
+    // pub best_mate:       Arc<RwLock<Option<Depth>>>,
+    // pub best_depth:      Arc<AtomicI16>,
+    // pub tx:              ExSender,
 
-    #[cfg(feature = "lockless_hashmap")]
-    pub ptr_tt:          Arc<TransTable>,
+    // #[cfg(feature = "lockless_hashmap")]
+    // pub ptr_tt:          Arc<TransTable>,
 
-    #[cfg(not(feature = "lockless_hashmap"))]
-    pub tt_r:            TTRead,
-    #[cfg(not(feature = "lockless_hashmap"))]
-    pub tt_w:            TTWrite,
+    // #[cfg(not(feature = "lockless_hashmap"))]
+    // pub tt_r:            TTRead,
+    // #[cfg(not(feature = "lockless_hashmap"))]
+    // pub tt_w:            TTWrite,
 
-    pub ph_rw:           PHTable,
+    // pub ph_rw:           PHTable,
 
-    pub move_history:    Vec<(Zobrist, Move)>,
+    // pub move_history:    Vec<(Zobrist, Move)>,
 
-    pub stats:           SearchStats,
-    pub stack:           ABStack,
+    // pub stats:           RefCell<SearchStats>,
+    // pub stack:           RefCell<ABStack>,
 
+}
+
+impl Thread {
 }
 
 impl Thread {
 
     pub fn idle(&self) {
+
         let (lock,cvar) = &*self.wait;
         // cvar.wait(lock.load(Relaxed));
         let mut lock = lock.lock();
         cvar.wait(&mut lock);
+
+        // match self.wait.recv() {
+        //     Ok(()) => {},
+        //     Err(e) => panic!("wat"),
+        // }
+
+        println!("thread (id: {:>2}) waking up", self.id);
+
     }
 
-    pub fn new_search(&self, g: Game) {
+    pub fn clear(&self, g: Game) {
+        // let mut stack = self.stack.borrow_mut();
+        // stack.clear_history();
         unimplemented!()
     }
 

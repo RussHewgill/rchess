@@ -69,6 +69,7 @@ fn main() {
     let arg1: &str = &args[1];
     match &arg1[..] {
         "tt"        => main_tt(),
+        "threading" => main_threading(),
         "nn"        => main_nn(),
         "nnue"      => main_nnue(),
         "train"     => main_nnue_train(),
@@ -251,6 +252,42 @@ fn _main() {
 
 #[allow(unreachable_code)]
 fn main_movegen() {
+}
+
+#[allow(unreachable_code)]
+fn main_threading() {
+    use crossbeam::utils::CachePadded;
+    use std::sync::atomic::AtomicI16;
+    use parking_lot::{Mutex,RwLock,Condvar};
+
+    use rchess_engine_lib::threading::*;
+
+    let mut ex = Explorer2 {
+        stop:          Arc::new(CachePadded::new(AtomicBool::new(false))),
+        best_mate:     Arc::new(RwLock::new(None)),
+        best_depth:    Arc::new(CachePadded::new(AtomicI16::new(0))),
+    };
+
+    let mut threadpool = ThreadPool::new();
+
+    ex.spawn_threads(&mut threadpool);
+
+    println!("wat 0");
+
+    ex.wakeup_threads(&threadpool);
+
+    // for i in 0..6 {
+    //     // let handle = threadpool.handles[i].clone();
+    //     let wait = threadpool.waits[i].clone();
+    //     let mut lock = wait.0.lock();
+    //     let cv = &wait.1;
+    //     *lock = true;
+    //     cv.notify_all();
+    // }
+
+    println!("wat 1");
+    std::thread::sleep(Duration::from_millis(2000));
+
 }
 
 #[allow(unreachable_code)]
