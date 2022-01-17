@@ -45,10 +45,12 @@ ELO1=50
     # esac
 # done
 
-ENGINE2=rchess_prev
+# ENGINE2=rchess_prev
 # ENGINE2=stockfish
 # ENGINE2=arasan
 # ENGINE2=gnuchess
+# ENGINE2=TSCP
+ENGINE2=rustic
 
 while getopts t:n:e:o: flag
 do

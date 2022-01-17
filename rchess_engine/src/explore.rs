@@ -53,7 +53,7 @@ lazy_static! { /// DEBUG_ABSTACK
 pub struct Explorer {
     pub side:          Color,
     pub game:          Game,
-    pub current_ply:   Option<Depth>,
+    // pub current_ply:   Option<Depth>,
 
     #[cfg(feature = "basic_time")]
     pub timer:         Timer,
@@ -121,7 +121,7 @@ impl Explorer {
             side,
             game,
             // timer:          Timer::new(side, stop.clone(), settings),
-            current_ply:    None,
+            // current_ply:    None,
 
             #[cfg(feature = "basic_time")]
             timer:          Timer::new(time_settings),

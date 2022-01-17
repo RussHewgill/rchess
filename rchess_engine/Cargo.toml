@@ -34,7 +34,7 @@ default = [
     "keep_stats",
 
     "positional_scoring",
-    "mobility_scoring",
+    # "mobility_scoring",
 
     # "syzygy",
     # "nnue",

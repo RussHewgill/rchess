@@ -4,9 +4,14 @@ use crate::tables::*;
 
 use serde::{Serialize,Deserialize};
 use evmap_derive::ShallowCopy;
+use derive_more::*;
 
 // #[derive(Hash,Eq,PartialEq,PartialOrd,Clone,Copy)]
-#[derive(Serialize,Deserialize,Hash,Eq,PartialEq,PartialOrd,Clone,Copy,ShallowCopy)]
+#[derive(Serialize,Deserialize,Hash,Eq,PartialEq,PartialOrd,Clone,Copy,ShallowCopy,
+         Index,Add,Mul,Div,Sum,AddAssign,MulAssign,
+         BitAnd,BitAndAssign,BitOr,BitOrAssign,BitXor,BitXorAssign,Not,
+         From,Into,AsRef,AsMut
+)]
 pub struct BitBoard(pub u64);
 
 impl Iterator for BitBoard {
@@ -657,54 +662,54 @@ impl std::fmt::Debug for BitBoard {
 
 pub mod bits {
 
-    use super::BitBoard;
-    use std::ops::{BitAnd,BitAndAssign,BitOr,BitOrAssign,BitXor,BitXorAssign,Not};
+    // use super::BitBoard;
+    // use std::ops::{BitAnd,BitAndAssign,BitOr,BitOrAssign,BitXor,BitXorAssign,Not};
 
-    impl BitAnd for BitBoard {
-        type Output = Self;
-        fn bitand(self, rhs: Self) -> Self::Output {
-            Self(self.0 & rhs.0)
-        }
-    }
+    // impl BitAnd for BitBoard {
+    //     type Output = Self;
+    //     fn bitand(self, rhs: Self) -> Self::Output {
+    //         Self(self.0 & rhs.0)
+    //     }
+    // }
 
-    impl BitAndAssign for BitBoard {
-        fn bitand_assign(&mut self, rhs: Self) {
-            *self = Self(self.0 & rhs.0)
-        }
-    }
+    // impl BitAndAssign for BitBoard {
+    //     fn bitand_assign(&mut self, rhs: Self) {
+    //         *self = Self(self.0 & rhs.0)
+    //     }
+    // }
 
-    impl BitOr for BitBoard {
-        type Output = Self;
-        fn bitor(self, rhs: Self) -> Self::Output {
-            Self(self.0 | rhs.0)
-        }
-    }
+    // impl BitOr for BitBoard {
+    //     type Output = Self;
+    //     fn bitor(self, rhs: Self) -> Self::Output {
+    //         Self(self.0 | rhs.0)
+    //     }
+    // }
 
-    impl BitOrAssign for BitBoard {
-        fn bitor_assign(&mut self, rhs: Self) {
-            *self = Self(self.0 | rhs.0)
-        }
-    }
+    // impl BitOrAssign for BitBoard {
+    //     fn bitor_assign(&mut self, rhs: Self) {
+    //         *self = Self(self.0 | rhs.0)
+    //     }
+    // }
 
-    impl BitXor for BitBoard {
-        type Output = Self;
-        fn bitxor(self, rhs: Self) -> Self::Output {
-            Self(self.0 ^ rhs.0)
-        }
-    }
+    // impl BitXor for BitBoard {
+    //     type Output = Self;
+    //     fn bitxor(self, rhs: Self) -> Self::Output {
+    //         Self(self.0 ^ rhs.0)
+    //     }
+    // }
 
-    impl BitXorAssign for BitBoard {
-        fn bitxor_assign(&mut self, rhs: Self) {
-            *self = Self(self.0 ^ rhs.0)
-        }
-    }
+    // impl BitXorAssign for BitBoard {
+    //     fn bitxor_assign(&mut self, rhs: Self) {
+    //         *self = Self(self.0 ^ rhs.0)
+    //     }
+    // }
 
 
-    impl Not for BitBoard {
-        type Output = Self;
-        fn not(self) -> Self::Output {
-            Self(!self.0)
-        }
-    }
+    // impl Not for BitBoard {
+    //     type Output = Self;
+    //     fn not(self) -> Self::Output {
+    //         Self(!self.0)
+    //     }
+    // }
 
 }

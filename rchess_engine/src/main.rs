@@ -262,28 +262,28 @@ fn main_threading() {
 
     use rchess_engine_lib::threading::*;
 
-    let mut ex = Explorer2 {
-        stop:          Arc::new(CachePadded::new(AtomicBool::new(false))),
-        best_mate:     Arc::new(RwLock::new(None)),
-        best_depth:    Arc::new(CachePadded::new(AtomicI16::new(0))),
-    };
+    let ts = &_TABLES;
 
-    let mut threadpool = ThreadPool::new();
+    init_logger();
 
-    ex.spawn_threads(&mut threadpool);
+    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
 
-    println!("wat 0");
+    let mut g = Game::from_fen(&ts, fen).unwrap();
+    eprintln!("g.to_fen() = {:?}", g.to_fen());
+    eprintln!("g = {:?}", g);
+
+    let t = 2.0;
+
+    let max_depth = 8;
+
+    let timesettings = TimeSettings::new_f64(0.0,t);
+    let mut ex = Explorer2::new(White, g, max_depth, timesettings);
+    // ex.cfg.num_threads = Some(1);
+    ex.cfg.num_threads = Some(6);
+
+    let mut threadpool = ex.spawn_threads();
 
     threadpool.wakeup_threads();
-
-    // for i in 0..6 {
-    //     // let handle = threadpool.handles[i].clone();
-    //     let wait = threadpool.waits[i].clone();
-    //     let mut lock = wait.0.lock();
-    //     let cv = &wait.1;
-    //     *lock = true;
-    //     cv.notify_all();
-    // }
 
     println!("wat 1");
     std::thread::sleep(Duration::from_millis(2000));
@@ -2916,7 +2916,7 @@ fn main9() {
     // let n = 35;
     // let n = 22;
     // let n = 8;
-    let n = 11;
+    let n = 12;
     // let n = 2;
 
     let timesettings = TimeSettings::new_f64(0.0,t);

@@ -28,5 +28,10 @@
         "name": "gnuchess",
         "command": "/usr/bin/gnuchessu",
         "protocol": "uci"
+    },
+    {
+        "name": "rustic",
+        "command": "/home/me/code/builds/chess_engines/rustic/bin/linux/rustic-alpha-3.0.1-linux-64-bit-native",
+        "protocol": "uci"
     }
 ]
