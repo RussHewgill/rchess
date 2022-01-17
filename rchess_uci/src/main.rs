@@ -112,6 +112,8 @@ fn main() -> std::io::Result<()> {
     let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
     let mut explorer = Explorer2::new(White,g, MAX_SEARCH_PLY, timesettings);
 
+    explorer.spawn_threads();
+
     // explorer.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap_or_default();
 
     explorer.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
@@ -229,7 +231,8 @@ fn main() -> std::io::Result<()> {
                         parse_go(&mut explorer, params.clone().collect());
 
                         // let m = explorer.lock().unwrap().explore(&ts, depth).unwrap();
-                        let (m,stats) = explorer.explore(&ts);
+                        // let (m,stats) = explorer.explore(&ts);
+                        let (m,stats) = explorer.explore();
                         debug!("m = {:?}", m);
                         let (mv,score) = m.unwrap();
 

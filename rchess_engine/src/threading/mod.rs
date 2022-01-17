@@ -278,7 +278,7 @@ impl ThreadPool {
 /// Entry points
 impl Explorer2 {
 
-    pub fn explore(&self, ts: &'static Tables) -> (Option<(Move,ABResult)>,SearchStats) {
+    pub fn explore(&self) -> (Option<(Move,ABResult)>,SearchStats) {
         let (ress,moves,stats) = self.lazy_smp();
         if let Some(best) = ress.get_result() {
             debug!("explore: best move = {:?}", best.mv);
@@ -583,7 +583,7 @@ impl ExThread {
 
             {
                 let mut started = self.wait.0.lock();
-                eprintln!("started = {:?}", started);
+                // eprintln!("started = {:?}", started);
                 self.wait.1.wait(&mut started);
             }
 
