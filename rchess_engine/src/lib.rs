@@ -73,6 +73,8 @@ pub mod stack;
 pub mod endgame;
 pub mod threading;
 
+pub mod ab_threadpool;
+
 pub mod opening_book;
 #[cfg(feature = "syzygy")]
 pub mod syzygy;

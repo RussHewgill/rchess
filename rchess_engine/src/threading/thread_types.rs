@@ -93,7 +93,7 @@ pub struct ThreadUpdate {
 }
 
 #[derive(Debug,Clone)]
-pub struct Thread {
+pub struct ExThread {
 
     pub id:              usize,
 

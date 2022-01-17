@@ -14,128 +14,16 @@ use crate::syzygy::{SyzygyTB, Wdl, Dtz};
 
 use crate::stats;
 
-use ABResults::*;
+use crate::alphabeta::ABResults::*;
+use crate::alphabeta::{ABNodeType,ABResult,ABResults,Prune};
+
 use arrayvec::ArrayVec;
 
 use std::sync::atomic::Ordering::{SeqCst,Relaxed};
 
-#[derive(Debug,PartialEq,PartialOrd,Clone,Copy)]
-pub struct ABResult {
-    pub mv:       Option<Move>,
-    pub score:    Score,
-}
-
-impl std::ops::Neg for ABResult {
-    type Output = Self;
-    fn neg(self) -> Self::Output {
-        let mut out = self;
-        out.score = -self.score;
-        out
-    }
-}
-
-/// New
-impl ABResult {
-
-    pub fn new_null() -> Self {
-        Self {
-            // mv: Move::NullMove,
-            mv: None,
-            // score: 0,
-            score: Score::MIN,
-        }
-    }
-
-    pub fn new_null_score(score: Score) -> Self {
-        Self {
-            mv: None,
-            score,
-        }
-    }
-
-    pub fn new_single(mv: Move, score: Score) -> Self {
-        Self {
-            mv: Some(mv),
-            score,
-        }
-    }
-
-    pub fn neg_score(&mut self, mv: Move) {
-        self.score = -self.score;
-        self.mv = Some(mv);
-    }
-
-}
-
-#[derive(Debug,PartialEq,PartialOrd,Clone)]
-pub enum ABResults {
-    ABSingle(ABResult),
-    ABList(ABResult, Vec<ABResult>),
-    ABSyzygy(ABResult),
-    // ABMate()
-    ABPrune(Score, Prune),
-    ABNone,
-}
-
-impl std::ops::Neg for ABResults {
-    type Output = Self;
-    fn neg(self) -> Self::Output {
-        match self {
-            ABResults::ABSingle(res)     => ABResults::ABSingle(-res),
-            ABResults::ABList(res,vs)    => ABResults::ABList(-res,vs),
-            ABResults::ABSyzygy(res)     => ABResults::ABSyzygy(-res),
-            ABResults::ABPrune(score, p) => ABResults::ABPrune(-score, p),
-            _                            => self,
-        }
-    }
-}
-
-/// Get results
-impl ABResults {
-
-    pub fn get_result_mv(&self, mv: Move) -> Option<ABResult> {
-        let mut res = self.get_result()?;
-        // res.mv = mv;
-        res.mv = Some(mv);
-        Some(res)
-    }
-
-    pub fn get_result(&self) -> Option<ABResult> {
-        match self {
-            Self::ABSingle(res)     => Some(*res),
-            Self::ABList(res, _)    => Some(*res),
-            Self::ABSyzygy(res)     => Some(*res),
-            // Self::ABPrune(score, _) => None,
-            Self::ABPrune(score, _) => Some(ABResult::new_null_score(*score)),
-            Self::ABNone            => None,
-        }
-    }
-
-    pub fn get_scores(&self) -> Option<Vec<ABResult>> {
-        match self {
-            Self::ABList(_, scores) => Some(scores.clone()),
-            _                       => None,
-        }
-    }
-
-}
-
-#[derive(Debug,PartialEq,PartialOrd,Clone)]
-pub enum Prune {
-    NullMove,
-    Futility,
-    MultiCut,
-}
-
-#[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
-pub enum ABNodeType {
-    Root,
-    PV,
-    NonPV,
-}
 
 /// Make move, increment NNUE
-impl ExHelper {
+impl ExThread {
 
     // #[inline(always)]
     pub fn make_move(
@@ -176,236 +64,9 @@ impl ExHelper {
 
 }
 
-/// search_single
-impl ExHelper {
-    pub fn ab_search_single(
-        &self,
-        ts:             &'static Tables,
-        mut stats:      &mut SearchStats,
-        mut stack:      &mut ABStack,
-        ab:             Option<(Score,Score)>,
-        depth:          Depth,
-    ) -> ABResults {
 
-        // let (alpha,beta) = (Score::MIN,Score::MAX);
-        // let (alpha,beta) = (alpha + 200,beta - 200);
-
-        let (alpha,beta) = if let Some(ab) = ab { ab } else {
-            (Score::MIN + 200, Score::MAX - 200)
-        };
-
-        let mut g = self.game.clone();
-
-        #[cfg(not(feature = "new_search"))]
-        let res = {
-            let mut stop_counter = 0;
-            let mut cfg = ABConfig::new_depth(depth);
-            self._ab_search_negamax(
-                ts, &mut g, cfg, depth,
-                0, &mut stop_counter, (alpha, beta),
-                &mut stats,
-                &mut stack,
-                ABNodeType::Root,
-            )
-        };
-
-        // #[cfg(feature = "new_search")]
-        // let res = self._ab_search_negamax2(
-        //     ts,
-        //     &g,
-        //     (depth,0),
-        //     (alpha,beta),
-        //     stats,
-        //     stack,
-        //     ABNodeType::Root,
-        //     false);
-
-        #[cfg(feature = "new_search")]
-        let res = self.ab_search::<{ABNodeType::Root}>(
-            ts,
-            &g,
-            (depth,0),
-            (alpha,beta),
-            stats,
-            stack,
-            false);
-
-        res
-    }
-}
-
-/// TT Probe
-impl ExHelper {
-
-    pub fn check_tt2(
-        &self,
-        ts:             &Tables,
-        zb:             Zobrist,
-        depth:          Depth,
-        mut stats:      &mut SearchStats,
-    // ) -> Option<SearchInfo> {
-    ) -> (Option<Score>, Option<SearchInfo>) {
-        #[cfg(feature = "lockless_hashmap")]
-        {
-            let (meval,msi) = self.ptr_tt.probe(zb);
-            match (meval,msi) {
-                (Some(TTEval::Check),None) => {
-                    stats.tt_eval += 1;
-                },
-                (None,None) => {
-                    stats!(stats.tt_misses += 1);
-                },
-                (Some(eval),None) => {
-                    stats.tt_eval += 1;
-                },
-                (_,Some(si)) => {
-                    if si.depth_searched >= depth {
-                        stats!(stats.tt_hits += 1);
-                    } else {
-                        stats!(stats.tt_halfmiss += 1);
-                    }
-                },
-            }
-            let meval = meval.map(|x| x.to_option()).flatten();
-            (meval,msi)
-        }
-        #[cfg(not(feature = "lockless_hashmap"))]
-        if let Some(si) = self.tt_r.get_one(&zb) {
-            if si.depth_searched >= depth {
-                stats!(stats.tt_hits += 1);
-            } else {
-                stats!(stats.tt_halfmiss += 1);
-            }
-            Some(*si)
-        } else {
-            stats!(stats.tt_misses += 1);
-            None
-        }
-    }
-
-}
-
-/// Repetition checking
-impl ExHelper {
-
-    // #[cfg(feature = "nope")]
-    pub fn has_cycle(
-        ts:                      &'static Tables,
-        g:                       &Game,
-        mut stats:               &mut SearchStats,
-        stack:                   &ABStack,
-    ) -> bool {
-
-        let end = g.halfmove as usize;
-        if end < 3 { return false; }
-
-        let last = stack.move_history.len() as i32 - 1;
-        if last <= 0 { return false; }
-
-        assert_eq!(g.zobrist, stack.move_history[last as usize].0);
-
-        let end = end as i32 - last;
-
-        let mut zb0 = g.zobrist;
-
-        let mut i = last - 2;
-        while i >= end {
-
-            let (zb_prev,mv) = if let Some(zb) = stack.move_history.get(i as usize) {
-                zb
-            } else { break; };
-
-            if *zb_prev == zb0 {
-                return true;
-            }
-
-            i -= 2;
-        }
-
-        false
-    }
-
-    #[cfg(feature = "nope")]
-    pub fn has_cycle(
-        // &self,
-        ts:                      &'static Tables,
-        g:                       &Game,
-        ply:                     Depth,
-        mut stats:               &mut SearchStats,
-        stack:                   &ABStack,
-    ) -> bool {
-        use crate::cuckoo::*;
-
-        // let end = Depth::min(g.halfmove)
-        let end = g.halfmove as usize;
-        if end < 3 { return false };
-
-        let key0 = g.zobrist;
-
-        // let cuckoo = &CUCKOO_TABLE;
-
-        if stack.move_history.len() == 0 { return false; }
-        let last = stack.move_history.len() - 1;
-
-        assert_eq!(g.zobrist, stack.move_history[last].0);
-
-        // let mut key_other = !(g.zobrist ^ stack.move_history[last - 1].0);
-
-        let mut i = 3;
-        while i <= end {
-
-            // let zb      = stack.move_history[i];
-            // let zb_prev = stack.move_history[i+2];
-
-            let zb_prev = if let Some(zb_prev) = stack.move_history.get(i+2) { zb_prev } else {
-                break;
-            };
-
-            let mv_key = key0 ^ zb_prev.0;
-
-            if let Some(k) = CUCKOO_TABLE.get_key(mv_key) {
-
-                /// XXX: from,to OR to,from ??
-                if let Some((from,to)) = CUCKOO_TABLE.cuckoo_move[k] {
-                    if ((ts.between(from, to) ^ BitBoard::single(to)) & g.all_occupied()).is_empty() {
-
-                        if ply > i as Depth {
-                            return true;
-                        }
-
-                        // For nodes before or at the root, check that the move is a
-                        // repetition rather than a move to the current position.
-                        // In the cuckoo table, both moves Rc1c5 and Rc5c1 are stored in
-                        // the same location, so we have to select which square to check.
-
-                        let ss = if g.all_occupied().is_one_at(from) {
-                            from
-                        } else if g.all_occupied().is_one_at(to) {
-                            to
-                        } else {
-                            panic!("wat");
-                        };
-
-                        if Some(g.state.side_to_move) != g.get_side_at(ss) {
-                            continue;
-                        }
-
-                        // TODO: need extra repetition at root
-
-                    }
-                }
-            }
-
-            i += 2;
-        }
-
-        false
-    }
-
-}
-
-/// Get eval
-impl ExHelper {
+/// Get eval for ThreadPool
+impl ExThread {
 
     pub fn get_static_eval(
         &self,
@@ -478,8 +139,55 @@ impl ExHelper {
 
 }
 
-/// Negamax AB Refactor
-impl ExHelper {
+/// Negamax AB for ThreadPool
+impl ExThread {
+
+    pub fn check_tt2(
+        &self,
+        ts:             &Tables,
+        zb:             Zobrist,
+        depth:          Depth,
+        mut stats:      &mut SearchStats,
+    // ) -> Option<SearchInfo> {
+    ) -> (Option<Score>, Option<SearchInfo>) {
+        #[cfg(feature = "lockless_hashmap")]
+        {
+            let (meval,msi) = self.ptr_tt.probe(zb);
+            match (meval,msi) {
+                (Some(TTEval::Check),None) => {
+                    stats.tt_eval += 1;
+                },
+                (None,None) => {
+                    stats!(stats.tt_misses += 1);
+                },
+                (Some(eval),None) => {
+                    stats.tt_eval += 1;
+                },
+                (_,Some(si)) => {
+                    if si.depth_searched >= depth {
+                        stats!(stats.tt_hits += 1);
+                    } else {
+                        stats!(stats.tt_halfmiss += 1);
+                    }
+                },
+            }
+            let meval = meval.map(|x| x.to_option()).flatten();
+            (meval,msi)
+        }
+        #[cfg(not(feature = "lockless_hashmap"))]
+        if let Some(si) = self.tt_r.get_one(&zb) {
+            if si.depth_searched >= depth {
+                stats!(stats.tt_hits += 1);
+            } else {
+                stats!(stats.tt_halfmiss += 1);
+            }
+            Some(*si)
+        } else {
+            stats!(stats.tt_misses += 1);
+            None
+        }
+    }
+
     #[allow(unused_doc_comments,unused_labels)]
     /// alpha: the MIN score that the maximizing player is assured of
     /// beta:  the MAX score that the minimizing player is assured of
@@ -523,7 +231,7 @@ impl ExHelper {
         /// Step 1. Repetition
         if !is_root_node
             && alpha < DRAW_VALUE
-            && Self::has_cycle(ts, g, stats, stack)
+            && ExHelper::has_cycle(ts, g, stats, stack)
         {
             // eprintln!("ply, mv, cycle = {:?}, {:?}, {}", ply, g.last_move.unwrap(), cycle);
             let score = draw_value(stats);
@@ -1230,4 +938,18 @@ impl ExHelper {
     }
 }
 
+/// tt_insert_deepest
+impl ExThread {
 
+    #[cfg(feature = "lockless_hashmap")]
+    pub fn tt_insert_deepest(&self, zb: Zobrist, meval: Option<Score>, si: SearchInfo) {
+        // trace!("inserting zb = {:?}, si = {:?}", zb, si);
+        self.ptr_tt.insert(zb, meval, Some(si));
+    }
+
+    #[cfg(feature = "lockless_hashmap")]
+    pub fn tt_insert_deepest_eval(&self, zb: Zobrist, meval: Option<Score>) {
+        // trace!("inserting zb = {:?}, si = {:?}", zb, si);
+        self.ptr_tt.insert(zb, meval, None);
+    }
+}

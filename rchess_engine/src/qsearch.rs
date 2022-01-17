@@ -2,6 +2,7 @@
 use crate::alphabeta::ABNodeType;
 use crate::movegen::MoveGen;
 use crate::sf_compat::NNUE4;
+use crate::threading::ExThread;
 use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
@@ -563,6 +564,125 @@ impl ExHelper {
 
         /// check repetition
         if Self::has_cycle(ts, g, stats, stack) || ply >= MAX_SEARCH_PLY {
+            return draw_value(stats);
+        }
+
+        let stand_pat = if let Some(nnue) = &self.nnue {
+            let mut nn = nnue.borrow_mut();
+            nn.evaluate(&g, true)
+        } else {
+            let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
+            if g.state.side_to_move == Black { -stand_pat } else { stand_pat }
+        };
+
+        /// early halt
+        if self.stop.load(Relaxed) { return stand_pat; }
+
+        let mut allow_stand_pat = true;
+
+        if stand_pat >= beta {
+            return beta; // fail hard
+            // return stand_pat; // fail soft
+        }
+
+        if stand_pat > alpha {
+            alpha = stand_pat;
+        }
+
+        let mut movegen = MoveGen::new_qsearch(ts, g, None, stack, qply);
+        // let mut movegen = MoveGen::new_qsearch(ts, g, None, stack, qply, stack.move_history.clone());
+
+        if qply > 0 { movegen.skip_quiets = true; }
+
+        // /// TODO: Delta Pruning
+        // if !g.in_check()
+        //     && g.state.phase < self.params.qs_delta_max_phase
+        //     && self.params.qs_delta_margin.max(self.best_case_move(ts, g)) < alpha - stand_pat
+        // {
+        //     stats.qs_delta_prunes += 1;
+        //     // return alpha; // XXX: doesn't work at all?
+        //     return stand_pat;
+        //     // return beta; // XXX: much faster, but shouldn't work
+        // }
+
+        // let mut moves_searched = 0;
+        // let mut best_move: Option<Move> = None;
+
+        while let Some(mv) = movegen.next(stack) {
+
+            let see = movegen.static_exchange_ge(mv, 1);
+            if !see {
+                continue;
+            }
+
+            if let Some(g2) = self.make_move(ts, g, ply, mv, None, stack) {
+
+                // moves_searched += 1;
+
+                // let see = movegen.static_exchange_ge(mv, 1);
+                // if !see {
+                //     self.pop_nnue(stack);
+                //     continue;
+                // }
+
+                let score = -self.qsearch::<{NODE_TYPE}>(
+                    &ts, &g2, (ply + 1,qply + 1,depth - 1), (-beta, -alpha), stack, stats);
+
+                if score >= beta && allow_stand_pat {
+                    self.pop_nnue(stack);
+                    return beta; // fail hard
+                    // return stand_pat; // fail soft
+                }
+
+                if score > alpha {
+                    // best_move = Some(mv);
+                    alpha = score;
+                }
+
+                self.pop_nnue(stack);
+            }
+        }
+
+        // if g.in_check() && best_move.is_none() {
+        //     let score = CHECKMATE_VALUE - ply as Score;
+        //     // return -score; // XXX: backward ?
+        //     return score;
+        // }
+
+        alpha
+    }
+
+}
+
+/// Quiescence for ThreadPool
+impl ExThread {
+
+    #[cfg(not(feature = "tt_in_qsearch"))]
+    pub fn qsearch<const NODE_TYPE: ABNodeType>(
+        &self,
+        ts:                       &'static Tables,
+        g:                        &Game,
+        (ply,qply,depth):         (Depth,Depth,Depth),
+        (mut alpha, mut beta):    (Score,Score),
+        mut stack:                &mut ABStack,
+        mut stats:                &mut SearchStats,
+    ) -> Score {
+        use ABNodeType::*;
+
+        let is_pv_node = NODE_TYPE != NonPV;
+
+        stack.push_if_empty(g, ply);
+        stack.with(ply, |st| st.material = g.state.material);
+
+        assert!(alpha < beta);
+        assert!(is_pv_node || (alpha == beta - 1));
+        assert!(depth <= 0);
+
+        stats.qt_nodes += 1;
+        stats.q_max_depth = stats.q_max_depth.max(ply as u8);
+
+        /// check repetition
+        if ExHelper::has_cycle(ts, g, stats, stack) || ply >= MAX_SEARCH_PLY {
             return draw_value(stats);
         }
 

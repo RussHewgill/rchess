@@ -118,14 +118,14 @@ impl Explorer2 {
         // wait:             Arc<Receiver<()>>,
         tx:               ExSender,
     // ) -> (Thread, Arc<(Mutex<bool>,Condvar)>) {
-    ) -> (Thread, Sender<ThreadUpdate>) {
+    ) -> (ExThread, Sender<ThreadUpdate>) {
     // ) -> Thread {
 
         // let wait = Arc::new((Mutex::new(false), Condvar::new()));
 
         let (update_tx,update_rx) = crossbeam_channel::unbounded();
 
-        let thread = Thread {
+        let thread = ExThread {
             id,
 
             side:            self.side,
@@ -481,7 +481,7 @@ impl ThreadPool {
 }
 
 /// idle, update, clear
-impl Thread {
+impl ExThread {
 
     pub fn idle(&mut self) {
 
@@ -519,7 +519,7 @@ impl Thread {
 }
 
 /// ab_search_single
-impl Thread {
+impl ExThread {
 
     pub fn ab_search_single(
         &self,
@@ -529,13 +529,30 @@ impl Thread {
         ab:             Option<(Score,Score)>,
         depth:          Depth,
     ) -> ABResults {
-        unimplemented!()
+
+        let (alpha,beta) = if let Some(ab) = ab { ab } else {
+            (Score::MIN + 200, Score::MAX - 200)
+        };
+
+        let mut g = self.game.clone();
+
+        #[cfg(feature = "new_search")]
+        let res = self.ab_search::<{ABNodeType::Root}>(
+            ts,
+            &g,
+            (depth,0),
+            (alpha,beta),
+            stats,
+            stack,
+            false);
+
+        res
     }
 
 }
 
 /// Lazy SMP Iterative Deepening loop
-impl Thread {
+impl ExThread {
 
     const SKIP_LEN: usize = 20;
     const SKIP_SIZE: [Depth; Self::SKIP_LEN] =
