@@ -79,7 +79,7 @@ pub struct Explorer2 {
 pub struct ThreadPool {
     // pub handles:      Vec<JoinHandle<()>>,
 
-    // pub waits:        Vec<Arc<(Mutex<bool>,Condvar)>>,
+    pub waits:        Vec<Arc<(Mutex<bool>,Condvar)>>,
     pub thread_chans: Vec<Sender<ThreadUpdate>>,
 
 }
@@ -107,7 +107,7 @@ pub struct ExThread {
     pub cfg:             ExConfig,
     pub params:          SParams,
 
-    // pub wait:            Arc<(Mutex<bool>,Condvar)>,
+    pub wait:            Arc<(Mutex<bool>,Condvar)>,
     pub update_chan:     Receiver<ThreadUpdate>,
 
     pub stop:            Arc<CachePadded<AtomicBool>>,

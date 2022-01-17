@@ -316,6 +316,7 @@ impl Explorer {
 pub enum ExMessage {
     Message(Depth,ABResults,Vec<Move>,SearchStats),
     End(usize),
+    Stop,
 }
 
 pub type ExReceiver = Receiver<ExMessage>;
@@ -831,6 +832,10 @@ impl Explorer {
         loop {
             // match rx.try_recv() {
             match rx.recv() {
+                Ok(ExMessage::Stop) => {
+                    trace!("lazy_smp_listener Stop");
+                    break;
+                },
                 Ok(ExMessage::End(id)) => {
                     thread_counter.fetch_sub(1, SeqCst);
                     trace!("decrementing thread counter id = {}, new val = {}",

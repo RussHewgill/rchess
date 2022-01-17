@@ -274,12 +274,19 @@ fn main_threading() {
 
     let t = 2.0;
 
-    let max_depth = 8;
+    let max_depth = 10;
 
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer2::new(White, g, max_depth, timesettings);
-    // ex.cfg.num_threads = Some(1);
-    ex.cfg.num_threads = Some(6);
+    ex.cfg.return_moves         = true;
+    ex.cfg.clear_table          = false;
+    ex.cfg.late_move_reductions = true;
+
+    ex.cfg.num_threads = Some(1);
+    // ex.cfg.num_threads = Some(6);
+
+    ex.time_settings.is_per_move = true;
+    ex.time_settings.move_time = (t * 1000.0) as u64;
 
     ex.spawn_threads();
 
@@ -2915,8 +2922,8 @@ fn main9() {
     // let n = MAX_SEARCH_PLY;
     // let n = 35;
     // let n = 22;
-    // let n = 8;
-    let n = 12;
+    let n = 10;
+    // let n = 12;
     // let n = 2;
 
     let timesettings = TimeSettings::new_f64(0.0,t);

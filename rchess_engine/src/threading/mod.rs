@@ -19,6 +19,7 @@ pub use self::thread_types::*;
 use crate::syzygy::SyzygyTB;
 use crate::sf_compat::NNUE4;
 
+use std::path::Path;
 use std::time::{Instant,Duration};
 use std::sync::Arc;
 use std::sync::atomic::{Ordering,Ordering::SeqCst,Ordering::Relaxed,AtomicI8,AtomicI16,AtomicBool};
@@ -104,7 +105,7 @@ impl ThreadPool {
         Self {
             // handles: vec![],
             // wait,
-            // waits: vec![],
+            waits: vec![],
             thread_chans: vec![],
         }
     }
@@ -118,10 +119,10 @@ impl Explorer2 {
         // wait:             Arc<Receiver<()>>,
         tx:               ExSender,
     // ) -> (Thread, Arc<(Mutex<bool>,Condvar)>) {
-    ) -> (ExThread, Sender<ThreadUpdate>) {
+    ) -> (ExThread, Sender<ThreadUpdate>, Arc<(Mutex<bool>,Condvar)>) {
     // ) -> Thread {
 
-        // let wait = Arc::new((Mutex::new(false), Condvar::new()));
+        let wait = Arc::new((Mutex::new(false), Condvar::new()));
 
         let (update_tx,update_rx) = crossbeam_channel::unbounded();
 
@@ -138,7 +139,7 @@ impl Explorer2 {
             cfg:             self.cfg.clone(),
             params:          self.search_params.clone(),
 
-            // wait:            wait.clone(),
+            wait:            wait.clone(),
             update_chan:     update_rx,
 
             #[cfg(feature = "syzygy")]
@@ -168,7 +169,7 @@ impl Explorer2 {
         };
 
         // (thread, wait)
-        (thread, update_tx)
+        (thread, update_tx, wait)
         // thread
     }
 }
@@ -197,7 +198,7 @@ impl Explorer2 {
 
             let best_depth = self.best_depth.clone();
 
-            let (mut thread,update_tx) = self.build_thread(thread_id, self.tx.clone());
+            let (mut thread,update_tx, wait) = self.build_thread(thread_id, self.tx.clone());
             // let thread = self.build_thread(thread_id, threadpool.wait.1.clone());
 
             let handle = std::thread::spawn(move || {
@@ -205,13 +206,16 @@ impl Explorer2 {
             });
 
             // threadpool.handles.push(handle);
-            // threadpool.waits.push(wait);
+            threadpool.waits.push(wait);
             threadpool.thread_chans.push(update_tx);
 
             thread_id += 1;
         }
 
         self.threadpool = Some(threadpool);
+
+        /// give time for condvars to wait
+        std::thread::sleep(Duration::from_millis(10));
     }
 
 }
@@ -231,8 +235,66 @@ impl Explorer2 {
 
 }
 
+/// wakeup, sleep
+impl ThreadPool {
+    fn wakeup_threads(
+        &self,
+        side:           Color,
+        game:           Game,
+        cfg:            &ExConfig,
+        move_history:   &Vec<(Zobrist,Move)>,
+    ) {
+
+        for wait in self.waits.iter() {
+            let mut lock = wait.0.lock();
+            let cv = &wait.1;
+            *lock = true;
+            // *lock = !*lock;
+            cv.notify_all();
+        }
+
+        let update = ThreadUpdate::new(
+            side,
+            game,
+            cfg.clone(),
+            move_history.clone(),
+        );
+
+        for tx in self.thread_chans.iter() {
+            tx.send(update.clone()).unwrap();
+        }
+
+    }
+
+    pub fn sleep_threads(&self) {
+        for wait in self.waits.iter() {
+            let mut lock = wait.0.lock();
+            *lock = false;
+        }
+    }
+
+}
+
+/// Entry points
+impl Explorer2 {
+
+    pub fn explore(&self, ts: &'static Tables) -> (Option<(Move,ABResult)>,SearchStats) {
+        let (ress,moves,stats) = self.lazy_smp();
+        if let Some(best) = ress.get_result() {
+            debug!("explore: best move = {:?}", best.mv);
+            // (Some((best.mv,best)),stats)
+            (Some((best.mv.unwrap(),best)),stats)
+        } else {
+            debug!("explore: no best move? = {:?}", ress);
+            // panic!();
+            (None,stats)
+        }
+    }
+}
+
 /// misc
 impl Explorer2 {
+
     pub fn reset_stop(&self) {
         self.stop.store(false, SeqCst);
         {
@@ -241,7 +303,7 @@ impl Explorer2 {
         }
     }
 
-    pub fn clear_table(&self) {
+    pub fn clear_tt(&self) {
         if self.cfg.clear_table {
             debug!("clearing tt");
             #[cfg(feature = "lockless_hashmap")]
@@ -261,6 +323,46 @@ impl Explorer2 {
         }
     }
 
+    pub fn load_nnue<P: AsRef<Path>>(&mut self, path: P) -> std::io::Result<()> {
+        #[cfg(feature = "nnue")]
+        {
+            let mut nn = NNUE4::read_nnue(path)?;
+            self.nnue = Some(nn);
+        }
+        Ok(())
+    }
+
+    pub fn update_game(&mut self, g: Game) {
+        #[cfg(feature = "nnue")]
+        if let Some(ref mut nnue) = self.nnue {
+            // nnue.ft.accum.needs_refresh = [true; 2];
+            nnue.ft.accum.stack_copies.clear();
+            nnue.ft.accum.stack_delta.clear();
+            nnue.ft.reset_accum(&g);
+        }
+        self.side = g.state.side_to_move;
+        self.game = g;
+    }
+
+    pub fn update_game_movelist<'a>(
+        &mut self,
+        ts:          &Tables,
+        fen:         &str,
+        mut moves:   impl Iterator<Item = &'a str>
+    ) {
+        let mut g = Game::from_fen(&ts, &fen).unwrap();
+        for m in moves {
+            let from = &m[0..2];
+            let to = &m[2..4];
+            let other = &m[4..];
+            let mm = g.convert_move(from, to, other).unwrap();
+            g = g.make_move_unchecked(&ts, mm).unwrap();
+            self.move_history.push((g.zobrist,mm));
+        }
+
+        self.update_game(g);
+    }
+
 }
 
 /// Lazy SMP Dispatcher
@@ -268,7 +370,7 @@ impl Explorer2 {
 
     pub fn lazy_smp(&self) -> (ABResults,Vec<Move>,SearchStats) {
 
-        self.clear_table();
+        self.clear_tt();
         self.reset_stop();
 
         let out: Arc<RwLock<(Depth,ABResults,Vec<Move>, SearchStats)>> =
@@ -289,6 +391,24 @@ impl Explorer2 {
                timer.limit_soft as f64 / 1000.0,
                timer.limit_hard as f64 / 1000.0);
 
+        {
+            let rx         = self.rx.clone();
+            let best_depth = self.best_depth.clone();
+            let best_mate  = self.best_mate.clone();
+            let stop       = self.stop.clone();
+            let out        = out.clone();
+
+            std::thread::spawn(move || {
+                Self::lazy_smp_listener(
+                    rx,
+                    best_depth,
+                    best_mate,
+                    stop,
+                    t0,
+                    out);
+            });
+        }
+
         self.wakeup_threads();
 
         'outer: loop {
@@ -303,7 +423,7 @@ impl Explorer2 {
             let d = self.best_depth.load(Relaxed);
             /// Max depth reached, halt
             if d >= self.cfg.max_depth {
-                debug!("max depth reached, breaking");
+                debug!("max depth ({}) reached, breaking", d);
                 self.stop.store(true, SeqCst);
                 break 'outer;
             }
@@ -321,6 +441,7 @@ impl Explorer2 {
                 break 'outer;
             }
 
+            std::thread::sleep(Duration::from_millis(1));
         }
         trace!("exiting lazy_smp loop");
 
@@ -353,19 +474,26 @@ impl Explorer2 {
 impl Explorer2 {
 
     fn lazy_smp_listener(
-        &self,
         rx:               ExReceiver,
-        thread_counter:   Arc<CachePadded<AtomicI8>>,
+        // thread_counter:   Arc<CachePadded<AtomicI8>>,
+        best_depth:       Arc<CachePadded<AtomicI16>>,
+        best_mate:        Arc<RwLock<Option<Depth>>>,
+        stop:             Arc<CachePadded<AtomicBool>>,
         t0:               Instant,
         out:              Arc<RwLock<(Depth,ABResults,Vec<Move>,SearchStats)>>,
     ) {
         loop {
             // match rx.try_recv() {
             match rx.recv() {
+                Ok(ExMessage::Stop) => {
+                    trace!("lazy_smp_listener Stop");
+                    break;
+                },
                 Ok(ExMessage::End(id)) => {
-                    thread_counter.fetch_sub(1, SeqCst);
-                    trace!("decrementing thread counter id = {}, new val = {}",
-                            id, thread_counter.load(SeqCst));
+                    // thread_counter.fetch_sub(1, SeqCst);
+                    trace!("lazy_smp_listener End, id = {:?}", id);
+                    // trace!("decrementing thread counter id = {}, new val = {}",
+                    //         id, thread_counter.load(SeqCst));
                     // break;
                 },
                 Ok(ExMessage::Message(depth,res,moves,stats)) => {
@@ -373,8 +501,7 @@ impl Explorer2 {
                         ABResults::ABList(bestres, _)
                             | ABResults::ABSingle(bestres)
                             | ABResults::ABSyzygy(bestres) => {
-                            if depth > self.best_depth.load(SeqCst) {
-                                self.best_depth.store(depth,SeqCst);
+                            if depth > best_depth.load(SeqCst) {
 
                                 // let t1 = t0.elapsed();
                                 let t1 = Instant::now().checked_duration_since(t0).unwrap();
@@ -384,7 +511,7 @@ impl Explorer2 {
                                        bestres.score, bestres.mv);
 
                                 if bestres.score.abs() == CHECKMATE_VALUE {
-                                    self.stop.store(true, SeqCst);
+                                    stop.store(true, SeqCst);
                                     debug!("in mate, nothing to do");
                                     break;
                                 }
@@ -394,18 +521,20 @@ impl Explorer2 {
                                     debug!("Found mate in {}: d({}), {:?}",
                                            // bestres.score, bestres.moves.front());
                                            k, depth, bestres.mv);
-                                    let mut best = self.best_mate.write();
+                                    let mut best = best_mate.write();
                                     *best = Some(k as Depth);
 
-                                    self.stop.store(true, SeqCst);
+                                    stop.store(true, SeqCst);
 
                                     let mut w = out.write();
                                     *w = (depth, res, moves, w.3 + stats);
                                     // *w = (depth, scores, None);
+                                    best_depth.store(depth,SeqCst);
                                     break;
                                 } else {
                                     let mut w = out.write();
                                     *w = (depth, res, moves, w.3 + stats);
+                                    best_depth.store(depth,SeqCst);
                                 }
                             } else {
                                 // XXX: add stats?
@@ -445,47 +574,18 @@ impl Explorer2 {
 
 }
 
-/// wakeup, sleep
-impl ThreadPool {
-    fn wakeup_threads(
-        &self,
-        side:           Color,
-        game:           Game,
-        cfg:            &ExConfig,
-        move_history:   &Vec<(Zobrist,Move)>,
-    ) {
-
-        // for wait in self.waits.iter() {
-        //     let mut lock = wait.0.lock();
-        //     let cv = &wait.1;
-        //     *lock = true;
-        //     cv.notify_all();
-        // }
-
-        let update = ThreadUpdate::new(
-            side,
-            game,
-            cfg.clone(),
-            move_history.clone(),
-        );
-
-        for tx in self.thread_chans.iter() {
-            tx.send(update.clone()).unwrap();
-        }
-
-    }
-
-    pub fn sleep_threads(&self) {
-        unimplemented!()
-    }
-}
-
 /// idle, update, clear
 impl ExThread {
 
     pub fn idle(&mut self) {
 
         loop {
+
+            {
+                let mut started = self.wait.0.lock();
+                eprintln!("started = {:?}", started);
+                self.wait.1.wait(&mut started);
+            }
 
             match self.update_chan.recv() {
                 Ok(update) => {
@@ -495,7 +595,8 @@ impl ExThread {
                     self.lazy_smp_single(&_TABLES);
                 },
                 Err(e)     => {
-                    debug!("thread idle err: {:?}", e);
+                    /// Should only be closed on program exit
+                    // debug!("thread idle err: {:?}", e);
                     break;
                 },
             }
@@ -507,7 +608,12 @@ impl ExThread {
 
     pub fn update(&mut self, update: ThreadUpdate) {
 
-        println!("thread id {} update", self.id);
+        // trace!("thread id {} update", self.id);
+        self.side         = update.side;
+        self.game         = update.game;
+        self.cfg          = update.cfg;
+        self.move_history = update.move_history;
+
 
     }
 
@@ -561,7 +667,7 @@ impl ExThread {
         [0, 1, 0, 1, 2, 3, 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5, 6, 7];
 
     fn lazy_smp_single(
-        &self,
+        &mut self,
         ts:               &'static Tables,
     ) {
 
@@ -633,7 +739,9 @@ impl ExThread {
             *w = stack;
         }
 
-        trace!("exiting lazy_smp_single, id = {}", self.id);
+        trace!("idling lazy_smp_single, id = {}", self.id);
+
+        self.idle();
     }
 
 }

@@ -12,6 +12,7 @@ use rchess_engine_lib::types::*;
 use rchess_engine_lib::tables::*;
 use rchess_engine_lib::explore::*;
 use rchess_engine_lib::evaluate::*;
+use rchess_engine_lib::threading::*;
 
 use std::str::FromStr;
 use std::io;
@@ -102,11 +103,14 @@ fn main() -> std::io::Result<()> {
     );
     // let mut timeset = false;
 
-    // let explorer = Arc::new(Mutex::new(
-    //     Explorer::new(White,Game::empty(), depth, should_stop.clone(), timesettings)));
-    let mut explorer = Explorer::new(White,Game::default(), MAX_SEARCH_PLY, timesettings);
     // let ts = Tables::new();
     let ts = &_TABLES;
+
+    // let mut explorer = Explorer::new(White,Game::default(), MAX_SEARCH_PLY, timesettings);
+
+
+    let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
+    let mut explorer = Explorer2::new(White,g, MAX_SEARCH_PLY, timesettings);
 
     // explorer.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap_or_default();
 
@@ -230,7 +234,8 @@ fn main() -> std::io::Result<()> {
                         let (mv,score) = m.unwrap();
 
                         let mm = format_move(mv);
-                        print_info(&explorer, (mv,score), stats);
+                        // print_info(&explorer, (mv,score), stats);
+                        print_info((mv,score), stats);
                         println!("bestmove {}", mm);
                     },
                     s            => unimplemented!("bad command: {:?}", s),
@@ -243,7 +248,8 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-fn parse_go(mut ex: &mut Explorer,params: Vec<&str>) {
+// fn parse_go(mut ex: &mut Explorer,params: Vec<&str>) {
+fn parse_go(mut ex: &mut Explorer2,params: Vec<&str>) {
 
     let mut ps = params.clone().into_iter();
 
@@ -335,7 +341,8 @@ fn parse_go(mut ex: &mut Explorer,params: Vec<&str>) {
 //     time 5
 //     pv d5d4 e2e8
 
-fn print_info(ex: &Explorer, (mv,res): (Move, ABResult), stats: SearchStats) {
+// fn print_info(ex: &Explorer, (mv,res): (Move, ABResult), stats: SearchStats) {
+fn print_info((mv,res): (Move, ABResult), stats: SearchStats) {
 
     print!("info");
 
