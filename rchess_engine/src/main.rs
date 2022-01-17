@@ -281,12 +281,12 @@ fn main_threading() {
     // ex.cfg.num_threads = Some(1);
     ex.cfg.num_threads = Some(6);
 
-    let mut threadpool = ex.spawn_threads();
+    ex.spawn_threads();
 
-    threadpool.wakeup_threads();
+    ex.lazy_smp();
 
-    println!("wat 1");
-    std::thread::sleep(Duration::from_millis(2000));
+    // println!("wat 1");
+    // std::thread::sleep(Duration::from_millis(2000));
 
 }
 
