@@ -42,7 +42,9 @@ pub struct Explorer2 {
     pub best_mate:     Arc<RwLock<Option<Depth>>>,
     pub best_depth:    Arc<CachePadded<AtomicI16>>,
 
-    pub threadpool:    Option<ThreadPool>,
+    // pub threadpool:    Option<ThreadPool>,
+    pub thread_wait:   Arc<(Mutex<bool>,Condvar)>,
+    pub thread_chans:  Vec<Sender<ThreadUpdateType>>,
 
     pub tx:            ExSender,
     pub rx:            ExReceiver,
@@ -75,20 +77,20 @@ pub struct Explorer2 {
 
 }
 
-#[derive(Debug,Clone)]
-pub struct ThreadPool {
-    // pub handles:      Vec<JoinHandle<()>>,
-
-    pub waits:        Vec<Arc<(Mutex<bool>,Condvar)>>,
-    pub thread_chans: Vec<Sender<ThreadUpdateType>>,
-
-}
+// #[derive(Debug,Clone)]
+// pub struct ThreadPool {
+//     // pub handles:      Vec<JoinHandle<()>>,
+//     // pub waits:        Vec<Arc<(Mutex<bool>,Condvar)>>,
+//     pub wait:         Arc<(Mutex<bool>,Condvar)>,
+//     pub thread_chans: Vec<Sender<ThreadUpdateType>>,
+// }
 
 #[derive(Debug,Clone,new)]
 pub enum ThreadUpdateType {
     Exit,
     Search,
     Clear,
+    Sleep,
     Update(ThreadUpdate),
 }
 

@@ -31,6 +31,23 @@ use crossbeam::channel::{Sender,Receiver,RecvError,TryRecvError};
 use crossbeam::thread::ScopedJoinHandle;
 use crossbeam::utils::CachePadded;
 
+/// Entry points
+impl Explorer2 {
+
+    pub fn explore(&self) -> (Option<(Move,ABResult)>,SearchStats) {
+        let (ress,moves,stats) = self.lazy_smp();
+        if let Some(best) = ress.get_result() {
+            debug!("explore: best move = {:?}", best.mv);
+            // (Some((best.mv,best)),stats)
+            (Some((best.mv.unwrap(),best)),stats)
+        } else {
+            debug!("explore: no best move? = {:?}", ress);
+            // panic!();
+            (None,stats)
+        }
+    }
+}
+
 /// Lazy SMP Dispatcher
 impl Explorer2 {
 

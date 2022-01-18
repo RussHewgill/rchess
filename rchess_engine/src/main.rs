@@ -262,9 +262,28 @@ fn main_threading() {
 
     use rchess_engine_lib::threading::*;
 
-    let pool = TestPool::new(6);
-
-    return;
+    // let mut pool = TestPool::new();
+    // pool.spawn_threads(3);
+    // std::thread::sleep(Duration::from_millis(50));
+    // pool.sleep();
+    // std::thread::sleep(Duration::from_millis(50));
+    // pool.wakeup();
+    // std::thread::sleep(Duration::from_millis(50));
+    // for tx in pool.chans.iter() {
+    //     tx.send(ThreadUpdateType::Clear).unwrap();
+    //     tx.send(ThreadUpdateType::Search).unwrap();
+    // }
+    // std::thread::sleep(Duration::from_millis(50));
+    // pool.sleep();
+    // std::thread::sleep(Duration::from_millis(50));
+    // pool.wakeup();
+    // std::thread::sleep(Duration::from_millis(50));
+    // for tx in pool.chans.iter() {
+    //     tx.send(ThreadUpdateType::Clear).unwrap();
+    //     tx.send(ThreadUpdateType::Search).unwrap();
+    // }
+    // std::thread::sleep(Duration::from_millis(50));
+    // return;
 
     let ts = &_TABLES;
 
@@ -274,8 +293,8 @@ fn main_threading() {
     let fen = "rnbqkb1r/1p3ppp/p2p1n2/4p3/3NP3/2N2P2/PPP3PP/R1BQKB1R w KQkq e6";
 
     let mut g = Game::from_fen(&ts, fen).unwrap();
-    eprintln!("g.to_fen() = {:?}", g.to_fen());
-    eprintln!("g = {:?}", g);
+    // eprintln!("g.to_fen() = {:?}", g.to_fen());
+    // eprintln!("g = {:?}", g);
 
     let t = 2.0;
 
@@ -287,8 +306,8 @@ fn main_threading() {
     ex.cfg.clear_table          = false;
     ex.cfg.late_move_reductions = true;
 
-    ex.cfg.num_threads = Some(1);
-    // ex.cfg.num_threads = Some(6);
+    // ex.cfg.num_threads = Some(1);
+    ex.cfg.num_threads = Some(6);
 
     ex.time_settings.is_per_move = true;
     ex.time_settings.move_time = (t * 1000.0) as u64;
@@ -298,8 +317,6 @@ fn main_threading() {
     // ex.time_settings.increment = 100;
 
     ex.spawn_threads();
-
-    // ex.lazy_smp();
 
     let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6";
     let params = params.split(" ");

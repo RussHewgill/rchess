@@ -39,53 +39,139 @@ use crossbeam::utils::CachePadded;
 pub struct TestThread {
     pub id:              usize,
     pub wait:            Arc<(Mutex<bool>,Condvar)>,
+    pub update_chan:     Receiver<ThreadUpdateType>,
 }
 
 #[derive(Debug,Clone)]
 pub struct TestPool {
     // pub waits:        Vec<Arc<(Mutex<bool>,Condvar)>>,
     pub wait:            Arc<(Mutex<bool>,Condvar)>,
+    pub chans:           Vec<Sender<ThreadUpdateType>>,
 }
 
 impl TestThread {
-    pub fn idle(&self) {
+    pub fn idle(&mut self) {
+
+        let mut printed = false;
 
         loop {
 
-            // {
-            //     let mut started = self.wait.0.lock();
-            //     // eprintln!("started = {:?}", started);
-            //     if !*started {
-            //         self.wait.1.wait(&mut started);
-            //     }
-            // }
+            {
+                let mut started = self.wait.0.lock();
+                if !*started {
+                    println!("thread {} sleeping", self.id);
+                    self.wait.1.wait(&mut started);
+                    printed = false;
+                }
+            }
+
+            if !printed {
+                eprintln!("self.id = {:?}", self.id);
+                printed = true;
+            }
+
+            match self.update_chan.recv() {
+                Ok(ThreadUpdateType::Exit) => {
+                    println!("thread exit");
+                    break;
+                },
+                Ok(ThreadUpdateType::Sleep) => {
+
+                    'empty: loop {
+                        match self.update_chan.try_recv() {
+                            Ok(_)  => {},
+                            Err(_) => break 'empty,
+                        }
+                    }
+
+                    // println!("thread sleep");
+                    // unimplemented!()
+                },
+                Ok(ThreadUpdateType::Clear) => {
+                    println!("thread {} clear", self.id);
+                    // self.clear();
+                },
+                Ok(ThreadUpdateType::Search) => {
+                    println!("thread {} search", self.id);
+                    // self.lazy_smp_single(&_TABLES);
+                },
+                Ok(ThreadUpdateType::Update(update)) => {
+                    println!("thread update");
+                    // self.update(update);
+                },
+                Err(e)     => {
+                    /// Should only be closed on program exit
+                    // debug!("thread idle err: {:?}", e);
+                    break;
+                },
+            }
 
         }
+
     }
+
+    // pub fn start_searching(&self) {
+    //     let mut started = self.wait.0.lock();
+    //     *started = true;
+    //     self.wait.1.notify_one();
+    // }
+
+    // pub fn wait(&self) {
+    //     let mut started = self.wait.0.lock();
+    //     self.wait.1.wait(&mut started);
+    // }
+
 }
 
 impl TestPool {
-    pub fn new(num_threads: usize) -> Self {
+
+    pub fn wakeup(&self) {
+        let mut started = self.wait.0.lock();
+        *started = true;
+        self.wait.1.notify_all();
+    }
+
+    pub fn sleep(&self) {
+        let mut started = self.wait.0.lock();
+        *started = false;
+
+        for tx in self.chans.iter() {
+            tx.send(ThreadUpdateType::Sleep).unwrap();
+        }
+    }
+
+    pub fn new() -> Self {
 
         // let mut waits = vec![];
+        let mut chans = vec![];
 
         let wait = Arc::new((Mutex::new(false), Condvar::new()));
 
+        Self {
+            wait,
+            chans,
+        }
+    }
+
+    pub fn spawn_threads(&mut self, num_threads: usize) {
+
         for id in 0..num_threads {
 
-            let thread = TestThread::new(id, wait.clone());
+            let (tx,rx) = crossbeam::channel::unbounded();
+
+            let mut thread = TestThread::new(id, self.wait.clone(), rx);
 
             let handle = std::thread::spawn(move || {
                 thread.idle();
             });
 
-            // waits.push(wait);
+            self.chans.push(tx);
         }
 
-        Self {
-            wait,
-        }
+        /// give time for condvars to wait
+        std::thread::sleep(Duration::from_millis(1));
     }
+
 }
 
 /// new
@@ -108,6 +194,8 @@ impl Explorer2 {
 
         let (tx,rx): (ExSender,ExReceiver) = crossbeam::channel::unbounded();
 
+        let thread_wait = Arc::new((Mutex::new(false), Condvar::new()));
+
         Self {
             side,
             game,
@@ -121,7 +209,9 @@ impl Explorer2 {
             best_mate:      Arc::new(RwLock::new(None)),
             best_depth:     Arc::new(CachePadded::new(AtomicI16::new(0))),
 
-            threadpool:     None,
+            // threadpool:     None,
+            thread_wait,
+            thread_chans:   vec![],
 
             tx,
             rx,
@@ -150,33 +240,28 @@ impl Explorer2 {
     }
 }
 
-/// new
-impl ThreadPool {
-    pub fn new() -> Self {
-        // let wait = crossbeam_channel::unbounded();
-        // let wait = (wait.0,Arc::new(wait.1));
-        // let wait = Arc::new((Mutex::new(false), Condvar::new()));
-        Self {
-            // handles: vec![],
-            // wait,
-            waits: vec![],
-            thread_chans: vec![],
-        }
-    }
-}
+// /// new
+// impl ThreadPool {
+//     pub fn new() -> Self {
+//         // let wait = crossbeam_channel::unbounded();
+//         // let wait = (wait.0,Arc::new(wait.1));
+//         // let wait = Arc::new((Mutex::new(false), Condvar::new()));
+//         Self {
+//             // handles: vec![],
+//             // wait,
+//             waits: vec![],
+//             thread_chans: vec![],
+//         }
+//     }
+// }
 
 /// build_thread
 impl Explorer2 {
     fn build_thread(
         &self,
         id:               usize,
-        // wait:             Arc<Receiver<()>>,
         tx:               ExSender,
-    // ) -> (Thread, Arc<(Mutex<bool>,Condvar)>) {
-    ) -> (ExThread, Sender<ThreadUpdateType>, Arc<(Mutex<bool>,Condvar)>) {
-    // ) -> Thread {
-
-        let wait = Arc::new((Mutex::new(false), Condvar::new()));
+    ) -> (ExThread, Sender<ThreadUpdateType>) {
 
         let (update_tx,update_rx) = crossbeam_channel::unbounded();
 
@@ -193,7 +278,7 @@ impl Explorer2 {
             cfg:             self.cfg.clone(),
             params:          self.search_params.clone(),
 
-            wait:            wait.clone(),
+            wait:            self.thread_wait.clone(),
             update_chan:     update_rx,
 
             #[cfg(feature = "syzygy")]
@@ -215,16 +300,12 @@ impl Explorer2 {
 
             move_history:    self.move_history.clone(),
 
-            // stats:           RefCell::new(SearchStats::default()),
-            // stack:           RefCell::new(ABStack::new()),
             stats:           SearchStats::default(),
             stack:           ABStack::new(),
 
         };
 
-        // (thread, wait)
-        (thread, update_tx, wait)
-        // thread
+        (thread, update_tx)
     }
 }
 
@@ -232,8 +313,6 @@ impl Explorer2 {
 impl Explorer2 {
 
     pub fn spawn_threads(&mut self) {
-
-        let mut threadpool = ThreadPool::new();
 
         #[cfg(feature = "one_thread")]
         let max_threads = 1;
@@ -245,31 +324,29 @@ impl Explorer2 {
             max_threads as i8
         };
 
-        let mut thread_id = 0;
-
-        for _ in 0..max_threads {
+        for thread_id in 0..max_threads as usize {
             trace!("Spawning thread, id = {}", thread_id);
 
             let best_depth = self.best_depth.clone();
 
-            let (mut thread,update_tx, wait) = self.build_thread(thread_id, self.tx.clone());
+            let (mut thread,update_tx) = self.build_thread(thread_id, self.tx.clone());
             // let thread = self.build_thread(thread_id, threadpool.wait.1.clone());
 
             let handle = std::thread::spawn(move || {
                 thread.idle();
             });
 
-            // threadpool.handles.push(handle);
-            threadpool.waits.push(wait);
-            threadpool.thread_chans.push(update_tx);
+            // // threadpool.handles.push(handle);
+            // threadpool.waits.push(wait);
+            // threadpool.thread_chans.push(update_tx);
+            self.thread_chans.push(update_tx);
 
-            thread_id += 1;
         }
 
-        self.threadpool = Some(threadpool);
+        // self.threadpool = Some(threadpool);
 
         /// give time for condvars to wait
-        std::thread::sleep(Duration::from_millis(10));
+        std::thread::sleep(Duration::from_millis(1));
     }
 
 }
@@ -278,7 +355,7 @@ impl Explorer2 {
 impl Explorer2 {
 
     fn send_threads(&self, msg: &ThreadUpdateType) {
-        for tx in self.threadpool.as_ref().unwrap().thread_chans.iter() {
+        for tx in self.thread_chans.iter() {
             tx.send(msg.clone()).unwrap();
         }
     }
@@ -287,19 +364,20 @@ impl Explorer2 {
         self.send_threads(&ThreadUpdateType::Search);
     }
 
-    pub fn wakeup_threads(
-        &self,
-    ) {
+    pub fn wakeup_threads(&self) {
 
-        let threadpool: &ThreadPool = self.threadpool.as_ref().unwrap();
+        // for wait in threadpool.waits.iter() {
+        //     let mut lock = wait.0.lock();
+        //     let cv = &wait.1;
+        //     *lock = true;
+        //     // *lock = !*lock;
+        //     cv.notify_all();
+        // }
 
-        for wait in threadpool.waits.iter() {
-            let mut lock = wait.0.lock();
-            let cv = &wait.1;
-            *lock = true;
-            // *lock = !*lock;
-            cv.notify_all();
-        }
+        let mut started = self.thread_wait.0.lock();
+        *started = true;
+        self.thread_wait.1.notify_all();
+        // drop(started);
 
         let update = ThreadUpdate::new(
             self.side,
@@ -313,30 +391,20 @@ impl Explorer2 {
     }
 
     pub fn sleep_threads(&self) {
-        let threadpool: &ThreadPool = self.threadpool.as_ref().unwrap();
-        for wait in threadpool.waits.iter() {
-            let mut lock = wait.0.lock();
-            *lock = false;
-        }
+
+        // let threadpool: &ThreadPool = self.threadpool.as_ref().unwrap();
+        // for wait in threadpool.waits.iter() {
+        //     let mut lock = wait.0.lock();
+        //     *lock = false;
+        // }
+
+        let mut started = self.thread_wait.0.lock();
+        *started = false;
+
+        self.send_threads(&ThreadUpdateType::Sleep);
+
     }
 
-}
-
-/// Entry points
-impl Explorer2 {
-
-    pub fn explore(&self) -> (Option<(Move,ABResult)>,SearchStats) {
-        let (ress,moves,stats) = self.lazy_smp();
-        if let Some(best) = ress.get_result() {
-            debug!("explore: best move = {:?}", best.mv);
-            // (Some((best.mv,best)),stats)
-            (Some((best.mv.unwrap(),best)),stats)
-        } else {
-            debug!("explore: no best move? = {:?}", ress);
-            // panic!();
-            (None,stats)
-        }
-    }
 }
 
 /// misc
@@ -421,24 +489,39 @@ impl ExThread {
 
             {
                 let mut started = self.wait.0.lock();
-                // eprintln!("started = {:?}", started);
                 if !*started {
+                    println!("thread {} sleeping", self.id);
                     self.wait.1.wait(&mut started);
+                    println!("thread {} waking", self.id);
                 }
             }
 
+            debug!("thread (id: {:>2}) waking up", self.id);
+
             match self.update_chan.recv() {
                 Ok(ThreadUpdateType::Exit) => {
+                    debug!("thread exit");
                     break;
                 },
+                Ok(ThreadUpdateType::Sleep) => {
+                    debug!("thread {} sleep", self.id);
+                    'empty: loop {
+                        match self.update_chan.try_recv() {
+                            Ok(_)  => {},
+                            Err(_) => break 'empty,
+                        }
+                    }
+                },
                 Ok(ThreadUpdateType::Clear) => {
+                    debug!("thread {} clear", self.id);
                     self.clear();
                 },
                 Ok(ThreadUpdateType::Search) => {
+                    debug!("thread {} search", self.id);
                     self.lazy_smp_single(&_TABLES);
                 },
                 Ok(ThreadUpdateType::Update(update)) => {
-                    trace!("thread (id: {:>2}) waking up", self.id);
+                    debug!("thread {} update", self.id);
                     self.update(update);
                 },
                 Err(e)     => {
@@ -450,7 +533,7 @@ impl ExThread {
 
         }
 
-        trace!("exiting thread loop, id = {}", self.id);
+        // trace!("exiting thread loop, id = {}", self.id);
     }
 
     pub fn update(&mut self, update: ThreadUpdate) {
