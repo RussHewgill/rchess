@@ -56,8 +56,11 @@ impl Explorer2 {
         self.clear_tt();
         self.reset_stop();
 
+        *self.best_mate.write() = None;
+        self.best_depth.store(0, SeqCst);
+
         let out: Arc<RwLock<(Depth,ABResults,Vec<Move>, SearchStats)>> =
-            Arc::new(RwLock::new((0, ABResults::ABNone, vec![], SearchStats::default())));
+            Arc::new(RwLock::new((0, ABResults::ABUninit, vec![], SearchStats::default())));
 
         let t0 = Instant::now();
 
@@ -105,7 +108,7 @@ impl Explorer2 {
                 break 'outer;
             }
 
-            let d = self.best_depth.load(Relaxed);
+            let d = self.best_depth.load(SeqCst);
             /// Max depth reached, halt
             if d >= self.cfg.max_depth {
                 debug!("max depth ({}) reached, breaking", d);
@@ -144,10 +147,14 @@ impl Explorer2 {
                 out
             } else {
                 debug!("best move wasn't legal? {:?}\n{:?}\n{:?}", self.game, self.game.to_fen(), res);
-                ABResults::ABNone
+                // ABResults::ABNone
+                panic!();
             };
             (out,moves,stats)
         } else {
+
+            debug!("lazy_smp, no result? res = {:?}", out);
+
             (out,moves,stats)
         }
 
@@ -343,14 +350,17 @@ impl ExThread {
                     v.retain(|&mv| mv != Move::NullMove);
                     v
                 } else { vec![] };
-                match self.tx.try_send(ExMessage::Message(depth, res, moves, stats)) {
-                    Ok(_)  => {
-                        stats = SearchStats::default();
-                    },
-                    Err(_) => {
-                        trace!("tx send error 0: id: {}, depth {}", self.id, depth);
-                        break;
-                    },
+
+                if res.get_result().is_some() {
+                    match self.tx.try_send(ExMessage::Message(depth, res, moves, stats)) {
+                        Ok(_)  => {
+                            stats = SearchStats::default();
+                        },
+                        Err(_) => {
+                            trace!("tx send error 0: id: {}, depth {}", self.id, depth);
+                            break;
+                        },
+                    }
                 }
             }
 
@@ -362,12 +372,12 @@ impl ExThread {
         //     eprintln!("ply {} = {:?}", ply, ks);
         // }
 
-        match self.tx.try_send(ExMessage::End(self.id)) {
-            Ok(_)  => {},
-            Err(_) => {
-                trace!("tx send error 1: id: {}, depth {}", self.id, depth);
-            },
-        }
+        // match self.tx.try_send(ExMessage::End(self.id)) {
+        //     Ok(_)  => {},
+        //     Err(_) => {
+        //         trace!("tx send error 1: id: {}, depth {}", self.id, depth);
+        //     },
+        // }
 
         if self.id == 0 {
             let mut w = DEBUG_ABSTACK.lock();

@@ -594,7 +594,7 @@ impl Explorer {
         let (tx,rx): (ExSender,ExReceiver) = crossbeam::channel::unbounded();
 
         let out: Arc<RwLock<(Depth,ABResults,Vec<Move>, SearchStats)>> =
-            Arc::new(RwLock::new((0, ABResults::ABNone, vec![], SearchStats::default())));
+            Arc::new(RwLock::new((0, ABResults::ABUninit, vec![], SearchStats::default())));
 
         // let thread_counter = Arc::new(AtomicI8::new(0));
         // let best_depth     = Arc::new(AtomicI16::new(0));
@@ -808,7 +808,8 @@ impl Explorer {
                 out
             } else {
                 debug!("best move wasn't legal? {:?}\n{:?}\n{:?}", self.game, self.game.to_fen(), res);
-                ABResults::ABNone
+                // ABResults::ABNone
+                panic!();
             };
             (out,moves,stats)
         } else {

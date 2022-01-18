@@ -74,7 +74,9 @@ pub enum ABResults {
     ABSyzygy(ABResult),
     // ABMate()
     ABPrune(Score, Prune),
-    ABNone,
+    ABHalt,
+    // ABNone,
+    ABUninit,
 }
 
 impl std::ops::Neg for ABResults {
@@ -107,7 +109,9 @@ impl ABResults {
             Self::ABSyzygy(res)     => Some(*res),
             // Self::ABPrune(score, _) => None,
             Self::ABPrune(score, _) => Some(ABResult::new_null_score(*score)),
-            Self::ABNone            => None,
+            Self::ABHalt            => None,
+            // Self::ABNone            => None,
+            Self::ABUninit          => None,
         }
     }
 
@@ -553,7 +557,8 @@ impl ExHelper {
 
             /// Halted search
             if self.stop.load(std::sync::atomic::Ordering::Relaxed) {
-                return ABNone;
+                // return ABNone;
+                return ABHalt;
             }
 
             /// Mate found
@@ -561,7 +566,7 @@ impl ExHelper {
                 let r = self.best_mate.read();
                 if let Some(best) = *r {
                     trace!("halting search, mate found");
-                    return ABNone;
+                    return ABHalt;
                 }
             }
 
@@ -1155,7 +1160,9 @@ impl ExHelper {
                 // TODO: adjust stalemate value when winning/losing
                 return ABSingle(ABResult::new_single(mv, score));
             } else {
-                return ABNone;
+                debug!("draw, but no g.last_move?");
+                // return ABNone;
+                panic!();
             }
         }
 

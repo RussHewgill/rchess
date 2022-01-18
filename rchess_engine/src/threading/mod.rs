@@ -438,6 +438,10 @@ impl Explorer2 {
         }
     }
 
+    pub fn clear_threads(&self) {
+        self.send_threads(&ThreadUpdateType::Clear);
+    }
+
     pub fn load_nnue<P: AsRef<Path>>(&mut self, path: P) -> std::io::Result<()> {
         #[cfg(feature = "nnue")]
         {
@@ -490,21 +494,21 @@ impl ExThread {
             {
                 let mut started = self.wait.0.lock();
                 if !*started {
-                    println!("thread {} sleeping", self.id);
+                    // println!("thread {} sleeping", self.id);
                     self.wait.1.wait(&mut started);
-                    println!("thread {} waking", self.id);
+                    // println!("thread {} waking", self.id);
                 }
             }
 
-            debug!("thread (id: {:>2}) waking up", self.id);
+            // debug!("thread (id: {:>2}) waking up", self.id);
 
             match self.update_chan.recv() {
                 Ok(ThreadUpdateType::Exit) => {
-                    debug!("thread exit");
+                    // debug!("thread exit");
                     break;
                 },
                 Ok(ThreadUpdateType::Sleep) => {
-                    debug!("thread {} sleep", self.id);
+                    // debug!("thread {} sleep", self.id);
                     'empty: loop {
                         match self.update_chan.try_recv() {
                             Ok(_)  => {},
@@ -513,15 +517,15 @@ impl ExThread {
                     }
                 },
                 Ok(ThreadUpdateType::Clear) => {
-                    debug!("thread {} clear", self.id);
+                    // debug!("thread {} clear", self.id);
                     self.clear();
                 },
                 Ok(ThreadUpdateType::Search) => {
-                    debug!("thread {} search", self.id);
+                    // debug!("thread {} search", self.id);
                     self.lazy_smp_single(&_TABLES);
                 },
                 Ok(ThreadUpdateType::Update(update)) => {
-                    debug!("thread {} update", self.id);
+                    // debug!("thread {} update", self.id);
                     self.update(update);
                 },
                 Err(e)     => {

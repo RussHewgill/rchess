@@ -106,12 +106,15 @@ fn main() -> std::io::Result<()> {
     // let ts = Tables::new();
     let ts = &_TABLES;
 
-    // let mut explorer = Explorer::new(White,Game::default(), MAX_SEARCH_PLY, timesettings);
-
-
     let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
+
+    #[cfg(not(feature = "threadpool"))]
+    let mut explorer = Explorer::new(White,Game::default(), MAX_SEARCH_PLY, timesettings);
+
+    #[cfg(feature = "threadpool")]
     let mut explorer = Explorer2::new(White,g, MAX_SEARCH_PLY, timesettings);
 
+    #[cfg(feature = "threadpool")]
     explorer.spawn_threads();
 
     // explorer.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap_or_default();
@@ -149,6 +152,8 @@ fn main() -> std::io::Result<()> {
                         explorer.side = Black;
                         explorer.game = g;
                         explorer.clear_tt();
+                        #[cfg(feature = "threadpool")]
+                        explorer.clear_threads();
                     },
                     "setoption"   => {
                     },
@@ -230,9 +235,16 @@ fn main() -> std::io::Result<()> {
 
                         parse_go(&mut explorer, params.clone().collect());
 
+                        // explorer.time_settings.move_time   = 500;
+                        // explorer.time_settings.is_per_move = true;
+
                         // let m = explorer.lock().unwrap().explore(&ts, depth).unwrap();
                         // let (m,stats) = explorer.explore(&ts);
+                        #[cfg(feature = "threadpool")]
                         let (m,stats) = explorer.explore();
+                        #[cfg(not(feature = "threadpool"))]
+                        let (m,stats) = explorer.explore(ts);
+
                         debug!("m = {:?}", m);
                         let (mv,score) = m.unwrap();
 
@@ -252,7 +264,13 @@ fn main() -> std::io::Result<()> {
 }
 
 // fn parse_go(mut ex: &mut Explorer,params: Vec<&str>) {
-fn parse_go(mut ex: &mut Explorer2,params: Vec<&str>) {
+fn parse_go(
+    #[cfg(feature = "threadpool")]
+    mut ex: &mut Explorer2,
+    #[cfg(not(feature = "threadpool"))]
+    mut ex: &mut Explorer,
+    params: Vec<&str>
+) {
 
     let mut ps = params.clone().into_iter();
 

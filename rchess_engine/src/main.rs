@@ -289,8 +289,8 @@ fn main_threading() {
 
     init_logger();
 
-    // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
-    let fen = "rnbqkb1r/1p3ppp/p2p1n2/4p3/3NP3/2N2P2/PPP3PP/R1BQKB1R w KQkq e6";
+    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    // let fen = "rnbqkb1r/1p3ppp/p2p1n2/4p3/3NP3/2N2P2/PPP3PP/R1BQKB1R w KQkq e6";
 
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // eprintln!("g.to_fen() = {:?}", g.to_fen());
@@ -318,23 +318,46 @@ fn main_threading() {
 
     ex.spawn_threads();
 
-    let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6";
+    // let (mmove, stats) = ex.explore();
+    // eprintln!("mmove = {:?}", mmove);
+
+    // ex.time_settings.move_time = 100;
+    // let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6";
+    // let params = params.split(" ");
+    // let moves: Vec<&str> = params.collect();
+    // ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
+    // let g = ex.game;
+    // eprintln!("g = {:?}", g);
+    // let (mmove, stats) = ex.explore();
+    // eprintln!("mmove = {:?}", mmove);
+
+    // ex.time_settings.move_time = 100;
+    // let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 c1g5 b8d7";
+    // let params = params.split(" ");
+    // let moves: Vec<&str> = params.collect();
+    // ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
+    // let g = ex.game;
+    // eprintln!("g = {:?}", g);
+    // let (mmove, stats) = ex.explore();
+    // eprintln!("mmove = {:?}", mmove);
+
+    ex.time_settings.move_time = 50;
+    let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 c1g5 b8d7 g5f6 d7f6";
     let params = params.split(" ");
     let moves: Vec<&str> = params.collect();
     ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
     let g = ex.game;
     eprintln!("g = {:?}", g);
-
     let (mmove, stats) = ex.explore();
     eprintln!("mmove = {:?}", mmove);
 
-    let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 c1g5 e7e5";
+    ex.time_settings.move_time = 50;
+    let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 c1g5 b8d7 g5f6 d7f6 f2f4 e7e6";
     let params = params.split(" ");
     let moves: Vec<&str> = params.collect();
     ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
     let g = ex.game;
     eprintln!("g = {:?}", g);
-
     let (mmove, stats) = ex.explore();
     eprintln!("mmove = {:?}", mmove);
 
@@ -2978,8 +3001,8 @@ fn main9() {
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(12);
-    // ex.cfg.num_threads = Some(6);
-    ex.cfg.num_threads = Some(1);
+    ex.cfg.num_threads = Some(6);
+    // ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();

@@ -261,7 +261,8 @@ impl ExThread {
 
             /// Halted search
             if self.stop.load(std::sync::atomic::Ordering::Relaxed) {
-                return ABNone;
+                // return ABNone;
+                return ABHalt;
             }
 
             /// Mate found
@@ -269,7 +270,8 @@ impl ExThread {
                 let r = self.best_mate.read();
                 if let Some(best) = *r {
                     trace!("halting search, mate found");
-                    return ABNone;
+                    // return ABNone;
+                    return ABHalt;
                 }
             }
 
@@ -863,7 +865,9 @@ impl ExThread {
                 // TODO: adjust stalemate value when winning/losing
                 return ABSingle(ABResult::new_single(mv, score));
             } else {
-                return ABNone;
+                debug!("draw, but no g.last_move?");
+                // return ABNone;
+                panic!();
             }
         }
 
