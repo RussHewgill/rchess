@@ -77,23 +77,25 @@ impl Explorer2 {
                timer.limit_soft as f64 / 1000.0,
                timer.limit_hard as f64 / 1000.0);
 
-        {
-            let rx         = self.rx.clone();
-            let best_depth = self.best_depth.clone();
-            let best_mate  = self.best_mate.clone();
-            let stop       = self.stop.clone();
-            let out        = out.clone();
+        let handle_listener = {
+            let rx          = self.rx.clone();
+            let best_depth  = self.best_depth.clone();
+            let best_mate   = self.best_mate.clone();
+            let stop        = self.stop.clone();
+            let out         = out.clone();
+            let max_threads = self.max_threads;
 
             std::thread::spawn(move || {
                 Self::lazy_smp_listener(
+                    max_threads,
                     rx,
                     best_depth,
                     best_mate,
                     stop,
                     t0,
                     out);
-            });
-        }
+            })
+        };
 
         self.wakeup_threads();
 
@@ -133,6 +135,11 @@ impl Explorer2 {
         }
         trace!("exiting lazy_smp loop");
 
+        // self.tx.send(ExMessage::Stop).unwrap();
+
+        /// Wait for listener to save results
+        handle_listener.join().unwrap();
+
         let (d,mut out,moves,mut stats) = {
             let r = out.read();
             r.clone()
@@ -166,16 +173,16 @@ impl Explorer2 {
 impl Explorer2 {
 
     fn lazy_smp_listener(
+        max_threads:      usize,
         rx:               ExReceiver,
-        // thread_counter:   Arc<CachePadded<AtomicI8>>,
         best_depth:       Arc<CachePadded<AtomicI16>>,
         best_mate:        Arc<RwLock<Option<Depth>>>,
         stop:             Arc<CachePadded<AtomicBool>>,
         t0:               Instant,
         out:              Arc<RwLock<(Depth,ABResults,Vec<Move>,SearchStats)>>,
     ) {
+        let mut threads = max_threads as i32;
         loop {
-            // match rx.try_recv() {
             match rx.recv() {
                 Ok(ExMessage::Stop) => {
                     trace!("lazy_smp_listener Stop");
@@ -187,6 +194,11 @@ impl Explorer2 {
                     // trace!("decrementing thread counter id = {}, new val = {}",
                     //         id, thread_counter.load(SeqCst));
                     // break;
+
+                    threads -= 1;
+                    if threads <= 0 {
+                        break;
+                    }
                 },
                 Ok(ExMessage::Message(depth,res,moves,stats)) => {
                     match res.clone() {
@@ -225,6 +237,7 @@ impl Explorer2 {
                                     break;
                                 } else {
                                     let mut w = out.write();
+                                    // debug!("writing res: {:?}", res.get_result());
                                     *w = (depth, res, moves, w.3 + stats);
                                     best_depth.store(depth,SeqCst);
                                 }
@@ -372,12 +385,12 @@ impl ExThread {
         //     eprintln!("ply {} = {:?}", ply, ks);
         // }
 
-        // match self.tx.try_send(ExMessage::End(self.id)) {
-        //     Ok(_)  => {},
-        //     Err(_) => {
-        //         trace!("tx send error 1: id: {}, depth {}", self.id, depth);
-        //     },
-        // }
+        match self.tx.try_send(ExMessage::End(self.id)) {
+            Ok(_)  => {},
+            Err(_) => {
+                trace!("tx send error 1: id: {}, depth {}", self.id, depth);
+            },
+        }
 
         if self.id == 0 {
             let mut w = DEBUG_ABSTACK.lock();

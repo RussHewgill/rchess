@@ -209,6 +209,8 @@ impl Explorer2 {
             best_mate:      Arc::new(RwLock::new(None)),
             best_depth:     Arc::new(CachePadded::new(AtomicI16::new(0))),
 
+            max_threads:    1,
+
             // threadpool:     None,
             thread_wait,
             thread_chans:   vec![],
@@ -312,17 +314,24 @@ impl Explorer2 {
 /// spawn_threads
 impl Explorer2 {
 
-    pub fn spawn_threads(&mut self) {
-
+    fn get_max_threads(&self) -> usize {
         #[cfg(feature = "one_thread")]
         let max_threads = 1;
         #[cfg(not(feature = "one_thread"))]
         let max_threads = if let Some(x) = self.cfg.num_threads {
-            x as i8
+            x as usize
         } else {
             let max_threads = num_cpus::get_physical();
-            max_threads as i8
+            max_threads as usize
         };
+
+        max_threads
+    }
+
+    pub fn spawn_threads(&mut self) {
+
+        let max_threads = self.get_max_threads();
+        self.max_threads = max_threads;
 
         for thread_id in 0..max_threads as usize {
             trace!("Spawning thread, id = {}", thread_id);

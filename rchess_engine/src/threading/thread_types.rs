@@ -42,6 +42,8 @@ pub struct Explorer2 {
     pub best_mate:     Arc<RwLock<Option<Depth>>>,
     pub best_depth:    Arc<CachePadded<AtomicI16>>,
 
+    pub max_threads:   usize,
+
     // pub threadpool:    Option<ThreadPool>,
     pub thread_wait:   Arc<(Mutex<bool>,Condvar)>,
     pub thread_chans:  Vec<Sender<ThreadUpdateType>>,
