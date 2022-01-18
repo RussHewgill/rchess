@@ -262,6 +262,10 @@ fn main_threading() {
 
     use rchess_engine_lib::threading::*;
 
+    let pool = TestPool::new(6);
+
+    return;
+
     let ts = &_TABLES;
 
     init_logger();
@@ -283,15 +287,15 @@ fn main_threading() {
     ex.cfg.clear_table          = false;
     ex.cfg.late_move_reductions = true;
 
-    // ex.cfg.num_threads = Some(1);
-    ex.cfg.num_threads = Some(6);
+    ex.cfg.num_threads = Some(1);
+    // ex.cfg.num_threads = Some(6);
 
     ex.time_settings.is_per_move = true;
     ex.time_settings.move_time = (t * 1000.0) as u64;
 
-    ex.time_settings.is_per_move = false;
-    ex.time_settings.move_time = 339;
-    ex.time_settings.increment = 100;
+    // ex.time_settings.is_per_move = false;
+    // ex.time_settings.move_time = 339;
+    // ex.time_settings.increment = 100;
 
     ex.spawn_threads();
 

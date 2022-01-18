@@ -80,8 +80,16 @@ pub struct ThreadPool {
     // pub handles:      Vec<JoinHandle<()>>,
 
     pub waits:        Vec<Arc<(Mutex<bool>,Condvar)>>,
-    pub thread_chans: Vec<Sender<ThreadUpdate>>,
+    pub thread_chans: Vec<Sender<ThreadUpdateType>>,
 
+}
+
+#[derive(Debug,Clone,new)]
+pub enum ThreadUpdateType {
+    Exit,
+    Search,
+    Clear,
+    Update(ThreadUpdate),
 }
 
 #[derive(Debug,Clone,new)]
@@ -108,7 +116,7 @@ pub struct ExThread {
     pub params:          SParams,
 
     pub wait:            Arc<(Mutex<bool>,Condvar)>,
-    pub update_chan:     Receiver<ThreadUpdate>,
+    pub update_chan:     Receiver<ThreadUpdateType>,
 
     pub stop:            Arc<CachePadded<AtomicBool>>,
     pub best_mate:       Arc<RwLock<Option<Depth>>>,
