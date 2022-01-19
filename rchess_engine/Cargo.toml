@@ -26,6 +26,7 @@ default = [
     # "basic_time",
 
     "lockless_hashmap",
+    "unsafe_tt",
 
     # "tt_in_qsearch",
 
@@ -66,6 +67,7 @@ smallstack = []
 basic_time = []
 
 lockless_hashmap = []
+unsafe_tt = []
 
 tt_in_qsearch = []
 

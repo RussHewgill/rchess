@@ -173,9 +173,16 @@ impl TransTable {
         let mut used_si    = 0;
 
         for bucket in self.buf.iter() {
-            // let bucket: &[TTEntry; ENTRIES_PER_BUCKET] = unsafe { &*bucket.bucket.get() };
-            // for e in bucket.iter() {
-            for e in bucket.bucket.read().iter() {
+
+            #[cfg(feature = "unsafe_tt")]
+            let bucket: &[TTEntry; ENTRIES_PER_BUCKET] = unsafe { &*bucket.bucket.get() };
+            #[cfg(feature = "unsafe_tt")]
+            let buckets = bucket.iter();
+
+            #[cfg(not(feature = "unsafe_tt"))]
+            let buckets = bucket.bucket.read().iter();
+
+            for e in buckets {
                 if let Some(e) = e.entry {
                     used_total += 1;
 
@@ -305,7 +312,9 @@ impl TTEntry2 {
 // #[repr(align(32))] // XXX: this is faster than 64 for some reason ??
 pub struct Bucket {
 
-    // bucket: UnsafeCell<[TTEntry; ENTRIES_PER_BUCKET]>,
+    #[cfg(feature = "unsafe_tt")]
+    bucket: UnsafeCell<[TTEntry; ENTRIES_PER_BUCKET]>,
+    #[cfg(not(feature = "unsafe_tt"))]
     bucket: RwLock<[TTEntry; ENTRIES_PER_BUCKET]>,
 
     // bucket: [RwLock<TTEntry>; ENTRIES_PER_BUCKET],
@@ -317,16 +326,23 @@ pub struct Bucket {
 impl Bucket {
     pub fn new() -> Self {
         Self {
+            #[cfg(feature = "unsafe_tt")]
+            bucket: UnsafeCell::new(array_init::array_init(|_| TTEntry::default())),
+            #[cfg(not(feature = "unsafe_tt"))]
             bucket: RwLock::new(array_init::array_init(|_| TTEntry::default())),
-            // bucket: UnsafeCell::new(array_init::array_init(|_| TTEntry::default())),
         }
     }
 
     pub fn clear(&self) {
 
-        // let mut bucket: &mut [TTEntry; ENTRIES_PER_BUCKET] = unsafe { &mut *self.bucket.get() };
+        #[cfg(feature = "unsafe_tt")]
+        let mut bucket: &mut [TTEntry; ENTRIES_PER_BUCKET] = unsafe { &mut *self.bucket.get() };
+        #[cfg(feature = "unsafe_tt")]
+        for e in bucket.iter_mut() {
+            *e = TTEntry::default();
+        }
 
-        // for e in bucket.iter_mut() {
+        #[cfg(not(feature = "unsafe_tt"))]
         for e in self.bucket.write().iter_mut() {
             *e = TTEntry::default();
         }
@@ -359,10 +375,16 @@ impl Bucket {
 
         let mut idx_lowest_depth = None;
 
-        // let bucket: &[TTEntry; ENTRIES_PER_BUCKET] = unsafe { &*self.bucket.get() };
 
-        for (entry_idx,e) in self.bucket.read().iter().enumerate() {
-        // for (entry_idx,e) in bucket.iter().enumerate() {
+        #[cfg(feature = "unsafe_tt")]
+        let bucket: &[TTEntry; ENTRIES_PER_BUCKET] = unsafe { &*self.bucket.get() };
+        #[cfg(feature = "unsafe_tt")]
+        let buckets = bucket.iter().enumerate();
+
+        #[cfg(not(feature = "unsafe_tt"))]
+        let buckets = self.bucket.read().iter().enumerate();
+
+        for (entry_idx,e) in buckets {
             if let Some(ver2) = e.get_ver() {
                 match e.get_searchinfo() {
                     Some(e_si) => {
@@ -382,7 +404,9 @@ impl Bucket {
                 }
             }
         }
-        // drop(bucket);
+
+        #[cfg(feature = "unsafe_tt")]
+        drop(bucket);
 
         let idx = if let Some(idx) = idx_lowest_depth {
             used_entries.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -391,11 +415,15 @@ impl Bucket {
 
         let age = age.load(std::sync::atomic::Ordering::Relaxed);
 
-        let mut w = self.bucket.write();
-        let mut w = w.get_mut(idx).unwrap();
+        #[cfg(feature = "unsafe_tt")]
+        let mut bucket: &mut [TTEntry; ENTRIES_PER_BUCKET] = unsafe { &mut *self.bucket.get() };
+        #[cfg(feature = "unsafe_tt")]
+        let mut w = bucket.get_mut(idx).unwrap();
 
-        // let mut bucket: &mut [TTEntry; ENTRIES_PER_BUCKET] = unsafe { &mut *self.bucket.get() };
-        // let mut w = bucket.get_mut(idx).unwrap();
+        #[cfg(not(feature = "unsafe_tt"))]
+        let mut w = self.bucket.write();
+        #[cfg(not(feature = "unsafe_tt"))]
+        let mut w = w.get_mut(idx).unwrap();
 
         let new = TTEntry::new(age, TTEntry2::new(ver, meval, msi));
         *w = new;
@@ -448,9 +476,18 @@ impl Bucket {
 
     pub fn find(&self, ver: u32, age: &AtomicU8) -> (Option<TTEval>,Option<SearchInfo>) {
 
-        // let bucket: &[TTEntry; ENTRIES_PER_BUCKET] = unsafe { &*self.bucket.get() };
+        #[cfg(feature = "unsafe_tt")]
+        let bucket: &[TTEntry; ENTRIES_PER_BUCKET] = unsafe { &*self.bucket.get() };
+        #[cfg(feature = "unsafe_tt")]
+        for (entry_idx,e) in bucket.iter().enumerate() {
+            if let Some(ver2) = e.get_ver() {
+                if ver2 == ver {
+                    return (e.get_eval(),e.get_searchinfo());
+                }
+            }
+        }
 
-        // for (entry_idx,e) in bucket.iter().enumerate() {
+        #[cfg(not(feature = "unsafe_tt"))]
         for (entry_idx,e) in self.bucket.read().iter().enumerate() {
             if let Some(ver2) = e.get_ver() {
                 if ver2 == ver {
@@ -458,6 +495,7 @@ impl Bucket {
                 }
             }
         }
+
         (None,None)
     }
 

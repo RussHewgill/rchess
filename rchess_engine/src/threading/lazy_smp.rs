@@ -341,12 +341,13 @@ impl ExThread {
         ts:               &'static Tables,
     ) {
 
-        let mut stack = ABStack::new_with_moves(&self.move_history);
+        // let mut stack = ABStack::new_with_moves(&self.move_history);
 
-        /// TODO: save stack
-        debug!("TODO: save stack");
-        // let mut stack = self.stack.clone();
-        // stack.move_history = self.move_history.clone();
+        // /// TODO: save stack
+        // debug!("TODO: save stack");
+
+        let mut stack = self.stack.clone();
+        stack.move_history = self.move_history.clone();
 
         let mut stats = SearchStats::default();
 
@@ -404,7 +405,12 @@ impl ExThread {
             depth += skip_size;
         }
 
-        // self.stack = stack;
+        if self.id == 0 {
+            let mut w = DEBUG_ABSTACK.lock();
+            *w = stack.clone();
+        }
+
+        self.stack = stack;
 
         // for (ply,s) in stack.stacks.iter().enumerate() {
         //     let ks = s.killers;
@@ -416,11 +422,6 @@ impl ExThread {
             Err(_) => {
                 trace!("tx send error 1: id: {}, depth {}", self.id, depth);
             },
-        }
-
-        if self.id == 0 {
-            let mut w = DEBUG_ABSTACK.lock();
-            *w = stack;
         }
 
         trace!("idling lazy_smp_single, id = {}", self.id);
