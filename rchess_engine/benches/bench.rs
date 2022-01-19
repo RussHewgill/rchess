@@ -338,47 +338,54 @@ pub fn crit_bench_1(c: &mut Criterion) {
     //     let (m,stats) = ex.explore(&ts, None);
     // }));
 
+    let mut moves = vec![];
+    let st = ABStack::new();
+    for g in wacs.iter() {
+        let mut movegen = MoveGen::new(&ts, g, None, &st, 0, 0);
+        let mv0 = movegen.next(&st).unwrap();
+        let mv1 = movegen.next(&st).unwrap();
+        moves.push((g,mv0,mv1));
+    }
+
+    group.bench_function("move_piece", |b| b.iter(|| {
+        for (g,mv0,mv1) in moves.iter() {
+            let g0 = g.make_move_unchecked(&ts, *mv0).unwrap();
+            let g1 = g.make_move_unchecked(&ts, *mv1).unwrap();
+        }
+    }));
+
     use rchess_engine_lib::movegen::*;
 
     let st = ABStack::new();
 
-    let movegens = {
-        let mut ms = vec![];
+    // let movegens = {
+    //     let mut ms = vec![];
+    //     for g in wacs.iter() {
+    //         let st = ABStack::new();
+    //         let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
+    //         if g.in_check() { continue; }
+    //         movegen.generate(MoveGenType::Captures);
+    //         movegen.generate(MoveGenType::Quiets);
+    //         for mv in movegen.buf.drain(..) {
+    //             let mut see_map = &mut movegen.see_map;
+    //             let score = score_move_for_sort3(
+    //                 ts, g, see_map, &st, 0, mv, (None,None), None);
+    //             movegen.buf_scored.push((mv,score));
+    //         }
+    //         ms.push(movegen);
+    //     }
+    //     ms
+    // };
 
-        for g in wacs.iter() {
-            let st = ABStack::new();
-            let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
-
-            if g.in_check() { continue; }
-
-            movegen.generate(MoveGenType::Captures);
-            movegen.generate(MoveGenType::Quiets);
-
-            for mv in movegen.buf.drain(..) {
-                let mut see_map = &mut movegen.see_map;
-                let score = score_move_for_sort3(
-                    ts, g, see_map, &st, 0, mv, (None,None), None);
-                movegen.buf_scored.push((mv,score));
-            }
-
-            ms.push(movegen);
-        }
-
-        ms
-    };
-
-
-    group.bench_function("movegen sorting", |b| b.iter(|| {
-        for movegen in movegens.iter() {
-            let mut movegen = movegen.clone();
-
-            // selection_sort(&mut movegen.buf_scored);
-            // movegen.buf_scored.sort_unstable_by_key(|x| x.1);
-            movegen.buf_scored.sort_by_key(|x| x.1);
-
-            // movegen.sort(&st, MoveGenType::Captures);
-        }
-    }));
+    // group.bench_function("movegen sorting", |b| b.iter(|| {
+    //     for movegen in movegens.iter() {
+    //         let mut movegen = movegen.clone();
+    //         // selection_sort(&mut movegen.buf_scored);
+    //         // movegen.buf_scored.sort_unstable_by_key(|x| x.1);
+    //         movegen.buf_scored.sort_by_key(|x| x.1);
+    //         // movegen.sort(&st, MoveGenType::Captures);
+    //     }
+    // }));
 
     // group.bench_function("movegen all", |b| b.iter(|| {
     //     for g in wacs.iter() {

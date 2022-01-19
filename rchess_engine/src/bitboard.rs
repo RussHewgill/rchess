@@ -549,6 +549,13 @@ impl BitBoard {
         Self(x)
     }
 
+    #[cfg(feature = "nope")]
+    pub fn shift_dir(&self, d: D) -> Self {
+        // d.shift_coord(x);
+        unimplemented!()
+    }
+
+    // #[cfg(feature = "nope")]
     pub fn shift_dir(&self, d: D) -> Self {
 
         // let k = d.shift();
@@ -606,6 +613,12 @@ impl BitBoard {
         // unimplemented!()
     }
 
+    #[cfg(feature = "nope")]
+    pub fn shift_mult(&self, d: D, n: u64) -> Self {
+        unimplemented!()
+    }
+
+    // #[cfg(feature = "nope")]
     pub fn shift_mult(&self, d: D, n: u64) -> Self {
         let mut out = *self;
         for _ in 0..n {
@@ -614,10 +627,10 @@ impl BitBoard {
         out
     }
 
-    pub fn shift_vec(&self, ds: &[D]) -> Self {
-        ds.iter()
-            .fold(*self, |acc, d| acc.shift_dir(*d))
-    }
+    // pub fn shift_vec(&self, ds: &[D]) -> Self {
+    //     ds.iter()
+    //         .fold(*self, |acc, d| acc.shift_dir(*d))
+    // }
 
     // pub fn shift_left(&self, k: u32) -> Self {
     //     BitBoard(self.0.overflowing_shl(k).0 & (!BitBoard::mask_file(0)).0)

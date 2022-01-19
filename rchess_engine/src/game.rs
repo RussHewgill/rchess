@@ -821,6 +821,36 @@ impl Game {
 /// Insertion and Deletion of Pieces
 impl Game {
 
+    // #[cfg(feature = "nope")]
+    pub fn move_piece_mut_unchecked(
+        &mut self,
+        ts:       &Tables,
+        from:     Coord,
+        to:       Coord,
+        pc:       Piece,
+        side:     Color,
+        calc_zb:  bool
+    ) {
+
+        let fromto = BitBoard::empty() | SQUARE_BB[from] | SQUARE_BB[to];
+
+        let mut bc = self.get_color_mut(side);
+        *bc ^= fromto;
+
+        let mut bp = self.get_piece_mut(pc);
+        *bp ^= fromto;
+
+        if calc_zb {
+            self.zobrist = self.zobrist.update_piece(&ts, pc, side, from);
+            self.zobrist = self.zobrist.update_piece(&ts, pc, side, to);
+            if pc == Pawn {
+                self.pawn_zb = self.pawn_zb.update_piece(ts, pc, side, from);
+                self.pawn_zb = self.pawn_zb.update_piece(ts, pc, side, to);
+            }
+        }
+    }
+
+    #[cfg(feature = "nope")]
     pub fn move_piece_mut_unchecked<T: Into<Coord>>(
         &mut self, ts: &Tables, from: T, to: T, pc: Piece, side: Color, calc_zb: bool) {
         // &mut self, ts: &Tables, mv: Move, from: T, to: T, pc: Piece, side: Color, calc_zb: bool) {

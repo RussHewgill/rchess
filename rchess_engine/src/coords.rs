@@ -49,6 +49,7 @@ impl Sq {
     }
 }
 
+/// new, inner
 impl Coord {
 
     pub const fn new_int_const(sq: u8) -> Self {
@@ -200,6 +201,7 @@ impl Coord {
 
 }
 
+/// file, rank, masks, flip
 impl Coord {
 
     pub fn file(self) -> u8 {
@@ -245,6 +247,7 @@ impl Coord {
     }
 }
 
+/// distance
 impl Coord {
 
     pub fn center_distance(&self) -> u8 {

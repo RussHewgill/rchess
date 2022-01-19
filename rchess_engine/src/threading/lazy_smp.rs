@@ -56,7 +56,8 @@ impl Explorer2 {
         self.clear_tt();
         self.reset_stop();
 
-        *self.best_mate.write() = None;
+        // *self.best_mate.write() = None;
+        self.best_mate.store(-1, SeqCst);
         self.best_depth.store(0, SeqCst);
 
         let out: Arc<RwLock<(Depth,ABResults,Vec<Move>, SearchStats)>> =
@@ -123,7 +124,8 @@ impl Explorer2 {
             }
 
             /// Found mate, halt
-            if self.best_mate.read().is_some() {
+            // if self.best_mate.read().is_some() {
+            if self.best_mate.load(SeqCst) != -1 {
                 #[cfg(not(feature = "basic_time"))]
                 // let t1 = Instant::now().checked_duration_since(t0).unwrap();
                 debug!("breaking loop (Mate),  d: {}", d);
@@ -180,7 +182,8 @@ impl Explorer2 {
         max_threads:      usize,
         rx:               ExReceiver,
         best_depth:       Arc<CachePadded<AtomicI16>>,
-        best_mate:        Arc<RwLock<Option<Depth>>>,
+        // best_mate:        Arc<RwLock<Option<Depth>>>,
+        best_mate:        Arc<CachePadded<AtomicI16>>,
         stop:             Arc<CachePadded<AtomicBool>>,
         t0:               Instant,
         out:              Arc<RwLock<(Depth,ABResults,Vec<Move>,SearchStats)>>,
@@ -239,8 +242,11 @@ impl Explorer2 {
                                         debug!("Found mate in {}: d({}), {:?}",
                                             // bestres.score, bestres.moves.front());
                                             k, depth, bestres.mv);
-                                        let mut best = best_mate.write();
-                                        *best = Some(k as Depth);
+
+                                        // let mut best = best_mate.write();
+                                        // *best = Some(k as Depth);
+
+                                        best_mate.store(k as Depth, SeqCst);
 
                                         stop.store(true, SeqCst);
 
@@ -362,7 +368,8 @@ impl ExThread {
         // while !self.stop.load(SeqCst)
         while !self.stop.load(Relaxed)
             && depth <= self.cfg.max_depth
-            && self.best_mate.read().is_none()
+            // && self.best_mate.read().is_none()
+            && self.best_mate.load(Relaxed) == -1
         {
 
             // XXX: needed?

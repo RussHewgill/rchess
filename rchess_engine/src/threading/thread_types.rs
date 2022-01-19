@@ -39,7 +39,8 @@ pub struct Explorer2 {
     pub time_settings: TimeSettings,
 
     pub stop:          Arc<CachePadded<AtomicBool>>,
-    pub best_mate:     Arc<RwLock<Option<Depth>>>,
+    // pub best_mate:     Arc<RwLock<Option<Depth>>>,
+    pub best_mate:     Arc<CachePadded<AtomicI16>>,
     pub best_depth:    Arc<CachePadded<AtomicI16>>,
 
     pub max_threads:   usize,
@@ -123,7 +124,8 @@ pub struct ExThread {
     pub update_chan:     Receiver<ThreadUpdateType>,
 
     pub stop:            Arc<CachePadded<AtomicBool>>,
-    pub best_mate:       Arc<RwLock<Option<Depth>>>,
+    // pub best_mate:       Arc<RwLock<Option<Depth>>>,
+    pub best_mate:       Arc<CachePadded<AtomicI16>>,
     pub best_depth:      Arc<CachePadded<AtomicI16>>,
     pub tx:              ExSender,
 

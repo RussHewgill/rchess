@@ -206,7 +206,8 @@ impl Explorer2 {
             time_settings,
 
             stop,
-            best_mate:      Arc::new(RwLock::new(None)),
+            // best_mate:      Arc::new(RwLock::new(None)),
+            best_mate:      Arc::new(CachePadded::new(AtomicI16::new(-1))),
             best_depth:     Arc::new(CachePadded::new(AtomicI16::new(0))),
 
             max_threads:    1,
@@ -422,8 +423,9 @@ impl Explorer2 {
     pub fn reset_stop(&self) {
         self.stop.store(false, SeqCst);
         {
-            let mut w = self.best_mate.write();
-            *w = None;
+            // let mut w = self.best_mate.write();
+            // *w = None;
+            self.best_mate.store(-1, SeqCst)
         }
     }
 

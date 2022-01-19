@@ -26,7 +26,7 @@ default = [
     # "basic_time",
 
     "lockless_hashmap",
-    "unsafe_tt",
+    # "unsafe_tt",
 
     # "tt_in_qsearch",
 

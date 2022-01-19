@@ -176,13 +176,11 @@ impl TransTable {
 
             #[cfg(feature = "unsafe_tt")]
             let bucket: &[TTEntry; ENTRIES_PER_BUCKET] = unsafe { &*bucket.bucket.get() };
-            #[cfg(feature = "unsafe_tt")]
-            let buckets = bucket.iter();
 
             #[cfg(not(feature = "unsafe_tt"))]
-            let buckets = bucket.bucket.read().iter();
+            let bucket = bucket.bucket.read();
 
-            for e in buckets {
+            for e in bucket.iter() {
                 if let Some(e) = e.entry {
                     used_total += 1;
 
@@ -378,13 +376,11 @@ impl Bucket {
 
         #[cfg(feature = "unsafe_tt")]
         let bucket: &[TTEntry; ENTRIES_PER_BUCKET] = unsafe { &*self.bucket.get() };
-        #[cfg(feature = "unsafe_tt")]
-        let buckets = bucket.iter().enumerate();
 
         #[cfg(not(feature = "unsafe_tt"))]
-        let buckets = self.bucket.read().iter().enumerate();
+        let bucket = self.bucket.read();
 
-        for (entry_idx,e) in buckets {
+        for (entry_idx,e) in bucket.iter().enumerate() {
             if let Some(ver2) = e.get_ver() {
                 match e.get_searchinfo() {
                     Some(e_si) => {
@@ -404,8 +400,6 @@ impl Bucket {
                 }
             }
         }
-
-        #[cfg(feature = "unsafe_tt")]
         drop(bucket);
 
         let idx = if let Some(idx) = idx_lowest_depth {

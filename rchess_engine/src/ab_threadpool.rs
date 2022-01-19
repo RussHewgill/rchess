@@ -268,14 +268,20 @@ impl ExThread {
                 return ABHalt;
             }
 
+            // /// Mate found
+            // {
+            //     let r = self.best_mate.read();
+            //     if let Some(best) = *r {
+            //         trace!("halting search, mate found");
+            //         // return ABNone;
+            //         return ABHalt;
+            //     }
+            // }
+
             /// Mate found
-            {
-                let r = self.best_mate.read();
-                if let Some(best) = *r {
-                    trace!("halting search, mate found");
-                    // return ABNone;
-                    return ABHalt;
-                }
+            if self.best_mate.load(Relaxed) != -1 {
+                trace!("halting search, mate found");
+                return ABHalt;
             }
 
         }

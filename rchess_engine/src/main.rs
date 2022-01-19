@@ -275,7 +275,7 @@ fn main_threading() {
 
     let t = 3.0;
 
-    let max_depth = 10;
+    let max_depth = 11;
 
     let mut times = vec![];
 
@@ -289,8 +289,8 @@ fn main_threading() {
         ex.cfg.clear_table          = false;
         ex.cfg.late_move_reductions = true;
 
-        ex.cfg.num_threads = Some(1);
-        // ex.cfg.num_threads = Some(6);
+        // ex.cfg.num_threads = Some(1);
+        ex.cfg.num_threads = Some(6);
 
         ex.time_settings.is_per_move = true;
         ex.time_settings.move_time = (t * 1000.0) as u64;
