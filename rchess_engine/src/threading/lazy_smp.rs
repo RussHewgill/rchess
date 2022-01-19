@@ -77,6 +77,10 @@ impl Explorer2 {
                timer.limit_soft as f64 / 1000.0,
                timer.limit_hard as f64 / 1000.0);
 
+        debug!("searching with time limit (soft,hard) = ({:?},{:?})",
+               timer.limit_soft,
+               timer.limit_hard);
+
         let handle_listener = {
             let rx          = self.rx.clone();
             let best_depth  = self.best_depth.clone();
@@ -181,7 +185,13 @@ impl Explorer2 {
         t0:               Instant,
         out:              Arc<RwLock<(Depth,ABResults,Vec<Move>,SearchStats)>>,
     ) {
+        // trace!("lazy_smp_listener start");
         let mut threads = max_threads as i32;
+        let mut any_move_stored = false;
+
+        /// Empty old messages
+        while let Ok(_) = rx.try_recv() {}
+
         loop {
             match rx.recv() {
                 Ok(ExMessage::Stop) => {
@@ -190,23 +200,26 @@ impl Explorer2 {
                 },
                 Ok(ExMessage::End(id)) => {
                     // thread_counter.fetch_sub(1, SeqCst);
-                    trace!("lazy_smp_listener End, id = {:?}", id);
+                    // trace!("lazy_smp_listener End, id = {:?}", id);
                     // trace!("decrementing thread counter id = {}, new val = {}",
                     //         id, thread_counter.load(SeqCst));
                     // break;
 
                     threads -= 1;
                     if threads <= 0 {
+                        trace!("lazy_smp_listener breaking, all threads ended");
                         break;
                     }
                 },
                 Ok(ExMessage::Message(depth,res,moves,stats)) => {
+                    // debug!("listener recv: d: {}", depth);
                     match res.clone() {
                         ABResults::ABList(bestres, _)
                             | ABResults::ABSingle(bestres)
                             | ABResults::ABSyzygy(bestres) => {
                                 if depth > best_depth.load(SeqCst)
                                     || bestres.score > CHECKMATE_VALUE - 50
+                                    || !any_move_stored
                                 {
                                     // let t1 = t0.elapsed();
                                     let t1 = Instant::now().checked_duration_since(t0).unwrap();
@@ -241,6 +254,7 @@ impl Explorer2 {
                                         // debug!("writing res: {:?}", res.get_result());
                                         *w = (depth, res, moves, w.3 + stats);
                                         best_depth.store(depth,SeqCst);
+                                        any_move_stored = true;
                                     }
                             } else {
                                 // XXX: add stats?
@@ -270,12 +284,12 @@ impl Explorer2 {
                 //     // std::thread::sleep(Duration::from_millis(1));
                 // },
                 Err(_)    => {
-                    trace!("Breaking thread counter loop (Disconnect)");
+                    trace!("Breaking lazy_smp_listener loop (Disconnect)");
                     break;
                 },
             }
         }
-        trace!("exiting listener");
+        trace!("exiting lazy_smp_listener");
     }
 
 }
@@ -328,6 +342,12 @@ impl ExThread {
     ) {
 
         let mut stack = ABStack::new_with_moves(&self.move_history);
+
+        /// TODO: save stack
+        debug!("TODO: save stack");
+        // let mut stack = self.stack.clone();
+        // stack.move_history = self.move_history.clone();
+
         let mut stats = SearchStats::default();
 
         let skip_size = Self::SKIP_SIZE[self.id % Self::SKIP_LEN];
@@ -347,7 +367,7 @@ impl ExThread {
             // XXX: needed?
             stack.pvs.fill(Move::NullMove);
 
-            let res = self.ab_search_single(ts, &mut stats, &mut stack, None, depth);
+            let res: ABResults = self.ab_search_single(ts, &mut stats, &mut stack, None, depth);
 
             // /// If the best move hasn't changed for several iterations, use less time
             // if let Some(mv) = res.get_result().and_then(|res| res.mv) {
@@ -366,6 +386,7 @@ impl ExThread {
                 } else { vec![] };
 
                 if res.get_result().is_some() {
+                    // debug!("lazy_smp sending, res = {:?}", res.get_result().unwrap());
                     match self.tx.try_send(ExMessage::Message(depth, res, moves, stats)) {
                         Ok(_)  => {
                             stats = SearchStats::default();
@@ -376,10 +397,14 @@ impl ExThread {
                         },
                     }
                 }
+                // } else { debug!("lazy_smp, res is None"); }
             }
+            // } else { debug!("lazy_smp skipping send"); }
 
             depth += skip_size;
         }
+
+        // self.stack = stack;
 
         // for (ply,s) in stack.stacks.iter().enumerate() {
         //     let ks = s.killers;

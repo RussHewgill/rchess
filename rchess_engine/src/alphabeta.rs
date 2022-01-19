@@ -95,6 +95,19 @@ impl std::ops::Neg for ABResults {
 /// Get results
 impl ABResults {
 
+    pub fn print_type(&self) {
+        match self {
+            Self::ABSingle(res)     => eprint!("ABSingle"),
+            Self::ABList(res, _)    => eprint!("ABList"),
+            Self::ABSyzygy(res)     => eprint!("ABSyzygy"),
+            // Self::ABPrune(score, _) => None,
+            Self::ABPrune(score, _) => eprint!("ABPrune"),
+            Self::ABHalt            => eprint!("ABHAlt"),
+            // Self::ABNone            => None,
+            Self::ABUninit          => eprint!("ABUninit"),
+        }
+    }
+
     pub fn get_result_mv(&self, mv: Move) -> Option<ABResult> {
         let mut res = self.get_result()?;
         // res.mv = mv;
