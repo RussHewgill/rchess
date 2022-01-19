@@ -289,8 +289,8 @@ fn main_threading() {
 
     init_logger();
 
-    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
-    // let fen = "rnbqkb1r/1p3ppp/p2p1n2/4p3/3NP3/2N2P2/PPP3PP/R1BQKB1R w KQkq e6";
+    // let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    let fen = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - "; // Lasker-Reichhelm Position, Qt K a1b1
 
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // eprintln!("g.to_fen() = {:?}", g.to_fen());
@@ -298,7 +298,8 @@ fn main_threading() {
 
     let t = 2.0;
 
-    let max_depth = 10;
+    // let max_depth = 10;
+    let max_depth = 26;
 
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer2::new(White, g, max_depth, timesettings);
@@ -318,21 +319,14 @@ fn main_threading() {
 
     ex.spawn_threads();
 
+    // let t0 = std::time::Instant::now();
     // let (mmove, stats) = ex.explore();
+    // let t1 = t0.elapsed().as_secs_f64();
+    // eprintln!("finished in {:.3} seconds", t1);
     // eprintln!("mmove = {:?}", mmove);
 
-    // ex.time_settings.move_time = 100;
-    // let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6";
-    // let params = params.split(" ");
-    // let moves: Vec<&str> = params.collect();
-    // ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
-    // let g = ex.game;
-    // eprintln!("g = {:?}", g);
-    // let (mmove, stats) = ex.explore();
-    // eprintln!("mmove = {:?}", mmove);
-
-    // ex.time_settings.move_time = 100;
-    // let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 c1g5 b8d7";
+    // ex.time_settings.move_time = 50;
+    // let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f2f4 b8d7 a2a3 h7h6 g2g3 d7c5 f1g2 e7e5 d4e2 d8b6 b2b4 c5e6 f4f5 e6d4 e2d4 e5d4 c3e2 a6a5 e2d4 a5b4 a1b1 d6d5 e4d5 f8c5 c2c3 c5d4 c3d4 c8f5 b1b4 b6a6 d1b3 a8c8 c1f4 c8c2 g2f3 g7g5 f4e5 c2c1 e1d2 c1c2 d2e1 c2c1 e1f2 c1c2 f2g1 c2c1 f3d1 f5c2 b3c2 c1c2 d1c2 a6a3 e5f6 a3c1 g1f2 c1c2 f2e3 c2c3 e3e2 c3b4 f6h8 b4c4 e2e3 c4d5 h1e1 e8f8 h8e5 b7b5 e1c1 b5b4 c1c8 f8e7 c8c7 e7d8 c7c5 d5e6 e3d2 b4b3 d2c1 f7f6 e5c7 d8c8 c1b2 c8b7 d4d5 e6e3 c7d6 e3f3 c5b5 b7a6 b5b3 f3g2 b2c3 g2d5 b3a3 a6b7 a3b3 b7c8 b3b6 f6f5 c3b4 d5d2 b4c5 d2h2 b6b8 c8d7 b8b7 d7e8 b7b8 e8f7 b8b7 f7g8 b7b8 g8h7 b8b7 h7g6 c5c4 h2c2 c4b5 c2b3 b5c6 b3a4 c6b6 a4d4 b6c6 d4e4 c6b6 h6h5 b7e7 e4d5 d6e5 g6h6 e5g7 h6h7 g7a1 h7g8 e7e8 g8f7 e8e5 d5d8 b6b7 f7g8 b7a7 d8c7 a7a8 c7c1 e5a5 c1d2 a5a7 d2d5 a8b8 d5b3 b8c8 b3g3 a7g7 g8f8 g7c7 g5g4 a1g7 f8g8 g7f6 g3g2 c8b8 f5f4 c7g7 g8f8 g7h7 g2c6 h7h8 f8f7 f6h4 c6b5 b8c8 b5c4 c8b7 c4b5 b7c8 b5c5 c8b7 c5d5 b7a6 d5d3 a6b7 d3b3 b7a6 b3a3 a6b5 a3b3 b5a6 b3e6 a6b7 e6e4 b7b6 e4d4 b6a6 d4h8 a6a5 g4g3 a5a4 h8d4 a4b5";
     // let params = params.split(" ");
     // let moves: Vec<&str> = params.collect();
     // ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
@@ -342,7 +336,7 @@ fn main_threading() {
     // eprintln!("mmove = {:?}", mmove);
 
     ex.time_settings.move_time = 50;
-    let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 c1g5 b8d7 g5f6 d7f6";
+    let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f2f4 b8d7 a2a3 h7h6 g2g3 d7c5 f1g2 e7e5 d4e2 d8b6 b2b4 c5e6 f4f5 e6d4 e2d4 e5d4 c3e2 a6a5 e2d4 a5b4 a1b1 d6d5 e4d5 f8c5 c2c3 c5d4 c3d4 c8f5 b1b4 b6a6 d1b3 a8c8 c1f4 c8c2 g2f3 g7g5 f4e5 c2c1 e1d2 c1c2 d2e1 c2c1 e1f2 c1c2 f2g1 c2c1 f3d1 f5c2 b3c2 c1c2 d1c2 a6a3 e5f6 a3c1 g1f2 c1c2 f2e3 c2c3 e3e2 c3b4 f6h8 b4c4 e2e3 c4d5 h1e1 e8f8 h8e5 b7b5 e1c1 b5b4 c1c8 f8e7 c8c7 e7d8 c7c5 d5e6 e3d2 b4b3 d2c1 f7f6 e5c7 d8c8 c1b2 c8b7 d4d5 e6e3 c7d6 e3f3 c5b5 b7a6 b5b3 f3g2 b2c3 g2d5 b3a3 a6b7 a3b3 b7c8 b3b6 f6f5 c3b4 d5d2 b4c5 d2h2 b6b8 c8d7 b8b7 d7e8 b7b8 e8f7 b8b7 f7g8 b7b8 g8h7 b8b7 h7g6 c5c4 h2c2 c4b5 c2b3 b5c6 b3a4 c6b6 a4d4 b6c6 d4e4 c6b6 h6h5 b7e7 e4d5 d6e5 g6h6 e5g7 h6h7 g7a1 h7g8 e7e8 g8f7 e8e5 d5d8 b6b7 f7g8 b7a7 d8c7 a7a8 c7c1 e5a5 c1d2 a5a7 d2d5 a8b8 d5b3 b8c8 b3g3 a7g7 g8f8 g7c7 g5g4 a1g7 f8g8 g7f6 g3g2 c8b8 f5f4 c7g7 g8f8 g7h7 g2c6 h7h8 f8f7 f6h4 c6b5 b8c8 b5c4 c8b7 c4b5 b7c8 b5c5 c8b7 c5d5 b7a6 d5d3 a6b7 d3b3 b7a6 b3a3 a6b5 a3b3 b5a6 b3e6 a6b7 e6e4 b7b6 e4d4 b6a6 d4h8 a6a5 g4g3 a5a4 h8d4 a4b5 g3g2 b5c6";
     let params = params.split(" ");
     let moves: Vec<&str> = params.collect();
     ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
@@ -351,15 +345,15 @@ fn main_threading() {
     let (mmove, stats) = ex.explore();
     eprintln!("mmove = {:?}", mmove);
 
-    // ex.time_settings.move_time = 50;
-    // let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 c1g5 b8d7 g5f6 d7f6 f2f4 e7e6";
-    // let params = params.split(" ");
-    // let moves: Vec<&str> = params.collect();
-    // ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
-    // let g = ex.game;
-    // eprintln!("g = {:?}", g);
-    // let (mmove, stats) = ex.explore();
-    // eprintln!("mmove = {:?}", mmove);
+    ex.time_settings.move_time = 50;
+    let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 f2f4 b8d7 a2a3 h7h6 g2g3 d7c5 f1g2 e7e5 d4e2 d8b6 b2b4 c5e6 f4f5 e6d4 e2d4 e5d4 c3e2 a6a5 e2d4 a5b4 a1b1 d6d5 e4d5 f8c5 c2c3 c5d4 c3d4 c8f5 b1b4 b6a6 d1b3 a8c8 c1f4 c8c2 g2f3 g7g5 f4e5 c2c1 e1d2 c1c2 d2e1 c2c1 e1f2 c1c2 f2g1 c2c1 f3d1 f5c2 b3c2 c1c2 d1c2 a6a3 e5f6 a3c1 g1f2 c1c2 f2e3 c2c3 e3e2 c3b4 f6h8 b4c4 e2e3 c4d5 h1e1 e8f8 h8e5 b7b5 e1c1 b5b4 c1c8 f8e7 c8c7 e7d8 c7c5 d5e6 e3d2 b4b3 d2c1 f7f6 e5c7 d8c8 c1b2 c8b7 d4d5 e6e3 c7d6 e3f3 c5b5 b7a6 b5b3 f3g2 b2c3 g2d5 b3a3 a6b7 a3b3 b7c8 b3b6 f6f5 c3b4 d5d2 b4c5 d2h2 b6b8 c8d7 b8b7 d7e8 b7b8 e8f7 b8b7 f7g8 b7b8 g8h7 b8b7 h7g6 c5c4 h2c2 c4b5 c2b3 b5c6 b3a4 c6b6 a4d4 b6c6 d4e4 c6b6 h6h5 b7e7 e4d5 d6e5 g6h6 e5g7 h6h7 g7a1 h7g8 e7e8 g8f7 e8e5 d5d8 b6b7 f7g8 b7a7 d8c7 a7a8 c7c1 e5a5 c1d2 a5a7 d2d5 a8b8 d5b3 b8c8 b3g3 a7g7 g8f8 g7c7 g5g4 a1g7 f8g8 g7f6 g3g2 c8b8 f5f4 c7g7 g8f8 g7h7 g2c6 h7h8 f8f7 f6h4 c6b5 b8c8 b5c4 c8b7 c4b5 b7c8 b5c5 c8b7 c5d5 b7a6 d5d3 a6b7 d3b3 b7a6 b3a3 a6b5 a3b3 b5a6 b3e6 a6b7 e6e4 b7b6 e4d4 b6a6 d4h8 a6a5 g4g3 a5a4 h8d4 a4b5 g3g2 b5c6 g2g1q h4d8";
+    let params = params.split(" ");
+    let moves: Vec<&str> = params.collect();
+    ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
+    let g = ex.game;
+    eprintln!("g = {:?}", g);
+    let (mmove, stats) = ex.explore();
+    eprintln!("mmove = {:?}", mmove);
 
     // println!("wat 1");
     // std::thread::sleep(Duration::from_millis(2000));

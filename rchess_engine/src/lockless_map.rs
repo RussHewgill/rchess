@@ -44,8 +44,8 @@ pub struct TransTable {
     cycles:        AtomicU8,
 }
 
-// unsafe impl Send for TransTable {}
-// unsafe impl Sync for TransTable {}
+unsafe impl Send for TransTable {}
+unsafe impl Sync for TransTable {}
 
 /// New, Insert, Probe
 impl TransTable {
@@ -173,6 +173,8 @@ impl TransTable {
         let mut used_si    = 0;
 
         for bucket in self.buf.iter() {
+            // let bucket: &[TTEntry; ENTRIES_PER_BUCKET] = unsafe { &*bucket.bucket.get() };
+            // for e in bucket.iter() {
             for e in bucket.bucket.read().iter() {
                 if let Some(e) = e.entry {
                     used_total += 1;
@@ -216,6 +218,13 @@ pub struct TTEntry {
     age:                u8,
     // entry:              Option<(u32,SearchInfo)>,
     entry:              Option<TTEntry2>,
+}
+
+#[derive(Debug,Clone,Copy)]
+pub enum TTEntry2 {
+    Eval { ver: u32, eval: TTEval },
+    // SI   { ver: u32, si: SearchInfo },
+    Both { ver: u32, eval: TTEval, si: SearchInfo },
 }
 
 #[derive(Debug,Clone,Copy)]
@@ -295,11 +304,12 @@ impl TTEntry2 {
 // #[repr(align(64))]
 // #[repr(align(32))] // XXX: this is faster than 64 for some reason ??
 pub struct Bucket {
-    // bucket: [RwLock<TTEntry>; ENTRIES_PER_BUCKET],
 
+    // bucket: UnsafeCell<[TTEntry; ENTRIES_PER_BUCKET]>,
     bucket: RwLock<[TTEntry; ENTRIES_PER_BUCKET]>,
-    // bucket: RwLock<Aligned<A64,[TTEntry; ENTRIES_PER_BUCKET]>>, // XXX: much slower
 
+    // bucket: [RwLock<TTEntry>; ENTRIES_PER_BUCKET],
+    // bucket: RwLock<Aligned<A64,[TTEntry; ENTRIES_PER_BUCKET]>>, // XXX: much slower
     // bucket: [TTEntry; ENTRIES_PER_BUCKET],
 }
 
@@ -307,18 +317,23 @@ pub struct Bucket {
 impl Bucket {
     pub fn new() -> Self {
         Self {
-            // bucket: array_init::array_init(|_| RwLock::new(TTEntry::default())),
             bucket: RwLock::new(array_init::array_init(|_| TTEntry::default())),
-            // bucket: array_init::array_init(|_| TTEntry::default()),
+            // bucket: UnsafeCell::new(array_init::array_init(|_| TTEntry::default())),
         }
     }
 
     pub fn clear(&self) {
 
+        // let mut bucket: &mut [TTEntry; ENTRIES_PER_BUCKET] = unsafe { &mut *self.bucket.get() };
+
+        // for e in bucket.iter_mut() {
         for e in self.bucket.write().iter_mut() {
-        // for e in self.bucket.iter_mut() {
             *e = TTEntry::default();
         }
+
+        // for e in self.bucket.write().iter_mut() {
+        //     *e = TTEntry::default();
+        // }
 
         // for e in self.bucket.iter() {
         //     let mut w = e.write();
@@ -344,7 +359,10 @@ impl Bucket {
 
         let mut idx_lowest_depth = None;
 
+        // let bucket: &[TTEntry; ENTRIES_PER_BUCKET] = unsafe { &*self.bucket.get() };
+
         for (entry_idx,e) in self.bucket.read().iter().enumerate() {
+        // for (entry_idx,e) in bucket.iter().enumerate() {
             if let Some(ver2) = e.get_ver() {
                 match e.get_searchinfo() {
                     Some(e_si) => {
@@ -364,6 +382,7 @@ impl Bucket {
                 }
             }
         }
+        // drop(bucket);
 
         let idx = if let Some(idx) = idx_lowest_depth {
             used_entries.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -374,7 +393,9 @@ impl Bucket {
 
         let mut w = self.bucket.write();
         let mut w = w.get_mut(idx).unwrap();
-        // *w = TTEntry::new(age, Some((ver,si)));
+
+        // let mut bucket: &mut [TTEntry; ENTRIES_PER_BUCKET] = unsafe { &mut *self.bucket.get() };
+        // let mut w = bucket.get_mut(idx).unwrap();
 
         let new = TTEntry::new(age, TTEntry2::new(ver, meval, msi));
         *w = new;
@@ -427,6 +448,9 @@ impl Bucket {
 
     pub fn find(&self, ver: u32, age: &AtomicU8) -> (Option<TTEval>,Option<SearchInfo>) {
 
+        // let bucket: &[TTEntry; ENTRIES_PER_BUCKET] = unsafe { &*self.bucket.get() };
+
+        // for (entry_idx,e) in bucket.iter().enumerate() {
         for (entry_idx,e) in self.bucket.read().iter().enumerate() {
             if let Some(ver2) = e.get_ver() {
                 if ver2 == ver {

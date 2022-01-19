@@ -64,7 +64,6 @@ impl ExThread {
 
 }
 
-
 /// Get eval for ThreadPool
 impl ExThread {
 
@@ -139,7 +138,7 @@ impl ExThread {
 
 }
 
-/// Negamax AB for ThreadPool
+/// check_tt2
 impl ExThread {
 
     pub fn check_tt2(
@@ -188,6 +187,10 @@ impl ExThread {
         }
     }
 
+}
+
+/// Negamax AB for ThreadPool
+impl ExThread {
     #[allow(unused_doc_comments,unused_labels)]
     /// alpha: the MIN score that the maximizing player is assured of
     /// beta:  the MAX score that the minimizing player is assured of
