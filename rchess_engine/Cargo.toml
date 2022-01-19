@@ -38,7 +38,7 @@ default = [
     # "mobility_scoring",
 
     # "syzygy",
-    # "nnue",
+    "nnue",
 
     "null_pruning",
     "history_heuristic",

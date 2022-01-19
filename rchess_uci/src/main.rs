@@ -114,12 +114,13 @@ fn main() -> std::io::Result<()> {
     #[cfg(feature = "threadpool")]
     let mut explorer = Explorer2::new(White,g, MAX_SEARCH_PLY, timesettings);
 
+    // XXX: NNUE must be loaded before threads are spawned
+    explorer.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+
     #[cfg(feature = "threadpool")]
     explorer.spawn_threads();
 
     // explorer.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap_or_default();
-
-    explorer.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
     // let evpath = "/home/me/code/rust/rchess/evparams.bin";
     // let (ev_mid,ev_end) = EvalParams::read_evparams(evpath).unwrap();
