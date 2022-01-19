@@ -219,13 +219,6 @@ pub struct TTEntry {
 }
 
 #[derive(Debug,Clone,Copy)]
-pub enum TTEntry2 {
-    Eval { ver: u32, eval: TTEval },
-    // SI   { ver: u32, si: SearchInfo },
-    Both { ver: u32, eval: TTEval, si: SearchInfo },
-}
-
-#[derive(Debug,Clone,Copy)]
 pub enum TTEval {
     // None,
     Check,

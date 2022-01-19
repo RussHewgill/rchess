@@ -205,42 +205,43 @@ impl Explorer2 {
                         ABResults::ABList(bestres, _)
                             | ABResults::ABSingle(bestres)
                             | ABResults::ABSyzygy(bestres) => {
-                            if depth > best_depth.load(SeqCst) {
+                                if depth > best_depth.load(SeqCst)
+                                    || bestres.score > CHECKMATE_VALUE - 50
+                                {
+                                    // let t1 = t0.elapsed();
+                                    let t1 = Instant::now().checked_duration_since(t0).unwrap();
+                                    debug!("new best move d({}): {:.3}s: {}: {:?}",
+                                        depth, t1.as_secs_f64(),
+                                        // bestres.score, bestres.moves.front());
+                                        bestres.score, bestres.mv);
 
-                                // let t1 = t0.elapsed();
-                                let t1 = Instant::now().checked_duration_since(t0).unwrap();
-                                debug!("new best move d({}): {:.3}s: {}: {:?}",
-                                       depth, t1.as_secs_f64(),
-                                       // bestres.score, bestres.moves.front());
-                                       bestres.score, bestres.mv);
+                                    if bestres.score.abs() == CHECKMATE_VALUE {
+                                        stop.store(true, SeqCst);
+                                        debug!("in mate, nothing to do");
+                                        break;
+                                    }
 
-                                if bestres.score.abs() == CHECKMATE_VALUE {
-                                    stop.store(true, SeqCst);
-                                    debug!("in mate, nothing to do");
-                                    break;
-                                }
+                                    if bestres.score > CHECKMATE_VALUE - 50 {
+                                        let k = CHECKMATE_VALUE - bestres.score.abs();
+                                        debug!("Found mate in {}: d({}), {:?}",
+                                            // bestres.score, bestres.moves.front());
+                                            k, depth, bestres.mv);
+                                        let mut best = best_mate.write();
+                                        *best = Some(k as Depth);
 
-                                if bestres.score > CHECKMATE_VALUE - 50 {
-                                    let k = CHECKMATE_VALUE - bestres.score.abs();
-                                    debug!("Found mate in {}: d({}), {:?}",
-                                           // bestres.score, bestres.moves.front());
-                                           k, depth, bestres.mv);
-                                    let mut best = best_mate.write();
-                                    *best = Some(k as Depth);
+                                        stop.store(true, SeqCst);
 
-                                    stop.store(true, SeqCst);
-
-                                    let mut w = out.write();
-                                    *w = (depth, res, moves, w.3 + stats);
-                                    // *w = (depth, scores, None);
-                                    best_depth.store(depth,SeqCst);
-                                    break;
-                                } else {
-                                    let mut w = out.write();
-                                    // debug!("writing res: {:?}", res.get_result());
-                                    *w = (depth, res, moves, w.3 + stats);
-                                    best_depth.store(depth,SeqCst);
-                                }
+                                        let mut w = out.write();
+                                        *w = (depth, res, moves, w.3 + stats);
+                                        // *w = (depth, scores, None);
+                                        best_depth.store(depth,SeqCst);
+                                        break;
+                                    } else {
+                                        let mut w = out.write();
+                                        // debug!("writing res: {:?}", res.get_result());
+                                        *w = (depth, res, moves, w.3 + stats);
+                                        best_depth.store(depth,SeqCst);
+                                    }
                             } else {
                                 // XXX: add stats?
                             }
@@ -399,7 +400,7 @@ impl ExThread {
 
         trace!("idling lazy_smp_single, id = {}", self.id);
 
-        self.idle();
+        // self.idle();
     }
 
 }

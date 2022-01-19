@@ -351,15 +351,15 @@ fn main_threading() {
     let (mmove, stats) = ex.explore();
     eprintln!("mmove = {:?}", mmove);
 
-    ex.time_settings.move_time = 50;
-    let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 c1g5 b8d7 g5f6 d7f6 f2f4 e7e6";
-    let params = params.split(" ");
-    let moves: Vec<&str> = params.collect();
-    ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
-    let g = ex.game;
-    eprintln!("g = {:?}", g);
-    let (mmove, stats) = ex.explore();
-    eprintln!("mmove = {:?}", mmove);
+    // ex.time_settings.move_time = 50;
+    // let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 c1g5 b8d7 g5f6 d7f6 f2f4 e7e6";
+    // let params = params.split(" ");
+    // let moves: Vec<&str> = params.collect();
+    // ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
+    // let g = ex.game;
+    // eprintln!("g = {:?}", g);
+    // let (mmove, stats) = ex.explore();
+    // eprintln!("mmove = {:?}", mmove);
 
     // println!("wat 1");
     // std::thread::sleep(Duration::from_millis(2000));
