@@ -251,11 +251,7 @@ fn _main() {
 }
 
 #[allow(unreachable_code)]
-fn main_bitboard() {
-
-
-
-}
+fn main_bitboard() {}
 
 #[allow(unreachable_code)]
 fn main_threading() {
@@ -2974,7 +2970,7 @@ fn main9() {
     // let n = MAX_SEARCH_PLY;
     // let n = 35;
     // let n = 22;
-    let n = 11;
+    let n = 10;
     // let n = 12;
     // let n = 2;
 
@@ -2984,8 +2980,8 @@ fn main9() {
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(12);
-    ex.cfg.num_threads = Some(6);
-    // ex.cfg.num_threads = Some(1);
+    // ex.cfg.num_threads = Some(6);
+    ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();

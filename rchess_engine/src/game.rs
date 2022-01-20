@@ -42,18 +42,18 @@ pub struct Game {
 pub struct GameState {
     pub side_to_move:       Color,
 
-    pub white:              BitBoard,
-    pub black:              BitBoard,
+    // pub white:              BitBoard,
+    // pub black:              BitBoard,
 
-    pub pawns:              BitBoard,
-    pub rooks:              BitBoard,
-    pub knights:            BitBoard,
-    pub bishops:            BitBoard,
-    pub queens:             BitBoard,
-    pub kings:              BitBoard,
+    // pub pawns:              BitBoard,
+    // pub rooks:              BitBoard,
+    // pub knights:            BitBoard,
+    // pub bishops:            BitBoard,
+    // pub queens:             BitBoard,
+    // pub kings:              BitBoard,
 
-    // colors:                 [BitBoard; 2],
-    // pieces:                 [BitBoard; 6],
+    colors:                 [BitBoard; 2],
+    pieces:                 [BitBoard; 6],
 
     pub en_passant:         Option<Coord>,
     pub castling:           Castling,
@@ -348,36 +348,37 @@ mod castling {
 impl GameState {
     pub fn game_equal(&self, other: Self) -> bool {
         (self.side_to_move == other.side_to_move)
-            & (self.white == other.white)
-            & (self.black == other.black)
+            // & (self.white == other.white)
+            // & (self.black == other.black)
 
-            & (self.pawns == other.pawns)
-            & (self.rooks == other.rooks)
-            & (self.knights == other.knights)
-            & (self.bishops == other.bishops)
-            & (self.queens == other.queens)
-            & (self.kings == other.kings)
+            // & (self.pawns == other.pawns)
+            // & (self.rooks == other.rooks)
+            // & (self.knights == other.knights)
+            // & (self.bishops == other.bishops)
+            // & (self.queens == other.queens)
+            // & (self.kings == other.kings)
 
-            & (self.en_passant == other.en_passant)
-            & (self.castling == other.castling)
+            && self.colors == other.colors
+            && self.pieces == other.pieces
+
+            && (self.en_passant == other.en_passant)
+            && (self.castling == other.castling)
     }
 
 
-    pub fn debug_equal(&self, other: Self) {
-        println!("side_to_move: {}", self.side_to_move == other.side_to_move);
-        println!("white: {}", self.white == other.white);
-        println!("black: {}", self.black == other.black);
-
-        println!("pawns: {}", self.pawns == other.pawns);
-        println!("rooks: {}", self.rooks == other.rooks);
-        println!("knights: {}", self.knights == other.knights);
-        println!("bishops: {}", self.bishops == other.bishops);
-        println!("queens: {}", self.queens == other.queens);
-        println!("kings: {}", self.kings == other.kings);
-
-        println!("en_passant: {}", self.en_passant == other.en_passant);
-        println!("castling: {}", self.castling == other.castling);
-    }
+    // pub fn debug_equal(&self, other: Self) {
+    //     println!("side_to_move: {}", self.side_to_move == other.side_to_move);
+    //     println!("white: {}", self.white == other.white);
+    //     println!("black: {}", self.black == other.black);
+    //     println!("pawns: {}", self.pawns == other.pawns);
+    //     println!("rooks: {}", self.rooks == other.rooks);
+    //     println!("knights: {}", self.knights == other.knights);
+    //     println!("bishops: {}", self.bishops == other.bishops);
+    //     println!("queens: {}", self.queens == other.queens);
+    //     println!("kings: {}", self.kings == other.kings);
+    //     println!("en_passant: {}", self.en_passant == other.en_passant);
+    //     println!("castling: {}", self.castling == other.castling);
+    // }
 
 }
 
@@ -1274,39 +1275,43 @@ impl Game {
 impl Game {
 
     pub fn get_color(&self, c: Color) -> BitBoard {
-        match c {
-            White => self.state.white,
-            Black => self.state.black,
-        }
+        self.state.colors[c]
+        // match c {
+        //     White => self.state.white,
+        //     Black => self.state.black,
+        // }
     }
 
     pub fn get_color_mut(&mut self, c: Color) -> &mut BitBoard {
-        match c {
-            White => &mut self.state.white,
-            Black => &mut self.state.black,
-        }
+        &mut self.state.colors[c]
+        // match c {
+        //     White => &mut self.state.white,
+        //     Black => &mut self.state.black,
+        // }
     }
 
-    pub fn get_piece(&self, piece: Piece) -> BitBoard {
-        match piece {
-            Pawn   => self.state.pawns,
-            Rook   => self.state.rooks,
-            Knight => self.state.knights,
-            Bishop => self.state.bishops,
-            Queen  => self.state.queens,
-            King   => self.state.kings,
-        }
+    pub fn get_piece(&self, pc: Piece) -> BitBoard {
+        self.state.pieces[pc]
+        // match pc {
+        //     Pawn   => self.state.pawns,
+        //     Rook   => self.state.rooks,
+        //     Knight => self.state.knights,
+        //     Bishop => self.state.bishops,
+        //     Queen  => self.state.queens,
+        //     King   => self.state.kings,
+        // }
     }
 
-    pub fn get_piece_mut(&mut self, piece: Piece) -> &mut BitBoard {
-        match piece {
-            Pawn   => &mut self.state.pawns,
-            Rook   => &mut self.state.rooks,
-            Knight => &mut self.state.knights,
-            Bishop => &mut self.state.bishops,
-            Queen  => &mut self.state.queens,
-            King   => &mut self.state.kings,
-        }
+    pub fn get_piece_mut(&mut self, pc: Piece) -> &mut BitBoard {
+        &mut self.state.pieces[pc]
+        // match pc {
+        //     Pawn   => &mut self.state.pawns,
+        //     Rook   => &mut self.state.rooks,
+        //     Knight => &mut self.state.knights,
+        //     Bishop => &mut self.state.bishops,
+        //     Queen  => &mut self.state.queens,
+        //     King   => &mut self.state.kings,
+        // }
     }
 
     pub fn get(&self, piece: Piece, side: Color) -> BitBoard {
@@ -1359,12 +1364,28 @@ impl Game {
         //     | self.state.bishops
         //     | self.state.queens
         //     | self.state.kings
-        self.state.white | self.state.black
+        // self.state.white | self.state.black
+        self.state.colors[White] | self.state.colors[Black]
     }
 
     pub fn all_empty(&self) -> BitBoard {
         !self.all_occupied()
     }
+
+    pub fn white(&self) -> BitBoard {
+        self.state.colors[White]
+    }
+
+    pub fn black(&self) -> BitBoard {
+        self.state.colors[Black]
+    }
+
+    pub fn pawns(&self) -> BitBoard   { self.state.pieces[Pawn] }
+    pub fn knights(&self) -> BitBoard { self.state.pieces[Knight] }
+    pub fn bishops(&self) -> BitBoard { self.state.pieces[Bishop] }
+    pub fn rooks(&self) -> BitBoard   { self.state.pieces[Rook] }
+    pub fn queens(&self) -> BitBoard  { self.state.pieces[Queen] }
+    pub fn kings(&self) -> BitBoard   { self.state.pieces[King] }
 
 }
 
@@ -1473,19 +1494,20 @@ impl Game {
         let mut st = self.state.clone();
         st.side_to_move = !st.side_to_move;
 
-        let mw = st.white;
-        let mb = st.black;
-        st.black = mw;
-        st.white = mb;
+        // let mw = st.white;
+        // let mb = st.black;
+        // st.black = mw;
+        // st.white = mb;
+        // std::mem::swap(st.colors[0],st.colors[1]);
 
-        st.white   = st.white.rotate_180().mirror_horiz();
-        st.black   = st.black.rotate_180().mirror_horiz();
-        st.pawns   = st.pawns.rotate_180().mirror_horiz();
-        st.rooks   = st.rooks.rotate_180().mirror_horiz();
-        st.knights = st.knights.rotate_180().mirror_horiz();
-        st.bishops = st.bishops.rotate_180().mirror_horiz();
-        st.queens  = st.queens.rotate_180().mirror_horiz();
-        st.kings   = st.kings.rotate_180().mirror_horiz();
+        // st.white   = st.white.rotate_180().mirror_horiz();
+        // st.black   = st.black.rotate_180().mirror_horiz();
+        // st.pawns   = st.pawns.rotate_180().mirror_horiz();
+        // st.rooks   = st.rooks.rotate_180().mirror_horiz();
+        // st.knights = st.knights.rotate_180().mirror_horiz();
+        // st.bishops = st.bishops.rotate_180().mirror_horiz();
+        // st.queens  = st.queens.rotate_180().mirror_horiz();
+        // st.kings   = st.kings.rotate_180().mirror_horiz();
 
         st.castling = st.castling.mirror_sides();
 
@@ -1498,7 +1520,8 @@ impl Game {
         out.init_gameinfo_mut(ts).unwrap();
         out.recalc_gameinfo_mut(ts).unwrap();
 
-        out
+        // out
+        unimplemented!()
     }
 
 }
@@ -1507,9 +1530,9 @@ impl Game {
 impl Game {
 
     pub fn get_side_at(&self, c0: Coord) -> Option<Color> {
-        if self.state.white.is_one_at(c0) {
+        if self.white().is_one_at(c0) {
             Some(White)
-        } else if self.state.black.is_one_at(c0) {
+        } else if self.black().is_one_at(c0) {
             Some(Black)
         } else {
             None
@@ -1520,12 +1543,12 @@ impl Game {
         let b0 = BitBoard::single(c0);
         // if (self.all_occupied() & b0).is_empty() { return None; }
         let color = if (b0 & self.get_color(White)).is_not_empty() { White } else { Black };
-        if (b0 & self.state.pawns).is_not_empty()   { return Some((color,Pawn)); }
-        else if (b0 & self.state.knights).is_not_empty() { return Some((color,Knight)); }
-        else if (b0 & self.state.bishops).is_not_empty() { return Some((color,Bishop)); }
-        else if (b0 & self.state.rooks).is_not_empty()   { return Some((color,Rook)); }
-        else if (b0 & self.state.queens).is_not_empty()  { return Some((color,Queen)); }
-        else if (b0 & self.state.kings).is_not_empty()   { return Some((color,King)); }
+        if (b0 & self.pawns()).is_not_empty()   { return Some((color,Pawn)); }
+        else if (b0 & self.knights()).is_not_empty() { return Some((color,Knight)); }
+        else if (b0 & self.bishops()).is_not_empty() { return Some((color,Bishop)); }
+        else if (b0 & self.rooks()).is_not_empty()   { return Some((color,Rook)); }
+        else if (b0 & self.queens()).is_not_empty()  { return Some((color,Queen)); }
+        else if (b0 & self.kings()).is_not_empty()   { return Some((color,King)); }
         None
     }
 
@@ -1659,17 +1682,20 @@ impl Default for Castling {
 impl PartialEq for GameState {
     fn eq(&self, other: &Self) -> bool {
         (self.side_to_move == other.side_to_move)
-            & (self.white == other.white)
-            & (self.black == other.black)
+            // && (self.white == other.white)
+            // && (self.black == other.black)
 
-            & (self.pawns == other.pawns)
-            & (self.rooks == other.rooks)
-            & (self.knights == other.knights)
-            & (self.bishops == other.bishops)
-            & (self.queens == other.queens)
-            & (self.kings == other.kings)
+            // && (self.pawns == other.pawns)
+            // && (self.rooks == other.rooks)
+            // && (self.knights == other.knights)
+            // && (self.bishops == other.bishops)
+            // && (self.queens == other.queens)
+            // && (self.kings == other.kings)
 
-            & (self.castling == other.castling)
+            && self.colors == other.colors
+            && self.pieces == other.pieces
+
+            && (self.castling == other.castling)
     }
 }
 
@@ -1678,15 +1704,18 @@ impl Eq for GameState {}
 impl Hash for GameState {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.side_to_move.hash(state);
-        self.white.hash(state);
-        self.black.hash(state);
+        // self.white.hash(state);
+        // self.black.hash(state);
 
-        self.pawns.hash(state);
-        self.rooks.hash(state);
-        self.knights.hash(state);
-        self.bishops.hash(state);
-        self.queens.hash(state);
-        self.kings.hash(state);
+        // self.pawns.hash(state);
+        // self.rooks.hash(state);
+        // self.knights.hash(state);
+        // self.bishops.hash(state);
+        // self.queens.hash(state);
+        // self.kings.hash(state);
+
+        self.colors.hash(state);
+        self.pieces.hash(state);
 
         self.castling.hash(state);
     }
