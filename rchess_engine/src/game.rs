@@ -562,7 +562,9 @@ impl Game {
                 next.state.side_to_move = !next.state.side_to_move;
                 if calc_zb { next.zobrist = next.zobrist.update_side_to_move(&ts); }
                 // x.move_history.push(*m);
-                next.reset_gameinfo_mut();
+
+                /// XXX: do without this?
+                // next.reset_gameinfo_mut();
 
                 self.update_castles(&ts, mv, &mut next, calc_zb);
 
@@ -649,10 +651,10 @@ impl Game {
             return Err(GameEnd::Checkmate{ win: !self.state.side_to_move});
         }
 
-        self.state.checkers      = BitBoard::empty();
-        self.state.king_blocks_w = BitBoard::empty();
-        self.state.king_blocks_b = BitBoard::empty();
-        // self.state.pinners       = None;
+        // self.state.checkers      = BitBoard::empty();
+        // self.state.king_blocks_w = BitBoard::empty();
+        // self.state.king_blocks_b = BitBoard::empty();
+        // // self.state.pinners       = None;
 
         self.update_pins_mut(ts);
         self.update_checkers_mut(ts);
@@ -679,12 +681,12 @@ impl Game {
         Ok(())
     }
 
-    fn reset_gameinfo_mut(&mut self) {
-        self.state.checkers      = BitBoard::empty();
-        self.state.king_blocks_w = BitBoard::empty();
-        self.state.king_blocks_b = BitBoard::empty();
-        // self.state.pinners       = None;
-    }
+    // fn reset_gameinfo_mut(&mut self) {
+    //     self.state.checkers      = BitBoard::empty();
+    //     self.state.king_blocks_w = BitBoard::empty();
+    //     self.state.king_blocks_b = BitBoard::empty();
+    //     // self.state.pinners       = None;
+    // }
 
     fn update_check_squares_mut(&mut self, ts: &Tables) {
 

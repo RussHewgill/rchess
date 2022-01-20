@@ -252,6 +252,9 @@ fn _main() {
 
 #[allow(unreachable_code)]
 fn main_bitboard() {
+
+
+
 }
 
 #[allow(unreachable_code)]
@@ -3947,7 +3950,7 @@ fn main_perft(depth: Option<u64>) {
     // let t1 = t0.elapsed().as_secs_f64();
     // println!("perft done in {} seconds.", t1);
 
-    const N: usize = 5;
+    const N: usize = 3;
     let mut times = vec![];
 
     let games = fens.into_iter()

@@ -44,10 +44,10 @@ mod lookups {
     lazy_static! { /// SQUARE_BB
         // pub static ref SQUARE_BB: [BitBoard; 64] = array_init::array_init(|x| BitBoard::single(Coord::new_int(x)));
         pub static ref SQUARE_BB: [BitBoard; 64] = array_init::array_init(|x| {
-            // let mut b = BitBoard::empty();
             // b.flip_mut(Coord::new_int_const(x as u8));
-            // b
-            unimplemented!()
+            let k = 1u64.overflowing_shl(x as u32).0;
+            BitBoard(k)
+            // unimplemented!()
         });
     }
 }
@@ -73,7 +73,11 @@ impl Iterator for BitBoard {
 /// new
 impl BitBoard {
     pub fn new<T: Into<Coord> + Copy>(cs: &[T]) -> Self {
-        unimplemented!()
+        let mut b = BitBoard(0);
+        for &c in cs.iter() {
+            b |= BitBoard::single(c.into());
+        }
+        b
     }
 
     pub fn empty() -> BitBoard {
@@ -106,6 +110,7 @@ impl BitBoard {
     }
 
     pub fn more_than_one(&self) -> bool {
+        if self.is_empty() { return false; }
         let b = self.bitscan_reset().0;
         b.is_not_empty()
     }
@@ -197,12 +202,22 @@ impl BitBoard {
 /// Bitscan
 impl BitBoard {
 
+    // fn bitscan_unchecked(&self) -> Coord {
     pub fn bitscan(&self) -> Coord {
         assert!(self.is_not_empty());
         Coord::new_int(self.0.trailing_zeros() as u8)
     }
 
+    // pub fn bitscan(&self) -> Option<Coord> {
+    //     if self.is_empty() {
+    //         None
+    //     } else {
+    //         Some(self.bitscan_unchecked())
+    //     }
+    // }
+
     pub fn bitscan_reset(&self) -> (Self, Coord) {
+        // let x = self.bitscan().unwrap();
         let x = self.bitscan();
         // (*self & BitBoard(self.0.overflowing_sub(1).0),x)
         (*self & !Self::single((x).into()),x)
@@ -300,6 +315,22 @@ impl BitBoard {
     }
 }
 
+/// Indexing
+impl BitBoard {
+
+    pub fn relative_rank(side: Color, sq: Coord) -> u8 {
+        match side {
+            White => sq.rank(),
+            Black => 7 - sq.rank(),
+        }
+    }
+
+    pub fn relative_square(side: Color, sq: Coord) -> Coord {
+        Coord::new(Self::relative_rank(side, sq), sq.file())
+    }
+
+}
+
 /// Fills
 impl BitBoard {
 
@@ -324,10 +355,30 @@ impl BitBoard {
 /// Shift
 impl BitBoard {
 
-    // #[cfg(feature = "nope")]
     pub fn shift_dir(&self, d: D) -> Self {
-        // d.shift_coord(x);
-        unimplemented!()
+        match d {
+            D::N  => BitBoard(self.0.overflowing_shl(8).0),
+            D::NE => BitBoard(self.0.overflowing_shl(9).0),
+            D::E  => BitBoard(self.0.overflowing_shl(1).0)
+                & !MASK_FILES[0],
+            D::SE => BitBoard(self.0.overflowing_shr(7).0)
+                & !MASK_FILES[0],
+            D::S  => BitBoard(self.0.overflowing_shr(8).0),
+            D::SW => BitBoard(self.0.overflowing_shr(9).0)
+                & !MASK_FILES[7],
+            D::W  => BitBoard(self.0.overflowing_shr(1).0)
+                & !MASK_FILES[7],
+            D::NW => BitBoard(self.0.overflowing_shl(7).0)
+                & !MASK_FILES[7],
+        }
+    }
+
+    pub fn shift_mult(&self, d: D, n: u64) -> Self {
+        let mut out = *self;
+        for _ in 0..n {
+            out = out.shift_dir(d);
+        }
+        out
     }
 
 }
@@ -416,7 +467,6 @@ impl BitBoard {
     }
 
 }
-
 
 /// Display
 impl BitBoard {
