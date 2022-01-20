@@ -55,14 +55,14 @@ lazy_static! { /// TABLES
     pub static ref _TABLES: Tables = Tables::new();
 }
 
-lazy_static! { /// SQUARE_BB
-    // pub static ref SQUARE_BB: [BitBoard; 64] = array_init::array_init(|x| BitBoard::single(Coord::new_int(x)));
-    pub static ref SQUARE_BB: [BitBoard; 64] = array_init::array_init(|x| {
-        let mut b = BitBoard::empty();
-        b.flip_mut(Coord::new_int_const(x as u8));
-        b
-    });
-}
+// lazy_static! { /// SQUARE_BB
+//     // pub static ref SQUARE_BB: [BitBoard; 64] = array_init::array_init(|x| BitBoard::single(Coord::new_int(x)));
+//     pub static ref SQUARE_BB: [BitBoard; 64] = array_init::array_init(|x| {
+//         let mut b = BitBoard::empty();
+//         b.flip_mut(Coord::new_int_const(x as u8));
+//         b
+//     });
+// }
 
 pub static CENTERDIST: [u8; 64] = [
     3, 3, 3, 3, 3, 3, 3, 3,

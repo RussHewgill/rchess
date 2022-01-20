@@ -52,6 +52,9 @@ pub struct GameState {
     pub queens:             BitBoard,
     pub kings:              BitBoard,
 
+    // colors:                 [BitBoard; 2],
+    // pieces:                 [BitBoard; 6],
+
     pub en_passant:         Option<Coord>,
     pub castling:           Castling,
 
