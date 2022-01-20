@@ -347,10 +347,25 @@ pub fn crit_bench_1(c: &mut Criterion) {
         moves.push((g,mv0,mv1));
     }
 
-    group.bench_function("move_piece", |b| b.iter(|| {
-        for (g,mv0,mv1) in moves.iter() {
-            let g0 = g.make_move_unchecked(&ts, *mv0).unwrap();
-            let g1 = g.make_move_unchecked(&ts, *mv1).unwrap();
+    // group.bench_function("move_piece", |b| b.iter(|| {
+    //     for (g,mv0,mv1) in moves.iter() {
+    //         let g0 = g.make_move_unchecked(&ts, *mv0).unwrap();
+    //         let g1 = g.make_move_unchecked(&ts, *mv1).unwrap();
+    //     }
+    // }));
+
+    let mut xs = vec![];
+
+    for _ in 0..1_000 {
+        let b = BitBoard(Tables::sparse_rand(&mut rng));
+        let c: u8 = rng.gen_range(0..64);
+        let c = Coord::new_int(c);
+        xs.push((b,c));
+    }
+
+    group.bench_function("BB single", |b| b.iter(|| {
+        for (mut b,c) in xs.iter() {
+            b.flip_mut(*c);
         }
     }));
 

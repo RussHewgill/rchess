@@ -64,123 +64,81 @@ mod tapered {
 
 }
 
-#[derive(Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
-pub struct Eval {
-    pub phase:            Phase,
-    pub material:         [[Score; 6]; 2],
-    pub piece_positions:  [[Score; 6]; 2],
-}
+// #[derive(Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
+// pub struct Eval {
+//     pub phase:            Phase,
+//     pub material:         [[Score; 6]; 2],
+//     pub piece_positions:  [[Score; 6]; 2],
+// }
 
-impl Eval {
+// impl Eval {
 
-    fn sum(&self) -> Score {
+//     fn sum(&self) -> Score {
 
-        let white = self.sum_color(White);
-        let black = self.sum_color(Black);
+//         let white = self.sum_color(White);
+//         let black = self.sum_color(Black);
 
-        // if col == White {
-        //     white - black
-        // } else {
-        //     black - white
-        // }
+//         // if col == White {
+//         //     white - black
+//         // } else {
+//         //     black - white
+//         // }
 
-        // white - black
-        white + black
+//         // white - black
+//         white + black
 
-        // unimplemented!("Eval::diff()")
-    }
+//         // unimplemented!("Eval::diff()")
+//     }
 
-    fn sum_material(&self) -> [Score; 2] {
-        let w = self.material[White].iter().sum();
-        let b = self.material[Black].iter().sum();
-        [w,b]
-    }
+//     fn sum_material(&self) -> [Score; 2] {
+//         let w = self.material[White].iter().sum();
+//         let b = self.material[Black].iter().sum();
+//         [w,b]
+//     }
 
-    fn sum_positions(&self) -> [Score; 2] {
-        let w = self.piece_positions[White].iter().sum();
-        let b = self.piece_positions[Black].iter().sum();
-        [w,b]
-    }
+//     fn sum_positions(&self) -> [Score; 2] {
+//         let w = self.piece_positions[White].iter().sum();
+//         let b = self.piece_positions[Black].iter().sum();
+//         [w,b]
+//     }
 
-    fn sum_color(&self, col: Color) -> Score {
-        let mut score = 0;
-        match col {
-            White => {
-                for m in self.material[White].iter() {
-                    score += m;
-                }
-                for m in self.piece_positions[White].iter() {
-                    score += m;
-                }
-            },
-            Black => {
-                for m in self.material[Black].iter() {
-                    score -= m;
-                }
-                for m in self.piece_positions[Black].iter() {
-                    score -= m;
-                }
-            },
-        }
-        score
-    }
+//     fn sum_color(&self, col: Color) -> Score {
+//         let mut score = 0;
+//         match col {
+//             White => {
+//                 for m in self.material[White].iter() {
+//                     score += m;
+//                 }
+//                 for m in self.piece_positions[White].iter() {
+//                     score += m;
+//                 }
+//             },
+//             Black => {
+//                 for m in self.material[Black].iter() {
+//                     score -= m;
+//                 }
+//                 for m in self.piece_positions[Black].iter() {
+//                     score -= m;
+//                 }
+//             },
+//         }
+//         score
+//     }
 
-    pub fn get_piece_pos(&self, pc: Piece, col: Color) -> Score {
-        self.piece_positions[col][pc.index()]
-    }
-    pub fn set_piece_pos_mut(&mut self, pc: Piece, col: Color, s: Score) {
-        self.piece_positions[col][pc.index()] = s
-    }
-    pub fn get_piece_mat(&self, pc: Piece, col: Color) -> Score {
-        self.material[col][pc.index()]
-    }
-    pub fn set_piece_mat_mut(&mut self, pc: Piece, col: Color, s: Score) {
-        self.material[col][pc.index()] = s
-    }
+//     pub fn get_piece_pos(&self, pc: Piece, col: Color) -> Score {
+//         self.piece_positions[col][pc.index()]
+//     }
+//     pub fn set_piece_pos_mut(&mut self, pc: Piece, col: Color, s: Score) {
+//         self.piece_positions[col][pc.index()] = s
+//     }
+//     pub fn get_piece_mat(&self, pc: Piece, col: Color) -> Score {
+//         self.material[col][pc.index()]
+//     }
+//     pub fn set_piece_mat_mut(&mut self, pc: Piece, col: Color, s: Score) {
+//         self.material[col][pc.index()] = s
+//     }
 
-}
-
-/// Main Evaluation old
-impl Game {
-
-    // pub fn sum_evaluate2(&self, ts: &Tables) -> Score {
-    //     self.evaluate(ts).sum()
-    // }
-
-    // fn evaluate(&self, ts: &Tables) -> Eval {
-    //     let mut out = Eval::default();
-
-    //     let phase = self.state.phase;
-
-    //     for &col in [White,Black].iter() {
-    //         for pc in Piece::iter_pieces() {
-
-    //             let mat = self.score_material(pc, col);
-    //                 // .taper(phase);
-    //             out.set_piece_mat_mut(pc, col, mat);
-
-    //             #[cfg(feature = "positional_scoring")]
-    //             {
-    //                 let pos = self.score_positions(&ts, pc, col);
-    //                     // .taper(phase);
-    //                 out.set_piece_pos_mut(pc, col, pos);
-    //             }
-
-    //             // eprintln!("scoring = {:?} {:?}: {:?}/{:?}", col, pc, m, pos);
-    //         }
-    //     }
-
-    //     out.phase = phase;
-
-    //     out
-    // }
-
-    // fn taper_score(&self, mid: Score, end: Score) -> Score {
-    //     let phase = self.state.phase as Score;
-    //     ((mid * (256 - phase)) + (end * phase)) / 256
-    // }
-
-}
+// }
 
 impl ExConfig {
     pub fn evaluate(&self, ts: &Tables, g: &Game, ph_rw: &PHTable) -> Score {
@@ -874,16 +832,16 @@ impl Game {
 
 }
 
-impl std::fmt::Debug for Eval {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let [m_w,m_b] = self.sum_material();
-        let [p_w,p_b] = self.sum_positions();
-        let m_w = m_w - King.score();
-        let m_b = m_b - King.score();
-        f.write_str(&format!("ph: {}, mat: ({},{}), pos: ({},{})",
-                             self.phase, m_w, m_b, p_w, p_b,))?;
-        Ok(())
-    }
-}
+// impl std::fmt::Debug for Eval {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         let [m_w,m_b] = self.sum_material();
+//         let [p_w,p_b] = self.sum_positions();
+//         let m_w = m_w - King.score();
+//         let m_b = m_b - King.score();
+//         f.write_str(&format!("ph: {}, mat: ({},{}), pos: ({},{})",
+//                              self.phase, m_w, m_b, p_w, p_b,))?;
+//         Ok(())
+//     }
+// }
 
 

@@ -743,6 +743,37 @@ impl<'a> MoveGen<'a> {
 impl<'a> MoveGen<'a> {
     // pub fn gen_to_vec(&mut self, gen: MoveGenType)
 
+    pub fn generate_list(ts: &'static Tables, g: &'a Game, gen: Option<MoveGenType>) -> ArrayVec<Move,256> {
+
+        let st = ABStack::new();
+        let mut movegen = Self::new(ts, g, None, &st, 0, 0);
+
+        movegen._generate_list(gen)
+    }
+
+    pub fn _generate_list(&mut self, gen: Option<MoveGenType>) -> ArrayVec<Move,256> {
+        if let Some(gen) = gen {
+            if self.in_check {
+                self._gen_all_in_check(gen);
+            } else {
+                self._gen_all(gen);
+            }
+        } else {
+            if self.in_check {
+                self._gen_all_in_check(MoveGenType::Captures);
+                self._gen_all_in_check(MoveGenType::Quiets);
+            } else {
+                self._gen_all(MoveGenType::Captures);
+                self._gen_all(MoveGenType::Quiets);
+            }
+        }
+
+        let mut moves = self.buf.clone();
+        moves.retain(|mv| self.move_is_legal(*mv));
+
+        moves
+    }
+
     pub fn generate(&mut self, gen: MoveGenType) {
         if self.in_check {
             self._gen_all_in_check(gen);
@@ -824,13 +855,24 @@ impl<'a> MoveGen<'a> {
         let stack = ABStack::new();
         let mut gen = Self::new(ts, &g, None, &stack, depth, 0);
 
-        while let Some(mv) = gen.next(&stack) {
+        let moves = Self::generate_list(ts, &g, None);
+
+        for mv in moves {
             if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
                 let sum2 = Self::_perft(ts, &stack, g2, depth - 1);
                 out.push((mv,sum2));
                 sum += sum2;
             }
         }
+
+        // while let Some(mv) = gen.next(&stack) {
+        //     if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
+        //         let sum2 = Self::_perft(ts, &stack, g2, depth - 1);
+        //         out.push((mv,sum2));
+        //         sum += sum2;
+        //     }
+        // }
+
         // Self::_perft(ts, g, depth)
         (sum,out)
     }
@@ -842,12 +884,21 @@ impl<'a> MoveGen<'a> {
 
         let mut sum = 0;
 
-        while let Some(mv) = gen.next(st) {
+        let moves = gen._generate_list(None);
+
+        for mv in moves {
             if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
                 let sum2 = Self::_perft(ts, st, g2, depth - 1);
                 sum += sum2;
             }
         }
+
+        // while let Some(mv) = gen.next(st) {
+        //     if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
+        //         let sum2 = Self::_perft(ts, st, g2, depth - 1);
+        //         sum += sum2;
+        //     }
+        // }
 
         sum
     }

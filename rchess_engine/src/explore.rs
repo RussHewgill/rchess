@@ -62,7 +62,8 @@ pub struct Explorer {
 
     // pub stop:          Arc<AtomicBool>,
     pub stop:          Arc<CachePadded<AtomicBool>>,
-    pub best_mate:     Arc<RwLock<Option<Depth>>>,
+    // pub best_mate:     Arc<RwLock<Option<Depth>>>,
+    pub best_mate:     Arc<CachePadded<AtomicI16>>,
     pub best_depth:    Arc<CachePadded<AtomicI16>>,
 
     pub tx:            ExSender,
@@ -129,7 +130,8 @@ impl Explorer {
             time_settings,
 
             stop,
-            best_mate:      Arc::new(RwLock::new(None)),
+            // best_mate:      Arc::new(RwLock::new(None)),
+            best_mate:     Arc::new(CachePadded::new(AtomicI16::new(-1))),
             best_depth:     Arc::new(CachePadded::new(AtomicI16::new(0))),
 
             tx,
@@ -218,7 +220,8 @@ pub struct ExHelper {
     pub root_moves:      RefCell<Vec<Move>>,
 
     pub stop:            Arc<CachePadded<AtomicBool>>,
-    pub best_mate:       Arc<RwLock<Option<Depth>>>,
+    // pub best_mate:       Arc<RwLock<Option<Depth>>>,
+    pub best_mate:       Arc<CachePadded<AtomicI16>>,
 
     #[cfg(feature = "syzygy")]
     pub syzygy:          Option<Arc<SyzygyTB>>,
@@ -558,10 +561,9 @@ impl Explorer {
 
     pub fn reset_stop(&self) {
         self.stop.store(false, SeqCst);
-        {
-            let mut w = self.best_mate.write();
-            *w = None;
-        }
+        // let mut w = self.best_mate.write();
+        // *w = None;
+        self.best_mate.store(-1, SeqCst);
     }
 
     #[allow(unused_labels,unused_doc_comments)]
@@ -690,7 +692,8 @@ impl Explorer {
                 }
 
                 /// Found mate, halt
-                if self.best_mate.read().is_some() {
+                // if self.best_mate.read().is_some() {
+                if self.best_mate.load(Relaxed) != -1 {
                     #[cfg(not(feature = "basic_time"))]
                     // let t1 = Instant::now().checked_duration_since(t0).unwrap();
                     debug!("breaking loop (Mate),  d: {}", d);
@@ -830,6 +833,7 @@ impl Explorer {
         t0:               Instant,
         out:              Arc<RwLock<(Depth,ABResults,Vec<Move>,SearchStats)>>,
     ) {
+        let mut any_move_stored = false;
         loop {
             // match rx.try_recv() {
             match rx.recv() {
@@ -848,40 +852,47 @@ impl Explorer {
                         ABResults::ABList(bestres, _)
                             | ABResults::ABSingle(bestres)
                             | ABResults::ABSyzygy(bestres) => {
-                            if depth > best_depth.load(SeqCst) {
-                                best_depth.store(depth,SeqCst);
+                                if depth > best_depth.load(SeqCst)
+                                    || bestres.score > CHECKMATE_VALUE - 50
+                                    || !any_move_stored
+                                {
+                                    best_depth.store(depth,SeqCst);
 
-                                // let t1 = t0.elapsed();
-                                let t1 = Instant::now().checked_duration_since(t0).unwrap();
-                                debug!("new best move d({}): {:.3}s: {}: {:?}",
-                                       depth, t1.as_secs_f64(),
-                                       // bestres.score, bestres.moves.front());
-                                       bestres.score, bestres.mv);
+                                    // let t1 = t0.elapsed();
+                                    let t1 = Instant::now().checked_duration_since(t0).unwrap();
+                                    debug!("new best move d({}): {:.3}s: {}: {:?}",
+                                        depth, t1.as_secs_f64(),
+                                        // bestres.score, bestres.moves.front());
+                                        bestres.score, bestres.mv);
 
-                                if bestres.score.abs() == CHECKMATE_VALUE {
-                                    self.stop.store(true, SeqCst);
-                                    debug!("in mate, nothing to do");
-                                    break;
-                                }
+                                    if bestres.score.abs() == CHECKMATE_VALUE {
+                                        self.stop.store(true, SeqCst);
+                                        debug!("in mate, nothing to do");
+                                        break;
+                                    }
 
-                                if bestres.score > CHECKMATE_VALUE - 50 {
-                                    let k = CHECKMATE_VALUE - bestres.score.abs();
-                                    debug!("Found mate in {}: d({}), {:?}",
-                                           // bestres.score, bestres.moves.front());
-                                           k, depth, bestres.mv);
-                                    let mut best = self.best_mate.write();
-                                    *best = Some(k as Depth);
+                                    if bestres.score > CHECKMATE_VALUE - 50 {
+                                        let k = CHECKMATE_VALUE - bestres.score.abs();
+                                        debug!("Found mate in {}: d({}), {:?}",
+                                            // bestres.score, bestres.moves.front());
+                                            k, depth, bestres.mv);
 
-                                    self.stop.store(true, SeqCst);
+                                        // let mut best = self.best_mate.write();
+                                        // *best = Some(k as Depth);
 
-                                    let mut w = out.write();
-                                    *w = (depth, res, moves, w.3 + stats);
-                                    // *w = (depth, scores, None);
-                                    break;
-                                } else {
-                                    let mut w = out.write();
-                                    *w = (depth, res, moves, w.3 + stats);
-                                }
+                                        self.best_mate.store(k as Depth, SeqCst);
+
+                                        self.stop.store(true, SeqCst);
+
+                                        let mut w = out.write();
+                                        *w = (depth, res, moves, w.3 + stats);
+                                        // *w = (depth, scores, None);
+                                        break;
+                                    } else {
+                                        let mut w = out.write();
+                                        *w = (depth, res, moves, w.3 + stats);
+                                        any_move_stored = true;
+                                    }
                             } else {
                                 // XXX: add stats?
                             }
@@ -1066,7 +1077,8 @@ impl ExHelper {
         // while !self.stop.load(SeqCst)
         while !self.stop.load(Relaxed)
             && depth <= self.cfg.max_depth
-            && self.best_mate.read().is_none()
+            // && self.best_mate.read().is_none()
+            && self.best_mate.load(Relaxed) == -1
         {
 
             // XXX: needed?

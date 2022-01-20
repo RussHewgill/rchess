@@ -2971,7 +2971,7 @@ fn main9() {
     // let n = MAX_SEARCH_PLY;
     // let n = 35;
     // let n = 22;
-    let n = 10;
+    let n = 11;
     // let n = 12;
     // let n = 2;
 
@@ -2994,24 +2994,24 @@ fn main9() {
 
     // let mut ex2 = ex.clone();
 
-    // // XXX: avg of N runs
-    // const N: usize = 10;
-    // let mut times = vec![];
-    // for n in 0..N {
-    //     let mut ex2 = ex.clone();
-    //     ex2.clear_tt();
-    //     ex2.update_game(g.clone());
-    //     let t0 = std::time::Instant::now();
-    //     let (res,moves,stats0) = ex2.lazy_smp_2(&ts);
-    //     let t1 = t0.elapsed();
-    //     let t2 = t1.as_secs_f64();
-    //     times.push(t2);
-    //     let best0 = res.get_result().unwrap();
-    //     eprintln!("run {} = {:.3}", n, t2);
-    // }
-    // let avg = times.iter().sum::<f64>() / N as f64;
-    // eprintln!("avg = {:.3}", avg);
-    // return;
+    // XXX: avg of N runs
+    const N: usize = 10;
+    let mut times = vec![];
+    for n in 0..N {
+        let mut ex2 = ex.clone();
+        ex2.clear_tt();
+        ex2.update_game(g.clone());
+        let t0 = std::time::Instant::now();
+        let (res,moves,stats0) = ex2.lazy_smp_2(&ts);
+        let t1 = t0.elapsed();
+        let t2 = t1.as_secs_f64();
+        times.push(t2);
+        let best0 = res.get_result().unwrap();
+        eprintln!("run {} = {:.3}", n, t2);
+    }
+    let avg = times.iter().sum::<f64>() / N as f64;
+    eprintln!("avg = {:.3}", avg);
+    return;
 
     // let params = "e5d4 b4d6 f7f6 e3d4 g6f5";
     // let params = params.split(" ");
@@ -3938,11 +3938,6 @@ fn main_perft(depth: Option<u64>) {
 
     let fens = vec![STARTPOS,fen2,fen3,fen4,fen5];
 
-    // let k0 = 0u8;
-    // eprintln!("k0 = {:?}", k0);
-    // let k1 = Coord::new_int(k0);
-
-    // println!("starting");
     // let t0 = std::time::Instant::now();
     // for (k,fen) in fens.iter().enumerate() {
     //     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -3952,7 +3947,26 @@ fn main_perft(depth: Option<u64>) {
     // let t1 = t0.elapsed().as_secs_f64();
     // println!("perft done in {} seconds.", t1);
 
-    // return;
+    const N: usize = 5;
+    let mut times = vec![];
+
+    let games = fens.into_iter()
+        .map(|fen| Game::from_fen(&ts, fen).unwrap())
+        .collect::<Vec<_>>();
+
+    println!("starting");
+    for k in 0..N {
+        eprintln!("run {:?}", k);
+        let t0 = std::time::Instant::now();
+        for g in games.iter() {
+            let (tot,_) = MoveGen::perft(&ts, &g, d);
+        }
+        let t1 = t0.elapsed().as_secs_f64();
+        times.push(t1);
+    }
+    let avg = times.iter().sum::<f64>() / N as f64;
+    eprintln!("avg = {:.3}", avg);
+    return;
 
     println!("starting");
     for (k,fen) in fens.iter().enumerate() {

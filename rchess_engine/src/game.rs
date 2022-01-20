@@ -859,17 +859,15 @@ impl Game {
         self._insert_piece_mut_unchecked(&ts, to, pc, side, false, calc_zb);
     }
 
-    pub fn delete_piece_mut_unchecked<T: Into<Coord>>(
-        &mut self, ts: &Tables, at: T, pc: Piece, side: Color, calc_zb: bool) {
-        // &mut self, ts: &Tables, mv: Move, at: T, pc: Piece, side: Color, calc_zb: bool) {
-        // self._delete_piece_mut_unchecked(&ts, mv, at, pc, side, true, calc_zb);
-        self._delete_piece_mut_unchecked(&ts, at, pc, side, true, calc_zb);
-    }
+    // pub fn delete_piece_mut_unchecked(
+    //     &mut self, ts: &Tables, at: Coord, pc: Piece, side: Color, calc_zb: bool) {
+    //     // &mut self, ts: &Tables, mv: Move, at: T, pc: Piece, side: Color, calc_zb: bool) {
+    //     // self._delete_piece_mut_unchecked(&ts, mv, at, pc, side, true, calc_zb);
+    //     self._delete_piece_mut_unchecked(&ts, at, pc, side, true, calc_zb);
+    // }
 
-    fn _delete_piece_mut_unchecked<T: Into<Coord>>(
-        &mut self, ts: &Tables, at: T, pc: Piece, side: Color, mat: bool, calc_zb: bool) {
-        // &mut self, ts: &Tables, mv: Move, at: T, pc: Piece, side: Color, mat: bool, calc_zb: bool) {
-        let at = at.into();
+    fn delete_piece_mut_unchecked(
+        &mut self, ts: &Tables, at: Coord, pc: Piece, side: Color, calc_zb: bool) {
 
         let mut bc = self.get_color_mut(side);
         *bc = bc.set_zero(at);
@@ -877,16 +875,16 @@ impl Game {
         let mut bp = self.get_piece_mut(pc);
         *bp = bp.set_zero(at);
 
-        if mat && pc != King {
+        if pc != King {
 
             if !(self.state.material.buf[side][pc.index()] > 0) {
-                debug!("wat: \n{:?}\n{:?}\n{:?}\n{:?}",
+                panic!("wat: \n{:?}\n{:?}\n{:?}\n{:?}",
                        self.to_fen(), self,
-                       (Coord::from(at), pc, side, mat),
+                       (Coord::from(at), pc, side),
                        self.state.material);
             }
 
-            assert!(self.state.material.buf[side][pc.index()] > 0);
+            // assert!(self.state.material.buf[side][pc.index()] > 0);
             self.state.material.buf[side][pc.index()] -= 1;
         }
 

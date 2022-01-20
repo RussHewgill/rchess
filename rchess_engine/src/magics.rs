@@ -382,7 +382,7 @@ impl Tables {
         self.table_bishop[m.attacks + occ as usize]
     }
 
-    fn sparse_rand(rng: &mut StdRng) -> u64 {
+    pub fn sparse_rand(rng: &mut StdRng) -> u64 {
         let x0: u64 = rng.gen();
         let x1: u64 = rng.gen();
         let x2: u64 = rng.gen();

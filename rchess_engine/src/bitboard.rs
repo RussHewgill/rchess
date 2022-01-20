@@ -61,14 +61,8 @@ impl BitBoard {
         BitBoard(0)
     }
 
-    pub fn _single<T: Into<Coord>>(c: T) -> BitBoard {
-        Self::single(c.into())
-    }
-
     pub fn single(c: Coord) -> BitBoard {
-        let mut b = BitBoard::empty();
-        b.flip_mut(c);
-        b
+        SQUARE_BB[c]
     }
 
 }
@@ -148,10 +142,7 @@ impl BitBoard {
     }
 
     pub fn flip_mut(&mut self, c: Coord) {
-        // let p = Self::index_square(c);
         let p = c.inner();
-        // eprintln!("c, p = {:?}, {:?}", c, p);
-        // let k = 1 << p;
         let k = 1u64.overflowing_shl(p as u32).0;
         self.0 |= k;
     }
@@ -466,88 +457,8 @@ impl BitBoard {
 
 }
 
-/// Shift, Rotate, Mirror, etc
+/// Shift
 impl BitBoard {
-
-    pub fn mirror_vert(&self) -> Self {
-        Self(self.0.swap_bytes())
-    }
-
-    pub fn mirror_horiz(&self) -> Self {
-        // https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating#Horizontal
-        let mut x = self.0;
-        const K1: u64 = 0x5555555555555555;
-        const K2: u64 = 0x3333333333333333;
-        const K4: u64 = 0x0f0f0f0f0f0f0f0f;
-        x = ((x >> 1) & K1) +  2*(x & K1);
-        x = ((x >> 2) & K2) +  4*(x & K2);
-        x = ((x >> 4) & K4) + 16*(x & K4);
-        Self(x)
-    }
-
-    pub fn rotate_90_cw(&self) -> Self {
-        self.flip_diag().mirror_vert()
-    }
-
-    pub fn rotate_90_ccw(&self) -> Self {
-        self.mirror_vert().flip_diag()
-    }
-
-    pub fn rotate_45_cw(&self) -> Self {
-        const K1: u64 = 0xAAAAAAAAAAAAAAAA;
-        const K2: u64 = 0xCCCCCCCCCCCCCCCC;
-        const K4: u64 = 0xF0F0F0F0F0F0F0F0;
-        let mut x = self.0;
-        x ^= K1 & (x ^ x.rotate_right(8));
-        x ^= K2 & (x ^ x.rotate_right(16));
-        x ^= K4 & (x ^ x.rotate_right(32));
-        Self(x)
-        // unimplemented!()
-    }
-
-    pub fn rotate_45_ccw(&self) -> Self {
-        const K1: u64 = 0x5555555555555555;
-        const K2: u64 = 0x3333333333333333;
-        const K4: u64 = 0x0f0f0f0f0f0f0f0f;
-        let mut x = self.0;
-        x ^= K1 & (x ^ x.rotate_right(8));
-        x ^= K2 & (x ^ x.rotate_right(16));
-        x ^= K4 & (x ^ x.rotate_right(32));
-        Self(x)
-        // unimplemented!()
-    }
-
-    pub fn rotate_180(&self) -> Self {
-        Self(self.0.reverse_bits())
-    }
-
-    pub fn flip_antidiag(&self) -> Self {
-        const K1: u64 = 0xaa00aa00aa00aa00;
-        const K2: u64 = 0xcccc0000cccc0000;
-        const K4: u64 = 0xf0f0f0f00f0f0f0f;
-        let mut x = self.0;
-        let mut t  = x ^ (x << 36) ;
-        x ^= K4 & (t ^ (x >> 36));
-        t  = K2 & (x ^ (x << 18));
-        x ^=       t ^ (t >> 18) ;
-        t  = K1 & (x ^ (x <<  9));
-        x ^=       t ^ (t >>  9) ;
-        Self(x)
-    }
-
-    pub fn flip_diag(&self) -> Self {
-        const K1: u64 = 0x5500550055005500;
-        const K2: u64 = 0x3333000033330000;
-        const K4: u64 = 0x0f0f0f0f00000000;
-        let mut x  = self.0;
-        let mut t  = K4 & (x ^ (x << 28));
-        x ^= t ^ (t >> 28) ;
-        t = K2 & (x ^ (x << 14));
-        x ^= t ^ (t >> 14) ;
-        t = K1 & (x ^ (x <<  7));
-        x ^= t ^ (t >>  7) ;
-        Self(x)
-    }
 
     #[cfg(feature = "nope")]
     pub fn shift_dir(&self, d: D) -> Self {
@@ -642,6 +553,91 @@ impl BitBoard {
 
 }
 
+/// Shift, Rotate, Mirror, etc
+impl BitBoard {
+
+    pub fn mirror_vert(&self) -> Self {
+        Self(self.0.swap_bytes())
+    }
+
+    pub fn mirror_horiz(&self) -> Self {
+        // https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating#Horizontal
+        let mut x = self.0;
+        const K1: u64 = 0x5555555555555555;
+        const K2: u64 = 0x3333333333333333;
+        const K4: u64 = 0x0f0f0f0f0f0f0f0f;
+        x = ((x >> 1) & K1) +  2*(x & K1);
+        x = ((x >> 2) & K2) +  4*(x & K2);
+        x = ((x >> 4) & K4) + 16*(x & K4);
+        Self(x)
+    }
+
+    pub fn rotate_90_cw(&self) -> Self {
+        self.flip_diag().mirror_vert()
+    }
+
+    pub fn rotate_90_ccw(&self) -> Self {
+        self.mirror_vert().flip_diag()
+    }
+
+    pub fn rotate_45_cw(&self) -> Self {
+        const K1: u64 = 0xAAAAAAAAAAAAAAAA;
+        const K2: u64 = 0xCCCCCCCCCCCCCCCC;
+        const K4: u64 = 0xF0F0F0F0F0F0F0F0;
+        let mut x = self.0;
+        x ^= K1 & (x ^ x.rotate_right(8));
+        x ^= K2 & (x ^ x.rotate_right(16));
+        x ^= K4 & (x ^ x.rotate_right(32));
+        Self(x)
+        // unimplemented!()
+    }
+
+    pub fn rotate_45_ccw(&self) -> Self {
+        const K1: u64 = 0x5555555555555555;
+        const K2: u64 = 0x3333333333333333;
+        const K4: u64 = 0x0f0f0f0f0f0f0f0f;
+        let mut x = self.0;
+        x ^= K1 & (x ^ x.rotate_right(8));
+        x ^= K2 & (x ^ x.rotate_right(16));
+        x ^= K4 & (x ^ x.rotate_right(32));
+        Self(x)
+        // unimplemented!()
+    }
+
+    pub fn rotate_180(&self) -> Self {
+        Self(self.0.reverse_bits())
+    }
+
+    pub fn flip_antidiag(&self) -> Self {
+        const K1: u64 = 0xaa00aa00aa00aa00;
+        const K2: u64 = 0xcccc0000cccc0000;
+        const K4: u64 = 0xf0f0f0f00f0f0f0f;
+        let mut x = self.0;
+        let mut t  = x ^ (x << 36) ;
+        x ^= K4 & (t ^ (x >> 36));
+        t  = K2 & (x ^ (x << 18));
+        x ^=       t ^ (t >> 18) ;
+        t  = K1 & (x ^ (x <<  9));
+        x ^=       t ^ (t >>  9) ;
+        Self(x)
+    }
+
+    pub fn flip_diag(&self) -> Self {
+        const K1: u64 = 0x5500550055005500;
+        const K2: u64 = 0x3333000033330000;
+        const K4: u64 = 0x0f0f0f0f00000000;
+        let mut x  = self.0;
+        let mut t  = K4 & (x ^ (x << 28));
+        x ^= t ^ (t >> 28) ;
+        t = K2 & (x ^ (x << 14));
+        x ^= t ^ (t >> 14) ;
+        t = K1 & (x ^ (x <<  7));
+        x ^= t ^ (t >>  7) ;
+        Self(x)
+    }
+
+}
+
 /// Display
 impl BitBoard {
     pub fn print_hex(&self) -> String {
@@ -671,58 +667,4 @@ impl std::fmt::Debug for BitBoard {
         }
         Ok(())
     }
-}
-
-pub mod bits {
-
-    // use super::BitBoard;
-    // use std::ops::{BitAnd,BitAndAssign,BitOr,BitOrAssign,BitXor,BitXorAssign,Not};
-
-    // impl BitAnd for BitBoard {
-    //     type Output = Self;
-    //     fn bitand(self, rhs: Self) -> Self::Output {
-    //         Self(self.0 & rhs.0)
-    //     }
-    // }
-
-    // impl BitAndAssign for BitBoard {
-    //     fn bitand_assign(&mut self, rhs: Self) {
-    //         *self = Self(self.0 & rhs.0)
-    //     }
-    // }
-
-    // impl BitOr for BitBoard {
-    //     type Output = Self;
-    //     fn bitor(self, rhs: Self) -> Self::Output {
-    //         Self(self.0 | rhs.0)
-    //     }
-    // }
-
-    // impl BitOrAssign for BitBoard {
-    //     fn bitor_assign(&mut self, rhs: Self) {
-    //         *self = Self(self.0 | rhs.0)
-    //     }
-    // }
-
-    // impl BitXor for BitBoard {
-    //     type Output = Self;
-    //     fn bitxor(self, rhs: Self) -> Self::Output {
-    //         Self(self.0 ^ rhs.0)
-    //     }
-    // }
-
-    // impl BitXorAssign for BitBoard {
-    //     fn bitxor_assign(&mut self, rhs: Self) {
-    //         *self = Self(self.0 ^ rhs.0)
-    //     }
-    // }
-
-
-    // impl Not for BitBoard {
-    //     type Output = Self;
-    //     fn not(self) -> Self::Output {
-    //         Self(!self.0)
-    //     }
-    // }
-
 }

@@ -51,7 +51,8 @@ pub fn exhelper_once(
 
     // let stop = Arc::new(AtomicBool::new(false));
     let stop = Arc::new(CachePadded::new(AtomicBool::new(false)));
-    let best_mate = Arc::new(RwLock::new(None));
+    // let best_mate = Arc::new(RwLock::new(None));
+    let best_mate = Arc::new(CachePadded::new(AtomicI16::new(-1)));
     // let best_depth = Arc::new(AtomicI16::new(0));
     let best_depth = Arc::new(CachePadded::new(AtomicI16::new(0)));
 
