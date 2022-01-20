@@ -75,34 +75,6 @@ pub static CENTERDIST: [u8; 64] = [
     3, 3, 3, 3, 3, 3, 3, 3
 ];
 
-pub const MASK_FILES: [BitBoard; 8] = [
-    BitBoard(0x0101010101010101),
-    BitBoard(0x0202020202020202),
-    BitBoard(0x0404040404040404),
-    BitBoard(0x0808080808080808),
-    BitBoard(0x1010101010101010),
-    BitBoard(0x2020202020202020),
-    BitBoard(0x4040404040404040),
-    BitBoard(0x8080808080808080),
-];
-
-pub const MASK_RANKS: [BitBoard; 8] = [
-    BitBoard(0x00000000000000ff),
-    BitBoard(0x000000000000ff00),
-    BitBoard(0x0000000000ff0000),
-    BitBoard(0x00000000ff000000),
-    BitBoard(0x000000ff00000000),
-    BitBoard(0x0000ff0000000000),
-    BitBoard(0x00ff000000000000),
-    BitBoard(0xff00000000000000),
-];
-
-pub const WHITE_SQUARES: BitBoard = BitBoard(0x55AA55AA55AA55AA);
-pub const BLACK_SQUARES: BitBoard = BitBoard(0xAA55AA55AA55AA55);
-
-pub const DIAG_A1_H8: BitBoard = BitBoard(0x8040201008040201);
-pub const DIAG_A8_H1: BitBoard = BitBoard(0x0102040810204080);
-
 lazy_static! {
     pub static ref FLANK_LEFT: BitBoard  = MASK_FILES[0] | MASK_FILES[1] | MASK_FILES[2] | MASK_FILES[3];
     pub static ref FLANK_RIGHT: BitBoard = MASK_FILES[4] | MASK_FILES[5] | MASK_FILES[6] | MASK_FILES[7];
