@@ -293,7 +293,7 @@ fn main_threading() {
     // ex.time_settings.move_time = 339;
     // ex.time_settings.increment = 100;
 
-    // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+    ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
     ex.spawn_threads();
 
