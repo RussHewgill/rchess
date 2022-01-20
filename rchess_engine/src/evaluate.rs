@@ -151,6 +151,18 @@ impl ExConfig {
 /// Main Eval 2
 impl Game {
 
+    #[cfg(feature = "only_material_eval")]
+    pub fn sum_evaluate(
+        &self,
+        ts:         &Tables,
+        ev_mid:     &EvalParams,
+        ev_end:     &EvalParams,
+        ph_rw:      Option<&PHTable>,
+    ) -> Score {
+        self.score_material2(White) - self.score_material2(Black)
+    }
+
+    #[cfg(not(feature = "only_material_eval"))]
     pub fn sum_evaluate(
         &self,
         ts:         &Tables,

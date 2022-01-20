@@ -534,7 +534,8 @@ impl Explorer {
 
 /// Get PV
 impl ExHelper {
-    pub fn get_pv(&self, ts: &'static Tables, st: &ABStack) -> Vec<Move> {
+    // pub fn get_pv(&self, ts: &'static Tables, st: &ABStack) -> Vec<Move> {
+    pub fn get_pv(&self, ts: &Tables, st: &ABStack) -> Vec<Move> {
         st.pvs.to_vec()
     }
 }
@@ -542,7 +543,8 @@ impl ExHelper {
 /// Entry points
 impl Explorer {
 
-    pub fn explore(&self, ts: &'static Tables) -> (Option<(Move,ABResult)>,SearchStats) {
+    // pub fn explore(&self, ts: &'static Tables) -> (Option<(Move,ABResult)>,SearchStats) {
+    pub fn explore(&self, ts: &Tables) -> (Option<(Move,ABResult)>,SearchStats) {
         let (ress,moves,stats) = self.lazy_smp_2(ts);
         if let Some(best) = ress.get_result() {
             debug!("explore: best move = {:?}", best.mv);
@@ -567,7 +569,8 @@ impl Explorer {
     }
 
     #[allow(unused_labels,unused_doc_comments)]
-    pub fn lazy_smp_2(&self, ts: &'static Tables) -> (ABResults,Vec<Move>,SearchStats) {
+    // pub fn lazy_smp_2(&self, ts: &'static Tables) -> (ABResults,Vec<Move>,SearchStats) {
+    pub fn lazy_smp_2(&self, ts: &Tables) -> (ABResults,Vec<Move>,SearchStats) {
 
         #[cfg(feature = "one_thread")]
         let max_threads = 1;
@@ -628,7 +631,8 @@ impl Explorer {
 
         // let t_max = self.timer.allocate_time()
 
-        let root_moves = MoveGen::gen_all(ts, &self.game);
+        // let root_moves = MoveGen::gen_all(ts, &self.game);
+        let root_moves = vec![];
 
         crossbeam::scope(|s| {
 
@@ -936,7 +940,8 @@ impl ExHelper {
 
     fn lazy_smp_single(
         &self,
-        ts:               &'static Tables,
+        // ts:               &'static Tables,
+        ts:               &Tables,
     ) {
 
         let mut stack = ABStack::new_with_moves(&self.move_history);
@@ -1059,7 +1064,8 @@ impl ExHelper {
     // #[cfg(feature = "nope")]
     fn lazy_smp_single(
         &self,
-        ts:               &'static Tables,
+        // ts:               &'static Tables,
+        ts:               &Tables,
         // max_threads:      i8,
     ) {
 

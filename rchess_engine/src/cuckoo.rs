@@ -4,9 +4,9 @@ use crate::tables::*;
 
 use lazy_static::lazy_static;
 
-lazy_static! { /// TABLES
-    pub static ref CUCKOO_TABLE: CuckooTable = CuckooTable::new(&_TABLES);
-}
+// lazy_static! { /// TABLES
+//     pub static ref CUCKOO_TABLE: CuckooTable = CuckooTable::new(&_TABLES);
+// }
 
 #[derive(Debug,Clone)]
 pub struct CuckooTable {

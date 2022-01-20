@@ -41,15 +41,83 @@ mod lookups {
     pub const DIAG_A1_H8: BitBoard = BitBoard(0x8040201008040201);
     pub const DIAG_A8_H1: BitBoard = BitBoard(0x0102040810204080);
 
-    lazy_static! { /// SQUARE_BB
-        // pub static ref SQUARE_BB: [BitBoard; 64] = array_init::array_init(|x| BitBoard::single(Coord::new_int(x)));
-        pub static ref SQUARE_BB: [BitBoard; 64] = array_init::array_init(|x| {
-            // b.flip_mut(Coord::new_int_const(x as u8));
-            let k = 1u64.overflowing_shl(x as u32).0;
-            BitBoard(k)
-            // unimplemented!()
-        });
-    }
+    // lazy_static! { /// SQUARE_BB
+    //     // pub static ref SQUARE_BB: [BitBoard; 64] = array_init::array_init(|x| BitBoard::single(Coord::new_int(x)));
+    //     pub static ref SQUARE_BB: [BitBoard; 64] = array_init::array_init(|x| {
+    //         // b.flip_mut(Coord::new_int_const(x as u8));
+    //         let k = 1u64.overflowing_shl(x as u32).0;
+    //         BitBoard(k)
+    //         // unimplemented!()
+    //     });
+    // }
+
+    pub const SQUARE_BB: [BitBoard; 64] = [
+        BitBoard(1 << 0),
+        BitBoard(1 << 1),
+        BitBoard(1 << 2),
+        BitBoard(1 << 3),
+        BitBoard(1 << 4),
+        BitBoard(1 << 5),
+        BitBoard(1 << 6),
+        BitBoard(1 << 7),
+        BitBoard(1 << 8),
+        BitBoard(1 << 9),
+        BitBoard(1 << 10),
+        BitBoard(1 << 11),
+        BitBoard(1 << 12),
+        BitBoard(1 << 13),
+        BitBoard(1 << 14),
+        BitBoard(1 << 15),
+        BitBoard(1 << 16),
+        BitBoard(1 << 17),
+        BitBoard(1 << 18),
+        BitBoard(1 << 19),
+        BitBoard(1 << 20),
+        BitBoard(1 << 21),
+        BitBoard(1 << 22),
+        BitBoard(1 << 23),
+        BitBoard(1 << 24),
+        BitBoard(1 << 25),
+        BitBoard(1 << 26),
+        BitBoard(1 << 27),
+        BitBoard(1 << 28),
+        BitBoard(1 << 29),
+        BitBoard(1 << 30),
+        BitBoard(1 << 31),
+        BitBoard(1 << 32),
+        BitBoard(1 << 33),
+        BitBoard(1 << 34),
+        BitBoard(1 << 35),
+        BitBoard(1 << 36),
+        BitBoard(1 << 37),
+        BitBoard(1 << 38),
+        BitBoard(1 << 39),
+        BitBoard(1 << 40),
+        BitBoard(1 << 41),
+        BitBoard(1 << 42),
+        BitBoard(1 << 43),
+        BitBoard(1 << 44),
+        BitBoard(1 << 45),
+        BitBoard(1 << 46),
+        BitBoard(1 << 47),
+        BitBoard(1 << 48),
+        BitBoard(1 << 49),
+        BitBoard(1 << 50),
+        BitBoard(1 << 51),
+        BitBoard(1 << 52),
+        BitBoard(1 << 53),
+        BitBoard(1 << 54),
+        BitBoard(1 << 55),
+        BitBoard(1 << 56),
+        BitBoard(1 << 57),
+        BitBoard(1 << 58),
+        BitBoard(1 << 59),
+        BitBoard(1 << 60),
+        BitBoard(1 << 61),
+        BitBoard(1 << 62),
+        BitBoard(1 << 63),
+    ];
+
 }
 
 #[derive(Serialize,Deserialize,Hash,Eq,PartialEq,PartialOrd,Clone,Copy,ShallowCopy,
@@ -86,6 +154,8 @@ impl BitBoard {
 
     pub fn single(c: Coord) -> BitBoard {
         SQUARE_BB[c]
+        // let k = 1u64.overflowing_shl(c.inner() as u32).0;
+        // BitBoard(k)
     }
 
 }

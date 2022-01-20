@@ -42,18 +42,18 @@ lazy_static! { /// SQUAREDIST
 
 }
 
-lazy_static! { /// TABLES
-    // pub static ref _TABLES: Tables = {
-    //     #[cfg(not(feature = "smallstack"))]
-    //     let ts = Tables::read_from_file("tables.bin").unwrap();
-    //     // #[cfg(feature = "smallstack")]
-    //     // let ts = Tables::read_from_file("tables-vec.bin").unwrap();
-    //     ts
-    // };
-    // pub static ref _TABLES: Tables = Tables::read_from_file("tables.bin").unwrap();
-    // pub static ref _TABLES: Tables = Tables::read_from_file_def().unwrap();
-    pub static ref _TABLES: Tables = Tables::new();
-}
+// lazy_static! { /// TABLES
+//     // pub static ref _TABLES: Tables = {
+//     //     #[cfg(not(feature = "smallstack"))]
+//     //     let ts = Tables::read_from_file("tables.bin").unwrap();
+//     //     // #[cfg(feature = "smallstack")]
+//     //     // let ts = Tables::read_from_file("tables-vec.bin").unwrap();
+//     //     ts
+//     // };
+//     // pub static ref _TABLES: Tables = Tables::read_from_file("tables.bin").unwrap();
+//     // pub static ref _TABLES: Tables = Tables::read_from_file_def().unwrap();
+//     pub static ref _TABLES: Tables = Tables::new();
+// }
 
 // lazy_static! { /// SQUARE_BB
 //     // pub static ref SQUARE_BB: [BitBoard; 64] = array_init::array_init(|x| BitBoard::single(Coord::new_int(x)));

@@ -197,7 +197,8 @@ impl ExHelper {
 impl ExHelper {
     pub fn ab_search_single(
         &self,
-        ts:             &'static Tables,
+        // ts:             &'static Tables,
+        ts:             &Tables,
         mut stats:      &mut SearchStats,
         mut stack:      &mut ABStack,
         ab:             Option<(Score,Score)>,
@@ -307,7 +308,8 @@ impl ExHelper {
 
     // #[cfg(feature = "nope")]
     pub fn has_cycle(
-        ts:                      &'static Tables,
+        // ts:                      &'static Tables,
+        ts:                      &Tables,
         g:                       &Game,
         mut stats:               &mut SearchStats,
         stack:                   &ABStack,
@@ -345,7 +347,8 @@ impl ExHelper {
     #[cfg(feature = "nope")]
     pub fn has_cycle(
         // &self,
-        ts:                      &'static Tables,
+        // ts:                      &'static Tables,
+        ts:                      &Tables,
         g:                       &Game,
         ply:                     Depth,
         mut stats:               &mut SearchStats,
@@ -426,7 +429,8 @@ impl ExHelper {
 
     pub fn get_static_eval(
         &self,
-        ts:           &'static Tables,
+        // ts:           &'static Tables,
+        ts:           &Tables,
         g:            &Game,
         ply:          Depth,
         mut stack:    &mut ABStack,
@@ -475,7 +479,8 @@ impl ExHelper {
 
     pub fn eval_nn_or_hce(
         &self,
-        ts:           &'static Tables,
+        // ts:           &'static Tables,
+        ts:           &Tables,
         g:            &Game,
     ) -> Score {
 
@@ -502,7 +507,8 @@ impl ExHelper {
     /// beta:  the MAX score that the minimizing player is assured of
     pub fn ab_search<const NODE_TYPE: ABNodeType>(
         &self,
-        ts:                      &'static Tables,
+        // ts:                      &'static Tables,
+        ts:                      &Tables,
         g:                       &Game,
         (depth,ply):             (Depth,Depth),
         (mut alpha, mut beta):   (Score,Score),

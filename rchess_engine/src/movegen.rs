@@ -116,7 +116,8 @@ mod mg_key {
 
 #[derive(Debug,Clone)]
 pub struct MoveGen<'a> {
-    ts:                  &'static Tables,
+    // ts:                  &'static Tables,
+    ts:                  &'a Tables,
     game:                &'a Game,
 
     // root_moves:          Option<Vec<Move>>,
@@ -355,7 +356,8 @@ impl<'a> MoveGen<'a> {
 impl<'a> MoveGen<'a> {
 
     pub fn new(
-        ts:             &'static Tables,
+        // ts:             &'static Tables,
+        ts:             &'a Tables,
         game:           &'a Game,
         hashmove:       Option<Move>,
         stack:          &ABStack,
@@ -413,7 +415,8 @@ impl<'a> MoveGen<'a> {
     }
 
     pub fn new_qsearch(
-        ts:             &'static Tables,
+        // ts:             &'static Tables,
+        ts:             &'a Tables,
         game:           &'a Game,
         hashmove:       Option<Move>,
         stack:          &ABStack,
@@ -463,7 +466,8 @@ impl<'a> MoveGen<'a> {
 impl<'a> MoveGen<'a> {
 
     pub fn new_root(
-        ts:             &'static Tables,
+        // ts:             &'static Tables,
+        ts:             &'a Tables,
         game:           &'a Game,
         root_moves:     &[Move],
     ) -> Self {
@@ -503,7 +507,8 @@ impl<'a> MoveGen<'a> {
         out
     }
 
-    pub fn gen_all(ts: &'static Tables, g: &'a Game) -> Vec<Move> {
+    // pub fn gen_all(ts: &'static Tables, g: &'a Game) -> Vec<Move> {
+    pub fn gen_all(ts: &'a Tables, g: &'a Game) -> Vec<Move> {
         let st = ABStack::new();
         let mut movegen = Self::new(ts, g, None, &st, 0, 0);
         let mut mvs = vec![];
@@ -743,7 +748,8 @@ impl<'a> MoveGen<'a> {
 impl<'a> MoveGen<'a> {
     // pub fn gen_to_vec(&mut self, gen: MoveGenType)
 
-    pub fn generate_list(ts: &'static Tables, g: &'a Game, gen: Option<MoveGenType>) -> ArrayVec<Move,256> {
+    // pub fn generate_list(ts: &'static Tables, g: &'a Game, gen: Option<MoveGenType>) -> ArrayVec<Move,256> {
+    pub fn generate_list(ts: &'a Tables, g: &'a Game, gen: Option<MoveGenType>) -> ArrayVec<Move,256> {
 
         let st = ABStack::new();
         let mut movegen = Self::new(ts, g, None, &st, 0, 0);
@@ -848,7 +854,8 @@ impl<'a> MoveGen<'a> {
 /// Perft
 impl<'a> MoveGen<'a> {
 
-    pub fn perft(ts: &'static Tables, g: &'a Game, depth: Depth) -> (u64,Vec<(Move,u64)>) {
+    // pub fn perft(ts: &'static Tables, g: &'a Game, depth: Depth) -> (u64,Vec<(Move,u64)>) {
+    pub fn perft(ts: &'a Tables, g: &'a Game, depth: Depth) -> (u64,Vec<(Move,u64)>) {
         let depth = depth.max(1);
         let mut out = vec![];
         let mut sum = 0;
@@ -877,7 +884,8 @@ impl<'a> MoveGen<'a> {
         (sum,out)
     }
 
-    pub fn _perft(ts: &'static Tables, st: &ABStack, g: Game, depth: Depth) -> u64 {
+    // pub fn _perft(ts: &'static Tables, st: &ABStack, g: Game, depth: Depth) -> u64 {
+    pub fn _perft(ts: &'a Tables, st: &ABStack, g: Game, depth: Depth) -> u64 {
         if depth == 0 { return 1; }
 
         let mut gen = MoveGen::new(ts, &g, None, st, depth, 0);
@@ -921,7 +929,8 @@ impl<'a> MoveGen<'a> {
 
     // #[cfg(feature = "nope")]
     pub fn _static_exchange(
-        ts:          &'static Tables,
+        // ts:          &'static Tables,
+        ts:          &'a Tables,
         g:           &Game,
         mut map:     &mut HashMap<Move,Score>,
         mv:          Move,

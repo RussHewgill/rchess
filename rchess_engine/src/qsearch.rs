@@ -19,7 +19,8 @@ use crossbeam::utils::CachePadded;
 use parking_lot::{Mutex,RwLock};
 
 pub fn exhelper_once(
-    ts:       &'static Tables,
+    // ts:       &'static Tables,
+    ts:       &Tables,
     g:        &Game,
     side:     Color,
     ev_mid:   &EvalParams,
@@ -542,7 +543,8 @@ impl ExHelper {
     #[cfg(not(feature = "tt_in_qsearch"))]
     pub fn qsearch<const NODE_TYPE: ABNodeType>(
         &self,
-        ts:                       &'static Tables,
+        // ts:                       &'static Tables,
+        ts:                       &Tables,
         g:                        &Game,
         (ply,qply,depth):         (Depth,Depth,Depth),
         (mut alpha, mut beta):    (Score,Score),

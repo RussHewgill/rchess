@@ -2,8 +2,7 @@
 use crate::threading::thread_types::*;
 use crate::pawn_hash_table::PHTable;
 use crate::stack::ABStack;
-use crate::tables::Tables;
-use crate::tables::_TABLES;
+use crate::tables::*;
 use crate::tuning::*;
 use crate::types::*;
 use crate::explore::*;
@@ -156,14 +155,17 @@ impl Explorer2 {
         stats.ph_misses = self.ph_rw.misses.load(Ordering::Relaxed);
 
         if let Some(res) = out.get_result() {
-            let out = if self.game.move_is_legal(&_TABLES, res.mv.unwrap(), self.game.state.side_to_move) {
-                out
-            } else {
-                debug!("best move wasn't legal? {:?}\n{:?}\n{:?}", self.game, self.game.to_fen(), res);
-                // ABResults::ABNone
-                panic!();
-            };
-            (out,moves,stats)
+
+            // let out = if self.game.move_is_legal(&_TABLES, res.mv.unwrap(), self.game.state.side_to_move) {
+            //     out
+            // } else {
+            //     debug!("best move wasn't legal? {:?}\n{:?}\n{:?}", self.game, self.game.to_fen(), res);
+            //     // ABResults::ABNone
+            //     panic!();
+            // };
+            // (out,moves,stats)
+
+            unimplemented!()
         } else {
 
             debug!("lazy_smp, no result? res = {:?}", out);

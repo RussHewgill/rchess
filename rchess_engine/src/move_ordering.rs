@@ -75,7 +75,8 @@ pub enum OrdMove2 {
 }
 
 pub fn score_move_for_sort4(
-    ts:           &'static Tables,
+    // ts:           &'static Tables,
+    ts:           &Tables,
     g:            &Game,
     gentype:      MoveGenType,
     mut see_map:  &mut HashMap<Move,Score>,

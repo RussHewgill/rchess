@@ -4,8 +4,7 @@ pub mod lazy_smp;
 
 use crate::pawn_hash_table::PHTable;
 use crate::stack::ABStack;
-use crate::tables::Tables;
-use crate::tables::_TABLES;
+use crate::tables::*;
 use crate::tuning::*;
 use crate::types::*;
 use crate::explore::*;
@@ -379,7 +378,8 @@ impl ExThread {
                 },
                 Ok(ThreadUpdateType::Search) => {
                     // debug!("thread {} search", self.id);
-                    self.lazy_smp_single(&_TABLES);
+                    // self.lazy_smp_single(&_TABLES);
+                    unimplemented!()
                 },
                 Ok(ThreadUpdateType::Update(update)) => {
                     // debug!("thread {} update", self.id);
