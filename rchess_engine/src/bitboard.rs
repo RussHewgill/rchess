@@ -300,6 +300,27 @@ impl BitBoard {
     }
 }
 
+/// Fills
+impl BitBoard {
+
+    pub fn fill_north(&self) -> Self {
+        let mut b = self.0;
+        b |= b.overflowing_shl(8).0;
+        b |= b.overflowing_shl(16).0;
+        b |= b.overflowing_shl(32).0;
+        BitBoard(b)
+    }
+
+    pub fn fill_south(&self) -> Self {
+        let mut b = self.0;
+        b |= b.overflowing_shr(8).0;
+        b |= b.overflowing_shr(16).0;
+        b |= b.overflowing_shr(32).0;
+        BitBoard(b)
+    }
+
+}
+
 /// Shift
 impl BitBoard {
 
