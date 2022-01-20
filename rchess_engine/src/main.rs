@@ -70,10 +70,10 @@ fn main() {
     match &arg1[..] {
         "tt"        => main_tt(),
         "threading" => main_threading(),
+        "bitboard"  => main_bitboard(),
         "nn"        => main_nn(),
         "nnue"      => main_nnue(),
         "train"     => main_nnue_train(),
-        "movegen"   => main_movegen(),
         "simd"      => main_simd(),
         "eval"      => main_eval(),
         "gensfen"   => {
@@ -251,7 +251,7 @@ fn _main() {
 }
 
 #[allow(unreachable_code)]
-fn main_movegen() {
+fn main_bitboard() {
 }
 
 #[allow(unreachable_code)]
