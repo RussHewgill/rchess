@@ -36,7 +36,7 @@ default = [
 
     "positional_scoring",
     # "mobility_scoring",
-    "only_material_score",
+    "only_material_eval",
 
     # "syzygy",
     "nnue",
@@ -78,7 +78,7 @@ keep_stats = []
 
 positional_scoring = []
 mobility_scoring = []
-only_material_score = []
+only_material_eval = []
 
 syzygy = []
 nnue = []

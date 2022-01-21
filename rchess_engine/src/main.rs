@@ -2954,7 +2954,7 @@ fn main9() {
 
     // // let k0 = std::mem::size_of::<SearchInfo>();
     // // eprintln!("k0 = {:?}", k0);
-    // print_size_of!(ABStack);
+    // print_size_of!(Game);
     // return;
 
     // for depth in 0..20 {
@@ -2976,7 +2976,7 @@ fn main9() {
     // let n = MAX_SEARCH_PLY;
     // let n = 35;
     // let n = 22;
-    let n = 10;
+    let n = 12;
     // let n = 12;
     // let n = 2;
 

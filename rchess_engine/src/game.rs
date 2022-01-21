@@ -14,26 +14,22 @@ use std::hash::{Hash,Hasher};
 use rustc_hash::FxHashMap;
 
 use serde::{Serialize,Deserialize};
+use serde_big_array::BigArray;
 
 // pub use crate::stack_game::*;
 
 pub type Phase = u8;
 
-// #[derive(PartialEq,Clone)]
-// #[derive(PartialEq,Clone,Serialize,Deserialize)]
 #[derive(PartialEq,Clone,Copy,Serialize,Deserialize)]
 pub struct Game {
-    // pub move_history: Vec<Move>,
     pub state:        GameState,
     pub zobrist:      Zobrist,
     pub pawn_zb:      Zobrist,
     pub last_move:    Option<Move>,
     // pub last_move_2:  Option<Move>,
 
-    // // pub history:      GHistory,
-    // // pub history:      Vec<(Zobrist,Move)>,
-    // // pub history:      HashMap<Zobrist, u8>,
-    // pub history:      FxHashMap<Zobrist, u8>,
+    // #[serde(with = "BigArray")]
+    // pub pieces:       [Option<Piece>; 64],
 
     pub halfmove:     Depth,
 }
@@ -80,13 +76,14 @@ pub struct GameState {
 
 impl Default for Game {
     fn default() -> Self {
-        // let history = FxHashMap::default();
-
         Self {
             state:        GameState::default(),
             zobrist:      Zobrist(0),
             pawn_zb:      Zobrist(0),
             last_move:    None,
+
+            // pieces:       [None; 64],
+
             // last_move_2:  None,
             // history,
             halfmove:    0,
@@ -845,6 +842,9 @@ impl Game {
 
         let mut bp = self.get_piece_mut(pc);
         *bp ^= fromto;
+
+        // self.pieces[from] = None;
+        // self.pieces[to]   = Some(pc);
 
         if calc_zb {
             self.zobrist = self.zobrist.update_piece(&ts, pc, side, from);

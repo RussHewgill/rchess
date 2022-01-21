@@ -13,6 +13,8 @@ pub struct ABStack {
     pub capture_history:        crate::heuristics::CaptureHistory,
     // pub continuation_history:   crate::heuristics::ContinuationHistory,
 
+    pub pieces:                 [Option<Piece>; 64],
+
     pub inside_null:            bool,
 
     pub stacks:                 Vec<ABStackPly>,
@@ -300,6 +302,8 @@ impl ABStack {
             counter_moves:          crate::heuristics::CounterMoves::default(),
             capture_history:        crate::heuristics::CaptureHistory::default(),
             // continuation_history:   crate::heuristics::ContinuationHistory::default(),
+
+            pieces:                 [None; 64],
 
             inside_null:            false,
 
