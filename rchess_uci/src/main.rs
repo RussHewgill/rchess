@@ -103,8 +103,8 @@ fn main() -> std::io::Result<()> {
     );
     // let mut timeset = false;
 
-    // let ts = Tables::new();
-    let ts = &_TABLES;
+    let ts = Tables::new();
+    // let ts = &_TABLES;
 
     let mut g = Game::from_fen(&ts, STARTPOS).unwrap();
 
@@ -222,7 +222,7 @@ fn main() -> std::io::Result<()> {
                             x => panic!("Position not fen? {:?},  {:?}", x, params),
                         }
                     },
-                    "stop"       => should_stop.store(true, Ordering::Relaxed),
+                    "stop"       => should_stop.store(true, Ordering::SeqCst),
                     "ponderhit"  => unimplemented!(),
                     "quit"       => return Ok(()),
                     "go"         => {
@@ -244,7 +244,7 @@ fn main() -> std::io::Result<()> {
                         #[cfg(feature = "threadpool")]
                         let (m,stats) = explorer.explore();
                         #[cfg(not(feature = "threadpool"))]
-                        let (m,stats) = explorer.explore(ts);
+                        let (m,stats) = explorer.explore(&ts);
 
                         debug!("m = {:?}", m);
                         let (mv,score) = m.unwrap();

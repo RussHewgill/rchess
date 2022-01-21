@@ -28,8 +28,8 @@ pub struct Game {
     pub last_move:    Option<Move>,
     // pub last_move_2:  Option<Move>,
 
-    // #[serde(with = "BigArray")]
-    // pub pieces:       [Option<Piece>; 64],
+    #[serde(with = "BigArray")]
+    pub pieces:       [Option<Piece>; 64],
 
     pub halfmove:     Depth,
 }
@@ -82,7 +82,7 @@ impl Default for Game {
             pawn_zb:      Zobrist(0),
             last_move:    None,
 
-            // pieces:       [None; 64],
+            pieces:       [None; 64],
 
             // last_move_2:  None,
             // history,
@@ -626,12 +626,9 @@ impl Game {
         Ok(())
     }
 
-    // pub fn count_material(&self) -> [[u8; 5]; 2] {
     pub fn count_material(&self) -> Material {
         const COLS: [Color; 2] = [White,Black];
-        // const PCS:  [Piece; 5] = [Pawn,Knight,Bishop,Rook,Queen,];
 
-        // let mut out = [[0; 5]; 2];
         let mut out = [[0; 6]; 2];
         for side in COLS {
             for pc in Piece::iter_pieces() {
@@ -639,7 +636,6 @@ impl Game {
             }
         }
         Material { buf: out }
-        // out
     }
 
     pub fn recalc_gameinfo_mut(&mut self, ts: &Tables) -> GameResult<()> {
@@ -679,13 +675,6 @@ impl Game {
         Ok(())
     }
 
-    // fn reset_gameinfo_mut(&mut self) {
-    //     self.state.checkers      = BitBoard::empty();
-    //     self.state.king_blocks_w = BitBoard::empty();
-    //     self.state.king_blocks_b = BitBoard::empty();
-    //     // self.state.pinners       = None;
-    // }
-
     fn update_check_squares_mut(&mut self, ts: &Tables) {
 
         let ksq = self.get(King, !self.state.side_to_move).bitscan();
@@ -698,6 +687,23 @@ impl Game {
 
     }
 
+    fn update_pins_mut(&mut self, ts: &Tables) {
+
+
+        let ksq_w = self.get(King,White).bitscan_checked().unwrap();
+        let ksq_b = self.get(King,White).bitscan_checked().unwrap();
+
+        // let (bs_w, ps_b) = self.find_slider_blockers(&ts, ksq_w, White);
+        // let (bs_b, ps_w) = self.find_slider_blockers(&ts, ksq_b, Black);
+        let bs_w = self.find_slider_blockers(&ts, ksq_w, White);
+        let bs_b = self.find_slider_blockers(&ts, ksq_b, Black);
+
+        self.state.king_blocks_w = bs_w;
+        self.state.king_blocks_b = bs_b;
+
+    }
+
+    #[cfg(feature = "nope")]
     /// XXX: possibly twice as slow as needed
     // fn update_pins_mut(&mut self, ts: &Tables) -> GameResult<()> {
     fn update_pins_mut(&mut self, ts: &Tables) {
@@ -843,8 +849,8 @@ impl Game {
         let mut bp = self.get_piece_mut(pc);
         *bp ^= fromto;
 
-        // self.pieces[from] = None;
-        // self.pieces[to]   = Some(pc);
+        self.pieces[from] = None;
+        self.pieces[to]   = Some(pc);
 
         if calc_zb {
             self.zobrist = self.zobrist.update_piece(&ts, pc, side, from);
@@ -880,6 +886,8 @@ impl Game {
 
         let mut bp = self.get_piece_mut(pc);
         *bp = bp.set_zero(at);
+
+        self.pieces[at] = None;
 
         if pc != King {
 
@@ -917,6 +925,8 @@ impl Game {
         let mut bp = self.get_piece_mut(pc);
         *bp = bp.set_one(at);
 
+        self.pieces[at] = Some(pc);
+
         if mat && pc != King {
             self.state.material.buf[side][pc.index()] += 1;
         }
@@ -936,14 +946,18 @@ impl Game {
         }
     }
 
-    pub fn insert_piece_mut_unchecked_nohash<T: Into<Coord>>(&mut self, at: T, p: Piece, c: Color) {
+    /// Used for building game from parsed PGN
+    pub fn insert_piece_mut_unchecked_nohash<T: Into<Coord>>(&mut self, at: T, pc: Piece, c: Color) {
         let at = at.into();
 
         let mut bc = self.get_color_mut(c);
         *bc = bc.set_one(at);
 
-        let mut bp = self.get_piece_mut(p);
+        let mut bp = self.get_piece_mut(pc);
         *bp = bp.set_one(at);
+
+        self.pieces[at] = Some(pc);
+
     }
 
 }
@@ -1539,6 +1553,13 @@ impl Game {
         }
     }
 
+    pub fn get_at(&self, c0: Coord) -> Option<(Color, Piece)> {
+        let pc = self.pieces[c0]?;
+        let side = self.get_side_at(c0)?;
+        Some((side,pc))
+    }
+
+    #[cfg(feature = "nope")]
     pub fn get_at(&self, c0: Coord) -> Option<(Color, Piece)> {
         let b0 = BitBoard::single(c0);
         // if (self.all_occupied() & b0).is_empty() { return None; }

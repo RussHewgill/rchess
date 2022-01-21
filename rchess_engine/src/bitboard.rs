@@ -274,17 +274,17 @@ impl BitBoard {
 
     // fn bitscan_unchecked(&self) -> Coord {
     pub fn bitscan(&self) -> Coord {
-        assert!(self.is_not_empty());
+        // assert!(self.is_not_empty());
         Coord::new_int(self.0.trailing_zeros() as u8)
     }
 
-    // pub fn bitscan(&self) -> Option<Coord> {
-    //     if self.is_empty() {
-    //         None
-    //     } else {
-    //         Some(self.bitscan_unchecked())
-    //     }
-    // }
+    pub fn bitscan_checked(&self) -> Option<Coord> {
+        if self.is_empty() {
+            None
+        } else {
+            Some(self.bitscan())
+        }
+    }
 
     pub fn bitscan_reset(&self) -> (Self, Coord) {
         // let x = self.bitscan().unwrap();

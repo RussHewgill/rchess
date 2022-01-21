@@ -53,7 +53,7 @@ pub fn crit_bench_2(c: &mut Criterion) {
     ins.truncate(200);
 
     let fen = "6k1/4Q3/8/8/8/5K2/8/8 w - - 6 4"; // Queen endgame, #4
-    let ts = &_TABLES;
+    let ts = Tables::new();
     let mut g = Game::from_fen(&ts, fen).unwrap();
 
     // let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
@@ -294,8 +294,8 @@ pub fn crit_bench_1(c: &mut Criterion) {
     // // let n = 3;
     // let t = 1.0;
 
-    let ts = &_TABLES;
-    // let ts    = Tables::new();
+    // let ts = &_TABLES;
+    let ts    = Tables::new();
 
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
@@ -363,11 +363,22 @@ pub fn crit_bench_1(c: &mut Criterion) {
         xs.push((b,c));
     }
 
-    group.bench_function("BB single", |b| b.iter(|| {
-        for (mut b,c) in xs.iter() {
-            b.flip_mut(*c);
-        }
-    }));
+    // group.bench_function("get_at", |b| b.iter(|| {
+    //     for g in wacs.iter() {
+    //         for c in [0u8,10,32,63] {
+    //             match g.get_at(Coord::new_int(black_box(c))) {
+    //                 Some(_) => {},
+    //                 None    => {},
+    //             }
+    //         }
+    //     }
+    // }));
+
+    // group.bench_function("BB single", |b| b.iter(|| {
+    //     for (mut b,c) in xs.iter() {
+    //         b.flip_mut(*c);
+    //     }
+    // }));
 
     use rchess_engine_lib::movegen::*;
 
