@@ -91,8 +91,12 @@ fn def_between_bb()    -> [[BitBoard; 64]; 64] {
 
 #[derive(Serialize,Deserialize,Debug,Eq,PartialEq,PartialOrd,Clone)]
 pub struct Tables {
-    // #[serde(with = "BigArray")]
-    // pub pseudo_attacks:   [[BitBoard; 6]; 64],
+
+    #[serde(with = "BigArray")]
+    pseudo_attacks_b:   [BitBoard; 64],
+    #[serde(with = "BigArray")]
+    pseudo_attacks_r:   [BitBoard; 64],
+
     #[serde(skip,default = "Tables::gen_pawns")]
     pub pawn_moves:       [[MoveSetPawn; 8]; 8],
     #[serde(skip,default = "Tables::gen_rooks")]
@@ -101,7 +105,7 @@ pub struct Tables {
     pub knight_moves:     [BitBoard; 64],
     #[serde(skip,default = "Tables::gen_bishops")]
     // pub bishop_moves:     [[MoveSetBishop; 8]; 8],
-    pub bishop_moves:     [MoveSetBishop; 64],
+    pub bishop_moves:     [[MoveSetBishop; 8]; 8],
     #[serde(skip,default = "Tables::gen_kings")]
     pub king_moves:       [[BitBoard; 8]; 8],
     #[serde(skip,default = "def_line_bb")]
@@ -139,9 +143,8 @@ impl Tables {
     // pub fn get_bishop<T: Into<Coord>>(&self, c: T) -> &MoveSetBishop {
     pub fn get_bishop(&self, c: Coord) -> &MoveSetBishop {
         // let Coord(x,y) = c.into();
-        // let (x,y) = c.to_rankfile();
-        // &self.bishop_moves[x as usize][y as usize]
-        &self.bishop_moves[c]
+        let (x,y) = c.to_rankfile();
+        &self.bishop_moves[x as usize][y as usize]
     }
     // pub fn get_knight(&self, Coord(x,y): Coord) -> &BitBoard {
     // pub fn get_knight<T: Into<Coord>>(&self, c: T) -> &BitBoard {
@@ -253,14 +256,18 @@ impl Tables {
         let pawn_moves   = Self::gen_pawns();
         let king_moves   = Self::gen_kings();
 
-        let mut pseudo_attacks = [[BitBoard::empty(); 6]; 64];
+        let mut pseudo_attacks_b = [BitBoard::empty(); 64];
+        let mut pseudo_attacks_r = [BitBoard::empty(); 64];
 
-        // for sq in 0..64 {
-        //     pseudo_attacks[sq][Knight] = knight_moves[]
-        // }
+        for sq in 0..64 {
+            let (x,y) = Coord::new_int(sq).to_rankfile();
+            pseudo_attacks_b[sq] = bishop_moves[x as usize][y as usize].concat();
+            pseudo_attacks_r[sq] = rook_moves[x as usize][y as usize].concat();
+        }
 
         Self {
-            // pseudo_attacks,
+            pseudo_attacks_b,
+            pseudo_attacks_r,
 
             knight_moves: Self::gen_knights(),
             rook_moves,
@@ -316,7 +323,7 @@ impl Tables {
 /// Lookup table Generators
 impl Tables {
 
-    fn gen_betweenbb(bishops: [MoveSetBishop; 64]) -> [[BitBoard; 64]; 64] {
+    fn gen_betweenbb(bishops: [[MoveSetBishop; 8]; 8]) -> [[BitBoard; 64]; 64] {
         let mut out = [[BitBoard::empty(); 64]; 64];
         for x in 0u32..64 {
             for y in 0u32..64 {
@@ -328,7 +335,7 @@ impl Tables {
         out
     }
 
-    fn mask_between(bishops: [MoveSetBishop; 64], c0: Coord, c1: Coord) -> BitBoard {
+    fn mask_between(bishops: [[MoveSetBishop; 8]; 8], c0: Coord, c1: Coord) -> BitBoard {
 
         let (x0,y0) = c0.to_rankfile();
         let (x1,y1) = c1.to_rankfile();
@@ -376,7 +383,10 @@ impl Tables {
             // let b = BitBoard(2 * b0.0 - b1.0);
             // eprintln!("b = {:?}", b);
             // let m = BitBoard::mask_rank(y0.into());
-            let m = bishops[c0];
+            let m = {
+                let (x,y) = c0.to_rankfile();
+                bishops[x as usize][y as usize]
+            };
 
             let xx = x1 as i64 - x0 as i64;
             let yy = y1 as i64 - y0 as i64;
@@ -395,7 +405,7 @@ impl Tables {
         }
     }
 
-    fn gen_linebb(bishops: [MoveSetBishop; 64]) -> [[BitBoard; 64]; 64] {
+    fn gen_linebb(bishops: [[MoveSetBishop; 8]; 8]) -> [[BitBoard; 64]; 64] {
         let mut out = [[BitBoard::empty(); 64]; 64];
         for x in 0u8..64 {
             for y in 0u8..64 {
@@ -407,7 +417,7 @@ impl Tables {
                 let f = BitBoard::mask_file(x0.into());
                 let r = BitBoard::mask_rank(y0.into());
 
-                let ds = bishops[xx];
+                let ds = bishops[x0 as usize][y0 as usize];
                 let dp = (ds.ne | ds.sw).set_one(x.into());
                 let dn = (ds.nw | ds.se).set_one(x.into());
 
@@ -435,9 +445,9 @@ impl Tables {
         match pc {
             Pawn   => unimplemented!(),
             Knight => self.knight_moves[sq],
-            Bishop => unimplemented!(),
-            Rook   => unimplemented!(),
-            Queen  => unimplemented!(),
+            Bishop => self.pseudo_attacks_b[sq],
+            Rook   => self.pseudo_attacks_r[sq],
+            Queen  => self.pseudo_attacks_b[sq] | self.pseudo_attacks_r[sq],
             King   => unimplemented!(),
         }
     }
@@ -514,16 +524,12 @@ impl Tables {
 /// Bishops
 impl Tables {
 
-    // fn gen_bishops() -> [[MoveSetBishop; 8]; 8] {
-    fn gen_bishops() -> [MoveSetBishop; 64] {
+    fn gen_bishops() -> [[MoveSetBishop; 8]; 8] {
         let m0 = MoveSetBishop::empty();
-        // let mut out = [[m0; 8]; 8];
-        let mut out = [m0; 64];
+        let mut out = [[m0; 8]; 8];
         for y in 0..8 {
             for x in 0..8 {
-                // out[x as usize][y as usize] = Self::gen_bishop_move(Coord::new(x,y));
-                let c = Coord::new(x,y);
-                out[c] = Self::gen_bishop_move(c);
+                out[x as usize][y as usize] = Self::gen_bishop_move(Coord::new(x,y));
             }
         }
         out

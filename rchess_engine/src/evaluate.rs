@@ -282,31 +282,61 @@ impl Game {
 
 }
 
+const PAWN_PH: i16   = 0;
+const KNIGHT_PH: i16 = 1;
+const BISHOP_PH: i16 = 1;
+const ROOK_PH: i16   = 2;
+const QUEEN_PH: i16  = 4;
+const PHASES: [i16; 5] = [PAWN_PH,KNIGHT_PH,BISHOP_PH,ROOK_PH,QUEEN_PH];
+
+const PH_TOTAL: i16 = PAWN_PH * 16 + KNIGHT_PH * 4 + BISHOP_PH * 4 + ROOK_PH * 4 + QUEEN_PH * 2;
+
 /// Phase
 impl Game {
 
-    pub fn game_phase(&self) -> u8 {
-        const PAWN_PH: i16   = 0;
-        const KNIGHT_PH: i16 = 1;
-        const BISHOP_PH: i16 = 1;
-        const ROOK_PH: i16   = 2;
-        const QUEEN_PH: i16  = 4;
+    pub fn increment_phase_mut(&mut self, mv: Move) {
 
-        const PCS: [Piece; 5] = [Pawn,Knight,Bishop,Rook,Queen];
-        const PHASES: [i16; 5] = [PAWN_PH,KNIGHT_PH,BISHOP_PH,ROOK_PH,QUEEN_PH];
+        if mv.filter_promotion() {
+            let new_pc = mv.new_piece().unwrap();
 
-        let ph_total = PAWN_PH * 16 + KNIGHT_PH * 4 + BISHOP_PH * 4 + ROOK_PH * 4 + QUEEN_PH * 2;
+            self.state.phase_unscaled += PHASES[Pawn];
+            self.state.phase_unscaled -= PHASES[new_pc];
+        }
 
-        let mut phase = ph_total;
+        if let Some(victim) = mv.victim() {
+            self.state.phase_unscaled += PHASES[victim];
+        }
 
-        phase -= PAWN_PH *   self.state.material.count_piece(Pawn) as i16;
-        phase -= KNIGHT_PH * self.state.material.count_piece(Knight) as i16;
-        phase -= BISHOP_PH * self.state.material.count_piece(Bishop) as i16;
-        phase -= ROOK_PH *   self.state.material.count_piece(Rook) as i16;
-        phase -= QUEEN_PH *  self.state.material.count_piece(Queen) as i16;
+        let phase = (self.state.phase_unscaled * 256 + (PH_TOTAL / 2)) / PH_TOTAL;
+        let phase = phase.clamp(0,255) as u8;
+        self.state.phase = phase;
 
-        let phase = (phase * 256 + (ph_total / 2)) / ph_total;
-        phase.clamp(0,255) as u8
+        // let phase = (phase * 256 + (ph_total / 2)) / ph_total;
+
+        // self.state.phase    = phase.clamp(0,255) as u8;
+        // self.state.ph_total = ph_total;
+
+    }
+
+    pub fn game_phase(&self) -> (Phase,i16) {
+
+        // const PCS: [Piece; 5] = [Pawn,Knight,Bishop,Rook,Queen];
+        // const PHASES: [i16; 5] = [PAWN_PH,KNIGHT_PH,BISHOP_PH,ROOK_PH,QUEEN_PH];
+
+        // let ph_total = PAWN_PH * 16 + KNIGHT_PH * 4 + BISHOP_PH * 4 + ROOK_PH * 4 + QUEEN_PH * 2;
+
+        let mut phase_unscaled = PH_TOTAL;
+
+        phase_unscaled -= PAWN_PH *   self.state.material.count_piece(Pawn) as i16;
+        phase_unscaled -= KNIGHT_PH * self.state.material.count_piece(Knight) as i16;
+        phase_unscaled -= BISHOP_PH * self.state.material.count_piece(Bishop) as i16;
+        phase_unscaled -= ROOK_PH *   self.state.material.count_piece(Rook) as i16;
+        phase_unscaled -= QUEEN_PH *  self.state.material.count_piece(Queen) as i16;
+
+        let phase = (phase_unscaled * 256 + (PH_TOTAL / 2)) / PH_TOTAL;
+        let phase = phase.clamp(0,255) as u8;
+
+        (phase,phase_unscaled)
     }
 
     pub fn taper_score(&self, mid: Score, end: Score) -> Score {

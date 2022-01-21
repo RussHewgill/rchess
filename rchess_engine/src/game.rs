@@ -54,6 +54,7 @@ pub struct GameState {
     pub en_passant:         Option<Coord>,
     pub castling:           Castling,
 
+    pub phase_unscaled:     i16,
     pub phase:              Phase,
     pub last_capture:       Option<Coord>,
     pub material:           Material,
@@ -623,6 +624,11 @@ impl Game {
 
     pub fn init_gameinfo_mut(&mut self, ts: &Tables) -> GameResult<()> {
         self.state.material = self.count_material();
+
+        let (phase,phase_unscaled) = self.game_phase();
+        self.state.phase = phase;
+        self.state.phase_unscaled = phase_unscaled;
+
         Ok(())
     }
 
@@ -659,12 +665,25 @@ impl Game {
 
         // self.state.phase = self.game_phase();
 
+        /// Last move has already been set, and side to move switched
         if let Some(mv) = self.last_move {
-            if mv.filter_all_captures() {
-                self.state.phase = self.game_phase();
+            if mv.filter_capture_or_promotion() {
+                // self.state.phase = self.game_phase();
+                self.increment_phase_mut(mv);
+
+                // let (phase,phase_unscaled) = self.game_phase();
+                // // assert_eq!(phase, self.state.phase);
+                // if phase != self.state.phase {
+                //     eprintln!("phase wrong, {} != {}", phase, self.state.phase);
+                //     eprintln!("game = {:?}", self);
+                //     eprintln!("self.to_fen() = {:?}", self.to_fen());
+                //     eprintln!("mv = {:?}", mv);
+                //     panic!();
+                // }
+
             }
-        } else {
-            self.state.phase = self.game_phase();
+        // } else {
+        //     // self.state.phase = self.game_phase();
         }
 
         // if self.history.len() > 5 {
@@ -692,10 +711,10 @@ impl Game {
         let ksq_w = self.get(King,White).bitscan_checked().unwrap();
         let ksq_b = self.get(King,Black).bitscan_checked().unwrap();
 
-        let (bs_w, ps_b) = self.find_slider_blockers(&ts, ksq_w, White);
-        let (bs_b, ps_w) = self.find_slider_blockers(&ts, ksq_b, Black);
-        // let bs_w = self.find_slider_blockers(&ts, ksq_w, White);
-        // let bs_b = self.find_slider_blockers(&ts, ksq_b, Black);
+        // let (bs_w, ps_b) = self.find_slider_blockers(&ts, ksq_w, White);
+        // let (bs_b, ps_w) = self.find_slider_blockers(&ts, ksq_b, Black);
+        let bs_w = self.find_slider_blockers(&ts, ksq_w, White);
+        let bs_b = self.find_slider_blockers(&ts, ksq_b, Black);
 
         self.state.king_blocks_w = bs_w;
         self.state.king_blocks_b = bs_b;
@@ -1301,6 +1320,14 @@ impl Game {
         //     White => &mut self.state.white,
         //     Black => &mut self.state.black,
         // }
+    }
+
+    pub fn get_pieces(&self, pcs: &[Piece]) -> BitBoard {
+        let mut out = BitBoard::empty();
+        for pc in pcs.iter() {
+            out |= self.get_piece(*pc);
+        }
+        out
     }
 
     pub fn get_piece(&self, pc: Piece) -> BitBoard {

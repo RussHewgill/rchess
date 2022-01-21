@@ -2916,6 +2916,22 @@ fn main9() {
     // eprintln!("current = {:?}", current);
     // return;
 
+    // let mut wacs = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
+    // let mut wacs: Vec<Game> = wacs.into_iter().map(|(fen,_)| {
+    //     Game::from_fen(&ts, &fen).unwrap()
+    // }).collect();
+    // let t0 = std::time::Instant::now();
+    // for _ in 0..100_000 {
+    //     for g in wacs.iter() {
+    //         let mut g = *g;
+    //         g.recalc_gameinfo_mut(&ts).unwrap();
+    //     }
+    // }
+    // let t1 = t0.elapsed();
+    // let t2 = t1.as_secs_f64();
+    // eprintln!("t2 = {:.4}", t2);
+    // return;
+
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
@@ -2986,8 +3002,8 @@ fn main9() {
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(12);
-    ex.cfg.num_threads = Some(6);
-    // ex.cfg.num_threads = Some(1);
+    // ex.cfg.num_threads = Some(6);
+    ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
@@ -2999,34 +3015,36 @@ fn main9() {
 
     // let mut ex2 = ex.clone();
 
-    // XXX: avg of N runs
-    const N: usize = 10;
-    let mut times = vec![];
-    for n in 0..N {
-        let mut ex2 = ex.clone();
-        ex2.clear_tt();
-        ex2.update_game(g.clone());
-        let t0 = std::time::Instant::now();
-        let (res,moves,stats0) = ex2.lazy_smp_2(&ts);
-        let t1 = t0.elapsed();
-        let t2 = t1.as_secs_f64();
-        times.push(t2);
-        let best0 = res.get_result().unwrap();
-        eprintln!("run {} = {:.3}", n, t2);
-    }
-    let avg = times.iter().sum::<f64>() / N as f64;
-    eprintln!("avg = {:.3}", avg);
-    return;
+    // // XXX: avg of N runs
+    // const N: usize = 10;
+    // let mut times = vec![];
+    // for n in 0..N {
+    //     let mut ex2 = ex.clone();
+    //     ex2.clear_tt();
+    //     ex2.update_game(g.clone());
+    //     let t0 = std::time::Instant::now();
+    //     let (res,moves,stats0) = ex2.lazy_smp_2(&ts);
+    //     let t1 = t0.elapsed();
+    //     let t2 = t1.as_secs_f64();
+    //     times.push(t2);
+    //     let best0 = res.get_result().unwrap();
+    //     eprintln!("run {} = {:.3}", n, t2);
+    // }
+    // let avg = times.iter().sum::<f64>() / N as f64;
+    // eprintln!("avg = {:.3}", avg);
+    // return;
 
-    // let params = "e5d4 b4d6 f7f6 e3d4 g6f5";
+    // let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6";
     // let params = params.split(" ");
     // let moves: Vec<&str> = params.collect();
-    // // ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
-    // ex.update_game_movelist(&ts, fen, moves.into_iter());
+    // ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
+    // // ex.update_game_movelist(&ts, fen, moves.into_iter());
     // let g = ex.game;
     // eprintln!("g = {:?}", g);
 
-    // ex.time_settings.move_time   = 76;
+    // return;
+
+    // ex.time_settings.move_time = 1100;
 
     // ex.update_game(g.clone());
     let t0 = std::time::Instant::now();

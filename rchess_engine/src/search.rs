@@ -482,21 +482,40 @@ impl Game {
         moves
     }
 
-    #[cfg(feature = "nope")]
-    pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord, col: Color) -> BitBoard {
+    // #[cfg(feature = "nope")]
+    pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord, side: Color) -> BitBoard {
 
         let mut blockers = BitBoard::empty();
 
-        // let snipers = 
+        let queens  = self.get_piece(Queen);
+        let bishops = self.get_piece(Bishop);
+        let rooks   = self.get_piece(Rook);
+        // let sliders = queens | bishops | rooks;
 
-        unimplemented!()
+        let snipers = (ts.get_pseudo_attacks(Rook, c0) & (queens | rooks))
+            | (ts.get_pseudo_attacks(Bishop, c0) & (queens | bishops));
+
+        // let snipers = snipers & self.all_occupied();
+        let snipers = snipers & self.get_color(!side);
+
+        let occ = self.all_occupied() ^ snipers;
+
+        snipers.into_iter().for_each(|sq| {
+            let b = ts.between(c0, sq.into()) & occ;
+
+            if b.is_not_empty() & !b.more_than_one() {
+                blockers |= b;
+            }
+        });
+
+        blockers
     }
 
-    // #[cfg(feature = "nope")]
-    pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord, col: Color) -> (BitBoard, BitBoard) {
-    // pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord, col: Color) -> BitBoard {
+    #[cfg(feature = "nope")]
+    // pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord, col: Color) -> (BitBoard, BitBoard) {
+    pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord, col: Color) -> BitBoard {
         let mut blockers = BitBoard::empty();
-        let mut pinners = BitBoard::empty();
+        // let mut pinners = BitBoard::empty();
 
         let snipers = ts.get_rook(c0).concat() & (self.get_piece(Rook) | self.get_piece(Queen))
             | ts.get_bishop(c0).concat() & (self.get_piece(Bishop) | self.get_piece(Queen));
@@ -522,8 +541,8 @@ impl Game {
             }
 
         });
-        (blockers, pinners)
-        // blockers
+        // (blockers, pinners)
+        blockers
     }
 
     pub fn obstructed(&self, ts: &Tables, c0: Coord, c1: Coord) -> BitBoard {

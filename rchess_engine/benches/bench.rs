@@ -347,13 +347,18 @@ pub fn crit_bench_1(c: &mut Criterion) {
         moves.push((g,mv0,mv1));
     }
 
-    group.bench_function("movegen", |b| b.iter(|| {
+    // group.bench_function("movegen", |b| b.iter(|| {
+    //     for g in wacs.iter() {
+    //         let moves = MoveGen::generate_list(&ts, g, None);
+    //         let x = moves.len();
+    //     }
+    // }));
 
+    group.bench_function("recalc_gameinfo", |b| b.iter(|| {
         for g in wacs.iter() {
-            let moves = MoveGen::generate_list(&ts, g, None);
-            let x = moves.len();
+            let mut g = *g;
+            g.recalc_gameinfo_mut(&ts).unwrap();
         }
-
     }));
 
     let mut xs = vec![];
