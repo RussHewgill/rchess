@@ -89,43 +89,38 @@ fn def_between_bb()    -> [[BitBoard; 64]; 64] {
     Tables::gen_betweenbb(bishops)
 }
 
-// #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
-// #[derive(Serialize,Deserialize,Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
 #[derive(Serialize,Deserialize,Debug,Eq,PartialEq,PartialOrd,Clone)]
 pub struct Tables {
-    #[serde(skip,default = "Tables::gen_pawns")]
-    // #[serde(serialize_with = "<[_]>::serialize")]
-    pub pawn_moves:    [[MoveSetPawn; 8]; 8],
-    #[serde(skip,default = "Tables::gen_rooks")]
-    pub rook_moves:    [[MoveSetRook; 8]; 8],
-    // #[serde(skip)]
     // #[serde(with = "BigArray")]
+    // pub pseudo_attacks:   [[BitBoard; 6]; 64],
+    #[serde(skip,default = "Tables::gen_pawns")]
+    pub pawn_moves:       [[MoveSetPawn; 8]; 8],
+    #[serde(skip,default = "Tables::gen_rooks")]
+    pub rook_moves:       [[MoveSetRook; 8]; 8],
     #[serde(skip,default = "Tables::gen_knights")]
-    pub knight_moves:  [BitBoard; 64],
+    pub knight_moves:     [BitBoard; 64],
     #[serde(skip,default = "Tables::gen_bishops")]
-    pub bishop_moves:  [[MoveSetBishop; 8]; 8],
+    // pub bishop_moves:     [[MoveSetBishop; 8]; 8],
+    pub bishop_moves:     [MoveSetBishop; 64],
     #[serde(skip,default = "Tables::gen_kings")]
-    pub king_moves:    [[BitBoard; 8]; 8],
+    pub king_moves:       [[BitBoard; 8]; 8],
     #[serde(skip,default = "def_line_bb")]
-    pub line_bb:       [[BitBoard; 64]; 64],
+    pub line_bb:          [[BitBoard; 64]; 64],
     #[serde(skip,default = "def_between_bb")]
-    pub between_bb:    [[BitBoard; 64]; 64],
+    pub between_bb:       [[BitBoard; 64]; 64],
     #[serde(with = "BigArray")]
-    pub magics_rook:   [Magic; 64],
+    pub magics_rook:      [Magic; 64],
     #[serde(with = "BigArray")]
     #[cfg(not(feature = "smallstack"))]
-    pub table_rook:    [BitBoard; 0x19000],
+    pub table_rook:       [BitBoard; 0x19000],
     #[cfg(feature = "smallstack")]
-    pub table_rook:    Vec<BitBoard>,
+    pub table_rook:       Vec<BitBoard>,
     #[serde(with = "BigArray")]
-    pub magics_bishop: [Magic; 64],
+    pub magics_bishop:    [Magic; 64],
     #[serde(with = "BigArray")]
-    pub table_bishop:  [BitBoard; 0x1480],
-    // #[serde(skip)]
-    // pub piece_tables:  PcTables,
+    pub table_bishop:     [BitBoard; 0x1480],
     #[serde(skip)]
-    pub zobrist_tables: ZbTable,
-    // endgames: 
+    pub zobrist_tables:   ZbTable,
 }
 
 #[cfg(not(feature = "smallstack"))]
@@ -144,8 +139,9 @@ impl Tables {
     // pub fn get_bishop<T: Into<Coord>>(&self, c: T) -> &MoveSetBishop {
     pub fn get_bishop(&self, c: Coord) -> &MoveSetBishop {
         // let Coord(x,y) = c.into();
-        let (x,y) = c.to_rankfile();
-        &self.bishop_moves[x as usize][y as usize]
+        // let (x,y) = c.to_rankfile();
+        // &self.bishop_moves[x as usize][y as usize]
+        &self.bishop_moves[c]
     }
     // pub fn get_knight(&self, Coord(x,y): Coord) -> &BitBoard {
     // pub fn get_knight<T: Into<Coord>>(&self, c: T) -> &BitBoard {
@@ -253,7 +249,19 @@ impl Tables {
         // let (piece_tables_midgame,piece_tables_endgame) = PcTables::new();
         // let piece_tables = PcTables::new();
 
+        let knight_moves = Self::gen_knights();
+        let pawn_moves   = Self::gen_pawns();
+        let king_moves   = Self::gen_kings();
+
+        let mut pseudo_attacks = [[BitBoard::empty(); 6]; 64];
+
+        // for sq in 0..64 {
+        //     pseudo_attacks[sq][Knight] = knight_moves[]
+        // }
+
         Self {
+            // pseudo_attacks,
+
             knight_moves: Self::gen_knights(),
             rook_moves,
             bishop_moves,
@@ -423,6 +431,22 @@ impl Tables {
 
 }
 
+/// get_pseudo_attacks
+impl Tables {
+
+    pub fn get_pseudo_attacks(&self, pc: Piece, sq: Coord) -> BitBoard {
+        match pc {
+            Pawn   => unimplemented!(),
+            Knight => self.knight_moves[sq],
+            Bishop => unimplemented!(),
+            Rook   => unimplemented!(),
+            Queen  => unimplemented!(),
+            King   => unimplemented!(),
+        }
+    }
+
+}
+
 /// Sliding moves
 impl Tables {
     pub fn get_sliding(&self, pc: Piece, sq: Coord, occ: BitBoard) -> BitBoard {
@@ -493,12 +517,16 @@ impl Tables {
 /// Bishops
 impl Tables {
 
-    fn gen_bishops() -> [[MoveSetBishop; 8]; 8] {
+    // fn gen_bishops() -> [[MoveSetBishop; 8]; 8] {
+    fn gen_bishops() -> [MoveSetBishop; 64] {
         let m0 = MoveSetBishop::empty();
-        let mut out = [[m0; 8]; 8];
+        // let mut out = [[m0; 8]; 8];
+        let mut out = [m0; 64];
         for y in 0..8 {
             for x in 0..8 {
-                out[x as usize][y as usize] = Self::gen_bishop_move(Coord::new(x,y));
+                // out[x as usize][y as usize] = Self::gen_bishop_move(Coord::new(x,y));
+                let c = Coord::new(x,y);
+                out[c] = Self::gen_bishop_move(c);
             }
         }
         out
