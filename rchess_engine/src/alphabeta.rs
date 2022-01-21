@@ -984,20 +984,6 @@ impl ExHelper {
             };
             moves_searched += 1;
 
-            let (phase,phase_unscaled) = g2.game_phase();
-            if phase != g2.state.phase {
-                eprintln!("phase wrong, {} != {}", phase, g2.state.phase);
-                eprintln!("game = {:?}", g2);
-                eprintln!("self.to_fen() = {:?}", g2.to_fen());
-                eprintln!("mv = {:?}", mv);
-
-                for (n,(_,mv)) in stack.move_history.iter().enumerate() {
-                    eprintln!("{} = {:?}", n, mv);
-                }
-
-                panic!();
-            }
-
             next_depth += extensions;
 
             /// Step 15. Recursively search for each move
