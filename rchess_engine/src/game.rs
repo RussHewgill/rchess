@@ -689,14 +689,13 @@ impl Game {
 
     fn update_pins_mut(&mut self, ts: &Tables) {
 
-
         let ksq_w = self.get(King,White).bitscan_checked().unwrap();
-        let ksq_b = self.get(King,White).bitscan_checked().unwrap();
+        let ksq_b = self.get(King,Black).bitscan_checked().unwrap();
 
-        // let (bs_w, ps_b) = self.find_slider_blockers(&ts, ksq_w, White);
-        // let (bs_b, ps_w) = self.find_slider_blockers(&ts, ksq_b, Black);
-        let bs_w = self.find_slider_blockers(&ts, ksq_w, White);
-        let bs_b = self.find_slider_blockers(&ts, ksq_b, Black);
+        let (bs_w, ps_b) = self.find_slider_blockers(&ts, ksq_w, White);
+        let (bs_b, ps_w) = self.find_slider_blockers(&ts, ksq_b, Black);
+        // let bs_w = self.find_slider_blockers(&ts, ksq_w, White);
+        // let bs_b = self.find_slider_blockers(&ts, ksq_b, Black);
 
         self.state.king_blocks_w = bs_w;
         self.state.king_blocks_b = bs_b;

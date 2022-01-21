@@ -289,7 +289,7 @@ pub fn stockfish_eval(
 /// ns0    = total nodes found
 /// nodes0 = HashMap<Move String, (Move, nodes after Move)>
 pub fn test_stockfish(
-    ts:         &'static Tables,
+    ts:         &Tables,
     fen:        &str,
     n:          u64,
     print:      bool,

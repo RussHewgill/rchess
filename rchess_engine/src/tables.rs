@@ -316,7 +316,7 @@ impl Tables {
 /// Lookup table Generators
 impl Tables {
 
-    fn gen_betweenbb(bishops: [[MoveSetBishop; 8]; 8]) -> [[BitBoard; 64]; 64] {
+    fn gen_betweenbb(bishops: [MoveSetBishop; 64]) -> [[BitBoard; 64]; 64] {
         let mut out = [[BitBoard::empty(); 64]; 64];
         for x in 0u32..64 {
             for y in 0u32..64 {
@@ -328,7 +328,7 @@ impl Tables {
         out
     }
 
-    fn mask_between(bishops: [[MoveSetBishop; 8]; 8], c0: Coord, c1: Coord) -> BitBoard {
+    fn mask_between(bishops: [MoveSetBishop; 64], c0: Coord, c1: Coord) -> BitBoard {
 
         let (x0,y0) = c0.to_rankfile();
         let (x1,y1) = c1.to_rankfile();
@@ -376,10 +376,7 @@ impl Tables {
             // let b = BitBoard(2 * b0.0 - b1.0);
             // eprintln!("b = {:?}", b);
             // let m = BitBoard::mask_rank(y0.into());
-            let m = {
-                let (x,y) = c0.to_rankfile();
-                bishops[x as usize][y as usize]
-            };
+            let m = bishops[c0];
 
             let xx = x1 as i64 - x0 as i64;
             let yy = y1 as i64 - y0 as i64;
@@ -398,7 +395,7 @@ impl Tables {
         }
     }
 
-    fn gen_linebb(bishops: [[MoveSetBishop; 8]; 8]) -> [[BitBoard; 64]; 64] {
+    fn gen_linebb(bishops: [MoveSetBishop; 64]) -> [[BitBoard; 64]; 64] {
         let mut out = [[BitBoard::empty(); 64]; 64];
         for x in 0u8..64 {
             for y in 0u8..64 {
@@ -410,7 +407,7 @@ impl Tables {
                 let f = BitBoard::mask_file(x0.into());
                 let r = BitBoard::mask_rank(y0.into());
 
-                let ds = bishops[x0 as usize][y0 as usize];
+                let ds = bishops[xx];
                 let dp = (ds.ne | ds.sw).set_one(x.into());
                 let dn = (ds.nw | ds.se).set_one(x.into());
 

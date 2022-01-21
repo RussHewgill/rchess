@@ -347,12 +347,14 @@ pub fn crit_bench_1(c: &mut Criterion) {
         moves.push((g,mv0,mv1));
     }
 
-    // group.bench_function("move_piece", |b| b.iter(|| {
-    //     for (g,mv0,mv1) in moves.iter() {
-    //         let g0 = g.make_move_unchecked(&ts, *mv0).unwrap();
-    //         let g1 = g.make_move_unchecked(&ts, *mv1).unwrap();
-    //     }
-    // }));
+    group.bench_function("movegen", |b| b.iter(|| {
+
+        for g in wacs.iter() {
+            let moves = MoveGen::generate_list(&ts, g, None);
+            let x = moves.len();
+        }
+
+    }));
 
     let mut xs = vec![];
 

@@ -482,11 +482,17 @@ impl Game {
         moves
     }
 
+    #[cfg(feature = "nope")]
     pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord, col: Color) -> BitBoard {
+
+        let mut blockers = BitBoard::empty();
+
+        // let snipers = 
+
         unimplemented!()
     }
 
-    #[cfg(feature = "nope")]
+    // #[cfg(feature = "nope")]
     pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord, col: Color) -> (BitBoard, BitBoard) {
     // pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord, col: Color) -> BitBoard {
         let mut blockers = BitBoard::empty();
