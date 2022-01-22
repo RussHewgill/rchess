@@ -814,9 +814,9 @@ impl Game {
     pub fn init_gameinfo_mut(&mut self, ts: &Tables) -> GameResult<()> {
         self.state.material = self.count_material();
 
-        let (phase,phase_unscaled) = self.game_phase();
-        self.state.phase = phase;
-        self.state.phase_unscaled = phase_unscaled;
+        // let (phase,phase_unscaled) = self.game_phase();
+        // self.state.phase = phase;
+        // self.state.phase_unscaled = phase_unscaled;
 
         // self.state.phase = self.game_phase();
 
@@ -855,11 +855,14 @@ impl Game {
                 self.increment_phase_mut(mv);
             }
         } else {
-            /// Only occurs when building from FEN
+            // /// Only occurs when building from FEN
             // self.state.phase = self.game_phase().0;
             let (phase,phase_unscaled) = self.game_phase();
             self.state.phase = phase;
-            self.state.phase_unscaled = phase_unscaled;
+            /// XXX: setting this causes regression ???
+            // self.state.phase_unscaled = phase_unscaled;
+            eprintln!("no last_move = {:?}", (phase,phase_unscaled));
+            eprintln!("self.state.phase_unscaled = {:?}", self.state.phase_unscaled);
         }
 
         Ok(())

@@ -9,7 +9,6 @@
 // #![feature(generic_const_exprs)]
 #![feature(portable_simd)]
 #![feature(array_chunks)]
-#![feature(asm)]
 
 #![allow(clippy::all)]
 

@@ -4,13 +4,11 @@
 #![allow(unused_mut)]
 #![allow(unused_doc_comments)]
 
-#![feature(destructuring_assignment)]
 #![feature(core_intrinsics)]
 #![feature(label_break_value)]
 // #![feature(backtrace,backtrace_frames)]
 #![feature(portable_simd)]
 #![feature(array_chunks)]
-#![feature(asm)]
 // #![feature(ptr_internals)]
 // #![feature(let_chains)]
 
