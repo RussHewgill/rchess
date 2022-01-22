@@ -57,8 +57,8 @@ pub type Depth = i16;
 #[derive(Serialize,Deserialize,Debug,Hash,Eq,PartialEq,PartialOrd,Ord,ShallowCopy,Clone,Copy)]
 // #[derive(Debug,Hash,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub enum Color {
-    White,
-    Black,
+    White = 0,
+    Black = 1,
 }
 
 #[derive(Debug,Default,Hash,Eq,PartialEq,PartialOrd,ShallowCopy,Clone,Copy,Serialize,Deserialize,new)]
@@ -88,12 +88,12 @@ impl<T> ByColor<T> {
 // #[derive(Debug,Hash,Eq,PartialEq,Ord,PartialOrd,ShallowCopy,Clone,Copy)]
 // #[derive(Debug,Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
 pub enum Piece {
-    Pawn,
-    Knight,
-    Bishop,
-    Rook,
-    Queen,
-    King,
+    Pawn   = 0,
+    Knight = 1,
+    Bishop = 2,
+    Rook   = 3,
+    Queen  = 4,
+    King   = 5,
 }
 
 /// Quiet              { from: Coord, to: Coord, pc: Piece },
@@ -854,42 +854,48 @@ impl std::ops::BitXor<bool> for Color {
 
 impl<T> std::ops::Index<Color> for [T; 2] {
     type Output = T;
-    fn index(&self, col: Color) -> &Self::Output {
-        let sq = if col == White { 0 } else { 1 };
-        &self[sq]
+    fn index(&self, side: Color) -> &Self::Output {
+        &self[side as usize]
+        // unsafe { self.get_unchecked(side as usize) }
     }
 }
 
 impl<T> std::ops::IndexMut<Color> for [T; 2] {
-    fn index_mut(&mut self, col: Color) -> &mut Self::Output {
-        let sq = if col == White { 0 } else { 1 };
-        &mut self[sq]
+    fn index_mut(&mut self, side: Color) -> &mut Self::Output {
+        &mut self[side as usize]
+        // unsafe { self.get_unchecked_mut(side as usize) }
     }
 }
 
 impl<T> std::ops::Index<Piece> for [T; 5] {
     type Output = T;
     fn index(&self, pc: Piece) -> &Self::Output {
-        &self[pc.index()]
+        &self[pc as usize]
+        // assert!(pc != King);
+        // unsafe { self.get_unchecked(pc as usize) }
     }
 }
 
 impl<T> std::ops::IndexMut<Piece> for [T; 5] {
     fn index_mut(&mut self, pc: Piece) -> &mut Self::Output {
-        &mut self[pc.index()]
+        &mut self[pc as usize]
+        // assert!(pc != King);
+        // unsafe { self.get_unchecked_mut(pc as usize) }
     }
 }
 
 impl<T> std::ops::Index<Piece> for [T; 6] {
     type Output = T;
     fn index(&self, pc: Piece) -> &Self::Output {
-        &self[pc.index()]
+        &self[pc as usize]
+        // unsafe { self.get_unchecked(pc as usize) }
     }
 }
 
 impl<T> std::ops::IndexMut<Piece> for [T; 6] {
     fn index_mut(&mut self, pc: Piece) -> &mut Self::Output {
-        &mut self[pc.index()]
+        &mut self[pc as usize]
+        // unsafe { self.get_unchecked_mut(pc as usize) }
     }
 }
 
@@ -950,16 +956,21 @@ impl Piece {
         }
     }
 
+    #[inline(always)]
     pub fn index(self) -> usize {
-        match self {
-            Pawn   => 0,
-            Knight => 1,
-            Bishop => 2,
-            Rook   => 3,
-            Queen  => 4,
-            King   => 5,
-        }
+        self as usize
     }
+
+    // pub fn index(self) -> usize {
+    //     match self {
+    //         Pawn   => 0,
+    //         Knight => 1,
+    //         Bishop => 2,
+    //         Rook   => 3,
+    //         Queen  => 4,
+    //         King   => 5,
+    //     }
+    // }
 
     pub fn iter_pieces() -> impl Iterator<Item = Piece> {
         PcIter(Some(Pawn), false)

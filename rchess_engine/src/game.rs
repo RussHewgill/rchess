@@ -391,16 +391,8 @@ impl Game {
 }
 
 /// make move
-// #[cfg(feature = "nope")]
+#[cfg(feature = "nope")]
 impl Game {
-
-    // pub fn make_move(&mut self, ts: &Tables, mv: Move) {
-    //     unimplemented!()
-    // }
-
-    // pub fn unmake_move(&mut self, ts: &Tables) {
-    //     unimplemented!()
-    // }
 
     pub fn swap_side_to_move(&mut self, ts: &Tables) {
         self.state.side_to_move = !self.state.side_to_move;
@@ -438,8 +430,8 @@ impl Game {
         //     }
         // }
 
-        // match self._apply_move_unchecked(&ts, mv, calc_zb) {
-        match self._apply_move_unchecked2(&ts, mv, calc_zb) {
+        match self._apply_move_unchecked(&ts, mv, calc_zb) {
+        // match self._apply_move_unchecked2(&ts, mv, calc_zb) {
             Some(mut next) => {
                 match mv {
                     Move::PawnDouble { .. }                   => {
@@ -526,6 +518,7 @@ impl Game {
 /// apply_move
 impl Game {
 
+    #[cfg(feature = "nope")]
     pub fn _apply_move_unchecked(&self, ts: &Tables, mv: Move, calc_zb: bool) -> Option<Game> {
         match mv {
             Move::Quiet      { from, to, pc } => {
@@ -625,7 +618,7 @@ impl Game {
         }
     }
 
-    pub fn _apply_move_unchecked2(&self, ts: &Tables, mv: Move, calc_zb: bool) -> Option<Game> {
+    pub fn _apply_move_unchecked(&self, ts: &Tables, mv: Move, calc_zb: bool) -> Option<Game> {
         let mut out = *self;
         match mv {
             Move::Quiet      { from, to, pc } => {
@@ -656,44 +649,28 @@ impl Game {
     }
 
     fn mv_quiet(ts: &Tables, mut g: Game, from: Coord, to: Coord, pc: Piece, calc_zb: bool) -> Game {
-
-        let (side,pc2) = g.get_at(from).unwrap();
-        if side != g.state.side_to_move {
-            eprintln!("broken quiet mv");
-            eprintln!("g.to_fen() = {:?}", g.to_fen());
-            eprintln!("g = {:?}", g);
-            eprintln!("(from,to,pc) = {:?}", (from,to,pc));
-        }
-        assert_eq!(side, g.state.side_to_move);
-        assert_eq!(pc2, pc);
-
-        // g.move_piece_mut_unchecked(ts, from, to, pc, g.state.side_to_move, calc_zb);
-        // g
-
-        let (side,pc) = g.get_at(from).unwrap();
-        g.move_piece_mut_unchecked(&ts, from, to, pc, side, calc_zb);
+        g.move_piece_mut_unchecked(ts, from, to, pc, g.state.side_to_move, calc_zb);
         g
-
     }
 
     fn mv_pawndouble(ts: &Tables, mut g: Game, from: Coord, to: Coord, calc_zb: bool) -> Game {
 
-        let at = g.get_at(from);
-        if at.is_none() {
-            eprintln!("broken pawndouble 0");
-            eprintln!("g.to_fen() = {:?}", g.to_fen());
-            eprintln!("g = {:?}", g);
-            eprintln!("(from,to) = {:?}", (from,to));
-        }
-        let (side,pc2) = at.unwrap();
-        if side != g.state.side_to_move {
-            eprintln!("broken pawndouble 1");
-            eprintln!("g.to_fen() = {:?}", g.to_fen());
-            eprintln!("g = {:?}", g);
-            eprintln!("(from,to) = {:?}", (from,to));
-        }
-        assert_eq!(side, g.state.side_to_move);
-        assert_eq!(pc2, Pawn);
+        // let at = g.get_at(from);
+        // if at.is_none() {
+        //     eprintln!("broken pawndouble 0");
+        //     eprintln!("g.to_fen() = {:?}", g.to_fen());
+        //     eprintln!("g = {:?}", g);
+        //     eprintln!("(from,to) = {:?}", (from,to));
+        // }
+        // let (side,pc2) = at.unwrap();
+        // if side != g.state.side_to_move {
+        //     eprintln!("broken pawndouble 1");
+        //     eprintln!("g.to_fen() = {:?}", g.to_fen());
+        //     eprintln!("g = {:?}", g);
+        //     eprintln!("(from,to) = {:?}", (from,to));
+        // }
+        // assert_eq!(side, g.state.side_to_move);
+        // assert_eq!(pc2, Pawn);
 
         g.move_piece_mut_unchecked(ts, from, to, Pawn, g.state.side_to_move, calc_zb);
 
@@ -714,26 +691,9 @@ impl Game {
     fn mv_capture(
         ts: &Tables, mut g: Game, from: Coord, to: Coord, pc: Piece, victim: Piece, calc_zb: bool
     ) -> Game {
-
-        let (side,pc2) = g.get_at(from).unwrap();
-        if side != g.state.side_to_move {
-            eprintln!("broken capture mv");
-            eprintln!("g.to_fen() = {:?}", g.to_fen());
-            eprintln!("g = {:?}", g);
-            eprintln!("(from,to,pc,victim) = {:?}", (from,to,pc,victim));
-        }
-        assert_eq!(side, g.state.side_to_move);
-        assert_eq!(pc2, pc);
-
-        // g.delete_piece_mut_unchecked(ts, to, victim, !g.state.side_to_move, calc_zb);
-        // g.move_piece_mut_unchecked(ts, from, to, pc, g.state.side_to_move, calc_zb);
-        // g
-
-        let side = g.state.side_to_move;
-        g.delete_piece_mut_unchecked(&ts, to, victim, !side, calc_zb);
-        g.move_piece_mut_unchecked(&ts, from, to, pc, side, calc_zb);
+        g.delete_piece_mut_unchecked(ts, to, victim, !g.state.side_to_move, calc_zb);
+        g.move_piece_mut_unchecked(ts, from, to, pc, g.state.side_to_move, calc_zb);
         g
-
     }
 
     fn mv_enpassant(ts: &Tables, mut g: Game, from: Coord, to: Coord, capture: Coord, calc_zb: bool) -> Game {
@@ -743,17 +703,6 @@ impl Game {
     }
 
     fn mv_prom(ts: &Tables, mut g: Game, from: Coord, to: Coord, new_pc: Piece, calc_zb: bool) -> Game {
-
-        let (side,pc2) = g.get_at(from).unwrap();
-        if side != g.state.side_to_move {
-            eprintln!("broken promotion mv");
-            eprintln!("g.to_fen() = {:?}", g.to_fen());
-            eprintln!("g = {:?}", g);
-            eprintln!("(from,to,new_pc) = {:?}", (from,to,new_pc));
-        }
-        assert_eq!(side, g.state.side_to_move);
-        assert_eq!(pc2, Pawn);
-
         g.delete_piece_mut_unchecked(ts, from, Pawn, g.state.side_to_move, calc_zb);
         g.insert_piece_mut_unchecked(ts, to, new_pc, g.state.side_to_move, calc_zb);
         g
@@ -762,19 +711,7 @@ impl Game {
     fn mv_prom_cap(
         ts: &Tables, mut g: Game, from: Coord, to: Coord, new_pc: Piece, victim: Piece, calc_zb: bool
     ) -> Game {
-
-        let (side,pc2) = g.get_at(from).unwrap();
-        if side != g.state.side_to_move {
-            eprintln!("broken promotion capture mv");
-            eprintln!("g.to_fen() = {:?}", g.to_fen());
-            eprintln!("g = {:?}", g);
-            eprintln!("(from,to,new_pc,victim) = {:?}", (from,to,new_pc,victim));
-        }
-        assert_eq!(side, g.state.side_to_move);
-        assert_eq!(pc2, Pawn);
-
         let side = g.state.side_to_move;
-
         g.delete_piece_mut_unchecked(ts, from, Pawn, side, calc_zb);
         g.delete_piece_mut_unchecked(ts, to, victim, !side, calc_zb);
         g.insert_piece_mut_unchecked(ts, to, new_pc, side, calc_zb);
@@ -798,7 +735,7 @@ impl Game {
 }
 
 /// make_move
-#[cfg(feature = "nope")]
+// #[cfg(feature = "nope")]
 impl Game {
 
     #[must_use]
@@ -810,8 +747,7 @@ impl Game {
     ) -> GameResult<Game> {
         let calc_zb = use_zb.is_none();
 
-        let mut next = if let Some(next) = self._apply_move_unchecked2(ts, mv, calc_zb) {
-        // let mut next = if let Some(next) = self._apply_move_unchecked(ts, mv, calc_zb) {
+        let mut next = if let Some(next) = self._apply_move_unchecked(ts, mv, calc_zb) {
             next } else { return Err(GameEnd::Error) };
 
         next.state.side_to_move = !next.state.side_to_move;
