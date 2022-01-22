@@ -2932,6 +2932,66 @@ fn main9() {
     // eprintln!("t2 = {:.4}", t2);
     // return;
 
+    let fen4 = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1"; // Position 4
+    let mut g = Game::from_fen(&ts, fen4).unwrap();
+
+    let g = g.make_move_unchecked(&ts, Move::new_quiet("g1", "h1", King)).unwrap();
+    eprintln!("g = {:?}", g);
+
+    let g = g.make_move_unchecked(&ts, Move::new_promotion_cap("b2", "a1", Queen, Rook)).unwrap();
+
+    eprintln!("g = {:?}", g);
+
+    // let pc = g.pieces[Coord::from("b7")];
+    // let side = g.get_side_at(Coord::from("b7"));
+    // eprintln!("pc   = {:?}", pc);
+    // eprintln!("side = {:?}", side);
+
+    // let g = g.make_move_unchecked(&ts, Move::new_double("b7", "b5")).unwrap();
+
+    // eprintln!();
+    // eprintln!("g = {:?}", g);
+
+    return;
+
+    let mut wacs = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
+    let mut wacs: Vec<Game> = wacs.into_iter().map(|(fen,_)| {
+        Game::from_fen(&ts, &fen).unwrap()
+    }).collect();
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
+    let mut moves = vec![];
+    let st = ABStack::new();
+    for g in wacs.iter() {
+        let mut movegen = MoveGen::new(&ts, g, None, &st, 0, 0);
+        let mut movelist = MoveGen::generate_list(&ts, g, None);
+        let x = movelist.len();
+        let mut mvs = vec![];
+        for _ in 0..5.min(x) {
+            let idx = rng.gen_range(0..movelist.len());
+            let mv = movelist.remove(idx);
+            if movegen.move_is_legal(mv) {
+                mvs.push(mv);
+            }
+        }
+        moves.push((g,mvs));
+    }
+    // XXX: avg of N runs
+    const N: usize = 10_000;
+    // let mut times = vec![];
+    let t0 = std::time::Instant::now();
+    for n in 0..N {
+        for (g,mvs) in moves.iter() {
+            for mv in mvs {
+                let g2 = g.make_move_unchecked(&ts, *mv).unwrap();
+            }
+        }
+    }
+    let t1 = t0.elapsed().as_secs_f64();
+    eprintln!("finished in {:.3} seconds", t1);
+    // let avg = times.iter().sum::<f64>() / N as f64;
+    // eprintln!("avg = {:.3}", avg);
+    return;
+
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
@@ -3002,8 +3062,8 @@ fn main9() {
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(12);
-    // ex.cfg.num_threads = Some(6);
-    ex.cfg.num_threads = Some(1);
+    ex.cfg.num_threads = Some(6);
+    // ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();

@@ -30,6 +30,7 @@ pub struct Game {
 
     #[serde(with = "BigArray")]
     pub pieces:       [Option<Piece>; 64],
+    // pieces:           [Option<Piece>; 64],
 
     pub halfmove:     Depth,
 }
@@ -390,6 +391,7 @@ impl Game {
 }
 
 /// make move
+// #[cfg(feature = "nope")]
 impl Game {
 
     // pub fn make_move(&mut self, ts: &Tables, mv: Move) {
@@ -404,6 +406,125 @@ impl Game {
         self.state.side_to_move = !self.state.side_to_move;
         self.zobrist = self.zobrist.update_side_to_move(&ts);
     }
+    #[must_use]
+    pub fn make_move_unchecked(&self, ts: &Tables, mv: Move) -> GameResult<Game> {
+        self._make_move_unchecked(ts, mv, None)
+    }
+
+    #[must_use]
+    // #[cfg(feature = "nope")]
+    pub fn _make_move_unchecked(
+        &self,
+        ts:          &Tables,
+        mv:          Move,
+        use_zb:      Option<Zobrist>,
+    ) -> GameResult<Game> {
+        let calc_zb = use_zb.is_none();
+
+        // if mv != Move::NullMove {
+        //     match self.get_at(mv.sq_from()) {
+        //         Some((side,_)) => if self.state.side_to_move != side {
+        //             trace!("non legal move: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
+        //             // return Err(GameEnd::Error);
+        //             panic!();
+        //             // return Err(GameEnd::Error);
+        //         },
+        //         None => {
+        //             trace!("non legal move, no piece?: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
+        //             // return Err(GameEnd::Error);
+        //             panic!();
+        //             // return Err(GameEnd::Stalemate);
+        //         }
+        //     }
+        // }
+
+        // match self._apply_move_unchecked(&ts, mv, calc_zb) {
+        match self._apply_move_unchecked2(&ts, mv, calc_zb) {
+            Some(mut next) => {
+                match mv {
+                    Move::PawnDouble { .. }                   => {
+                    },
+                    _                                         => {
+                        if calc_zb {
+                            if let Some(ep) = next.state.en_passant {
+                                next.zobrist = next.zobrist.update_ep(&ts, ep);
+                            }
+                        }
+                        next.state.en_passant = None;
+                    },
+                }
+
+                if let Move::EnPassant { capture, .. } = mv {
+                    next.state.last_capture = Some(capture);
+                } else if mv.filter_all_captures() {
+                    next.state.last_capture = Some(mv.sq_to());
+                } else {
+                    next.state.last_capture = None;
+                }
+
+                next.state.side_to_move = !next.state.side_to_move;
+                if calc_zb { next.zobrist = next.zobrist.update_side_to_move(&ts); }
+                // x.move_history.push(*m);
+
+                /// XXX: do without this?
+                // next.reset_gameinfo_mut();
+
+                self.update_castles(&ts, mv, &mut next, calc_zb);
+
+                // next.last_move_2 = self.last_move;
+                next.last_move   = Some(mv);
+
+                // // XXX: current or prev Zobrist ??
+                // next.history.push((next.zobrist, mv));
+
+                if let Some(zb) = use_zb {
+                    next.zobrist = zb;
+                };
+
+                // if let Some(mut k) = next.history.get_mut(&next.zobrist) {
+                //     *k += 1;
+                //     // if *k >= 2 { return Err(GameEnd::DrawRepetition); }
+                // } else {
+                //     next.history.insert(next.zobrist, 1);
+                // }
+
+                if mv.is_zeroing() {
+                    next.halfmove = 0;
+                } else {
+                    next.halfmove += 1;
+                }
+
+                match next.recalc_gameinfo_mut(&ts) {
+                    // Err(win) => panic!("wot"),
+                    // Err(GameEnd::Error) => {
+                    //     // panic!("recalc_gameinfo_mut error: {:?}", e);
+                    //     panic!("recalc_gameinfo_mut");
+                    // },
+                    Err(win) => Err(win),
+                    Ok(_)    => {
+                        // if self._check_history() {
+                        //     Err(GameEnd::DrawRepetition)
+                        // } else {
+                        // }
+                        Ok(next)
+                    },
+                }
+            },
+            _ => {
+                return Err(GameEnd::Error);
+            },
+        }
+
+        // if let Some(mut x) = self._make_move_unchecked(&ts, &m) {
+        // } else {
+        // }
+
+    }
+
+}
+
+/// apply_move
+impl Game {
 
     pub fn _apply_move_unchecked(&self, ts: &Tables, mv: Move, calc_zb: bool) -> Option<Game> {
         match mv {
@@ -504,10 +625,181 @@ impl Game {
         }
     }
 
-    #[must_use]
-    pub fn make_move_unchecked(&self, ts: &Tables, mv: Move) -> GameResult<Game> {
-        self._make_move_unchecked(ts, mv, None)
+    pub fn _apply_move_unchecked2(&self, ts: &Tables, mv: Move, calc_zb: bool) -> Option<Game> {
+        let mut out = *self;
+        match mv {
+            Move::Quiet      { from, to, pc } => {
+                Some(Self::mv_quiet(ts, out, from, to, pc, calc_zb))
+            },
+            Move::PawnDouble { from, to } => {
+                Some(Self::mv_pawndouble(ts, out, from, to, calc_zb))
+            },
+            Move::Capture    { from, to, pcs } => {
+                Some(Self::mv_capture(ts, out, from, to, pcs.first(), pcs.victim(), calc_zb))
+            },
+            Move::EnPassant  { from, to, capture } => {
+                Some(Self::mv_enpassant(ts, out, from, to, capture, calc_zb))
+            },
+            Move::Promotion  { from, to, new_piece } => {
+                Some(Self::mv_prom(ts, out, from, to, new_piece, calc_zb))
+            },
+            Move::PromotionCapture  { from, to, pcs } => {
+                Some(Self::mv_prom_cap(ts, out, from, to, pcs.first(), pcs.victim(), calc_zb))
+            },
+            Move::Castle     { side, kingside } => {
+                Some(Self::mv_castle(ts, out, mv, calc_zb))
+            },
+            Move::NullMove => {
+                Some(out)
+            }
+        }
     }
+
+    fn mv_quiet(ts: &Tables, mut g: Game, from: Coord, to: Coord, pc: Piece, calc_zb: bool) -> Game {
+
+        let (side,pc2) = g.get_at(from).unwrap();
+        if side != g.state.side_to_move {
+            eprintln!("broken quiet mv");
+            eprintln!("g.to_fen() = {:?}", g.to_fen());
+            eprintln!("g = {:?}", g);
+            eprintln!("(from,to,pc) = {:?}", (from,to,pc));
+        }
+        assert_eq!(side, g.state.side_to_move);
+        assert_eq!(pc2, pc);
+
+        // g.move_piece_mut_unchecked(ts, from, to, pc, g.state.side_to_move, calc_zb);
+        // g
+
+        let (side,pc) = g.get_at(from).unwrap();
+        g.move_piece_mut_unchecked(&ts, from, to, pc, side, calc_zb);
+        g
+
+    }
+
+    fn mv_pawndouble(ts: &Tables, mut g: Game, from: Coord, to: Coord, calc_zb: bool) -> Game {
+
+        let at = g.get_at(from);
+        if at.is_none() {
+            eprintln!("broken pawndouble 0");
+            eprintln!("g.to_fen() = {:?}", g.to_fen());
+            eprintln!("g = {:?}", g);
+            eprintln!("(from,to) = {:?}", (from,to));
+        }
+        let (side,pc2) = at.unwrap();
+        if side != g.state.side_to_move {
+            eprintln!("broken pawndouble 1");
+            eprintln!("g.to_fen() = {:?}", g.to_fen());
+            eprintln!("g = {:?}", g);
+            eprintln!("(from,to) = {:?}", (from,to));
+        }
+        assert_eq!(side, g.state.side_to_move);
+        assert_eq!(pc2, Pawn);
+
+        g.move_piece_mut_unchecked(ts, from, to, Pawn, g.state.side_to_move, calc_zb);
+
+        let ep = ts.between_exclusive(from, to).bitscan().into();
+        if calc_zb {
+            if let Some(ep) = g.state.en_passant {
+                // remove previous EP
+                g.zobrist = g.zobrist.update_ep(&ts, ep);
+            }
+            // add new EP
+            g.zobrist = g.zobrist.update_ep(&ts, ep);
+        }
+        g.state.en_passant = Some(ep);
+
+        g
+    }
+
+    fn mv_capture(
+        ts: &Tables, mut g: Game, from: Coord, to: Coord, pc: Piece, victim: Piece, calc_zb: bool
+    ) -> Game {
+
+        let (side,pc2) = g.get_at(from).unwrap();
+        if side != g.state.side_to_move {
+            eprintln!("broken capture mv");
+            eprintln!("g.to_fen() = {:?}", g.to_fen());
+            eprintln!("g = {:?}", g);
+            eprintln!("(from,to,pc,victim) = {:?}", (from,to,pc,victim));
+        }
+        assert_eq!(side, g.state.side_to_move);
+        assert_eq!(pc2, pc);
+
+        // g.delete_piece_mut_unchecked(ts, to, victim, !g.state.side_to_move, calc_zb);
+        // g.move_piece_mut_unchecked(ts, from, to, pc, g.state.side_to_move, calc_zb);
+        // g
+
+        let side = g.state.side_to_move;
+        g.delete_piece_mut_unchecked(&ts, to, victim, !side, calc_zb);
+        g.move_piece_mut_unchecked(&ts, from, to, pc, side, calc_zb);
+        g
+
+    }
+
+    fn mv_enpassant(ts: &Tables, mut g: Game, from: Coord, to: Coord, capture: Coord, calc_zb: bool) -> Game {
+        g.delete_piece_mut_unchecked(&ts, capture, Pawn, !g.state.side_to_move, calc_zb);
+        g.move_piece_mut_unchecked(&ts, from, to, Pawn, g.state.side_to_move, calc_zb);
+        g
+    }
+
+    fn mv_prom(ts: &Tables, mut g: Game, from: Coord, to: Coord, new_pc: Piece, calc_zb: bool) -> Game {
+
+        let (side,pc2) = g.get_at(from).unwrap();
+        if side != g.state.side_to_move {
+            eprintln!("broken promotion mv");
+            eprintln!("g.to_fen() = {:?}", g.to_fen());
+            eprintln!("g = {:?}", g);
+            eprintln!("(from,to,new_pc) = {:?}", (from,to,new_pc));
+        }
+        assert_eq!(side, g.state.side_to_move);
+        assert_eq!(pc2, Pawn);
+
+        g.delete_piece_mut_unchecked(ts, from, Pawn, g.state.side_to_move, calc_zb);
+        g.insert_piece_mut_unchecked(ts, to, new_pc, g.state.side_to_move, calc_zb);
+        g
+    }
+
+    fn mv_prom_cap(
+        ts: &Tables, mut g: Game, from: Coord, to: Coord, new_pc: Piece, victim: Piece, calc_zb: bool
+    ) -> Game {
+
+        let (side,pc2) = g.get_at(from).unwrap();
+        if side != g.state.side_to_move {
+            eprintln!("broken promotion capture mv");
+            eprintln!("g.to_fen() = {:?}", g.to_fen());
+            eprintln!("g = {:?}", g);
+            eprintln!("(from,to,new_pc,victim) = {:?}", (from,to,new_pc,victim));
+        }
+        assert_eq!(side, g.state.side_to_move);
+        assert_eq!(pc2, Pawn);
+
+        let side = g.state.side_to_move;
+
+        g.delete_piece_mut_unchecked(ts, from, Pawn, side, calc_zb);
+        g.delete_piece_mut_unchecked(ts, to, victim, !side, calc_zb);
+        g.insert_piece_mut_unchecked(ts, to, new_pc, side, calc_zb);
+        g
+    }
+
+    fn mv_castle(ts: &Tables, mut g: Game, mv: Move, calc_zb: bool) -> Game {
+        if let Move::Castle { side, kingside } = mv {
+            let ((from, to),(rook_from,rook_to)) = mv.castle_moves();
+            let side = g.state.side_to_move;
+            g.delete_piece_mut_unchecked(&ts, from, King, side, calc_zb);
+            g.delete_piece_mut_unchecked(&ts, rook_from, Rook, side, calc_zb);
+            g.insert_piece_mut_unchecked(ts, to, King, side, calc_zb);
+            g.insert_piece_mut_unchecked(ts, rook_to, Rook, side, calc_zb);
+            g
+        } else {
+            unreachable!();
+        }
+    }
+
+}
+
+/// make_move
+#[cfg(feature = "nope")]
+impl Game {
 
     #[must_use]
     pub fn _make_move_unchecked(
@@ -518,103 +810,64 @@ impl Game {
     ) -> GameResult<Game> {
         let calc_zb = use_zb.is_none();
 
-        // if mv != Move::NullMove {
-        //     match self.get_at(mv.sq_from()) {
-        //         Some((side,_)) => if self.state.side_to_move != side {
-        //             trace!("non legal move: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
-        //             // return Err(GameEnd::Error);
-        //             panic!();
-        //             // return Err(GameEnd::Error);
-        //         },
-        //         None => {
-        //             trace!("non legal move, no piece?: {:?}\n{:?}\n{:?}", mv, self.to_fen(), self);
-        //             // return Err(GameEnd::Error);
-        //             panic!();
-        //             // return Err(GameEnd::Stalemate);
-        //         }
-        //     }
-        // }
+        let mut next = if let Some(next) = self._apply_move_unchecked2(ts, mv, calc_zb) {
+        // let mut next = if let Some(next) = self._apply_move_unchecked(ts, mv, calc_zb) {
+            next } else { return Err(GameEnd::Error) };
 
-        match self._apply_move_unchecked(&ts, mv, calc_zb) {
-            Some(mut next) => {
-                match mv {
-                    Move::PawnDouble { .. }                   => {
-                    },
-                    _                                         => {
-                        if calc_zb {
-                            if let Some(ep) = next.state.en_passant {
-                                next.zobrist = next.zobrist.update_ep(&ts, ep);
-                            }
-                        }
-                        next.state.en_passant = None;
-                    },
+        next.state.side_to_move = !next.state.side_to_move;
+
+        /// update previously calculated zobrist or flip side
+        if let Some(zb) = use_zb {
+            next.zobrist = zb;
+        } else {
+            next.zobrist = next.zobrist.update_side_to_move(&ts);
+        }
+
+        /// clear En Passant square if move was anything but a double pawn push
+        match mv {
+            Move::PawnDouble { .. }                   => {},
+            _                                         => {
+                if calc_zb {
+                    if let Some(ep) = next.state.en_passant {
+                        next.zobrist = next.zobrist.update_ep(&ts, ep);
+                    }
                 }
-
-                if let Move::EnPassant { capture, .. } = mv {
-                    next.state.last_capture = Some(capture);
-                } else if mv.filter_all_captures() {
-                    next.state.last_capture = Some(mv.sq_to());
-                } else {
-                    next.state.last_capture = None;
-                }
-
-                next.state.side_to_move = !next.state.side_to_move;
-                if calc_zb { next.zobrist = next.zobrist.update_side_to_move(&ts); }
-                // x.move_history.push(*m);
-
-                /// XXX: do without this?
-                // next.reset_gameinfo_mut();
-
-                self.update_castles(&ts, mv, &mut next, calc_zb);
-
-                // next.last_move_2 = self.last_move;
-                next.last_move   = Some(mv);
-
-                // // XXX: current or prev Zobrist ??
-                // next.history.push((next.zobrist, mv));
-
-                if let Some(zb) = use_zb {
-                    next.zobrist = zb;
-                };
-
-                // if let Some(mut k) = next.history.get_mut(&next.zobrist) {
-                //     *k += 1;
-                //     // if *k >= 2 { return Err(GameEnd::DrawRepetition); }
-                // } else {
-                //     next.history.insert(next.zobrist, 1);
-                // }
-
-                if mv.is_zeroing() {
-                    next.halfmove = 0;
-                } else {
-                    next.halfmove += 1;
-                }
-
-                match next.recalc_gameinfo_mut(&ts) {
-                    // Err(win) => panic!("wot"),
-                    // Err(GameEnd::Error) => {
-                    //     // panic!("recalc_gameinfo_mut error: {:?}", e);
-                    //     panic!("recalc_gameinfo_mut");
-                    // },
-                    Err(win) => Err(win),
-                    Ok(_)    => {
-                        // if self._check_history() {
-                        //     Err(GameEnd::DrawRepetition)
-                        // } else {
-                        // }
-                        Ok(next)
-                    },
-                }
-            },
-            _ => {
-                return Err(GameEnd::Error);
+                next.state.en_passant = None;
             },
         }
 
-        // if let Some(mut x) = self._make_move_unchecked(&ts, &m) {
-        // } else {
-        // }
+        /// Update last_capture
+        if let Move::EnPassant { capture, .. } = mv {
+            next.state.last_capture = Some(capture);
+        } else if mv.filter_all_captures() {
+            next.state.last_capture = Some(mv.sq_to());
+        } else {
+            next.state.last_capture = None;
+        }
 
+        /// Update castling info
+        self.update_castles(&ts, mv, &mut next, calc_zb);
+
+        next.last_move = Some(mv);
+
+        /// halfmove counter
+        if mv.is_zeroing() {
+            next.halfmove = 0;
+        } else {
+            next.halfmove += 1;
+        }
+
+        match next.recalc_gameinfo_mut(&ts) {
+            Err(win) => Err(win),
+            Ok(_)    => {
+                Ok(next)
+            },
+        }
+    }
+
+    #[must_use]
+    pub fn make_move_unchecked(&self, ts: &Tables, mv: Move) -> GameResult<Game> {
+        self._make_move_unchecked(ts, mv, None)
     }
 
 }
@@ -1580,7 +1833,7 @@ impl Game {
     }
 
     pub fn get_at(&self, c0: Coord) -> Option<(Color, Piece)> {
-        let pc = self.pieces[c0]?;
+        let pc   = self.pieces[c0]?;
         let side = self.get_side_at(c0)?;
         Some((side,pc))
     }

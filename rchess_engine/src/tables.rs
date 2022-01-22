@@ -301,10 +301,16 @@ impl Tables {
         self.between_bb[s1][s2]
     }
 
-    pub fn between_exclusive<T: Into<Coord>>(&self, s1: T, s2: T) -> BitBoard {
-        let (s1,s2): (Coord,Coord) = (s1.into(),s2.into());
-        let (s1,s2): (u32,u32) = (s1.into(),s2.into());
-        self.between_bb[s1 as usize][s2 as usize].set_zero(s2.into())
+    // pub fn between_exclusive<T: Into<Coord>>(&self, s1: T, s2: T) -> BitBoard {
+    //     let (s1,s2): (Coord,Coord) = (s1.into(),s2.into());
+    //     let (s1,s2): (u32,u32) = (s1.into(),s2.into());
+    //     self.between_bb[s1 as usize][s2 as usize].set_zero(s2.into())
+    // }
+
+    pub fn between_exclusive(&self, s1: Coord, s2: Coord) -> BitBoard {
+        // let (s1,s2): (Coord,Coord) = (s1.into(),s2.into());
+        // let (s1,s2): (u32,u32) = (s1.into(),s2.into());
+        self.between_bb[s1][s2].set_zero(s2)
     }
 
     pub fn line<T: Into<Coord>>(&self, s1: T, s2: T) -> BitBoard {

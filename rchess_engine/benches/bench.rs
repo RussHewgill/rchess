@@ -347,6 +347,20 @@ pub fn crit_bench_1(c: &mut Criterion) {
         moves.push((g,mv0,mv1));
     }
 
+    group.bench_function("make move prev", |b| b.iter(|| {
+        for (g,mv0,mv1) in moves.iter() {
+            let g0 = g.make_move_unchecked(&ts, *mv0).unwrap();
+            let g1 = g.make_move_unchecked(&ts, *mv1).unwrap();
+        }
+    }));
+
+    group.bench_function("make move new", |b| b.iter(|| {
+        for (g,mv0,mv1) in moves.iter() {
+            let g0 = g.make_move_unchecked2(&ts, *mv0).unwrap();
+            let g1 = g.make_move_unchecked2(&ts, *mv1).unwrap();
+        }
+    }));
+
     // group.bench_function("movegen", |b| b.iter(|| {
     //     for g in wacs.iter() {
     //         let moves = MoveGen::generate_list(&ts, g, None);
@@ -354,12 +368,12 @@ pub fn crit_bench_1(c: &mut Criterion) {
     //     }
     // }));
 
-    group.bench_function("recalc_gameinfo", |b| b.iter(|| {
-        for g in wacs.iter() {
-            let mut g = *g;
-            g.recalc_gameinfo_mut(&ts).unwrap();
-        }
-    }));
+    // group.bench_function("recalc_gameinfo", |b| b.iter(|| {
+    //     for g in wacs.iter() {
+    //         let mut g = *g;
+    //         g.recalc_gameinfo_mut(&ts).unwrap();
+    //     }
+    // }));
 
     let mut xs = vec![];
 

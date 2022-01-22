@@ -213,7 +213,7 @@ impl ABStack {
         if let Some(st) = self.stacks.get(ply as usize) {
             st.killer_get()
         } else {
-            debug!("stack killers_get, but missing ply: {}", ply);
+            // debug!("stack killers_get, but missing ply: {}", ply);
             (None,None)
         }
     }

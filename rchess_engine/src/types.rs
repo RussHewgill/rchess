@@ -314,6 +314,10 @@ impl Move {
     pub fn new_promotion<T: Into<Coord>>(from: T, to: T, new_piece: Piece) -> Move {
         Move::Promotion { from: from.into(), to: to.into(), new_piece }
     }
+    pub fn new_promotion_cap<T: Into<Coord>>(from: T, to: T, new_piece: Piece, victim: Piece) -> Move {
+        let pcs = PackedPieces::new(new_piece,victim);
+        Move::PromotionCapture { from: from.into(), to: to.into(), pcs }
+    }
 
 }
 
