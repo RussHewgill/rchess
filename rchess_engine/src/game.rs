@@ -818,6 +818,8 @@ impl Game {
         self.state.phase = phase;
         self.state.phase_unscaled = phase_unscaled;
 
+        // self.state.phase = self.game_phase();
+
         Ok(())
     }
 
@@ -840,11 +842,6 @@ impl Game {
             return Err(GameEnd::Checkmate{ win: !self.state.side_to_move});
         }
 
-        // self.state.checkers      = BitBoard::empty();
-        // self.state.king_blocks_w = BitBoard::empty();
-        // self.state.king_blocks_b = BitBoard::empty();
-        // // self.state.pinners       = None;
-
         self.update_pins_mut(ts);
         self.update_checkers_mut(ts);
         self.update_check_block_mut(ts);
@@ -852,33 +849,18 @@ impl Game {
 
         self.update_check_squares_mut(ts);
 
-        // self.state.phase = self.game_phase();
-
         /// Last move has already been set, and side to move switched
         if let Some(mv) = self.last_move {
             if mv.filter_capture_or_promotion() {
-                // self.state.phase = self.game_phase();
                 self.increment_phase_mut(mv);
-
-                // let (phase,phase_unscaled) = self.game_phase();
-                // // assert_eq!(phase, self.state.phase);
-                // if phase != self.state.phase {
-                //     eprintln!("phase wrong, {} != {}", phase, self.state.phase);
-                //     eprintln!("game = {:?}", self);
-                //     eprintln!("self.to_fen() = {:?}", self.to_fen());
-                //     eprintln!("mv = {:?}", mv);
-                //     panic!();
-                // }
-
             }
-        // } else {
-        //     // self.state.phase = self.game_phase();
+        } else {
+            /// Only occurs when building from FEN
+            // self.state.phase = self.game_phase().0;
+            let (phase,phase_unscaled) = self.game_phase();
+            self.state.phase = phase;
+            self.state.phase_unscaled = phase_unscaled;
         }
-
-        // if self.history.len() > 5 {
-        //     self.history.pop_front();
-        // }
-        // self.history.push_back(self.zobrist);
 
         Ok(())
     }

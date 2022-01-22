@@ -36,7 +36,7 @@ default = [
 
     "positional_scoring",
     # "mobility_scoring",
-    # "only_material_eval",
+    "only_material_eval",
 
     # "syzygy",
     "nnue",
