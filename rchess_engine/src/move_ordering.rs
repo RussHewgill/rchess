@@ -97,15 +97,16 @@ pub fn score_move_for_sort4(
         MoveGenType::Captures    => {
             if mv.filter_promotion() {
                 if mv.filter_all_captures() {
-                    let see = MoveGen::_static_exchange(ts, g, see_map, mv).unwrap_or(0);
-                    QueenPromotion as Score + Capture as Score + history + see
+                    // let see = MoveGen::_static_exchange(ts, g, see_map, mv).unwrap_or(0);
+                    // QueenPromotion as Score + Capture as Score + history + see
+                    QueenPromotion as Score + Capture as Score + history
                 } else {
                     QueenPromotion as Score + history
                 }
             } else if let Some(victim) = mv.victim() {
                 let see = MoveGen::_static_exchange(ts, g, see_map, mv).unwrap_or(0);
-                // Capture as Score + history + victim.score()
                 Capture as Score + history + see
+                // Capture as Score + history + victim.score()
             } else {
                 #[cfg(feature = "killer_moves")]
                 if Some(mv) == killers.0 || Some(mv) == killers.1 {

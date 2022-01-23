@@ -294,6 +294,35 @@ const PH_TOTAL: i16 = PAWN_PH * 16 + KNIGHT_PH * 4 + BISHOP_PH * 4 + ROOK_PH * 4
 /// Phase
 impl Game {
 
+    #[cfg(feature = "nope")]
+    pub fn game_phase_sf(&self) -> (Phase,i16) {
+
+        const MG_LIMIT: Score = 15258;
+        const EG_LIMIT: Score = 3915;
+
+        const PHASE_MG: Score = 128;
+
+        // let _ = Pawn.score();
+
+        let npm_w = self.state.npm[White];
+        let npm_b = self.state.npm[Black];
+
+        let npm = (npm_w + npm_b).clamp(EG_LIMIT, MG_LIMIT);
+
+        let phase = ((npm - EG_LIMIT) * PHASE_MG) / (MG_LIMIT - EG_LIMIT);
+
+        (0,phase as i16)
+    }
+
+    pub fn count_npm(&self, side: Color) -> Score {
+        let mut npm = 0;
+        for pc in Piece::iter_nonking_pieces() {
+            let n = self.state.material.get(pc, side);
+            npm += pc.score_st_phase() * n as Score;
+        }
+        npm
+    }
+
     // #[cfg(feature = "nope")]
     pub fn increment_phase_mut(&mut self, mv: Move) {
 
@@ -312,21 +341,10 @@ impl Game {
         let phase = phase.clamp(0,255) as u8;
         self.state.phase = phase;
 
-        // let phase = (phase * 256 + (ph_total / 2)) / ph_total;
-
-        // self.state.phase    = phase.clamp(0,255) as u8;
-        // self.state.ph_total = ph_total;
-
     }
 
     // #[cfg(feature = "nope")]
     pub fn game_phase(&self) -> (Phase,i16) {
-
-        // const PCS: [Piece; 5] = [Pawn,Knight,Bishop,Rook,Queen];
-        // const PHASES: [i16; 5] = [PAWN_PH,KNIGHT_PH,BISHOP_PH,ROOK_PH,QUEEN_PH];
-
-        // let ph_total = PAWN_PH * 16 + KNIGHT_PH * 4 + BISHOP_PH * 4 + ROOK_PH * 4 + QUEEN_PH * 2;
-
         let mut phase_unscaled = PH_TOTAL;
 
         phase_unscaled -= PAWN_PH *   self.state.material.count_piece(Pawn) as i16;
@@ -442,6 +460,18 @@ impl Game {
 }
 
 impl Piece {
+
+    const fn score_st_phase(self) -> Score {
+        match self {
+            Pawn   => 126,
+            Knight => 781,
+            Bishop => 825,
+            Rook   => 1276,
+            Queen  => 2538,
+            King   => 32001,
+        }
+    }
+
     pub const fn score_basic(&self) -> Score {
         match self {
             Pawn   => 100,

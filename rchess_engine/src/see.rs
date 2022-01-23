@@ -36,9 +36,9 @@ impl Game {
 
         let mut occ = self.all_occupied() ^ BitBoard::single(from) ^ BitBoard::single(to);
 
-        let mut attackers_own = self.find_attackers_to(&ts, to, !side);
+        let mut attackers_own = self.find_attackers_to(&ts, to, !side, true);
         // attackers_own &= !(BitBoard::single(mv.sq_from()));
-        let mut attackers_other = self.find_attackers_to(&ts, to, side);
+        let mut attackers_other = self.find_attackers_to(&ts, to, side, true);
 
         let mut attackers = attackers_own | attackers_other;
         let mut stm_attackers: BitBoard;
@@ -145,9 +145,9 @@ impl Game {
             BitBoard(1 << f)
         };
 
-        let mut attackers_own = self.find_attackers_to(&ts, mv.sq_to(), !side);
+        let mut attackers_own = self.find_attackers_to(&ts, mv.sq_to(), !side, true);
         // attackers_own &= !(BitBoard::single(mv.sq_from()));
-        let mut attackers_other = self.find_attackers_to(&ts, mv.sq_to(), side);
+        let mut attackers_other = self.find_attackers_to(&ts, mv.sq_to(), side, true);
 
         let mut attadef = attackers_own | attackers_other;
 

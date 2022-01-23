@@ -338,14 +338,14 @@ pub fn crit_bench_1(c: &mut Criterion) {
     //     let (m,stats) = ex.explore(&ts, None);
     // }));
 
-    let mut moves = vec![];
-    let st = ABStack::new();
-    for g in wacs.iter() {
-        let mut movegen = MoveGen::new(&ts, g, None, &st, 0, 0);
-        let mv0 = movegen.next(&st).unwrap();
-        let mv1 = movegen.next(&st).unwrap();
-        moves.push((g,mv0,mv1));
-    }
+    // let mut moves = vec![];
+    // let st = ABStack::new();
+    // for g in wacs.iter() {
+    //     let mut movegen = MoveGen::new(&ts, g, None, &st, 0, 0);
+    //     let mv0 = movegen.next(&st).unwrap();
+    //     let mv1 = movegen.next(&st).unwrap();
+    //     moves.push((g,mv0,mv1));
+    // }
 
     // group.bench_function("make move", |b| b.iter(|| {
     //     for (g,mv0,mv1) in moves.iter() {
@@ -361,28 +361,31 @@ pub fn crit_bench_1(c: &mut Criterion) {
     //     }
     // }));
 
-    // group.bench_function("movegen", |b| b.iter(|| {
-    //     for g in wacs.iter() {
-    //         let moves = MoveGen::generate_list(&ts, g, None);
-    //         let x = moves.len();
-    //     }
-    // }));
-
-    group.bench_function("recalc_gameinfo", |b| b.iter(|| {
+    // group.sample_size(60);
+    group.measurement_time(Duration::from_secs_f64(10.));
+    group.bench_function("movegen", |b| b.iter(|| {
         for g in wacs.iter() {
-            let mut g = *g;
-            g.recalc_gameinfo_mut(&ts).unwrap();
+            let moves = MoveGen::generate_list(&ts, black_box(g), None);
+            // let moves = MoveGen::generate_list(&ts, g, Some(MoveGenType::Captures));
+            // let moves = MoveGen::generate_list(&ts, g, Some(MoveGenType::Quiets));
+            let x = moves.len();
         }
     }));
 
-    let mut xs = vec![];
+    // group.bench_function("recalc_gameinfo", |b| b.iter(|| {
+    //     for g in wacs.iter() {
+    //         let mut g = *g;
+    //         g.recalc_gameinfo_mut(&ts).unwrap();
+    //     }
+    // }));
 
-    for _ in 0..1_000 {
-        let b = BitBoard(Tables::sparse_rand(&mut rng));
-        let c: u8 = rng.gen_range(0..64);
-        let c = Coord::new_int(c);
-        xs.push((b,c));
-    }
+    // let mut xs = vec![];
+    // for _ in 0..1_000 {
+    //     let b = BitBoard(Tables::sparse_rand(&mut rng));
+    //     let c: u8 = rng.gen_range(0..64);
+    //     let c = Coord::new_int(c);
+    //     xs.push((b,c));
+    // }
 
     // group.bench_function("get_at", |b| b.iter(|| {
     //     for g in wacs.iter() {

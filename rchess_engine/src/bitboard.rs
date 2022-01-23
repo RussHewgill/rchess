@@ -148,7 +148,7 @@ impl BitBoard {
         b
     }
 
-    pub fn empty() -> BitBoard {
+    pub const fn empty() -> BitBoard {
         BitBoard(0)
     }
 

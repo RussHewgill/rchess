@@ -55,6 +55,8 @@ pub struct GameState {
     pub en_passant:         Option<Coord>,
     pub castling:           Castling,
 
+    pub npm:                [Score; 2],
+
     pub phase_unscaled:     i16,
     pub phase:              Phase,
     pub last_capture:       Option<Coord>,
@@ -95,6 +97,7 @@ impl Default for Game {
 }
 
 #[derive(Default,Hash,Eq,Ord,PartialEq,PartialOrd,Clone,Copy,Serialize,Deserialize)]
+/// [Side][Piece]
 pub struct Material {
     pub buf:  [[u8; 6]; 2],
 }
@@ -155,6 +158,10 @@ impl Material {
 
     pub fn get(&self, pc: Piece, side: Color) -> u8 {
         self.buf[side][pc]
+    }
+
+    pub fn get_both(&self, pc: Piece) -> u8 {
+        self.buf[White][pc] + self.buf[Black][pc]
     }
 
     pub fn into_normalized(self) -> Self {
@@ -814,9 +821,12 @@ impl Game {
     pub fn init_gameinfo_mut(&mut self, ts: &Tables) -> GameResult<()> {
         self.state.material = self.count_material();
 
-        // let (phase,phase_unscaled) = self.game_phase();
-        // self.state.phase = phase;
-        // self.state.phase_unscaled = phase_unscaled;
+        self.state.npm[White] = self.count_npm(White);
+        self.state.npm[Black] = self.count_npm(Black);
+
+        let (phase,phase_unscaled) = self.game_phase();
+        self.state.phase = phase;
+        self.state.phase_unscaled = phase_unscaled;
 
         // self.state.phase = self.game_phase();
 
@@ -838,9 +848,9 @@ impl Game {
     pub fn recalc_gameinfo_mut(&mut self, ts: &Tables) -> GameResult<()> {
 
         let king = self.get(King, self.state.side_to_move);
-        if king.is_empty() {
-            return Err(GameEnd::Checkmate{ win: !self.state.side_to_move});
-        }
+        // if king.is_empty() {
+        //     return Err(GameEnd::Checkmate{ win: !self.state.side_to_move});
+        // }
 
         self.update_pins_mut(ts);
         self.update_checkers_mut(ts);
@@ -857,12 +867,15 @@ impl Game {
         } else {
             // /// Only occurs when building from FEN
             // self.state.phase = self.game_phase().0;
+
             let (phase,phase_unscaled) = self.game_phase();
             self.state.phase = phase;
-            /// XXX: setting this causes regression ???
-            // self.state.phase_unscaled = phase_unscaled;
-            eprintln!("no last_move = {:?}", (phase,phase_unscaled));
-            eprintln!("self.state.phase_unscaled = {:?}", self.state.phase_unscaled);
+
+            // XXX: setting this causes regression ???
+            self.state.phase_unscaled = phase_unscaled;
+
+            // trace!("no last_move = {:?}", (phase,phase_unscaled));
+            // trace!("self.state.phase_unscaled = {:?}", self.state.phase_unscaled);
         }
 
         Ok(())

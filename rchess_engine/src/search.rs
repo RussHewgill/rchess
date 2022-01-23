@@ -477,7 +477,7 @@ impl Game {
     pub fn find_checkers(&self, ts: &Tables, col: Color) -> BitBoard {
         let p0: Coord = self.get(King, col).bitscan().into();
 
-        let moves = self.find_attackers_to(&ts, p0, col);
+        let moves = self.find_attackers_to(&ts, p0, col, false);
         let moves = moves & self.get_color(!col);
         moves
     }
@@ -581,7 +581,30 @@ impl Game {
         false
     }
 
-    pub fn find_attackers_to(&self, ts: &Tables, c0: Coord, col: Color) -> BitBoard {
+    // #[cfg(feature = "nope")]
+    /// Find attacks by side to square c0
+    pub fn find_attackers_to(&self, ts: &Tables, c0: Coord, side: Color, inc_king: bool) -> BitBoard {
+
+        let moves_r = self._search_sliding_single(&ts, Rook, c0, side, None);
+        let rooks = moves_r & (self.get_piece(Rook) | self.get_piece(Queen));
+        let moves_b = self._search_sliding_single(&ts, Bishop, c0, side, None);
+        let bishops = moves_b & (self.get_piece(Bishop) | self.get_piece(Queen));
+
+        let king = if inc_king {
+            self._search_king_attacks(&ts, c0, side) & self.get_piece(King)
+        } else {
+            BitBoard::empty()
+        };
+
+        ts.get_pawn(c0).get_capture(!side)
+            | (ts.get_knight(c0) & self.get_piece(Knight))
+            | rooks
+            | bishops
+            | king
+    }
+
+    #[cfg(feature = "nope")]
+    pub fn find_attackers_to(&self, ts: &Tables, c0: Coord, col: Color, inc_king: bool) -> BitBoard {
 
         let pawns = ts.get_pawn(c0);
         // let pawns = *pawns.get_capture(White) | *pawns.get_capture(Black);
@@ -601,6 +624,12 @@ impl Game {
         // let king = self._search_king_single(p0, &ts, col, false);
         let king = self._search_king_attacks(&ts, c0, col);
         let king = king & self.get_piece(King);
+
+        // let king = if inc_king {
+        //     self._search_king_attacks(&ts, c0, side) & self.get_piece(King)
+        // } else {
+        //     BitBoard::empty()
+        // };
 
         pawns
             | knights

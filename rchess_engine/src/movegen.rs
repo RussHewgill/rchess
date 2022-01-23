@@ -140,7 +140,7 @@ pub struct MoveGen<'a> {
 
     // buf_set:             BinaryHeap<MGKey>,
 
-    // cur:                 usize,
+    cur:                 usize,
 
     // pub move_history:    Vec<(Zobrist, Move)>,
 
@@ -153,58 +153,51 @@ pub struct MoveGen<'a> {
     ply:                 Depth,
 }
 
-/// Score, Sort, Pick best
+/// Sort and pick, but incremental
+#[cfg(feature = "nope")]
 impl<'a> MoveGen<'a> {
 
-    pub fn pick_next(&mut self, st: &ABStack) -> Option<Move> {
-        self._pick(st, false)
-    }
+    pub fn sort(&mut self, st: &ABStack, gen_type: MoveGenType) {
+        let mut see_map = &mut self.see_map;
 
-    pub fn pick_best(&mut self, st: &ABStack) -> Option<Move> {
-        self._pick(st, true)
-    }
+        // #[cfg(feature = "killer_moves")]
+        // if gen_type != MoveGenType::Captures {
+        //     let (k1,k2) = (self.killer_moves.0,self.killer_moves.1);
+        //     self.buf.retain(|mv| Some(*mv) != k1 && Some(*mv) != k2);
+        // }
 
-    #[cfg(feature = "nope")]
-    pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
+        for mv in self.buf.drain(..) {
+            let score = score_move_for_sort4(
+                self.ts,
+                self.game,
+                gen_type,
+                see_map,
+                st,
+                self.ply,
+                mv,
+                self.killer_moves,
+                self.counter_move);
 
-        let len = self.buf_scored.len();
-
-        // let mut cur = 0;
-        self.cur = 0;
-        while self.cur < len {
-
-            if best {
-                self.buf_scored.swap(self.cur, len - 1);
-            }
-
-            let (mv,score) = self.buf_scored[self.cur];
-            // if Some(mv) != self.hashmove && filter 
-            if Some(mv) != self.hashmove {
-                self.buf_scored.remove(self.cur);
-                return Some(mv);
-            }
-
-            self.cur += 1;
+            self.buf_scored.push((mv, score));
         }
 
-        None
     }
 
-    #[cfg(feature = "nope")]
     pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
+
+        if self.buf_scored.len() == 0 { return None; }
+
         if !best { return Some(self.buf_scored.pop()?.0); }
 
-        if self.cur == self.buf_scored.len() { return None; }
-
-        let mut kmin = self.cur;
+        let mut best_score_idx = self.cur;
         for k in self.cur+1 .. self.buf_scored.len() {
-            if self.buf_scored[k].1 > self.buf_scored[kmin].1 {
-                kmin = k;
+            if self.buf_scored[k].1 > self.buf_scored[best_score_idx].1 {
+                best_score_idx = k;
             }
         }
 
-        if kmin != self.cur {
-            self.buf_scored.swap(self.cur, kmin);
+        if best_score_idx != self.cur {
+            self.buf_scored.swap(self.cur, best_score_idx);
         }
 
         self.cur += 1;
@@ -212,71 +205,11 @@ impl<'a> MoveGen<'a> {
         Some(self.buf_scored.get(self.cur - 1)?.0)
     }
 
-    // #[cfg(feature = "nope")]
-    pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
-        let (mv,_) = self.buf_scored.pop()?;
-        Some(mv)
-    }
+}
 
-    #[cfg(feature = "nope")]
-    pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
-
-        // eprintln!("best = {:?}", best);
-        // eprintln!("self.buf_scored.len() = {:?}", self.buf_scored.len());
-
-        // if !best {
-        //     return Some(self.buf_scored.pop()?.0);
-        //     // let mv = self.buf_scored.get(self.cur)?;
-        //     // self.cur += 1;
-        //     // return Some(mv.0);
-        // }
-
-        if self.buf_scored.is_empty() { return None; }
-
-        let mut kmax = 0;
-        let mut best_score = self.buf_scored[0].1;
-        for (k,(mv,score)) in self.buf_scored.iter().enumerate() {
-
-            if *score < best_score {
-                kmax = k;
-                best_score = *score;
-            }
-
-        }
-
-        if kmax != 0 {
-            self.buf_scored.swap(0, kmax);
-        }
-
-        let mv = self.buf_scored.pop()?.0;
-
-        #[cfg(feature = "nope")]
-        while self.cur < self.buf_scored.len() {
-
-            // let max = self.buf_scored[self.cur..].iter().position_max_by_key(|x| x.1)?;
-
-            let mut kmax = self.cur;
-
-            for k in self.cur..self.buf_scored.len() {
-                if self.buf_scored[k] < self.buf_scored[kmax] {
-                    kmax = k;
-                }
-            }
-
-            // self.buf_scored.swap(self.cur, self.cur + max);
-            self.buf_scored.swap(self.cur, kmax);
-
-            let mv = self.buf_scored.get(self.cur)?;
-
-            self.cur += 1;
-
-            return Some(mv.0);
-        }
-
-        Some(mv)
-
-        // None
-    }
+/// Score, Sort, Pick best
+// #[cfg(feature = "nope")]
+impl<'a> MoveGen<'a> {
 
     // #[cfg(feature = "nope")]
     pub fn sort(&mut self, st: &ABStack, gen_type: MoveGenType) {
@@ -350,6 +283,133 @@ impl<'a> MoveGen<'a> {
 
     }
 
+    // #[cfg(feature = "nope")]
+    pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
+        let (mv,_) = self.buf_scored.pop()?;
+        Some(mv)
+    }
+
+}
+
+/// Pick best or first
+// #[cfg(feature = "nope")]
+impl<'a> MoveGen<'a> {
+
+    pub fn pick_next(&mut self, st: &ABStack) -> Option<Move> {
+        self._pick(st, false)
+    }
+
+    pub fn pick_best(&mut self, st: &ABStack) -> Option<Move> {
+        self._pick(st, true)
+    }
+
+    #[cfg(feature = "nope")]
+    pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
+
+        let len = self.buf_scored.len();
+
+        // let mut cur = 0;
+        self.cur = 0;
+        while self.cur < len {
+
+            if best {
+                self.buf_scored.swap(self.cur, len - 1);
+            }
+
+            let (mv,score) = self.buf_scored[self.cur];
+            // if Some(mv) != self.hashmove && filter 
+            if Some(mv) != self.hashmove {
+                self.buf_scored.remove(self.cur);
+                return Some(mv);
+            }
+
+            self.cur += 1;
+        }
+
+        None
+    }
+
+    #[cfg(feature = "nope")]
+    pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
+        if !best { return Some(self.buf_scored.pop()?.0); }
+
+        if self.cur == self.buf_scored.len() { return None; }
+
+        let mut kmin = self.cur;
+        for k in self.cur+1 .. self.buf_scored.len() {
+            if self.buf_scored[k].1 > self.buf_scored[kmin].1 {
+                kmin = k;
+            }
+        }
+
+        if kmin != self.cur {
+            self.buf_scored.swap(self.cur, kmin);
+        }
+
+        self.cur += 1;
+
+        Some(self.buf_scored.get(self.cur - 1)?.0)
+    }
+
+    #[cfg(feature = "nope")]
+    pub fn _pick(&mut self, st: &ABStack, best: bool) -> Option<Move> {
+
+        // eprintln!("best = {:?}", best);
+        // eprintln!("self.buf_scored.len() = {:?}", self.buf_scored.len());
+
+        // if !best {
+        //     return Some(self.buf_scored.pop()?.0);
+        //     // let mv = self.buf_scored.get(self.cur)?;
+        //     // self.cur += 1;
+        //     // return Some(mv.0);
+        // }
+
+        if self.buf_scored.is_empty() { return None; }
+
+        let mut kmax = 0;
+        let mut best_score = self.buf_scored[0].1;
+        for (k,(mv,score)) in self.buf_scored.iter().enumerate() {
+
+            if *score < best_score {
+                kmax = k;
+                best_score = *score;
+            }
+
+        }
+
+        if kmax != 0 {
+            self.buf_scored.swap(0, kmax);
+        }
+
+        let mv = self.buf_scored.pop()?.0;
+
+        #[cfg(feature = "nope")]
+        while self.cur < self.buf_scored.len() {
+
+            // let max = self.buf_scored[self.cur..].iter().position_max_by_key(|x| x.1)?;
+
+            let mut kmax = self.cur;
+
+            for k in self.cur..self.buf_scored.len() {
+                if self.buf_scored[k] < self.buf_scored[kmax] {
+                    kmax = k;
+                }
+            }
+
+            // self.buf_scored.swap(self.cur, self.cur + max);
+            self.buf_scored.swap(self.cur, kmax);
+
+            let mv = self.buf_scored.get(self.cur)?;
+
+            self.cur += 1;
+
+            return Some(mv.0);
+        }
+
+        Some(mv)
+
+        // None
+    }
 }
 
 /// New
@@ -395,7 +455,7 @@ impl<'a> MoveGen<'a> {
 
             buf_scored: ArrayVec::new(),
 
-            // cur:   0,
+            cur:   0,
             // move_history,
 
             hashmove,
@@ -445,7 +505,7 @@ impl<'a> MoveGen<'a> {
 
             buf_scored: ArrayVec::new(),
 
-            // cur:   0,
+            cur:   0,
             // move_history,
 
             hashmove,
@@ -493,7 +553,7 @@ impl<'a> MoveGen<'a> {
             buf,
             buf_scored: ArrayVec::new(),
 
-            // cur:   0,
+            cur:   0,
 
             hashmove:     None,
             counter_move: None,
@@ -591,7 +651,7 @@ impl<'a> MoveGen<'a> {
             QuietsInit => {
                 if !self.skip_quiets {
                     self.generate(MoveGenType::Quiets);
-                    // TODO: sort here?
+
                     self.sort(stack, MoveGenType::Quiets);
                 }
 
@@ -605,6 +665,10 @@ impl<'a> MoveGen<'a> {
                 }
                 if let Some(mv) = self.pick_next(stack) {
                 // if let Some(mv) = self.buf.pop() {
+                    // #[cfg(feature = "killer_moves")]
+                    // if Some(mv) == self.killer_moves.0 || Some(mv) == self.killer_moves.1 {
+                    //     return self.next(stack);
+                    // } else
                     if Some(mv) != self.hashmove && self.move_is_legal(mv) {
                         return Some(mv);
                     } else {
@@ -1110,6 +1174,10 @@ impl<'a> MoveGen<'a> {
             // debug!("non legal move, wrong color? {:?}", mv);
             // return false;
             panic!("non legal move, wrong color? {:?}", mv);
+        }
+
+        if let Some(King) = mv.victim() {
+            return false;
         }
 
         if mv.filter_en_passant() {
