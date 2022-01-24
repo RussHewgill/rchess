@@ -5,6 +5,7 @@ use crate::move_ordering::OrdMove;
 use crate::types::*;
 use crate::tables::*;
 use crate::move_ordering::*;
+use crate::evmap_tables::FxBuildHasher;
 
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
@@ -122,7 +123,8 @@ pub struct MoveGen<'a> {
 
     // root_moves:          Option<Vec<Move>>,
 
-    pub see_map:         HashMap<Move,Score>,
+    // pub see_map:         HashMap<Move,Score>,
+    pub see_map:         HashMap<Move,Score, FxBuildHasher>,
 
     in_check:            bool,
     side:                Color,
@@ -442,11 +444,18 @@ impl<'a> MoveGen<'a> {
         //     let k1 = k1.map(|mv| )
         // };
 
+        // use crate::evmap_tables::FxBuildHasher;
+
+        // let see_map = HashMap::with_hasher(FxBuildHasher::default());
+        // let see_map = HashMap::default();
+        let see_map = HashMap::with_capacity_and_hasher(128, FxBuildHasher::default());
+
         let mut out = Self {
             ts,
             game,
             // root_moves: None,
-            see_map:  HashMap::default(),
+            // see_map:  HashMap::default(),
+            see_map,
             in_check,
             side,
             skip_quiets: false,
@@ -491,11 +500,14 @@ impl<'a> MoveGen<'a> {
             // stack.counter_moves.get_counter_move(prev_mv)
         } else { None };
 
+        let see_map = HashMap::with_capacity_and_hasher(128, FxBuildHasher::default());
+
         let mut out = Self {
             ts,
             game,
             // root_moves: None,
-            see_map:  HashMap::default(),
+            // see_map:  HashMap::default(),
+            see_map,
             in_check,
             side,
             skip_quiets: false,
@@ -980,23 +992,23 @@ impl<'a> MoveGen<'a> {
 /// SEE
 impl<'a> MoveGen<'a> {
 
-    // // #[cfg(feature = "nope")]
-    // pub fn _static_exchange(
-    //     ts:          &'static Tables,
-    //     g:           &Game,
-    //     mut map:     &mut HashMap<Move,Score>,
-    //     mv:          Move,
-    //     threshold:   Score,
-    // ) -> Option<Score> {
-    //     g.static_exchange(ts, mv)
-    // }
+    #[cfg(feature = "nope")]
+    pub fn _static_exchange(
+        ts:          &Tables,
+        g:           &Game,
+        // mut map:     &mut HashMap<Move,Score>,
+        mut map:     &mut HashMap<Move,Score,FxBuildHasher>,
+        mv:          Move,
+    ) -> Option<Score> {
+        g.static_exchange(ts, mv)
+    }
 
     // #[cfg(feature = "nope")]
     pub fn _static_exchange(
-        // ts:          &'static Tables,
         ts:          &'a Tables,
         g:           &Game,
-        mut map:     &mut HashMap<Move,Score>,
+        // mut map:     &mut HashMap<Move,Score>,
+        mut map:     &mut HashMap<Move,Score,FxBuildHasher>,
         mv:          Move,
     ) -> Option<Score> {
         if !mv.filter_all_captures() { return None; }

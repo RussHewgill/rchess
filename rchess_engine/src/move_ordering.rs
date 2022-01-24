@@ -1,4 +1,5 @@
 
+use crate::evmap_tables::FxBuildHasher;
 use crate::explore::*;
 use crate::types::*;
 use crate::tables::*;
@@ -79,7 +80,8 @@ pub fn score_move_for_sort4(
     ts:           &Tables,
     g:            &Game,
     gentype:      MoveGenType,
-    mut see_map:  &mut HashMap<Move,Score>,
+    // mut see_map:  &mut HashMap<Move,Score>,
+    mut see_map:  &mut HashMap<Move,Score,FxBuildHasher>,
     st:           &ABStack,
     ply:          Depth,
     mv:           Move,
@@ -144,6 +146,7 @@ pub fn score_move_for_sort4(
     }
 }
 
+#[cfg(feature = "nope")]
 pub fn score_move_for_sort3(
     ts:           &'static Tables,
     g:            &Game,

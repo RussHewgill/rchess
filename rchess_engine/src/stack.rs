@@ -1,7 +1,7 @@
 
 use std::collections::HashSet;
 
-use crate::{types::*, tables::HISTORY_MAX};
+use crate::{types::*, tables::{HISTORY_MAX, MAX_SEARCH_PLY}};
 
 use arrayvec::ArrayVec;
 use nom::InputIter;
@@ -35,11 +35,11 @@ impl ABStack {
         self.stacks.get(ply as usize)
     }
 
-    pub fn push_if_empty(&mut self, g: &Game, ply: Depth) {
-        if self.stacks.get(ply as usize).is_none() {
-            self.stacks.push(ABStackPly::new(g, ply));
-        }
-    }
+    // pub fn push_if_empty(&mut self, g: &Game, ply: Depth) {
+    //     if self.stacks.get(ply as usize).is_none() {
+    //         self.stacks.push(ABStackPly::new(g, ply));
+    //     }
+    // }
 
     pub fn with<F>(&mut self, ply: Depth, mut f: F)
         where F: FnMut(&mut ABStackPly)
@@ -239,7 +239,7 @@ impl ABStack {
 
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,Default)]
 pub struct ABStackPly {
     // pub zobrist:          Zobrist,
     pub ply:              Depth,
@@ -297,6 +297,14 @@ impl ABStack {
         out
     }
     pub fn new() -> Self {
+
+        // let stacks = Vec::with_capacity(64);
+
+        let mut stacks = vec![];
+        for _ in 0..MAX_SEARCH_PLY {
+            stacks.push(ABStackPly::default());
+        }
+
         Self {
             history:                crate::heuristics::ButterflyHistory::default(),
             counter_moves:          crate::heuristics::CounterMoves::default(),
@@ -307,7 +315,7 @@ impl ABStack {
 
             inside_null:            false,
 
-            stacks:                 Vec::with_capacity(64),
+            stacks,
             move_history:           Vec::with_capacity(64),
 
             pvs:                    [Move::NullMove; 128],

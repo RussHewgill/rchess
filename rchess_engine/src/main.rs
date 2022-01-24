@@ -68,7 +68,7 @@ fn main() {
     let arg1: &str = &args[1];
     match &arg1[..] {
         "tt"        => main_tt(),
-        "threading" => main_threading(),
+        // "threading" => main_threading(),
         "bitboard"  => main_bitboard(),
         "sample"    => main_sample(),
         "nn"        => main_nn(),
@@ -326,6 +326,7 @@ fn main_sample() {
 }
 
 #[allow(unreachable_code)]
+#[cfg(feature = "nope")]
 fn main_threading() {
     use crossbeam::utils::CachePadded;
     use std::sync::atomic::AtomicI16;

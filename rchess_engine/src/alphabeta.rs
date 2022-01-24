@@ -3,7 +3,7 @@ use crate::lockless_map::TTEval;
 // use crate::heuristics::*;
 use crate::movegen::*;
 use crate::searchstats;
-use crate::threading::ExThread;
+// use crate::threading::ExThread;
 use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::*;
@@ -521,7 +521,7 @@ impl ExHelper {
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
 
         // let mut current_stack: &mut ABStackPly = stack.get_or_push(ply);
-        stack.push_if_empty(g, ply);
+        // stack.push_if_empty(g, ply);
         stack.with(ply, |st| st.material = g.state.material);
 
         #[cfg(feature = "pvs_search")]
