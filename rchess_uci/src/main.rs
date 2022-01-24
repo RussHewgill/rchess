@@ -12,7 +12,7 @@ use rchess_engine_lib::types::*;
 use rchess_engine_lib::tables::*;
 use rchess_engine_lib::explore::*;
 use rchess_engine_lib::evaluate::*;
-use rchess_engine_lib::threading::*;
+// use rchess_engine_lib::threading::*;
 
 use std::str::FromStr;
 use std::io;

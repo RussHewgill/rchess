@@ -1,7 +1,7 @@
 
 use std::collections::HashSet;
 
-use crate::{types::*, tables::{HISTORY_MAX, MAX_SEARCH_PLY}};
+use crate::{types::*, tables::{HISTORY_MAX, MAX_SEARCH_PLY}, searchstats::RunningAverage};
 
 use arrayvec::ArrayVec;
 use nom::InputIter;
@@ -12,6 +12,8 @@ pub struct ABStack {
     pub counter_moves:          crate::heuristics::CounterMoves,
     pub capture_history:        crate::heuristics::CaptureHistory,
     // pub continuation_history:   crate::heuristics::ContinuationHistory,
+
+    pub double_ext_avg:         [RunningAverage; 2],
 
     pub pieces:                 [Option<Piece>; 64],
 
@@ -62,6 +64,25 @@ impl ABStack {
         }
     }
 
+}
+
+/// init_node
+impl ABStack {
+    pub fn init_node(&mut self, ply: Depth, depth: Depth, g: &Game) {
+
+        let in_check = g.state.checkers.is_not_empty();
+
+        let d = self.get_with(ply - 1, |st| st.double_extensions).unwrap_or(0);
+
+        self.with(ply, |st| {
+            st.material = g.state.material;
+            st.in_check = in_check;
+            st.moves_searched = 0;
+            st.current_move = None;
+            st.double_extensions = d;
+        });
+
+    }
 }
 
 /// Update stats
@@ -228,6 +249,35 @@ impl ABStack {
     }
 }
 
+/// misc
+impl ABStack {
+
+    pub fn update_double_extension_avg(&mut self, ply: Depth, side: Color) {
+
+        if ply == 0 { return; }
+
+        let d0 = self.stacks[ply as usize].depth;
+        let d1 = self.stacks[ply as usize - 1].depth;
+
+        let x = if d0 > d1 {
+            1
+        } else {
+            0
+        };
+
+        self.double_ext_avg[side].update(x);
+
+    }
+
+    pub fn update_double_extension(&mut self, ply: Depth, extension: Depth) {
+        if extension == 2 {
+            let d = self.stacks[ply as usize - 1].double_extensions + 1;
+            self.stacks[ply as usize].double_extensions = d;
+        }
+    }
+
+}
+
 /// Clear
 impl ABStack {
 
@@ -242,30 +292,41 @@ impl ABStack {
 #[derive(Debug,Clone,Default)]
 pub struct ABStackPly {
     // pub zobrist:          Zobrist,
-    pub ply:              Depth,
-    pub moves_searched:   u8,
-    pub killers:          [Option<Move>; 2],
-    pub static_eval:      Option<Score>,
-    pub material:         Material,
-    pub in_check:         bool,
-    pub current_move:     Option<Move>,
-    pub forbidden_move:   Option<Move>,
+    pub ply:                  Depth,
+    pub depth:                Depth,
+    pub moves_searched:       u8,
+    pub killers:              [Option<Move>; 2],
+    pub static_eval:          Option<Score>,
+    pub material:             Material,
+    pub in_check:             bool,
+    pub current_move:         Option<Move>,
+    pub forbidden_move:       Option<Move>,
+    pub double_extensions:    u32,
 }
 
 /// New
 impl ABStackPly {
+
+    pub fn new_empty(ply: Depth) -> Self {
+        let mut out = Self::default();
+        out.ply = ply;
+        out
+    }
+
     pub fn new(g: &Game, ply: Depth) -> Self {
         Self {
-            // zobrist:        g.zobrist,
+            // zobrist:            g.zobrist,
             ply,
-            moves_searched: 0,
-            // killers:        ArrayVec::default(),
-            killers:        [None; 2],
-            static_eval:    None,
-            material:       g.state.material,
-            in_check:       false,
-            current_move:   None,
-            forbidden_move: None,
+            depth: 0,
+            moves_searched:     0,
+            // killers:            ArrayVec::default(),
+            killers:            [None; 2],
+            static_eval:        None,
+            material:           g.state.material,
+            in_check:           false,
+            current_move:       None,
+            forbidden_move:     None,
+            double_extensions:  0,
         }
     }
 }
@@ -301,8 +362,8 @@ impl ABStack {
         // let stacks = Vec::with_capacity(64);
 
         let mut stacks = vec![];
-        for _ in 0..MAX_SEARCH_PLY {
-            stacks.push(ABStackPly::default());
+        for ply in 0..MAX_SEARCH_PLY {
+            stacks.push(ABStackPly::new_empty(ply));
         }
 
         Self {
@@ -310,6 +371,8 @@ impl ABStack {
             counter_moves:          crate::heuristics::CounterMoves::default(),
             capture_history:        crate::heuristics::CaptureHistory::default(),
             // continuation_history:   crate::heuristics::ContinuationHistory::default(),
+
+            double_ext_avg:         [RunningAverage::new(0,100); 2],
 
             pieces:                 [None; 64],
 

@@ -162,7 +162,7 @@ impl ExHelper {
         ply:          Depth,
         mv:           Move,
         zb0:          Option<Zobrist>,
-        mut stack:    &mut ABStack,
+        stack:        &mut ABStack,
     ) -> Option<Game> {
         if let Ok(g2) = g._make_move_unchecked(ts, mv, zb0) {
 
@@ -182,7 +182,7 @@ impl ExHelper {
     }
 
     // #[inline(always)]
-    pub fn pop_nnue(&self, mut stack: &mut ABStack) {
+    pub fn pop_nnue(&self, stack: &mut ABStack) {
         #[cfg(feature = "nnue")]
         if let Some(nnue) = &self.nnue {
             let mut nn = nnue.borrow_mut();
@@ -199,8 +199,8 @@ impl ExHelper {
         &self,
         // ts:             &'static Tables,
         ts:             &Tables,
-        mut stats:      &mut SearchStats,
-        mut stack:      &mut ABStack,
+        stats:          &mut SearchStats,
+        stack:          &mut ABStack,
         ab:             Option<(Score,Score)>,
         depth:          Depth,
     ) -> ABResults {
@@ -212,7 +212,7 @@ impl ExHelper {
             (Score::MIN + 200, Score::MAX - 200)
         };
 
-        let mut g = self.game.clone();
+        let g = self.game.clone();
 
         #[cfg(not(feature = "new_search"))]
         let res = {
@@ -311,7 +311,7 @@ impl ExHelper {
         // ts:                      &'static Tables,
         ts:                      &Tables,
         g:                       &Game,
-        mut stats:               &mut SearchStats,
+        stats:                   &mut SearchStats,
         stack:                   &ABStack,
     ) -> bool {
 
@@ -325,7 +325,7 @@ impl ExHelper {
 
         let end = end as i32 - last;
 
-        let mut zb0 = g.zobrist;
+        let zb0 = g.zobrist;
 
         let mut i = last - 2;
         while i >= end {
@@ -433,7 +433,7 @@ impl ExHelper {
         ts:           &Tables,
         g:            &Game,
         ply:          Depth,
-        mut stack:    &mut ABStack,
+        stack:        &mut ABStack,
         meval:        Option<Score>,
         msi:          Option<SearchInfo>,
     ) -> Option<Score> {
@@ -500,6 +500,13 @@ impl ExHelper {
 
 }
 
+/// search_explosion
+impl ExHelper {
+    pub fn search_explosion(&self, stack: &ABStack) -> bool {
+        unimplemented!()
+    }
+}
+
 /// Negamax AB Refactor
 impl ExHelper {
     #[allow(unused_doc_comments,unused_labels)]
@@ -520,12 +527,23 @@ impl ExHelper {
 
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
 
+        /// limit search explosion
+
+        let depth = if ply > 10
+            && self.search_explosion(&stack)
+            && depth > stack.get_with(ply - 1, |st| st.depth).unwrap()
+        {
+            stack.get_with(ply - 1, |st| st.depth).unwrap()
+        } else { depth };
+
         // let mut current_stack: &mut ABStackPly = stack.get_or_push(ply);
         // stack.push_if_empty(g, ply);
-        stack.with(ply, |st| st.material = g.state.material);
+        // stack.with(ply, |st| st.material = g.state.material);
+
+        stack.init_node(ply, depth, g);
 
         #[cfg(feature = "pvs_search")]
-        let mut is_pv_node = NODE_TYPE != NonPV;
+        let is_pv_node = NODE_TYPE != NonPV;
         #[cfg(not(feature = "pvs_search"))]
         let is_pv_node = false;
 
@@ -534,7 +552,7 @@ impl ExHelper {
 
         let is_root_node: bool = NODE_TYPE == Root;
 
-        let mut current_node_type = Node::Upper;
+        let current_node_type = Node::Upper;
 
         /// Misc assertions
         #[cfg(feature = "pvs_search")]
@@ -633,8 +651,10 @@ impl ExHelper {
             return ABSingle(ABResult::new_single(g.last_move.unwrap(), score));
         }
 
-        /// Step 4. Transposition Table probe
+        /// update double extension running average
+        stack.update_double_extension_avg(ply, g.state.side_to_move);
 
+        /// Step 4. Transposition Table probe
         // TODO: should have a vec of moves stored for root moves instead of using TT
         let (meval,msi): (Option<Score>,Option<SearchInfo>) = if is_root_node { (None,None) } else {
             self.check_tt2(ts, g.zobrist, depth, stats)
@@ -725,7 +745,7 @@ impl ExHelper {
 
         /// when in check, skip early pruning
         let in_check = g.state.checkers.is_not_empty();
-        stack.with(ply, |st| st.in_check = in_check);
+        // stack.with(ply, |st| st.in_check = in_check);
 
         /// Static eval, possibly from TT
         let static_eval = self.get_static_eval(ts, g, ply, stack, meval, msi);
@@ -859,7 +879,7 @@ impl ExHelper {
         // }
 
         let mut moves_searched = 0;
-        let mut val = Score::MIN + 200;
+        let val = Score::MIN + 200;
         let mut best_val: (Option<ABResult>,Score) = (None,val);
         let mut list = vec![];
 
@@ -948,16 +968,31 @@ impl ExHelper {
                     let res2 = self.ab_search::<{NonPV}>(
                         ts, &g, (sing_depth,ply+1), (sing_beta-1,sing_beta), stats, stack, is_cut_node);
                     stack.with(ply, |st| st.forbidden_move = None);
+
                     if let Some(res) = res2.get_result_mv(mv) {
 
                         if res.score < sing_beta {
                             extensions = 1;
                             // TODO: limit LMR?
                             // TODO: limit explosion?
+
+                            if !is_pv_node
+                                && res.score < sing_beta - 75 // XXX: sf magic
+                                && stack.get_with(ply, |st| st.double_extensions).unwrap_or(0) <= 6
+                            {
+                                extensions = 2;
+                                stats.sing_exts.two += 1;
+                            } else {
+                                stats.sing_exts.one += 1;
+                            }
+
                         } else if sing_beta >= beta {
 
+                            stats.sing_exts.prunes += 1;
                             return ABPrune(sing_beta, Prune::MultiCut);
+
                         } else if tt_eval >= beta {
+                            stats.sing_exts.reduce += 1;
                             extensions -= 2;
                         }
 
@@ -966,14 +1001,17 @@ impl ExHelper {
             } else if (is_pv_node || is_cut_node)
                 && capture_or_promotion
                 && moves_searched != 1
+                && moves_searched != 0 // oops
             {
                 // Capture extensions for pv node
+                stats.sing_exts.capture += 1;
                 extensions += 1;
             } else if gives_check
                 && depth > 6
                 && static_eval.map(|s| s.abs() > 100).unwrap_or(false)
             {
                 // Check extensions
+                stats.sing_exts.check += 1;
                 extensions += 1;
             }
 
@@ -986,6 +1024,8 @@ impl ExHelper {
             moves_searched += 1;
 
             next_depth += extensions;
+
+            // stack.with
 
             /// Step 15. Recursively search for each move
             let res: ABResult = 'search: {
@@ -1200,6 +1240,7 @@ impl ExHelper {
         // }
 
         /// XXX: stat padding by including nodes found in TT
+        stats!(stats.max_depth_search = stats.max_depth_search.max(ply as u8));
         stats!(stats.inc_nodes_arr(ply));
         stats!(stats.nodes += 1);
 

@@ -289,6 +289,7 @@ fn main_sample() {
         ex.cfg.num_threads = Some(1);
         ex.time_settings.is_per_move = true;
         ex.time_settings.move_time = (t * 1000.0) as u64;
+        ex.cfg.late_move_reductions = true;
         let from  = &correct[0..2];
         let to    = &correct[2..4];
         let other = &correct[4..];
@@ -3126,24 +3127,24 @@ fn main9() {
 
     // let mut ex2 = ex.clone();
 
-    // XXX: avg of N runs
-    const N: usize = 10;
-    let mut times = vec![];
-    for n in 0..N {
-        let mut ex2 = ex.clone();
-        ex2.clear_tt();
-        ex2.update_game(g.clone());
-        let t0 = std::time::Instant::now();
-        let (res,moves,stats0) = ex2.lazy_smp_2(&ts);
-        let t1 = t0.elapsed();
-        let t2 = t1.as_secs_f64();
-        times.push(t2);
-        let best0 = res.get_result().unwrap();
-        eprintln!("run {} = {:.3}", n, t2);
-    }
-    let avg = times.iter().sum::<f64>() / N as f64;
-    eprintln!("avg = {:.3}", avg);
-    return;
+    // // XXX: avg of N runs
+    // const N: usize = 10;
+    // let mut times = vec![];
+    // for n in 0..N {
+    //     let mut ex2 = ex.clone();
+    //     ex2.clear_tt();
+    //     ex2.update_game(g.clone());
+    //     let t0 = std::time::Instant::now();
+    //     let (res,moves,stats0) = ex2.lazy_smp_2(&ts);
+    //     let t1 = t0.elapsed();
+    //     let t2 = t1.as_secs_f64();
+    //     times.push(t2);
+    //     let best0 = res.get_result().unwrap();
+    //     eprintln!("run {} = {:.3}", n, t2);
+    // }
+    // let avg = times.iter().sum::<f64>() / N as f64;
+    // eprintln!("avg = {:.3}", avg);
+    // return;
 
     // let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6";
     // let params = params.split(" ");

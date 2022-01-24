@@ -65,6 +65,8 @@ mod ss {
 
     use std::time::Duration;
 
+    use derive_more::*;
+
     #[derive(Debug,Default,PartialEq,PartialOrd,Clone,Copy)]
     pub struct SearchStats {
         pub nodes:              u64,
@@ -73,36 +75,53 @@ mod ss {
         pub leaves:             u32,
         pub quiet_leaves:       u32,
         pub max_depth:          u8,
+        pub max_depth_search:   u8,
         pub q_max_depth:        u8,
+
         pub checkmates:         u32,
         pub stalemates:         u32,
+
         pub tt_hits:            u32,
         pub tt_halfmiss:        u32,
         pub tt_misses:          u32,
         pub tt_eval:            u32,
+
         pub ph_hits:            u32,
         pub ph_misses:          u32,
+
         pub qt_nodes:           u32,
         pub qt_hits:            u32,
         pub qt_misses:          u32,
         pub qs_tt_returns:      u32,
         pub qs_delta_prunes:    u32,
-        pub alpha:              i32,
-        pub beta:               i32,
+
         pub ns_pv:              u32,
         pub ns_all:             u32,
         pub ns_cut:             u32,
+
         pub null_prunes:        u32,
         pub fut_prunes:         u32,
+        pub lmrs:               (u32,u32),
+        pub sing_exts:          SSSingularExtensions,
+
         pub counter_moves:      u32,
         pub window_fails:       (u32,u32),
-        pub lmrs:               (u32,u32),
         pub beta_cut_first:     (u32,u32),
         // #[cfg(feature = "pvs_search")]
         // pub pvs_
     }
 
     // pub struct NHashes
+
+    #[derive(Debug,Default,Eq,PartialEq,Ord,PartialOrd,Clone,Copy,Add,AddAssign)]
+    pub struct SSSingularExtensions {
+        pub one:     u32,
+        pub two:     u32,
+        pub prunes:  u32,
+        pub reduce:  u32,
+        pub capture: u32,
+        pub check:   u32,
+    }
 
     #[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
     pub struct NArr(pub [u32; 64]);
@@ -126,30 +145,37 @@ mod ss {
                 leaves:             self.leaves + other.leaves,
                 quiet_leaves:       self.quiet_leaves + other.quiet_leaves,
                 max_depth:          u8::max(self.max_depth, other.max_depth),
+                max_depth_search:   u8::max(self.max_depth_search, other.max_depth_search),
                 q_max_depth:        u8::max(self.q_max_depth, other.q_max_depth),
+
                 checkmates:         self.checkmates + other.checkmates,
                 stalemates:         self.stalemates + other.stalemates,
+
                 tt_hits:            self.tt_hits + other.tt_hits,
                 tt_halfmiss:            self.tt_halfmiss + other.tt_halfmiss,
                 tt_misses:          self.tt_misses + other.tt_misses,
                 tt_eval:            self.tt_eval + other.tt_eval,
+
                 ph_hits:            self.ph_hits + other.ph_hits,
                 ph_misses:          self.ph_misses + other.ph_misses,
+
                 qt_nodes:           self.qt_nodes + other.qt_nodes,
                 qt_hits:            self.qt_hits + other.qt_hits,
                 qt_misses:          self.qt_misses + other.qt_misses,
                 qs_tt_returns:      self.qs_tt_returns + other.qs_tt_returns,
                 qs_delta_prunes:    self.qs_delta_prunes + other.qs_delta_prunes,
-                alpha:              i32::max(self.alpha, other.alpha),
-                beta:               i32::min(self.beta, other.beta),
+
                 ns_pv:              self.ns_pv + other.ns_pv,
                 ns_all:             self.ns_all + other.ns_all,
                 ns_cut:             self.ns_cut + other.ns_cut,
+
                 null_prunes:        self.null_prunes + other.null_prunes,
                 fut_prunes:         self.fut_prunes + other.fut_prunes,
+                lmrs:               Self::_add_2(self.lmrs, other.lmrs),
+                sing_exts:          self.sing_exts + other.sing_exts,
+
                 counter_moves:      self.counter_moves + other.counter_moves,
                 window_fails:       Self::_add_2(self.window_fails, other.window_fails),
-                lmrs:               Self::_add_2(self.lmrs, other.lmrs),
                 beta_cut_first:     Self::_add_2(self.beta_cut_first, other.beta_cut_first),
             }
         }
@@ -164,6 +190,7 @@ mod ss {
             println!("nodes        = {}", Self::_print(self.nodes as i32));
             println!("rate         = {:.1} K nodes/s", (self.nodes as f64 / 1000.) / dt.as_secs_f64());
             // println!("max depth    = {}", self.max_depth);
+            println!("max depth    = {}", self.max_depth_search);
             // println!("leaves       = {}", Self::_print(self.leaves as i32));
             // println!("quiet_leaves = {}", Self::_print(self.quiet_leaves as i32));
             // println!("checkmates   = {}", Self::_print(self.checkmates as i32));
@@ -198,6 +225,15 @@ mod ss {
 
             let bcs = self.beta_cut_first;
             eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
+
+            eprintln!("sing_exts: ({:>4},{:>4},{:>4},{:>4},{:>4},{:>4})",
+                      self.sing_exts.one,
+                      self.sing_exts.two,
+                      self.sing_exts.prunes,
+                      self.sing_exts.reduce,
+                      self.sing_exts.capture,
+                      self.sing_exts.check,
+            );
 
             // eprintln!("pawn hash hitrate = {:.3}",
             //           self.ph_hits as f64 / (self.ph_hits as f64 + self.ph_misses as f64));
@@ -321,6 +357,32 @@ mod ss {
             I: Iterator<Item = &'a Self> {
             iter.fold(Self::default(), |a,b| a + *b)
         }
+    }
+
+}
+
+#[derive(Debug,Clone,Copy,Default)]
+pub struct RunningAverage {
+    average: u64,
+}
+
+impl RunningAverage {
+
+    const PERIOD: u64     = 4096;
+    const RESOLUTION: u64 = 1024;
+
+    pub fn new(p: u64, q: u64) -> Self {
+        let mut out = Self::default();
+        out.set(p, q);
+        out
+    }
+
+    pub fn set(&mut self, p: u64, q: u64) {
+        self.average = p * Self::PERIOD * Self::RESOLUTION / q;
+    }
+
+    pub fn update(&mut self, v: u64) {
+        self.average = Self::RESOLUTION * v + (Self::PERIOD - 1) * self.average / Self::PERIOD;
     }
 
 }
