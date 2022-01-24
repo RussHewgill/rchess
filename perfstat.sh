@@ -13,6 +13,7 @@ L1-dcache-stores
 
 # L1-icache-load-misses,L1-icache-loads,\
 
-cargo build --bin rchess_engine --release && perf stat -e $EVENTS ./target/release/rchess_engine
+# cargo build --bin rchess_engine --release && perf stat -e $EVENTS ./target/release/rchess_engine
+cargo build --bin rchess_engine --release && perf stat -e $EVENTS ./target/release/rchess_engine sample
 # cargo flamegraph -c "record -e $EVENTS -F 997 --call-graph dwarf -g" --bin rchess_engine -- simd
 

@@ -70,6 +70,7 @@ fn main() {
         "tt"        => main_tt(),
         "threading" => main_threading(),
         "bitboard"  => main_bitboard(),
+        "sample"    => main_sample(),
         "nn"        => main_nn(),
         "nnue"      => main_nnue(),
         "train"     => main_nnue_train(),
@@ -251,6 +252,78 @@ fn _main() {
 
 #[allow(unreachable_code)]
 fn main_bitboard() {}
+
+#[allow(unreachable_code)]
+fn main_sample() {
+    // init_logger();
+    let ts = Tables::new();
+
+    let fens: Vec<&str> = vec![
+        "5rk1/ppR1Q1p1/1q6/8/8/1P6/P2r1PPP/5RK1 b - - 0 1", // b6f2, #-4
+        "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1", // Q cap d6b4
+        "r4r1k/2Q5/1p5p/2p2n2/2Pp2R1/PN1Pq3/6PP/R3N2K b - - 0 1", // #4, Qt N f5g3, slow
+        "5rk1/pp3pp1/8/4q1N1/6b1/4r3/PP3QP1/5K1R w - - 0 2", // R h1h8, #4, knight move order?
+        "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - ", // Position 2
+    ];
+
+    let corrects: Vec<&str> = vec![
+        "b6f2",
+        "d6b4",
+        "f5g3",
+        "h1h8",
+        "e2a6",
+    ];
+
+    assert_eq!(fens.len(), corrects.len());
+
+    let n = 10;
+    let t = 1.0;
+
+    const N: usize = 5;
+
+    let timesettings = TimeSettings::new_f64(0.0,t);
+    let mut games = vec![];
+    for (fen,correct) in fens.iter().zip(corrects.iter()) {
+        let g = Game::from_fen(&ts, fen).unwrap();
+        let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
+        ex.cfg.num_threads = Some(1);
+        ex.time_settings.is_per_move = true;
+        ex.time_settings.move_time = (t * 1000.0) as u64;
+        let from  = &correct[0..2];
+        let to    = &correct[2..4];
+        let other = &correct[4..];
+        let correct = g.convert_move(from, to, other).unwrap();
+        games.push((ex,correct));
+    }
+
+    let mut times = vec![];
+    let t0a = std::time::Instant::now();
+    for k in 0..N {
+        eprintln!("iteration {:?}", k);
+        let t1a = std::time::Instant::now();
+
+        for (n, (ex,correct)) in games.iter().enumerate() {
+            let mut ex = ex.clone();
+            let (mmove, stats) = ex.explore(&ts);
+            let mv = mmove.unwrap();
+            let (mv,score) = (mv.0, mv.1.score);
+            if mv != *correct {
+                eprintln!("fen n = {}, wrong move found:", n);
+                eprintln!("    ex.game.to_fen() = {:?}", ex.game.to_fen());
+                eprintln!("    found {:?}, correct = {:?}", mv, correct);
+            }
+        }
+
+        let t1b = t1a.elapsed().as_secs_f64();
+        times.push(t1b);
+    }
+    let t0b = t0a.elapsed().as_secs_f64();
+    eprintln!("finished in {:.3} seconds", t0b);
+
+    let avg = times.iter().sum::<f64>() / N as f64;
+    eprintln!("avg = {:.3}", avg);
+
+}
 
 #[allow(unreachable_code)]
 fn main_threading() {
@@ -3767,14 +3840,19 @@ fn main_perft(depth: Option<u64>) {
 
     let fens = vec![STARTPOS,fen2,fen3,fen4,fen5];
 
-    // let t0 = std::time::Instant::now();
-    // for (k,fen) in fens.iter().enumerate() {
-    //     let mut g = Game::from_fen(&ts, fen).unwrap();
-    //     let (tot,_) = MoveGen::perft(&ts, &g, d);
-    //     eprintln!("{} = {:>8?}", k, tot);
-    // }
-    // let t1 = t0.elapsed().as_secs_f64();
-    // println!("perft done in {} seconds.", t1);
+    const N: usize = 3;
+
+    let t0 = std::time::Instant::now();
+    for _ in 0..N {
+        for (k,fen) in fens.iter().enumerate() {
+            let mut g = Game::from_fen(&ts, fen).unwrap();
+            let (tot,_) = MoveGen::perft(&ts, &g, d);
+            eprintln!("{} = {:>8?}", k, tot);
+        }
+    }
+    let t1 = t0.elapsed().as_secs_f64();
+    println!("perft done in {} seconds.", t1);
+    return;
 
     // const N: usize = 3;
     // let mut times = vec![];

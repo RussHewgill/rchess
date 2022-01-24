@@ -19,8 +19,8 @@ use std::sync::atomic::{AtomicUsize, AtomicU8};
 // pub const DEFAULT_TT_SIZE_MB: usize = 256;
 // pub const DEFAULT_TT_SIZE_MB: usize = 128;
 // pub const DEFAULT_TT_SIZE_MB: usize = 64;
-pub const DEFAULT_TT_SIZE_MB: usize = 32;
-// pub const DEFAULT_TT_SIZE_MB: usize = 16;
+// pub const DEFAULT_TT_SIZE_MB: usize = 32;
+pub const DEFAULT_TT_SIZE_MB: usize = 16;
 
 const ENTRIES_PER_BUCKET: usize = 3;
 // const ENTRIES_PER_BUCKET: usize = 2;
