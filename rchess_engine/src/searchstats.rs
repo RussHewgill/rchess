@@ -67,7 +67,7 @@ mod ss {
 
     use derive_more::*;
 
-    #[derive(Debug,Default,PartialEq,PartialOrd,Clone,Copy)]
+    #[derive(Debug,Default,PartialEq,PartialOrd,Clone,Copy,Add,AddAssign)]
     pub struct SearchStats {
         pub nodes:              u64,
         pub nodes_arr:          NArr,
@@ -96,17 +96,19 @@ mod ss {
         pub qs_delta_prunes:    u32,
 
         pub ns_pv:              u32,
+        pub ns_pv_cut:          u32,
         pub ns_all:             u32,
         pub ns_cut:             u32,
 
         pub null_prunes:        u32,
         pub fut_prunes:         u32,
-        pub lmrs:               (u32,u32),
+        pub lmrs:               u32,
         pub sing_exts:          SSSingularExtensions,
 
         pub counter_moves:      u32,
-        pub window_fails:       (u32,u32),
-        pub beta_cut_first:     (u32,u32),
+        // pub window_fails:       (u32,u32),
+        pub beta_cut_first:     u32,
+        pub beta_cut_not_first: u32,
         // #[cfg(feature = "pvs_search")]
         // pub pvs_
     }
@@ -132,54 +134,71 @@ mod ss {
         }
     }
 
-    impl std::ops::Add for SearchStats {
+    impl std::ops::Add for NArr {
         type Output = Self;
         fn add(self, other: Self) -> Self {
-            let mut arr = self.nodes_arr;
-            other.nodes_arr.0.iter().enumerate().for_each(|(i,x)| {
+            let mut arr = self;
+            other.0.iter().enumerate().for_each(|(i,x)| {
                 arr.0[i] += x;
             });
-            Self {
-                nodes:              self.nodes + other.nodes,
-                nodes_arr:          arr,
-                leaves:             self.leaves + other.leaves,
-                quiet_leaves:       self.quiet_leaves + other.quiet_leaves,
-                max_depth:          u8::max(self.max_depth, other.max_depth),
-                max_depth_search:   u8::max(self.max_depth_search, other.max_depth_search),
-                q_max_depth:        u8::max(self.q_max_depth, other.q_max_depth),
-
-                checkmates:         self.checkmates + other.checkmates,
-                stalemates:         self.stalemates + other.stalemates,
-
-                tt_hits:            self.tt_hits + other.tt_hits,
-                tt_halfmiss:            self.tt_halfmiss + other.tt_halfmiss,
-                tt_misses:          self.tt_misses + other.tt_misses,
-                tt_eval:            self.tt_eval + other.tt_eval,
-
-                ph_hits:            self.ph_hits + other.ph_hits,
-                ph_misses:          self.ph_misses + other.ph_misses,
-
-                qt_nodes:           self.qt_nodes + other.qt_nodes,
-                qt_hits:            self.qt_hits + other.qt_hits,
-                qt_misses:          self.qt_misses + other.qt_misses,
-                qs_tt_returns:      self.qs_tt_returns + other.qs_tt_returns,
-                qs_delta_prunes:    self.qs_delta_prunes + other.qs_delta_prunes,
-
-                ns_pv:              self.ns_pv + other.ns_pv,
-                ns_all:             self.ns_all + other.ns_all,
-                ns_cut:             self.ns_cut + other.ns_cut,
-
-                null_prunes:        self.null_prunes + other.null_prunes,
-                fut_prunes:         self.fut_prunes + other.fut_prunes,
-                lmrs:               Self::_add_2(self.lmrs, other.lmrs),
-                sing_exts:          self.sing_exts + other.sing_exts,
-
-                counter_moves:      self.counter_moves + other.counter_moves,
-                window_fails:       Self::_add_2(self.window_fails, other.window_fails),
-                beta_cut_first:     Self::_add_2(self.beta_cut_first, other.beta_cut_first),
-            }
+            arr
         }
     }
+
+    impl std::ops::AddAssign for NArr {
+        fn add_assign(&mut self, other: Self) {
+            *self = *self + other;
+        }
+    }
+
+    // impl std::ops::Add for SearchStats {
+    //     type Output = Self;
+    //     fn add(self, other: Self) -> Self {
+    //         let mut arr = self.nodes_arr;
+    //         other.nodes_arr.0.iter().enumerate().for_each(|(i,x)| {
+    //             arr.0[i] += x;
+    //         });
+    //         Self {
+    //             nodes:              self.nodes + other.nodes,
+    //             nodes_arr:          arr,
+    //             leaves:             self.leaves + other.leaves,
+    //             quiet_leaves:       self.quiet_leaves + other.quiet_leaves,
+    //             max_depth:          u8::max(self.max_depth, other.max_depth),
+    //             max_depth_search:   u8::max(self.max_depth_search, other.max_depth_search),
+    //             q_max_depth:        u8::max(self.q_max_depth, other.q_max_depth),
+
+    //             checkmates:         self.checkmates + other.checkmates,
+    //             stalemates:         self.stalemates + other.stalemates,
+
+    //             tt_hits:            self.tt_hits + other.tt_hits,
+    //             tt_halfmiss:            self.tt_halfmiss + other.tt_halfmiss,
+    //             tt_misses:          self.tt_misses + other.tt_misses,
+    //             tt_eval:            self.tt_eval + other.tt_eval,
+
+    //             ph_hits:            self.ph_hits + other.ph_hits,
+    //             ph_misses:          self.ph_misses + other.ph_misses,
+
+    //             qt_nodes:           self.qt_nodes + other.qt_nodes,
+    //             qt_hits:            self.qt_hits + other.qt_hits,
+    //             qt_misses:          self.qt_misses + other.qt_misses,
+    //             qs_tt_returns:      self.qs_tt_returns + other.qs_tt_returns,
+    //             qs_delta_prunes:    self.qs_delta_prunes + other.qs_delta_prunes,
+
+    //             ns_pv:              self.ns_pv + other.ns_pv,
+    //             ns_all:             self.ns_all + other.ns_all,
+    //             ns_cut:             self.ns_cut + other.ns_cut,
+
+    //             null_prunes:        self.null_prunes + other.null_prunes,
+    //             fut_prunes:         self.fut_prunes + other.fut_prunes,
+    //             lmrs:               Self::_add_2(self.lmrs, other.lmrs),
+    //             sing_exts:          self.sing_exts + other.sing_exts,
+
+    //             counter_moves:      self.counter_moves + other.counter_moves,
+    //             window_fails:       Self::_add_2(self.window_fails, other.window_fails),
+    //             beta_cut_first:     Self::_add_2(self.beta_cut_first, other.beta_cut_first),
+    //         }
+    //     }
+    // }
 
     /// Print
     impl SearchStats {
@@ -223,7 +242,7 @@ mod ss {
             // eprintln!("counter_moves = {:?}", self.counter_moves);
             // eprintln!("lmrs          = {:?}", self.lmrs);
 
-            let bcs = self.beta_cut_first;
+            let bcs = (self.beta_cut_first,self.beta_cut_not_first);
             eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
 
             eprintln!("sing_exts: ({:>5},{:>5},{:>5},{:>5},{:>5},{:>5})",
@@ -243,9 +262,9 @@ mod ss {
 
             // println!("alpha      = {:?}", self.alpha);
             // println!("beta       = {:?}", self.beta);
-            // println!("PV Nodes   = {:?}", self.ns_pv);
-            // println!("All Nodes  = {:?}", self.ns_all);
-            // println!("Cut Nodes  = {:?}", self.ns_cut);
+            println!("PV Nodes   = {:?}", pretty_print_si(self.ns_pv as i64));
+            println!("All Nodes  = {:?}", pretty_print_si(self.ns_all as i64));
+            println!("Cut Nodes  = {:?}", pretty_print_si(self.ns_cut as i64));
         }
 
         pub fn print_prunes(&self) {
@@ -255,7 +274,7 @@ mod ss {
             println!("fut prunes  = {:?}, {:.3}",
                      self.fut_prunes, self.null_prunes as f64 / self.nodes as f64);
             println!("lmrs        = {:?}, {:.3}",
-                     self.lmrs.0, self.lmrs.0 as f64 / self.nodes as f64);
+                     self.lmrs, self.lmrs as f64 / self.nodes as f64);
 
             // println!("fut prunes    = {:?}", self.fut_prunes);
             // println!("counter_moves = {:?}", self.counter_moves);
@@ -339,11 +358,11 @@ mod ss {
 
     }
 
-    impl std::ops::AddAssign for SearchStats {
-        fn add_assign(&mut self, other: Self) {
-            *self = *self + other;
-        }
-    }
+    // impl std::ops::AddAssign for SearchStats {
+    //     fn add_assign(&mut self, other: Self) {
+    //         *self = *self + other;
+    //     }
+    // }
 
     impl std::iter::Sum<Self> for SearchStats {
         fn sum<I>(iter: I) -> Self where

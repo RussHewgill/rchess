@@ -1007,7 +1007,8 @@ impl ExHelper {
 
                     }
                 }
-            } else if (is_pv_node || is_cut_node)
+            // } else if (is_pv_node || is_cut_node)
+            } else if is_pv_node // works way better
                 && capture_or_promotion
                 && moves_searched != 1
                 && moves_searched != 0 // oops
@@ -1104,7 +1105,7 @@ impl ExHelper {
                     };
 
                     if res.score <= alpha {
-                        stats!(stats.lmrs.0 += 1);
+                        stats!(stats.lmrs += 1);
                         break 'search res;
                     }
 
@@ -1201,9 +1202,9 @@ impl ExHelper {
                     // }
 
                     if moves_searched <= 1 {
-                        stats!(stats.beta_cut_first.0 += 1);
+                        stats!(stats.beta_cut_first += 1);
                     } else {
-                        stats!(stats.beta_cut_first.1 += 1);
+                        stats!(stats.beta_cut_not_first += 1);
                     }
 
                     self.pop_nnue(stack);
@@ -1251,6 +1252,18 @@ impl ExHelper {
         stats!(stats.max_depth_search = stats.max_depth_search.max(ply as u8));
         stats!(stats.inc_nodes_arr(ply));
         stats!(stats.nodes += 1);
+
+        if is_pv_node {
+            if is_cut_node {
+                stats.ns_pv_cut += 1;
+            } else {
+                stats.ns_pv += 1;
+            }
+        } else if is_cut_node {
+            stats.ns_cut += 1;
+        } else {
+            stats.ns_all += 1;
+        }
 
         /// Step 20. Update hash table and return
         match &best_val.0 {
