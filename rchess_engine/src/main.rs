@@ -3179,7 +3179,7 @@ fn main9() {
     // eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
     println!();
     debug!("Best move = {:>8} {:?}", best.score, best.mv);
-    debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth, t2);
+    debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth.0, t2);
     println!();
 
     // let sum = stats0.nodes_arr.0.iter().sum::<u32>();
@@ -3226,8 +3226,9 @@ fn main9() {
     stats0.print_prunes();
 
     eprintln!();
-
     stats0.print_ebf(false);
+    stats0.print_mbf();
+    stats0.print_nth_best(false);
 
     // return;
 

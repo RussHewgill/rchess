@@ -563,7 +563,8 @@ impl ExHelper {
         assert!(depth <= 0);
 
         stats.qt_nodes += 1;
-        stats.q_max_depth = stats.q_max_depth.max(ply as u8);
+        // stats.q_max_depth = stats.q_max_depth.max(ply as u8);
+        stats.q_max_depth.max_mut(ply as u32);
 
         /// check repetition
         if Self::has_cycle(ts, g, stats, stack) || ply >= MAX_SEARCH_PLY {

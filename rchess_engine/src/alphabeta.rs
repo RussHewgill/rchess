@@ -888,6 +888,7 @@ impl ExHelper {
         // }
 
         let mut moves_searched = 0;
+        let mut moves_searched_best = 0;
         let val = Score::MIN + 200;
         let mut best_val: (Option<ABResult>,Score) = (None,val);
         let mut list = vec![];
@@ -1161,6 +1162,9 @@ impl ExHelper {
                 best_val.1 = res.score;
                 // best_val.0 = Some((g.zobrist, res))
                 best_val.0 = Some(res);
+                if is_pv_node {
+                    moves_searched_best = moves_searched;
+                }
             }
 
             /// Step 18. update alpha, beta, stats
@@ -1249,16 +1253,18 @@ impl ExHelper {
         // }
 
         /// XXX: stat padding by including nodes found in TT
-        stats!(stats.max_depth_search = stats.max_depth_search.max(ply as u8));
+        // stats!(stats.max_depth_search = stats.max_depth_search.max(ply as u8));
+        stats!(stats.max_depth_search.max_mut(ply as u32));
         stats!(stats.inc_nodes_arr(ply));
         stats!(stats.nodes += 1);
 
         if is_pv_node {
-            if is_cut_node {
-                stats.ns_pv_cut += 1;
-            } else {
-                stats.ns_pv += 1;
+            stats.ns_pv += 1;
+
+            if let Some(mut x) = stats.nth_best_pv_mv.0.get_mut(moves_searched_best as usize - 1) {
+                *x += 1;
             }
+
         } else if is_cut_node {
             stats.ns_cut += 1;
         } else {

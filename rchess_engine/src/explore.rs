@@ -805,7 +805,7 @@ impl Explorer {
             let r = out.read();
             r.clone()
         };
-        stats.max_depth = d as u8;
+        stats.max_depth = Max(d as u32);
 
         stats.ph_hits   = self.ph_rw.hits.load(Ordering::Relaxed);
         stats.ph_misses = self.ph_rw.misses.load(Ordering::Relaxed);

@@ -74,9 +74,9 @@ mod ss {
         // pub nodes_zb:           NHashes,
         pub leaves:             u32,
         pub quiet_leaves:       u32,
-        pub max_depth:          u8,
-        pub max_depth_search:   u8,
-        pub q_max_depth:        u8,
+        pub max_depth:          Max,
+        pub max_depth_search:   Max,
+        pub q_max_depth:        Max,
 
         pub checkmates:         u32,
         pub stalemates:         u32,
@@ -96,9 +96,10 @@ mod ss {
         pub qs_delta_prunes:    u32,
 
         pub ns_pv:              u32,
-        pub ns_pv_cut:          u32,
         pub ns_all:             u32,
         pub ns_cut:             u32,
+
+        pub nth_best_pv_mv:     NArr,
 
         pub null_prunes:        u32,
         pub fut_prunes:         u32,
@@ -123,6 +124,25 @@ mod ss {
         pub reduce:  u32,
         pub capture: u32,
         pub check:   u32,
+    }
+
+    #[derive(Debug,Default,Eq,PartialEq,Ord,PartialOrd,Clone,Copy,AddAssign)]
+    pub struct Max(pub u32);
+
+    impl Max {
+        pub fn max_mut(&mut self, other: u32) {
+            self.0 = self.0.max(other)
+        }
+        pub fn max(self, other: u32) -> Self {
+            Self(self.0.max(other))
+        }
+    }
+
+    impl std::ops::Add for Max {
+        type Output = Self;
+        fn add(self, other: Self) -> Self {
+            Self(self.0.max(other.0))
+        }
     }
 
     #[derive(Debug,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
@@ -151,55 +171,6 @@ mod ss {
         }
     }
 
-    // impl std::ops::Add for SearchStats {
-    //     type Output = Self;
-    //     fn add(self, other: Self) -> Self {
-    //         let mut arr = self.nodes_arr;
-    //         other.nodes_arr.0.iter().enumerate().for_each(|(i,x)| {
-    //             arr.0[i] += x;
-    //         });
-    //         Self {
-    //             nodes:              self.nodes + other.nodes,
-    //             nodes_arr:          arr,
-    //             leaves:             self.leaves + other.leaves,
-    //             quiet_leaves:       self.quiet_leaves + other.quiet_leaves,
-    //             max_depth:          u8::max(self.max_depth, other.max_depth),
-    //             max_depth_search:   u8::max(self.max_depth_search, other.max_depth_search),
-    //             q_max_depth:        u8::max(self.q_max_depth, other.q_max_depth),
-
-    //             checkmates:         self.checkmates + other.checkmates,
-    //             stalemates:         self.stalemates + other.stalemates,
-
-    //             tt_hits:            self.tt_hits + other.tt_hits,
-    //             tt_halfmiss:            self.tt_halfmiss + other.tt_halfmiss,
-    //             tt_misses:          self.tt_misses + other.tt_misses,
-    //             tt_eval:            self.tt_eval + other.tt_eval,
-
-    //             ph_hits:            self.ph_hits + other.ph_hits,
-    //             ph_misses:          self.ph_misses + other.ph_misses,
-
-    //             qt_nodes:           self.qt_nodes + other.qt_nodes,
-    //             qt_hits:            self.qt_hits + other.qt_hits,
-    //             qt_misses:          self.qt_misses + other.qt_misses,
-    //             qs_tt_returns:      self.qs_tt_returns + other.qs_tt_returns,
-    //             qs_delta_prunes:    self.qs_delta_prunes + other.qs_delta_prunes,
-
-    //             ns_pv:              self.ns_pv + other.ns_pv,
-    //             ns_all:             self.ns_all + other.ns_all,
-    //             ns_cut:             self.ns_cut + other.ns_cut,
-
-    //             null_prunes:        self.null_prunes + other.null_prunes,
-    //             fut_prunes:         self.fut_prunes + other.fut_prunes,
-    //             lmrs:               Self::_add_2(self.lmrs, other.lmrs),
-    //             sing_exts:          self.sing_exts + other.sing_exts,
-
-    //             counter_moves:      self.counter_moves + other.counter_moves,
-    //             window_fails:       Self::_add_2(self.window_fails, other.window_fails),
-    //             beta_cut_first:     Self::_add_2(self.beta_cut_first, other.beta_cut_first),
-    //         }
-    //     }
-    // }
-
     /// Print
     impl SearchStats {
 
@@ -209,7 +180,7 @@ mod ss {
             println!("nodes        = {}", Self::_print(self.nodes as i32));
             println!("rate         = {:.1} K nodes/s", (self.nodes as f64 / 1000.) / dt.as_secs_f64());
             // println!("max depth    = {}", self.max_depth);
-            println!("max depth    = {}", self.max_depth_search);
+            println!("max depth    = {}", self.max_depth_search.0);
             // println!("leaves       = {}", Self::_print(self.leaves as i32));
             // println!("quiet_leaves = {}", Self::_print(self.quiet_leaves as i32));
             // println!("checkmates   = {}", Self::_print(self.checkmates as i32));
@@ -233,7 +204,7 @@ mod ss {
 
             // eprintln!("nodes/qt nodes = {:.1?}", self.qt_nodes as f64 / self.nodes as f64);
             eprintln!("qt nodes    = {}", pretty_print_si(self.qt_nodes as i64));
-            eprintln!("q_max_depth = {:?}", self.q_max_depth);
+            eprintln!("q_max_depth = {:?}", self.q_max_depth.0);
             // eprintln!("q_tt_returns = {}", pretty_print_si(self.qs_tt_returns as i64));
             // eprintln!("q_delta_prunes = {}", pretty_print_si(self.qs_delta_prunes as i64));
 
@@ -260,11 +231,10 @@ mod ss {
             // eprintln!("stats0.qt_hits = {}", pretty_print_si(stats0.qt_hits as i64));
             // eprintln!("stats0.qt_misses = {}", pretty_print_si(stats0.qt_misses as i64));
 
-            // println!("alpha      = {:?}", self.alpha);
-            // println!("beta       = {:?}", self.beta);
-            println!("PV Nodes   = {:?}", pretty_print_si(self.ns_pv as i64));
-            println!("All Nodes  = {:?}", pretty_print_si(self.ns_all as i64));
-            println!("Cut Nodes  = {:?}", pretty_print_si(self.ns_cut as i64));
+            // println!("PV Nodes   = {}", pretty_print_si(self.ns_pv as i64));
+            // println!("All Nodes  = {}", pretty_print_si(self.ns_all as i64));
+            // println!("Cut Nodes  = {}", pretty_print_si(self.ns_cut as i64));
+
         }
 
         pub fn print_prunes(&self) {
@@ -279,6 +249,71 @@ mod ss {
             // println!("fut prunes    = {:?}", self.fut_prunes);
             // println!("counter_moves = {:?}", self.counter_moves);
             // println!("lmrs          = {:?}", self.lmrs);
+
+        }
+
+        pub fn print_nth_best(&self, all: bool) {
+
+            let mut arr = self.nth_best_pv_mv.0.iter().enumerate().rev();
+
+            let idx = arr.clone().position(|x| *x.1 != 0);
+            let mut arr = arr.skip(idx.unwrap_or(0)).rev();
+
+            let tot = self.nth_best_pv_mv.0.iter().sum::<u32>();
+
+            // eprintln!("total = {:?}", tot);
+
+            if all {
+                for (n,x) in arr {
+                    eprintln!("    mv {:>3} = {:>4}, {:>2.1}%", n, x, (*x as f64 / tot as f64) * 100.0);
+                }
+            } else {
+                let x = arr.next().unwrap().1;
+                eprintln!("1st move picked = {:>4} / {:>4}, {:>2.1}%",
+                          x, tot, (*x as f64 / tot as f64) * 100.0);
+            }
+
+
+        }
+
+        pub fn print_mbf(&self) {
+            let mbf = (self.nodes as f64 + self.leaves as f64) / self.leaves as f64;
+            eprintln!("MBF = {:.3}", mbf);
+        }
+
+        #[cfg(feature = "nope")]
+        pub fn print_ebf(&self, full: bool) {
+            let arr = self.nodes_arr.0;
+            for (ply, n) in arr.iter().enumerate() {
+            }
+        }
+
+        // #[cfg(feature = "nope")]
+        pub fn print_ebf(&self, full: bool) {
+
+            let mut arr = self.nodes_arr.0.iter()
+                .enumerate()
+                .filter(|x| *x.1 != 0)
+                .map(|(i,n)| if i != 0 {
+                    (i,(*n,self.nodes_arr.0[i-1]))
+                } else { (i,(*n,1)) })
+                .collect::<Vec<(usize,(u32,u32))>>();
+
+            arr.sort_by(|a,b| a.0.cmp(&b.0));
+            // arr.reverse();
+
+            let mut xs = vec![];
+            for (i,(n0,n1)) in arr.iter() {
+                // let n = arr2[depth];
+                // let ebf = n as f64 / arr2[depth - 1] as f64;
+                let ebf = *n0 as f64 / *n1 as f64;
+                xs.push(ebf);
+                if full {
+                    debug!("EBF depth {:>2} = {:>8} nodes, {:.2?}", i, n0, ebf);
+                }
+            }
+            let s: f64 = xs.iter().sum();
+            debug!("Average EBF: {:.2}", s / xs.len() as f64);
 
         }
 
@@ -328,41 +363,7 @@ mod ss {
             // debug!("n_root = {:?}", n_root.collect::<Vec<_>>().len());
         }
 
-        pub fn print_ebf(&self, full: bool) {
-
-            let mut arr = self.nodes_arr.0.iter()
-                .enumerate()
-                .filter(|x| *x.1 != 0)
-                .map(|(i,n)| if i != 0 {
-                    (i,(*n,self.nodes_arr.0[i-1]))
-                } else { (i,(*n,1)) })
-                .collect::<Vec<(usize,(u32,u32))>>();
-
-            arr.sort_by(|a,b| a.0.cmp(&b.0));
-            // arr.reverse();
-
-            let mut xs = vec![];
-            for (i,(n0,n1)) in arr.iter() {
-                // let n = arr2[depth];
-                // let ebf = n as f64 / arr2[depth - 1] as f64;
-                let ebf = *n0 as f64 / *n1 as f64;
-                xs.push(ebf);
-                if full {
-                    debug!("EBF depth {:>2} = {:>8} nodes, {:.2?}", i, n0, ebf);
-                }
-            }
-            let s: f64 = xs.iter().sum();
-            debug!("Average EBF: {:.2}", s / xs.len() as f64);
-
-        }
-
     }
-
-    // impl std::ops::AddAssign for SearchStats {
-    //     fn add_assign(&mut self, other: Self) {
-    //         *self = *self + other;
-    //     }
-    // }
 
     impl std::iter::Sum<Self> for SearchStats {
         fn sum<I>(iter: I) -> Self where
