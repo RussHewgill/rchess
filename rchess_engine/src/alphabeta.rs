@@ -502,8 +502,17 @@ impl ExHelper {
 
 /// search_explosion
 impl ExHelper {
-    pub fn search_explosion(&self, stack: &ABStack) -> bool {
-        unimplemented!()
+    pub fn search_explosion(&self, stack: &mut ABStack, stats: &SearchStats) -> bool {
+
+        let explosive = stack.double_ext_avg[White].is_greater(2, 100)
+            || stack.double_ext_avg[Black].is_greater(2, 100);
+
+        // if explosive {
+        //     // stack.exploding 
+        // }
+
+        // unimplemented!()
+        explosive
     }
 }
 
@@ -527,14 +536,14 @@ impl ExHelper {
 
         // trace!("negamax entry, ply {}, a/b = {:>10}/{:>10}", k, alpha, beta);
 
-        /// limit search explosion
-
-        let depth = if ply > 10
-            && self.search_explosion(&stack)
-            && depth > stack.get_with(ply - 1, |st| st.depth).unwrap()
-        {
-            stack.get_with(ply - 1, |st| st.depth).unwrap()
-        } else { depth };
+        // XXX: doesn't seem to ever happen
+        // /// limit search explosion
+        // let depth = if ply > 10
+        //     && self.search_explosion(stack, &stats)
+        //     && depth > stack.get_with(ply - 1, |st| st.depth).unwrap()
+        // {
+        //     stack.get_with(ply - 1, |st| st.depth).unwrap()
+        // } else { depth };
 
         // let mut current_stack: &mut ABStackPly = stack.get_or_push(ply);
         // stack.push_if_empty(g, ply);
@@ -974,8 +983,8 @@ impl ExHelper {
                         if res.score < sing_beta {
                             extensions = 1;
                             // TODO: limit LMR?
-                            // TODO: limit explosion?
 
+                            // TODO: limit explosion?
                             if !is_pv_node
                                 && res.score < sing_beta - 75 // XXX: sf magic
                                 && stack.get_with(ply, |st| st.double_extensions).unwrap_or(0) <= 6
@@ -1024,8 +1033,7 @@ impl ExHelper {
             moves_searched += 1;
 
             next_depth += extensions;
-
-            // stack.with
+            stack.update_double_extension(ply, extensions);
 
             /// Step 15. Recursively search for each move
             let res: ABResult = 'search: {

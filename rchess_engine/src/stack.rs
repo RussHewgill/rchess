@@ -14,6 +14,7 @@ pub struct ABStack {
     // pub continuation_history:   crate::heuristics::ContinuationHistory,
 
     pub double_ext_avg:         [RunningAverage; 2],
+    pub exploding:              bool,
 
     pub pieces:                 [Option<Piece>; 64],
 
@@ -72,14 +73,16 @@ impl ABStack {
 
         let in_check = g.state.checkers.is_not_empty();
 
+        /// use previous double extensions
         let d = self.get_with(ply - 1, |st| st.double_extensions).unwrap_or(0);
 
         self.with(ply, |st| {
-            st.material = g.state.material;
-            st.in_check = in_check;
-            st.moves_searched = 0;
-            st.current_move = None;
+            st.material          = g.state.material;
+            st.in_check          = in_check;
+            st.moves_searched    = 0;
+            st.current_move      = None;
             st.double_extensions = d;
+            st.depth             = depth;
         });
 
     }
@@ -260,7 +263,8 @@ impl ABStack {
         let d1 = self.stacks[ply as usize - 1].depth;
 
         let x = if d0 > d1 {
-            1
+            panic!()
+            // 1
         } else {
             0
         };
@@ -269,8 +273,8 @@ impl ABStack {
 
     }
 
-    pub fn update_double_extension(&mut self, ply: Depth, extension: Depth) {
-        if extension == 2 {
+    pub fn update_double_extension(&mut self, ply: Depth, extensions: Depth) {
+        if extensions == 2 {
             let d = self.stacks[ply as usize - 1].double_extensions + 1;
             self.stacks[ply as usize].double_extensions = d;
         }
@@ -373,6 +377,7 @@ impl ABStack {
             // continuation_history:   crate::heuristics::ContinuationHistory::default(),
 
             double_ext_avg:         [RunningAverage::new(0,100); 2],
+            exploding:              false,
 
             pieces:                 [None; 64],
 

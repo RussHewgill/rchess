@@ -2981,6 +2981,8 @@ fn main9() {
 
     // let fen = "3r2k1/5pp1/1p1B2Q1/1B3b2/8/8/5KP1/R6R b - - 4 7"; // XXX: ???
 
+    // let fen = "r2q3r/1b1k1pbp/p4np1/2BP1pN1/p1B5/P1Q5/1PP3PP/R3K2R w KQ - 0 19"; // explosion
+
     // use rchess_engine_lib::heuristics::update_stat_bonus;
     // let bonus = 512;
     // let mut current = 0;
@@ -3178,10 +3180,13 @@ fn main9() {
     println!();
     debug!("Best move = {:>8} {:?}", best.score, best.mv);
     debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth, t2);
+    println!();
+
+    // let sum = stats0.nodes_arr.0.iter().sum::<u32>();
+    // eprintln!("stats0.nodes = {:?}", stats0.nodes);
+    // eprintln!("sum = {:?}", sum);
 
     // return;
-
-    println!();
 
     #[cfg(feature = "lockless_hashmap")]
     {

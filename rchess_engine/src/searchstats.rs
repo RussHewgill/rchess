@@ -226,7 +226,7 @@ mod ss {
             let bcs = self.beta_cut_first;
             eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
 
-            eprintln!("sing_exts: ({:>4},{:>4},{:>4},{:>4},{:>4},{:>4})",
+            eprintln!("sing_exts: ({:>5},{:>5},{:>5},{:>5},{:>5},{:>5})",
                       self.sing_exts.one,
                       self.sing_exts.two,
                       self.sing_exts.prunes,
@@ -382,7 +382,12 @@ impl RunningAverage {
     }
 
     pub fn update(&mut self, v: u64) {
-        self.average = Self::RESOLUTION * v + (Self::PERIOD - 1) * self.average / Self::PERIOD;
+        self.average = Self::RESOLUTION * v
+            + (Self::PERIOD - 1) * self.average / Self::PERIOD;
+    }
+
+    pub fn is_greater(&self, a: u64, b: u64) -> bool {
+        b * self.average > a * Self::PERIOD * Self::RESOLUTION
     }
 
 }
