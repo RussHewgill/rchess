@@ -303,6 +303,13 @@ impl BitBoard {
 
 /// Modification
 impl BitBoard {
+
+    pub fn extend_mut<T: IntoIterator<Item = C>, C: Into<Coord>>(&mut self, iter: T) {
+        for c0 in iter {
+            self.set_one_mut(c0.into());
+        }
+    }
+
     #[must_use]
     pub fn set_one(&self, c: Coord) -> Self {
         let b = Self::single(c);

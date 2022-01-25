@@ -561,7 +561,11 @@ impl ExHelper {
 
         let is_root_node: bool = NODE_TYPE == Root;
 
-        let current_node_type = Node::Upper;
+        // let current_node_type = Node::Upper; // not used
+
+        let val = Score::MIN + 200;
+        let mut best_val: (Option<ABResult>,Score) = (None,val);
+        let mut max_score = Score::MAX;
 
         /// Misc assertions
         #[cfg(feature = "pvs_search")]
@@ -696,9 +700,80 @@ impl ExHelper {
         /// Step 5. Syzygy Probe
         #[cfg(feature = "syzygy")]
         if let Some(tb) = &self.syzygy {
+            // debug!("// TODO: syzygy probe handling");
 
-            debug!("// TODO: syzygy probe handling");
+            // if !is_root_node
+            if !g.state.castling.any()
+                && g.halfmove == 0
+            {
+                if let Ok(wdl) = tb.probe_wdl(ts, g) {
+                    let wdls = wdl as Score;
+                    if let Ok(Some((mv,dtz))) = tb.best_move(ts, g) {
+                        println!("wat 0, wdl = {:?}", wdls);
 
+                        let drawscore = 1;
+
+                        let score = if wdls < -drawscore {
+                            -MATE_IN_MAX_PLY + ply as Score + 1
+                        } else if wdls > drawscore {
+                            MATE_IN_MAX_PLY - ply as Score - 1
+                        } else {
+                            DRAW_VALUE + 2 * wdls * drawscore
+                        };
+
+                        let bound = if wdls < -drawscore {
+                            Node::Upper
+                        } else if wdls > drawscore {
+                            Node::Lower
+                        } else {
+                            Node::Exact
+                        };
+
+                        eprintln!("(score,bound) = {:?}", (score,bound));
+                        eprintln!("(alpha,beta) = {:?}", (alpha,beta));
+
+                        self.tt_insert_deepest(g.zobrist, None, SearchInfo::new(
+                            mv,
+                            depth + 6, // XXX: stockfish does + 6, not sure why
+                            bound,
+                            score,
+                            None,
+                        ));
+
+                        return ABResults::ABSyzygy(ABResult::new_single(mv, score));
+
+                        // if bound == Node::Exact
+                        //     || (if bound == Node::Lower { score >= beta } else { score <= alpha })
+                        // {
+                        //     println!("wat 1");
+                        //     self.tt_insert_deepest(g.zobrist, None, SearchInfo::new(
+                        //         mv,
+                        //         depth + 6, // XXX: stockfish does + 6, not sure why
+                        //         bound,
+                        //         score,
+                        //         None,
+                        //     ));
+                        //     return ABResults::ABSyzygy(ABResult::new_single(mv, score));
+                        // } else {
+                        //     println!("wat 2");
+                        // }
+
+                        // if is_pv_node {
+                        //     if bound == Node::Lower {
+                        //         best_val.1 = score;
+                        //         alpha      = alpha.max(score);
+                        //     } else {
+                        //         max_score = score;
+                        //     }
+                        // }
+
+                    }
+
+                }
+            }
+
+
+            #[cfg(feature = "nope")]
             match tb.probe_wdl(ts, g) {
                 Ok(Wdl::Win) => {
                     // trace!("found WDL win: {:?}", Wdl::Win);
@@ -723,11 +798,12 @@ impl ExHelper {
                                 Node::Exact
                             };
 
-                            self.tt_insert_deepest(g.zobrist, SearchInfo::new(
+                            self.tt_insert_deepest(g.zobrist, None, SearchInfo::new(
                                 mv,
                                 depth + 6, // XXX: stockfish does + 6, not sure why
                                 bound,
                                 score,
+                                None,
                             ));
 
                             return ABResults::ABSyzygy(ABResult::new_single(mv, score));
@@ -889,8 +965,6 @@ impl ExHelper {
 
         let mut moves_searched = 0;
         let mut moves_searched_best = 0;
-        let val = Score::MIN + 200;
-        let mut best_val: (Option<ABResult>,Score) = (None,val);
         let mut list = vec![];
 
         let mut captures_searched: ArrayVec<Move, 64> = ArrayVec::new();
@@ -1270,6 +1344,12 @@ impl ExHelper {
         } else {
             stats.ns_all += 1;
         }
+
+        // /// syzygy ??
+        // if is_pv_node {
+        //     // best_val.1 = max_score;
+        //     best_val.1 = best_val.1.min(max_score);
+        // }
 
         /// Step 20. Update hash table and return
         match &best_val.0 {

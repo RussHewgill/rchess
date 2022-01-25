@@ -6,6 +6,7 @@ use crate::{eprint_self, tables::*};
 use crate::types::{
     BitBoard,Coord,Color::{self,*},Piece,Piece::*,Material,Game,
 };
+use crate::bitboard::DIAG_A1_H8;
 
 use std::io;
 use std::path::Path;
@@ -1452,7 +1453,7 @@ impl<T: TableTag, F: ReadAt + std::fmt::Debug> Table<T, F> {
             let color = piece.0 ^ flip;
 
             // let square = u!((pos.board().by_piece(piece.role.of(color)) & !used).first());
-            let square = u!((g.get(piece.1, color) & !used).bitscan_safe());
+            let square = u!((g.get(piece.1, color) & !used).bitscan_checked());
 
             // squares.push(if flip { square.flip_vertical() } else { square });
             squares.push(if flip { Coord::from(square).flip_vertical() } else { Coord::from(square) });

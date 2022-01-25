@@ -38,7 +38,7 @@ default = [
     # "mobility_scoring",
     "only_material_eval",
 
-    # "syzygy",
+    "syzygy",
     "nnue",
 
     "null_pruning",

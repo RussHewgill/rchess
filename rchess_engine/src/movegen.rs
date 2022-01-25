@@ -824,6 +824,17 @@ impl<'a> MoveGen<'a> {
 impl<'a> MoveGen<'a> {
     // pub fn gen_to_vec(&mut self, gen: MoveGenType)
 
+    pub fn generate_list_legal(ts: &'a Tables, g: &'a Game, gen: Option<MoveGenType>) -> ArrayVec<Move,256> {
+        let st = ABStack::new();
+        let mut movegen = Self::new(ts, g, None, &st, 0, 0);
+
+        let mut mvs = movegen._generate_list(gen);
+
+        mvs.retain(|mv| movegen.move_is_legal(*mv));
+
+        mvs
+    }
+
     // pub fn generate_list(ts: &'static Tables, g: &'a Game, gen: Option<MoveGenType>) -> ArrayVec<Move,256> {
     pub fn generate_list(ts: &'a Tables, g: &'a Game, gen: Option<MoveGenType>) -> ArrayVec<Move,256> {
 

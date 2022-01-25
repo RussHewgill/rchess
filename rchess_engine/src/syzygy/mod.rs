@@ -8,6 +8,8 @@ use self::sz_errors::*;
 
 pub use self::sz_format::{Wdl,Dtz};
 
+use crate::movegen::MoveGen;
+use crate::movegen::MoveGenType;
 use crate::tables::*;
 use crate::types::*;
 
@@ -147,19 +149,22 @@ impl SyzygyTB {
         let mut best_capture = Wdl::Loss;
         let mut best_ep = Wdl::Loss;
 
-        // let legals = g.search_all(&ts).get_moves_unsafe();
-        let legals: Vec<Move> = match g.search_all(&ts) {
-            Outcome::Moves(ms)    => ms,
-            // Outcome::Checkmate(w) => return Err(SyzygyError::Checkmate(w)),
-            // Outcome::Stalemate    => return Err(SyzygyError::Stalemate),
-            Outcome::Checkmate(w) => vec![],
-            Outcome::Stalemate    => vec![],
-        };
+        // // let legals = g.search_all(&ts).get_moves_unsafe();
+        // let legals: Vec<Move> = match g.search_all(&ts) {
+        //     Outcome::Moves(ms)    => ms,
+        //     // Outcome::Checkmate(w) => return Err(SyzygyError::Checkmate(w)),
+        //     // Outcome::Stalemate    => return Err(SyzygyError::Stalemate),
+        //     Outcome::Checkmate(w) => vec![],
+        //     Outcome::Stalemate    => vec![],
+        // };
+
+        let legals = MoveGen::generate_list_legal(ts, g, None);
 
         let gs = legals.iter().filter(|m| m.filter_all_captures()).flat_map(|&mv| {
             if let Ok(g2) = g.make_move_unchecked(ts, mv) {
-                let mvs = g2.search_all(ts);
-                if mvs.is_end() { None } else {
+                // let mvs = g2.search_all(ts);
+                let mvs = MoveGen::generate_list_legal(ts, &g2, None);
+                if mvs.is_empty() { None } else {
                     Some((mv,g2))
                 }
             } else { None }
@@ -255,15 +260,18 @@ impl SyzygyTB {
         assert!(g.state.en_passant.is_none());
         // println!("wat 0 probe_ab_no_ep");
 
-        // let mut mvs = g.search_all(ts).get_moves_unsafe();
-        let mut mvs: Vec<Move> = match g.search_all(&ts) {
-            Outcome::Moves(ms)    => ms,
-            // Outcome::Checkmate(w) => return Err(SyzygyError::Checkmate(w)),
-            // Outcome::Stalemate    => return Err(SyzygyError::Stalemate),
-            Outcome::Checkmate(w) => vec![],
-            Outcome::Stalemate    => vec![],
-        };
+        // // let mut mvs = g.search_all(ts).get_moves_unsafe();
+        // let mut mvs: Vec<Move> = match g.search_all(&ts) {
+        //     Outcome::Moves(ms)    => ms,
+        //     // Outcome::Checkmate(w) => return Err(SyzygyError::Checkmate(w)),
+        //     // Outcome::Stalemate    => return Err(SyzygyError::Stalemate),
+        //     Outcome::Checkmate(w) => vec![],
+        //     Outcome::Stalemate    => vec![],
+        // };
 
+        let mut mvs = MoveGen::generate_list_legal(ts, &g, Some(MoveGenType::Captures));
+
+        // XXX: needed to get rid of promotions
         mvs.retain(|m| m.filter_all_captures());
 
         // let gs = mvs.flat_map(|mv| {
@@ -436,13 +444,18 @@ impl SyzygyTB {
 
         // Build list of successor positions.
 
-        let with_after = g.search_all(ts).get_moves_unsafe().into_iter().flat_map(|mv| {
+        // g.search_all(ts).get_moves_unsafe()
+        let moves = MoveGen::generate_list(ts, g, None);
+
+        let with_after = moves.into_iter().flat_map(|mv| {
             // let mut after = g.clone();
             // after.play_unchecked(&m);
             match g.make_move_unchecked(ts, mv) {
                 Ok(after) => {
-                    let mvs = after.search_all(&ts);
-                    if mvs.is_end() { None } else {
+                    // let mvs = after.search_all(&ts);
+                    let mvs = MoveGen::generate_list_legal(ts, &after, None);
+                    // if mvs.is_end() { None } else {
+                    if mvs.is_empty() { None } else {
                         Some(WithAfter { mv, after })
                     }
                 },
@@ -487,13 +500,15 @@ impl SyzygyTB {
         // let mut draws  = vec![];
         // let mut losses = vec![];
 
-        let mvs = g.search_all(ts).get_moves_unsafe();
+        // let mvs = g.search_all(ts).get_moves_unsafe();
+        let mvs = MoveGen::generate_list_legal(ts, &g, None);
 
         for mv in mvs.into_iter() {
             let g2 = g.make_move_unchecked(ts, mv).unwrap();
 
-            let mvs2 = g2.search_all(ts);
-            if mvs2.is_end() { continue; }
+            // let mvs2 = g2.search_all(ts);
+            let mvs2 = MoveGen::generate_list_legal(ts, &g2, None);
+            if mvs2.is_empty() { continue; }
 
             let dtz: Dtz = self.probe_dtz(ts, &g2)?;
 
@@ -565,8 +580,9 @@ impl<'a> WdlEntry<'a> {
         // captures again, they were already handled above.
         if wdl >= DecisiveWdl::CursedWin {
 
-            let mut pawn_advances = self.g.search_all(ts).get_moves_unsafe();
-            pawn_advances.retain(|m| !m.filter_all_captures() && m.piece() == Some(Pawn));
+            // let mut pawn_advances = self.g.search_all(ts).get_moves_unsafe();
+            let mut pawn_advances = MoveGen::generate_list_legal(ts, &self.g, Some(MoveGenType::Quiets));
+            pawn_advances.retain(|m| m.piece() == Some(Pawn));
 
             for &mv in &pawn_advances {
                 // let mut after = self.g.clone();
@@ -589,7 +605,8 @@ impl<'a> WdlEntry<'a> {
         }
 
         // We have to probe the other side by doing a 1-ply search.
-        let mut moves = self.g.search_all(ts).get_moves_unsafe();
+        // let mut moves = self.g.search_all(ts).get_moves_unsafe();
+        let mut moves = MoveGen::generate_list_legal(ts, &self.g, None);
         moves.retain(|m| !m.is_zeroing());
 
         let mut best = if wdl >= DecisiveWdl::CursedWin {

@@ -2983,6 +2983,8 @@ fn main9() {
 
     // let fen = "r2q3r/1b1k1pbp/p4np1/2BP1pN1/p1B5/P1Q5/1PP3PP/R3K2R w KQ - 0 19"; // explosion
 
+    let fen = "1Q6/8/4k3/8/8/4K3/8/8 w - - 0 1"; // endgame KQ v K
+
     // use rchess_engine_lib::heuristics::update_stat_bonus;
     // let bonus = 512;
     // let mut current = 0;
@@ -3053,6 +3055,16 @@ fn main9() {
     eprintln!("g.to_fen() = {:?}", g.to_fen());
     eprintln!("g = {:?}", g);
 
+    // let mut tb = SyzygyTB::new();
+    // tb.add_directory("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+    // let wdl = tb.probe_wdl(&ts, &g);
+    // eprintln!("wdl = {:?}", wdl);
+    // let dtz = tb.best_move(&ts, &g).unwrap();
+    // eprintln!("dtz = {:?}", dtz);
+    // return;
+
+    // let mvs = MoveGen::generate_list_legal(ts, &g, None);
+
     // eprintln!();
     // eprintln!("correct = {:?}", correct);
 
@@ -3112,13 +3124,14 @@ fn main9() {
 
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
-    // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(12);
     // ex.cfg.num_threads = Some(6);
     ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
+
+    ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
 
     // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 

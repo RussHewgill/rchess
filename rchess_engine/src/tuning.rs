@@ -106,6 +106,7 @@ mod const_params {
 
     // pub const TB_WIN_MAX: Score = TB_WIN_VALUE 
 
+    pub const MATE_IN_MAX_PLY: Score = CHECKMATE_VALUE - MAX_SEARCH_PLY as Score;
 
     // pub const STALEMATE_VALUE: Score = 20_000_000;
     // pub const DRAW_VALUE: Score = 20_000_000;
