@@ -709,7 +709,7 @@ impl ExHelper {
                 if let Ok(wdl) = tb.probe_wdl(ts, g) {
                     let wdls = wdl as Score;
                     if let Ok(Some((mv,dtz))) = tb.best_move(ts, g) {
-                        println!("wat 0, wdl = {:?}", wdls);
+                        // println!("wat 0, wdl = {:?}", wdls);
 
                         let drawscore = 1;
 
@@ -729,8 +729,8 @@ impl ExHelper {
                             Node::Exact
                         };
 
-                        eprintln!("(score,bound) = {:?}", (score,bound));
-                        eprintln!("(alpha,beta) = {:?}", (alpha,beta));
+                        // eprintln!("(score,bound) = {:?}", (score,bound));
+                        // eprintln!("(alpha,beta) = {:?}", (alpha,beta));
 
                         self.tt_insert_deepest(g.zobrist, None, SearchInfo::new(
                             mv,
