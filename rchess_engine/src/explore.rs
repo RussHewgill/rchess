@@ -857,7 +857,7 @@ impl Explorer {
                             | ABResults::ABSingle(bestres)
                             | ABResults::ABSyzygy(bestres) => {
                                 if depth > best_depth.load(SeqCst)
-                                    || bestres.score > CHECKMATE_VALUE - 50
+                                    || bestres.score > CHECKMATE_VALUE - MAX_SEARCH_PLY - 1
                                     || !any_move_stored
                                 {
                                     best_depth.store(depth,SeqCst);
@@ -875,7 +875,7 @@ impl Explorer {
                                         break;
                                     }
 
-                                    if bestres.score > CHECKMATE_VALUE - 50 {
+                                    if bestres.score > CHECKMATE_VALUE - MAX_SEARCH_PLY - 1 {
                                         let k = CHECKMATE_VALUE - bestres.score.abs();
                                         debug!("Found mate in {}: d({}), {:?}",
                                             // bestres.score, bestres.moves.front());
