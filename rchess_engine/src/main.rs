@@ -2983,7 +2983,7 @@ fn main9() {
 
     // let fen = "r2q3r/1b1k1pbp/p4np1/2BP1pN1/p1B5/P1Q5/1PP3PP/R3K2R w KQ - 0 19"; // explosion
 
-    // let fen = "1Q6/8/4k3/8/8/4K3/8/8 w - - 0 1"; // endgame KQ v K, #7
+    let fen = "1Q6/8/4k3/8/8/4K3/8/8 w - - 0 1"; // endgame KQ v K, #7
 
     // use rchess_engine_lib::heuristics::update_stat_bonus;
     // let bonus = 512;
@@ -3110,8 +3110,8 @@ fn main9() {
 
     // let t = 10.0;
     // let t = 6.0;
-    // let t = 4.0;
-    let t = 2.0;
+    let t = 4.0;
+    // let t = 2.0;
     // let t = 0.5;
     // let t = 0.3;
 
@@ -3119,7 +3119,7 @@ fn main9() {
     // let n = 35;
     // let n = 18;
     // let n = 12;
-    let n = 12;
+    let n = 11;
     // let n = 2;
 
     let timesettings = TimeSettings::new_f64(0.0,t);

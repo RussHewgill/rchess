@@ -484,6 +484,9 @@ impl ExHelper {
         g:            &Game,
     ) -> Score {
 
+        // TODO: endgame
+        // TODO: material tables?
+
         if let Some(nnue) = &self.nnue {
             /// NNUE Eval, cheap-ish
             /// TODO: bench vs evaluate
