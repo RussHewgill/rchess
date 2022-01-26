@@ -457,7 +457,7 @@ pub enum TDOutcome {
     Stalemate,
 }
 
-#[derive(Debug,Eq,PartialEq,Clone,Serialize,Deserialize)]
+#[derive(Debug,Clone,Serialize,Deserialize)]
 // #[derive(Debug,Eq,PartialEq,Clone)]
 pub struct TrainingData {
     pub result:       TDOutcome,
@@ -612,7 +612,7 @@ impl TrainingData {
     }
 }
 
-#[derive(Debug,Eq,PartialEq,Clone,Copy,Serialize,Deserialize)]
+#[derive(Debug,Clone,Copy,Serialize,Deserialize)]
 pub struct TDEntry {
     // mv:       PackedMove,
     pub mv:       Move,

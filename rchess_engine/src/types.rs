@@ -105,6 +105,7 @@ pub enum Piece {
 /// PromotionCapture   { from: Coord, to: Coord, new_piece: Piece, victim: Piece },
 /// NullMove,
 #[derive(Serialize,Deserialize,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
+// #[derive(Serialize,Deserialize,Hash,ShallowCopy,Clone,Copy)]
 pub enum Move {
 
     Quiet              { from: Coord, to: Coord, pc: Piece },
@@ -129,7 +130,14 @@ pub enum Move {
     // PromotionCapture   { side: Color, from: Coord, to: Coord, new_piece: Piece, victim: Piece },
 }
 
-#[derive(Serialize,Deserialize,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy)]
+// impl Eq for Move {}
+// impl PartialEq for Move {
+//     fn eq(&self, other: &Self) -> bool {
+//         panic!();
+//     }
+// }
+
+#[derive(Serialize,Deserialize,Eq,PartialEq,Ord,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 pub struct PackedPieces(u8);
 
 /// New, get
@@ -459,53 +467,53 @@ mod packed_move {
 //     NullMove,
 // }
 
-impl Ord for Move {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        use Move::*;
-        use std::cmp::Ordering::*;
-        match (self, other) {
-            (PromotionCapture { .. }, PromotionCapture { .. }) => Equal,
-            (PromotionCapture { .. }, _)                       => Greater,
-            (_, PromotionCapture { .. })                       => Less,
+// impl Ord for Move {
+//     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+//         use Move::*;
+//         use std::cmp::Ordering::*;
+//         match (self, other) {
+//             (PromotionCapture { .. }, PromotionCapture { .. }) => Equal,
+//             (PromotionCapture { .. }, _)                       => Greater,
+//             (_, PromotionCapture { .. })                       => Less,
 
-            (Promotion { .. }, Promotion { .. })               => Equal,
-            (Promotion { .. }, _)                              => Greater,
-            (_, Promotion { .. })                              => Less,
+//             (Promotion { .. }, Promotion { .. })               => Equal,
+//             (Promotion { .. }, _)                              => Greater,
+//             (_, Promotion { .. })                              => Less,
 
-            (EnPassant { .. }, EnPassant { .. })               => Equal,
-            (EnPassant { .. }, _)                              => Greater,
-            (_, EnPassant { .. })                              => Less,
+//             (EnPassant { .. }, EnPassant { .. })               => Equal,
+//             (EnPassant { .. }, _)                              => Greater,
+//             (_, EnPassant { .. })                              => Less,
 
-            (Capture { .. }, Capture { .. })                   => Equal,
-            (Capture { .. }, _)                                => Greater,
-            (_, Capture { .. })                                => Less,
+//             (Capture { .. }, Capture { .. })                   => Equal,
+//             (Capture { .. }, _)                                => Greater,
+//             (_, Capture { .. })                                => Less,
 
-            (Castle { .. }, Castle { .. })                     => Equal,
-            (Castle { .. }, _)                                 => Greater,
-            (_, Castle { .. })                                 => Less,
+//             (Castle { .. }, Castle { .. })                     => Equal,
+//             (Castle { .. }, _)                                 => Greater,
+//             (_, Castle { .. })                                 => Less,
 
-            (Quiet { .. }, Quiet { .. })                       => Equal,
-            (Quiet { .. }, _)                                  => Greater,
-            (_, Quiet { .. })                                  => Less,
+//             (Quiet { .. }, Quiet { .. })                       => Equal,
+//             (Quiet { .. }, _)                                  => Greater,
+//             (_, Quiet { .. })                                  => Less,
 
-            (PawnDouble { .. }, PawnDouble { .. })             => Equal,
-            (_, PawnDouble { .. })                             => Equal,
-            (PawnDouble { .. }, _)                             => Equal,
+//             (PawnDouble { .. }, PawnDouble { .. })             => Equal,
+//             (_, PawnDouble { .. })                             => Equal,
+//             (PawnDouble { .. }, _)                             => Equal,
 
-            _                                                  => {
-                debug!("cmp move: {:?}, {:?}", self, other);
-                panic!("cmp move: {:?}, {:?}", self, other);
-                // Equal
-            },
-        }
-    }
-}
+//             _                                                  => {
+//                 debug!("cmp move: {:?}, {:?}", self, other);
+//                 panic!("cmp move: {:?}, {:?}", self, other);
+//                 // Equal
+//             },
+//         }
+//     }
+// }
 
-impl PartialOrd for Move {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
+// impl PartialOrd for Move {
+//     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+//         Some(self.cmp(other))
+//     }
+// }
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Serialize,Deserialize)]
 pub enum GameEnd {
@@ -518,16 +526,8 @@ pub enum GameEnd {
 
 pub type GameResult<T> = std::result::Result<T, GameEnd>;
 
-// impl<T> MoveResult<T> {
-//     pub fn unwrap(self) -> T {
-//         match self {
-//             Self::Legal(t) => t,
-//             _              => panic!("MoveResult unwrap panic"),
-//         }
-//     }
-// }
-
-#[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
+// #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
+#[derive(Debug,PartialEq,Clone)]
 pub enum Outcome {
     Checkmate(Color),
     Stalemate,

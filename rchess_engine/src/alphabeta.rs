@@ -19,7 +19,8 @@ use arrayvec::ArrayVec;
 
 use std::sync::atomic::Ordering::{SeqCst,Relaxed};
 
-#[derive(Debug,PartialEq,PartialOrd,Clone,Copy)]
+// #[derive(Debug,PartialEq,PartialOrd,Clone,Copy)]
+#[derive(Debug,PartialEq,Clone,Copy)]
 pub struct ABResult {
     pub mv:       Option<Move>,
     pub score:    Score,
@@ -67,7 +68,8 @@ impl ABResult {
 
 }
 
-#[derive(Debug,PartialEq,PartialOrd,Clone)]
+// #[derive(Debug,PartialEq,PartialOrd,Clone)]
+#[derive(Debug,PartialEq,Clone)]
 pub enum ABResults {
     ABSingle(ABResult),
     ABList(ABResult, Vec<ABResult>),

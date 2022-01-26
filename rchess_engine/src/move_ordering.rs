@@ -189,6 +189,7 @@ pub fn score_move_for_sort3(
 }
 
 // pub fn selection_sort<T: PartialOrd>(xs: &mut [T]) {
+#[cfg(feature = "nope")]
 pub fn selection_sort<T: PartialOrd>(xs: &mut [(Move,T)]) {
 
     for ii in 0..xs.len() {
@@ -383,6 +384,7 @@ impl ExHelper {
 
 }
 
+#[cfg(feature = "nope")]
 pub fn order_moves_piece_tables(ts: &Tables, mut xs: &mut [Move]) {
     // xs.par_sort_unstable_by(|a,b| {
     //     let s0 = ts.piece_tables.get_mid(a.piece(), col, a.sq_from())
@@ -390,6 +392,7 @@ pub fn order_moves_piece_tables(ts: &Tables, mut xs: &mut [Move]) {
     unimplemented!()
 }
 
+#[cfg(feature = "nope")]
 pub fn order_moves_history(history: &[[Score; 64]; 64], mut mvs: &mut [Move]) {
 
     mvs.par_sort_by(|a,b| {
@@ -405,6 +408,7 @@ pub fn order_moves_history(history: &[[Score; 64]; 64], mut mvs: &mut [Move]) {
     });
 }
 
+#[cfg(feature = "nope")]
 pub fn order_mvv_lva(mut xs: &mut [Move]) {
 // pub fn order_mvv_lva(mut xs: &mut [(&str,Move)]) {
     use Move::*;
@@ -421,6 +425,7 @@ pub fn order_mvv_lva(mut xs: &mut [Move]) {
     });
 }
 
+#[cfg(feature = "nope")]
 pub fn _order_mvv_lva(a: &Move, b: &Move) -> std::cmp::Ordering {
 
     match (a.victim(), b.victim()) {
@@ -444,6 +449,7 @@ pub fn _order_mvv_lva(a: &Move, b: &Move) -> std::cmp::Ordering {
 }
 
 // pub fn order_searchinfo(mut xs: &mut [(Move,Game,Option<(SICanUse,SearchInfo)>)]) {
+#[cfg(feature = "nope")]
 pub fn order_searchinfo(mut xs: &mut [(Move,Zobrist,Option<(SICanUse,SearchInfo)>)]) {
 
     #[cfg(not(feature = "par"))]

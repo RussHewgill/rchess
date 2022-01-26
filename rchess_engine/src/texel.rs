@@ -15,7 +15,7 @@ use derive_new::new;
 use rand::prelude::SliceRandom;
 use serde::{Serialize,Deserialize};
 
-#[derive(Debug,PartialEq,Clone,Serialize,Deserialize,new)]
+#[derive(Debug,Clone,Serialize,Deserialize,new)]
 pub struct TxPosition {
     pub game:     Game,
     pub result:   TDOutcome,

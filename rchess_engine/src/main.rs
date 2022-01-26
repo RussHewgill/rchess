@@ -3119,7 +3119,7 @@ fn main9() {
     // let n = 35;
     // let n = 18;
     // let n = 12;
-    let n = 11;
+    let n = 10;
     // let n = 2;
 
     let timesettings = TimeSettings::new_f64(0.0,t);
