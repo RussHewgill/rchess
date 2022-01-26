@@ -446,9 +446,9 @@ impl<'a> MoveGen<'a> {
 
         // use crate::evmap_tables::FxBuildHasher;
 
-        // let see_map = HashMap::with_hasher(FxBuildHasher::default());
         // let see_map = HashMap::default();
-        let see_map = HashMap::with_capacity_and_hasher(128, FxBuildHasher::default());
+        let see_map = HashMap::with_hasher(FxBuildHasher::default());
+        // let see_map = HashMap::with_capacity_and_hasher(128, FxBuildHasher::default());
 
         let mut out = Self {
             ts,
@@ -500,7 +500,8 @@ impl<'a> MoveGen<'a> {
             // stack.counter_moves.get_counter_move(prev_mv)
         } else { None };
 
-        let see_map = HashMap::with_capacity_and_hasher(128, FxBuildHasher::default());
+        let see_map = HashMap::with_hasher(FxBuildHasher::default());
+        // let see_map = HashMap::with_capacity_and_hasher(128, FxBuildHasher::default());
 
         let mut out = Self {
             ts,

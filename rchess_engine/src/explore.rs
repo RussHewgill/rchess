@@ -92,6 +92,8 @@ pub struct Explorer {
     // pub ph_rw:         (PHReadFactory,PHWrite),
     pub ph_rw:         PHTableFactory,
 
+    // pub mat_rw:        
+
     pub move_history:  Vec<(Zobrist, Move)>,
     // pub pos_history:   HashMap<Zobrist,u8>,
 }

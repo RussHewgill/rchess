@@ -936,23 +936,26 @@ impl ExHelper {
 
         }
 
-        let mut depth = depth;
 
         /// Step 9. Lower depth for positions not in TT
         /// Stockfish does this, not sure why. Seems to work
-        if !is_root_node
-            && is_pv_node
-            && depth >= 6
-            && msi.is_none() {
-                depth -= 2;
-            }
+        let depth = {
+            let mut depth = depth;
+            if !is_root_node
+                && is_pv_node
+                && depth >= 6
+                && msi.is_none() {
+                    depth -= 2;
+                }
 
-        if !is_root_node
-            && is_cut_node
-            && depth >= 9
-            && msi.is_none() {
-                depth -= 1;
-            }
+            if !is_root_node
+                && is_cut_node
+                && depth >= 9
+                && msi.is_none() {
+                    depth -= 1;
+                }
+            depth
+        };
 
         // /// Reset killers for next ply
         // stack.killers_clear(ply + 2);
