@@ -68,7 +68,7 @@ pub fn process_txdata(
                 g = g2;
                 if !te.skip
                     && !te.mv.filter_all_captures()
-                    && g.state.checkers.is_empty()
+                    && g.state.in_check
                     // && te.eval.abs() < DRAW_VALUE - 100
                     && te.eval.abs() < 0 - 100
                 {

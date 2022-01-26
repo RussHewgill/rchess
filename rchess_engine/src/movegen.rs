@@ -427,7 +427,7 @@ impl<'a> MoveGen<'a> {
         ply:            Depth,
         // move_history:   Vec<(Zobrist,Move)>,
     ) -> Self {
-        let in_check = game.state.checkers.is_not_empty();
+        let in_check = game.state.in_check;
         let side = game.state.side_to_move;
 
         // let counter_move = None;
@@ -492,7 +492,7 @@ impl<'a> MoveGen<'a> {
         ply:            Depth,
         // move_history:   Vec<(Zobrist,Move)>,
     ) -> Self {
-        let in_check = game.state.checkers.is_not_empty();
+        let in_check = game.state.in_check;
         let side = game.state.side_to_move;
 
         let counter_move = if let Some(prev_mv) = game.last_move {
@@ -545,7 +545,7 @@ impl<'a> MoveGen<'a> {
         root_moves:     &[Move],
     ) -> Self {
 
-        let in_check = game.state.checkers.is_not_empty();
+        let in_check = game.state.in_check;
         let side = game.state.side_to_move;
 
         let mut buf = ArrayVec::new();
@@ -891,23 +891,25 @@ impl<'a> MoveGen<'a> {
     #[allow(unused_doc_comments)]
     fn _gen_all_in_check(&mut self, gen: MoveGenType) {
 
-        let num_checkers = self.game.state.checkers.popcount();
+        let checkers = self.game.get_checkers();
+
+        let num_checkers = checkers.popcount();
         if num_checkers == 0 {
             panic!();
         } else if num_checkers == 1 {
             /// in check, must block or capture attacker
 
             let target = match gen {
-                MoveGenType::Captures                       => Some(self.game.state.checkers),
+                MoveGenType::Captures                       => Some(checkers),
                 MoveGenType::Quiets                         => {
                     let ksq     = self.game.get(King, self.side).bitscan();
-                    let between = self.ts.between(ksq, self.game.state.checkers.bitscan());
+                    let between = self.ts.between(ksq, checkers.bitscan());
                     Some(between & self.game.all_empty())
                 },
                 MoveGenType::Evasions                       => {
                     let ksq     = self.game.get(King, self.side).bitscan();
-                    let between = self.ts.between(ksq, self.game.state.checkers.bitscan());
-                    Some(between | self.game.state.checkers)
+                    let between = self.ts.between(ksq, checkers.bitscan());
+                    Some(between | checkers)
                 },
                 // MoveGenType::QuietChecks                    => unimplemented!(),
                 _                                        => None,
@@ -1058,7 +1060,7 @@ impl<'a> MoveGen<'a> {
 
     pub fn is_checkmate(ts: &'a Tables, g: &'a Game) -> bool {
 
-        if !g.in_check() {
+        if !g.state.in_check {
             false
         } else {
             let mvs = Self::generate_list_legal(ts, g, None);
@@ -1202,6 +1204,13 @@ impl<'a> MoveGen<'a> {
 
 /// Check legal
 impl<'a> MoveGen<'a> {
+
+    pub fn new_move_is_legal(ts: &'a Tables, g: &'a Game, mv: Move) -> bool {
+        let st = ABStack::new();
+        let movegen = Self::new(ts, g, None, &st, 0, 0);
+        movegen.move_is_legal(mv)
+    }
+
     pub fn move_is_legal(&self, mv: Move) -> bool {
 
         if self.game.state.side_to_move != self.side {
@@ -1239,10 +1248,10 @@ impl<'a> MoveGen<'a> {
                         mv.sq_from(), mv.sq_to(), self.game.get(King, self.side).bitscan().into());
 
                 // not in check
-                let x0 = x & self.game.state.checkers.is_empty();
+                let x0 = x && self.game.state.in_check;
 
-                x0 && self.game.state.checkers.is_empty()
-                    || (x && mv.sq_to() == self.game.state.checkers.bitscan().into())
+                x0 && self.game.state.in_check
+                    || (x && mv.sq_to() == self.game.get_checkers().bitscan().into())
                     || (x && (BitBoard::single(mv.sq_to())
                               & self.game.state.check_block_mask).is_not_empty())
             },

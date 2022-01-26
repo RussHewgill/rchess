@@ -139,7 +139,7 @@ impl ExHelper {
         allow_sp:     &mut bool,
     ) -> Score {
 
-        if g.in_check() {
+        if g.state.in_check {
             *allow_sp = false;
             return Score::MIN;
         }

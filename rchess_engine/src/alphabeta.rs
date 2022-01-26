@@ -438,7 +438,7 @@ impl ExHelper {
         msi:          Option<SearchInfo>,
     ) -> Option<Score> {
 
-        if g.in_check() {
+        if g.state.in_check {
             stack.with(ply, |st| {
                 st.in_check    = true;
                 st.static_eval = None;
@@ -564,7 +564,7 @@ impl ExHelper {
         // let current_node_type = Node::Upper; // not used
 
         /// when in check, skip early pruning
-        let in_check = g.state.checkers.is_not_empty();
+        let in_check = g.state.in_check;
 
         let val = Score::MIN + 200;
         let mut best_val: (Option<ABResult>,Score) = (None,val);
@@ -1168,7 +1168,7 @@ impl ExHelper {
                     && !mv.filter_all_captures()
                     && !in_check
                     && !gives_check
-                    && g2.state.checkers.is_empty()
+                    && g2.state.in_check
                 {
                     let mut r = lmr_reduction(next_depth, moves_searched) as i16;
 

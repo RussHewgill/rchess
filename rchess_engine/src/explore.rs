@@ -813,7 +813,9 @@ impl Explorer {
         stats.ph_misses = self.ph_rw.misses.load(Ordering::Relaxed);
 
         if let Some(res) = out.get_result() {
-            let out = if self.game.move_is_legal(ts, res.mv.unwrap(), self.game.state.side_to_move) {
+
+            // let out = if self.game.move_is_legal(ts, res.mv.unwrap(), self.game.state.side_to_move) {
+            let out = if MoveGen::new_move_is_legal(ts, &self.game, res.mv.unwrap()) {
                 out
             } else {
                 debug!("best move wasn't legal? {:?}\n{:?}\n{:?}", self.game, self.game.to_fen(), res);

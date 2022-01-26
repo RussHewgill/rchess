@@ -71,7 +71,7 @@ impl ABStack {
 impl ABStack {
     pub fn init_node(&mut self, ply: Depth, depth: Depth, g: &Game) {
 
-        let in_check = g.state.checkers.is_not_empty();
+        let in_check = g.state.in_check;
 
         /// use previous double extensions
         let d = self.get_with(ply - 1, |st| st.double_extensions).unwrap_or(0);

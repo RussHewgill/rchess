@@ -62,7 +62,7 @@ impl Game {
 
     pub fn search_only_captures(&self, ts: &Tables) -> Outcome {
         let col = self.state.side_to_move;
-        let moves = if self.state.checkers.is_not_empty() {
+        let moves = if self.state.in_check {
             self._search_in_check(&ts, col, true)
         } else {
             self._search_all(&ts, col, true)
@@ -81,7 +81,7 @@ impl Game {
         // let col = if let Some(c) = col { c } else { self.state.side_to_move };
         let col = self.state.side_to_move;
 
-        if self.state.checkers.is_not_empty() {
+        if self.state.in_check {
             self._search_in_check(&ts, col, false)
         } else {
             self._search_all(&ts, col, false)
@@ -184,7 +184,7 @@ impl Game {
 
         // let mut x = 0;
         // self.state.checkers.iter_bitscan(|sq| x += 1);
-        let x = self.state.checkers.into_iter().count();
+        let x = self.get_checkers().into_iter().count();
         if x == 1 {
             out.extend_from_slice(&self.search_sliding(&ts, Bishop, col, only_caps));
             out.extend_from_slice(&self.search_sliding(&ts, Rook, col, only_caps));
@@ -417,6 +417,11 @@ impl Game {
 /// move_is_legal
 impl Game {
 
+    pub fn move_is_legal(&self, ts: &Tables, mv: Move, side: Color) -> bool {
+        panic!("old move_is_legal");
+    }
+
+    #[cfg(feature = "nope")]
     pub fn move_is_legal(&self, ts: &Tables, mv: Move, side: Color) -> bool {
 
         if self.state.side_to_move != side {

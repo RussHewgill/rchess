@@ -39,6 +39,8 @@ pub struct Game {
 pub struct GameState {
     pub side_to_move:       Color,
 
+    pub in_check:           bool,
+
     // pub white:              BitBoard,
     // pub black:              BitBoard,
 
@@ -69,7 +71,7 @@ pub struct GameState {
     // pub king_blocks_b:      Option<BitBoard>,
     // pub check_block_mask:   Option<BitBoard>,
 
-    pub checkers:           BitBoard,
+    checkers:           BitBoard,
     pub king_blocks_w:      BitBoard,
     pub king_blocks_b:      BitBoard,
     pub check_block_mask:   BitBoard,
@@ -828,6 +830,8 @@ impl Game {
         self.state.phase = phase;
         self.state.phase_unscaled = phase_unscaled;
 
+        self.state.in_check = self.state.checkers.is_not_empty();
+
         // self.state.phase = self.game_phase();
 
         Ok(())
@@ -858,6 +862,8 @@ impl Game {
         // self.update_occupied_mut();
 
         self.update_check_squares_mut(ts);
+
+        self.state.in_check = self.state.checkers.is_not_empty();
 
         /// Last move has already been set, and side to move switched
         if let Some(mv) = self.last_move {
@@ -1484,14 +1490,20 @@ impl Game {
 /// Misc Queries
 impl Game {
 
-    pub fn in_check(&self) -> bool {
-        self.state.checkers.is_not_empty()
-    }
+    // pub fn in_check(&self) -> bool {
+    //     // self.state.checkers.is_not_empty()
+    //     self.state.in_check
+    //     // unimplemented!()
+    // }
 
 }
 
 /// get bitboards
 impl Game {
+
+    pub fn get_checkers(&self) -> BitBoard {
+        self.state.checkers
+    }
 
     pub fn get_color(&self, c: Color) -> BitBoard {
         self.state.colors[c]

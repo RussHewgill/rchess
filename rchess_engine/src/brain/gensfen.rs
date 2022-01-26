@@ -585,7 +585,7 @@ impl TrainingData {
 
                 if te.skip
                     || te.mv.filter_all_captures()
-                    || !g.state.checkers.is_empty() {
+                    || g.state.in_check {
                         te.skip = true;
                     } else {
 

@@ -117,7 +117,7 @@ pub fn process_pgns_tx(
                 let moves = g.search_all(&ts);
 
                 if !mv.filter_all_captures()
-                    && g.state.checkers.is_empty()
+                    && !g.state.in_check
                     && !moves.is_end() {
 
                         let score   = g.sum_evaluate(&ts, &ev_mid, &ev_end, Some(&exhelper2.ph_rw));
@@ -183,7 +183,7 @@ pub fn process_pgns_td(
 
                     let (skip,score) = {
                         if mv.filter_all_captures()
-                            || !g.state.checkers.is_empty()
+                            || g.state.in_check
                             {
                                 (true, 0)
                             } else {
@@ -243,7 +243,7 @@ pub fn _process_pgn_td(
 
             let (skip,score) = {
                 if mv.filter_all_captures()
-                    || !g.state.checkers.is_empty()
+                    || g.state.in_check
                     {
                         (true, 0)
                     } else {
