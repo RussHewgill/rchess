@@ -1166,9 +1166,9 @@ impl ExHelper {
                     && next_depth >= self.params.lmr_min_depth
                     && !mv.filter_promotion()
                     && !mv.filter_all_captures()
-                    && !in_check
-                    && !gives_check
-                    && g2.state.in_check
+                    && !in_check // XXX: needed?
+                    && !g2.state.in_check
+                    // && !gives_check // redundant
                 {
                     let mut r = lmr_reduction(next_depth, moves_searched) as i16;
 

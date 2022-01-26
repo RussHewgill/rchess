@@ -353,7 +353,7 @@ impl ABStackPly {
 /// New
 impl ABStack {
     pub fn new_with_moves(moves: &Vec<(Zobrist, Move)>) -> Self {
-        let mut out = Self::new();
+        let mut out = Self::new_with_plies();
         out.move_history = moves.clone();
         // for (zb,_) in moves.iter() {
         //     out.move_history.insert(*zb);
@@ -361,15 +361,8 @@ impl ABStack {
         // out.move_history.try_extend_from_slice(&moves).unwrap();
         out
     }
+
     pub fn new() -> Self {
-
-        // let stacks = Vec::with_capacity(64);
-
-        let mut stacks = vec![];
-        for ply in 0..MAX_SEARCH_PLY {
-            stacks.push(ABStackPly::new_empty(ply));
-        }
-
         Self {
             history:                crate::heuristics::ButterflyHistory::default(),
             counter_moves:          crate::heuristics::CounterMoves::default(),
@@ -383,11 +376,27 @@ impl ABStack {
 
             inside_null:            false,
 
-            stacks,
-            move_history:           Vec::with_capacity(64),
+            // stacks,
+            // move_history:           Vec::with_capacity(64),
+            stacks:                 vec![],
+            move_history:           vec![],
 
             pvs:                    [Move::NullMove; 128],
         }
+    }
+
+    pub fn new_with_plies() -> Self {
+
+        let mut out = Self::new();
+
+        // let mut stacks = vec![];
+        let mut stacks = Vec::with_capacity(MAX_SEARCH_PLY as usize);
+        for ply in 0..MAX_SEARCH_PLY {
+            stacks.push(ABStackPly::new_empty(ply));
+        }
+        out.stacks = stacks;
+
+        out
     }
 }
 

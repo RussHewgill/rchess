@@ -1248,9 +1248,9 @@ impl<'a> MoveGen<'a> {
                         mv.sq_from(), mv.sq_to(), self.game.get(King, self.side).bitscan().into());
 
                 // not in check
-                let x0 = x && self.game.state.in_check;
+                let x0 = x && !self.game.state.in_check;
 
-                x0 && self.game.state.in_check
+                x0 && !self.game.state.in_check
                     || (x && mv.sq_to() == self.game.get_checkers().bitscan().into())
                     || (x && (BitBoard::single(mv.sq_to())
                               & self.game.state.check_block_mask).is_not_empty())
