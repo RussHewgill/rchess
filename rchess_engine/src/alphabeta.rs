@@ -563,9 +563,23 @@ impl ExHelper {
 
         // let current_node_type = Node::Upper; // not used
 
+        /// when in check, skip early pruning
+        let in_check = g.state.checkers.is_not_empty();
+
         let val = Score::MIN + 200;
         let mut best_val: (Option<ABResult>,Score) = (None,val);
         let mut max_score = Score::MAX;
+
+        /// Max search depth
+        if ply >= MAX_SEARCH_PLY {
+            if !in_check {
+                let score = self.eval_nn_or_hce(ts, g);
+                return ABSingle(ABResult::new_null_score(score));
+            } else {
+                let score = draw_value(stats);
+                return ABSingle(ABResult::new_null_score(score));
+            }
+        }
 
         /// Misc assertions
         #[cfg(feature = "pvs_search")]
@@ -573,6 +587,11 @@ impl ExHelper {
             assert!(is_pv_node || (alpha == beta - 1));
             assert!(!(is_pv_node && is_cut_node));
         }
+        assert!(depth < MAX_SEARCH_PLY);
+        if depth < 0 {
+            eprintln!("wat: depth = {:?}", depth);
+        }
+        assert!(depth >= 0);
 
         /// Step 1. Repetition
         if !is_root_node
@@ -732,6 +751,7 @@ impl ExHelper {
                         // eprintln!("(score,bound) = {:?}", (score,bound));
                         // eprintln!("(alpha,beta) = {:?}", (alpha,beta));
 
+                        // self.tt_insert_deepest_eval(g.zobrist, Some(score));
                         self.tt_insert_deepest(g.zobrist, None, SearchInfo::new(
                             mv,
                             depth + 6, // XXX: stockfish does + 6, not sure why
@@ -828,10 +848,6 @@ impl ExHelper {
             }
         }
 
-        /// when in check, skip early pruning
-        let in_check = g.state.checkers.is_not_empty();
-        // stack.with(ply, |st| st.in_check = in_check);
-
         /// Static eval, possibly from TT
         let static_eval = self.get_static_eval(ts, g, ply, stack, meval, msi);
 
@@ -894,24 +910,28 @@ impl ExHelper {
 
             // let null_depth = depth - 1 - r;
             let null_depth = (depth - 1).checked_sub(r).unwrap_or(0);
+            // let null_depth = null_depth.max(0);
+            // assert!(null_depth >= 0);
 
-            // if let Ok(g2) = g.make_move_unchecked(ts, Move::NullMove) {
-            if let Some(g2) = self.make_move(ts, g, ply, Move::NullMove, None, stack) {
+            if null_depth > 0 {
+                // if let Ok(g2) = g.make_move_unchecked(ts, Move::NullMove) {
+                if let Some(g2) = self.make_move(ts, g, ply, Move::NullMove, None, stack) {
 
-                // stack.inside_null = true;
-                let res = -self.ab_search::<{NonPV}>(
-                    ts, &g2, (null_depth,ply+1), (-beta,-beta+1), stats, stack, !is_cut_node);
-                // stack.inside_null = false;
+                    // stack.inside_null = true;
+                    let res = -self.ab_search::<{NonPV}>(
+                        ts, &g2, (null_depth,ply+1), (-beta,-beta+1), stats, stack, !is_cut_node);
+                    // stack.inside_null = false;
 
-                if let Some(res) = res.get_result() {
-                    if res.score >= beta {
-                        stats!(stats.null_prunes += 1);
-                        self.pop_nnue(stack);
-                        return ABPrune(beta, Prune::NullMove);
+                    if let Some(res) = res.get_result() {
+                        if res.score >= beta {
+                            stats!(stats.null_prunes += 1);
+                            self.pop_nnue(stack);
+                            return ABPrune(beta, Prune::NullMove);
+                        }
                     }
-                }
 
-                self.pop_nnue(stack);
+                    self.pop_nnue(stack);
+                }
             }
 
         }
@@ -1109,6 +1129,7 @@ impl ExHelper {
             moves_searched += 1;
 
             next_depth += extensions;
+            next_depth = next_depth.max(0);
             stack.update_double_extension(ply, extensions);
 
             /// Step 15. Recursively search for each move
@@ -1167,6 +1188,7 @@ impl ExHelper {
 
                     let r = (r as Depth).clamp(1, next_depth + 1);
                     let depth_r = next_depth.checked_sub(r).unwrap();
+                    // assert!(depth_r >= 0);
 
                     let (a2,b2) = (-(alpha+1),-alpha); // XXX: ??
 

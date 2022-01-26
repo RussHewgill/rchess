@@ -467,6 +467,11 @@ impl Game {
 impl Game {
 
     pub fn is_checkmate(&self, ts: &Tables) -> bool {
+        unimplemented!()
+    }
+
+    #[cfg(feature = "nope")]
+    pub fn is_checkmate(&self, ts: &Tables) -> bool {
         let mvs = self.search_all(ts);
         match mvs {
             Outcome::Checkmate(_) => true,

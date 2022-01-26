@@ -50,7 +50,7 @@ impl ABStack {
         if let Some(st) = self.stacks.get_mut(ply as usize) {
             f(st);
         } else {
-            panic!("stack with, but missing ply");
+            panic!("stack with, but missing ply: {}", ply);
         }
     }
 
@@ -263,8 +263,8 @@ impl ABStack {
         let d1 = self.stacks[ply as usize - 1].depth;
 
         let x = if d0 > d1 {
-            panic!()
-            // 1
+            // panic!()
+            1
         } else {
             0
         };

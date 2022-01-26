@@ -1055,6 +1055,16 @@ impl<'a> MoveGen<'a> {
 // #[cfg(feature = "nope")]
 impl<'a> MoveGen<'a> {
 
+    pub fn is_checkmate(ts: &'a Tables, g: &'a Game) -> bool {
+
+        if !g.in_check() {
+            false
+        } else {
+            let mvs = Self::generate_list_legal(ts, g, None);
+            mvs.is_empty()
+        }
+    }
+
     pub fn gives_check(&self, mv: Move) -> bool {
         Self::_gives_check(&self.ts, &self.game, mv)
     }

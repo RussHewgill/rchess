@@ -3048,6 +3048,8 @@ fn main9() {
     // // eprintln!("avg = {:.3}", avg);
     // return;
 
+    let fen = "1k6/1P6/1K4p1/7p/5P1P/8/8/8 b - - 0 1";
+
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
@@ -3117,8 +3119,8 @@ fn main9() {
 
     // let n = MAX_SEARCH_PLY;
     // let n = 35;
-    // let n = 22;
-    let n = 12;
+    let n = 18;
+    // let n = 12;
     // let n = 12;
     // let n = 2;
 
@@ -3131,7 +3133,7 @@ fn main9() {
     ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
-    ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
+    // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
 
     // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
@@ -3161,13 +3163,14 @@ fn main9() {
     // eprintln!("avg = {:.3}", avg);
     // return;
 
-    // let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6";
+    // let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 c1e3 e7e5 d4b3 c8e6 c3d5 b8d7 d1d3 e6d5 e4d5 g7g6 f1e2 f8g7 c2c4 e8g8 e1g1 b7b6 b3d2 a6a5 g2g3 d7c5 d3b1 f6d7 b1c2 f7f5 f2f3 d8e7 g1g2 a8e8 a1e1 h7h5 h2h4 e5e4 f3e4 c5e4 e3f4 d7c5 e2f3 e4d2 e1e7 d2f1 g2f1 e8e7 f4d6 e7e3 d6f8 e3f3 f1g2 c5d3 c2e2 f3f2 e2f2 d3f2 f8g7 g8g7 g2f2 a5a4 b2b4 a4b3 a2b3 g7f6 f2f3 f6e7 b3b4 e7d6 f3f4 b6b5 c4b5 d6d5 b5b6 d5c6 b6b7 c6b7 f4e5 b7a6 e5d4 a6b5 d4c3 b5c6 c3c4 c6b6 b4b5 b6b7 c4c5 b7c7 b5b6 c7b8 c5d4 b8b7 d4c5 b7b8 c5c6 f5f4 g3f4 b8c8 b6b7 c8b8 c6b6";
     // let params = params.split(" ");
     // let moves: Vec<&str> = params.collect();
     // ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
     // // ex.update_game_movelist(&ts, fen, moves.into_iter());
     // let g = ex.game;
     // eprintln!("g = {:?}", g);
+    // eprintln!("g.to_fen() = {:?}", g.to_fen());
 
     // return;
 

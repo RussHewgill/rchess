@@ -416,6 +416,20 @@ impl SyzygyTB {
         }
     }
 
+    #[cfg(feature = "nope")]
+    pub fn best_move(&self, ts: &Tables, g: &Game) -> SyzygyResult<Option<(Move, Dtz)>> {
+        let moves = MoveGen::generate_list(ts, g, None);
+        let mut best_move_dtz: Option<(Move, Dtz)> = None;
+        for mv in moves.iter() {
+            if let Ok(g2) = g.make_move_unchecked(ts, *mv) {
+                if let Ok(entry) = self.probe(ts, &g2) {
+                }
+            }
+        }
+        // Ok(best_move_dtz)
+        unimplemented!()
+    }
+
     /// Select a DTZ-optimal move.
     ///
     /// Requires both WDL and DTZ tables.
@@ -424,15 +438,18 @@ impl SyzygyTB {
     ///
     /// See [`SyzygyError`] for possible error
     /// conditions.
+    // #[cfg(feature = "nope")]
     pub fn best_move(&self, ts: &Tables, g: &Game) -> SyzygyResult<Option<(Move, Dtz)>> {
         struct WithAfter<S> {
-            mv: Move,
+            mv:    Move,
             after: S,
+            // mate:  bool,
         }
 
         struct WithWdlEntry<'a> {
-            mv: Move,
+            mv:    Move,
             entry: WdlEntry<'a>,
+            // mate:  bool,
         }
 
         struct WithDtz {
@@ -482,7 +499,8 @@ impl SyzygyTB {
             let dtz = a.entry.dtz(ts)?;
             Ok(WithDtz {
                 immediate_loss: dtz == Dtz(-1)
-                    && a.entry.g.is_checkmate(ts),
+                    // && a.entry.g.is_checkmate(ts),
+                    && MoveGen::is_checkmate(ts, a.entry.g),
                 zeroing: a.mv.is_zeroing(),
                 m: a.mv.clone(),
                 dtz,
@@ -622,7 +640,8 @@ impl<'a> WdlEntry<'a> {
 
             let v = -self.tablebase.probe_dtz(ts, &after)?;
 
-            if v == Dtz(1) && after.is_checkmate(ts) {
+            // if v == Dtz(1) && after.is_checkmate(ts) {
+            if v == Dtz(1) && MoveGen::is_checkmate(ts, &after) {
                 best = Some(Dtz(1));
             } else if wdl >= DecisiveWdl::CursedWin {
                 if v > Dtz(0) && best.map_or(true, |best| v + Dtz(1) < best) {

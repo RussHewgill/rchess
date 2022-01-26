@@ -328,7 +328,7 @@ mod ss {
 
         pub fn inc_nodes_arr(&mut self, ply: Depth) {
             if ply as usize >= self.nodes_arr.0.len() {
-                debug!("inc_nodes_arr: depth more than 64");
+                // debug!("inc_nodes_arr: depth more than 64");
                 return;
             }
             // self.nodes_arr.0[d as usize] += 1;
