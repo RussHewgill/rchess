@@ -19,6 +19,88 @@ pub fn pretty_print_si(x: i64) -> String {
     }
 }
 
+// pub fn pretty_print_grid<T: std::fmt::Debug + std::fmt::Display>(grid: &[T; 64], padding: usize) {
+// pub fn pretty_print_grid<T: std::fmt::Debug + std::fmt::Display>(grid: &[T; 64]) -> std::io::Result<()> {
+pub fn pretty_print_grid(grid: &[Score; 64]) -> std::io::Result<()> {
+    use std::io::{self, Write};
+    use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
+
+    let mut stdout = StandardStream::stdout(ColorChoice::Always);
+
+    for y0 in 0..8 {
+        let y = 7-y0;
+        let mut line = String::new();
+
+        // line.push_str(&format!("{}  ", y + 1));
+
+        stdout.set_color(ColorSpec::new().set_fg(None))?;
+        write!(stdout, "{}  ", y + 1)?;
+
+        for x in 0..8 {
+
+            // let ch: char = match self.get_at(Coord::new(x,y)) {
+            //     Some((c,p)) => p.print(c),
+            //     None        => {
+            //         let c = square_color(Coord::new(x,y));
+            //         c.print()
+            //     },
+            // };
+
+            let s = grid[Coord::new(x,y)];
+
+            // ((*s).clamp(-127,127) + 127) as u8
+            let x = (s.clamp(-127, 127) - 127).abs() as u8;
+
+            // stdout.set_color(ColorSpec::new().set_fg(Some(map_color_score(*s))))?;
+            // stdout.set_color(ColorSpec::new().set_fg(Some(map_color(((*s).clamp(-127,127) + 127) as u8))))?;
+            stdout.set_color(ColorSpec::new().set_fg(Some(map_color(x))))?;
+            stdout.flush()?;
+
+            // stdout.write()
+            write!(stdout, "{:>3} ", s)?;
+
+            // line.push_str(&format!("{:>3}", s));
+            // line.push(' ');
+        }
+        // f.write_str(&format!("{}\n", line))?;
+        println!("{}", line);
+    }
+    let mut line = String::new();
+    stdout.set_color(ColorSpec::new().set_fg(None))?;
+    line.push_str(&format!("     "));
+    let cs = vec!['A','B','C','D','E','F','G','H'];
+    for x in 0..8 {
+        line.push_str(&format!("{}   ", cs[x]));
+    }
+    // f.write_str(&format!("{}\n", line))?;
+    println!("{}", line);
+
+    Ok(())
+}
+
+pub fn map_color_score(score: Score) -> termcolor::Color {
+    let score = scale_score_to_i8(score);
+
+    let x = (score as i16 + 127) as u8;
+
+    // let x = (score.clamp(-127, 127) - 127).abs() as u8;
+
+    map_color(x)
+}
+
+pub fn map_color(x: u8) -> termcolor::Color {
+    let x = x / 6;
+
+    let i = x as f64;
+    let r = (f64::sin(0.024 * i + 0.0) * 127.0 + 128.0).round();
+    let g = (f64::sin(0.024 * i + 2.0) * 127.0 + 128.0).round();
+    let b = (f64::sin(0.024 * i + 4.0) * 127.0 + 128.0).round();
+    let r = r as u8;
+    let g = g as u8;
+    let b = b as u8;
+    termcolor::Color::Rgb(r,g,b)
+}
+
 pub fn read_epd(path: &str) -> std::io::Result<Vec<(String, Vec<String>)>> {
 // pub fn read_epd(path: &str) -> std::io::Result<Vec<(String, String)>> {
     let file = std::fs::read_to_string(path)?;

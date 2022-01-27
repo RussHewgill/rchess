@@ -102,7 +102,7 @@ mod const_params {
 
     pub const CHECKMATE_VALUE: Score = 100_000_000;
     pub const TB_WIN_VALUE: Score    = 90_000_000;
-    // pub const KNOWN_WIN_VALUE: Score = 80_000_000;
+    pub const KNOWN_WIN_VALUE: Score = 80_000_000;
 
     // pub const TB_WIN_MAX: Score = TB_WIN_VALUE 
 

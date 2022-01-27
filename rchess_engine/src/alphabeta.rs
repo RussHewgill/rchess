@@ -450,7 +450,8 @@ impl ExHelper {
         } else if msi.is_some() || meval.is_some() {
 
             let mut eval = if let Some(eval) = meval { eval } else {
-                self.eval_nn_or_hce(ts, g)
+                // self.eval_nn_or_hce(ts, g)
+                self.evaluate(ts, g, false)
             };
 
             if let Some(si) = msi {
@@ -475,30 +476,6 @@ impl ExHelper {
             self.tt_insert_deepest_eval(g.zobrist, Some(eval));
 
             Some(eval)
-        }
-
-    }
-
-    pub fn eval_nn_or_hce(
-        &self,
-        // ts:           &'static Tables,
-        ts:           &Tables,
-        g:            &Game,
-    ) -> Score {
-
-        // TODO: endgame
-        // TODO: material tables?
-
-        if let Some(nnue) = &self.nnue {
-            /// NNUE Eval, cheap-ish
-            /// TODO: bench vs evaluate
-            let mut nn = nnue.borrow_mut();
-            let score = nn.evaluate(&g, true);
-            score
-        } else {
-            let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
-            let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
-            score
         }
 
     }

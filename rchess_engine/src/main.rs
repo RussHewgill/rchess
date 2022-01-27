@@ -71,6 +71,7 @@ fn main() {
         // "threading" => main_threading(),
         "bitboard"  => main_bitboard(),
         "sample"    => main_sample(),
+        "endgame"   => main_endgame(),
         "nn"        => main_nn(),
         "nnue"      => main_nnue(),
         "train"     => main_nnue_train(),
@@ -254,6 +255,108 @@ fn _main() {
 fn main_bitboard() {}
 
 #[allow(unreachable_code)]
+fn main_endgame() {
+    // init_logger();
+    let ts = Tables::new();
+
+    let fen = "8/8/8/3k4/8/8/3P4/3K4 b - - 0 1"; // black king in center
+    let fen1 = "8/8/8/k7/8/8/3P4/3K4 b - - 0 1"; // black king A5
+    let fen2 = "3k4/8/8/8/8/8/3P4/3K4 b - - 0 1"; // black king D8
+    let fen3 = "k7/8/8/8/8/8/3P4/3K4 b - - 0 1"; // black king A8
+
+    let fen = "8/8/8/5k2/3Q4/2K5/8/8 w - - 0 1"; // KQ vs K, #7
+
+    let mut g = Game::from_fen(&ts, fen).unwrap();
+    eprintln!("g = {:?}", g);
+
+    let g1 = Game::from_fen(&ts, fen1).unwrap();
+    let g2 = Game::from_fen(&ts, fen2).unwrap();
+    let g3 = Game::from_fen(&ts, fen3).unwrap();
+
+    use rchess_engine_lib::endgame::helpers::*;
+
+    let ksq = g.get(King, Black).bitscan();
+
+    // let grid: [Score; 64] = array_init::array_init(|x| {
+    //     // push_king_to_edge(Coord::new_int(x))
+    //     // push_king_to_corner(Coord::new_int(x))
+    //     push_close(Coord::new(0,0), Coord::new_int(x))
+    // });
+
+    // pretty_print_grid(&grid).unwrap();
+
+    // for (n,g) in [g,g1,g2,g3].iter().enumerate() {
+    //     eprintln!("game {}", n);
+    //     let ksq = g.get(King, Black).bitscan();
+    //     eprintln!("push_king_to_edge(ksq) = {:?}", push_king_to_edge(ksq));
+    //     eprintln!("push_king_to_corner(ksq) = {:?}", push_king_to_corner(ksq));
+    //     eprintln!();
+    // }
+
+    play_from_pos(&ts, fen, 0.5);
+
+    return;
+
+    let t = 4.0;
+
+    // let n = MAX_SEARCH_PLY;
+    let n = 10;
+
+    let timesettings = TimeSettings::new_f64(0.0,t);
+    let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
+    ex.cfg.return_moves = true;
+    ex.cfg.clear_table = false;
+    ex.cfg.num_threads = Some(1);
+
+    ex.cfg.late_move_reductions = true;
+
+    ex.time_settings.is_per_move = true;
+    ex.time_settings.move_time = (t * 1000.0) as u64;
+
+
+    let t0 = std::time::Instant::now();
+    let (res,moves,stats0) = ex.lazy_smp_2(&ts);
+    let t1 = t0.elapsed();
+    let t2 = t1.as_secs_f64();
+    let time0 = t2;
+    let best0 = res.get_result().unwrap();
+
+    let best   = res.get_result().unwrap();
+    let scores = res.get_scores().unwrap_or_default();
+
+    println!();
+    debug!("Best move = {:>8} {:?}", best.score, best.mv);
+    debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth.0, t2);
+    println!();
+
+}
+
+pub fn play_from_pos(ts: &Tables, fen: &str, inc: f64) {
+
+    let mut g = Game::from_fen(&ts, fen).unwrap();
+
+    let n = 35;
+
+    let timesettings = TimeSettings::new_f64(0.0,inc);
+    let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
+    ex.cfg.num_threads = Some(1);
+    ex.time_settings.is_per_move = true;
+
+    loop {
+
+        let (mmove,stats0) = ex.explore(&ts);
+        let mv = mmove.unwrap().0;
+        ex._update_game_movelist(ts, &[mv]);
+
+        eprintln!("ex.game.to_fen() = {:?}", ex.game.to_fen());
+        eprintln!("ex.game = {:?}", ex.game);
+
+    }
+
+
+}
+
+#[allow(unreachable_code)]
 fn main_sample() {
     // init_logger();
     let ts = Tables::new();
@@ -290,6 +393,7 @@ fn main_sample() {
         ex.time_settings.is_per_move = true;
         ex.time_settings.move_time = (t * 1000.0) as u64;
         ex.cfg.late_move_reductions = true;
+        ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
         let from  = &correct[0..2];
         let to    = &correct[2..4];
         let other = &correct[4..];
@@ -2983,70 +3087,12 @@ fn main9() {
 
     // let fen = "r2q3r/1b1k1pbp/p4np1/2BP1pN1/p1B5/P1Q5/1PP3PP/R3K2R w KQ - 0 19"; // explosion
 
-    let fen = "1Q6/8/4k3/8/8/4K3/8/8 w - - 0 1"; // endgame KQ v K, #7
+    // let fen = "1Q6/8/4k3/8/8/4K3/8/8 w - - 0 1"; // endgame KQ v K, #7
 
-    // use rchess_engine_lib::heuristics::update_stat_bonus;
-    // let bonus = 512;
-    // let mut current = 0;
-    // update_stat_bonus(bonus, &mut current);
-    // eprintln!("current = {:?}", current);
-    // update_stat_bonus(bonus, &mut current);
-    // eprintln!("current = {:?}", current);
-    // return;
-
-    // let mut wacs = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
-    // let mut wacs: Vec<Game> = wacs.into_iter().map(|(fen,_)| {
-    //     Game::from_fen(&ts, &fen).unwrap()
-    // }).collect();
-    // let t0 = std::time::Instant::now();
-    // for _ in 0..100_000 {
-    //     for g in wacs.iter() {
-    //         let mut g = *g;
-    //         g.recalc_gameinfo_mut(&ts).unwrap();
-    //     }
-    // }
-    // let t1 = t0.elapsed();
-    // let t2 = t1.as_secs_f64();
-    // eprintln!("t2 = {:.4}", t2);
-    // return;
-
-    // let mut wacs = read_epd("/home/me/code/rust/rchess/testpositions/WAC.epd").unwrap();
-    // let mut wacs: Vec<Game> = wacs.into_iter().map(|(fen,_)| {
-    //     Game::from_fen(&ts, &fen).unwrap()
-    // }).collect();
-    // let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
-    // let mut moves = vec![];
-    // let st = ABStack::new();
-    // for g in wacs.iter() {
-    //     let mut movegen = MoveGen::new(&ts, g, None, &st, 0, 0);
-    //     let mut movelist = MoveGen::generate_list(&ts, g, None);
-    //     let x = movelist.len();
-    //     let mut mvs = vec![];
-    //     for _ in 0..10.min(x) {
-    //         let idx = rng.gen_range(0..movelist.len());
-    //         let mv = movelist.remove(idx);
-    //         if movegen.move_is_legal(mv) {
-    //             mvs.push(mv);
-    //         }
-    //     }
-    //     moves.push((g,mvs));
-    // }
-    // // XXX: avg of N runs
-    // const N: usize = 10_000;
-    // // let mut times = vec![];
-    // let t0 = std::time::Instant::now();
-    // for n in 0..N {
-    //     for (g,mvs) in moves.iter() {
-    //         for mv in mvs {
-    //             let g2 = g.make_move_unchecked(&ts, *mv).unwrap();
-    //         }
-    //     }
-    // }
-    // let t1 = t0.elapsed().as_secs_f64();
-    // eprintln!("finished in {:.3} seconds", t1);
-    // // let avg = times.iter().sum::<f64>() / N as f64;
-    // // eprintln!("avg = {:.3}", avg);
-    // return;
+    let fen = "8/8/8/3k4/8/8/3P4/3K4 b - - 0 1"; // black king in center
+    let fen1 = "8/8/8/k7/8/8/3P4/3K4 b - - 0 1"; // black king A5
+    let fen2 = "3k4/8/8/8/8/8/3P4/3K4 b - - 0 1"; // black king D8
+    let fen3 = "k7/8/8/8/8/8/3P4/3K4 b - - 0 1"; // black king A8
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -3055,37 +3101,8 @@ fn main9() {
     eprintln!("g.to_fen() = {:?}", g.to_fen());
     eprintln!("g = {:?}", g);
 
-    // let mut tb = SyzygyTB::new();
-    // tb.add_directory("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
-    // let wdl = tb.probe_wdl(&ts, &g);
-    // eprintln!("wdl = {:?}", wdl);
-    // let dtz = tb.best_move(&ts, &g).unwrap();
-    // eprintln!("dtz = {:?}", dtz);
-    // return;
-
-    // let mvs = MoveGen::generate_list_legal(ts, &g, None);
-
     // eprintln!();
     // eprintln!("correct = {:?}", correct);
-
-    // let hashmove = Move::new_promotion("h7", "h8", Queen);
-    // let mut st = ABStack::new();
-    // st.push_if_empty(&g, 0);
-    // let killer1 = Move::new_quiet("e1", "d1", King);
-    // st.killers_store(0, killer1);
-    // // let mut movegen = MoveGen::new_qsearch(&ts, &g, None, &st, 0);
-    // let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0, vec![]);
-    // // let mut movegen = MoveGen::new(&ts, &g, Some(hashmove), &st, 0, 0);
-    // eprintln!();
-    // let mv = Move::new_double("g7", "g5");
-    // let k0 = movegen.move_is_pseudo_legal(mv);
-    // let k1 = movegen.move_is_legal(mv);
-    // eprintln!("k0 = {:?}", k0);
-    // eprintln!("k1 = {:?}", k1);
-    // // while let Some(mv) = movegen.next(&st) {
-    // //     eprintln!("mv = {:?}", mv);
-    // // }
-    // return;
 
     // let hook = std::panic::take_hook();
     // std::panic::set_hook(Box::new(move |panicinfo| {
@@ -3099,25 +3116,12 @@ fn main9() {
     // print_size_of!(Game);
     // return;
 
-    // for depth in 0..20 {
-    //     let k0 = Score::min(HISTORY_MAX, depth * depth);
-    //     let k1 = Score::min((6 * depth + 200) * depth - 215, 2000);
-    //     let bonus = depth * depth;
-    //     let k2 = Score::min(32 * bonus, 2000);
-    //     eprintln!("{:>2} = {:>6} {:>6} {:>6}", depth, k0, k1, k2);
-    // }
-    // return;
-
     // let t = 10.0;
-    // let t = 6.0;
     let t = 4.0;
     // let t = 2.0;
-    // let t = 0.5;
-    // let t = 0.3;
 
     // let n = MAX_SEARCH_PLY;
     // let n = 35;
-    // let n = 18;
     // let n = 12;
     let n = 10;
     // let n = 2;
@@ -3161,7 +3165,7 @@ fn main9() {
     // eprintln!("avg = {:.3}", avg);
     // return;
 
-    // let params = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 c1e3 e7e5 d4b3 c8e6 c3d5 b8d7 d1d3 e6d5 e4d5 g7g6 f1e2 f8g7 c2c4 e8g8 e1g1 b7b6 b3d2 a6a5 g2g3 d7c5 d3b1 f6d7 b1c2 f7f5 f2f3 d8e7 g1g2 a8e8 a1e1 h7h5 h2h4 e5e4 f3e4 c5e4 e3f4 d7c5 e2f3 e4d2 e1e7 d2f1 g2f1 e8e7 f4d6 e7e3 d6f8 e3f3 f1g2 c5d3 c2e2 f3f2 e2f2 d3f2 f8g7 g8g7 g2f2 a5a4 b2b4 a4b3 a2b3 g7f6 f2f3 f6e7 b3b4 e7d6 f3f4 b6b5 c4b5 d6d5 b5b6 d5c6 b6b7 c6b7 f4e5 b7a6 e5d4 a6b5 d4c3 b5c6 c3c4 c6b6 b4b5 b6b7 c4c5 b7c7 b5b6 c7b8 c5d4 b8b7 d4c5 b7b8 c5c6 f5f4 g3f4 b8c8 b6b7 c8b8 c6b6";
+    // let params = "e2e4 c7c5 g1f3 d7d6";
     // let params = params.split(" ");
     // let moves: Vec<&str> = params.collect();
     // ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
@@ -3236,10 +3240,10 @@ fn main9() {
 
     stats0.print(t1);
 
-    eprintln!();
+    // eprintln!();
     stats0.print_prunes();
 
-    eprintln!();
+    // eprintln!();
     stats0.print_ebf(false);
     stats0.print_mbf();
     stats0.print_nth_best(false);

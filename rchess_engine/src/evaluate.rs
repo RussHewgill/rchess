@@ -140,8 +140,50 @@ mod tapered {
 
 // }
 
+/// Main Eval
+/// Chooses between NNUE and HCE
+impl ExHelper {
+
+    pub fn evaluate(&self, ts: &Tables, g: &Game, quiesce: bool) -> Score {
+
+        // let nnue = cfg!(feature = "NNUE")
+        //     && self.nnue.is_some()
+        //     && 
+        //     ;
+
+        // unimplemented!()
+        self.eval_nn_or_hce(ts, g)
+    }
+
+    pub fn eval_nn_or_hce(
+        &self,
+        // ts:           &'static Tables,
+        ts:           &Tables,
+        g:            &Game,
+    ) -> Score {
+
+        // TODO: endgame
+        // TODO: material tables?
+
+        if let Some(nnue) = &self.nnue {
+            /// NNUE Eval, cheap-ish
+            /// TODO: bench vs evaluate
+            let mut nn = nnue.borrow_mut();
+            let score = nn.evaluate(&g, true);
+            score
+        } else {
+            let stand_pat = self.cfg.evaluate_classical(ts, g, &self.ph_rw);
+            let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
+            score
+        }
+
+    }
+
+}
+
 impl ExConfig {
-    pub fn evaluate(&self, ts: &Tables, g: &Game, ph_rw: &PHTable) -> Score {
+
+    pub fn evaluate_classical(&self, ts: &Tables, g: &Game, ph_rw: &PHTable) -> Score {
         // g.sum_evaluate(ts, &self.eval_params_mid, &self.eval_params_mid, Some(ph_rw))
         g.sum_evaluate(ts, &self.eval_params_mid, &self.eval_params_mid, None)
         // g.sum_evaluate2(ts)
@@ -485,6 +527,17 @@ impl Piece {
     pub const fn score(&self) -> Score {
         match self {
             Pawn   => 100,
+            Knight => 320,
+            Bishop => 330,
+            Rook   => 500,
+            Queen  => 900,
+            King   => 32001,
+        }
+    }
+    /// Same, but pawns are worth twice as much
+    pub const fn score_endgame(&self) -> Score {
+        match self {
+            Pawn   => 200,
             Knight => 320,
             Bishop => 330,
             Rook   => 500,

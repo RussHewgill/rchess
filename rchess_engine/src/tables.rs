@@ -80,6 +80,9 @@ lazy_static! {
     pub static ref FLANK_RIGHT: BitBoard = MASK_FILES[4] | MASK_FILES[5] | MASK_FILES[6] | MASK_FILES[7];
 }
 
+pub const DARK_SQUARES: BitBoard  = BitBoard(0xAA55AA55AA55AA55);
+pub const LIGHT_SQUARES: BitBoard = BitBoard(0x55AA55AA55AA55AA);
+
 fn def_line_bb()    -> [[BitBoard; 64]; 64] {
     let bishops = Tables::gen_bishops();
     Tables::gen_linebb(bishops)

@@ -216,14 +216,14 @@ mod ss {
             let bcs = (self.beta_cut_first,self.beta_cut_not_first);
             eprintln!("beta_cut_first = {:.3?}", bcs.0 as f64 / (bcs.0 + bcs.1) as f64);
 
-            eprintln!("sing_exts: ({:>5},{:>5},{:>5},{:>5},{:>5},{:>5})",
-                      self.sing_exts.one,
-                      self.sing_exts.two,
-                      self.sing_exts.prunes,
-                      self.sing_exts.reduce,
-                      self.sing_exts.capture,
-                      self.sing_exts.check,
-            );
+            // eprintln!("sing_exts: ({:>5},{:>5},{:>5},{:>5},{:>5},{:>5})",
+            //           self.sing_exts.one,
+            //           self.sing_exts.two,
+            //           self.sing_exts.prunes,
+            //           self.sing_exts.reduce,
+            //           self.sing_exts.capture,
+            //           self.sing_exts.check,
+            // );
 
             // eprintln!("pawn hash hitrate = {:.3}",
             //           self.ph_hits as f64 / (self.ph_hits as f64 + self.ph_misses as f64));
@@ -313,7 +313,7 @@ mod ss {
                 }
             }
             let s: f64 = xs.iter().sum();
-            debug!("Average EBF: {:.2}", s / xs.len() as f64);
+            eprintln!("Average EBF: {:.2}", s / xs.len() as f64);
 
         }
 

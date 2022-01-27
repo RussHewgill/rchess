@@ -140,6 +140,8 @@ pub struct MoveGen<'a> {
     buf_scored:          ArrayVec<(Move,Score),256>,
     // pub buf_scored:          ArrayVec<(Move,Score),256>,
 
+    buf_all:             ArrayVec<Move,256>,
+
     // buf_set:             BinaryHeap<MGKey>,
 
     cur:                 usize,
@@ -274,6 +276,7 @@ impl<'a> MoveGen<'a> {
                 self.killer_moves,
                 self.counter_move);
 
+            self.buf_all.push(mv);
             self.buf_scored.push((mv, score));
         }
 
@@ -464,6 +467,8 @@ impl<'a> MoveGen<'a> {
 
             buf_scored: ArrayVec::new(),
 
+            buf_all:    ArrayVec::new(),
+
             cur:   0,
             // move_history,
 
@@ -518,6 +523,8 @@ impl<'a> MoveGen<'a> {
 
             buf_scored: ArrayVec::new(),
 
+            buf_all:    ArrayVec::new(),
+
             cur:   0,
             // move_history,
 
@@ -565,6 +572,7 @@ impl<'a> MoveGen<'a> {
             // stage:     if in_check { MoveGenStage::EvasionHash } else { MoveGenStage::Hash },
             buf,
             buf_scored: ArrayVec::new(),
+            buf_all:    ArrayVec::new(),
 
             cur:   0,
 
@@ -819,6 +827,13 @@ impl<'a> MoveGen<'a> {
         Some((stage,mv))
     }
 
+}
+
+/// Any Legal
+impl<'a> MoveGen<'a> {
+    // pub fn any_legal(ts: &'a Tables, g: &'a Game, gen: Option<MoveGenType>) -> bool {
+    //     let mvs = generate_list_legal(ts, g, gen);
+    // }
 }
 
 /// Generate

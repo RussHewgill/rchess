@@ -126,6 +126,7 @@ impl ExHelper {
 }
 
 /// Quiescence static eval
+#[cfg(feature = "nope")]
 impl ExHelper {
 
     pub fn get_static_eval_qsearch(
@@ -173,7 +174,8 @@ impl ExHelper {
 
 }
 
-/// Quiescence static eval
+/// best_case_move
+#[cfg(feature = "nope")]
 impl ExHelper {
     pub fn best_case_move(
         &self,
@@ -571,13 +573,15 @@ impl ExHelper {
             return draw_value(stats);
         }
 
-        let stand_pat = if let Some(nnue) = &self.nnue {
-            let mut nn = nnue.borrow_mut();
-            nn.evaluate(&g, true)
-        } else {
-            let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
-            if g.state.side_to_move == Black { -stand_pat } else { stand_pat }
-        };
+        // let stand_pat = if let Some(nnue) = &self.nnue {
+        //     let mut nn = nnue.borrow_mut();
+        //     nn.evaluate(&g, true)
+        // } else {
+        //     let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
+        //     if g.state.side_to_move == Black { -stand_pat } else { stand_pat }
+        // };
+
+        let stand_pat = self.evaluate(ts, g, true);
 
         /// early halt
         if self.stop.load(Relaxed) { return stand_pat; }
