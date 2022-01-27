@@ -470,7 +470,8 @@ impl ExHelper {
 
             Some(eval)
         } else {
-            let eval = self.eval_nn_or_hce(ts, g);
+            // let eval = self.eval_nn_or_hce(ts, g);
+            let eval = self.evaluate(ts, g, false);
             stack.with(ply, |st| st.static_eval = Some(eval));
 
             self.tt_insert_deepest_eval(g.zobrist, Some(eval));
@@ -555,7 +556,8 @@ impl ExHelper {
         /// Max search depth
         if ply >= MAX_SEARCH_PLY {
             if !in_check {
-                let score = self.eval_nn_or_hce(ts, g);
+                // let score = self.eval_nn_or_hce(ts, g);
+                let score = self.evaluate(ts, g, false);
                 return ABSingle(ABResult::new_null_score(score));
             } else {
                 let score = draw_value(stats);

@@ -1,6 +1,7 @@
 
 use crate::evmap_tables::*;
 use crate::lockless_map::*;
+use crate::material_table::MaterialTable;
 use crate::movegen::MoveGen;
 use crate::searchstats;
 use crate::types::*;
@@ -96,6 +97,10 @@ pub struct Explorer {
 
     pub move_history:  Vec<(Zobrist, Move)>,
     // pub pos_history:   HashMap<Zobrist,u8>,
+
+
+    per_thread_data:   Vec<MaterialTable>,
+
 }
 
 /// New
@@ -163,6 +168,8 @@ impl Explorer {
 
             move_history:   vec![],
             // pos_history:    HashMap::default(),
+
+            per_thread_data: vec![],
         }
     }
 
@@ -252,6 +259,8 @@ pub struct ExHelper {
 
     // pub prev_best_move:  Option<Move>,
 
+    pub material_table:  RefCell<MaterialTable>,
+
 }
 
 /// Load EvalParams
@@ -273,6 +282,7 @@ impl Explorer {
         best_depth:       Arc<CachePadded<AtomicI16>>,
         root_moves:       Vec<Move>,
         tx:               ExSender,
+        thread_data:      MaterialTable,
     ) -> ExHelper {
         ExHelper {
             id,
@@ -311,6 +321,8 @@ impl Explorer {
             move_history:    self.move_history.clone(),
 
             // prev_best_move:  None,
+
+            material_table:  RefCell::new(thread_data),
 
         }
     }
@@ -648,12 +660,12 @@ impl Explorer {
                 );
             });
 
-            let mut thread_id = 0;
+            // let mut thread_id = 0;
 
             // let ord = SeqCst;
 
             /// Dispatch threads
-            for _ in 0..max_threads {
+            for thread_id in 0..max_threads as usize {
                 trace!("Spawning thread, id = {}", thread_id);
 
                 let helper = self.build_exhelper(
@@ -661,7 +673,9 @@ impl Explorer {
                     self.cfg.max_depth,
                     best_depth.clone(),
                     root_moves.clone(),
-                    tx.clone());
+                    tx.clone(),
+                    self.per_thread_data[thread_id].clone(),
+                );
 
                 /// 4 MB is needed to prevent stack overflow
                 let size = 1024 * 1024 * 4;
@@ -671,7 +685,7 @@ impl Explorer {
                         helper.lazy_smp_single(ts);
                     }).unwrap();
 
-                thread_id += 1;
+                // thread_id += 1;
                 thread_counter.fetch_add(1, SeqCst);
                 trace!("Spawned thread, count = {}", thread_counter.load(SeqCst));
             }

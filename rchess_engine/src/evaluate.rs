@@ -1,8 +1,10 @@
 
 use crate::explore::*;
+use crate::material_table::MatEval;
 use crate::types::*;
 use crate::tables::*;
 use crate::pawn_hash_table::*;
+use crate::endgame::*;
 
 pub use self::tapered::TaperedScore;
 
@@ -144,50 +146,84 @@ mod tapered {
 /// Chooses between NNUE and HCE
 impl ExHelper {
 
+    // pub fn eval_nn_or_hce(
+    //     &self,
+    //     // ts:           &'static Tables,
+    //     ts:           &Tables,
+    //     g:            &Game,
+    // ) -> Score {
+    //     // TODO: endgame
+    //     // TODO: material tables?
+    //     if let Some(nnue) = &self.nnue {
+    //         /// NNUE Eval, cheap-ish
+    //         /// TODO: bench vs evaluate
+    //         let mut nn = nnue.borrow_mut();
+    //         let score = nn.evaluate(&g, true);
+    //         score
+    //     } else {
+    //         let stand_pat = self.evaluate_classical(ts, g, &self.ph_rw);
+    //         let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
+    //         score
+    //     }
+    // }
+
     pub fn evaluate(&self, ts: &Tables, g: &Game, quiesce: bool) -> Score {
 
-        // let nnue = cfg!(feature = "NNUE")
-        //     && self.nnue.is_some()
-        //     && 
-        //     ;
+        let use_nnue = cfg!(feature = "NNUE")
+            && self.nnue.is_some()
+            // && 
+            ;
 
-        // unimplemented!()
-        self.eval_nn_or_hce(ts, g)
-    }
+        // if !use_nnue || ()
 
-    pub fn eval_nn_or_hce(
-        &self,
-        // ts:           &'static Tables,
-        ts:           &Tables,
-        g:            &Game,
-    ) -> Score {
-
-        // TODO: endgame
-        // TODO: material tables?
-
-        if let Some(nnue) = &self.nnue {
-            /// NNUE Eval, cheap-ish
-            /// TODO: bench vs evaluate
-            let mut nn = nnue.borrow_mut();
-            let score = nn.evaluate(&g, true);
-            score
+        if use_nnue {
+            if let Some(nnue) = &self.nnue {
+                let mut nn = nnue.borrow_mut();
+                let score = nn.evaluate(&g, true);
+                score
+            } else { unreachable!() }
         } else {
-            let stand_pat = self.cfg.evaluate_classical(ts, g, &self.ph_rw);
+            let stand_pat = self.evaluate_classical(ts, g, &self.ph_rw);
             let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
             score
         }
 
+        // unimplemented!()
+        // self.eval_nn_or_hce(ts, g)
+    }
+
+    pub fn evaluate_classical(&self, ts: &Tables, g: &Game, ph_rw: &PHTable) -> Score {
+        assert!(!g.state.in_check);
+
+        if let Some(entry) = self.material_table.borrow().get(g.zobrist) {
+            if let Some(eg) = entry.eg_val {
+                return eg.evaluate(ts, g);
+            }
+
+            unimplemented!()
+        } else {
+            let score = g.sum_evaluate(ts, &self.cfg.eval_params_mid, &self.cfg.eval_params_mid, None);
+            let entry = MatEval::new(g, score);
+
+            let mut mt = self.material_table.borrow_mut();
+
+            mt.insert(g.zobrist, entry);
+        }
+
+        unimplemented!()
     }
 
 }
 
 impl ExConfig {
 
-    pub fn evaluate_classical(&self, ts: &Tables, g: &Game, ph_rw: &PHTable) -> Score {
-        // g.sum_evaluate(ts, &self.eval_params_mid, &self.eval_params_mid, Some(ph_rw))
-        g.sum_evaluate(ts, &self.eval_params_mid, &self.eval_params_mid, None)
-        // g.sum_evaluate2(ts)
-    }
+    // pub fn evaluate_classical(&self, ts: &Tables, g: &Game, ph_rw: &PHTable) -> Score {
+    //     if let Some(entry) = self.mat
+    //     // g.sum_evaluate(ts, &self.eval_params_mid, &self.eval_params_mid, Some(ph_rw))
+    //     g.sum_evaluate(ts, &self.eval_params_mid, &self.eval_params_mid, None)
+    //     // g.sum_evaluate2(ts)
+    // }
+
 }
 
 /// Main Eval 2

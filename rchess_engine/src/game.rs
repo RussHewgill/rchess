@@ -102,7 +102,7 @@ impl Default for Game {
 /// [Side][Piece]
 pub struct Material {
     pub buf:  [[u8; 6]; 2],
-    pub value: [Score; 2],
+    // pub value: [Score; 2],
 }
 
 /// Construction
@@ -144,7 +144,7 @@ impl Material {
         let mut out = Self::default();
         for (side,pc) in iter {
             out.buf[side][pc] += 1;
-            out.value[side] += pc.score();
+            // out.value[side] += pc.score();
         }
         out
     }
@@ -152,7 +152,7 @@ impl Material {
     pub fn into_flipped(self) -> Self {
         Self {
             buf:   [self.buf[Black], self.buf[White]],
-            value: [self.value[Black], self.value[White]],
+            // value: [self.value[Black], self.value[White]],
         }
     }
 
@@ -844,16 +844,16 @@ impl Game {
         const COLS: [Color; 2] = [White,Black];
 
         let mut out   = [[0; 6]; 2];
-        let mut value = [0; 2];
+        // let mut value = [0; 2];
         for side in COLS {
             for pc in Piece::iter_pieces() {
                 out[side][pc.index()] = self.get(pc, side).popcount() as u8;
-                value[side] += pc.score() * out[side][pc] as Score;
+                // value[side] += pc.score() * out[side][pc] as Score;
             }
         }
         Material {
             buf: out,
-            value,
+            // value,
         }
     }
 

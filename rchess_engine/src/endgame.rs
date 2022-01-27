@@ -94,27 +94,20 @@ impl EndGameMaps {
 
 }
 
-// #[derive(Debug,PartialEq,PartialOrd,Clone,Copy)]
-// pub enum EndGame {
-//     KXvK,
-//     KPvK,
-// }
+#[derive(Debug,PartialEq,PartialOrd,Clone,Copy)]
+pub enum EndGameType {
+    KXvK,
+    KPvK,
+}
 
-// impl EndGame {
-//     pub fn evaluate(self, ts: &Tables, g: &Game, side: Color) -> Score {
-//         match self {
-//             Self::KXvK => endgame_kx_vs_k(ts, g, side),
-//             _          => unimplemented!(),
-//         }
-//     }
-//     fn verify_material(self, g: &Game, side: Color) -> bool {
-//         unimplemented!()
-//     }
-//     fn _verify_material(g: &Game, side: Color, npm: Score, pawns: u8) -> bool {
-//         g.state.material.non_pawn_value(side) == npm
-//             && g.state.material.get(Pawn, side) == pawns
-//     }
-// }
+impl EndGameType {
+    pub fn evaluate(self, ts: &Tables, g: &Game) -> Score {
+        match self {
+            Self::KXvK => endgame_kx_vs_k(ts, g),
+            _          => unimplemented!(),
+        }
+    }
+}
 
 pub struct KX_VS_K;
 
@@ -131,7 +124,9 @@ impl EndGame for KX_VS_K {
 
 }
 
-fn endgame_kx_vs_k(ts: &Tables, g: &Game, weak_side: Color) -> Score {
+fn endgame_kx_vs_k(ts: &Tables, g: &Game) -> Score {
+
+    let weak_side: Color = unimplemented!();
 
     // assert!(EndGame::KXvK.verify_material(g, side));
     assert!(!g.state.in_check);

@@ -1,5 +1,6 @@
 
 use crate::alphabeta::ABNodeType;
+use crate::material_table::MaterialTable;
 use crate::movegen::MoveGen;
 use crate::sf_compat::NNUE4;
 // use crate::threading::ExThread;
@@ -85,6 +86,7 @@ pub fn exhelper_once(
         ph_rw,
         move_history: vec![],
         // prev_best_move: None,
+        material_table: RefCell::new(MaterialTable::default()),
     };
 
     helper
