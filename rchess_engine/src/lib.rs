@@ -41,8 +41,7 @@
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-extern crate blas_src;
-// extern crate openblas_src;
+// extern crate blas_src;
 
 // extern crate nalgebra as na;
 
@@ -53,7 +52,6 @@ pub mod tables;
 pub mod magics;
 pub mod game;
 pub mod parsing;
-pub mod pgn;
 
 pub mod see;
 pub mod qsearch;
@@ -64,7 +62,6 @@ pub mod alphabeta;
 pub mod evaluate;
 pub mod timer;
 pub mod tuning;
-pub mod texel;
 pub mod hashing;
 pub mod trans_table;
 pub mod stack;
@@ -86,7 +83,11 @@ pub mod pawn_hash_table;
 pub mod evmap_tables;
 pub mod cuckoo;
 
-pub mod brain;
+
+// pub mod brain;
+// pub mod pgn;
+// pub mod texel;
+
 pub mod sf_compat;
 
 // #[macro_use]

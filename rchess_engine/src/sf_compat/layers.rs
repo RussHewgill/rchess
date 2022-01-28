@@ -9,8 +9,8 @@ use std::io::{self, Read,BufReader, BufWriter};
 use std::fs::File;
 use std::path::Path;
 
-use ndarray as nd;
-use nd::{Array2,ShapeBuilder};
+// use ndarray as nd;
+// use nd::{Array2,ShapeBuilder};
 
 use arrayvec::ArrayVec;
 use byteorder::{ReadBytesExt, LittleEndian};
@@ -717,6 +717,7 @@ mod nn_affine {
         }
 
         // #[cfg(feature = "nope")]
+        #[cfg(target_feature = "avx2")]
         pub fn _propagate_avx2_small<'a>(
             &'a mut self, trans_features: &'a [u8]
         ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
@@ -832,6 +833,7 @@ mod nn_affine {
             self.buffer.as_ref()
         }
 
+        #[cfg(target_feature = "avx2")]
         pub fn _propagate_avx2_large<'a>(
             &'a mut self, trans_features: &'a [u8]
         ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
@@ -942,6 +944,7 @@ mod nn_affine {
         fn propagate(&mut self, trans_features: &[u8]) { self._propagate_ndarray(trans_features); }
 
         // #[cfg(feature = "nope")]
+        #[cfg(target_feature = "avx2")]
         fn propagate<'a>(&'a mut self, trans_features: &'a [u8]) -> &'a [Self::OutputType] {
             if Self::SIZE_INPUT_PADDED >= 128 {
                 self._propagate_avx2_large(trans_features)
@@ -953,7 +956,8 @@ mod nn_affine {
 
         // fn propagate<'a>(&'a mut self, trans_features: &'a [u8]) -> &'a [Self::OutputType] {}
 
-        #[cfg(feature = "nope")]
+        // #[cfg(feature = "nope")]
+        #[cfg(not(target_feature = "avx2"))]
         // fn propagate(&mut self, trans_features: &[u8]) {
         fn propagate<'a>(&'a mut self, trans_features: &'a [u8]) -> &'a [Self::OutputType] {
 

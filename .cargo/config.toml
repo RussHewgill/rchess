@@ -2,14 +2,21 @@
 rustflags = [
     "-C",
     # "-Ctarget-cpu=native",
+    # "-Ctarget-feature=aes,avx,f16c,fxsr,popcnt,sse,sse2,sse3,sse4.1,sse4.2,ssse3,xsave,xsaveopt",
     "link-arg=-fuse-ld=lld",
     ]
 
 [target.x86_64-unknown-linux-gnu]
 rustflags = [
-    "-Ctarget-cpu=native",
+    # "-Ctarget-cpu=native",
     "-Clink-arg=-fuse-ld=lld",
     "-Zshare-generics=y",
 ]
 
+# [target.x86_64-unknown-linux-gnu]
+# rustflags = [
+    # "-Ctarget-feature=aes,avx,f16c,fxsr,popcnt,sse,sse2,sse3,sse4.1,sse4.2,ssse3,xsave,xsaveopt",
+    # "-Clink-arg=-fuse-ld=lld",
+    # "-Zshare-generics=y",
+# ]
 

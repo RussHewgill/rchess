@@ -1,5 +1,6 @@
 
 
+#[cfg(feature = "nope")]
 pub mod x86_64 {
     use std::convert::TryInto;
     use core::arch::x86_64::*;
@@ -90,6 +91,7 @@ pub mod x86_64 {
 
 }
 
+#[cfg(feature = "nope")]
 pub mod std_simd {
     use std::simd::*;
 
@@ -105,6 +107,7 @@ pub mod std_simd {
 
 }
 
+#[cfg(target_feature = "avx2")]
 pub mod safe_arch {
     use safe_arch::*;
 

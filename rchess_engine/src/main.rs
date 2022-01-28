@@ -48,6 +48,7 @@ use rchess_engine_lib::alphabeta::*;
 use rchess_engine_lib::{stats,not_stats,stats_or};
 #[cfg(feature = "syzygy")]
 use rchess_engine_lib::syzygy::SyzygyTB;
+#[cfg(feature = "nope")]
 use rchess_engine_lib::brain::trainer::*;
 
 use log::{debug, error, log_enabled, info, Level};
@@ -73,10 +74,11 @@ fn main() {
         "bitboard"  => main_bitboard(),
         "sample"    => main_sample(),
         "endgame"   => main_endgame(),
-        "nn"        => main_nn(),
-        "nnue"      => main_nnue(),
-        "train"     => main_nnue_train(),
+        // "nn"        => main_nn(),
+        // "nnue"      => main_nnue(),
+        // "train"     => main_nnue_train(),
         // "simd"      => main_simd(),
+        // "tuning"    => main_tuning(),
         "eval"      => main_eval(),
         "gensfen"   => {
             let count = u64::from_str(&args[2]).unwrap();
@@ -85,7 +87,6 @@ fn main() {
 
             main_gensfen(count, path);
         },
-        "tuning"    => main_tuning(),
         "wac"       => match args.get(2).map(|x| u64::from_str(x).ok()) {
             Some(n) => main_wac(n, false),
             _       => main_wac(None, false),
@@ -1279,6 +1280,7 @@ fn main_simd() {
 }
 
 #[allow(unreachable_code)]
+#[cfg(feature = "nope")]
 fn main_mnist() {
 
     use nalgebra::{SMatrix,SVector,Matrix,Vector,matrix,vector,DMatrix,DVector};
@@ -1493,6 +1495,7 @@ fn main_mnist() {
 }
 
 #[allow(unreachable_code)]
+#[cfg(feature = "nope")]
 fn main_tuning() {
     use rchess_engine_lib::texel::*;
     use rchess_engine_lib::qsearch::*;
@@ -1669,6 +1672,7 @@ fn main_gensfen(count: u64, path: &str) {
 }
 
 #[allow(unreachable_code)]
+#[cfg(feature = "nope")]
 fn main_nnue_train() {
     use rchess_engine_lib::brain::*;
     use rchess_engine_lib::brain::nnue::*;
@@ -1707,6 +1711,7 @@ fn main_nnue_train() {
 }
 
 #[allow(unreachable_code)]
+#[cfg(feature = "nope")]
 fn main_nnue() {
     use rchess_engine_lib::brain::*;
     use rchess_engine_lib::brain::nnue::*;
@@ -1855,6 +1860,7 @@ fn main_nnue() {
 }
 
 #[allow(unreachable_code)]
+#[cfg(feature = "nope")]
 fn main_nnue2() {
     use nalgebra as na;
     use na::{SMatrix,SVector,Matrix,Vector,matrix,vector,dmatrix,dvector,DVector,DMatrix};
@@ -2135,6 +2141,7 @@ fn main_nnue2() {
 }
 
 #[allow(unreachable_code)]
+#[cfg(feature = "nope")]
 fn main_nn() {
     use rchess_engine_lib::brain::networks2::*;
 
@@ -2157,6 +2164,7 @@ fn main_nn() {
 }
 
 #[allow(unreachable_code)]
+#[cfg(feature = "nope")]
 fn _main_nn() -> std::io::Result<()> {
 
     use std::io;
@@ -2562,6 +2570,7 @@ fn _main_nn() -> std::io::Result<()> {
 }
 
 #[allow(unreachable_code)]
+#[cfg(feature = "nope")]
 fn main_nn2() {
     // use ndarray::prelude::*;
 

@@ -419,6 +419,7 @@ impl NNFeatureTrans {
 }
 
 /// SIMD
+#[cfg(target_feature = "avx2")]
 impl NNFeatureTrans {
 
     const NUM_REGS: usize = 16; // AVX2
@@ -639,14 +640,15 @@ impl NNFeatureTrans {
     }
 
     pub fn accum_add(&mut self, i_w: NNIndex, i_b: NNIndex) -> NNDelta {
-        // eprintln!("add (i_w,i_b) = {:?}", (i_w,i_b));
 
-        // TODO: assert if different
+        #[cfg(not(target_feature = "avx2"))]
+        self._accum_add(White, i_w);
+        #[cfg(not(target_feature = "avx2"))]
+        self._accum_add(Black, i_b);
 
-        // self._accum_add(White, i_w);
-        // self._accum_add(Black, i_b);
-
+        #[cfg(target_feature = "avx2")]
         self._accum_inc_simd::<true>(White, i_w);
+        #[cfg(target_feature = "avx2")]
         self._accum_inc_simd::<true>(Black, i_b);
 
         NNDelta::Remove(i_w,i_b)
@@ -655,10 +657,14 @@ impl NNFeatureTrans {
     pub fn accum_rem(&mut self, i_w: NNIndex, i_b: NNIndex) -> NNDelta {
         // eprintln!("rem (i_w,i_b) = {:?}", (i_w,i_b));
 
-        // self._accum_rem(White, i_w);
-        // self._accum_rem(Black, i_b);
+        #[cfg(not(target_feature = "avx2"))]
+        self._accum_rem(White, i_w);
+        #[cfg(not(target_feature = "avx2"))]
+        self._accum_rem(Black, i_b);
 
+        #[cfg(target_feature = "avx2")]
         self._accum_inc_simd::<false>(White, i_w);
+        #[cfg(target_feature = "avx2")]
         self._accum_inc_simd::<false>(Black, i_b);
 
         NNDelta::Add(i_w,i_b)
@@ -714,13 +720,17 @@ impl NNFeatureTrans {
 
     }
 
+
+    #[cfg(not(target_feature = "avx2"))]
     pub fn reset_accum(&mut self, g: &Game) {
-        // debug!("resetting accum");
-        // self._update_accum(g, White);
-        // self._update_accum(g, Black);
+        self._update_accum(g, White);
+        self._update_accum(g, Black);
+    }
+
+    #[cfg(target_feature = "avx2")]
+    pub fn reset_accum(&mut self, g: &Game) {
         self._update_accum_simd(g, White);
         self._update_accum_simd(g, Black);
-        // self.accum.needs_refresh = [false; 2];
     }
 
     pub fn _update_accum(&mut self, g: &Game, persp: Color) {
