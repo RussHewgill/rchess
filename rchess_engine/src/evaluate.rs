@@ -167,7 +167,7 @@ impl ExHelper {
     //     }
     // }
 
-    pub fn evaluate(&self, ts: &Tables, g: &Game, quiesce: bool) -> Score {
+    pub fn evaluate(&mut self, ts: &Tables, g: &Game, quiesce: bool) -> Score {
 
         let use_nnue = cfg!(feature = "NNUE")
             && self.nnue.is_some()
@@ -177,13 +177,12 @@ impl ExHelper {
         // if !use_nnue || ()
 
         if use_nnue {
-            if let Some(nnue) = &self.nnue {
-                let mut nn = nnue.borrow_mut();
-                let score = nn.evaluate(&g, true);
+            if let Some(nnue) = self.nnue.as_mut() {
+                let score = nnue.evaluate(&g, true);
                 score
             } else { unreachable!() }
         } else {
-            let stand_pat = self.evaluate_classical(ts, g, &self.ph_rw);
+            let stand_pat = self.evaluate_classical(ts, g);
             let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
             score
         }
@@ -192,10 +191,17 @@ impl ExHelper {
         // self.eval_nn_or_hce(ts, g)
     }
 
-    pub fn evaluate_classical(&self, ts: &Tables, g: &Game, ph_rw: &PHTable) -> Score {
+    // #[cfg(feature = "nope")]
+    pub fn evaluate_classical(&mut self, ts: &Tables, g: &Game) -> Score {
+        let score = g.sum_evaluate(ts, &self.cfg.eval_params_mid, &self.cfg.eval_params_mid, None);
+        score
+    }
+
+    #[cfg(feature = "nope")]
+    pub fn evaluate_classical(&mut self, ts: &Tables, g: &Game) -> Score {
         assert!(!g.state.in_check);
 
-        if let Some(entry) = self.material_table.borrow().get(g.zobrist) {
+        if let Some(entry) = self.material_table.get(g.zobrist) {
             if let Some(eg) = entry.eg_val {
                 return eg.evaluate(ts, g);
             }
@@ -205,9 +211,7 @@ impl ExHelper {
             let score = g.sum_evaluate(ts, &self.cfg.eval_params_mid, &self.cfg.eval_params_mid, None);
             let entry = MatEval::new(g, score);
 
-            let mut mt = self.material_table.borrow_mut();
-
-            mt.insert(g.zobrist, entry);
+            self.material_table.insert(g.zobrist, entry);
         }
 
         unimplemented!()

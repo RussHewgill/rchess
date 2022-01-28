@@ -49,6 +49,12 @@ lazy_static! { /// DEBUG_ABSTACK
     pub static ref DEBUG_ABSTACK: Mutex<ABStack> = Mutex::new(ABStack::new());
 }
 
+/// used for persistent data between runs
+#[derive(Debug,Default,Clone)]
+pub struct PerThreadData {
+    pub mat_table:       MaterialTable,
+}
+
 // #[derive(Debug)]
 #[derive(Debug,Clone)]
 pub struct Explorer {
@@ -99,7 +105,7 @@ pub struct Explorer {
     // pub pos_history:   HashMap<Zobrist,u8>,
 
 
-    per_thread_data:   Vec<MaterialTable>,
+    per_thread_data:   Vec<Option<PerThreadData>>,
 
 }
 
@@ -225,16 +231,16 @@ pub struct ExHelper {
     pub side:            Color,
     pub game:            Game,
 
-    // pub root_moves:      Vec<Move>,
-    pub root_moves:      RefCell<Vec<Move>>,
+    pub root_moves:      Vec<Move>,
+    // pub root_moves:      RefCell<Vec<Move>>,
 
     pub stop:            Arc<CachePadded<AtomicBool>>,
-    // pub best_mate:       Arc<RwLock<Option<Depth>>>,
     pub best_mate:       Arc<CachePadded<AtomicI16>>,
 
     #[cfg(feature = "syzygy")]
     pub syzygy:          Option<Arc<SyzygyTB>>,
-    pub nnue:            Option<RefCell<NNUE4>>,
+    // pub nnue:            Option<RefCell<NNUE4>>,
+    pub nnue:            Option<NNUE4>,
 
     pub cfg:             ExConfig,
     pub params:          SParams,
@@ -259,7 +265,7 @@ pub struct ExHelper {
 
     // pub prev_best_move:  Option<Move>,
 
-    pub material_table:  RefCell<MaterialTable>,
+    pub material_table:  MaterialTable,
 
 }
 
@@ -282,7 +288,7 @@ impl Explorer {
         best_depth:       Arc<CachePadded<AtomicI16>>,
         root_moves:       Vec<Move>,
         tx:               ExSender,
-        thread_data:      MaterialTable,
+        thread_data:      PerThreadData,
     ) -> ExHelper {
         ExHelper {
             id,
@@ -290,7 +296,8 @@ impl Explorer {
             side:            self.side,
             game:            self.game.clone(),
 
-            root_moves:      RefCell::new(root_moves),
+            // root_moves:      RefCell::new(root_moves),
+            root_moves:      root_moves,
 
             stop:            self.stop.clone(),
             best_mate:       self.best_mate.clone(),
@@ -301,7 +308,8 @@ impl Explorer {
             #[cfg(feature = "syzygy")]
             syzygy:          self.syzygy.clone(),
 
-            nnue:            self.nnue.clone().map(|x| RefCell::new(x)),
+            // nnue:            self.nnue.clone().map(|x| RefCell::new(x)),
+            nnue:            self.nnue.clone(),
 
             best_depth,
             tx,
@@ -322,7 +330,7 @@ impl Explorer {
 
             // prev_best_move:  None,
 
-            material_table:  RefCell::new(thread_data),
+            material_table:  thread_data.mat_table,
 
         }
     }
@@ -558,7 +566,7 @@ impl ExHelper {
 impl Explorer {
 
     // pub fn explore(&self, ts: &'static Tables) -> (Option<(Move,ABResult)>,SearchStats) {
-    pub fn explore(&self, ts: &Tables) -> (Option<(Move,ABResult)>,SearchStats) {
+    pub fn explore(&mut self, ts: &Tables) -> (Option<(Move,ABResult)>,SearchStats) {
         let (ress,moves,stats) = self.lazy_smp_2(ts);
         if let Some(best) = ress.get_result() {
             debug!("explore: best move = {:?}", best.mv);
@@ -584,7 +592,7 @@ impl Explorer {
 
     #[allow(unused_labels,unused_doc_comments)]
     // pub fn lazy_smp_2(&self, ts: &'static Tables) -> (ABResults,Vec<Move>,SearchStats) {
-    pub fn lazy_smp_2(&self, ts: &Tables) -> (ABResults,Vec<Move>,SearchStats) {
+    pub fn lazy_smp_2(&mut self, ts: &Tables) -> (ABResults,Vec<Move>,SearchStats) {
 
         #[cfg(feature = "one_thread")]
         let max_threads = 1;
@@ -595,6 +603,10 @@ impl Explorer {
             let max_threads = num_cpus::get_physical();
             max_threads as i8
         };
+
+        while self.per_thread_data.len() < max_threads as usize {
+            self.per_thread_data.push(Some(PerThreadData::default()));
+        }
 
         debug!("lazy_smp_2 max_threads = {:?}", max_threads);
 
@@ -650,6 +662,45 @@ impl Explorer {
 
         crossbeam::scope(|s| {
 
+            // let mut thread_id = 0;
+
+            // let ord = SeqCst;
+
+            let mut handles = vec![];
+
+            /// Dispatch threads
+            for thread_id in 0..max_threads as usize {
+                trace!("Spawning thread, id = {}", thread_id);
+
+                let thread_data = self.per_thread_data[thread_id].take()
+                    .unwrap_or_default();
+
+                let mut helper = self.build_exhelper(
+                    thread_id,
+                    self.cfg.max_depth,
+                    best_depth.clone(),
+                    root_moves.clone(),
+                    tx.clone(),
+                    // self.per_thread_data[thread_id].clone(),
+                    // MaterialTable::default(),
+                    thread_data,
+                );
+
+                /// 4 MB is needed to prevent stack overflow
+                let size = 1024 * 1024 * 4;
+                let handle: ScopedJoinHandle<()> = s.builder()
+                    .stack_size(size)
+                    .spawn(move |_| {
+                        helper.lazy_smp_single(ts);
+                    }).unwrap();
+
+                handles.push((thread_id,handle));
+
+                // thread_id += 1;
+                thread_counter.fetch_add(1, SeqCst);
+                trace!("Spawned thread, count = {}", thread_counter.load(SeqCst));
+            }
+
             s.spawn(|_| {
                 self.lazy_smp_listener(
                     rx,
@@ -659,36 +710,6 @@ impl Explorer {
                     out.clone(),
                 );
             });
-
-            // let mut thread_id = 0;
-
-            // let ord = SeqCst;
-
-            /// Dispatch threads
-            for thread_id in 0..max_threads as usize {
-                trace!("Spawning thread, id = {}", thread_id);
-
-                let helper = self.build_exhelper(
-                    thread_id,
-                    self.cfg.max_depth,
-                    best_depth.clone(),
-                    root_moves.clone(),
-                    tx.clone(),
-                    self.per_thread_data[thread_id].clone(),
-                );
-
-                /// 4 MB is needed to prevent stack overflow
-                let size = 1024 * 1024 * 4;
-                s.builder()
-                    .stack_size(size)
-                    .spawn(move |_| {
-                        helper.lazy_smp_single(ts);
-                    }).unwrap();
-
-                // thread_id += 1;
-                thread_counter.fetch_add(1, SeqCst);
-                trace!("Spawned thread, count = {}", thread_counter.load(SeqCst));
-            }
 
             /// stoppage checking loop
             'outer: loop {
@@ -729,87 +750,9 @@ impl Explorer {
                 // std::thread::sleep(Duration::from_millis(10));
             }
 
-            #[cfg(feature = "nope")]
-            'outer: loop {
 
-                // let t1 = t0.elapsed();
-                #[cfg(feature = "basic_time")]
-                let t1 = Instant::now().checked_duration_since(t0).unwrap();
-
-                let d = best_depth.load(Relaxed);
-
-                /// Found mate, halt
-                if self.best_mate.read().is_some() {
-                    #[cfg(not(feature = "basic_time"))]
-                    let t1 = Instant::now().checked_duration_since(t0).unwrap();
-                    debug!("breaking loop (Mate),  d: {}, t0: {:.3}",
-                            d, t1.as_secs_f64());
-                    self.stop.store(true, SeqCst);
-                    break 'outer;
-                }
-
-                // TODO: 
-                // /// passed optimum time, maybe halt?
-                // if t1 > t_opt {
-                // }
-
-                /// Out of time, halt
-                #[cfg(feature = "basic_time")]
-                if t1 > t_max {
-                    debug!("breaking loop (Time),  d: {}, t0: {:.3}", d, t1.as_secs_f64());
-                    // XXX: Only force threads to stop if out of time ?
-                    self.stop.store(true, SeqCst);
-                    // drop(tx);
-                    break 'outer;
-                }
-
-                #[cfg(not(feature = "basic_time"))]
-                if timer.should_stop() {
-                    let t1 = Instant::now().checked_duration_since(t0).unwrap();
-                    debug!("breaking loop (Time),  d: {}, t0: {:.3}", d, t1.as_secs_f64());
-                    // XXX: Only force threads to stop if out of time ?
-                    self.stop.store(true, SeqCst);
-                    // drop(tx);
-                    break 'outer;
-                }
-
-                /// Max depth reached, halt
-                if d >= self.cfg.max_depth {
-                    debug!("max depth reached, breaking");
-                    self.stop.store(true, SeqCst);
-                    drop(tx);
-                    break 'outer;
-                }
-
-                if thread_counter.load(SeqCst) < max_threads {
-
-                    trace!("Spawning thread, id = {}", thread_id);
-
-                    let helper = self.build_exhelper(
-                        thread_id,
-                        self.cfg.max_depth,
-                        best_depth.clone(),
-                        root_moves.clone(),
-                        tx.clone());
-
-                    s.builder()
-                        // .stack_size(size)
-                        .spawn(move |_| {
-                            helper.lazy_smp_single(ts);
-                        }).unwrap();
-
-                    thread_id += 1;
-                    thread_counter.fetch_add(1, SeqCst);
-                    trace!("Spawned thread, count = {}", thread_counter.load(SeqCst));
-                    // std::thread::sleep(Duration::from_millis(1));
-                }
-
-                // if self.stop.load(SeqCst) {
-                if self.stop.load(Relaxed) {
-                    break 'outer;
-                }
-
-                // std::thread::sleep(Duration::from_millis(1));
+            for (thread_id,handle) in handles.into_iter() {
+                // let thread_data = handle
             }
 
             trace!("exiting lazy_smp_2 loop");
@@ -1083,11 +1026,11 @@ impl ExHelper {
 
     // #[cfg(feature = "nope")]
     fn lazy_smp_single(
-        &self,
+        &mut self,
         // ts:               &'static Tables,
         ts:               &Tables,
         // max_threads:      i8,
-    ) {
+    ) -> MaterialTable {
 
         let mut stack = ABStack::new_with_moves(&self.move_history);
         let mut stats = SearchStats::default();
@@ -1159,6 +1102,7 @@ impl ExHelper {
         }
 
         trace!("exiting lazy_smp_single, id = {}", self.id);
+        self.material_table.clone()
     }
 
 }

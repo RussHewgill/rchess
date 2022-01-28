@@ -67,12 +67,14 @@ pub fn exhelper_once(
         id:              0,
         side,
         game:            g.clone(),
-        root_moves:      RefCell::new(root_moves),
+        // root_moves:      RefCell::new(root_moves),
+        root_moves:      root_moves,
         stop,
         best_mate,
         #[cfg(feature = "syzygy")]
         syzygy:          None,
-        nnue: nnue.map(|x| RefCell::new(x)),
+        // nnue: nnue.map(|x| RefCell::new(x)),
+        nnue,
         cfg,
         params: SParams::default(),
         best_depth,
@@ -86,7 +88,8 @@ pub fn exhelper_once(
         ph_rw,
         move_history: vec![],
         // prev_best_move: None,
-        material_table: RefCell::new(MaterialTable::default()),
+        // material_table: RefCell::new(MaterialTable::default()),
+        material_table: MaterialTable::default(),
     };
 
     helper
@@ -546,7 +549,7 @@ impl ExHelper {
 
     #[cfg(not(feature = "tt_in_qsearch"))]
     pub fn qsearch<const NODE_TYPE: ABNodeType>(
-        &self,
+        &mut self,
         // ts:                       &'static Tables,
         ts:                       &Tables,
         g:                        &Game,

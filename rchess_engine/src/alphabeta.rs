@@ -158,7 +158,7 @@ impl ExHelper {
 
     // #[inline(always)]
     pub fn make_move(
-        &self,
+        &mut self,
         ts:           &Tables,
         g:            &Game,
         ply:          Depth,
@@ -172,9 +172,9 @@ impl ExHelper {
 
             /// push NNUE
             #[cfg(feature = "nnue")]
-            if let Some(nnue) = &self.nnue {
-                let mut nn = nnue.borrow_mut();
-                nn.ft.make_move(&g2, mv);
+            if let Some(nnue) = self.nnue.as_mut() {
+                // let mut nn = nnue.borrow_mut();
+                nnue.ft.make_move(&g2, mv);
             }
 
             stack.move_history.push((g2.zobrist,mv));
@@ -184,11 +184,11 @@ impl ExHelper {
     }
 
     // #[inline(always)]
-    pub fn pop_nnue(&self, stack: &mut ABStack) {
+    pub fn pop_nnue(&mut self, stack: &mut ABStack) {
         #[cfg(feature = "nnue")]
-        if let Some(nnue) = &self.nnue {
-            let mut nn = nnue.borrow_mut();
-            nn.ft.accum_pop();
+        if let Some(nnue) = self.nnue.as_mut() {
+            // let mut nn = nnue.borrow_mut();
+            nnue.ft.accum_pop();
         }
         stack.move_history.pop();
     }
@@ -198,7 +198,7 @@ impl ExHelper {
 /// search_single
 impl ExHelper {
     pub fn ab_search_single(
-        &self,
+        &mut self,
         // ts:             &'static Tables,
         ts:             &Tables,
         stats:          &mut SearchStats,
@@ -430,7 +430,7 @@ impl ExHelper {
 impl ExHelper {
 
     pub fn get_static_eval(
-        &self,
+        &mut self,
         // ts:           &'static Tables,
         ts:           &Tables,
         g:            &Game,
@@ -505,7 +505,7 @@ impl ExHelper {
     /// alpha: the MIN score that the maximizing player is assured of
     /// beta:  the MAX score that the minimizing player is assured of
     pub fn ab_search<const NODE_TYPE: ABNodeType>(
-        &self,
+        &mut self,
         // ts:                      &'static Tables,
         ts:                      &Tables,
         g:                       &Game,
