@@ -25,7 +25,7 @@ impl Game {
 
         let (s,halfmove) = parse_halfmove_fullmove(&s).unwrap_or((s,0));
 
-        let mut g = build_from_fen(ss, side, castle, ep, halfmove);
+        let mut g = build_from_fen(ts, ss, side, castle, ep, halfmove);
         // g.recalc_gameinfo_mut();
 
         let _ = g.recalc_gameinfo_mut(&ts);
@@ -39,6 +39,7 @@ impl Game {
 
 }
 fn build_from_fen(
+    ts:         &Tables,
     v:          Vec<Vec<Option<(Piece,Color)>>>,
     col:        Color,
     castling:   Castling,
@@ -52,7 +53,7 @@ fn build_from_fen(
         for (sq,x) in rank.iter().zip(0..8) {
             match sq {
                 Some((p,c)) => {
-                    out.insert_piece_mut_unchecked_nohash(Coord::new(x,y), *p, *c);
+                    out.insert_piece_mut_unchecked_nohash(ts, Coord::new(x,y), *p, *c);
                 },
                 None => {},
             }

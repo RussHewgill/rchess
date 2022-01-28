@@ -22,17 +22,20 @@ pub type Phase = u8;
 
 #[derive(PartialEq,Clone,Copy,Serialize,Deserialize)]
 pub struct Game {
-    pub state:        GameState,
-    pub zobrist:      Zobrist,
-    pub pawn_zb:      Zobrist,
-    pub last_move:    Option<Move>,
-    // pub last_move_2:  Option<Move>,
+    pub state:            GameState,
+    pub zobrist:          Zobrist,
+    pub pawn_zb:          Zobrist,
+    pub last_move:        Option<Move>,
+    // pub last_move_2:      Option<Move>,
 
     #[serde(with = "BigArray")]
-    pub pieces:       [Option<Piece>; 64],
-    // pieces:           [Option<Piece>; 64],
+    pub pieces:           [Option<Piece>; 64],
+    // pieces:               [Option<Piece>; 64],
 
-    pub halfmove:     Depth,
+    pub psqt_score_mid:   [Score; 2],
+    pub psqt_score_end:   [Score; 2],
+
+    pub halfmove:         Depth,
 }
 
 #[derive(Debug,Default,PartialOrd,Clone,Copy,Serialize,Deserialize)]
@@ -83,16 +86,19 @@ pub struct GameState {
 impl Default for Game {
     fn default() -> Self {
         Self {
-            state:        GameState::default(),
-            zobrist:      Zobrist(0),
-            pawn_zb:      Zobrist(0),
-            last_move:    None,
+            state:            GameState::default(),
+            zobrist:          Zobrist(0),
+            pawn_zb:          Zobrist(0),
+            last_move:        None,
 
-            pieces:       [None; 64],
+            pieces:           [None; 64],
 
-            // last_move_2:  None,
+            psqt_score_mid:   [0; 2],
+            psqt_score_end:   [0; 2],
+
+            // last_move_2:      None,
             // history,
-            halfmove:    0,
+            halfmove:        0,
             // ..Default::default()
         }
     }
@@ -1071,6 +1077,9 @@ impl Game {
         self.pieces[from] = None;
         self.pieces[to]   = Some(pc);
 
+        self.psqt_score_mid[side] += ts.get_psqt(pc, side, to, true) - ts.get_psqt(pc, side, from, true);
+        self.psqt_score_end[side] += ts.get_psqt(pc, side, to, false) - ts.get_psqt(pc, side, from, false);
+
         if calc_zb {
             self.zobrist = self.zobrist.update_piece(&ts, pc, side, from);
             self.zobrist = self.zobrist.update_piece(&ts, pc, side, to);
@@ -1121,6 +1130,9 @@ impl Game {
             self.state.material.buf[side][pc.index()] -= 1;
         }
 
+        self.psqt_score_mid[side] -= ts.get_psqt(pc, side, at, true);
+        self.psqt_score_end[side] -= ts.get_psqt(pc, side, at, false);
+
         if calc_zb {
             self.zobrist = self.zobrist.update_piece(&ts, pc, side, at.into());
             if pc == Pawn {
@@ -1129,14 +1141,17 @@ impl Game {
         }
     }
 
-    pub fn insert_piece_mut_unchecked<T: Into<Coord>>(
-        &mut self, ts: &Tables, at: T, pc: Piece, side: Color, calc_zb: bool) {
-        self._insert_piece_mut_unchecked(&ts, at, pc, side, true, calc_zb);
-    }
+    // pub fn insert_piece_mut_unchecked<T: Into<Coord>>(
+    //     &mut self, ts: &Tables, at: T, pc: Piece, side: Color, calc_zb: bool) {
+    //     self._insert_piece_mut_unchecked(&ts, at, pc, side, true, calc_zb);
+    // }
 
-    pub fn _insert_piece_mut_unchecked<T: Into<Coord>>(
-        &mut self, ts: &Tables, at: T, pc: Piece, side: Color, mat: bool, calc_zb: bool) {
-        let at = at.into();
+    // pub fn insert_piece_mut_unchecked<T: Into<Coord>>(
+    //     &mut self, ts: &Tables, at: T, pc: Piece, side: Color, calc_zb: bool) {
+    //     let at = at.into();
+
+    pub fn insert_piece_mut_unchecked(
+        &mut self, ts: &Tables, at: Coord, pc: Piece, side: Color, calc_zb: bool) {
 
         let mut bc = self.get_color_mut(side);
         *bc = bc.set_one(at);
@@ -1146,9 +1161,12 @@ impl Game {
 
         self.pieces[at] = Some(pc);
 
-        if mat && pc != King {
+        if pc != King {
             self.state.material.buf[side][pc.index()] += 1;
         }
+
+        self.psqt_score_mid[side] += ts.get_psqt(pc, side, at, true);
+        self.psqt_score_end[side] += ts.get_psqt(pc, side, at, false);
 
         if calc_zb {
             self.zobrist = self.zobrist.update_piece(&ts, pc, side, at.into());
@@ -1158,22 +1176,30 @@ impl Game {
         }
     }
 
-    pub fn insert_pieces_mut_unchecked<T: Into<Coord> + Clone + Copy>(
-        &mut self, ts: &Tables, ps: &[(T, Piece, Color)], mat: bool, calc_zb: bool) {
-        for (at,pc,side) in ps.iter() {
-            self._insert_piece_mut_unchecked(&ts, *at, *pc, *side, mat, calc_zb);
-        }
-    }
+    // pub fn insert_pieces_mut_unchecked<T: Into<Coord> + Clone + Copy>(
+    //     &mut self, ts: &Tables, ps: &[(T, Piece, Color)], mat: bool, calc_zb: bool) {
+    //     for (at,pc,side) in ps.iter() {
+    //         self._insert_piece_mut_unchecked(&ts, *at, *pc, *side, mat, calc_zb);
+    //     }
+    // }
 
     /// Used for building game from parsed PGN
-    pub fn insert_piece_mut_unchecked_nohash<T: Into<Coord>>(&mut self, at: T, pc: Piece, c: Color) {
+    pub fn insert_piece_mut_unchecked_nohash<T: Into<Coord>>(
+        &mut self, ts: &Tables, at: T, pc: Piece, side: Color) {
         let at = at.into();
 
-        let mut bc = self.get_color_mut(c);
+        let mut bc = self.get_color_mut(side);
         *bc = bc.set_one(at);
 
         let mut bp = self.get_piece_mut(pc);
         *bp = bp.set_one(at);
+
+        if pc != King {
+            self.state.material.buf[side][pc] += 1;
+        }
+
+        self.psqt_score_mid[side] += ts.get_psqt(pc, side, at, true);
+        self.psqt_score_end[side] += ts.get_psqt(pc, side, at, false);
 
         self.pieces[at] = Some(pc);
 

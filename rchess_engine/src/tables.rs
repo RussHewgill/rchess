@@ -128,6 +128,10 @@ pub struct Tables {
     pub table_bishop:     [BitBoard; 0x1480],
     #[serde(skip)]
     pub zobrist_tables:   ZbTable,
+
+    pub eval_params_mid:  EvalParams,
+    pub eval_params_end:  EvalParams,
+
 }
 
 #[cfg(not(feature = "smallstack"))]
@@ -268,6 +272,8 @@ impl Tables {
             pseudo_attacks_r[sq] = rook_moves[x as usize][y as usize].concat();
         }
 
+        let (eval_params_mid,eval_params_end) = EvalParams::new_mid_end();
+
         Self {
             pseudo_attacks_b,
             pseudo_attacks_r,
@@ -288,6 +294,9 @@ impl Tables {
             // piece_tables_endgame,
 
             zobrist_tables: ZbTable::new(),
+
+            eval_params_mid,
+            eval_params_end,
         }
     }
 
@@ -743,6 +752,14 @@ impl Tables {
         MoveSetPawn::new(wq, bq, wc, bc)
     }
 
+}
+
+/// get PSQT value
+impl Tables {
+    pub fn get_psqt(&self, pc: Piece, side: Color, c0: Coord, mid: bool) -> Score {
+        let psqt = if mid { &self.eval_params_mid.psqt } else { &self.eval_params_end.psqt };
+        psqt.get(pc, side, c0)
+    }
 }
 
 mod opening_book {

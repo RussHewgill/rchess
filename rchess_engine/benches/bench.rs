@@ -14,25 +14,25 @@ use rchess_engine_lib::explore::*;
 use rchess_engine_lib::util::*;
 use rchess_engine_lib::search::*;
 
-use rchess_engine_lib::brain::*;
-use rchess_engine_lib::brain::matrix::*;
-use rchess_engine_lib::brain::types::*;
-use rchess_engine_lib::brain::types::nnue::*;
+// use rchess_engine_lib::brain::*;
+// use rchess_engine_lib::brain::matrix::*;
+// use rchess_engine_lib::brain::types::*;
+// use rchess_engine_lib::brain::types::nnue::*;
 
 use std::collections::HashSet;
 use std::time::{Duration};
 
 use rand::{prelude::{StdRng,SliceRandom},Rng,SeedableRng};
 
-use nalgebra as na;
-use na::{DVector,DMatrix};
-
-use ndarray as nd;
+// use nalgebra as na;
+// use na::{DVector,DMatrix};
+// use ndarray as nd;
 
 use criterion::BenchmarkId;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 
+#[cfg(feature = "nope")]
 pub fn crit_bench_2(c: &mut Criterion) {
 
     let mut ins: Vec<(DVector<f32>,DVector<f32>)> = {
@@ -129,6 +129,7 @@ pub fn crit_bench_2(c: &mut Criterion) {
 
 }
 
+#[cfg(feature = "nope")]
 pub fn crit_bench_simd(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("group");
@@ -361,16 +362,16 @@ pub fn crit_bench_1(c: &mut Criterion) {
     //     }
     // }));
 
-    // group.sample_size(60);
-    group.measurement_time(Duration::from_secs_f64(10.));
-    group.bench_function("movegen", |b| b.iter(|| {
-        for g in wacs.iter() {
-            let moves = MoveGen::generate_list(&ts, black_box(g), None);
-            // let moves = MoveGen::generate_list(&ts, g, Some(MoveGenType::Captures));
-            // let moves = MoveGen::generate_list(&ts, g, Some(MoveGenType::Quiets));
-            let x = moves.len();
-        }
-    }));
+    // // group.sample_size(60);
+    // group.measurement_time(Duration::from_secs_f64(10.));
+    // group.bench_function("movegen", |b| b.iter(|| {
+    //     for g in wacs.iter() {
+    //         let moves = MoveGen::generate_list(&ts, black_box(g), None);
+    //         // let moves = MoveGen::generate_list(&ts, g, Some(MoveGenType::Captures));
+    //         // let moves = MoveGen::generate_list(&ts, g, Some(MoveGenType::Quiets));
+    //         let x = moves.len();
+    //     }
+    // }));
 
     // group.bench_function("recalc_gameinfo", |b| b.iter(|| {
     //     for g in wacs.iter() {
@@ -379,28 +380,37 @@ pub fn crit_bench_1(c: &mut Criterion) {
     //     }
     // }));
 
-    // let mut xs = vec![];
-    // for _ in 0..1_000 {
-    //     let b = BitBoard(Tables::sparse_rand(&mut rng));
-    //     let c: u8 = rng.gen_range(0..64);
-    //     let c = Coord::new_int(c);
-    //     xs.push((b,c));
-    // }
+    // let n = 3;
+    // let t = 0.1;
+    // let timesettings = TimeSettings::new_f64(0.0,t);
+    // let mut ex = Explorer::new(g0.state.side_to_move, g0.clone(), n, timesettings);
+    // ex.cfg.num_threads = Some(1);
+    // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
-    // group.bench_function("get_at", |b| b.iter(|| {
-    //     for g in wacs.iter() {
-    //         for c in [0u8,10,32,63] {
-    //             match g.get_at(Coord::new_int(black_box(c))) {
-    //                 Some(_) => {},
-    //                 None    => {},
-    //             }
-    //         }
-    //     }
-    // }));
+    use rchess_engine_lib::sf_compat::NNUE4;
 
-    // group.bench_function("BB single", |b| b.iter(|| {
-    //     for (mut b,c) in xs.iter() {
-    //         b.flip_mut(*c);
+    let nn = NNUE4::read_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+
+    let nns = {
+        let mut nns = vec![];
+        for g in (&wacs[50..60]).iter() {
+            let mut nn = nn.clone();
+            nn.ft.reset_accum(&g);
+            nns.push((g, nn));
+        }
+        nns
+    };
+
+    group.bench_function("evaluation classic", |b| b.iter(|| {
+        for g in wacs.iter() {
+            let score = g.sum_evaluate(&ts, &ts.eval_params_mid, &ts.eval_params_mid, None);
+        }
+    }));
+
+    // group.bench_function("evaluation nnue", |b| b.iter(|| {
+    //     for (g,nn) in nns.iter() {
+    //         let mut nn = nn.clone();
+    //         let score = nn.evaluate(g, true);
     //     }
     // }));
 

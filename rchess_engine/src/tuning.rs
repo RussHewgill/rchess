@@ -532,11 +532,12 @@ mod piece_square_tables {
             xs
         }
         fn update_exhelper(&self, exhelper: &mut ExHelper, mid: bool) {
-            if mid {
-                exhelper.cfg.eval_params_mid.psqt = *self;
-            } else {
-                exhelper.cfg.eval_params_end.psqt = *self;
-            }
+            // if mid {
+            //     exhelper.cfg.eval_params_mid.psqt = *self;
+            // } else {
+            //     exhelper.cfg.eval_params_end.psqt = *self;
+            // }
+            unimplemented!()
         }
     }
 
@@ -862,11 +863,12 @@ pub mod indexing {
             xs
         }
         fn update_exhelper(&self, exhelper: &mut ExHelper, mid: bool) {
-            if mid {
-                exhelper.cfg.eval_params_mid = *self;
-            } else {
-                exhelper.cfg.eval_params_end = *self;
-            }
+            // if mid {
+            //     exhelper.cfg.eval_params_mid = *self;
+            // } else {
+            //     exhelper.cfg.eval_params_end = *self;
+            // }
+            unimplemented!()
         }
     }
 
@@ -912,11 +914,12 @@ pub mod indexing {
         }
 
         fn update_exhelper(&self, exhelper: &mut ExHelper, mid: bool) {
-            if mid {
-                exhelper.cfg.eval_params_mid.pawns = *self;
-            } else {
-                exhelper.cfg.eval_params_end.pawns = *self;
-            }
+            // if mid {
+            //     exhelper.cfg.eval_params_mid.pawns = *self;
+            // } else {
+            //     exhelper.cfg.eval_params_end.pawns = *self;
+            // }
+            unimplemented!()
         }
     }
 
@@ -948,11 +951,12 @@ pub mod indexing {
         }
 
         fn update_exhelper(&self, exhelper: &mut ExHelper, mid: bool) {
-            if mid {
-                exhelper.cfg.eval_params_mid.pieces = *self;
-            } else {
-                exhelper.cfg.eval_params_end.pieces = *self;
-            }
+            // if mid {
+            //     exhelper.cfg.eval_params_mid.pieces = *self;
+            // } else {
+            //     exhelper.cfg.eval_params_end.pieces = *self;
+            // }
+            unimplemented!()
         }
     }
 
@@ -982,11 +986,12 @@ pub mod indexing {
         }
 
         fn update_exhelper(&self, exhelper: &mut ExHelper, mid: bool) {
-            if mid {
-                exhelper.cfg.eval_params_mid.pieces.outpost = *self;
-            } else {
-                exhelper.cfg.eval_params_end.pieces.outpost = *self;
-            }
+            // if mid {
+            //     exhelper.cfg.eval_params_mid.pieces.outpost = *self;
+            // } else {
+            //     exhelper.cfg.eval_params_end.pieces.outpost = *self;
+            // }
+            unimplemented!()
         }
     }
 

@@ -146,28 +146,23 @@ mod tapered {
 /// Chooses between NNUE and HCE
 impl ExHelper {
 
-    // pub fn eval_nn_or_hce(
-    //     &self,
-    //     // ts:           &'static Tables,
-    //     ts:           &Tables,
-    //     g:            &Game,
-    // ) -> Score {
-    //     // TODO: endgame
-    //     // TODO: material tables?
-    //     if let Some(nnue) = &self.nnue {
-    //         /// NNUE Eval, cheap-ish
-    //         /// TODO: bench vs evaluate
-    //         let mut nn = nnue.borrow_mut();
-    //         let score = nn.evaluate(&g, true);
-    //         score
-    //     } else {
-    //         let stand_pat = self.evaluate_classical(ts, g, &self.ph_rw);
-    //         let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
-    //         score
-    //     }
-    // }
-
+    /// NNUE eval is ~18x slower than classic (only material and psqt)
     pub fn evaluate(&mut self, ts: &Tables, g: &Game, quiesce: bool) -> Score {
+
+        let mut use_classical = false;
+
+        // if cfg!(feature = "NNUE")
+        //     || self.nnue.is_none()
+        //     || (g.psqt_score_end[White] + g.psqt_score_end[White])
+        // unimplemented!()
+
+        let stand_pat = self.evaluate_classical(ts, g);
+        let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
+
+        score
+    }
+
+    pub fn evaluate2(&mut self, ts: &Tables, g: &Game, quiesce: bool) -> Score {
 
         let use_nnue = cfg!(feature = "NNUE")
             && self.nnue.is_some()
@@ -193,7 +188,7 @@ impl ExHelper {
 
     // #[cfg(feature = "nope")]
     pub fn evaluate_classical(&mut self, ts: &Tables, g: &Game) -> Score {
-        let score = g.sum_evaluate(ts, &self.cfg.eval_params_mid, &self.cfg.eval_params_mid, None);
+        let score = g.sum_evaluate(ts, &ts.eval_params_mid, &ts.eval_params_mid, None);
         score
     }
 
@@ -209,7 +204,7 @@ impl ExHelper {
             }
 
         } else {
-            let score = g.sum_evaluate(ts, &self.cfg.eval_params_mid, &self.cfg.eval_params_mid, None);
+            let score = g.sum_evaluate(ts, &ts.eval_params_mid, &ts.eval_params_mid, None);
             let entry = MatEval::new(g, score);
 
             self.material_table.insert(g.zobrist, entry);
@@ -217,6 +212,27 @@ impl ExHelper {
             score
         }
     }
+
+    // pub fn eval_nn_or_hce(
+    //     &self,
+    //     // ts:           &'static Tables,
+    //     ts:           &Tables,
+    //     g:            &Game,
+    // ) -> Score {
+    //     // TODO: endgame
+    //     // TODO: material tables?
+    //     if let Some(nnue) = &self.nnue {
+    //         /// NNUE Eval, cheap-ish
+    //         /// TODO: bench vs evaluate
+    //         let mut nn = nnue.borrow_mut();
+    //         let score = nn.evaluate(&g, true);
+    //         score
+    //     } else {
+    //         let stand_pat = self.evaluate_classical(ts, g, &self.ph_rw);
+    //         let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
+    //         score
+    //     }
+    // }
 
 }
 
@@ -259,6 +275,12 @@ impl Game {
         let mg = self.sum_evaluate_mg(ts, ev_mid, ev_end, ph_rw);
         let eg = self.sum_evaluate_eg(ts, ev_mid, ev_end, ph_rw);
 
+        // let mut mg = self.score_material(White, true) - self.score_material(Black, true);
+        // let mut eg = self.score_material(White, false) - self.score_material(Black, false);
+
+        // mg += self.psqt_score_mid[White] - self.psqt_score_mid[Black];
+        // eg += self.psqt_score_end[White] - self.psqt_score_end[Black];
+
         // self.taper_score2(mg, eg)
         self.taper_score(mg, eg)
     }
@@ -278,10 +300,11 @@ impl Game {
         let mut score = 0;
         let ev = ev_mid;
 
-        score += self.score_material2(White) - self.score_material2(Black);
+        score += self.score_material(White, true) - self.score_material(Black, true);
 
         if cfg!(feature = "positional_scoring") {
-            score += self.score_psqt(ts, ev, White) - self.score_psqt(ts, ev, Black);
+            // score += self.score_psqt(ts, ev, White) - self.score_psqt(ts, ev, Black);
+            score += self.psqt_score_mid[White] - self.psqt_score_mid[Black];
         }
 
         if cfg!(feature = "mobility_scoring") {
@@ -307,10 +330,11 @@ impl Game {
         let mut score = 0;
         let ev = ev_end;
 
-        score += self.score_material2(White) - self.score_material2(Black);
+        score += self.score_material(White, false) - self.score_material(Black, false);
 
         if cfg!(feature = "positional_scoring") {
-            score += self.score_psqt(ts, ev, White) - self.score_psqt(ts, ev, Black);
+            // score += self.score_psqt(ts, ev, White) - self.score_psqt(ts, ev, Black);
+            score += self.psqt_score_end[White] - self.psqt_score_end[Black];
         }
 
         if cfg!(feature = "mobility_scoring") {
@@ -325,25 +349,29 @@ impl Game {
         score
     }
 
-    pub fn score_material2(&self, side: Color) -> Score {
+    pub fn score_material(&self, side: Color, mid: bool) -> Score {
         const PCS: [Piece; 6] = [Pawn,Knight,Bishop,Rook,Queen,King];
-        PCS.iter().map(|&pc| self.state.material.get(pc, side) as Score * pc.score()).sum()
+        if mid {
+            PCS.iter().map(|&pc| self.state.material.get(pc, side) as Score * pc.score()).sum()
+        } else {
+            PCS.iter().map(|&pc| self.state.material.get(pc, side) as Score * pc.score_endgame()).sum()
+        }
     }
 
-    pub fn score_psqt(&self, ts: &Tables, ev: &EvalParams, side: Color) -> Score {
-        const PCS: [Piece; 6] = [Pawn,Knight,Bishop,Rook,Queen,King];
-        PCS.iter().map(|&pc| {
-            self._score_psqt(ev, pc, side)
-        }).sum()
-    }
+    // pub fn score_psqt(&self, ts: &Tables, ev: &EvalParams, side: Color) -> Score {
+    //     const PCS: [Piece; 6] = [Pawn,Knight,Bishop,Rook,Queen,King];
+    //     PCS.iter().map(|&pc| {
+    //         self._score_psqt(ev, pc, side)
+    //     }).sum()
+    // }
 
-    pub fn _score_psqt(&self, ev: &EvalParams, pc: Piece, side: Color) -> Score {
-        let pieces = self.get(pc, side);
-        pieces.into_iter().map(|sq| {
-            ev.psqt.get(pc, side, sq)
-            // ev.get_psqt(pc, side, sq)
-        }).sum()
-    }
+    // pub fn _score_psqt(&self, ev: &EvalParams, pc: Piece, side: Color) -> Score {
+    //     let pieces = self.get(pc, side);
+    //     pieces.into_iter().map(|sq| {
+    //         ev.psqt.get(pc, side, sq)
+    //         // ev.get_psqt(pc, side, sq)
+    //     }).sum()
+    // }
 
     pub fn score_pieces_mg(&self, ts: &Tables, ev: &EvalParams, side: Color) -> Score {
         let mut score = 0;
@@ -588,7 +616,8 @@ impl Piece {
     }
 }
 
-/// Material Scoring
+/// Material Scoring old
+#[cfg(feature = "nope")]
 impl Game {
 
     pub fn score_material(&self, pc: Piece, side: Color) -> Score {

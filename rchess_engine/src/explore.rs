@@ -198,8 +198,8 @@ pub struct ExConfig {
     pub clear_table:           bool,
     pub hash_size_mb:          Option<usize>,
 
-    pub eval_params_mid:       EvalParams,
-    pub eval_params_end:       EvalParams,
+    // pub eval_params_mid:       EvalParams,
+    // pub eval_params_end:       EvalParams,
 }
 
 impl Default for ExConfig {
@@ -219,8 +219,8 @@ impl Default for ExConfig {
             clear_table:           false,
             hash_size_mb:          None,
 
-            eval_params_mid:       EvalParams::default(),
-            eval_params_end:       EvalParams::default(),
+            // eval_params_mid:       EvalParams::default(),
+            // eval_params_end:       EvalParams::default(),
         }
     }
 }
@@ -271,15 +271,15 @@ pub struct ExHelper {
 
 }
 
-/// Load EvalParams
-impl ExHelper {
-    pub fn load_evparams<P: AsRef<Path>>(&mut self, path: P) -> std::io::Result<()> {
-        let (ev_mid,ev_end) = EvalParams::read_evparams(path)?;
-        self.cfg.eval_params_mid = ev_mid;
-        self.cfg.eval_params_end = ev_end;
-        Ok(())
-    }
-}
+// /// Load EvalParams
+// impl ExHelper {
+//     pub fn load_evparams<P: AsRef<Path>>(&mut self, path: P) -> std::io::Result<()> {
+//         let (ev_mid,ev_end) = EvalParams::read_evparams(path)?;
+//         self.cfg.eval_params_mid = ev_mid;
+//         self.cfg.eval_params_end = ev_end;
+//         Ok(())
+//     }
+// }
 
 /// build_exhelper
 impl Explorer {

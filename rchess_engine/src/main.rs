@@ -395,7 +395,7 @@ fn main_sample() {
         ex.time_settings.is_per_move = true;
         ex.time_settings.move_time = (t * 1000.0) as u64;
         ex.cfg.late_move_reductions = true;
-        ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+        // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
         let from  = &correct[0..2];
         let to    = &correct[2..4];
         let other = &correct[4..];

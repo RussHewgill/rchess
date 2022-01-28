@@ -19,6 +19,7 @@ use std::sync::atomic::Ordering::{SeqCst,Relaxed};
 use crossbeam::utils::CachePadded;
 use parking_lot::{Mutex,RwLock};
 
+#[cfg(feature = "nope")]
 pub fn exhelper_once(
     // ts:       &'static Tables,
     ts:       &Tables,
@@ -30,8 +31,8 @@ pub fn exhelper_once(
     nnue:     Option<NNUE4>,
 ) -> ExHelper {
     let mut cfg = ExConfig::default();
-    cfg.eval_params_mid = ev_mid.clone();
-    cfg.eval_params_end = ev_end.clone();
+    // cfg.eval_params_mid = ev_mid.clone();
+    // cfg.eval_params_end = ev_end.clone();
 
     #[cfg(not(feature = "lockless_hashmap"))]
     let (tt_r, tt_w) = evmap::Options::default()
