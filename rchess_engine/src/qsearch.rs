@@ -570,7 +570,6 @@ impl ExHelper {
         assert!(depth <= 0);
 
         stats.qt_nodes += 1;
-        // stats.q_max_depth = stats.q_max_depth.max(ply as u8);
         stats.q_max_depth.max_mut(ply as u32);
 
         /// check repetition
@@ -578,15 +577,14 @@ impl ExHelper {
             return draw_value(stats);
         }
 
-        // let stand_pat = if let Some(nnue) = &self.nnue {
-        //     let mut nn = nnue.borrow_mut();
-        //     nn.evaluate(&g, true)
-        // } else {
-        //     let stand_pat = self.cfg.evaluate(ts, g, &self.ph_rw);
-        //     if g.state.side_to_move == Black { -stand_pat } else { stand_pat }
-        // };
+        // let stand_pat = self.evaluate(ts, g, true);
 
-        let stand_pat = self.evaluate(ts, g, true);
+        /// XXX: should be correct, need to verify
+        let stand_pat = if g.state.in_check {
+            if g.state.side_to_move == Black { Score::MIN } else { Score::MAX }
+        } else {
+            self.evaluate(ts, g, true)
+        };
 
         /// early halt
         if self.stop.load(Relaxed) { return stand_pat; }
@@ -603,7 +601,6 @@ impl ExHelper {
         }
 
         let mut movegen = MoveGen::new_qsearch(ts, g, None, stack, qply);
-        // let mut movegen = MoveGen::new_qsearch(ts, g, None, stack, qply, stack.move_history.clone());
 
         if qply > 0 { movegen.skip_quiets = true; }
 

@@ -101,7 +101,7 @@ pub mod lockless_map;
 pub mod prefetch;
 
 pub mod simd_utils;
-pub mod simd_test;
+// pub mod simd_test;
 
 #[cfg(not(feature = "new_search"))]
 pub mod ab_prev;

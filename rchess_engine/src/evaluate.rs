@@ -203,18 +203,19 @@ impl ExHelper {
 
         if let Some(entry) = self.material_table.get(g.zobrist) {
             if let Some(eg) = entry.eg_val {
-                return eg.evaluate(ts, g);
+                eg.evaluate(ts, g)
+            } else {
+                entry.score
             }
 
-            unimplemented!()
         } else {
             let score = g.sum_evaluate(ts, &self.cfg.eval_params_mid, &self.cfg.eval_params_mid, None);
             let entry = MatEval::new(g, score);
 
             self.material_table.insert(g.zobrist, entry);
-        }
 
-        unimplemented!()
+            score
+        }
     }
 
 }

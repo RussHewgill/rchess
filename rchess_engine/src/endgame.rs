@@ -126,7 +126,10 @@ impl EndGame for KX_VS_K {
 
 fn endgame_kx_vs_k(ts: &Tables, g: &Game) -> Score {
 
-    let weak_side: Color = unimplemented!();
+    // let weak_side: Color = unimplemented!();
+    let weak_side: Color = White;
+    // XXX: nope
+    debug!("nope");
 
     // assert!(EndGame::KXvK.verify_material(g, side));
     assert!(!g.state.in_check);

@@ -29,6 +29,7 @@ use std::str::FromStr;
 
 use itertools::Itertools;
 
+use rchess_engine_lib::material_table::MatEval;
 use rchess_engine_lib::{heuristics::*, print_size_of};
 use rchess_engine_lib::{timer,timer_loop,eprint_self};
 use rchess_engine_lib::explore::*;
@@ -75,7 +76,7 @@ fn main() {
         "nn"        => main_nn(),
         "nnue"      => main_nnue(),
         "train"     => main_nnue_train(),
-        "simd"      => main_simd(),
+        // "simd"      => main_simd(),
         "eval"      => main_eval(),
         "gensfen"   => {
             let count = u64::from_str(&args[2]).unwrap();
@@ -816,6 +817,7 @@ fn main_syzygy() {
 }
 
 #[allow(unreachable_code)]
+#[cfg(feature = "nope")]
 fn main_simd() {
     use nalgebra as na;
     use ndarray as nd;
@@ -3189,6 +3191,18 @@ fn main9() {
     // let stack: &ABStack = &DEBUG_ABSTACK.lock();
     // let bf = stack.history[Black];
     // return;
+
+
+    for (thread_id,per_thread) in ex.per_thread_data.iter().enumerate() {
+
+        let mt = &per_thread.as_ref().unwrap().mat_table;
+
+        eprintln!("{} = {:?}", thread_id, mt.inner().len());
+
+    }
+
+
+    return;
 
     let best   = res.get_result().unwrap();
     let scores = res.get_scores().unwrap_or_default();

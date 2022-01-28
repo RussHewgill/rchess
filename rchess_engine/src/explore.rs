@@ -43,6 +43,8 @@ use rand::prelude::{SliceRandom,thread_rng};
 use rayon::prelude::*;
 use lazy_static::lazy_static;
 
+use derive_new::new;
+
 // use evmap::{ReadHandle,ReadHandleFactory,WriteHandle};
 
 lazy_static! { /// DEBUG_ABSTACK
@@ -50,7 +52,7 @@ lazy_static! { /// DEBUG_ABSTACK
 }
 
 /// used for persistent data between runs
-#[derive(Debug,Default,Clone)]
+#[derive(Debug,Default,Clone,new)]
 pub struct PerThreadData {
     pub mat_table:       MaterialTable,
 }
@@ -58,54 +60,54 @@ pub struct PerThreadData {
 // #[derive(Debug)]
 #[derive(Debug,Clone)]
 pub struct Explorer {
-    pub side:          Color,
-    pub game:          Game,
-    // pub current_ply:   Option<Depth>,
+    pub side:              Color,
+    pub game:              Game,
+    // pub current_ply:       Option<Depth>,
 
     #[cfg(feature = "basic_time")]
-    pub timer:         Timer,
+    pub timer:             Timer,
     #[cfg(not(feature = "basic_time"))]
-    pub time_settings: TimeSettings,
+    pub time_settings:     TimeSettings,
 
-    // pub stop:          Arc<AtomicBool>,
-    pub stop:          Arc<CachePadded<AtomicBool>>,
-    // pub best_mate:     Arc<RwLock<Option<Depth>>>,
-    pub best_mate:     Arc<CachePadded<AtomicI16>>,
-    pub best_depth:    Arc<CachePadded<AtomicI16>>,
+    // pub stop:              Arc<AtomicBool>,
+    pub stop:              Arc<CachePadded<AtomicBool>>,
+    // pub best_mate:         Arc<RwLock<Option<Depth>>>,
+    pub best_mate:         Arc<CachePadded<AtomicI16>>,
+    pub best_depth:        Arc<CachePadded<AtomicI16>>,
 
-    pub tx:            ExSender,
-    pub rx:            ExReceiver,
+    pub tx:                ExSender,
+    pub rx:                ExReceiver,
 
-    pub cfg:           ExConfig,
+    pub cfg:               ExConfig,
 
-    pub search_params: SParams,
+    pub search_params:     SParams,
 
     #[cfg(feature = "syzygy")]
-    pub syzygy:        Option<Arc<SyzygyTB>>,
-    pub opening_book:  Option<Arc<OpeningBook>>,
+    pub syzygy:            Option<Arc<SyzygyTB>>,
+    pub opening_book:      Option<Arc<OpeningBook>>,
 
-    pub nnue:          Option<NNUE4>,
+    pub nnue:              Option<NNUE4>,
 
     #[cfg(feature = "lockless_hashmap")]
-    pub ptr_tt:        Arc<TransTable>,
+    pub ptr_tt:            Arc<TransTable>,
 
     #[cfg(not(feature = "lockless_hashmap"))]
-    pub tt_rf:         TTReadFactory,
+    pub tt_rf:             TTReadFactory,
     #[cfg(not(feature = "lockless_hashmap"))]
-    pub tt_w:          TTWrite,
+    pub tt_w:              TTWrite,
 
-    // pub eval_hashmap:  (EVReadFactory<Score>,EVWrite<Score>),
+    // pub eval_hashmap:      (EVReadFactory<Score>,EVWrite<Score>),
 
-    // pub ph_rw:         (PHReadFactory,PHWrite),
-    pub ph_rw:         PHTableFactory,
+    // pub ph_rw:             (PHReadFactory,PHWrite),
+    pub ph_rw:             PHTableFactory,
 
-    // pub mat_rw:        
+    // pub mat_rw:            
 
-    pub move_history:  Vec<(Zobrist, Move)>,
-    // pub pos_history:   HashMap<Zobrist,u8>,
+    pub move_history:      Vec<(Zobrist, Move)>,
+    // pub pos_history:       HashMap<Zobrist,u8>,
 
 
-    per_thread_data:   Vec<Option<PerThreadData>>,
+    pub per_thread_data:   Vec<Option<PerThreadData>>,
 
 }
 
@@ -175,7 +177,7 @@ impl Explorer {
             move_history:   vec![],
             // pos_history:    HashMap::default(),
 
-            per_thread_data: vec![],
+            per_thread_data: vec![Some(PerThreadData::default())],
         }
     }
 
@@ -659,15 +661,13 @@ impl Explorer {
 
         // let root_moves = MoveGen::gen_all(ts, &self.game);
         let root_moves = vec![];
+        let mut per_thread_data = vec![None; self.per_thread_data.len()];
 
         crossbeam::scope(|s| {
-
-            // let mut thread_id = 0;
 
             // let ord = SeqCst;
 
             let mut handles = vec![];
-
             /// Dispatch threads
             for thread_id in 0..max_threads as usize {
                 trace!("Spawning thread, id = {}", thread_id);
@@ -681,27 +681,24 @@ impl Explorer {
                     best_depth.clone(),
                     root_moves.clone(),
                     tx.clone(),
-                    // self.per_thread_data[thread_id].clone(),
-                    // MaterialTable::default(),
                     thread_data,
                 );
 
                 /// 4 MB is needed to prevent stack overflow
                 let size = 1024 * 1024 * 4;
-                let handle: ScopedJoinHandle<()> = s.builder()
+                let handle: ScopedJoinHandle<PerThreadData> = s.builder()
                     .stack_size(size)
                     .spawn(move |_| {
-                        helper.lazy_smp_single(ts);
+                        helper.lazy_smp_single(ts)
                     }).unwrap();
 
                 handles.push((thread_id,handle));
 
-                // thread_id += 1;
                 thread_counter.fetch_add(1, SeqCst);
                 trace!("Spawned thread, count = {}", thread_counter.load(SeqCst));
             }
 
-            s.spawn(|_| {
+            let handle_listener = s.spawn(|_| {
                 self.lazy_smp_listener(
                     rx,
                     best_depth.clone(),
@@ -750,15 +747,20 @@ impl Explorer {
                 // std::thread::sleep(Duration::from_millis(10));
             }
 
-
+            // handle_listener.join().unwrap();
             for (thread_id,handle) in handles.into_iter() {
-                // let thread_data = handle
+                let thread_data = handle.join().unwrap();
+                per_thread_data[thread_id] = Some(thread_data);
             }
 
             trace!("exiting lazy_smp_2 loop");
 
         }).unwrap();
         trace!("exiting lazy_smp_2 scoped");
+
+        for (thread_id,thread_data) in per_thread_data.into_iter().enumerate() {
+            self.per_thread_data[thread_id] = thread_data;
+        }
 
         let (d,mut out,moves,mut stats) = {
             let r = out.read();
@@ -1030,7 +1032,7 @@ impl ExHelper {
         // ts:               &'static Tables,
         ts:               &Tables,
         // max_threads:      i8,
-    ) -> MaterialTable {
+    ) -> PerThreadData {
 
         let mut stack = ABStack::new_with_moves(&self.move_history);
         let mut stats = SearchStats::default();
@@ -1102,7 +1104,8 @@ impl ExHelper {
         }
 
         trace!("exiting lazy_smp_single, id = {}", self.id);
-        self.material_table.clone()
+
+        PerThreadData::new(self.material_table.clone())
     }
 
 }

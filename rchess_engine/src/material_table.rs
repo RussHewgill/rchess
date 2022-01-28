@@ -13,6 +13,10 @@ pub struct MaterialTable {
 
 impl MaterialTable {
 
+    pub fn inner(&self) -> &HashMap<Zobrist, MatEval> {
+        &self.table
+    }
+
     pub fn get(&self, zb: Zobrist) -> Option<&MatEval> {
         self.table.get(&zb)
     }
