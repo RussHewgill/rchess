@@ -198,7 +198,16 @@ mod pawn_eval {
 
             let scores = [TaperedScore::default(); 2];
 
-            for sq in g.get(Pawn, side).into_iter() {
+            let pawns_us   = g.get(Pawn, side);
+            let pawns_them = g.get(Pawn, !side);
+
+            for sq in pawns_us.into_iter() {
+
+                let r = BitBoard::relative_rank(side, sq);
+
+                let opposed = pawns_them & forward_file_bb(side, sq);
+
+                unimplemented!()
             }
 
             Self {

@@ -42,11 +42,15 @@ mod lookups {
     pub const DIAG_A1_H8: BitBoard = BitBoard(0x8040201008040201);
     pub const DIAG_A8_H1: BitBoard = BitBoard(0x0102040810204080);
 
-    const fn forward_ranks_bb(side: Color, sq: Coord) -> BitBoard {
+    pub const fn forward_ranks_bb(side: Color, sq: Coord) -> BitBoard {
         match side {
             White => BitBoard((!MASK_RANKS[0].0) << (8 * BitBoard::relative_rank(White, sq) as u32)),
             Black => BitBoard((!MASK_RANKS[7].0) >> (8 * BitBoard::relative_rank(Black, sq) as u32)),
         }
+    }
+
+    pub const fn forward_file_bb(side: Color, sq: Coord) -> BitBoard {
+        BitBoard(forward_ranks_bb(side, sq).0 & MASK_FILES[sq.file() as usize].0)
     }
 
     // pub const FORWARD_FILE_BB: [BitBoard; 64] = 

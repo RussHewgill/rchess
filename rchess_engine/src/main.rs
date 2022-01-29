@@ -3124,23 +3124,7 @@ fn main9() {
     //     }
     // }
 
-    fn forward_ranks_bb(side: Color, sq: Coord) -> BitBoard {
-        if side == White {
-            // BitBoard((!MASK_RANKS[0]).0.wrapping_shl(8)) * BitBoard::relative_rank(White, sq) as u64
-            unimplemented!()
-        } else {
-            // BitBoard((!MASK_RANKS[7]).0.wrapping_shr(8)) * BitBoard::relative_rank(Black, sq) as u64
-            let r0 = !MASK_RANKS[7].0;
-
-            let r2 = BitBoard::relative_rank(Black, sq) as u32;
-            // let r3 = r0.wrapping_shr(8 * r2);
-            let r3 = r0 >> (8 * r2);
-
-            BitBoard(r3)
-        }
-    }
-
-    let b = forward_ranks_bb(Black, "D3".into());
+    let b = forward_file_bb(Black, "D3".into());
 
     // let b = BitBoard::relative_rank(White, "D3".into());
 
