@@ -79,7 +79,7 @@ pub mod attack_maps;
 // pub mod gen_moves;
 // pub mod lockfree_hashmap;
 pub mod material_table;
-pub mod pawn_hash_table;
+// pub mod pawn_hash_table;
 pub mod evmap_tables;
 pub mod cuckoo;
 

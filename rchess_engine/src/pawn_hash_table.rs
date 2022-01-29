@@ -1,11 +1,11 @@
 
-pub use self::table::*;
+// pub use self::table::*;
 
 use crate::types::*;
 use crate::tables::*;
 use crate::explore::*;
 use crate::evaluate::*;
-use crate::evmap_tables::*;
+// use crate::evmap_tables::*;
 
 use std::hash::Hash;
 use std::sync::Arc;
@@ -17,234 +17,238 @@ use evmap::{ReadHandle,ReadHandleFactory,WriteHandle};
 use evmap_derive::ShallowCopy;
 use parking_lot::Mutex;
 
-pub type PHReadFactory = EVReadFactory<PHEntry>;
-pub type PHRead        = EVRead<PHEntry>;
-pub type PHWrite       = EVWrite<PHEntry>;
+#[cfg(feature = "nope")]
+mod old {
+    pub type PHReadFactory = EVReadFactory<PHEntry>;
+    pub type PHRead        = EVRead<PHEntry>;
+    pub type PHWrite       = EVWrite<PHEntry>;
 
-mod table {
-    use std::sync::atomic::AtomicU32;
+    mod table {
+        use std::sync::atomic::AtomicU32;
 
-    use super::*;
+        use super::*;
 
-    #[derive(Debug,Clone)]
-    pub struct PHTableFactory {
-        pub ph_rf:     PHReadFactory,
-        pub ph_w:      PHWrite,
-        pub score_rf:  EVReadFactory<PHScore>,
-        pub score_w:   EVWrite<PHScore>,
-        pub hits:      Arc<AtomicU32>,
-        pub misses:    Arc<AtomicU32>,
-    }
+        #[derive(Debug,Clone)]
+        pub struct PHTableFactory {
+            pub ph_rf:     PHReadFactory,
+            pub ph_w:      PHWrite,
+            pub score_rf:  EVReadFactory<PHScore>,
+            pub score_w:   EVWrite<PHScore>,
+            pub hits:      Arc<AtomicU32>,
+            pub misses:    Arc<AtomicU32>,
+        }
 
-    impl PHTableFactory {
-        pub fn new() -> Self {
+        impl PHTableFactory {
+            pub fn new() -> Self {
 
-            let (ph_rf, ph_w) = new_hash_table();
-            let (score_rf, score_w) = new_hash_table();
+                let (ph_rf, ph_w) = new_hash_table();
+                let (score_rf, score_w) = new_hash_table();
 
-            Self {
-                ph_rf,
-                ph_w,
-                score_rf,
-                score_w,
-                hits:     Arc::new(AtomicU32::new(0)),
-                misses:   Arc::new(AtomicU32::new(0)),
+                Self {
+                    ph_rf,
+                    ph_w,
+                    score_rf,
+                    score_w,
+                    hits:     Arc::new(AtomicU32::new(0)),
+                    misses:   Arc::new(AtomicU32::new(0)),
+                }
+            }
+
+            pub fn handle(&self) -> PHTable {
+                // PHTable::new(self.ph_r.handle(), self.ph_w.clone())
+                PHTable {
+                    ph_r:       self.ph_rf.handle(),
+                    ph_w:       self.ph_w.clone(),
+                    score_r:    self.score_rf.handle(),
+                    score_w:    self.score_w.clone(),
+                    hits:       self.hits.clone(),
+                    misses:     self.misses.clone(),
+                }
             }
         }
 
-        pub fn handle(&self) -> PHTable {
-            // PHTable::new(self.ph_r.handle(), self.ph_w.clone())
-            PHTable {
-                ph_r:       self.ph_rf.handle(),
-                ph_w:       self.ph_w.clone(),
-                score_r:    self.score_rf.handle(),
-                score_w:    self.score_w.clone(),
-                hits:       self.hits.clone(),
-                misses:     self.misses.clone(),
+        #[derive(Debug,Clone,new)]
+        pub struct PHTable {
+            pub ph_r:    PHRead,
+            pub ph_w:    PHWrite,
+            pub score_r: EVRead<PHScore>,
+            pub score_w: EVWrite<PHScore>,
+            pub hits:    Arc<AtomicU32>,
+            pub misses:  Arc<AtomicU32>,
+        }
+
+        impl PHTable {
+            pub fn purge_pawns(&self) {
+                let mut w = self.ph_w.lock();
+                w.purge();
+                w.refresh();
             }
+            pub fn purge_scores(&self) {
+                let mut w = self.score_w.lock();
+                w.purge();
+                w.refresh();
+            }
+
+            pub fn get_scores(
+                &self,
+                ts:         &Tables,
+                g:          &Game,
+                ev_mid:     &EvalParams,
+                ev_end:     &EvalParams,
+            ) -> PHScore {
+                if let Some(scores) = self.score_r.get_one(&g.pawn_zb) {
+                    *scores
+                } else {
+                    let mut ph = PHEntry::get_or_insert_pawns(ts, &g, ev_mid, ev_end, Some(self));
+                    let scores = PHScore::generate(ts, g, &ph, ev_mid, ev_end);
+
+                    {
+                        let mut w = self.score_w.lock();
+                        w.update(g.pawn_zb, scores);
+                        w.refresh();
+                    }
+
+                    scores
+                }
+            }
+
         }
+
+        // impl PHTable {
+        //     // pub fn get_score(&self, mid: bool, side: Color) -> &Option<Score> {
+        //     //     self.get_scores(mid).get(side)
+        //     // }
+        //     pub fn get_scores(&self, zb: &Zobrist) -> Option<PHScore> {
+        //         if let Some(x) = self.score_r.get_one(zb) {
+        //             Some(*x)
+        //         } else { None }
+        //     }
+        // }
+
+
     }
 
-    #[derive(Debug,Clone,new)]
-    pub struct PHTable {
-        pub ph_r:    PHRead,
-        pub ph_w:    PHWrite,
-        pub score_r: EVRead<PHScore>,
-        pub score_w: EVWrite<PHScore>,
-        pub hits:    Arc<AtomicU32>,
-        pub misses:  Arc<AtomicU32>,
+    mod new_table {
     }
 
-    impl PHTable {
-        pub fn purge_pawns(&self) {
-            let mut w = self.ph_w.lock();
-            w.purge();
-            w.refresh();
-        }
-        pub fn purge_scores(&self) {
-            let mut w = self.score_w.lock();
-            w.purge();
-            w.refresh();
-        }
+    #[derive(Debug,Default,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize,new)]
+    pub struct PHScore {
+        pub score_mid:            ByColor<Score>,
+        pub score_end:            ByColor<Score>,
+    }
 
-        pub fn get_scores(
-            &self,
+    impl PHScore {
+
+        pub fn generate(
             ts:         &Tables,
             g:          &Game,
+            ph:         &PHEntry,
             ev_mid:     &EvalParams,
             ev_end:     &EvalParams,
-        ) -> PHScore {
-            if let Some(scores) = self.score_r.get_one(&g.pawn_zb) {
-                *scores
+        ) -> Self {
+            let mid_w = g._score_pawns_mut(&ph, &ev_mid, White);
+            let mid_b = g._score_pawns_mut(&ph, &ev_mid, Black);
+
+            let end_w = g._score_pawns_mut(&ph, &ev_end, White);
+            let end_b = g._score_pawns_mut(&ph, &ev_end, Black);
+
+            PHScore::new(
+                ByColor::new(mid_w,mid_b),
+                ByColor::new(end_w,end_b),
+            )
+        }
+
+        pub fn get(&self, mid: bool, side: Color) -> Score {
+            if mid {
+                *self.score_mid.get(side)
             } else {
-                let mut ph = PHEntry::get_or_insert_pawns(ts, &g, ev_mid, ev_end, Some(self));
-                let scores = PHScore::generate(ts, g, &ph, ev_mid, ev_end);
-
-                {
-                    let mut w = self.score_w.lock();
-                    w.update(g.pawn_zb, scores);
-                    w.refresh();
-                }
-
-                scores
+                *self.score_end.get(side)
             }
         }
-
-    }
-
-    // impl PHTable {
-    //     // pub fn get_score(&self, mid: bool, side: Color) -> &Option<Score> {
-    //     //     self.get_scores(mid).get(side)
-    //     // }
-    //     pub fn get_scores(&self, zb: &Zobrist) -> Option<PHScore> {
-    //         if let Some(x) = self.score_r.get_one(zb) {
-    //             Some(*x)
-    //         } else { None }
-    //     }
-    // }
-
-
-}
-
-mod new_table {
-}
-
-#[derive(Debug,Default,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize,new)]
-pub struct PHScore {
-    pub score_mid:            ByColor<Score>,
-    pub score_end:            ByColor<Score>,
-}
-
-impl PHScore {
-
-    pub fn generate(
-        ts:         &Tables,
-        g:          &Game,
-        ph:         &PHEntry,
-        ev_mid:     &EvalParams,
-        ev_end:     &EvalParams,
-    ) -> Self {
-        let mid_w = g._score_pawns_mut(&ph, &ev_mid, White);
-        let mid_b = g._score_pawns_mut(&ph, &ev_mid, Black);
-
-        let end_w = g._score_pawns_mut(&ph, &ev_end, White);
-        let end_b = g._score_pawns_mut(&ph, &ev_end, Black);
-
-        PHScore::new(
-            ByColor::new(mid_w,mid_b),
-            ByColor::new(end_w,end_b),
-        )
-    }
-
-    pub fn get(&self, mid: bool, side: Color) -> Score {
-        if mid {
-            *self.score_mid.get(side)
-        } else {
-            *self.score_end.get(side)
-        }
-    }
-    pub fn get_scores(&self, mid: bool) -> [Score; 2] {
-        if mid {
-            [self.score_mid.white,self.score_mid.black]
-        } else {
-            [self.score_end.white,self.score_end.black]
-        }
-    }
-}
-
-#[derive(Debug,Default,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize,new)]
-pub struct PHEntry {
-
-    // pub score_mid:            ByColor<Score>,
-    // pub score_end:            ByColor<Score>,
-
-    pub connected:            BitBoard,
-    pub supported_1:          BitBoard,
-    pub supported_2:          BitBoard,
-    pub phalanx:              BitBoard,
-    pub passed:               BitBoard,
-    pub candidate:            BitBoard,
-    pub blocked:              BitBoard,
-    pub opposed:              BitBoard,
-
-    pub doubled:              BitBoard,
-    pub isolated:             BitBoard,
-    // pub doubled_isolated:     BitBoard,
-    pub backward:             BitBoard,
-
-}
-
-// #[derive(Debug,Default,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize,new)]
-// pub struct PHScore {
-//     pub score_mid:            ByColor<Option<Score>>,
-//     pub score_end:            ByColor<Option<Score>>,
-// }
-
-impl PHEntry {
-
-    // pub fn update_score_mut(&mut self, score: Score, mid: bool, side: Color) {
-    //     let mut bc = if mid {
-    //         &mut self.score_mid
-    //     } else {
-    //         &mut self.score_end
-    //     };
-    //     bc.insert_mut(side, score);
-    // }
-
-    pub fn get_or_insert_pawns(
-        ts:           &Tables,
-        g:            &Game,
-        ev_mid:       &EvalParams,
-        ev_end:       &EvalParams,
-        ph_rw:        Option<&PHTable>,
-        // mut stats:    &mut SearchStats,
-    ) -> PHEntry {
-        if let Some(ph_rw) = ph_rw {
-            if let Some(ph) = ph_rw.ph_r.get_one(&g.pawn_zb) {
-                // stats.ph_hits += 1;
-                ph_rw.hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                *ph
+        pub fn get_scores(&self, mid: bool) -> [Score; 2] {
+            if mid {
+                [self.score_mid.white,self.score_mid.black]
             } else {
-                ph_rw.misses.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                let mut ph = g.gen_ph_entry(ts, ev_mid, ev_end);
+                [self.score_end.white,self.score_end.black]
+            }
+        }
+    }
 
+    #[derive(Debug,Default,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize,new)]
+    pub struct PHEntry {
+
+        // pub score_mid:            ByColor<Score>,
+        // pub score_end:            ByColor<Score>,
+
+        pub connected:            BitBoard,
+        pub supported_1:          BitBoard,
+        pub supported_2:          BitBoard,
+        pub phalanx:              BitBoard,
+        pub passed:               BitBoard,
+        pub candidate:            BitBoard,
+        pub blocked:              BitBoard,
+        pub opposed:              BitBoard,
+
+        pub doubled:              BitBoard,
+        pub isolated:             BitBoard,
+        // pub doubled_isolated:     BitBoard,
+        pub backward:             BitBoard,
+
+    }
+
+    // #[derive(Debug,Default,Eq,PartialEq,Hash,ShallowCopy,Clone,Copy,Serialize,Deserialize,new)]
+    // pub struct PHScore {
+    //     pub score_mid:            ByColor<Option<Score>>,
+    //     pub score_end:            ByColor<Option<Score>>,
+    // }
+
+    impl PHEntry {
+
+        // pub fn update_score_mut(&mut self, score: Score, mid: bool, side: Color) {
+        //     let mut bc = if mid {
+        //         &mut self.score_mid
+        //     } else {
+        //         &mut self.score_end
+        //     };
+        //     bc.insert_mut(side, score);
+        // }
+
+        pub fn get_or_insert_pawns(
+            ts:           &Tables,
+            g:            &Game,
+            ev_mid:       &EvalParams,
+            ev_end:       &EvalParams,
+            ph_rw:        Option<&PHTable>,
+            // mut stats:    &mut SearchStats,
+        ) -> PHEntry {
+            if let Some(ph_rw) = ph_rw {
+                if let Some(ph) = ph_rw.ph_r.get_one(&g.pawn_zb) {
+                    // stats.ph_hits += 1;
+                    ph_rw.hits.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    *ph
+                } else {
+                    ph_rw.misses.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    let mut ph = g.gen_ph_entry(ts, ev_mid, ev_end);
+
+                    // for side in [White,Black] {
+                    //     g._score_pawns_mut(&mut ph, ev_mid, side);
+                    //     g._score_pawns_mut(&mut ph, ev_end, side);
+                    // }
+                    let mut w = ph_rw.ph_w.lock();
+                    w.update(g.pawn_zb, ph);
+                    w.refresh();
+                    ph
+                }
+            } else {
+                let mut ph = g.gen_ph_entry(ts, ev_mid, ev_end);
                 // for side in [White,Black] {
                 //     g._score_pawns_mut(&mut ph, ev_mid, side);
                 //     g._score_pawns_mut(&mut ph, ev_end, side);
                 // }
-                let mut w = ph_rw.ph_w.lock();
-                w.update(g.pawn_zb, ph);
-                w.refresh();
                 ph
             }
-        } else {
-            let mut ph = g.gen_ph_entry(ts, ev_mid, ev_end);
-            // for side in [White,Black] {
-            //     g._score_pawns_mut(&mut ph, ev_mid, side);
-            //     g._score_pawns_mut(&mut ph, ev_end, side);
-            // }
-            ph
         }
     }
-}
 
+
+}

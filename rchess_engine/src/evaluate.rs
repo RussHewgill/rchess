@@ -196,20 +196,26 @@ impl ExHelper {
     pub fn evaluate_classical(&mut self, ts: &Tables, g: &Game) -> Score {
         assert!(!g.state.in_check);
 
+        // let entry = if let Some(entry) = self.material_table.get(g.zobrist) {
+        //     if let Some(eg) = entry.eg_val {
+        //         return eg.evaluate(ts, g);
+        //     } else {
+        //         entry
+        //     }
+        // } else {
+        //     let entry = MatEval::new(ts, g);
+        //     self.material_table.insert(g.zobrist, entry);
+        //     entry
+        // };
+
         if let Some(entry) = self.material_table.get(g.zobrist) {
-            if let Some(eg) = entry.eg_val {
-                eg.evaluate(ts, g)
-            } else {
-                entry.score
-            }
+            if let Some(eg) = entry.eg_val { return eg.evaluate(ts, g); }
 
+            let mut score = entry.score;
+
+            unimplemented!()
         } else {
-            let score = g.sum_evaluate(ts, &ts.eval_params_mid, &ts.eval_params_mid, None);
-            let entry = MatEval::new(g, score);
-
-            self.material_table.insert(g.zobrist, entry);
-
-            score
+            unimplemented!()
         }
     }
 
@@ -427,9 +433,10 @@ impl Game {
 
     pub fn count_npm(&self, side: Color) -> Score {
         let mut npm = 0;
-        for pc in Piece::iter_nonking_pieces() {
+        for pc in Piece::iter_nonking_nonpawn_pieces() {
             let n = self.state.material.get(pc, side);
-            npm += pc.score_st_phase() * n as Score;
+            // npm += pc.score_st_phase() * n as Score;
+            npm += pc.score() * n as Score;
         }
         npm
     }
@@ -572,27 +579,28 @@ impl Game {
 
 impl Piece {
 
-    const fn score_st_phase(self) -> Score {
-        match self {
-            Pawn   => 126,
-            Knight => 781,
-            Bishop => 825,
-            Rook   => 1276,
-            Queen  => 2538,
-            King   => 32001,
-        }
-    }
+    // const fn score_st_phase(self) -> Score {
+    //     match self {
+    //         Pawn   => 126,
+    //         Knight => 781,
+    //         Bishop => 825,
+    //         Rook   => 1276,
+    //         Queen  => 2538,
+    //         King   => 32001,
+    //     }
+    // }
 
-    pub const fn score_basic(&self) -> Score {
-        match self {
-            Pawn   => 100,
-            Knight => 300,
-            Bishop => 300,
-            Rook   => 500,
-            Queen  => 900,
-            King   => 32001,
-        }
-    }
+    // pub const fn score_basic(&self) -> Score {
+    //     match self {
+    //         Pawn   => 100,
+    //         Knight => 300,
+    //         Bishop => 300,
+    //         Rook   => 500,
+    //         Queen  => 900,
+    //         King   => 32001,
+    //     }
+    // }
+
     pub const fn score(&self) -> Score {
         match self {
             Pawn   => 100,

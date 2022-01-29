@@ -10,7 +10,7 @@ use crate::evaluate::*;
 use crate::pruning::*;
 use crate::alphabeta::*;
 use crate::opening_book::*;
-use crate::pawn_hash_table::*;
+// use crate::pawn_hash_table::*;
 // use crate::heuristics::*;
 pub use crate::stack::{ABStack,ABStackPly};
 

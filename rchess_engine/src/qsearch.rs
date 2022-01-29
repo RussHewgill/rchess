@@ -9,7 +9,7 @@ use crate::tables::*;
 use crate::evaluate::*;
 use crate::explore::*;
 use crate::tuning::*;
-use crate::pawn_hash_table::*;
+// use crate::pawn_hash_table::*;
 use crate::evmap_tables::*;
 
 use std::cell::RefCell;

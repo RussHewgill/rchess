@@ -10,6 +10,10 @@ use self::helpers::*;
 
 use std::collections::HashMap;
 
+use once_cell::sync::OnceCell;
+
+// static ENDGAME_MAPS: OnceCell<EndGameMaps> = OnceCell::new();
+
 pub trait EndGame {
 
     // const NPM: Score;
@@ -21,9 +25,13 @@ pub trait EndGame {
 
 }
 
-
 pub mod helpers {
     use crate::types::*;
+
+    pub fn is_kx_vs_k(g: &Game, side: Color) -> bool {
+        !(g.get_color(!side).more_than_one())
+            && g.state.material.non_pawn_value(side) >= Rook.score()
+    }
 
     pub fn _verify_material(g: &Game, side: Color, npm: Score, pawns: u8) -> bool {
         g.state.material.non_pawn_value(side) == npm
@@ -101,6 +109,22 @@ pub enum EndGameType {
 }
 
 impl EndGameType {
+
+    fn get_eg(self) -> Box<dyn EndGame> {
+        match self {
+            Self::KXvK => Box::new(KX_VS_K),
+            Self::KPvK => Box::new(KP_VS_K),
+            // _          => unimplemented!(),
+        }
+    }
+
+    pub fn check(ts: &Tables, g: &Game) -> Option<Self> {
+
+
+
+        unimplemented!()
+    }
+
     pub fn evaluate(self, ts: &Tables, g: &Game) -> Score {
         match self {
             Self::KXvK => endgame_kx_vs_k(ts, g),
@@ -112,16 +136,25 @@ impl EndGameType {
 pub struct KX_VS_K;
 
 impl EndGame for KX_VS_K {
-
     fn evaluate(self, ts: &Tables, g: &Game) -> Score {
         unimplemented!()
     }
-
     fn verify_material(self, g: &Game, side: Color) -> bool {
         // _verify_material(g, side, npm, pawns)
         unimplemented!()
     }
+}
 
+pub struct KP_VS_K;
+
+impl EndGame for KP_VS_K {
+    fn evaluate(self, ts: &Tables, g: &Game) -> Score {
+        unimplemented!()
+    }
+    fn verify_material(self, g: &Game, side: Color) -> bool {
+        // _verify_material(g, side, npm, pawns)
+        unimplemented!()
+    }
 }
 
 fn endgame_kx_vs_k(ts: &Tables, g: &Game) -> Score {

@@ -980,6 +980,10 @@ impl Piece {
         PcIter(Some(Pawn), true)
     }
 
+    pub fn iter_nonking_nonpawn_pieces() -> impl Iterator<Item = Piece> {
+        PcIter(Some(Knight), true)
+    }
+
     pub fn print(&self, c: Color) -> char {
         // backward on dark terminal
         match c {

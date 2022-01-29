@@ -1142,6 +1142,8 @@ impl Game {
 
         if pc == Pawn {
             self.pawn_zb = self.pawn_zb.update_piece(ts, pc, side, at.into())
+        } else {
+            self.state.npm[side] -= pc.score();
         }
         self.mat_zb = self.mat_zb.update_piece(ts, pc, side, at);
     }
@@ -1170,6 +1172,8 @@ impl Game {
 
         if pc == Pawn {
             self.pawn_zb = self.pawn_zb.update_piece(ts, pc, side, at);
+        } else {
+            self.state.npm[side] += pc.score();
         }
         self.mat_zb = self.mat_zb.update_piece(ts, pc, side, at);
 

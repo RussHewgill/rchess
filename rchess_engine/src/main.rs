@@ -3111,44 +3111,15 @@ fn main9() {
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
 
-    use rchess_engine_lib::material_table::*;
-
-    let mut mt = MaterialTable::new(32);
-
-    // let zb: u64 = rng.gen();
-
-    mt.insert(g.zobrist, MatEval::new(&g, 123));
-
-    let me = mt.get(g.zobrist).unwrap();
-
-    eprintln!("me = {:?}", me.score);
-
-    return;
-
     eprintln!("g.to_fen() = {:?}", g.to_fen());
     eprintln!("g = {:?}", g);
 
-
-    let zb0 = g.mat_zb;
-
-    let mut g2 = g.make_move_unchecked(&ts, Move::new_quiet("A8", "A7", Rook)).unwrap();
-    g2.state.side_to_move = Black;
-    let g3 = g2.make_move_unchecked(&ts, Move::new_quiet("A7", "A8", Rook)).unwrap();
-
-    eprintln!("g2 = {:?}", g2);
-    eprintln!("g3 = {:?}", g3);
-
-    let zb1 = g2.mat_zb;
-    let zb2 = g3.mat_zb;
-
-    eprintln!("zb0 = {:?}", zb0);
-    eprintln!("zb1 = {:?}", zb1);
-    eprintln!("zb2 = {:?}", zb2);
-
-    return;
-
     // eprintln!();
     // eprintln!("correct = {:?}", correct);
+
+    eprintln!("g.state.npm = {:?}", g.state.npm);
+
+    return;
 
     // let hook = std::panic::take_hook();
     // std::panic::set_hook(Box::new(move |panicinfo| {
@@ -3159,7 +3130,7 @@ fn main9() {
 
     // // let k0 = std::mem::size_of::<SearchInfo>();
     // // eprintln!("k0 = {:?}", k0);
-    // print_size_of!(Material);
+    // print_size_of!(MatEval);
     // return;
 
     // let t = 10.0;
@@ -3240,7 +3211,8 @@ fn main9() {
     for (thread_id,per_thread) in ex.per_thread_data.iter().enumerate() {
         let mt = &per_thread.as_ref().unwrap().mat_table;
         // eprintln!("{} = {:?}", thread_id, mt.inner().len());
-        eprintln!("{} = {:?}", thread_id, mt.used_entries());
+        eprintln!("{} = {} / {}, {:.3}", thread_id, mt.used_entries(), mt.capacity(),
+                  mt.used_entries() as f64 / mt.capacity() as f64);
     }
 
 
