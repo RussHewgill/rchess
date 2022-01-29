@@ -186,13 +186,13 @@ impl ExHelper {
         // self.eval_nn_or_hce(ts, g)
     }
 
-    // #[cfg(feature = "nope")]
+    #[cfg(feature = "nope")]
     pub fn evaluate_classical(&mut self, ts: &Tables, g: &Game) -> Score {
         let score = g.sum_evaluate(ts, &ts.eval_params_mid, &ts.eval_params_mid, None);
         score
     }
 
-    #[cfg(feature = "nope")]
+    // #[cfg(feature = "nope")]
     pub fn evaluate_classical(&mut self, ts: &Tables, g: &Game) -> Score {
         assert!(!g.state.in_check);
 

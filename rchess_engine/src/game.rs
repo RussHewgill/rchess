@@ -23,8 +23,11 @@ pub type Phase = u8;
 #[derive(PartialEq,Clone,Copy,Serialize,Deserialize)]
 pub struct Game {
     pub state:            GameState,
+
     pub zobrist:          Zobrist,
     pub pawn_zb:          Zobrist,
+    pub mat_zb:           Zobrist,
+
     pub last_move:        Option<Move>,
     // pub last_move_2:      Option<Move>,
 
@@ -89,6 +92,8 @@ impl Default for Game {
             state:            GameState::default(),
             zobrist:          Zobrist(0),
             pawn_zb:          Zobrist(0),
+            mat_zb:           Zobrist(0),
+
             last_move:        None,
 
             pieces:           [None; 64],
@@ -1083,11 +1088,16 @@ impl Game {
         if calc_zb {
             self.zobrist = self.zobrist.update_piece(&ts, pc, side, from);
             self.zobrist = self.zobrist.update_piece(&ts, pc, side, to);
-            if pc == Pawn {
-                self.pawn_zb = self.pawn_zb.update_piece(ts, pc, side, from);
-                self.pawn_zb = self.pawn_zb.update_piece(ts, pc, side, to);
-            }
         }
+
+        if pc == Pawn {
+            self.pawn_zb = self.pawn_zb.update_piece(ts, pc, side, from);
+            self.pawn_zb = self.pawn_zb.update_piece(ts, pc, side, to);
+        }
+
+        self.mat_zb = self.mat_zb.update_piece(ts, pc, side, from);
+        self.mat_zb = self.mat_zb.update_piece(ts, pc, side, to);
+
     }
 
     #[cfg(feature = "nope")]
@@ -1098,13 +1108,6 @@ impl Game {
         // self._delete_piece_mut_unchecked(&ts, mv, from, pc, side, false, calc_zb);
         self._insert_piece_mut_unchecked(&ts, to, pc, side, false, calc_zb);
     }
-
-    // pub fn delete_piece_mut_unchecked(
-    //     &mut self, ts: &Tables, at: Coord, pc: Piece, side: Color, calc_zb: bool) {
-    //     // &mut self, ts: &Tables, mv: Move, at: T, pc: Piece, side: Color, calc_zb: bool) {
-    //     // self._delete_piece_mut_unchecked(&ts, mv, at, pc, side, true, calc_zb);
-    //     self._delete_piece_mut_unchecked(&ts, at, pc, side, true, calc_zb);
-    // }
 
     fn delete_piece_mut_unchecked(
         &mut self, ts: &Tables, at: Coord, pc: Piece, side: Color, calc_zb: bool) {
@@ -1135,20 +1138,13 @@ impl Game {
 
         if calc_zb {
             self.zobrist = self.zobrist.update_piece(&ts, pc, side, at.into());
-            if pc == Pawn {
-                self.pawn_zb = self.pawn_zb.update_piece(ts, pc, side, at.into())
-            }
         }
+
+        if pc == Pawn {
+            self.pawn_zb = self.pawn_zb.update_piece(ts, pc, side, at.into())
+        }
+        self.mat_zb = self.mat_zb.update_piece(ts, pc, side, at);
     }
-
-    // pub fn insert_piece_mut_unchecked<T: Into<Coord>>(
-    //     &mut self, ts: &Tables, at: T, pc: Piece, side: Color, calc_zb: bool) {
-    //     self._insert_piece_mut_unchecked(&ts, at, pc, side, true, calc_zb);
-    // }
-
-    // pub fn insert_piece_mut_unchecked<T: Into<Coord>>(
-    //     &mut self, ts: &Tables, at: T, pc: Piece, side: Color, calc_zb: bool) {
-    //     let at = at.into();
 
     pub fn insert_piece_mut_unchecked(
         &mut self, ts: &Tables, at: Coord, pc: Piece, side: Color, calc_zb: bool) {
@@ -1169,19 +1165,15 @@ impl Game {
         self.psqt_score_end[side] += ts.get_psqt(pc, side, at, false);
 
         if calc_zb {
-            self.zobrist = self.zobrist.update_piece(&ts, pc, side, at.into());
-            if pc == Pawn {
-                self.pawn_zb = self.pawn_zb.update_piece(ts, pc, side, at.into())
-            }
+            self.zobrist = self.zobrist.update_piece(&ts, pc, side, at);
         }
-    }
 
-    // pub fn insert_pieces_mut_unchecked<T: Into<Coord> + Clone + Copy>(
-    //     &mut self, ts: &Tables, ps: &[(T, Piece, Color)], mat: bool, calc_zb: bool) {
-    //     for (at,pc,side) in ps.iter() {
-    //         self._insert_piece_mut_unchecked(&ts, *at, *pc, *side, mat, calc_zb);
-    //     }
-    // }
+        if pc == Pawn {
+            self.pawn_zb = self.pawn_zb.update_piece(ts, pc, side, at);
+        }
+        self.mat_zb = self.mat_zb.update_piece(ts, pc, side, at);
+
+    }
 
     /// Used for building game from parsed PGN
     pub fn insert_piece_mut_unchecked_nohash<T: Into<Coord>>(
@@ -1202,6 +1194,11 @@ impl Game {
         self.psqt_score_end[side] += ts.get_psqt(pc, side, at, false);
 
         self.pieces[at] = Some(pc);
+
+        if pc == Pawn {
+            self.pawn_zb = self.pawn_zb.update_piece(ts, pc, side, at);
+        }
+        self.mat_zb = self.mat_zb.update_piece(ts, pc, side, at);
 
     }
 

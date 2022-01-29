@@ -198,7 +198,7 @@ impl Zobrist {
     #[must_use]
     pub fn update_piece(&self, ts: &Tables, pc: Piece, col: Color, c0: Coord) -> Self {
         let mut out = self.0;
-        out ^= ts.zobrist_tables.pieces[col][pc.index()][c0];
+        out ^= ts.zobrist_tables.pieces[col][pc][c0];
         Self(out)
     }
 
