@@ -9,6 +9,7 @@ use evmap_derive::ShallowCopy;
 use derive_more::*;
 
 mod lookups {
+    use crate::types::*;
     use super::BitBoard;
 
     use lazy_static::lazy_static;
@@ -41,15 +42,14 @@ mod lookups {
     pub const DIAG_A1_H8: BitBoard = BitBoard(0x8040201008040201);
     pub const DIAG_A8_H1: BitBoard = BitBoard(0x0102040810204080);
 
-    // lazy_static! { /// SQUARE_BB
-    //     // pub static ref SQUARE_BB: [BitBoard; 64] = array_init::array_init(|x| BitBoard::single(Coord::new_int(x)));
-    //     pub static ref SQUARE_BB: [BitBoard; 64] = array_init::array_init(|x| {
-    //         // b.flip_mut(Coord::new_int_const(x as u8));
-    //         let k = 1u64.overflowing_shl(x as u32).0;
-    //         BitBoard(k)
-    //         // unimplemented!()
-    //     });
-    // }
+    const fn forward_ranks_bb(side: Color, sq: Coord) -> BitBoard {
+        match side {
+            White => BitBoard((!MASK_RANKS[0].0) << (8 * BitBoard::relative_rank(White, sq) as u32)),
+            Black => BitBoard((!MASK_RANKS[7].0) >> (8 * BitBoard::relative_rank(Black, sq) as u32)),
+        }
+    }
+
+    // pub const FORWARD_FILE_BB: [BitBoard; 64] = 
 
     pub const SQUARE_BB: [BitBoard; 64] = [
         BitBoard(1 << 0),
@@ -395,7 +395,7 @@ impl BitBoard {
 /// Indexing
 impl BitBoard {
 
-    pub fn relative_rank(side: Color, sq: Coord) -> u8 {
+    pub const fn relative_rank(side: Color, sq: Coord) -> u8 {
         match side {
             White => sq.rank(),
             Black => 7 - sq.rank(),

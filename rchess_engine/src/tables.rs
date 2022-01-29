@@ -75,7 +75,7 @@ pub static CENTERDIST: [u8; 64] = [
     3, 3, 3, 3, 3, 3, 3, 3
 ];
 
-lazy_static! {
+lazy_static! { /// FLANKS
     pub static ref FLANK_LEFT: BitBoard  = MASK_FILES[0] | MASK_FILES[1] | MASK_FILES[2] | MASK_FILES[3];
     pub static ref FLANK_RIGHT: BitBoard = MASK_FILES[4] | MASK_FILES[5] | MASK_FILES[6] | MASK_FILES[7];
 }

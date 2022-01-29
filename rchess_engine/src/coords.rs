@@ -204,11 +204,11 @@ impl Coord {
 /// file, rank, masks, flip
 impl Coord {
 
-    pub fn file(self) -> u8 {
+    pub const fn file(self) -> u8 {
         // self.0
         self.0 & 7
     }
-    pub fn rank(self) -> u8 {
+    pub const fn rank(self) -> u8 {
         // self.1
         self.0 >> 3
     }

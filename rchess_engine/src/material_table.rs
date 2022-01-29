@@ -140,9 +140,9 @@ mod mat_eval {
 
     impl MatEval {
 
-        pub fn new(ts: &Tables, g: &Game) -> Self {
+        pub fn new(ts: &Tables, g: &Game, score: Score) -> Self {
 
-            let score = g.sum_evaluate(ts, &ts.eval_params_mid, &ts.eval_params_mid, None);
+            // let score = g.sum_evaluate(ts, &ts.eval_params_mid, &ts.eval_params_mid, None);
 
             if is_kx_vs_k(g, g.state.side_to_move) {
                 unimplemented!()
@@ -177,18 +177,55 @@ mod mat_eval {
 }
 
 mod pawn_eval {
+    use crate::types::*;
+    use crate::tables::*;
+    use crate::evaluate::TaperedScore;
 
     #[derive(Debug,Clone,Copy)]
     pub struct PawnEval {
+        scores:          [TaperedScore; 2],
+        passed:          BitBoard,
+        attacks:         BitBoard,
+        attacks_span:    BitBoard,
+    }
+
+    impl PawnEval {
+        pub fn new(ts: &Tables, g: &Game, side: Color) -> Self {
+
+            let mut passed       = BitBoard::empty();
+            let mut attacks      = BitBoard::empty();
+            let mut attacks_span = BitBoard::empty();
+
+            let scores = [TaperedScore::default(); 2];
+
+            for sq in g.get(Pawn, side).into_iter() {
+            }
+
+            Self {
+                scores,
+                passed,
+                attacks,
+                attacks_span,
+            }
+        }
+    }
+
+    /// Pawn Spans
+    impl Game {
+
+        pub fn pawn_attacks_span(&self, side: Color) -> BitBoard {
+            let (d,dw,de) = if side == White { (N,NW,NE) } else { (S,SW,SE) };
+            let pawns = self.get(Pawn, side);
+            pawns.shift_dir(dw) | pawns.shift_dir(de)
+        }
+
+        pub fn _pawn_attacks_span(bb: BitBoard, side: Color) -> BitBoard {
+            let (d,dw,de) = if side == White { (N,NW,NE) } else { (S,SW,SE) };
+            bb.shift_dir(dw) | bb.shift_dir(de)
+        }
+
     }
 
 }
-
-// impl Evaluation {
-//     pub fn score(&self) -> Score { self.score }
-//     pub fn phase(&self) -> Phase { self.phase }
-// }
-
-
 
 

@@ -1,7 +1,7 @@
 
 use crate::evmap_tables::*;
 use crate::lockless_map::*;
-use crate::material_table::MaterialTable;
+use crate::material_table::{MaterialTable,PawnTable};
 use crate::movegen::MoveGen;
 use crate::searchstats;
 use crate::types::*;
@@ -55,6 +55,7 @@ lazy_static! { /// DEBUG_ABSTACK
 #[derive(Debug,Default,Clone,new)]
 pub struct PerThreadData {
     pub mat_table:       MaterialTable,
+    pub pawn_table:      PawnTable,
 }
 
 // #[derive(Debug)]
@@ -99,7 +100,7 @@ pub struct Explorer {
     // pub eval_hashmap:      (EVReadFactory<Score>,EVWrite<Score>),
 
     // pub ph_rw:             (PHReadFactory,PHWrite),
-    pub ph_rw:             PHTableFactory,
+    // pub ph_rw:             PHTableFactory,
 
     // pub mat_rw:            
 
@@ -126,7 +127,7 @@ impl Explorer {
         #[cfg(not(feature = "lockless_hashmap"))]
         let (tt_rf, tt_w) = new_hash_table();
 
-        let ph_rw = PHTableFactory::new();
+        // let ph_rw = PHTableFactory::new();
 
         let mut cfg = ExConfig::default();
         cfg.max_depth = max_depth;
@@ -172,7 +173,7 @@ impl Explorer {
             tt_w,
 
             // ph_rw:          (ph_rf,ph_w),
-            ph_rw,
+            // ph_rw,
 
             move_history:   vec![],
             // pos_history:    HashMap::default(),
@@ -260,7 +261,7 @@ pub struct ExHelper {
     pub tt_w:            TTWrite,
 
     // pub ph_rw:         (PHRead,PHWrite),
-    pub ph_rw:           PHTable,
+    // pub ph_rw:           PHTable,
 
     pub move_history:    Vec<(Zobrist, Move)>,
     // pub stack:           Cell<ABStack>,
@@ -268,6 +269,7 @@ pub struct ExHelper {
     // pub prev_best_move:  Option<Move>,
 
     pub material_table:  MaterialTable,
+    pub pawn_table:      PawnTable,
 
 }
 
@@ -326,13 +328,14 @@ impl Explorer {
             tt_w:            self.tt_w.clone(),
 
             // ph_rw:           (self.ph_rw.0.handle(),self.ph_rw.1.clone()),
-            ph_rw:           self.ph_rw.handle(),
+            // ph_rw:           self.ph_rw.handle(),
 
             move_history:    self.move_history.clone(),
 
             // prev_best_move:  None,
 
             material_table:  thread_data.mat_table,
+            pawn_table:      thread_data.pawn_table,
 
         }
     }
@@ -768,8 +771,8 @@ impl Explorer {
         };
         stats.max_depth = Max(d as u32);
 
-        stats.ph_hits   = self.ph_rw.hits.load(Ordering::Relaxed);
-        stats.ph_misses = self.ph_rw.misses.load(Ordering::Relaxed);
+        // stats.ph_hits   = self.ph_rw.hits.load(Ordering::Relaxed);
+        // stats.ph_misses = self.ph_rw.misses.load(Ordering::Relaxed);
 
         if let Some(res) = out.get_result() {
 
@@ -1105,7 +1108,8 @@ impl ExHelper {
 
         trace!("exiting lazy_smp_single, id = {}", self.id);
 
-        PerThreadData::new(self.material_table.clone())
+        /// XXX: this might be slow? only clones once per thread per search
+        PerThreadData::new(self.material_table.clone(), self.pawn_table.clone())
     }
 
 }
