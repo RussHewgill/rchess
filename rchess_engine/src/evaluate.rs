@@ -273,13 +273,12 @@ impl Game {
         ts:         &Tables,
         ev_mid:     &EvalParams,
         ev_end:     &EvalParams,
-        ph_rw:      Option<&PHTable>,
     ) -> Score {
         // const SIDES: [Color; 2] = [White,Black];
         // let side = self.state.side_to_move;
 
-        let mg = self.sum_evaluate_mg(ts, ev_mid, ev_end, ph_rw);
-        let eg = self.sum_evaluate_eg(ts, ev_mid, ev_end, ph_rw);
+        let mg = self.sum_evaluate_mg(ts, ev_mid, ev_end);
+        let eg = self.sum_evaluate_eg(ts, ev_mid, ev_end);
 
         // let mut mg = self.score_material(White, true) - self.score_material(Black, true);
         // let mut eg = self.score_material(White, false) - self.score_material(Black, false);
@@ -301,7 +300,6 @@ impl Game {
         ts:          &Tables,
         ev_mid:      &EvalParams,
         ev_end:      &EvalParams,
-        ph_rw:       Option<&PHTable>,
     ) -> Score {
         let mut score = 0;
         let ev = ev_mid;
