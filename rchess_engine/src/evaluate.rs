@@ -61,7 +61,20 @@ impl ExHelper {
         /// evaluate is only called from quiet positions
         assert!(!g.state.in_check);
 
-        unimplemented!()
+        let use_nnue = cfg!(feature = "NNUE")
+            && self.nnue.is_some()
+            ;
+
+        if use_nnue {
+            if let Some(nnue) = self.nnue.as_mut() {
+                let score = nnue.evaluate(&g, true);
+                score
+            } else { unreachable!() }
+        } else {
+            let stand_pat = self.evaluate_classical(ts, g);
+            let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
+            score
+        }
     }
 
 }
