@@ -63,7 +63,8 @@ pub struct GameState {
     pub en_passant:         Option<Coord>,
     pub castling:           Castling,
 
-    pub npm:                [Score; 2],
+    // pub npm:                [Score; 2],
+    pub npm:                [TaperedScore; 2],
 
     pub phase_unscaled:     i16,
     pub phase:              Phase,
@@ -1143,7 +1144,7 @@ impl Game {
         if pc == Pawn {
             self.pawn_zb = self.pawn_zb.update_piece(ts, pc, side, at.into())
         } else {
-            self.state.npm[side] -= pc.score();
+            self.state.npm[side] -= pc.score_tapered();
         }
         self.mat_zb = self.mat_zb.update_piece(ts, pc, side, at);
     }
@@ -1173,7 +1174,7 @@ impl Game {
         if pc == Pawn {
             self.pawn_zb = self.pawn_zb.update_piece(ts, pc, side, at);
         } else {
-            self.state.npm[side] += pc.score();
+            self.state.npm[side] += pc.score_tapered();
         }
         self.mat_zb = self.mat_zb.update_piece(ts, pc, side, at);
 

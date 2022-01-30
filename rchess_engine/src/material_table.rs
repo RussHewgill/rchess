@@ -43,20 +43,21 @@ use std::collections::HashMap;
 
 const LOW_FOUR_BYTES: u64 = 0x00_00_00_00_FF_FF_FF_FF;
 
-pub type MaterialTable = VecTable<MatEval>;
-pub type PawnTable     = VecTable<PawnEval>;
+pub type MaterialTable = VecTable<MatEval, 32>;
+pub type PawnTable     = VecTable<PawnEval, 8>;
 
 #[derive(Debug,Clone)]
-pub struct VecTable<T> where T: Clone {
+pub struct VecTable<T, const SIZE_MB: usize> where T: Clone {
     vec:        Vec<Option<(u32,T)>>,
 }
 
-impl<T: Clone> Default for VecTable<T> {
-    fn default() -> Self { Self::new(Self::DEFAULT_SIZE_MB) }
+impl<T: Clone, const SIZE_MB: usize> Default for VecTable<T, SIZE_MB> {
+    fn default() -> Self { Self::new(SIZE_MB) }
 }
 
-impl<T: Clone> VecTable<T> {
-    const DEFAULT_SIZE_MB: usize = 32;
+impl<T: Clone, const SIZE_MB: usize> VecTable<T, SIZE_MB> {
+    // const DEFAULT_SIZE_MB: usize = 32;
+
     pub fn new(max_size_mb: usize) -> Self {
         let max_entries = max_size_mb * 1024 * 1024;
         Self {
@@ -74,7 +75,7 @@ impl<T: Clone> VecTable<T> {
 //     fn default() -> Self { Self::new(Self::DEFAULT_SIZE_MB) }
 // }
 
-impl<T: Clone> VecTable<T> {
+impl<T: Clone, const SIZE_MB: usize> VecTable<T, SIZE_MB> {
 
     pub fn used_entries(&self) -> usize { self.vec.iter().flatten().count() }
 
@@ -123,13 +124,17 @@ impl<T: Clone> VecTable<T> {
 mod mat_eval {
     use crate::endgame::*;
     use crate::endgame::helpers::is_kx_vs_k;
+    use crate::evaluate::TaperedScore;
     use crate::types::*;
     use crate::tables::*;
 
+    use super::MaterialTable;
+
     #[derive(Debug,Clone,Copy)]
+    /// Score is only the material balance
     pub struct MatEval {
 
-        pub score:          Score,
+        pub material_score: Score,
         pub phase:          Phase,
 
         // pub scaling_func:   
@@ -138,24 +143,63 @@ mod mat_eval {
 
     }
 
+    impl MaterialTable {
+        pub fn get_or_insert(&mut self, ts: &Tables, g: &Game) -> MatEval {
+            if let Some(me) = self.get(g.zobrist) {
+                return *me;
+            }
+
+            let me = MatEval::new(ts, g);
+
+            self.insert(g.zobrist, me);
+
+            me
+        }
+    }
+
     impl MatEval {
 
-        pub fn new(ts: &Tables, g: &Game, score: Score) -> Self {
+        /// TODO: sf quadratics?
+        #[cfg(feature = "nope")]
+        pub fn imbalance(mat: &Material, side: Color) -> Score {
+            // let mut score = 0;
+            // for pc in Piece::iter_nonking_pieces() {
+            //     let n = mat.get(pc, side);
+            //     if n == 0 { continue; }
+            //     score += n as Score * pc.score();
+            // }
+            // score
+            unimplemented!()
+        }
+
+        pub fn imbalance(g: &Game) -> TaperedScore {
+
+            g.state.npm[White]
+                + Pawn.score_tapered() * g.state.material.get(Pawn, White) as Score
+                - g.state.npm[Black]
+                - Pawn.score_tapered() * g.state.material.get(Pawn, Black) as Score
+
+        }
+
+        pub fn new(ts: &Tables, g: &Game) -> Self {
 
             // let score = g.sum_evaluate(ts, &ts.eval_params_mid, &ts.eval_params_mid, None);
+            let mut material_score = 0;
+
+
 
             if is_kx_vs_k(g, g.state.side_to_move) {
                 unimplemented!()
             }
 
-            if g.state.npm[White] + g.state.npm[Black] == 0 && g.state.material.get_both(Pawn) > 0 {
-                unimplemented!()
-            }
+            // if g.state.npm[White] + g.state.npm[Black] == 0 && g.state.material.get_both(Pawn) > 0 {
+            //     unimplemented!()
+            // }
 
             let eg_val = None;
 
             Self {
-                score,
+                material_score,
                 phase:     g.state.phase,
                 eg_val,
             }
@@ -181,12 +225,28 @@ mod pawn_eval {
     use crate::tables::*;
     use crate::evaluate::TaperedScore;
 
+    use super::PawnTable;
+
     #[derive(Debug,Clone,Copy)]
     pub struct PawnEval {
         scores:          [TaperedScore; 2],
         passed:          BitBoard,
         attacks:         BitBoard,
         attacks_span:    BitBoard,
+    }
+
+    impl PawnTable {
+        pub fn get_or_insert(&mut self, ts: &Tables, g: &Game, side: Color) -> PawnEval {
+            if let Some(ev) = self.get(g.zobrist) {
+                return *ev;
+            }
+
+            let ev = PawnEval::new(ts, g, side);
+
+            self.insert(g.zobrist, ev);
+
+            ev
+        }
     }
 
     impl PawnEval {
@@ -217,6 +277,7 @@ mod pawn_eval {
                 attacks_span,
             }
         }
+
     }
 
     /// Pawn Spans

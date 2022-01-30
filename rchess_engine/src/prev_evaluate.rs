@@ -801,22 +801,6 @@ impl Game {
     }
 }
 
-/// Pawn Spans
-impl Game {
-
-    pub fn pawn_attacks_span(&self, side: Color) -> BitBoard {
-        let (d,dw,de) = if side == White { (N,NW,NE) } else { (S,SW,SE) };
-        let pawns = self.get(Pawn, side);
-        pawns.shift_dir(dw) | pawns.shift_dir(de)
-    }
-
-    pub fn _pawn_attacks_span(bb: BitBoard, side: Color) -> BitBoard {
-        let (d,dw,de) = if side == White { (N,NW,NE) } else { (S,SW,SE) };
-        bb.shift_dir(dw) | bb.shift_dir(de)
-    }
-
-}
-
 /// Pawn Structure
 impl Game {
 

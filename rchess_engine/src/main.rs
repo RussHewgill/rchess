@@ -3117,27 +3117,12 @@ fn main9() {
     // eprintln!();
     // eprintln!("correct = {:?}", correct);
 
-    // fn forward_ranks_bb(side: Color, sq: Coord) -> BitBoard {
-    //     if side == White {
-    //         unimplemented!()
-    //     } else {
-    //     }
-    // }
 
-    let b = forward_file_bb(Black, "D3".into());
+    let im0 = MatEval::imbalance(&g.state.material, White);
+    let im1 = MatEval::imbalance(&g.state.material, Black);
 
-    // let b = BitBoard::relative_rank(White, "D3".into());
-
-    eprintln!("b = {:?}", b);
-
-    // let x0 = !MASK_RANKS[7];
-    // let x1 = BitBoard(x0.0 >> 8);
-    // let x2 = BitBoard::relative_rank(Black, "D3".into());
-    // let x3 = BitBoard(x1.0 * x2 as u64);
-    // eprintln!("x0 = {:?}", x0);
-    // eprintln!("x1 = {:?}", x1);
-    // eprintln!("x2 = {:?}", x2);
-    // eprintln!("x3 = {:?}", x3);
+    eprintln!("im0 = {:?}", im0);
+    eprintln!("im1 = {:?}", im1);
 
     return;
 

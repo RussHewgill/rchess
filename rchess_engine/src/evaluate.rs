@@ -10,13 +10,15 @@ pub use self::tapered::TaperedScore;
 mod tapered {
     use crate::types::*;
 
+    use serde::{Serialize,Deserialize};
     use derive_more::*;
 
     // #[derive(Serialize,Deserialize,Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
 
     #[derive(Debug,Default,Eq,Ord,PartialEq,PartialOrd,Hash,Clone,Copy,
+             Serialize,Deserialize,
              Add,Sub,Mul,Div,Sum,Neg,
-             AddAssign,MulAssign,
+             AddAssign,SubAssign,MulAssign,
     )]
     pub struct TaperedScore {
         mid: Score,
@@ -24,17 +26,31 @@ mod tapered {
     }
 
     impl TaperedScore {
-        pub fn new(mid: Score, end: Score) -> Self {
+        pub const fn new(mid: Score, end: Score) -> Self {
             Self {
                 mid,
                 end,
             }
         }
+
+        pub fn mid(self) -> Score { self.mid }
+        pub fn end(self) -> Score { self.end }
+
     }
+
+    // impl std::ops::Mul<Score> for TaperedScore {
+    //     type Output = TaperedScore;
+    //     fn mul(self, rhs: Score) -> Self::Output {
+    //         Self {
+    //             mid: self.mid * rhs,
+    //             end: self.end * rhs,
+    //         }
+    //     }
+    // }
 
 }
 
-
+/// Evaluate
 impl ExHelper {
 
     /// NNUE eval is ~18x slower than classic (only material and psqt)
@@ -48,16 +64,53 @@ impl ExHelper {
 
     pub fn evaluate_classical(&mut self, ts: &Tables, g: &Game) -> Score {
 
+        let mut score = 0;
 
-
+        let me = self.material_table.get_or_insert(ts, g);
 
         unimplemented!()
     }
 
 }
 
+/// Winnable, convert TaperedScore to Score
+impl TaperedScore {
+    // pub fn winnable()
+}
 
+/// Piece Scores
 impl Piece {
+
+    const SC_PAWN_MG: Score = 100;
+    const SC_PAWN_EG: Score = 200;
+
+    const SC_KNIGHT_MG: Score = 320;
+    const SC_KNIGHT_EG: Score = 320;
+
+    const SC_BISHOP_MG: Score = 330;
+    const SC_BISHOP_EG: Score = 330;
+
+    const SC_ROOK_MG: Score = 500;
+    const SC_ROOK_EG: Score = 500;
+
+    const SC_QUEEN_MG: Score = 900;
+    const SC_QUEEN_EG: Score = 900;
+
+    const SC_KING_MG: Score = 32001;
+    const SC_KING_EG: Score = 32001;
+
+
+    pub const fn score_tapered(&self) -> TaperedScore {
+        match self {
+            Pawn   => TaperedScore::new(100,200),
+            Knight => TaperedScore::new(320,320),
+            Bishop => TaperedScore::new(330,330),
+            Rook   => TaperedScore::new(500,500),
+            Queen  => TaperedScore::new(900,900),
+            King   => TaperedScore::new(32001,32001),
+        }
+    }
+
     pub const fn score(&self) -> Score {
         match self {
             Pawn   => 100,
@@ -92,12 +145,12 @@ const PH_TOTAL: i16 = PAWN_PH * 16 + KNIGHT_PH * 4 + BISHOP_PH * 4 + ROOK_PH * 4
 /// Phase
 impl Game {
 
-    pub fn count_npm(&self, side: Color) -> Score {
-        let mut npm = 0;
+    pub fn count_npm(&self, side: Color) -> TaperedScore {
+        let mut npm = TaperedScore::default();
         for pc in Piece::iter_nonking_nonpawn_pieces() {
             let n = self.state.material.get(pc, side);
             // npm += pc.score_st_phase() * n as Score;
-            npm += pc.score() * n as Score;
+            npm += pc.score_tapered() * n as Score;
         }
         npm
     }
