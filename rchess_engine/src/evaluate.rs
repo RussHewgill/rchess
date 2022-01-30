@@ -1,6 +1,7 @@
 
 use crate::explore::*;
-use crate::material_table::{MatEval,PawnEval,MaterialTable,PawnTable};
+// use crate::material_table::{MatEval,PawnEval,MaterialTable,PawnTable};
+use crate::material::{MatEval,PawnEval,MaterialTable,PawnTable};
 use crate::types::*;
 use crate::tables::*;
 use crate::endgame::*;

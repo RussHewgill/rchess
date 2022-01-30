@@ -15,14 +15,21 @@ use std::str::FromStr;
 
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub enum D {
-    N,
-    NE,
-    E,
-    SE,
-    S,
-    SW,
-    W,
-    NW,
+    N  = 8,
+    NE = 9,
+    E  = 1,
+    SE = -7,
+    S  = -8,
+    SW = -9,
+    W  = -1,
+    NW = 7,
+}
+
+impl std::ops::Add<D> for Coord {
+    type Output = Coord;
+    fn add(self, rhs: D) -> Self::Output {
+        Coord((self.0 as i8 + rhs as i8) as u8)
+    }
 }
 
 // #[derive(Eq,Ord,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]

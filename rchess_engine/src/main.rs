@@ -29,7 +29,7 @@ use std::str::FromStr;
 
 use itertools::Itertools;
 
-use rchess_engine_lib::material_table::MatEval;
+use rchess_engine_lib::material::{MaterialTable,PawnTable,MatEval,PawnEval};
 use rchess_engine_lib::{heuristics::*, print_size_of};
 use rchess_engine_lib::{timer,timer_loop,eprint_self};
 use rchess_engine_lib::explore::*;
@@ -3164,9 +3164,19 @@ fn main9() {
 
     // let mut ex2 = ex.clone();
 
+    let d = D::N;
+
+    let sq = Coord::from("D3");
+
+    let k0 = sq + d;
+
+    eprintln!("k0 = {:?}", k0);
+
+    return;
+
     let (tx,rx) = crossbeam::channel::unbounded();
 
-    use rchess_engine_lib::material_table::*;
+    use rchess_engine_lib::material::*;
 
     let mt = MaterialTable::default();
     let pt = PawnTable::default();

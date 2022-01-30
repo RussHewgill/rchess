@@ -1,6 +1,6 @@
 
 use crate::alphabeta::ABNodeType;
-use crate::material_table::MaterialTable;
+use crate::material::{MaterialTable,PawnTable};
 use crate::movegen::MoveGen;
 use crate::sf_compat::NNUE4;
 // use crate::threading::ExThread;

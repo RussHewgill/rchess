@@ -1,7 +1,7 @@
 
 use crate::evmap_tables::*;
 use crate::lockless_map::*;
-use crate::material_table::{MaterialTable,PawnTable};
+use crate::material::{MaterialTable,PawnTable};
 use crate::movegen::MoveGen;
 use crate::searchstats;
 use crate::types::*;
