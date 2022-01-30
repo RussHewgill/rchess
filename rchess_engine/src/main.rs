@@ -3117,6 +3117,11 @@ fn main9() {
     // eprintln!();
     // eprintln!("correct = {:?}", correct);
 
+    // let st = ABStack::new();
+    // let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
+    // while let Some(mv) = movegen.next(&st) { eprintln!("mv = {:?}", mv); }
+    // return;
+
     // let im0 = MatEval::imbalance(&g.state.material, White);
     // let im1 = MatEval::imbalance(&g.state.material, Black);
     // eprintln!("im0 = {:?}", im0);
@@ -3164,40 +3169,23 @@ fn main9() {
 
     // let mut ex2 = ex.clone();
 
-    let d = D::N;
-
-    let sq = Coord::from("D3");
-
-    let k0 = sq + d;
-
-    eprintln!("k0 = {:?}", k0);
-
-    return;
-
-    let (tx,rx) = crossbeam::channel::unbounded();
-
-    use rchess_engine_lib::material::*;
-
-    let mt = MaterialTable::default();
-    let pt = PawnTable::default();
-
-    let thread_data = PerThreadData::new(mt,pt);
-
-    let mut helper = ex.build_exhelper(
-        0,
-        n,
-        ex.best_depth.clone(),
-        vec![],
-        tx,
-        thread_data,
-    );
-
-    let score = helper._evaluate_classical::<true>(&ts, &g);
-
-    eprintln!("score.mid = {:?}", score.mid);
-    eprintln!("score.end = {:?}", score.end);
-
-    return;
+    // let (tx,rx) = crossbeam::channel::unbounded();
+    // use rchess_engine_lib::material::*;
+    // let mt = MaterialTable::default();
+    // let pt = PawnTable::default();
+    // let thread_data = PerThreadData::new(mt,pt);
+    // let mut helper = ex.build_exhelper(
+    //     0,
+    //     n,
+    //     ex.best_depth.clone(),
+    //     vec![],
+    //     tx,
+    //     thread_data,
+    // );
+    // let score = helper._evaluate_classical::<true>(&ts, &g);
+    // eprintln!("score.mid = {:?}", score.mid);
+    // eprintln!("score.end = {:?}", score.end);
+    // return;
 
     // // XXX: avg of N runs
     // const N: usize = 10;

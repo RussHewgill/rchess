@@ -53,7 +53,10 @@ mod lookups {
         BitBoard(forward_ranks_bb(side, sq).0 & MASK_FILES[sq.file() as usize].0)
     }
 
-    // pub const FORWARD_FILE_BB: [BitBoard; 64] = 
+    pub const fn adjacent_files_bb(sq: Coord) -> BitBoard {
+        let b0 = MASK_FILES[sq.file() as usize];
+        b0.shift_dir(E) | b0.shift_dir(W)
+    }
 
     pub const SQUARE_BB: [BitBoard; 64] = [
         BitBoard(1 << 0),
@@ -126,10 +129,44 @@ mod lookups {
 
 #[derive(Serialize,Deserialize,Hash,Eq,PartialEq,PartialOrd,Clone,Copy,ShallowCopy,
          Index,Add,Mul,Div,Sum,AddAssign,MulAssign,
-         BitAnd,BitAndAssign,BitOr,BitOrAssign,BitXor,BitXorAssign,Not,
+         // BitAnd,BitAndAssign,BitOr,BitOrAssign,BitXor,BitXorAssign,Not,
+         BitAndAssign,BitOrAssign,BitXorAssign,
          From,Into,AsRef,AsMut
 )]
 pub struct BitBoard(pub u64);
+
+mod bitwise {
+    use super::BitBoard;
+
+    impl const std::ops::Not for BitBoard {
+        type Output = Self;
+        fn not(self) -> Self::Output {
+            Self(!self.0)
+        }
+    }
+
+    impl const std::ops::BitAnd for BitBoard {
+        type Output = Self;
+        fn bitand(self, rhs: Self) -> Self::Output {
+            Self(self.0 & rhs.0)
+        }
+    }
+
+    impl const std::ops::BitXor for BitBoard {
+        type Output = Self;
+        fn bitxor(self, rhs: Self) -> Self::Output {
+            Self(self.0 | rhs.0)
+        }
+    }
+
+    impl const std::ops::BitOr for BitBoard {
+        type Output = Self;
+        fn bitor(self, rhs: Self) -> Self::Output {
+            Self(self.0 | rhs.0)
+        }
+    }
+
+}
 
 impl Iterator for BitBoard {
     type Item = Coord;
@@ -436,21 +473,16 @@ impl BitBoard {
 /// Shift
 impl BitBoard {
 
-    pub fn shift_dir(&self, d: D) -> Self {
+    pub const fn shift_dir(&self, d: D) -> Self {
         match d {
             D::N  => BitBoard(self.0.overflowing_shl(8).0),
             D::NE => BitBoard(self.0.overflowing_shl(9).0),
-            D::E  => BitBoard(self.0.overflowing_shl(1).0)
-                & !MASK_FILES[0],
-            D::SE => BitBoard(self.0.overflowing_shr(7).0)
-                & !MASK_FILES[0],
+            D::E  => BitBoard(self.0.overflowing_shl(1).0 & !(MASK_FILES[0].0)),
+            D::SE => BitBoard(self.0.overflowing_shr(7).0 & !(MASK_FILES[0].0)),
             D::S  => BitBoard(self.0.overflowing_shr(8).0),
-            D::SW => BitBoard(self.0.overflowing_shr(9).0)
-                & !MASK_FILES[7],
-            D::W  => BitBoard(self.0.overflowing_shr(1).0)
-                & !MASK_FILES[7],
-            D::NW => BitBoard(self.0.overflowing_shl(7).0)
-                & !MASK_FILES[7],
+            D::SW => BitBoard(self.0.overflowing_shr(9).0 & !(MASK_FILES[7].0)),
+            D::W  => BitBoard(self.0.overflowing_shr(1).0 & !(MASK_FILES[7].0)),
+            D::NW => BitBoard(self.0.overflowing_shl(7).0 & !(MASK_FILES[7].0)),
         }
     }
 

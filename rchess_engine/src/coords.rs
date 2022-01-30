@@ -25,17 +25,31 @@ pub enum D {
     NW = 7,
 }
 
-impl std::ops::Add<D> for Coord {
-    type Output = Coord;
-    fn add(self, rhs: D) -> Self::Output {
-        Coord((self.0 as i8 + rhs as i8) as u8)
+// impl std::ops::Add<D> for Coord {
+//     type Output = Coord;
+//     fn add(self, rhs: D) -> Self::Output {
+//         Coord((self.0 as i8 + rhs as i8) as u8)
+//     }
+// }
+
+impl D {
+    pub fn add_d(self, c0: Coord) -> Coord {
+        let x = c0.0 as i8 + self as i8;
+        assert!(x >= 0 && x < 64);
+        Coord(x as u8)
+    }
+    pub fn add_d_checked(self, c0: Coord) -> Option<Coord> {
+        let x = c0.0 as i8 + self as i8;
+        if x > 0 && x < 64 {
+            Some(Coord(x as u8))
+        } else {
+            // eprintln!("add_d_checked = {:?} + {:?} = {:?}", self, c0, x);
+            None
+        }
     }
 }
 
-// #[derive(Eq,Ord,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
 #[derive(Serialize,Deserialize,Eq,Ord,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
-// #[derive(Hash,Eq,PartialEq,Ord,PartialOrd,Clone,Copy)]
-// pub struct Coord(pub u8, pub u8);
 pub struct Coord(u8);
 
 #[derive(Serialize,Deserialize,Eq,Ord,PartialEq,PartialOrd,Hash,ShallowCopy,Clone,Copy)]
@@ -384,53 +398,7 @@ mod impls {
 
 impl D {
 
-    // pub fn shift(&self) -> i8 {
-    //     match *self {
-    //         D::N  => 8,
-    //         D::NE => 9,
-    //         D::E  => 1,
-    //         D::SE => -7,
-    //         D::S  => -8,
-    //         D::SW => -9,
-    //         D::W  => -1,
-    //         D::NW => 7,
-    //     }
-    // }
-
-    // pub fn shift_sq(&self, x: u32) -> Option<u32> {
-    //     match *self {
-    //         // D::N  => x + 8,
-    //         // D::NE => x + 9,
-    //         // D::E  => x + 1,
-    //         // D::SE => x - 7,
-    //         // D::S  => x - 8,
-    //         // D::SW => x - 9,
-    //         // D::W  => x - 1,
-    //         // D::NW => x + 7,
-    //         D::SE => x.checked_sub(7),
-    //         D::S  => x.checked_sub(8),
-    //         D::SW => x.checked_sub(9),
-    //         D::W  => x.checked_sub(1),
-    //         D::N  => {
-    //             let k = x + 8;
-    //             if k > 63 { None } else { Some(k) }
-    //         },
-    //         D::NE  => {
-    //             let k = x + 9;
-    //             if k > 63 { None } else { Some(k) }
-    //         },
-    //         D::E  => {
-    //             let k = x + 1;
-    //             if k > 63 { None } else { Some(k) }
-    //         },
-    //         D::NW  => {
-    //             let k = x + 7;
-    //             if k > 63 { None } else { Some(k) }
-    //         },
-    //     }
-    //     // panic!("D::shift")
-    // }
-
+    #[cfg(feature = "nope")]
     pub fn shift_coord_mult(&self, c0: Coord, n: u32) -> Option<Coord> {
         if n > 0 {
             let c1 = self.shift_coord(c0)?;
@@ -440,39 +408,85 @@ impl D {
         }
     }
 
-    pub fn get_shift_n(&self) -> i8 {
-        match *self {
-            N  => 8,
-            NE => 9,
-            E  => 1,
-            SE => -7,
-            S  => -8,
-            SW => -9,
-            W  => -1,
-            NW => 7,
-        }
-    }
+    // pub fn get_shift_n(&self) -> i8 {
+    //     match *self {
+    //         N  => 8,
+    //         NE => 9,
+    //         E  => 1,
+    //         SE => -7,
+    //         S  => -8,
+    //         SW => -9,
+    //         W  => -1,
+    //         NW => 7,
+    //     }
+    // }
 
-    // pub fn shift_coord_idx_unchecked<T: Into<u8>>(&self, sq: T) -> u8 {
-    // pub fn shift_coord_idx_unchecked<T: Into<u8>>(&self, sq: T, n: u8) -> u8 {
-    pub fn shift_coord_idx_unchecked(&self, sq: u8, n: u8) -> u8 {
+    // pub fn shift_coord_idx_unchecked(&self, sq: u8, n: u8) -> u8 {
+    //     let k = self.get_shift_n() * n as i8;
+    //     (sq as i8 + k) as u8
+    // }
 
-        let k = self.get_shift_n() * n as i8;
-        (sq as i8 + k) as u8
+    #[cfg(feature = "nope")]
+    pub fn shift_coord(self, x: Coord) -> Option<Coord> {
 
-        // match *self {
-        //     N  => sq.into() + 8,
-        //     NE => sq.into() + 9,
-        //     E  => sq.into() + 1,
-        //     SE => sq.into() - 7,
-        //     S  => sq.into() - 8,
-        //     SW => sq.into() - 9,
-        //     W  => sq.into() - 1,
-        //     NW => sq.into() + 7,
+        // Some(self.add_d(x))
+
+        self.add_d_checked(x)
+
+        // match self {
+        //     N => {
+        //     },
+        //     NE => {
+        //     },
+        //     E => {
+        //     },
+        //     NW => {
+        //     },
+        //     S => {
+        //     },
+        //     SE => {
+        //     },
+        //     SW => {
+        //     },
+        //     W => {
+        //     },
         // }
 
     }
 
+    // #[cfg(feature = "nope")]
+    pub fn shift_coord(self, c0: Coord) -> Option<Coord> {
+
+        match self {
+            N => {
+                if c0.rank() >= 7 { None } else { Some(self.add_d(c0)) }
+            },
+            NE => {
+                if c0.rank() >= 7 || c0.file() >= 7 { None } else { Some(self.add_d(c0)) }
+            },
+            E => {
+                if c0.file() >= 7 { None } else { Some(self.add_d(c0)) }
+            },
+            NW => {
+                if c0.rank() >= 7 || c0.file() == 0 { None } else { Some(self.add_d(c0)) }
+            },
+            S => {
+                if c0.rank() == 0 { None } else { Some(self.add_d(c0)) }
+            },
+            SE => {
+                if c0.rank() == 0 || c0.file() >= 7 { None } else { Some(self.add_d(c0)) }
+            },
+            SW => {
+                if c0.rank() == 0 || c0.file() == 0 { None } else { Some(self.add_d(c0)) }
+            },
+            W => {
+                if c0.file() == 0 { None } else { Some(self.add_d(c0)) }
+            },
+        }
+
+    }
+
+    #[cfg(feature = "nope")]
     pub fn shift_coord(&self, x: Coord) -> Option<Coord> {
         let (x0,y0) = (x.file(),x.rank());
         match *self {

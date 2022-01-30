@@ -11,6 +11,8 @@
 #![feature(array_chunks)]
 // #![feature(ptr_internals)]
 // #![feature(let_chains)]
+#![feature(const_ops)]
+#![feature(const_trait_impl)]
 
 #![allow(incomplete_features)] // XXX:
 #![feature(adt_const_params)]
