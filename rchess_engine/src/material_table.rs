@@ -134,7 +134,7 @@ mod mat_eval {
     /// Score is only the material balance
     pub struct MatEval {
 
-        pub material_score: Score,
+        pub material_score: TaperedScore,
         pub phase:          Phase,
 
         // pub scaling_func:   
@@ -173,24 +173,20 @@ mod mat_eval {
         }
 
         pub fn imbalance(g: &Game) -> TaperedScore {
-
             g.state.npm[White]
                 + Pawn.score_tapered() * g.state.material.get(Pawn, White) as Score
                 - g.state.npm[Black]
                 - Pawn.score_tapered() * g.state.material.get(Pawn, Black) as Score
-
         }
 
         pub fn new(ts: &Tables, g: &Game) -> Self {
 
             // let score = g.sum_evaluate(ts, &ts.eval_params_mid, &ts.eval_params_mid, None);
-            let mut material_score = 0;
+            let mut material_score = Self::imbalance(g);
 
-
-
-            if is_kx_vs_k(g, g.state.side_to_move) {
-                unimplemented!()
-            }
+            // if is_kx_vs_k(g, g.state.side_to_move) {
+            //     unimplemented!()
+            // }
 
             // if g.state.npm[White] + g.state.npm[Black] == 0 && g.state.material.get_both(Pawn) > 0 {
             //     unimplemented!()
@@ -229,19 +225,19 @@ mod pawn_eval {
 
     #[derive(Debug,Clone,Copy)]
     pub struct PawnEval {
-        scores:          [TaperedScore; 2],
-        passed:          BitBoard,
-        attacks:         BitBoard,
-        attacks_span:    BitBoard,
+        pub scores:          [TaperedScore; 2],
+        pub passed:          BitBoard,
+        pub attacks:         BitBoard,
+        pub attacks_span:    BitBoard,
     }
 
     impl PawnTable {
-        pub fn get_or_insert(&mut self, ts: &Tables, g: &Game, side: Color) -> PawnEval {
+        pub fn get_or_insert(&mut self, ts: &Tables, g: &Game) -> PawnEval {
             if let Some(ev) = self.get(g.zobrist) {
                 return *ev;
             }
 
-            let ev = PawnEval::new(ts, g, side);
+            let ev = PawnEval::new(ts, g);
 
             self.insert(g.zobrist, ev);
 
@@ -250,13 +246,28 @@ mod pawn_eval {
     }
 
     impl PawnEval {
-        pub fn new(ts: &Tables, g: &Game, side: Color) -> Self {
+        pub fn new(ts: &Tables, g: &Game) -> Self {
 
             let mut passed       = BitBoard::empty();
             let mut attacks      = BitBoard::empty();
             let mut attacks_span = BitBoard::empty();
 
-            let scores = [TaperedScore::default(); 2];
+            let mut out = Self {
+                scores: [TaperedScore::default(); 2],
+                passed,
+                attacks,
+                attacks_span,
+            };
+
+            out.evaluate(ts, g, White);
+            out.evaluate(ts, g, Black);
+
+            out
+        }
+
+        fn evaluate(&mut self, ts: &Tables, g: &Game, side: Color) -> TaperedScore {
+
+            let score = TaperedScore::default();
 
             let pawns_us   = g.get(Pawn, side);
             let pawns_them = g.get(Pawn, !side);
@@ -267,15 +278,10 @@ mod pawn_eval {
 
                 let opposed = pawns_them & forward_file_bb(side, sq);
 
-                unimplemented!()
+                // unimplemented!()
             }
 
-            Self {
-                scores,
-                passed,
-                attacks,
-                attacks_span,
-            }
+            score
         }
 
     }

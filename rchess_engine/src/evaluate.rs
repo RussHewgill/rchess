@@ -15,14 +15,21 @@ mod tapered {
 
     // #[derive(Serialize,Deserialize,Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy)]
 
-    #[derive(Debug,Default,Eq,Ord,PartialEq,PartialOrd,Hash,Clone,Copy,
+    #[derive(Default,Eq,Ord,PartialEq,PartialOrd,Hash,Clone,Copy,
              Serialize,Deserialize,
              Add,Sub,Mul,Div,Sum,Neg,
              AddAssign,SubAssign,MulAssign,
     )]
     pub struct TaperedScore {
-        mid: Score,
-        end: Score,
+        pub mid: Score,
+        pub end: Score,
+    }
+
+    impl std::fmt::Debug for TaperedScore {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str(&format!("TS( {}, {} )", self.mid, self.end))?;
+            Ok(())
+        }
     }
 
     impl TaperedScore {
@@ -32,21 +39,15 @@ mod tapered {
                 end,
             }
         }
-
-        pub fn mid(self) -> Score { self.mid }
-        pub fn end(self) -> Score { self.end }
-
     }
 
-    // impl std::ops::Mul<Score> for TaperedScore {
-    //     type Output = TaperedScore;
-    //     fn mul(self, rhs: Score) -> Self::Output {
-    //         Self {
-    //             mid: self.mid * rhs,
-    //             end: self.end * rhs,
-    //         }
-    //     }
-    // }
+    /// convert TaperedScore to Score
+    impl TaperedScore {
+        pub fn taper(&self, g: &Game) -> Score {
+            let p = g.state.phase as Score;
+            ((self.mid * (256 - p)) + (self.end * p)) / 256
+        }
+    }
 
 }
 
@@ -62,20 +63,39 @@ impl ExHelper {
         unimplemented!()
     }
 
-    pub fn evaluate_classical(&mut self, ts: &Tables, g: &Game) -> Score {
+}
 
-        let mut score = 0;
+/// evaluate_classical
+impl ExHelper {
+
+    pub fn evaluate_classical(&mut self, ts: &Tables, g: &Game) -> Score {
+        let score = self._evaluate_classical::<false>(ts, g);
+        score.taper(g)
+    }
+
+    pub fn _evaluate_classical<const TR: bool>(&mut self, ts: &Tables, g: &Game) -> TaperedScore {
 
         let me = self.material_table.get_or_insert(ts, g);
 
-        unimplemented!()
+        /// TODO: endgames
+        if let Some(eg) = me.eg_val {
+            // return eg.evaluate(ts, g);
+            unimplemented!()
+        }
+
+        let mut score = g.psqt_score[White] - g.psqt_score[Black];
+        if TR { eprintln!("psqt = {:?}", (g.psqt_score[White],g.psqt_score[Black])); }
+
+        score += me.material_score;
+        if TR { eprintln!("material = {:?}", me.material_score); }
+
+        let pawns = self.pawn_table.get_or_insert(ts, g);
+
+        score += pawns.scores[White] - pawns.scores[Black];
+        if TR { eprintln!("pawns = {:?}", (pawns.scores[White], pawns.scores[Black])); }
+
+        score
     }
-
-}
-
-/// Winnable, convert TaperedScore to Score
-impl TaperedScore {
-    // pub fn winnable()
 }
 
 /// Piece Scores

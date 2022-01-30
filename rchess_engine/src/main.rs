@@ -3117,14 +3117,10 @@ fn main9() {
     // eprintln!();
     // eprintln!("correct = {:?}", correct);
 
-
-    let im0 = MatEval::imbalance(&g.state.material, White);
-    let im1 = MatEval::imbalance(&g.state.material, Black);
-
-    eprintln!("im0 = {:?}", im0);
-    eprintln!("im1 = {:?}", im1);
-
-    return;
+    // let im0 = MatEval::imbalance(&g.state.material, White);
+    // let im1 = MatEval::imbalance(&g.state.material, Black);
+    // eprintln!("im0 = {:?}", im0);
+    // eprintln!("im1 = {:?}", im1);
 
     // let hook = std::panic::take_hook();
     // std::panic::set_hook(Box::new(move |panicinfo| {
@@ -3167,6 +3163,31 @@ fn main9() {
     ex.time_settings.move_time = (t * 1000.0) as u64;
 
     // let mut ex2 = ex.clone();
+
+    let (tx,rx) = crossbeam::channel::unbounded();
+
+    use rchess_engine_lib::material_table::*;
+
+    let mt = MaterialTable::default();
+    let pt = PawnTable::default();
+
+    let thread_data = PerThreadData::new(mt,pt);
+
+    let mut helper = ex.build_exhelper(
+        0,
+        n,
+        ex.best_depth.clone(),
+        vec![],
+        tx,
+        thread_data,
+    );
+
+    let score = helper._evaluate_classical::<true>(&ts, &g);
+
+    eprintln!("score.mid = {:?}", score.mid);
+    eprintln!("score.end = {:?}", score.end);
+
+    return;
 
     // // XXX: avg of N runs
     // const N: usize = 10;

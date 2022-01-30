@@ -1,6 +1,7 @@
 
 use std::io::Write;
 
+use crate::evaluate::TaperedScore;
 use crate::types::*;
 
 pub use crate::tuning::*;
@@ -760,6 +761,14 @@ impl Tables {
         let psqt = if mid { &self.eval_params_mid.psqt } else { &self.eval_params_end.psqt };
         psqt.get(pc, side, c0)
     }
+
+    pub fn get_psqt_tapered(&self, pc: Piece, side: Color, c0: Coord) -> TaperedScore {
+        TaperedScore::new(
+            self.eval_params_mid.psqt.get(pc, side, c0),
+            self.eval_params_end.psqt.get(pc, side, c0),
+        )
+    }
+
 }
 
 mod opening_book {

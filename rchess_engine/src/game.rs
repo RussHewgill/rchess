@@ -35,8 +35,9 @@ pub struct Game {
     pub pieces:           [Option<Piece>; 64],
     // pieces:               [Option<Piece>; 64],
 
-    pub psqt_score_mid:   [Score; 2],
-    pub psqt_score_end:   [Score; 2],
+    // pub psqt_score_mid:   [Score; 2],
+    // pub psqt_score_end:   [Score; 2],
+    pub psqt_score:       [TaperedScore; 2],
 
     pub halfmove:         Depth,
 }
@@ -99,8 +100,9 @@ impl Default for Game {
 
             pieces:           [None; 64],
 
-            psqt_score_mid:   [0; 2],
-            psqt_score_end:   [0; 2],
+            // psqt_score_mid:   [0; 2],
+            // psqt_score_end:   [0; 2],
+            psqt_score:       [TaperedScore::default(); 2],
 
             // last_move_2:      None,
             // history,
@@ -1083,8 +1085,9 @@ impl Game {
         self.pieces[from] = None;
         self.pieces[to]   = Some(pc);
 
-        self.psqt_score_mid[side] += ts.get_psqt(pc, side, to, true) - ts.get_psqt(pc, side, from, true);
-        self.psqt_score_end[side] += ts.get_psqt(pc, side, to, false) - ts.get_psqt(pc, side, from, false);
+        // self.psqt_score_mid[side] += ts.get_psqt(pc, side, to, true) - ts.get_psqt(pc, side, from, true);
+        // self.psqt_score_end[side] += ts.get_psqt(pc, side, to, false) - ts.get_psqt(pc, side, from, false);
+        self.psqt_score[side] += ts.get_psqt_tapered(pc, side, to) - ts.get_psqt_tapered(pc, side, from);
 
         if calc_zb {
             self.zobrist = self.zobrist.update_piece(&ts, pc, side, from);
@@ -1134,8 +1137,9 @@ impl Game {
             self.state.material.buf[side][pc.index()] -= 1;
         }
 
-        self.psqt_score_mid[side] -= ts.get_psqt(pc, side, at, true);
-        self.psqt_score_end[side] -= ts.get_psqt(pc, side, at, false);
+        // self.psqt_score_mid[side] -= ts.get_psqt(pc, side, at, true);
+        // self.psqt_score_end[side] -= ts.get_psqt(pc, side, at, false);
+        self.psqt_score[side] -= ts.get_psqt_tapered(pc, side, at);
 
         if calc_zb {
             self.zobrist = self.zobrist.update_piece(&ts, pc, side, at.into());
@@ -1164,8 +1168,9 @@ impl Game {
             self.state.material.buf[side][pc.index()] += 1;
         }
 
-        self.psqt_score_mid[side] += ts.get_psqt(pc, side, at, true);
-        self.psqt_score_end[side] += ts.get_psqt(pc, side, at, false);
+        // self.psqt_score_mid[side] += ts.get_psqt(pc, side, at, true);
+        // self.psqt_score_end[side] += ts.get_psqt(pc, side, at, false);
+        self.psqt_score[side] += ts.get_psqt_tapered(pc, side, at);
 
         if calc_zb {
             self.zobrist = self.zobrist.update_piece(&ts, pc, side, at);
@@ -1195,8 +1200,9 @@ impl Game {
             self.state.material.buf[side][pc] += 1;
         }
 
-        self.psqt_score_mid[side] += ts.get_psqt(pc, side, at, true);
-        self.psqt_score_end[side] += ts.get_psqt(pc, side, at, false);
+        // self.psqt_score_mid[side] += ts.get_psqt(pc, side, at, true);
+        // self.psqt_score_end[side] += ts.get_psqt(pc, side, at, false);
+        self.psqt_score[side] += ts.get_psqt_tapered(pc, side, at);
 
         self.pieces[at] = Some(pc);
 
