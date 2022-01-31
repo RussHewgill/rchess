@@ -5,6 +5,45 @@ use super::{NNIndex, HALF_DIMS};
 use arrayvec::ArrayVec;
 use aligned::{Aligned,A32};
 
+mod new {
+    use crate::types::*;
+    use crate::sf_compat::{NNIndex, HALF_DIMS};
+
+    use arrayvec::ArrayVec;
+    use aligned::{Aligned,A32};
+
+    // #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
+    // pub struct NNAccum {
+    //     pub accum:           Aligned<A32,[[i16; 1024]; 2]>, // TransformedFeatureDimensions = 1024
+    //     pub psqt:            Aligned<A32,[[i32; 8]; 2]>,    // PSQTBuckets = 8
+    //     pub stack:           Vec<AccStack>,
+    // }
+
+    #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
+    pub struct NNAccumStack {
+        pub deltas:      ArrayVec<NNDelta, 3>,
+
+        pub accum:       Aligned<A32,[[i16; 1024]; 2]>, // TransformedFeatureDimensions = 1024
+        pub psqt:        Aligned<A32,[[i32; 8]; 2]>,    // PSQTBuckets = 8
+
+        pub computed:    [bool; 2],
+    }
+
+    #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+    pub enum NNDelta {
+        Add(NNIndex,NNIndex),
+        Remove(NNIndex,NNIndex),
+    }
+
+    // #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
+    // pub enum AccState {
+    //     Diff,
+    //     Full(Color, Aligned<A32,[[i16; 1024]; 2]>, Aligned<A32,[[i32; 8]; 2]>),
+    // }
+
+}
+
+
 #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
 pub enum NNDelta {
     Add(NNIndex,NNIndex),
