@@ -75,7 +75,7 @@ fn main() {
         "sample"    => main_sample(),
         "endgame"   => main_endgame(),
         // "nn"        => main_nn(),
-        // "nnue"      => main_nnue(),
+        "nnue"      => main_nnue3(),
         // "train"     => main_nnue_train(),
         // "simd"      => main_simd(),
         // "tuning"    => main_tuning(),
@@ -2900,6 +2900,43 @@ fn main_nn2() {
 }
 
 #[allow(unreachable_code)]
+fn main_nnue3() {
+    use rchess_engine_lib::sf_compat::NNUE4;
+
+    let fen = STARTPOS;
+    init_logger();
+    let ts = Tables::new();
+
+    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+
+    let mut g = Game::from_fen(&ts, fen).unwrap();
+
+    let path = "nn-63376713ba63.nnue";
+    let mut nn = NNUE4::read_nnue(path).unwrap();
+    nn.ft.reset_accum(&g);
+
+    let mut nn2 = nn.clone();
+
+    // eprintln!("prev transform 1 = -1075");
+
+    let v0 = nn2.evaluate(&g, false);
+    eprintln!("v0 = {:?}", v0);
+    eprintln!("v0 == -599 = {:?}", v0 == -599);
+
+    let mv2 = Move::new_quiet("e5", "e4", Pawn);
+    let g2 = g.make_move_unchecked(&ts, mv2).unwrap();
+
+    nn2.ft.make_move(&g2, mv2);
+
+    eprintln!("prev transform 2 = -778");
+
+    let v0 = nn2.evaluate(&g, false);
+    eprintln!("v0 = {:?}", v0);
+    eprintln!("v0 == -609 = {:?}", v0 == -609);
+
+}
+
+#[allow(unreachable_code)]
 fn main_eval() {
     let ts = Tables::read_from_file_def().unwrap();
     let fen = STARTPOS;
@@ -3160,7 +3197,7 @@ fn main9() {
 
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
 
-    // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+    ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
     ex.cfg.late_move_reductions = true;
 
@@ -3231,16 +3268,13 @@ fn main9() {
     // let bf = stack.history[Black];
     // return;
 
-
-    for (thread_id,per_thread) in ex.per_thread_data.iter().enumerate() {
-        let mt = &per_thread.as_ref().unwrap().mat_table;
-        // eprintln!("{} = {:?}", thread_id, mt.inner().len());
-        eprintln!("{} = {} / {}, {:.3}", thread_id, mt.used_entries(), mt.capacity(),
-                  mt.used_entries() as f64 / mt.capacity() as f64);
-    }
-
-
-    return;
+    // for (thread_id,per_thread) in ex.per_thread_data.iter().enumerate() {
+    //     let mt = &per_thread.as_ref().unwrap().mat_table;
+    //     // eprintln!("{} = {:?}", thread_id, mt.inner().len());
+    //     eprintln!("{} = {} / {}, {:.3}", thread_id, mt.used_entries(), mt.capacity(),
+    //               mt.used_entries() as f64 / mt.capacity() as f64);
+    // }
+    // return;
 
     let best   = res.get_result().unwrap();
     let scores = res.get_scores().unwrap_or_default();

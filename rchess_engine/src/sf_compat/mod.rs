@@ -270,6 +270,7 @@ impl NNUE4 {
         let mut transformed: Aligned<A64,_> = Aligned([0; HALF_DIMS * 2]);
         // let psqt = self.ft.transform(g, &mut transformed, bucket, refresh);
         let psqt = self.ft.transform(g, transformed.as_mut(), bucket);
+        eprintln!("FT transform = {:?}", &psqt);
 
         // // let mut pos_buf = [0; Layer3::BUFFER_SIZE]; // ?? 384
         // let mut pos_buf = [0; Layer3::SIZE_OUTPUT]; // 1
