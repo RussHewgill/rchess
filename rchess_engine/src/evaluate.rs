@@ -57,15 +57,22 @@ impl ExHelper {
 
     /// NNUE eval is ~18x slower than classic (only material and psqt)
     /// so fallback to classic for large material imbalance
-    pub fn evaluate(&mut self, ts: &Tables, g: &Game, quiesce: bool) -> Score {
+    pub fn evaluate(&mut self, ts: &Tables, stats: &mut SearchStats, g: &Game, quiesce: bool) -> Score {
         /// evaluate is only called from quiet positions
         assert!(!g.state.in_check);
 
-        let use_nnue = cfg!(feature = "NNUE")
+        let imbalance = g.state.npm[White]
+            + Pawn.score_tapered() * g.state.material.get(Pawn, White) as Score
+            - g.state.npm[Black]
+            - Pawn.score_tapered() * g.state.material.get(Pawn, Black) as Score;
+
+        let use_nnue = cfg!(feature = "nnue")
             && self.nnue.is_some()
+            // && imbalance.taper(g) < 3 * Pawn.score()
             ;
 
         if use_nnue {
+            stats.eval_nnue += 1;
             if let Some(nnue) = self.nnue.as_mut() {
                 let score = nnue.evaluate(&g, true);
                 score
@@ -73,6 +80,7 @@ impl ExHelper {
         } else {
             let stand_pat = self.evaluate_classical(ts, g);
             let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
+            stats.eval_classical += 1;
             score
         }
     }

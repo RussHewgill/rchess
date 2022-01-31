@@ -436,6 +436,7 @@ impl ExHelper {
         g:            &Game,
         ply:          Depth,
         stack:        &mut ABStack,
+        stats:        &mut SearchStats,
         meval:        Option<Score>,
         msi:          Option<SearchInfo>,
     ) -> Option<Score> {
@@ -451,7 +452,7 @@ impl ExHelper {
 
             let mut eval = if let Some(eval) = meval { eval } else {
                 // self.eval_nn_or_hce(ts, g)
-                self.evaluate(ts, g, false)
+                self.evaluate(ts, stats, g, false)
             };
 
             if let Some(si) = msi {
@@ -471,7 +472,7 @@ impl ExHelper {
             Some(eval)
         } else {
             // let eval = self.eval_nn_or_hce(ts, g);
-            let eval = self.evaluate(ts, g, false);
+            let eval = self.evaluate(ts, stats, g, false);
             stack.with(ply, |st| st.static_eval = Some(eval));
 
             self.tt_insert_deepest_eval(g.zobrist, Some(eval));
@@ -557,7 +558,7 @@ impl ExHelper {
         if ply >= MAX_SEARCH_PLY {
             if !in_check {
                 // let score = self.eval_nn_or_hce(ts, g);
-                let score = self.evaluate(ts, g, false);
+                let score = self.evaluate(ts, stats, g, false);
                 return ABSingle(ABResult::new_null_score(score));
             } else {
                 let score = draw_value(stats);
@@ -833,7 +834,7 @@ impl ExHelper {
         }
 
         /// Static eval, possibly from TT
-        let static_eval = self.get_static_eval(ts, g, ply, stack, meval, msi);
+        let static_eval = self.get_static_eval(ts, g, ply, stack, stats, meval, msi);
 
         let mut improving = !in_check;
         if let Some(eval) = static_eval {

@@ -52,6 +52,19 @@ pub mod new {
         }
     }
 
+    /// new_from_prev
+    impl NNAccum {
+        pub fn new_from_prev(prev: &NNAccum, deltas: ArrayVec<NNDelta, 3>) -> Self {
+            Self {
+                deltas,
+                accum:     prev.accum.clone(),
+                psqt:      prev.psqt.clone(),
+                computed:  [false; 2]
+            }
+        }
+    }
+
+    /// append_active
     impl NNAccum {
         pub fn append_active(g: &Game, persp: Color, mut active: &mut ArrayVec<NNIndex, 32>) {
             let king_sq = g.get(King,persp).bitscan();

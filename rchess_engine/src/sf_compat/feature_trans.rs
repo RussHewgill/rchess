@@ -119,11 +119,14 @@ mod new {
                 idx -= 1;
             }
 
+            // eprintln!("most recent computed idx = {:?}", idx);
+
             let weights = &self.weights;
             let psqt_weights = &self.psqt_weights;
 
             for accum_idx in idx+1..self.accum_stack.len() {
                 // self.apply_delta(persp, k).unwrap();
+                // eprintln!("accum_idx = {:?}", accum_idx);
 
                 self.accum_stack[accum_idx].accum[persp] =
                     self.accum_stack[accum_idx - 1].accum[persp];
@@ -179,7 +182,7 @@ mod new {
                 },
                 NNDelta::Remove(w,b) => {
                     let idx = if persp == White { w } else { b };
-                    Self::_apply_delta::<true>(ws, psqt_ws, acc, persp, idx);
+                    Self::_apply_delta::<false>(ws, psqt_ws, acc, persp, idx);
                 },
             }
         }
@@ -200,12 +203,23 @@ mod new {
             assert!(accum.len() == HALF_DIMS);
             assert!(weights.len() == HALF_DIMS);
 
-            for j in 0..HALF_DIMS {
-                accum[j] += weights[j];
-            }
-            for k in 0..Self::PSQT_BUCKETS {
-                if let Some(x) = psqt_ws.get(idx * Self::PSQT_BUCKETS + k) {
-                    acc.psqt[persp][k] += *x;
+            if ADD {
+                for j in 0..HALF_DIMS {
+                    accum[j] += weights[j];
+                }
+                for k in 0..Self::PSQT_BUCKETS {
+                    if let Some(x) = psqt_ws.get(idx * Self::PSQT_BUCKETS + k) {
+                        acc.psqt[persp][k] += *x;
+                    }
+                }
+            } else {
+                for j in 0..HALF_DIMS {
+                    accum[j] -= weights[j];
+                }
+                for k in 0..Self::PSQT_BUCKETS {
+                    if let Some(x) = psqt_ws.get(idx * Self::PSQT_BUCKETS + k) {
+                        acc.psqt[persp][k] -= *x;
+                    }
                 }
             }
         }
@@ -350,7 +364,7 @@ mod new {
     /// pop
     impl NNFeatureTrans {
         pub fn accum_pop(&mut self) {
-            unimplemented!()
+            self.accum_stack.pop();
         }
     }
 
@@ -383,10 +397,16 @@ mod new {
                 let acc = self.init_fresh_accum(g);
                 self.accum_stack.push(acc);
             } else {
-                let mut acc = NNAccum::default();
-                acc.deltas = self._make_move(g, mv);
-                // acc.computed = [false; 2];
+
+                // let mut acc = NNAccum::default();
+                // // acc.computed = [false; 2];
+                // self.accum_stack.push(acc);
+
+                let deltas = self._make_move(g, mv);
+                let prev = self.accum_stack.last().unwrap();
+                let acc = NNAccum::new_from_prev(prev, deltas);
                 self.accum_stack.push(acc);
+
             }
         }
 
@@ -1113,33 +1133,41 @@ mod old {
             }
         }
 
+        /// temp no simd
         pub fn accum_add(&mut self, i_w: NNIndex, i_b: NNIndex) -> NNDelta {
 
-            #[cfg(not(target_feature = "avx2"))]
-            self._accum_add(White, i_w);
-            #[cfg(not(target_feature = "avx2"))]
-            self._accum_add(Black, i_b);
+            // #[cfg(not(target_feature = "avx2"))]
+            // self._accum_add(White, i_w);
+            // #[cfg(not(target_feature = "avx2"))]
+            // self._accum_add(Black, i_b);
 
-            #[cfg(target_feature = "avx2")]
-            self._accum_inc_simd::<true>(White, i_w);
-            #[cfg(target_feature = "avx2")]
-            self._accum_inc_simd::<true>(Black, i_b);
+            // #[cfg(target_feature = "avx2")]
+            // self._accum_inc_simd::<true>(White, i_w);
+            // #[cfg(target_feature = "avx2")]
+            // self._accum_inc_simd::<true>(Black, i_b);
+
+            self._accum_add(White, i_w);
+            self._accum_add(Black, i_b);
 
             NNDelta::Remove(i_w,i_b)
         }
 
+        /// temp no simd
         pub fn accum_rem(&mut self, i_w: NNIndex, i_b: NNIndex) -> NNDelta {
             // eprintln!("rem (i_w,i_b) = {:?}", (i_w,i_b));
 
-            #[cfg(not(target_feature = "avx2"))]
-            self._accum_rem(White, i_w);
-            #[cfg(not(target_feature = "avx2"))]
-            self._accum_rem(Black, i_b);
+            // #[cfg(not(target_feature = "avx2"))]
+            // self._accum_rem(White, i_w);
+            // #[cfg(not(target_feature = "avx2"))]
+            // self._accum_rem(Black, i_b);
 
-            #[cfg(target_feature = "avx2")]
-            self._accum_inc_simd::<false>(White, i_w);
-            #[cfg(target_feature = "avx2")]
-            self._accum_inc_simd::<false>(Black, i_b);
+            // #[cfg(target_feature = "avx2")]
+            // self._accum_inc_simd::<false>(White, i_w);
+            // #[cfg(target_feature = "avx2")]
+            // self._accum_inc_simd::<false>(Black, i_b);
+
+            self._accum_rem(White, i_w);
+            self._accum_rem(Black, i_b);
 
             NNDelta::Add(i_w,i_b)
         }
@@ -1194,6 +1222,7 @@ mod old {
 
         }
 
+        /// temp no simd
         pub fn reset_accum(&mut self, g: &Game) {
             self._update_accum(g, White);
             self._update_accum(g, Black);

@@ -81,6 +81,9 @@ mod ss {
         pub checkmates:         u32,
         pub stalemates:         u32,
 
+        pub eval_nnue:          u32,
+        pub eval_classical:     u32,
+
         pub tt_hits:            u32,
         pub tt_halfmiss:        u32,
         pub tt_misses:          u32,

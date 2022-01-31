@@ -395,7 +395,7 @@ fn main_sample() {
         ex.time_settings.is_per_move = true;
         ex.time_settings.move_time = (t * 1000.0) as u64;
         ex.cfg.late_move_reductions = true;
-        // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+        ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
         let from  = &correct[0..2];
         let to    = &correct[2..4];
         let other = &correct[4..];
@@ -2928,6 +2928,11 @@ fn main_nnue3() {
 
     nn2.ft.make_move(&g2, mv2);
 
+    // let st = &nn2.ft.accum_stack;
+    // for acc in st.iter() {
+    //     eprintln!("{:?} = {:?}", acc.computed, acc.deltas);
+    // }
+
     eprintln!("prev transform 2 = -778");
 
     let v0 = nn2.evaluate(&g, false);
@@ -3182,9 +3187,9 @@ fn main9() {
 
     // let n = MAX_SEARCH_PLY;
     // let n = 35;
-    let n = 12;
+    // let n = 12;
     // let n = 10;
-    // let n = 2;
+    let n = 2;
 
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
@@ -3333,6 +3338,9 @@ fn main9() {
     stats0.print_ebf(false);
     stats0.print_mbf();
     stats0.print_nth_best(false);
+
+    eprintln!("stats0.eval_nnue      = {:?}", stats0.eval_nnue);
+    eprintln!("stats0.eval_classical = {:?}", stats0.eval_classical);
 
     // return;
 
