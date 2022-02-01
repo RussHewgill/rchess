@@ -578,19 +578,20 @@ impl ExHelper {
             return draw_value(stats);
         }
 
-        // let stand_pat = self.evaluate(ts, g, true);
+        let mut allow_stand_pat = true;
 
-        /// XXX: should be correct, need to verify
-        let stand_pat = if g.state.in_check {
-            if g.state.side_to_move == Black { Score::MIN } else { Score::MAX }
-        } else {
-            self.evaluate(ts, stats, g, ply, true)
-        };
+        let stand_pat = self.evaluate(ts, stats, g, ply, true);
+
+        // /// XXX: should be correct, need to verify
+        // let stand_pat = if g.state.in_check {
+        //     allow_stand_pat = false;
+        //     if g.state.side_to_move == Black { Score::MIN } else { Score::MAX }
+        // } else {
+        //     self.evaluate(ts, stats, g, ply, true)
+        // };
 
         /// early halt
         if self.stop.load(Relaxed) { return stand_pat; }
-
-        let mut allow_stand_pat = true;
 
         if stand_pat >= beta {
             return beta; // fail hard

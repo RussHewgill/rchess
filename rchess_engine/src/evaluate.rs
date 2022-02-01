@@ -65,13 +65,14 @@ impl ExHelper {
         ply:      Depth,
         quiesce:  bool,
     ) -> Score {
-        /// evaluate is only called from quiet positions
-        assert!(!g.state.in_check);
 
-        let imbalance = g.state.npm[White]
-            + Pawn.score_tapered() * g.state.material.get(Pawn, White) as Score
-            - g.state.npm[Black]
-            - Pawn.score_tapered() * g.state.material.get(Pawn, Black) as Score;
+        // /// evaluate is only called from quiet positions
+        // assert!(!g.state.in_check);
+
+        // let imbalance = g.state.npm[White]
+        //     + Pawn.score_tapered() * g.state.material.get(Pawn, White) as Score
+        //     - g.state.npm[Black]
+        //     - Pawn.score_tapered() * g.state.material.get(Pawn, Black) as Score;
 
         let use_nnue = cfg!(feature = "nnue")
             && self.nnue.is_some()

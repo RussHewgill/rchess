@@ -552,7 +552,7 @@ impl ExHelper {
 
         let val = Score::MIN + 200;
         let mut best_val: (Option<ABResult>,Score) = (None,val);
-        let mut max_score = Score::MAX;
+        // let mut max_score = Score::MAX;
 
         /// Max search depth
         if ply >= MAX_SEARCH_PLY {
@@ -980,6 +980,8 @@ impl ExHelper {
 
         /// Step 11. Loop over moves
         'outer: while let Some(mv) = movegen.next(&stack) {
+
+            // eprintln!("ab depth({}), {} = {:?}", depth, moves_searched, mv);
 
             let mut next_depth = depth - 1;
             let mut extensions = 0;
