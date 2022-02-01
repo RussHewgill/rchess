@@ -2919,13 +2919,12 @@ fn main_nnue3() {
 
     // eprintln!("prev transform 1 = -1075");
 
-    let v0 = nn2.evaluate(&g, false);
+    let v0 = nn2.evaluate(&g, false, 1);
     eprintln!("v0 = {:?}", v0);
     eprintln!("v0 == -599 = {:?}", v0 == -599);
 
     let mv2 = Move::new_quiet("e5", "e4", Pawn);
     let g2 = g.make_move_unchecked(&ts, mv2).unwrap();
-
     nn2.ft.make_move(&g2, mv2);
 
     // let st = &nn2.ft.accum_stack;
@@ -2935,9 +2934,17 @@ fn main_nnue3() {
 
     eprintln!("prev transform 2 = -778");
 
-    let v0 = nn2.evaluate(&g, false);
+    let v0 = nn2.evaluate(&g, false, 2);
     eprintln!("v0 = {:?}", v0);
     eprintln!("v0 == -609 = {:?}", v0 == -609);
+
+    // let mv3 = Move::new_capture("g4", "g6", Queen, Bishop);
+    // let g3 = g2.make_move_unchecked(&ts, mv3).unwrap();
+    // nn2.ft.make_move(&g3, mv3);
+
+    // let v0 = nn2.evaluate(&g, false);
+    // eprintln!("v0 = {:?}", v0);
+    // eprintln!("v0 == -609 = {:?}", v0 == -609);
 
 }
 

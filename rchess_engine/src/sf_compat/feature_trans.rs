@@ -6,6 +6,7 @@ pub use self::old::*;
 
 #[cfg(not(feature = "prev_accum"))]
 mod new {
+    use crate::tables::MAX_SEARCH_PLY;
     use crate::types::*;
     use crate::sf_compat::accumulator::new::*;
     use crate::sf_compat::{NNIndex,HALF_DIMS,NNUE4};
@@ -21,15 +22,12 @@ mod new {
 
     #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
     pub struct NNFeatureTrans {
-        // pub biases:         Vec<i16>, // 1024
         pub biases:         Aligned<A64,Vec<i16>>, // 1024
-
-        // pub weights:        [i16; Self::DIMS_IN * HALF_DIMS], // stack overflows
-        // pub weights:        Vec<i16>, // 1024 * INPUT = 23068672
-        // pub psqt_weights:   Vec<i32>, // INPUT * PSQT_BUCKETS = 180224
 
         pub weights:        Aligned<A64,Vec<i16>>, // 1024 * INPUT = 23068672
         pub psqt_weights:   Aligned<A64,Vec<i32>>, // INPUT * PSQT_BUCKETS = 180224
+
+        pub ply:            usize,
 
         pub accum_stack:    Vec<NNAccum>,
 
@@ -55,7 +53,11 @@ mod new {
                 // weights:        [0; HALF_DIMS * Self::DIMS_IN],
                 psqt_weights:   Aligned(vec![0; Self::DIMS_IN * Self::PSQT_BUCKETS]),
 
-                accum_stack:    vec![],
+                ply:            0,
+
+                // accum_stack:    vec![],
+                accum_stack:    vec![NNAccum::default(); MAX_SEARCH_PLY as usize],
+                // accum_stack:    Vec::with_capacity(MAX_SEARCH_PLY as usize),
             }
         }
 
@@ -284,7 +286,7 @@ mod new {
 
     /// transform
     impl NNFeatureTrans {
-        pub fn transform(&mut self, g: &Game, output: &mut [u8], bucket: usize) -> Score {
+        pub fn transform(&mut self, g: &Game, output: &mut [u8], bucket: usize, ply: Depth) -> Score {
 
             self.apply_deltas(g, White);
             self.apply_deltas(g, Black);
@@ -323,20 +325,79 @@ mod new {
     /// reset_accum, init_fresh_accum
     impl NNFeatureTrans {
 
-        pub fn reset_accum(&mut self, g: &Game) {
-            self.accum_stack.clear();
-            let acc = self.init_fresh_accum(g);
-            self.accum_stack.push(acc);
+        pub fn reset_feature_trans(&mut self, g: &Game) {
+            // self.accum_stack.clear();
+            // let acc = self.init_fresh_accum(g);
+            // self.accum_stack.push(acc);
+            // self.accum_stack
+
+            assert_eq!(self.accum_stack.len(), MAX_SEARCH_PLY as usize);
+
+            for acc in self.accum_stack.iter_mut() {
+                acc.deltas.clear();
+                acc.computed = [false; 2];
+            }
+
+            // self.accum_stack[0] = self.init_fresh_accum(g);
+
+            self.reset_accum(g, 0);
+
         }
 
-        pub fn init_fresh_accum(&self, g: &Game) -> NNAccum {
-            let mut acc = NNAccum::default();
-            self._reset_accum(g, White, &mut acc);
-            self._reset_accum(g, Black, &mut acc);
-            acc
+        // pub fn init_fresh_accum(&self, g: &Game) -> NNAccum {
+        //     let mut acc = NNAccum::default();
+        //     // self._reset_accum(g, White, &mut acc);
+        //     // self._reset_accum(g, Black, &mut acc);
+        //     Self::_reset_accum(
+        //         &self.biases, &self.weights, &self.psqt_weights, g, White, &mut acc);
+        //     Self::_reset_accum(
+        //         &self.biases, &self.weights, &self.psqt_weights, g, Black, &mut acc);
+        //     acc
+        // }
+
+        pub fn reset_accum(&mut self, g: &Game, idx: usize) {
+            if let Some(acc) = self.accum_stack.get_mut(idx) {
+                Self::_reset_accum(
+                    &self.biases, &self.weights, &self.psqt_weights, g, White, acc);
+                Self::_reset_accum(
+                    &self.biases, &self.weights, &self.psqt_weights, g, Black, acc);
+            } else {
+                panic!("reset_accum, bad idx: {:?}", idx);
+            }
+        }
+
+        pub fn _reset_accum(
+            bs:         &[i16],
+            ws:         &[i16],
+            psqt_ws:    &[i32],
+            g:          &Game,
+            persp:      Color,
+            accum:      &mut NNAccum
+        ) {
+            assert!(bs.len() == accum.accum[persp].len());
+            accum.accum[persp].copy_from_slice(bs);
+
+            let mut active = ArrayVec::default();
+            NNAccum::append_active(g, persp, &mut active);
+
+            accum.psqt[persp].fill(0);
+
+            for idx in active.into_iter() {
+                let offset = HALF_DIMS * idx.0;
+                for j in 0..HALF_DIMS {
+                    accum.accum[persp][j] += ws[offset + j];
+                }
+                for k in 0..Self::PSQT_BUCKETS {
+                    accum.psqt[persp][k] += psqt_ws[idx.0 * Self::PSQT_BUCKETS + k];
+                }
+            }
+
+            // accum.computed = [true; 2];
+            accum.computed[persp] = true;
         }
 
         /// only used to make a fresh accum, for first node and king moves
+        #[cfg(feature = "nope")]
         pub fn _reset_accum(&self, g: &Game, persp: Color, accum: &mut NNAccum) {
             assert!(self.biases.len() == accum.accum[persp].len());
             accum.accum[persp].copy_from_slice(&self.biases);
@@ -364,7 +425,12 @@ mod new {
     /// pop
     impl NNFeatureTrans {
         pub fn accum_pop(&mut self) {
-            self.accum_stack.pop();
+            if self.ply != 0 {
+                self.ply -= 1;
+            } else {
+                unreachable!();
+            }
+            // self.accum_stack.pop();
         }
     }
 
@@ -393,9 +459,20 @@ mod new {
 
             assert_eq!(Some(mv), g.last_move);
 
+            self.ply += 1;
+
             if mv.piece() == Some(King) {
-                let acc = self.init_fresh_accum(g);
-                self.accum_stack.push(acc);
+                if let Some(acc) = self.accum_stack.get_mut(self.ply) {
+                    Self::_reset_accum(
+                        &self.biases, &self.weights, &self.psqt_weights, g, White, acc);
+                    Self::_reset_accum(
+                        &self.biases, &self.weights, &self.psqt_weights, g, Black, acc);
+                    acc.deltas.clear();
+                    acc.computed = [true; 2];
+                } else {
+                    unreachable!()
+                }
+                // self.accum_stack.push(acc);
             } else {
 
                 // let mut acc = NNAccum::default();
@@ -403,9 +480,19 @@ mod new {
                 // self.accum_stack.push(acc);
 
                 let deltas = self._make_move(g, mv);
-                let prev = self.accum_stack.last().unwrap();
-                let acc = NNAccum::new_from_prev(prev, deltas);
-                self.accum_stack.push(acc);
+                let prev = self.accum_stack.get(self.ply - 1).unwrap();
+
+                if let Some(acc) = self.accum_stack.get_mut(self.ply) {
+                    // acc.accum = prev.accum.clone()
+                    // acc.psqt.copy_from_slice(&prev.psqt);
+                    acc.deltas = deltas;
+                    acc.computed = [false; 2];
+                } else {
+                    unreachable!()
+                }
+
+                // let acc = NNAccum::new_from_prev(prev, deltas);
+                // self.accum_stack.push(acc);
 
             }
         }

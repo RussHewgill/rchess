@@ -452,7 +452,7 @@ impl ExHelper {
 
             let mut eval = if let Some(eval) = meval { eval } else {
                 // self.eval_nn_or_hce(ts, g)
-                self.evaluate(ts, stats, g, false)
+                self.evaluate(ts, stats, g, ply, false)
             };
 
             if let Some(si) = msi {
@@ -472,7 +472,7 @@ impl ExHelper {
             Some(eval)
         } else {
             // let eval = self.eval_nn_or_hce(ts, g);
-            let eval = self.evaluate(ts, stats, g, false);
+            let eval = self.evaluate(ts, stats, g, ply, false);
             stack.with(ply, |st| st.static_eval = Some(eval));
 
             self.tt_insert_deepest_eval(g.zobrist, Some(eval));
@@ -558,7 +558,7 @@ impl ExHelper {
         if ply >= MAX_SEARCH_PLY {
             if !in_check {
                 // let score = self.eval_nn_or_hce(ts, g);
-                let score = self.evaluate(ts, stats, g, false);
+                let score = self.evaluate(ts, stats, g, ply, false);
                 return ABSingle(ABResult::new_null_score(score));
             } else {
                 let score = draw_value(stats);

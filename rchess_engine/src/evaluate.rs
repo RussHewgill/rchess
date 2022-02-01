@@ -57,7 +57,14 @@ impl ExHelper {
 
     /// NNUE eval is ~18x slower than classic (only material and psqt)
     /// so fallback to classic for large material imbalance
-    pub fn evaluate(&mut self, ts: &Tables, stats: &mut SearchStats, g: &Game, quiesce: bool) -> Score {
+    pub fn evaluate(
+        &mut self,
+        ts:       &Tables,
+        stats:    &mut SearchStats,
+        g:        &Game,
+        ply:      Depth,
+        quiesce:  bool,
+    ) -> Score {
         /// evaluate is only called from quiet positions
         assert!(!g.state.in_check);
 
@@ -74,7 +81,7 @@ impl ExHelper {
         if use_nnue {
             stats.eval_nnue += 1;
             if let Some(nnue) = self.nnue.as_mut() {
-                let score = nnue.evaluate(&g, true);
+                let score = nnue.evaluate(&g, true, ply);
                 score
             } else { unreachable!() }
         } else {

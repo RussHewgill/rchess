@@ -217,6 +217,7 @@ impl NNUE4 {
 /// Evaluate
 impl NNUE4 {
 
+    #[cfg(feature = "nope")]
     pub fn trace_eval(&mut self, g: &Game, adjusted: bool) -> ([Score; 8], [Score; 8],usize) {
 
         let mut out_psqt       = [0; 8];
@@ -258,7 +259,7 @@ impl NNUE4 {
     }
 
     // TODO: check for correctness with trace_eval
-    pub fn evaluate(&mut self, g: &Game, adjusted: bool) -> Score {
+    pub fn evaluate(&mut self, g: &Game, adjusted: bool, ply: Depth) -> Score {
 
         let c = g.state.material.count();
         let bucket = (c as usize - 1) / 4;
@@ -269,7 +270,7 @@ impl NNUE4 {
 
         let mut transformed: Aligned<A64,_> = Aligned([0; HALF_DIMS * 2]);
         // let psqt = self.ft.transform(g, &mut transformed, bucket, refresh);
-        let psqt = self.ft.transform(g, transformed.as_mut(), bucket);
+        let psqt = self.ft.transform(g, transformed.as_mut(), bucket, ply);
         eprintln!("FT transform = {:?}", &psqt);
 
         // // let mut pos_buf = [0; Layer3::BUFFER_SIZE]; // ?? 384

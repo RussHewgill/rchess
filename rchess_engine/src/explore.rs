@@ -409,7 +409,7 @@ impl Explorer {
             #[cfg(feature = "prev_accum")]
             nnue.ft.accum.stack_delta.clear();
 
-            nnue.ft.reset_accum(&g);
+            nnue.ft.reset_feature_trans(&g);
         }
         self.side = g.state.side_to_move;
         self.game = g;

@@ -584,7 +584,7 @@ impl ExHelper {
         let stand_pat = if g.state.in_check {
             if g.state.side_to_move == Black { Score::MIN } else { Score::MAX }
         } else {
-            self.evaluate(ts, stats, g, true)
+            self.evaluate(ts, stats, g, ply, true)
         };
 
         /// early halt
