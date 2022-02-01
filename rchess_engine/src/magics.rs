@@ -115,7 +115,8 @@ pub fn _gen_magics_pext(bishop: bool)
             size += 1;
             // XXX: undeflows, but still works?
             b.0 = (b.0 - m.mask.0) & m.mask.0;
-            // b.0 = (b.0.checked_sub(m.mask.0).unwrap_or(0)) & m.mask.0; // XXX: fixing it breaks ??
+            // // b.0 = (b.0.checked_sub(m.mask.0).unwrap_or(0)) & m.mask.0; // XXX: fixing it breaks ??
+            // b.0 = (b.0.overflowing_sub(m.mask.0).0) & m.mask.0;
 
             if b.is_empty() { break; }
         }

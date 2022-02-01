@@ -680,9 +680,29 @@ impl Explorer {
         // let t_max = self.timer.allocate_time()
 
         // let root_moves = MoveGen::gen_all(ts, &self.game);
-        let root_moves = vec![];
+        let root_moves: Vec<Move> = vec![];
         let mut per_thread_data = vec![None; self.per_thread_data.len()];
 
+        // #[cfg(feature = "nope")]
+        // crossbeam::scope(|s| {
+        //     trace!("spawning listener");
+        //     /// Dispatch listener
+        //     let handle_listener = s.spawn(|_| {
+        //         self.lazy_smp_listener(
+        //             rx,
+        //             best_depth.clone(),
+        //             thread_counter.clone(),
+        //             t0,
+        //             out.clone(),
+        //         );
+        //     });
+        //     trace!("sending stop message to listener");
+        //     tx.send(ExMessage::Stop).unwrap();
+        //     handle_listener.join().unwrap();
+        // }).unwrap();
+        // trace!("done");
+
+        // #[cfg(feature = "nope")]
         crossbeam::scope(|s| {
 
             // let ord = SeqCst;
@@ -709,7 +729,8 @@ impl Explorer {
                 let handle: ScopedJoinHandle<PerThreadData> = s.builder()
                     .stack_size(size)
                     .spawn(move |_| {
-                        helper.lazy_smp_single(ts)
+                        helper.lazy_smp_single(ts);
+                        PerThreadData::new(helper.material_table, helper.pawn_table)
                     }).unwrap();
 
                 handles.push((thread_id,handle));
@@ -718,9 +739,13 @@ impl Explorer {
                 trace!("Spawned thread, count = {}", thread_counter.load(SeqCst));
             }
 
+            let (tx_stop,rx_stop) = crossbeam::channel::unbounded();
+
+            /// Dispatch listener
             let handle_listener = s.spawn(|_| {
                 self.lazy_smp_listener(
                     rx,
+                    rx_stop,
                     best_depth.clone(),
                     thread_counter.clone(),
                     t0,
@@ -737,14 +762,14 @@ impl Explorer {
                 if timer.should_stop() {
                     debug!("breaking loop (Time),  d: {}", best_depth.load(Relaxed));
                     self.stop.store(true, SeqCst);
-                    drop(tx);
+                    // drop(tx);
                     break 'outer;
                 }
 
                 let d = best_depth.load(Relaxed);
                 /// Max depth reached, halt
                 if d >= self.cfg.max_depth {
-                    debug!("max depth reached, breaking");
+                    debug!("breaking loop (Max Depth)");
                     self.stop.store(true, SeqCst);
                     break 'outer;
                 }
@@ -760,6 +785,7 @@ impl Explorer {
                 }
 
                 if self.stop.load(Relaxed) {
+                    debug!("breaking loop (External stop),  d: {}", d);
                     break 'outer;
                 }
 
@@ -767,8 +793,14 @@ impl Explorer {
                 // std::thread::sleep(Duration::from_millis(10));
             }
 
-            // handle_listener.join().unwrap();
+            trace!("sending stop message to listener");
+            tx_stop.send(()).unwrap();
+            tx.send(ExMessage::Stop).unwrap();
+            handle_listener.join().unwrap();
+
+            trace!("joining threads");
             for (thread_id,handle) in handles.into_iter() {
+                trace!("joining thread: {}", thread_id);
                 let thread_data = handle.join().unwrap();
                 per_thread_data[thread_id] = Some(thread_data);
             }
@@ -815,6 +847,7 @@ impl Explorer {
     fn lazy_smp_listener(
         &self,
         rx:               ExReceiver,
+        rx_stop:          Receiver<()>,
         best_depth:       Arc<CachePadded<AtomicI16>>,
         thread_counter:   Arc<CachePadded<AtomicI8>>,
         t0:               Instant,
@@ -822,7 +855,109 @@ impl Explorer {
     ) {
         let mut any_move_stored = false;
         loop {
+
+            crossbeam::select! {
+                recv(rx_stop) -> _ => {
+                    trace!("lazy_smp_listener Stop 0");
+                    break;
+                },
+                recv(rx) -> msg => match msg {
+                    Ok(ExMessage::Stop) => {
+                        trace!("lazy_smp_listener Stop 1");
+                        break;
+                    },
+                    Ok(ExMessage::End(id)) => {
+                        thread_counter.fetch_sub(1, SeqCst);
+                        trace!("decrementing thread counter id = {}, new val = {}",
+                                id, thread_counter.load(SeqCst));
+                        // break;
+                    },
+                    Ok(ExMessage::Message(depth,res,moves,stats)) => {
+                        match res.clone() {
+                            ABResults::ABList(bestres, _)
+                                | ABResults::ABSingle(bestres)
+                                | ABResults::ABSyzygy(bestres) => {
+                                    if depth > best_depth.load(SeqCst)
+                                        // || bestres.score > CHECKMATE_VALUE - MAX_SEARCH_PLY as Score - 1
+                                        || bestres.score > CHECKMATE_VALUE - (MAX_SEARCH_PLY as Score * 2)
+                                        || !any_move_stored
+                                    {
+                                        best_depth.store(depth,SeqCst);
+
+                                        // let t1 = t0.elapsed();
+                                        let t1 = Instant::now().checked_duration_since(t0).unwrap();
+                                        debug!("new best move d({}): {:.3}s: {}: {:?}",
+                                            depth, t1.as_secs_f64(),
+                                            // bestres.score, bestres.moves.front());
+                                            bestres.score, bestres.mv);
+
+                                        if bestres.score.abs() == CHECKMATE_VALUE {
+                                            self.stop.store(true, SeqCst);
+                                            debug!("in mate, nothing to do");
+                                            break;
+                                        }
+
+                                        if bestres.score > CHECKMATE_VALUE - (MAX_SEARCH_PLY as Score * 2) {
+                                        // if bestres.score > CHECKMATE_VALUE - MAX_SEARCH_PLY as Score - 1 {
+                                            let k = CHECKMATE_VALUE - bestres.score.abs();
+                                            debug!("Found mate in {}: d({}), {:?}",
+                                                // bestres.score, bestres.moves.front());
+                                                k, depth, bestres.mv);
+
+                                            // let mut best = self.best_mate.write();
+                                            // *best = Some(k as Depth);
+
+                                            self.best_mate.store(k as Depth, SeqCst);
+
+                                            self.stop.store(true, SeqCst);
+
+                                            let mut w = out.write();
+                                            *w = (depth, res, moves, w.3 + stats);
+                                            // *w = (depth, scores, None);
+                                            break;
+                                        } else {
+                                            let mut w = out.write();
+                                            *w = (depth, res, moves, w.3 + stats);
+                                            any_move_stored = true;
+                                        }
+                                } else {
+                                    // XXX: add stats?
+                                }
+                            },
+                            // ABResults::ABSyzygy(res) => {
+                            //     panic!("TODO: Syzygy {:?}", res);
+                            // }
+                            ABResults::ABPrune(score, prune) => {
+                                panic!("TODO: Prune at root ?? {:?}, {:?}", score, prune);
+                            }
+                            x => {
+                                let mut w = out.write();
+                                w.3 = w.3 + stats;
+                                // panic!("rx: ?? {:?}", x);
+                            },
+                        }
+
+                        // if let Some(id) = thread_dec {
+                        //     thread_counter.fetch_sub(1, SeqCst);
+                        //     trace!("decrementing thread counter id = {}, new val = {}",
+                        //            id, thread_counter.load(SeqCst));
+                        // }
+
+                    },
+                    // Err(TryRecvError::Empty)    => {
+                    //     // std::thread::sleep(Duration::from_millis(1));
+                    // },
+                    Err(_)    => {
+                        trace!("Breaking thread counter loop (Disconnect)");
+                        break;
+                    },
+                }
+
+            }
+
             // match rx.try_recv() {
+
+            #[cfg(feature = "nope")]
             match rx.recv() {
                 Ok(ExMessage::Stop) => {
                     trace!("lazy_smp_listener Stop");
@@ -1052,7 +1187,8 @@ impl ExHelper {
         // ts:               &'static Tables,
         ts:               &Tables,
         // max_threads:      i8,
-    ) -> PerThreadData {
+    // ) -> PerThreadData {
+    ) {
 
         let mut stack = ABStack::new_with_moves(&self.move_history);
         let mut stats = SearchStats::default();
@@ -1125,8 +1261,10 @@ impl ExHelper {
 
         trace!("exiting lazy_smp_single, id = {}", self.id);
 
-        /// XXX: this might be slow? only clones once per thread per search
-        PerThreadData::new(self.material_table.clone(), self.pawn_table.clone())
+        // /// XXX: this might be slow? only clones once per thread per search
+        // // PerThreadData::new(self.material_table.clone(), self.pawn_table.clone())
+        // PerThreadData::new(self.material_table, self.pawn_table)
+
     }
 
 }

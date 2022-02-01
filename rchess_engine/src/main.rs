@@ -3162,6 +3162,8 @@ fn main9() {
     // let fen2 = "3k4/8/8/8/8/8/3P4/3K4 b - - 0 1"; // black king D8
     // let fen3 = "k7/8/8/8/8/8/3P4/3K4 b - - 0 1"; // black king A8
 
+    let fen = "1kr5/3n4/q3p2p/p2n2p1/PppB1P2/5BP1/1P2Q2P/3R2K1 w - -";
+
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
@@ -3215,7 +3217,7 @@ fn main9() {
 
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
 
-    ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+    // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
     ex.cfg.late_move_reductions = true;
 
@@ -3308,7 +3310,7 @@ fn main9() {
     // eprintln!("stats0.nodes = {:?}", stats0.nodes);
     // eprintln!("sum = {:?}", sum);
 
-    // return;
+    return;
 
     #[cfg(feature = "lockless_hashmap")]
     {
@@ -4083,7 +4085,8 @@ fn init_logger() {
     // return;
 
     let cfg = ConfigBuilder::new()
-        .set_time_level(LevelFilter::Off)
+        // .set_time_level(LevelFilter::Off)
+        .set_time_level(LevelFilter::Debug)
         .set_time_format_str("%H-%M-%S %.6f")
         .set_target_level(LevelFilter::Off)
         .set_thread_level(LevelFilter::Info)
