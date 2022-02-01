@@ -120,9 +120,11 @@ mod new {
             /// find index of most recent computed accum
             let mut idx = self.ply;
             let mut refresh = false;
+            let mut count = 0;
             loop {
+                count += 1;
 
-                if self.delta_stack[idx].get(0) == Some(&NNDelta::Refresh) {
+                if count > refresh_cost || self.delta_stack[idx].get(0) == Some(&NNDelta::Refresh) {
                     refresh = true;
                     break;
                 }

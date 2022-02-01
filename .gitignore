@@ -33,3 +33,4 @@ oprofile_data/*
 OpenBench/*
 panic.log
 out_*.log
+.idea/*
