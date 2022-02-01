@@ -409,6 +409,9 @@ impl Explorer {
             #[cfg(feature = "prev_accum")]
             nnue.ft.accum.stack_delta.clear();
 
+            #[cfg(feature = "prev_accum")]
+            nnue.ft.reset_accum(&g);
+            #[cfg(not(feature = "prev_accum"))]
             nnue.ft.reset_feature_trans(&g);
         }
         self.side = g.state.side_to_move;
@@ -447,10 +450,21 @@ impl Explorer {
         self.update_game(g);
     }
 
+}
+
+/// Load nnue, syzygy, openings
+impl Explorer {
+
     pub fn load_nnue<P: AsRef<Path>>(&mut self, path: P) -> std::io::Result<()> {
         #[cfg(feature = "nnue")]
         {
             let mut nn = NNUE4::read_nnue(path)?;
+
+            #[cfg(feature = "prev_accum")]
+            nn.ft.reset_accum(&self.game);
+            #[cfg(not(feature = "prev_accum"))]
+            nn.ft.reset_feature_trans(&self.game);
+
             self.nnue = Some(nn);
         }
         Ok(())
@@ -471,7 +485,6 @@ impl Explorer {
         self.opening_book = Some(Arc::new(b));
         Ok(())
     }
-
 }
 
 /// Get PV

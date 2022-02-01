@@ -2913,15 +2913,16 @@ fn main_nnue3() {
 
     let path = "nn-63376713ba63.nnue";
     let mut nn = NNUE4::read_nnue(path).unwrap();
-    nn.ft.reset_accum(&g);
+
+    nn.ft.reset_feature_trans(&g);
+    // nn.ft.reset_accum(&g);
 
     let mut nn2 = nn.clone();
 
     // eprintln!("prev transform 1 = -1075");
 
-    let v0 = nn2.evaluate(&g, false, 1);
-    eprintln!("v0 = {:?}", v0);
-    eprintln!("v0 == -599 = {:?}", v0 == -599);
+    let v0 = nn2.evaluate(&g, false);
+    eprintln!("v0: {:>4} == -755 = {:?}", v0, v0 == -599);
 
     let mv2 = Move::new_quiet("e5", "e4", Pawn);
     let g2 = g.make_move_unchecked(&ts, mv2).unwrap();
@@ -2932,11 +2933,14 @@ fn main_nnue3() {
     //     eprintln!("{:?} = {:?}", acc.computed, acc.deltas);
     // }
 
-    eprintln!("prev transform 2 = -778");
+    // eprintln!("prev transform 2 = -778");
 
-    let v0 = nn2.evaluate(&g, false, 2);
-    eprintln!("v0 = {:?}", v0);
-    eprintln!("v0 == -609 = {:?}", v0 == -609);
+    let v0 = nn2.evaluate(&g2, false);
+    eprintln!("v0: {:>4} == -755 = {:?}", v0, v0 == 755);
+
+    nn2.ft.accum_pop();
+    let v0 = nn2.evaluate(&g, false);
+    eprintln!("v0: {:>4} == -755 = {:?}", v0, v0 == -599);
 
     // let mv3 = Move::new_capture("g4", "g6", Queen, Bishop);
     // let g3 = g2.make_move_unchecked(&ts, mv3).unwrap();
@@ -3194,9 +3198,9 @@ fn main9() {
 
     // let n = MAX_SEARCH_PLY;
     // let n = 35;
-    // let n = 12;
+    let n = 12;
     // let n = 10;
-    let n = 2;
+    // let n = 2;
 
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);

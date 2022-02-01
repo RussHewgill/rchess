@@ -110,16 +110,25 @@ mod new {
         pub fn apply_deltas(&mut self, g: &Game, persp: Color) {
 
             /// find index of most recent computed accum
-            let mut idx = self.accum_stack.len() - 1;
+            let mut idx = self.ply;
             loop {
                 if let Some(acc) = self.accum_stack.get(idx) {
                     if acc.computed[persp] { break; }
-                }
+                } else { panic!("missing ply"); }
                 if idx == 0 { /// this state should never occur
                     unreachable!()
                 }
                 idx -= 1;
             }
+
+            // let mut idx = None;
+            // for (i,acc) in self.accum_stack.iter().enumerate().rev() {
+            //     if acc.computed[persp] {
+            //         idx = Some(i);
+            //         break;
+            //     }
+            // }
+            // let idx = if let Some(idx) = idx { idx } else { panic!(); };
 
             // eprintln!("most recent computed idx = {:?}", idx);
 
@@ -176,6 +185,7 @@ mod new {
             Some(())
         }
 
+        /// dispatch Add, Remove
         fn apply_delta(ws: &[i16], psqt_ws: &[i32], acc: &mut NNAccum, delta: NNDelta, persp: Color) {
             match delta {
                 NNDelta::Add(w,b)    => {
@@ -189,6 +199,7 @@ mod new {
             }
         }
 
+        /// incrementally add weights
         fn _apply_delta<const ADD: bool>(
             ws:               &[i16],
             psqt_ws:          &[i32],
@@ -286,7 +297,8 @@ mod new {
 
     /// transform
     impl NNFeatureTrans {
-        pub fn transform(&mut self, g: &Game, output: &mut [u8], bucket: usize, ply: Depth) -> Score {
+        // pub fn transform(&mut self, g: &Game, output: &mut [u8], bucket: usize, ply: Depth) -> Score {
+        pub fn transform(&mut self, g: &Game, output: &mut [u8], bucket: usize) -> Score {
 
             self.apply_deltas(g, White);
             self.apply_deltas(g, Black);
@@ -295,7 +307,8 @@ mod new {
 
             let persps: [Color; 2] = [g.state.side_to_move, !g.state.side_to_move];
 
-            let acc: &mut NNAccum = self.accum_stack.last_mut().unwrap();
+            // let acc: &mut NNAccum = self.accum_stack.last_mut().unwrap();
+            let acc: &mut NNAccum = &mut self.accum_stack[self.ply];
 
             let accum      = &mut acc.accum;
             let psqt_accum = &mut acc.psqt;
@@ -322,7 +335,7 @@ mod new {
         }
     }
 
-    /// reset_accum, init_fresh_accum
+    /// reset_feature_trans, init_fresh_accum
     impl NNFeatureTrans {
 
         pub fn reset_feature_trans(&mut self, g: &Game) {
@@ -344,17 +357,6 @@ mod new {
 
         }
 
-        // pub fn init_fresh_accum(&self, g: &Game) -> NNAccum {
-        //     let mut acc = NNAccum::default();
-        //     // self._reset_accum(g, White, &mut acc);
-        //     // self._reset_accum(g, Black, &mut acc);
-        //     Self::_reset_accum(
-        //         &self.biases, &self.weights, &self.psqt_weights, g, White, &mut acc);
-        //     Self::_reset_accum(
-        //         &self.biases, &self.weights, &self.psqt_weights, g, Black, &mut acc);
-        //     acc
-        // }
-
         pub fn reset_accum(&mut self, g: &Game, idx: usize) {
             if let Some(acc) = self.accum_stack.get_mut(idx) {
                 Self::_reset_accum(
@@ -366,6 +368,7 @@ mod new {
             }
         }
 
+        /// used to make a fresh accum, for first node and king moves
         pub fn _reset_accum(
             bs:         &[i16],
             ws:         &[i16],
@@ -396,36 +399,13 @@ mod new {
             accum.computed[persp] = true;
         }
 
-        /// only used to make a fresh accum, for first node and king moves
-        #[cfg(feature = "nope")]
-        pub fn _reset_accum(&self, g: &Game, persp: Color, accum: &mut NNAccum) {
-            assert!(self.biases.len() == accum.accum[persp].len());
-            accum.accum[persp].copy_from_slice(&self.biases);
-
-            let mut active = ArrayVec::default();
-            NNAccum::append_active(g, persp, &mut active);
-
-            accum.psqt[persp].fill(0);
-
-            for idx in active.into_iter() {
-                let offset = HALF_DIMS * idx.0;
-                for j in 0..HALF_DIMS {
-                    accum.accum[persp][j] += self.weights[offset + j];
-                }
-                for k in 0..Self::PSQT_BUCKETS {
-                    accum.psqt[persp][k] += self.psqt_weights[idx.0 * Self::PSQT_BUCKETS + k];
-                }
-            }
-
-            accum.computed = [true; 2];
-        }
-
     }
 
     /// pop
     impl NNFeatureTrans {
         pub fn accum_pop(&mut self) {
             if self.ply != 0 {
+                self.accum_stack[self.ply].computed = [false; 2];
                 self.ply -= 1;
             } else {
                 unreachable!();

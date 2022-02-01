@@ -81,7 +81,8 @@ impl ExHelper {
         if use_nnue {
             stats.eval_nnue += 1;
             if let Some(nnue) = self.nnue.as_mut() {
-                let score = nnue.evaluate(&g, true, ply);
+                // let score = nnue.evaluate(&g, true, ply);
+                let score = nnue.evaluate(&g, true);
                 score
             } else { unreachable!() }
         } else {
