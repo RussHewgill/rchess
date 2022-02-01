@@ -29,6 +29,8 @@ mod new {
 
         pub ply:            usize,
 
+        // pub delta_stack:    Vec<ArrayVec<NNDelta, 3>>,
+        pub delta_stack:    [ArrayVec<NNDelta, 3>; MAX_SEARCH_PLY as usize],
         pub accum_stack:    Vec<NNAccum>,
 
     }
@@ -54,6 +56,10 @@ mod new {
                 psqt_weights:   Aligned(vec![0; Self::DIMS_IN * Self::PSQT_BUCKETS]),
 
                 ply:            0,
+
+                // delta_stack:    Vec::with_capacity(MAX_SEARCH_PLY as usize),
+                // delta_stack:    [ArrayVec::default(); MAX_SEARCH_PLY as usize],
+                delta_stack:    array_init::array_init(|_| ArrayVec::default()),
 
                 // accum_stack:    vec![],
                 accum_stack:    vec![NNAccum::default(); MAX_SEARCH_PLY as usize],
@@ -109,9 +115,18 @@ mod new {
     impl NNFeatureTrans {
         pub fn apply_deltas(&mut self, g: &Game, persp: Color) {
 
+            let refresh_cost = g.state.material.count();
+
             /// find index of most recent computed accum
             let mut idx = self.ply;
+            let mut refresh = false;
             loop {
+
+                if self.delta_stack[idx].get(0) == Some(&NNDelta::Refresh) {
+                    refresh = true;
+                    break;
+                }
+
                 if let Some(acc) = self.accum_stack.get(idx) {
                     if acc.computed[persp] { break; }
                 } else { panic!("missing ply"); }
@@ -132,28 +147,51 @@ mod new {
 
             // eprintln!("most recent computed idx = {:?}", idx);
 
+            if refresh {
+                self.reset_accum(g, idx);
+                idx += 1;
+            }
+
             let weights = &self.weights;
             let psqt_weights = &self.psqt_weights;
 
-            for accum_idx in idx+1..self.accum_stack.len() {
-                // self.apply_delta(persp, k).unwrap();
-                // eprintln!("accum_idx = {:?}", accum_idx);
+            // XXX: inclusive range?
+            /// SAFETY: src and dst are always the same length, and never the same element
+            // for accum_idx in idx+1..= self.ply {
+            for accum_idx in idx+1..self.ply+1 {
 
-                self.accum_stack[accum_idx].accum[persp] =
-                    self.accum_stack[accum_idx - 1].accum[persp];
-                self.accum_stack[accum_idx].psqt[persp]  =
-                    self.accum_stack[accum_idx - 1].psqt[persp];
+                let len0 = self.accum_stack[accum_idx - 1].accum[persp].len();
+                unsafe {
+                    let src = self.accum_stack[accum_idx - 1].accum[persp].as_ptr();
+                    let dst = self.accum_stack[accum_idx].accum[persp].as_mut_ptr();
+                    std::ptr::copy_nonoverlapping(src, dst, len0);
+                }
+
+                let len1 = self.accum_stack[accum_idx - 1].psqt[persp].len();
+                unsafe {
+                    let src = self.accum_stack[accum_idx - 1].psqt[persp].as_ptr();
+                    let dst = self.accum_stack[accum_idx].psqt[persp].as_mut_ptr();
+                    std::ptr::copy_nonoverlapping(src, dst, len1);
+                }
 
                 let acc = self.accum_stack.get_mut(accum_idx).unwrap();
-
-                for delta in acc.deltas.clone().iter() {
+                for delta in self.delta_stack[accum_idx].iter() {
                     Self::apply_delta(weights, psqt_weights, acc, *delta, persp);
                 }
 
             }
 
-            // for (prev,acc) in self.accum_stack[idx].ite
-            // for acc in self.accum_stack[idx].iter_mut().peekable() {}
+            #[cfg(feature = "nope")]
+            for accum_idx in idx+1..= self.ply {
+                self.accum_stack[accum_idx].accum[persp] =
+                    self.accum_stack[accum_idx - 1].accum[persp];
+                self.accum_stack[accum_idx].psqt[persp]  =
+                    self.accum_stack[accum_idx - 1].psqt[persp];
+                let acc = self.accum_stack.get_mut(accum_idx).unwrap();
+                for delta in self.delta_stack[accum_idx].iter() {
+                    Self::apply_delta(weights, psqt_weights, acc, *delta, persp);
+                }
+            }
 
         }
 
@@ -195,6 +233,9 @@ mod new {
                 NNDelta::Remove(w,b) => {
                     let idx = if persp == White { w } else { b };
                     Self::_apply_delta::<false>(ws, psqt_ws, acc, persp, idx);
+                },
+                NNDelta::Refresh     => {
+                    unimplemented!()
                 },
             }
         }
@@ -346,8 +387,9 @@ mod new {
 
             assert_eq!(self.accum_stack.len(), MAX_SEARCH_PLY as usize);
 
-            for acc in self.accum_stack.iter_mut() {
-                acc.deltas.clear();
+            for (acc,ds) in self.accum_stack.iter_mut().zip(self.delta_stack.iter_mut()) {
+                // acc.deltas.clear();
+                ds.clear();
                 acc.computed = [false; 2];
             }
 
@@ -358,6 +400,7 @@ mod new {
         }
 
         pub fn reset_accum(&mut self, g: &Game, idx: usize) {
+            self.delta_stack[self.ply].clear();
             if let Some(acc) = self.accum_stack.get_mut(idx) {
                 Self::_reset_accum(
                     &self.biases, &self.weights, &self.psqt_weights, g, White, acc);
@@ -442,17 +485,11 @@ mod new {
             self.ply += 1;
 
             if mv.piece() == Some(King) {
-                if let Some(acc) = self.accum_stack.get_mut(self.ply) {
-                    Self::_reset_accum(
-                        &self.biases, &self.weights, &self.psqt_weights, g, White, acc);
-                    Self::_reset_accum(
-                        &self.biases, &self.weights, &self.psqt_weights, g, Black, acc);
-                    acc.deltas.clear();
-                    acc.computed = [true; 2];
-                } else {
-                    unreachable!()
-                }
-                // self.accum_stack.push(acc);
+                // self.reset_accum(g, self.ply);
+
+                self.delta_stack[self.ply].clear();
+                self.delta_stack[self.ply].push(NNDelta::Refresh);
+
             } else {
 
                 // let mut acc = NNAccum::default();
@@ -460,12 +497,13 @@ mod new {
                 // self.accum_stack.push(acc);
 
                 let deltas = self._make_move(g, mv);
-                let prev = self.accum_stack.get(self.ply - 1).unwrap();
+                let prev   = self.accum_stack.get(self.ply - 1).unwrap();
 
                 if let Some(acc) = self.accum_stack.get_mut(self.ply) {
                     // acc.accum = prev.accum.clone()
                     // acc.psqt.copy_from_slice(&prev.psqt);
-                    acc.deltas = deltas;
+                    // acc.deltas = deltas;
+                    self.delta_stack[self.ply] = deltas;
                     acc.computed = [false; 2];
                 } else {
                     unreachable!()

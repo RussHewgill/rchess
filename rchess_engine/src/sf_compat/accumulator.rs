@@ -16,11 +16,12 @@ pub mod new {
     pub enum NNDelta {
         Add(NNIndex,NNIndex),
         Remove(NNIndex,NNIndex),
+        Refresh,
     }
 
     #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
     pub struct NNAccum {
-        pub deltas:      ArrayVec<NNDelta, 3>,
+        // pub deltas:      ArrayVec<NNDelta, 3>,
 
         /// TODO: possible to not initialize this until needed?
         pub accum:       Aligned<A32,[[i16; 1024]; 2]>, // TransformedFeatureDimensions = 1024
@@ -39,7 +40,7 @@ pub mod new {
     impl Default for NNAccum {
         fn default() -> Self {
             Self {
-                deltas:      ArrayVec::default(),
+                // deltas:      ArrayVec::default(),
 
                 accum:       Aligned([[0; 1024]; 2]),
                 psqt:        Aligned([[0; 8]; 2]),
@@ -52,17 +53,17 @@ pub mod new {
         }
     }
 
-    /// new_from_prev
-    impl NNAccum {
-        pub fn new_from_prev(prev: &NNAccum, deltas: ArrayVec<NNDelta, 3>) -> Self {
-            Self {
-                deltas,
-                accum:     prev.accum.clone(),
-                psqt:      prev.psqt.clone(),
-                computed:  [false; 2]
-            }
-        }
-    }
+    // /// new_from_prev
+    // impl NNAccum {
+    //     pub fn new_from_prev(prev: &NNAccum, deltas: ArrayVec<NNDelta, 3>) -> Self {
+    //         Self {
+    //             deltas,
+    //             accum:     prev.accum.clone(),
+    //             psqt:      prev.psqt.clone(),
+    //             computed:  [false; 2]
+    //         }
+    //     }
+    // }
 
     /// append_active
     impl NNAccum {

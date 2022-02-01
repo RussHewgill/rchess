@@ -2914,8 +2914,10 @@ fn main_nnue3() {
     let path = "nn-63376713ba63.nnue";
     let mut nn = NNUE4::read_nnue(path).unwrap();
 
+    #[cfg(not(feature = "prev_accum"))]
     nn.ft.reset_feature_trans(&g);
-    // nn.ft.reset_accum(&g);
+    #[cfg(feature = "prev_accum")]
+    nn.ft.reset_accum(&g);
 
     let mut nn2 = nn.clone();
 
