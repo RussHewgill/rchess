@@ -3225,48 +3225,6 @@ fn main9() {
 
     // let mut ex2 = ex.clone();
 
-    #[cfg(feature = "nope")]
-    {
-        let (tx,rx) = crossbeam::channel::unbounded();
-        use rchess_engine_lib::material::*;
-        let mt = MaterialTable::default();
-        let pt = PawnTable::default();
-        let thread_data = PerThreadData::new(mt,pt);
-        let mut helper = ex.build_exhelper(
-            0,
-            n,
-            ex.best_depth.clone(),
-            vec![],
-            tx,
-            thread_data,
-        );
-
-        let mut stack = ABStack::new_with_plies();
-        let mut stats = SearchStats::default();
-
-        let ply = 1;
-
-        let alpha = -2147483447;
-        let beta  = 263;
-
-        let score = helper.qsearch::<{ABNodeType::PV}>(
-            &ts,
-            &g,
-            (ply,0,0),
-            (alpha,beta),
-            &mut stack,
-            &mut stats
-        );
-        eprintln!("score = {:?}", score);
-
-        // let mut movegen = MoveGen::new_qsearch(&ts, &g, None, &stack, 0);
-        // while let Some(mv) = movegen.next(&stack) {
-        //     eprintln!("mv = {:?}", mv);
-        // }
-
-        return;
-    }
-
     // let score = helper._evaluate_classical::<true>(&ts, &g);
     // eprintln!("score.mid = {:?}", score.mid);
     // eprintln!("score.end = {:?}", score.end);

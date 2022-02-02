@@ -109,6 +109,8 @@ impl ExHelper {
 
     pub fn _evaluate_classical<const TR: bool>(&mut self, ts: &Tables, g: &Game) -> TaperedScore {
 
+        let mut score = TaperedScore::default();
+
         // let me = self.material_table.get_or_insert(ts, g);
 
         // /// TODO: endgames
@@ -117,7 +119,7 @@ impl ExHelper {
         //     unimplemented!()
         // }
 
-        let mut score = g.psqt_score[White] - g.psqt_score[Black];
+        score += g.psqt_score[White] - g.psqt_score[Black];
         if TR { eprintln!("psqt = {:?}", (g.psqt_score[White],g.psqt_score[Black])); }
 
         let material_score = g.state.npm[White]
