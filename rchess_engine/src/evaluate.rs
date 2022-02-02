@@ -109,24 +109,30 @@ impl ExHelper {
 
     pub fn _evaluate_classical<const TR: bool>(&mut self, ts: &Tables, g: &Game) -> TaperedScore {
 
-        let me = self.material_table.get_or_insert(ts, g);
+        // let me = self.material_table.get_or_insert(ts, g);
 
-        /// TODO: endgames
-        if let Some(eg) = me.eg_val {
-            // return eg.evaluate(ts, g);
-            unimplemented!()
-        }
+        // /// TODO: endgames
+        // if let Some(eg) = me.eg_val {
+        //     // return eg.evaluate(ts, g);
+        //     unimplemented!()
+        // }
 
         let mut score = g.psqt_score[White] - g.psqt_score[Black];
         if TR { eprintln!("psqt = {:?}", (g.psqt_score[White],g.psqt_score[Black])); }
 
-        score += me.material_score;
-        if TR { eprintln!("material = {:?}", me.material_score); }
+        let material_score = g.state.npm[White]
+            + Pawn.score_tapered() * g.state.material.get(Pawn, White) as Score
+            - g.state.npm[Black]
+            - Pawn.score_tapered() * g.state.material.get(Pawn, Black) as Score;
 
-        let pawns = self.pawn_table.get_or_insert(ts, g);
+        // score += me.material_score;
+        // if TR { eprintln!("material = {:?}", me.material_score); }
+        score += material_score;
+        if TR { eprintln!("material = {:?}", material_score); }
 
-        score += pawns.scores[White] - pawns.scores[Black];
-        if TR { eprintln!("pawns = {:?}", (pawns.scores[White], pawns.scores[Black])); }
+        // let pawns = self.pawn_table.get_or_insert(ts, g);
+        // score += pawns.scores[White] - pawns.scores[Black];
+        // if TR { eprintln!("pawns = {:?}", (pawns.scores[White], pawns.scores[Black])); }
 
         score
     }

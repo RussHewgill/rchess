@@ -1,4 +1,6 @@
 
+use std::collections::HashMap;
+
 use crate::endgame::*;
 use crate::endgame::helpers::is_kx_vs_k;
 use crate::evaluate::TaperedScore;
@@ -7,7 +9,13 @@ use crate::tables::*;
 
 use crate::material::vec_table::VecTable;
 
-pub type MaterialTable = VecTable<MatEval, 32>;
+/// 8192 * 12 / 1024 = 96 kB
+const MAT_TABLE_SIZE: usize = 8192 * std::mem::size_of::<MatEval>() / 1024;
+
+// pub type MaterialTable = VecTable<MatEval, MAT_TABLE_SIZE>;
+
+#[derive(Debug,Default,Clone)]
+pub struct MaterialTable(HashMap<Zobrist, MatEval>);
 
 #[derive(Debug,Clone,Copy)]
 /// Score is only the material balance
@@ -24,13 +32,13 @@ pub struct MatEval {
 
 impl MaterialTable {
     pub fn get_or_insert(&mut self, ts: &Tables, g: &Game) -> MatEval {
-        if let Some(me) = self.get(g.zobrist) {
+        if let Some(me) = self.0.get(&g.zobrist) {
             return *me;
         }
 
         let me = MatEval::new(ts, g);
 
-        self.insert(g.zobrist, me);
+        self.0.insert(g.zobrist, me);
 
         me
     }

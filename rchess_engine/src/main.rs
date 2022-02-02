@@ -3338,11 +3338,21 @@ fn main9() {
     // eprintln!("stats0.nodes = {:?}", stats0.nodes);
     // eprintln!("sum = {:?}", sum);
 
-    let pt = ex.per_thread_data[0].take().unwrap();
+    let perthread = ex.per_thread_data[0].take().unwrap();
 
-    let mt = pt.mat_table;
+    // let mt = perthread.mat_table;
+    // eprintln!("mt.used_entries() = {:?}", mt.used_entries());
+    // eprintln!("mt.capacity() = {:?}", mt.capacity());
+    // eprintln!("ratio = {:.3}",
+    //           mt.used_entries() as f64 / mt.capacity() as f64
+    // );
 
-    eprintln!("mt.used_entries() = {:?}", mt.used_entries());
+    let pt = perthread.pawn_table;
+    eprintln!("pt.used_entries() = {:?}", pt.used_entries());
+    eprintln!("pt.capacity() = {:?}", pt.capacity());
+    eprintln!("ratio = {:.3}",
+              pt.used_entries() as f64 / pt.capacity() as f64
+    );
 
     return;
 

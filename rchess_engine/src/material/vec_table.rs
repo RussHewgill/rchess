@@ -7,35 +7,27 @@ use crate::types::*;
 const LOW_FOUR_BYTES: u64 = 0x00_00_00_00_FF_FF_FF_FF;
 
 #[derive(Debug,Clone)]
-pub struct VecTable<T, const SIZE_MB: usize> where T: Clone {
+pub struct VecTable<T, const SIZE_KB: usize> where T: Clone {
     vec:        Vec<Option<(u32,T)>>,
 }
 
-impl<T: Clone, const SIZE_MB: usize> Default for VecTable<T, SIZE_MB> {
-    fn default() -> Self { Self::new(SIZE_MB) }
+impl<T: Clone, const SIZE_KB: usize> Default for VecTable<T, SIZE_KB> {
+    fn default() -> Self { Self::new(SIZE_KB) }
 }
 
-impl<T: Clone, const SIZE_MB: usize> VecTable<T, SIZE_MB> {
-    // const DEFAULT_SIZE_MB: usize = 32;
-
+/// new
+impl<T: Clone, const SIZE_KB: usize> VecTable<T, SIZE_KB> {
     pub fn new(max_size_mb: usize) -> Self {
-        let max_entries = max_size_mb * 1024 * 1024;
+        // let max_entries = max_size_kb * 1024;
+        let mut max_entries = SIZE_KB * 1024 / std::mem::size_of::<T>();
+        // max_entries = max_entries.next_power_of_two() / 2;
         Self {
             vec:     vec![None; max_entries],
         }
     }
 }
 
-// #[derive(Debug,Clone)]
-// pub struct MaterialTable {
-//     vec:        Vec<Option<(u32,MatEval)>>,
-// }
-
-// impl Default for MaterialTable {
-//     fn default() -> Self { Self::new(Self::DEFAULT_SIZE_MB) }
-// }
-
-impl<T: Clone, const SIZE_MB: usize> VecTable<T, SIZE_MB> {
+impl<T: Clone, const SIZE_KB: usize> VecTable<T, SIZE_KB> {
 
     pub fn used_entries(&self) -> usize { self.vec.iter().flatten().count() }
 
