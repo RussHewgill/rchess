@@ -638,6 +638,9 @@ impl ExHelper {
             // }
             stats.leaves += 1;
 
+            // trace!("entering qsearch: g = {:?}\n{:?}", g.to_fen(), g);
+            // trace!("qsearch: node, ply, alpha, beta = {:?}, {}, {}, {}", NODE_TYPE, ply, alpha, beta);
+
             #[cfg(feature = "qsearch")]
             let score = {
                 // trace!("    beginning qsearch, {:?}, a/b: {:?},{:?}",
@@ -656,6 +659,8 @@ impl ExHelper {
                 // trace!("    returned from qsearch, score = {}", score);
                 score
             };
+
+            // trace!("qsearch found score: {}", score);
 
             #[cfg(not(feature = "qsearch"))]
             let score = if g.state.side_to_move == Black {
@@ -920,7 +925,6 @@ impl ExHelper {
             }
 
         }
-
 
         /// Step 9. Lower depth for positions not in TT
         /// Stockfish does this, not sure why. Seems to work

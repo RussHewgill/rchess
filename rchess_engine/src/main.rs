@@ -3162,7 +3162,7 @@ fn main9() {
     // let fen2 = "3k4/8/8/8/8/8/3P4/3K4 b - - 0 1"; // black king D8
     // let fen3 = "k7/8/8/8/8/8/3P4/3K4 b - - 0 1"; // black king A8
 
-    let fen = "1kr5/3n4/q3p2p/p2n2p1/PppB1P2/5BP1/1P2Q2P/3R2K1 w - -";
+    // let fen = "1kr5/3n4/q3p2p/p2n2p1/PppB1P2/5BP1/1P2Q2P/3R2K1 w - -";
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -3217,7 +3217,7 @@ fn main9() {
 
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
 
-    // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+    ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
     ex.cfg.late_move_reductions = true;
 
@@ -3226,19 +3226,48 @@ fn main9() {
 
     // let mut ex2 = ex.clone();
 
-    // let (tx,rx) = crossbeam::channel::unbounded();
-    // use rchess_engine_lib::material::*;
-    // let mt = MaterialTable::default();
-    // let pt = PawnTable::default();
-    // let thread_data = PerThreadData::new(mt,pt);
-    // let mut helper = ex.build_exhelper(
-    //     0,
-    //     n,
-    //     ex.best_depth.clone(),
-    //     vec![],
-    //     tx,
-    //     thread_data,
-    // );
+    #[cfg(feature = "nope")]
+    {
+        let (tx,rx) = crossbeam::channel::unbounded();
+        use rchess_engine_lib::material::*;
+        let mt = MaterialTable::default();
+        let pt = PawnTable::default();
+        let thread_data = PerThreadData::new(mt,pt);
+        let mut helper = ex.build_exhelper(
+            0,
+            n,
+            ex.best_depth.clone(),
+            vec![],
+            tx,
+            thread_data,
+        );
+
+        let mut stack = ABStack::new_with_plies();
+        let mut stats = SearchStats::default();
+
+        let ply = 1;
+
+        let alpha = -2147483447;
+        let beta  = 263;
+
+        let score = helper.qsearch::<{ABNodeType::PV}>(
+            &ts,
+            &g,
+            (ply,0,0),
+            (alpha,beta),
+            &mut stack,
+            &mut stats
+        );
+        eprintln!("score = {:?}", score);
+
+        // let mut movegen = MoveGen::new_qsearch(&ts, &g, None, &stack, 0);
+        // while let Some(mv) = movegen.next(&stack) {
+        //     eprintln!("mv = {:?}", mv);
+        // }
+
+        return;
+    }
+
     // let score = helper._evaluate_classical::<true>(&ts, &g);
     // eprintln!("score.mid = {:?}", score.mid);
     // eprintln!("score.end = {:?}", score.end);
@@ -3310,7 +3339,7 @@ fn main9() {
     // eprintln!("stats0.nodes = {:?}", stats0.nodes);
     // eprintln!("sum = {:?}", sum);
 
-    return;
+    // return;
 
     #[cfg(feature = "lockless_hashmap")]
     {
@@ -3324,7 +3353,7 @@ fn main9() {
         // eprintln!("used_eval  = {:?}", used_eval);
         // eprintln!("used_si    = {:?}", used_si);
 
-        eprintln!("eval / total = {:.3}", used_eval as f64 / used_total as f64);
+        // eprintln!("eval / total = {:.3}", used_eval as f64 / used_total as f64);
 
     }
 
@@ -3354,8 +3383,10 @@ fn main9() {
     stats0.print_mbf();
     stats0.print_nth_best(false);
 
-    eprintln!("stats0.eval_nnue      = {:?}", stats0.eval_nnue);
-    eprintln!("stats0.eval_classical = {:?}", stats0.eval_classical);
+    // eprintln!("stats0.eval_nnue      = {}", pretty_print_si(stats0.eval_nnue as i64));
+    // eprintln!("stats0.eval_classical = {}", pretty_print_si(stats0.eval_classical as i64));
+    eprintln!("% nnue eval = {:.1}%",
+              (stats0.eval_nnue as f64 / (stats0.eval_classical + stats0.eval_nnue) as f64) * 100.0);
 
     // return;
 
@@ -4085,8 +4116,8 @@ fn init_logger() {
     // return;
 
     let cfg = ConfigBuilder::new()
-        // .set_time_level(LevelFilter::Off)
-        .set_time_level(LevelFilter::Debug)
+        .set_time_level(LevelFilter::Off)
+        // .set_time_level(LevelFilter::Debug)
         .set_time_format_str("%H-%M-%S %.6f")
         .set_target_level(LevelFilter::Off)
         .set_thread_level(LevelFilter::Info)

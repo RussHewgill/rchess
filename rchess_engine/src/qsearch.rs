@@ -548,7 +548,7 @@ impl ExHelper {
 /// Quiescence
 impl ExHelper {
 
-    #[cfg(not(feature = "tt_in_qsearch"))]
+    // #[cfg(not(feature = "tt_in_qsearch"))]
     pub fn qsearch<const NODE_TYPE: ABNodeType>(
         &mut self,
         // ts:                       &'static Tables,
@@ -561,10 +561,13 @@ impl ExHelper {
     ) -> Score {
         use ABNodeType::*;
 
+        // trace!("entering pv node, ply = {}", ply);
+
         let is_pv_node = NODE_TYPE != NonPV;
 
         // stack.push_if_empty(g, ply);
-        stack.with(ply, |st| st.material = g.state.material);
+        // stack.with(ply, |st| st.material = g.state.material);
+        stack.init_node(ply, depth, g);
 
         assert!(alpha < beta);
         assert!(is_pv_node || (alpha == beta - 1));
@@ -580,25 +583,26 @@ impl ExHelper {
 
         let mut allow_stand_pat = true;
 
-        let stand_pat = self.evaluate(ts, stats, g, ply, true);
+        // let stand_pat = self.evaluate(ts, stats, g, ply, true);
 
-        // /// XXX: should be correct, need to verify
-        // let stand_pat = if g.state.in_check {
-        //     allow_stand_pat = false;
-        //     if g.state.side_to_move == Black { Score::MIN } else { Score::MAX }
-        // } else {
-        //     self.evaluate(ts, stats, g, ply, true)
-        // };
+        /// XXX: should be correct, need to verify
+        let stand_pat = if g.state.in_check {
+            allow_stand_pat = false;
+            if g.state.side_to_move == Black { Score::MIN } else { Score::MAX }
+        } else {
+            self.evaluate(ts, stats, g, ply, true)
+        };
 
         /// early halt
         if self.stop.load(Relaxed) { return stand_pat; }
 
-        if stand_pat >= beta {
+        // if stand_pat >= beta {
+        if allow_stand_pat && stand_pat >= beta {
             return beta; // fail hard
             // return stand_pat; // fail soft
         }
 
-        if stand_pat > alpha {
+        if allow_stand_pat && stand_pat > alpha {
             alpha = stand_pat;
         }
 
@@ -622,10 +626,18 @@ impl ExHelper {
 
         while let Some(mv) = movegen.next(stack) {
 
-            let see = movegen.static_exchange_ge(mv, 1);
-            if !see {
-                continue;
+            /// can't skip losing trades if they might be forced
+            if !g.state.in_check {
+                let see = movegen.static_exchange_ge(mv, 1);
+                if !see {
+                    continue;
+                }
             }
+
+            // let see = movegen.static_exchange_ge(mv, 1);
+            // if !see {
+            //     continue;
+            // }
 
             if let Some(g2) = self.make_move(ts, g, ply, mv, None, stack) {
 
@@ -640,7 +652,8 @@ impl ExHelper {
                 let score = -self.qsearch::<{NODE_TYPE}>(
                     &ts, &g2, (ply + 1,qply + 1,depth - 1), (-beta, -alpha), stack, stats);
 
-                if score >= beta && allow_stand_pat {
+                // if allow_stand_pat && score >= beta {
+                if score >= beta {
                     self.pop_nnue(stack);
                     return beta; // fail hard
                     // return stand_pat; // fail soft

@@ -55,6 +55,14 @@ mod tapered {
 /// Evaluate
 impl ExHelper {
 
+    fn use_nnue_imbalance(g: &Game) -> bool {
+        let imbalance = g.state.npm[White]
+            + Pawn.score_tapered() * g.state.material.get(Pawn, White) as Score
+            - g.state.npm[Black]
+            - Pawn.score_tapered() * g.state.material.get(Pawn, Black) as Score;
+        imbalance.taper(g) < 3 * Pawn.score()
+    }
+
     /// NNUE eval is ~18x slower than classic (only material and psqt)
     /// so fallback to classic for large material imbalance
     pub fn evaluate(
@@ -69,15 +77,9 @@ impl ExHelper {
         // /// evaluate is only called from quiet positions
         // assert!(!g.state.in_check);
 
-        // let imbalance = g.state.npm[White]
-        //     + Pawn.score_tapered() * g.state.material.get(Pawn, White) as Score
-        //     - g.state.npm[Black]
-        //     - Pawn.score_tapered() * g.state.material.get(Pawn, Black) as Score;
-
         let use_nnue = cfg!(feature = "nnue")
             && self.nnue.is_some()
-            // && imbalance.taper(g) < 3 * Pawn.score()
-            ;
+            && Self::use_nnue_imbalance(g);
 
         if use_nnue {
             stats.eval_nnue += 1;

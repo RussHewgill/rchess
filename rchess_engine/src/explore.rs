@@ -794,8 +794,8 @@ impl Explorer {
             }
 
             trace!("sending stop message to listener");
-            tx_stop.send(()).unwrap();
-            tx.send(ExMessage::Stop).unwrap();
+            tx_stop.send(()).unwrap_or(());
+            tx.send(ExMessage::Stop).unwrap_or(());
             handle_listener.join().unwrap();
 
             trace!("joining threads");
