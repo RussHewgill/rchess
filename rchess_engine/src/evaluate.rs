@@ -79,7 +79,8 @@ impl ExHelper {
 
         let use_nnue = cfg!(feature = "nnue")
             && self.nnue.is_some()
-            && Self::use_nnue_imbalance(g);
+            // && Self::use_nnue_imbalance(g)
+            ;
 
         if use_nnue {
             stats.eval_nnue += 1;

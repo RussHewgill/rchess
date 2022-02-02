@@ -3,7 +3,7 @@ use crate::types::*;
 use crate::tables::*;
 use crate::evaluate::TaperedScore;
 
-use crate::material::VecTable;
+use crate::material::vec_table::VecTable;
 
 pub type PawnTable = VecTable<PawnEval, 8>;
 

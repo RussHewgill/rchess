@@ -3068,9 +3068,8 @@ fn main9() {
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
 
     // ts.write_to_file_def().unwrap();
-    // let ts = Tables::read_from_file_def().unwrap();
-    // let ts = &_TABLES;
-    let ts = Tables::new();
+    // let ts = Tables::new();
+    let ts = Tables::read_from_file_def().unwrap();
 
     fn games_wac(i: usize) -> String {
         let mut games = read_epd("testpositions/WAC.epd").unwrap();
@@ -3217,7 +3216,7 @@ fn main9() {
 
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
 
-    ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+    // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
     ex.cfg.late_move_reductions = true;
 
@@ -3339,7 +3338,13 @@ fn main9() {
     // eprintln!("stats0.nodes = {:?}", stats0.nodes);
     // eprintln!("sum = {:?}", sum);
 
-    // return;
+    let pt = ex.per_thread_data[0].take().unwrap();
+
+    let mt = pt.mat_table;
+
+    eprintln!("mt.used_entries() = {:?}", mt.used_entries());
+
+    return;
 
     #[cfg(feature = "lockless_hashmap")]
     {
