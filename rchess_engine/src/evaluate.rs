@@ -122,6 +122,14 @@ impl ExHelper {
         score += g.psqt_score[White] - g.psqt_score[Black];
         if TR { eprintln!("psqt = {:?}", (g.psqt_score[White],g.psqt_score[Black])); }
 
+        // let psqt0 = g.psqt_score[White] - g.psqt_score[Black];
+        // score += psqt0;
+
+        // // let mg = g.score_material(White, true) - g.score_material(Black, true);
+        // // let eg = g.score_material(White, false) - g.score_material(Black, false);
+        // let psqt1 = TaperedScore::new(mg, eg);
+        // assert_eq!(psqt0, psqt1);
+
         let material_score = g.state.npm[White]
             + Pawn.score_tapered() * g.state.material.get(Pawn, White) as Score
             - g.state.npm[Black]
@@ -138,6 +146,35 @@ impl ExHelper {
 
         score
     }
+}
+
+/// prev
+impl Game {
+
+    // pub fn score_material(&self, side: Color, mid: bool) -> Score {
+    //     const PCS: [Piece; 6] = [Pawn,Knight,Bishop,Rook,Queen,King];
+    //     if mid {
+    //         PCS.iter().map(|&pc| self.state.material.get(pc, side) as Score * pc.score()).sum()
+    //     } else {
+    //         PCS.iter().map(|&pc| self.state.material.get(pc, side) as Score * pc.score_endgame()).sum()
+    //     }
+    // }
+
+    // pub fn score_psqt(&self, ts: &Tables, ev: &EvalParams, side: Color) -> Score {
+    //     const PCS: [Piece; 6] = [Pawn,Knight,Bishop,Rook,Queen,King];
+    //     PCS.iter().map(|&pc| {
+    //         self._score_psqt(ev, pc, side)
+    //     }).sum()
+    // }
+
+    // pub fn _score_psqt(&self, ev: &EvalParams, pc: Piece, side: Color) -> Score {
+    //     let pieces = self.get(pc, side);
+    //     pieces.into_iter().map(|sq| {
+    //         ev.psqt.get(pc, side, sq)
+    //         // ev.get_psqt(pc, side, sq)
+    //     }).sum()
+    // }
+
 }
 
 /// Piece Scores

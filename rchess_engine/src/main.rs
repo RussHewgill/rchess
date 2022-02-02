@@ -384,7 +384,7 @@ fn main_sample() {
     let n = 10;
     let t = 1.0;
 
-    const N: usize = 5;
+    const N: usize = 3;
 
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut games = vec![];
@@ -395,7 +395,7 @@ fn main_sample() {
         ex.time_settings.is_per_move = true;
         ex.time_settings.move_time = (t * 1000.0) as u64;
         ex.cfg.late_move_reductions = true;
-        ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+        // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
         let from  = &correct[0..2];
         let to    = &correct[2..4];
         let other = &correct[4..];
@@ -3134,13 +3134,6 @@ fn main9() {
     // let fen = "8/6B1/p5p1/Pp4kp/1P5r/5P1Q/4q1PK/8 w - - 0 32";   // Qxh4
     // let fen = "8/8/1p1r1k2/p1pPN1p1/P3KnP1/1P6/8/3R4 b - - 0 1"; // Nxd5
 
-    // let fen = &games_sts(2, 8);
-    // let fen = &games_sts(1, 15);
-
-    // let (fen,correct) = &games_sts(23, 2); // fen, set
-
-    // let (fen,correct) = &games_sts(91, 11); // fen, set
-
     // // let fen = "4k3/8/8/1p6/8/2N5/2R5/4K3 w - - 0 1"; // QChecks
     // // let fen = "4k3/8/8/1p6/8/2N1N3/4R3/4K3 w - - 0 1"; // QChecks
     // // let fen = "4k3/8/5P2/1pP5/4N3/2N3P1/3PRP2/4K3 w - - 0 1"; // QChecks
@@ -3149,8 +3142,6 @@ fn main9() {
     // // let fen = "4k3/8/8/1p1n4/2P5/8/3P4/4K3 w - - 0 1";
     // let fen = "4k3/8/8/1n1p4/2P5/8/3P4/4K3 w - - 0 1"; // move ordering
     // // let fen = "4k3/7P/8/1n1p4/2P5/8/3P4/4K3 w - - 0 1"; // move ordering
-
-    // let fen = "3r2k1/5pp1/1p1B2Q1/1B3b2/8/8/5KP1/R6R b - - 4 7"; // XXX: ???
 
     // let fen = "r2q3r/1b1k1pbp/p4np1/2BP1pN1/p1B5/P1Q5/1PP3PP/R3K2R w KQ - 0 19"; // explosion
 
@@ -3162,6 +3153,10 @@ fn main9() {
     // let fen3 = "k7/8/8/8/8/8/3P4/3K4 b - - 0 1"; // black king A8
 
     // let fen = "1kr5/3n4/q3p2p/p2n2p1/PppB1P2/5BP1/1P2Q2P/3R2K1 w - -";
+    // let fen = "8/8/8/5k2/3Q4/2K5/8/8 w - - 0 1";
+
+    // let (fen,correct) = &games_sts(23, 2); // fen, set
+    let (fen,correct) = &games_sts(1, 6); // fen, set
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -3170,8 +3165,8 @@ fn main9() {
     eprintln!("g.to_fen() = {:?}", g.to_fen());
     eprintln!("g = {:?}", g);
 
-    // eprintln!();
-    // eprintln!("correct = {:?}", correct);
+    eprintln!();
+    eprintln!("correct = {:?}", correct);
 
     // let st = ABStack::new();
     // let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
@@ -3225,9 +3220,30 @@ fn main9() {
 
     // let mut ex2 = ex.clone();
 
+    // let (tx,rx) = crossbeam::channel::unbounded();
+    // use rchess_engine_lib::material::*;
+    // let mt = MaterialTable::default();
+    // let pt = PawnTable::default();
+    // let thread_data = PerThreadData::new(mt,pt);
+    // let mut helper = ex.build_exhelper(
+    //     0,
+    //     n,
+    //     ex.best_depth.clone(),
+    //     vec![],
+    //     tx,
+    //     thread_data,
+    // );
     // let score = helper._evaluate_classical::<true>(&ts, &g);
-    // eprintln!("score.mid = {:?}", score.mid);
-    // eprintln!("score.end = {:?}", score.end);
+    // // eprintln!("score.mid = {:?}", score.mid);
+    // // eprintln!("score.end = {:?}", score.end);
+    // eprintln!("score.taper(&g) = {:?}", score.taper(&g));
+    // return;
+
+    // let path = "nn-63376713ba63.nnue";
+    // let mut nn = rchess_engine_lib::sf_compat::NNUE4::read_nnue(path).unwrap();
+    // nn.ft.reset_feature_trans(&g);
+    // let s0 = nn.evaluate(&g, true);
+    // eprintln!("s0 = {:?}", s0);
     // return;
 
     // // XXX: avg of N runs
@@ -3296,23 +3312,20 @@ fn main9() {
     // eprintln!("stats0.nodes = {:?}", stats0.nodes);
     // eprintln!("sum = {:?}", sum);
 
-    let perthread = ex.per_thread_data[0].take().unwrap();
-
-    // let mt = perthread.mat_table;
-    // eprintln!("mt.used_entries() = {:?}", mt.used_entries());
-    // eprintln!("mt.capacity() = {:?}", mt.capacity());
+    // let perthread = ex.per_thread_data[0].take().unwrap();
+    // // let mt = perthread.mat_table;
+    // // eprintln!("mt.used_entries() = {:?}", mt.used_entries());
+    // // eprintln!("mt.capacity() = {:?}", mt.capacity());
+    // // eprintln!("ratio = {:.3}",
+    // //           mt.used_entries() as f64 / mt.capacity() as f64
+    // // );
+    // let pt = perthread.pawn_table;
+    // eprintln!("pt.used_entries() = {:?}", pt.used_entries());
+    // eprintln!("pt.capacity() = {:?}", pt.capacity());
     // eprintln!("ratio = {:.3}",
-    //           mt.used_entries() as f64 / mt.capacity() as f64
+    //           pt.used_entries() as f64 / pt.capacity() as f64
     // );
-
-    let pt = perthread.pawn_table;
-    eprintln!("pt.used_entries() = {:?}", pt.used_entries());
-    eprintln!("pt.capacity() = {:?}", pt.capacity());
-    eprintln!("ratio = {:.3}",
-              pt.used_entries() as f64 / pt.capacity() as f64
-    );
-
-    return;
+    // return;
 
     #[cfg(feature = "lockless_hashmap")]
     {
