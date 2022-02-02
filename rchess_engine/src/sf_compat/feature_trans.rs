@@ -243,6 +243,7 @@ mod new {
         }
 
         /// incrementally add weights
+        // #[cfg(not(target_feature = "avx2"))]
         fn _apply_delta<const ADD: bool>(
             ws:               &[i16],
             psqt_ws:          &[i32],
@@ -280,6 +281,30 @@ mod new {
             }
         }
 
+    }
+
+    // #[cfg(target_feature = "avx2")]
+    #[cfg(feature = "nope")]
+    impl NNFeatureTrans {
+
+        const NUM_REGS: usize = 16; // AVX2
+        const NUM_REGS_PSQT: usize = 1; // AVX2
+
+        /// AVX2 = 256
+        const TILE_HEIGHT: usize = Self::NUM_REGS * std::mem::size_of::<safe_arch::m256i>() / 2;
+        /// AVX2 = 8
+        const TILE_HEIGHT_PSQT: usize = Self::NUM_REGS_PSQT * std::mem::size_of::<safe_arch::m256i>() / 4;
+
+        fn _apply_delta<const ADD: bool>(
+            ws:               &[i16],
+            psqt_ws:          &[i32],
+            acc:              &mut NNAccum,
+            persp:            Color,
+            idx:              NNIndex,
+        ) {
+            use safe_arch::*;
+            use crate::simd_utils::safe_arch::*;
+        }
     }
 
     /// Accum add, sub, no simd

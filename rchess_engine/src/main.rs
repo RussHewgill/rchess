@@ -3211,7 +3211,7 @@ fn main9() {
 
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
 
-    // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+    ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
     ex.cfg.late_move_reductions = true;
 

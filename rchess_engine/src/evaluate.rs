@@ -111,35 +111,27 @@ impl ExHelper {
 
         let mut score = TaperedScore::default();
 
-        // let me = self.material_table.get_or_insert(ts, g);
+        let me = self.material_table.get_or_insert(ts, g);
 
-        // /// TODO: endgames
-        // if let Some(eg) = me.eg_val {
-        //     // return eg.evaluate(ts, g);
-        //     unimplemented!()
-        // }
+        /// TODO: endgames
+        if let Some(eg) = me.eg_val {
+            // return eg.evaluate(ts, g);
+            unimplemented!()
+        }
 
         score += g.psqt_score[White] - g.psqt_score[Black];
         if TR { eprintln!("psqt = {:?}", (g.psqt_score[White],g.psqt_score[Black])); }
 
-        // let psqt0 = g.psqt_score[White] - g.psqt_score[Black];
-        // score += psqt0;
+        // let material_score = g.state.npm[White]
+        //     + Pawn.score_tapered() * g.state.material.get(Pawn, White) as Score
+        //     - g.state.npm[Black]
+        //     - Pawn.score_tapered() * g.state.material.get(Pawn, Black) as Score;
 
-        // // let mg = g.score_material(White, true) - g.score_material(Black, true);
-        // // let eg = g.score_material(White, false) - g.score_material(Black, false);
-        // let psqt1 = TaperedScore::new(mg, eg);
-        // assert_eq!(psqt0, psqt1);
+        score += me.material_score;
+        if TR { eprintln!("material = {:?}", me.material_score); }
 
-        let material_score = g.state.npm[White]
-            + Pawn.score_tapered() * g.state.material.get(Pawn, White) as Score
-            - g.state.npm[Black]
-            - Pawn.score_tapered() * g.state.material.get(Pawn, Black) as Score;
-
-        // score += me.material_score;
-        // if TR { eprintln!("material = {:?}", me.material_score); }
-
-        score += material_score;
-        if TR { eprintln!("material = {:?}", material_score); }
+        // score += material_score;
+        // if TR { eprintln!("material = {:?}", material_score); }
 
         // let pawns = self.pawn_table.get_or_insert(ts, g);
         // score += pawns.scores[White] - pawns.scores[Black];
