@@ -3156,7 +3156,7 @@ fn main9() {
     // let fen = "8/8/8/5k2/3Q4/2K5/8/8 w - - 0 1";
 
     // let (fen,correct) = &games_sts(23, 2); // fen, set
-    let (fen,correct) = &games_sts(1, 6); // fen, set
+    // let (fen,correct) = &games_sts(1, 6); // fen, set
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -3165,8 +3165,8 @@ fn main9() {
     eprintln!("g.to_fen() = {:?}", g.to_fen());
     eprintln!("g = {:?}", g);
 
-    eprintln!();
-    eprintln!("correct = {:?}", correct);
+    // eprintln!();
+    // eprintln!("correct = {:?}", correct);
 
     // let st = ABStack::new();
     // let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
@@ -3191,8 +3191,8 @@ fn main9() {
     // return;
 
     // let t = 10.0;
-    let t = 4.0;
-    // let t = 2.0;
+    // let t = 4.0;
+    let t = 1.0;
 
     // let n = MAX_SEARCH_PLY;
     // let n = 35;
@@ -3220,6 +3220,10 @@ fn main9() {
 
     // let mut ex2 = ex.clone();
 
+    // let fen0 = "4k3/8/8/3q4/8/8/8/4K3 w - - 0 1";
+    // let fen1 = "4k3/8/8/8/3Q4/8/8/4K3 w - - 0 1";
+    // let g0 = Game::from_fen(&ts, fen0).unwrap();
+    // let g1 = Game::from_fen(&ts, fen1).unwrap();
     // let (tx,rx) = crossbeam::channel::unbounded();
     // use rchess_engine_lib::material::*;
     // let mt = MaterialTable::default();
@@ -3233,17 +3237,25 @@ fn main9() {
     //     tx,
     //     thread_data,
     // );
-    // let score = helper._evaluate_classical::<true>(&ts, &g);
-    // // eprintln!("score.mid = {:?}", score.mid);
-    // // eprintln!("score.end = {:?}", score.end);
-    // eprintln!("score.taper(&g) = {:?}", score.taper(&g));
-    // return;
-
+    // // let score0 = helper._evaluate_classical::<true>(&ts, &g0);
+    // // let score1 = helper._evaluate_classical::<true>(&ts, &g1);
+    // let score0 = helper.evaluate(&ts, &mut SearchStats::default(), &g0, 0, true);
+    // let score1 = helper.evaluate(&ts, &mut SearchStats::default(), &g1, 0, true);
+    // eprintln!();
+    // // eprintln!("score0.taper(&g) = {:?}", score0.taper(&g));
+    // // eprintln!("score1.taper(&g) = {:?}", score1.taper(&g));
+    // eprintln!("score0 = {:?}", score0);
+    // eprintln!("score1 = {:?}", score1);
+    // // return;
+    // eprintln!();
     // let path = "nn-63376713ba63.nnue";
     // let mut nn = rchess_engine_lib::sf_compat::NNUE4::read_nnue(path).unwrap();
-    // nn.ft.reset_feature_trans(&g);
-    // let s0 = nn.evaluate(&g, true);
+    // nn.ft.reset_feature_trans(&g0);
+    // let s0 = nn.evaluate(&g0, true);
+    // nn.ft.reset_feature_trans(&g1);
+    // let s1 = nn.evaluate(&g1, true);
     // eprintln!("s0 = {:?}", s0);
+    // eprintln!("s1 = {:?}", s1);
     // return;
 
     // // XXX: avg of N runs
@@ -3307,6 +3319,10 @@ fn main9() {
     debug!("Best move = {:>8} {:?}", best.score, best.mv);
     debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth.0, t2);
     println!();
+
+    // for (n,mv) in moves.iter().enumerate() {
+    //     eprintln!("\t{} mv = {:?}", n, mv);
+    // }
 
     // let sum = stats0.nodes_arr.0.iter().sum::<u32>();
     // eprintln!("stats0.nodes = {:?}", stats0.nodes);

@@ -576,6 +576,10 @@ impl ExHelper {
         stats.qt_nodes += 1;
         stats.q_max_depth.max_mut(ply as u32);
 
+        /// early halt
+        // if self.stop.load(Relaxed) { return stand_pat; }
+        if self.stop.load(Relaxed) { return 0; }
+
         /// check repetition
         if Self::has_cycle(ts, g, stats, stack) || ply >= MAX_SEARCH_PLY {
             return draw_value(stats);
@@ -583,18 +587,16 @@ impl ExHelper {
 
         let mut allow_stand_pat = true;
 
-        // let stand_pat = self.evaluate(ts, stats, g, ply, true);
+        /// XXX: for some reason, not evaluating when in check gives invalid mates
+        let stand_pat = self.evaluate(ts, stats, g, ply, true);
 
-        /// XXX: should be correct, need to verify
-        let stand_pat = if g.state.in_check {
-            allow_stand_pat = false;
-            if g.state.side_to_move == Black { Score::MIN } else { Score::MAX }
-        } else {
-            self.evaluate(ts, stats, g, ply, true)
-        };
-
-        /// early halt
-        if self.stop.load(Relaxed) { return stand_pat; }
+        // /// XXX: should be correct, need to verify
+        // let stand_pat = if g.state.in_check {
+        //     allow_stand_pat = false;
+        //     if g.state.side_to_move == Black { Score::MIN } else { Score::MAX }
+        // } else {
+        //     self.evaluate(ts, stats, g, ply, true)
+        // };
 
         // if stand_pat >= beta {
         if allow_stand_pat && stand_pat >= beta {

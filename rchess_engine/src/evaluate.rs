@@ -137,6 +137,7 @@ impl ExHelper {
 
         // score += me.material_score;
         // if TR { eprintln!("material = {:?}", me.material_score); }
+
         score += material_score;
         if TR { eprintln!("material = {:?}", material_score); }
 
