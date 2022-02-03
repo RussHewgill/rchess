@@ -1096,8 +1096,8 @@ impl ExHelper {
 
                     }
                 }
-            // } else if (is_pv_node || is_cut_node)
-            } else if is_pv_node // works way better
+            } else if (is_pv_node || is_cut_node)
+            // } else if is_pv_node // works way better
                 && capture_or_promotion
                 && moves_searched != 1
                 && moves_searched != 0 // oops
