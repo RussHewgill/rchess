@@ -455,6 +455,18 @@ impl Explorer {
 /// Load nnue, syzygy, openings
 impl Explorer {
 
+    pub fn add_nnue(&mut self, mut nn: NNUE4) {
+        #[cfg(feature = "nnue")]
+        {
+            #[cfg(feature = "prev_accum")]
+            nn.ft.reset_accum(&self.game);
+            #[cfg(not(feature = "prev_accum"))]
+            nn.ft.reset_feature_trans(&self.game);
+
+            self.nnue = Some(nn);
+        }
+    }
+
     pub fn load_nnue<P: AsRef<Path>>(&mut self, path: P) -> std::io::Result<()> {
         #[cfg(feature = "nnue")]
         {

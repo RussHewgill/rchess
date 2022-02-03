@@ -48,23 +48,12 @@ pub struct GameState {
 
     pub in_check:           bool,
 
-    // pub white:              BitBoard,
-    // pub black:              BitBoard,
-
-    // pub pawns:              BitBoard,
-    // pub rooks:              BitBoard,
-    // pub knights:            BitBoard,
-    // pub bishops:            BitBoard,
-    // pub queens:             BitBoard,
-    // pub kings:              BitBoard,
-
     colors:                 [BitBoard; 2],
     pieces:                 [BitBoard; 6],
 
     pub en_passant:         Option<Coord>,
     pub castling:           Castling,
 
-    // pub npm:                [Score; 2],
     pub npm:                [TaperedScore; 2],
 
     pub phase_unscaled:     i16,
@@ -74,12 +63,7 @@ pub struct GameState {
 
     pub check_squares:      [BitBoard; 5],
 
-    // pub checkers:           Option<BitBoard>,
-    // pub king_blocks_w:      Option<BitBoard>,
-    // pub king_blocks_b:      Option<BitBoard>,
-    // pub check_block_mask:   Option<BitBoard>,
-
-    checkers:           BitBoard,
+    checkers:               BitBoard,
     pub king_blocks_w:      BitBoard,
     pub king_blocks_b:      BitBoard,
     pub check_block_mask:   BitBoard,
@@ -673,6 +657,11 @@ impl Game {
             }
         }
     }
+
+}
+
+/// individual mv fns
+impl Game {
 
     fn mv_quiet(ts: &Tables, mut g: Game, from: Coord, to: Coord, pc: Piece, calc_zb: bool) -> Game {
         g.move_piece_mut_unchecked(ts, from, to, pc, g.state.side_to_move, calc_zb);

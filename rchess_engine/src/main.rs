@@ -386,6 +386,9 @@ fn main_sample() {
 
     const N: usize = 3;
 
+    // let nn = rchess_engine_lib::sf_compat::NNUE4::read_nnue(
+    //     "/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut games = vec![];
     for (fen,correct) in fens.iter().zip(corrects.iter()) {
@@ -395,7 +398,10 @@ fn main_sample() {
         ex.time_settings.is_per_move = true;
         ex.time_settings.move_time = (t * 1000.0) as u64;
         ex.cfg.late_move_reductions = true;
-        // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+
+        // // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+        // ex.add_nnue(nn.clone());
+
         let from  = &correct[0..2];
         let to    = &correct[2..4];
         let other = &correct[4..];
@@ -3187,7 +3193,8 @@ fn main9() {
 
     // // let k0 = std::mem::size_of::<SearchInfo>();
     // // eprintln!("k0 = {:?}", k0);
-    // print_size_of!(MatEval);
+    // print_size_of!(Game);
+    // print_size_of!(GameState);
     // return;
 
     // let t = 10.0;
@@ -3211,7 +3218,7 @@ fn main9() {
 
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
 
-    ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+    // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
     ex.cfg.late_move_reductions = true;
 
