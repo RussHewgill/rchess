@@ -670,7 +670,7 @@ impl ExHelper {
             }
         }
 
-        // if g.in_check() && best_move.is_none() {
+        // if g.state.in_check && best_move.is_none() {
         //     let score = CHECKMATE_VALUE - ply as Score;
         //     // return -score; // XXX: backward ?
         //     return score;

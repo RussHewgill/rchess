@@ -376,11 +376,22 @@ impl ABConfig {
     }
 }
 
-/// misc
+/// new_game, misc
 impl Explorer {
     // pub fn add_move_to_history(&mut self, zb: Zobrist, mv: Move) {
     //     self.move_history.push((zb,mv));
     // }
+
+    pub fn new_game(&mut self) {
+        self.clear_tt();
+
+        for pt in self.per_thread_data.iter_mut() {
+            if let Some(pt) = pt {
+                *pt = PerThreadData::default();
+            }
+        }
+
+    }
 
     pub fn clear_tt(&self) {
         #[cfg(feature = "lockless_hashmap")]
@@ -1271,10 +1282,10 @@ impl ExHelper {
             *w = stack;
         }
 
-        if let Some(nn) = &self.nnue {
-            let stats = nn.ft.stats;
-            stats.print_stats();
-        }
+        // if let Some(nn) = &self.nnue {
+        //     let stats = nn.ft.stats;
+        //     stats.print_stats();
+        // }
 
         trace!("exiting lazy_smp_single, id = {}", self.id);
 

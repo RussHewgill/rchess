@@ -151,7 +151,7 @@ fn main() -> std::io::Result<()> {
                         // timeset = false;
                         explorer.side = Black;
                         explorer.game = g;
-                        explorer.clear_tt();
+                        explorer.new_game();
                         #[cfg(feature = "threadpool")]
                         explorer.clear_threads();
                     },
