@@ -101,6 +101,22 @@ pub fn map_color(x: u8) -> termcolor::Color {
     termcolor::Color::Rgb(r,g,b)
 }
 
+pub fn read_epd_no_bm(path: &str) -> std::io::Result<Vec<String>> {
+    let file = std::fs::read_to_string(path)?;
+    let lines = file.lines();
+    let mut out = vec![];
+
+    let lines = lines.filter(|x| {
+        !x.starts_with("#")
+    });
+
+    for line in lines.into_iter() {
+        out.push(line.to_owned());
+    }
+
+    Ok(out)
+}
+
 pub fn read_epd(path: &str) -> std::io::Result<Vec<(String, Vec<String>)>> {
 // pub fn read_epd(path: &str) -> std::io::Result<Vec<(String, String)>> {
     let file = std::fs::read_to_string(path)?;

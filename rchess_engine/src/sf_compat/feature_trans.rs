@@ -6,10 +6,11 @@ pub use self::old::*;
 
 #[cfg(not(feature = "prev_accum"))]
 mod new {
+    use crate::sf_compat::layers::SIMD_WIDTH;
     use crate::tables::MAX_SEARCH_PLY;
     use crate::types::*;
     use crate::sf_compat::accumulator::new::*;
-    use crate::sf_compat::{NNIndex,HALF_DIMS,NNUE4};
+    use crate::sf_compat::{NNIndex,HALF_DIMS,NNUE4, NNStats};
 
     use std::io::{self, Read,BufReader, BufWriter};
     use std::fs::File;
@@ -30,8 +31,10 @@ mod new {
         pub ply:            usize,
 
         // pub delta_stack:    Vec<ArrayVec<NNDelta, 3>>,
-        pub delta_stack:    [ArrayVec<NNDelta, 3>; MAX_SEARCH_PLY as usize],
+        pub delta_stack:    [(i8,ArrayVec<NNDelta, 3>); MAX_SEARCH_PLY as usize],
         pub accum_stack:    Vec<NNAccum>,
+
+        pub stats:          NNStats,
 
     }
 
@@ -59,11 +62,14 @@ mod new {
 
                 // delta_stack:    Vec::with_capacity(MAX_SEARCH_PLY as usize),
                 // delta_stack:    [ArrayVec::default(); MAX_SEARCH_PLY as usize],
-                delta_stack:    array_init::array_init(|_| ArrayVec::default()),
+                delta_stack:    array_init::array_init(|_| (0,ArrayVec::default())),
 
                 // accum_stack:    vec![],
                 accum_stack:    vec![NNAccum::default(); MAX_SEARCH_PLY as usize],
                 // accum_stack:    Vec::with_capacity(MAX_SEARCH_PLY as usize),
+
+                stats:          NNStats::default(),
+
             }
         }
 
@@ -120,34 +126,34 @@ mod new {
             /// find index of most recent computed accum
             let mut idx = self.ply;
             let mut refresh = false;
-            let mut count = 0;
+            let mut count = refresh_cost as i8;
             loop {
-                count += 1;
-
-                if count > refresh_cost || self.delta_stack[idx].get(0) == Some(&NNDelta::Refresh) {
-                    refresh = true;
-                    break;
-                }
+                // count += 1;
+                count -= self.delta_stack[idx].0 as i8;
 
                 if let Some(acc) = self.accum_stack.get(idx) {
                     if acc.computed[persp] { break; }
                 } else { panic!("missing ply"); }
+
+                // if count > refresh_cost || self.delta_stack[idx].get(0) == Some(&NNDelta::Refresh) {
+                if count <= 0 || self.delta_stack[idx].1.get(0) == Some(&NNDelta::Refresh) {
+                    refresh = true;
+
+                    // if count > refresh_cost {
+                    if count <= 0 {
+                        self.stats.refresh_threshold += 1;
+                    } else if self.delta_stack[idx].1.get(0) == Some(&NNDelta::Refresh) {
+                        self.stats.refresh_kingmove += 1;
+                    }
+
+                    break;
+                }
+
                 if idx == 0 { /// this state should never occur
                     unreachable!()
                 }
                 idx -= 1;
             }
-
-            // let mut idx = None;
-            // for (i,acc) in self.accum_stack.iter().enumerate().rev() {
-            //     if acc.computed[persp] {
-            //         idx = Some(i);
-            //         break;
-            //     }
-            // }
-            // let idx = if let Some(idx) = idx { idx } else { panic!(); };
-
-            // eprintln!("most recent computed idx = {:?}", idx);
 
             if refresh {
                 self.reset_accum(g, idx);
@@ -157,9 +163,7 @@ mod new {
             let weights = &self.weights;
             let psqt_weights = &self.psqt_weights;
 
-            // XXX: inclusive range?
             /// SAFETY: src and dst are always the same length, and never the same element
-            // for accum_idx in idx+1..= self.ply {
             for accum_idx in idx+1..self.ply+1 {
 
                 let len0 = self.accum_stack[accum_idx - 1].accum[persp].len();
@@ -177,52 +181,12 @@ mod new {
                 }
 
                 let acc = self.accum_stack.get_mut(accum_idx).unwrap();
-                for delta in self.delta_stack[accum_idx].iter() {
+                for delta in self.delta_stack[accum_idx].1.iter() {
                     Self::apply_delta(weights, psqt_weights, acc, *delta, persp);
                 }
 
             }
 
-            #[cfg(feature = "nope")]
-            for accum_idx in idx+1..= self.ply {
-                self.accum_stack[accum_idx].accum[persp] =
-                    self.accum_stack[accum_idx - 1].accum[persp];
-                self.accum_stack[accum_idx].psqt[persp]  =
-                    self.accum_stack[accum_idx - 1].psqt[persp];
-                let acc = self.accum_stack.get_mut(accum_idx).unwrap();
-                for delta in self.delta_stack[accum_idx].iter() {
-                    Self::apply_delta(weights, psqt_weights, acc, *delta, persp);
-                }
-            }
-
-        }
-
-        #[cfg(feature = "nope")]
-        fn apply_delta(&mut self, persp: Color, accum_idx: usize) -> Option<()> {
-            // let prev = self.accum_stack.get(accum_idx - 1)?;
-            // let acc  = self.accum_stack.get_mut(accum_idx)?;
-
-            // acc.accum[persp] = prev.accum[persp].clone();
-            // acc.psqt[persp]  = prev.psqt[persp].clone();
-
-            self.accum_stack[accum_idx].accum[persp] =
-                self.accum_stack[accum_idx - 1].accum[persp];
-            self.accum_stack[accum_idx].psqt[persp]  =
-                self.accum_stack[accum_idx - 1].psqt[persp];
-
-            let weights = &self.weights;
-            let psqt_weights = &self.psqt_weights;
-
-            let acc = self.accum_stack.get_mut(accum_idx)?;
-
-            for delta in acc.deltas.clone().iter() {
-                Self::_apply_delta(weights, psqt_weights, acc, persp);
-            }
-
-            // acc.computed[persp] = true;
-
-            // unimplemented!()
-            Some(())
         }
 
         /// dispatch Add, Remove
@@ -509,23 +473,74 @@ mod new {
         // pub fn transform(&mut self, g: &Game, output: &mut [u8], bucket: usize, ply: Depth) -> Score {
         pub fn transform(&mut self, g: &Game, output: &mut [u8], bucket: usize) -> Score {
 
+            self.stats.transforms += 1;
+
             self.apply_deltas(g, White);
             self.apply_deltas(g, Black);
 
+            let psqt = self._transform(g, output, bucket);
+
+            psqt
+
+            // unimplemented!()
+        }
+
+        #[cfg(target_feature = "avx2")]
+        fn _transform(&mut self, g: &Game, output: &mut [u8], bucket: usize) -> Score {
+            use safe_arch::*;
+            use crate::simd_utils::safe_arch::*;
+
             let output = &mut output[..HALF_DIMS*2];
-
             let persps: [Color; 2] = [g.state.side_to_move, !g.state.side_to_move];
-
-            // let acc: &mut NNAccum = self.accum_stack.last_mut().unwrap();
             let acc: &mut NNAccum = &mut self.accum_stack[self.ply];
-
             let accum      = &mut acc.accum;
             let psqt_accum = &mut acc.psqt;
 
-            // let accum:      &mut Aligned<A32,[[i16; 1024]; 2]> =
-            //     if let Some(accum) = acc.accum.as_mut() { accum } else { unreachable!() };
-            // let psqt_accum: &mut Aligned<A32,[[i32; 8]; 2]> =
-            //     if let Some(psqt_accum) = acc.psqt.as_mut() { psqt_accum } else { unreachable!() };
+            let psqt = (psqt_accum[persps[0]][bucket] - psqt_accum[persps[1]][bucket]) / 2;
+
+
+            const NUM_CHUNKS: usize = HALF_DIMS / SIMD_WIDTH;
+            const CONTROL: i32 = 0b11_01_10_00;
+
+            for p in 0..2 {
+                let offset = HALF_DIMS * p;
+
+                let out: &mut [m256i] = unsafe {
+                    let out = &mut output[offset..];
+                    cast_slice_to_m256i_mut(out)
+                };
+
+                let acc0: &[m256i] = unsafe {
+                    let out = &accum[persps[p]];
+                    cast_slice_to_m256i(&out[..])
+                };
+
+                for k in 0..NUM_CHUNKS {
+
+                    let sum0 = load_m256i(&acc0[k * 2 + 0]);
+                    let sum1 = load_m256i(&acc0[k * 2 + 1]);
+
+                    let x = pack_i16_to_i8_m256i(sum0, sum1);
+                    let x = max_i8_m256i(x, zeroed_m256i());
+                    let x = shuffle_ai_i64_all_m256i::<CONTROL>(x);
+
+                    store_m256i(&mut out[k], x);
+
+                }
+
+            }
+
+            psqt
+        }
+
+        #[cfg(not(target_feature = "avx2"))]
+        fn _transform(&mut self, g: &Game, output: &mut [u8], bucket: usize) -> Score {
+
+            let output = &mut output[..HALF_DIMS*2];
+            let persps: [Color; 2] = [g.state.side_to_move, !g.state.side_to_move];
+            let acc: &mut NNAccum = &mut self.accum_stack[self.ply];
+            let accum      = &mut acc.accum;
+            let psqt_accum = &mut acc.psqt;
 
             let psqt = (psqt_accum[persps[0]][bucket] - psqt_accum[persps[1]][bucket]) / 2;
 
@@ -539,9 +554,8 @@ mod new {
             }
 
             psqt
-
-            // unimplemented!()
         }
+
     }
 
     /// reset_feature_trans, init_fresh_accum
@@ -557,7 +571,8 @@ mod new {
 
             for (acc,ds) in self.accum_stack.iter_mut().zip(self.delta_stack.iter_mut()) {
                 // acc.deltas.clear();
-                ds.clear();
+                ds.0 = 0;
+                ds.1.clear();
                 acc.computed = [false; 2];
             }
 
@@ -568,7 +583,8 @@ mod new {
         }
 
         pub fn reset_accum(&mut self, g: &Game, idx: usize) {
-            self.delta_stack[self.ply].clear();
+            self.delta_stack[self.ply].0 = 0;
+            self.delta_stack[self.ply].1.clear();
             if let Some(acc) = self.accum_stack.get_mut(idx) {
                 Self::_reset_accum(
                     &self.biases, &self.weights, &self.psqt_weights, g, White, acc);
@@ -616,6 +632,7 @@ mod new {
     /// pop
     impl NNFeatureTrans {
         pub fn accum_pop(&mut self) {
+            self.stats.pops += 1;
             if self.ply != 0 {
                 self.accum_stack[self.ply].computed = [false; 2];
                 self.ply -= 1;
@@ -651,13 +668,16 @@ mod new {
 
             assert_eq!(Some(mv), g.last_move);
 
+            self.stats.moves += 1;
+
             self.ply += 1;
 
             if mv.piece() == Some(King) {
                 // self.reset_accum(g, self.ply);
 
-                self.delta_stack[self.ply].clear();
-                self.delta_stack[self.ply].push(NNDelta::Refresh);
+                self.delta_stack[self.ply].0 = 0;
+                self.delta_stack[self.ply].1.clear();
+                self.delta_stack[self.ply].1.push(NNDelta::Refresh);
 
             } else {
 
@@ -684,11 +704,12 @@ mod new {
             }
         }
 
-        pub fn _make_move(&mut self, g: &Game, mv: Move) -> ArrayVec<NNDelta,3> {
+        pub fn _make_move(&mut self, g: &Game, mv: Move) -> (i8,ArrayVec<NNDelta,3>) {
 
             // self.update_accum(g, White);
             // self.update_accum(g, Black);
 
+            let mut cost = 0;
             let mut out = ArrayVec::new();
 
             assert!(mv.piece() != Some(King));
@@ -704,11 +725,13 @@ mod new {
                     let a = self.make_move_move(ksqs, pc, side, from, to);
                     out.push(a[0]);
                     out.push(a[1]);
+                    cost = 1;
                 },
                 Move::PawnDouble { from, to } => {
                     let a = self.make_move_move(ksqs, Pawn, side, from, to);
                     out.push(a[0]);
                     out.push(a[1]);
+                    cost = 1;
                 },
                 // Move::Capture { from, to, pc, victim } => {
                 Move::Capture { from, to, pcs } => {
@@ -719,6 +742,7 @@ mod new {
                     out.push(a[0]);
                     out.push(a[1]);
                     out.push(b);
+                    cost = 2;
                 },
                 Move::EnPassant { from, to, capture } => {
                     let a = self.make_move_move(ksqs, Pawn, side, from, to);
@@ -726,6 +750,7 @@ mod new {
                     out.push(a[0]);
                     out.push(a[1]);
                     out.push(b);
+                    cost = 2;
                 },
                 // Move::Castle { from, to, rook_from, rook_to } => {
                 Move::Castle { .. } => {
@@ -742,6 +767,7 @@ mod new {
                     let b = self.make_move_add(ksqs, new_piece, side, to);
                     out.push(a);
                     out.push(b);
+                    cost = 2;
                 },
                 // Move::PromotionCapture { from, to, new_piece, victim } => {
                 Move::PromotionCapture { from, to, pcs } => {
@@ -753,12 +779,13 @@ mod new {
                     out.push(a);
                     out.push(b);
                     out.push(c);
+                    cost = 3;
                 },
                 Move::NullMove => {},
             }
 
             // NNDeltas::Deltas(out)
-            out
+            (cost,out)
         }
 
     }
@@ -767,6 +794,7 @@ mod new {
 
 #[cfg(feature = "prev_accum")]
 mod old {
+    use crate::sf_compat::NNStats;
     use crate::types::*;
     use crate::sf_compat::accumulator::*;
     use crate::sf_compat::NNIndex;
@@ -797,6 +825,8 @@ mod old {
 
         pub accum:          NNAccum,
 
+        pub stats:          NNStats,
+
     }
 
     /// Consts, Init
@@ -820,6 +850,8 @@ mod old {
                 psqt_weights:   Aligned(vec![0; Self::DIMS_IN * Self::PSQT_BUCKETS]),
 
                 accum:          NNAccum::new(),
+
+                stats:          NNStats::default(),
             }
         }
 
@@ -872,6 +904,8 @@ mod old {
 
         // pub fn transform(&mut self, g: &Game, output: &mut [u8], bucket: usize, refresh: bool) -> Score {
         pub fn transform(&mut self, g: &Game, output: &mut [u8], bucket: usize) -> Score {
+
+            self.stats.transforms += 1;
 
             let output = &mut output[..HALF_DIMS*2];
 
@@ -1268,9 +1302,12 @@ mod old {
 
         // #[cfg(feature = "nope")] // XXX: 
         pub fn make_move(&mut self, g: &Game, mv: Move) {
+            self.stats.moves += 1;
             if mv.piece() == Some(King) {
                 self.accum.push_copy_full(!g.state.side_to_move);
                 self.reset_accum(g);
+
+                self.stats.refresh_kingmove += 1;
             } else {
                 let ds = self._make_move(g, mv);
                 self.accum.stack_delta.push(NNDeltas::Deltas(ds));
@@ -1407,41 +1444,39 @@ mod old {
             }
         }
 
-        /// temp no simd
         pub fn accum_add(&mut self, i_w: NNIndex, i_b: NNIndex) -> NNDelta {
 
-            // #[cfg(not(target_feature = "avx2"))]
-            // self._accum_add(White, i_w);
-            // #[cfg(not(target_feature = "avx2"))]
-            // self._accum_add(Black, i_b);
-
-            // #[cfg(target_feature = "avx2")]
-            // self._accum_inc_simd::<true>(White, i_w);
-            // #[cfg(target_feature = "avx2")]
-            // self._accum_inc_simd::<true>(Black, i_b);
-
+            #[cfg(not(target_feature = "avx2"))]
             self._accum_add(White, i_w);
+            #[cfg(not(target_feature = "avx2"))]
             self._accum_add(Black, i_b);
+
+            #[cfg(target_feature = "avx2")]
+            self._accum_inc_simd::<true>(White, i_w);
+            #[cfg(target_feature = "avx2")]
+            self._accum_inc_simd::<true>(Black, i_b);
+
+            // self._accum_add(White, i_w);
+            // self._accum_add(Black, i_b);
 
             NNDelta::Remove(i_w,i_b)
         }
 
-        /// temp no simd
         pub fn accum_rem(&mut self, i_w: NNIndex, i_b: NNIndex) -> NNDelta {
             // eprintln!("rem (i_w,i_b) = {:?}", (i_w,i_b));
 
-            // #[cfg(not(target_feature = "avx2"))]
-            // self._accum_rem(White, i_w);
-            // #[cfg(not(target_feature = "avx2"))]
-            // self._accum_rem(Black, i_b);
-
-            // #[cfg(target_feature = "avx2")]
-            // self._accum_inc_simd::<false>(White, i_w);
-            // #[cfg(target_feature = "avx2")]
-            // self._accum_inc_simd::<false>(Black, i_b);
-
+            #[cfg(not(target_feature = "avx2"))]
             self._accum_rem(White, i_w);
+            #[cfg(not(target_feature = "avx2"))]
             self._accum_rem(Black, i_b);
+
+            #[cfg(target_feature = "avx2")]
+            self._accum_inc_simd::<false>(White, i_w);
+            #[cfg(target_feature = "avx2")]
+            self._accum_inc_simd::<false>(Black, i_b);
+
+            // self._accum_rem(White, i_w);
+            // self._accum_rem(Black, i_b);
 
             NNDelta::Add(i_w,i_b)
         }
@@ -1496,22 +1531,22 @@ mod old {
 
         }
 
-        /// temp no simd
-        pub fn reset_accum(&mut self, g: &Game) {
-            self._update_accum(g, White);
-            self._update_accum(g, Black);
-        }
-
+        // /// temp no simd
         // pub fn reset_accum(&mut self, g: &Game) {
-        //     #[cfg(not(target_feature = "avx2"))]
         //     self._update_accum(g, White);
-        //     #[cfg(not(target_feature = "avx2"))]
         //     self._update_accum(g, Black);
-        //     #[cfg(target_feature = "avx2")]
-        //     self._update_accum_simd(g, White);
-        //     #[cfg(target_feature = "avx2")]
-        //     self._update_accum_simd(g, Black);
         // }
+
+        pub fn reset_accum(&mut self, g: &Game) {
+            #[cfg(not(target_feature = "avx2"))]
+            self._update_accum(g, White);
+            #[cfg(not(target_feature = "avx2"))]
+            self._update_accum(g, Black);
+            #[cfg(target_feature = "avx2")]
+            self._update_accum_simd(g, White);
+            #[cfg(target_feature = "avx2")]
+            self._update_accum_simd(g, Black);
+        }
 
         pub fn _update_accum(&mut self, g: &Game, persp: Color) {
             assert!(self.biases.len() == self.accum.accum[persp].len());

@@ -2962,8 +2962,68 @@ fn main_nnue3() {
 
 #[allow(unreachable_code)]
 fn main_eval() {
+
     let ts = Tables::read_from_file_def().unwrap();
     let fen = STARTPOS;
+
+    let t = 4.0;
+    let n = 12;
+
+    let mut g = Game::from_fen(&ts, fen).unwrap();
+
+    let timesettings = TimeSettings::new_f64(0.0,t);
+    let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
+    ex.cfg.return_moves = true;
+    ex.cfg.clear_table = false;
+    ex.cfg.num_threads = Some(1);
+
+    let (tx,rx) = crossbeam::channel::unbounded();
+    use rchess_engine_lib::material::*;
+    let mt = MaterialTable::default();
+    let pt = PawnTable::default();
+    let thread_data = PerThreadData::new(mt,pt);
+    let mut exhelper = ex.build_exhelper(
+        0,
+        n,
+        ex.best_depth.clone(),
+        vec![],
+        tx,
+        thread_data,
+    );
+
+    // let pgn_path = "./training_data/tuner/quiet-labeled.epd";
+    let pgn_path = "./training_data/tuner/quiet.epd";
+    let fens = read_epd_no_bm(pgn_path).unwrap();
+    eprintln!("fens.len() = {:?}", fens.len());
+
+    let path = "nn-63376713ba63.nnue";
+    let mut nn = rchess_engine_lib::sf_compat::NNUE4::read_nnue(path).unwrap();
+
+    let fens = &fens[0..5];
+
+    for fen in fens.iter() {
+        let mut g = Game::from_fen(&ts, fen).unwrap();
+
+        // let score0 = helper._evaluate_classical::<true>(&ts, &g0);
+        // let score1 = helper._evaluate_classical::<true>(&ts, &g1);
+        let score = exhelper.evaluate(&ts, &mut SearchStats::default(), &g, 0, true);
+        eprintln!();
+
+        // eprintln!("score0.taper(&g) = {:?}", score0.taper(&g));
+        // eprintln!("score1.taper(&g) = {:?}", score1.taper(&g));
+
+        // nn.ft.reset_feature_trans(&g);
+        // let s0 = nn.evaluate(&g, true);
+
+        // let sign = if score.signum() != s0.signum() { " !" } else { "" };
+
+        // eprintln!("score (hce,nn) = {:>5}, {:>5}, diff = {:>5}{}",
+        //           score, s0, (score - s0).abs(), sign);
+
+    }
+
+
+    return;
 
     // let fen1 = "rnbqkbnr/ppp3pp/4p3/3pNp2/3P4/8/PPP1PPPP/RNBQKB1R w KQkq - 0 1"; // outpost knight
     // let fen1 = "rnbqkbnr/ppp3pp/4p3/3pBp2/3P4/8/PPP1PPPP/RNBQK1NR w KQkq - 0 1"; // outpost bishop
@@ -3198,14 +3258,25 @@ fn main9() {
     // return;
 
     // let t = 10.0;
-    // let t = 4.0;
-    let t = 1.0;
+    let t = 4.0;
+    // let t = 1.0;
 
     // let n = MAX_SEARCH_PLY;
     // let n = 35;
     let n = 12;
     // let n = 10;
     // let n = 2;
+
+    /// benches
+    /// 51970d5:
+    ///     hce:    0.221
+    ///     nn:     0.235
+    /// main:
+    ///     hce:    0.19
+    ///     nn:     0.505
+    /// main, prev_accum:
+    ///     hce:    0.19
+    ///     nn:     0.38
 
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
@@ -3218,7 +3289,7 @@ fn main9() {
 
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
 
-    // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+    ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
     ex.cfg.late_move_reductions = true;
 

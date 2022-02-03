@@ -1271,6 +1271,11 @@ impl ExHelper {
             *w = stack;
         }
 
+        if let Some(nn) = &self.nnue {
+            let stats = nn.ft.stats;
+            stats.print_stats();
+        }
+
         trace!("exiting lazy_smp_single, id = {}", self.id);
 
         // /// XXX: this might be slow? only clones once per thread per search

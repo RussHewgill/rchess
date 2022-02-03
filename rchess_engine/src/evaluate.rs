@@ -60,7 +60,8 @@ impl ExHelper {
             + Pawn.score_tapered() * g.state.material.get(Pawn, White) as Score
             - g.state.npm[Black]
             - Pawn.score_tapered() * g.state.material.get(Pawn, Black) as Score;
-        imbalance.taper(g) < 3 * Pawn.score()
+
+        imbalance.taper(g) < 4 * Pawn.score()
     }
 
     /// NNUE eval is ~18x slower than classic (only material and psqt)

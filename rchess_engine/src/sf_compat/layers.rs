@@ -25,7 +25,7 @@ const WEIGHT_SCALE_BITS: u32 = 6;
 const MAX_SIMD_WIDTH: usize = 32;
 
 /// AVX2
-const SIMD_WIDTH: usize = 32;
+pub const SIMD_WIDTH: usize = 32;
 
 pub trait NNLayer {
     type InputType: PrimInt + NumCast + AsPrimitive<i32> + std::fmt::Debug;

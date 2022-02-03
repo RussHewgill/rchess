@@ -63,6 +63,31 @@ mod index {
 
 }
 
+pub use self::stats::NNStats;
+mod stats {
+    use derive_more::*;
+
+    #[derive(Debug,Default,Eq,PartialEq,PartialOrd,Clone,Copy,Add,AddAssign)]
+    pub struct NNStats {
+        pub moves:              u32,
+        pub pops:               u32,
+        pub refresh_kingmove:   u32,
+        pub refresh_threshold:  u32,
+        pub transforms:         u32,
+    }
+
+    impl NNStats {
+        pub fn print_stats(&self) {
+            eprintln!("moves             = {:?}", self.moves);
+            // eprintln!("pops              = {:?}", self.pops);
+            eprintln!("refresh_kingmove  = {:?}", self.refresh_kingmove);
+            eprintln!("refresh_threshold = {:?}", self.refresh_threshold);
+            eprintln!("transforms        = {:?}", self.transforms);
+        }
+    }
+
+}
+
 // XXX: manually specifying input dims allows better const optimizations maybe?
 pub type Layer0 = NNInput<{HALF_DIMS * 2}>;
 pub type Layer1 = NNClippedRelu<NNAffine<Layer0, 8, {HALF_DIMS * 2}>, 8>;
@@ -154,6 +179,7 @@ impl NNUE4 {
         Ok(Self {
             ft,
             layers,
+            // stats:  NNStats::default(),
         })
     }
 
@@ -204,13 +230,6 @@ impl NNUE4 {
 
         Ok((ft,layers))
     }
-
-}
-
-/// Init
-impl NNUE4 {
-    // pub fn init_inputs(&mut self, )
-
 
 }
 
