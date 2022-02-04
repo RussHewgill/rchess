@@ -344,7 +344,7 @@ impl Explorer {
 
 #[derive(Debug,Clone)]
 pub enum ExMessage {
-    Message(Depth,ABResults,Vec<Move>,SearchStats),
+    Message(Depth,ABResults,Vec<Move>,Box<SearchStats>),
     End(usize),
     Stop,
 }
@@ -935,12 +935,12 @@ impl Explorer {
                                             self.stop.store(true, SeqCst);
 
                                             let mut w = out.write();
-                                            *w = (depth, res, moves, w.3 + stats);
+                                            *w = (depth, res, moves, w.3 + *stats);
                                             // *w = (depth, scores, None);
                                             break;
                                         } else {
                                             let mut w = out.write();
-                                            *w = (depth, res, moves, w.3 + stats);
+                                            *w = (depth, res, moves, w.3 + *stats);
                                             any_move_stored = true;
                                         }
                                 } else {
@@ -955,7 +955,7 @@ impl Explorer {
                             }
                             x => {
                                 let mut w = out.write();
-                                w.3 = w.3 + stats;
+                                w.3 = w.3 + *stats;
                                 // panic!("rx: ?? {:?}", x);
                             },
                         }
@@ -1251,7 +1251,7 @@ impl ExHelper {
                     v.retain(|&mv| mv != Move::NullMove);
                     v
                 } else { vec![] };
-                match self.tx.try_send(ExMessage::Message(depth, res, moves, stats)) {
+                match self.tx.try_send(ExMessage::Message(depth, res, moves, Box::new(stats))) {
                     Ok(_)  => {
                         stats = SearchStats::default();
                     },

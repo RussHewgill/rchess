@@ -756,9 +756,10 @@ mod nn_affine {
 
                 let mut acc = vec![m256i::default(); num_regs];
 
-                for k in 0..num_regs {
-                    acc[k] = bias_vec[k];
-                }
+                // for k in 0..num_regs {
+                //     acc[k] = bias_vec[k];
+                // }
+                acc[..num_regs].copy_from_slice(&bias_vec[..num_regs]);
 
                 let mut i = 0;
                 while i < num_chunks {
@@ -787,9 +788,10 @@ mod nn_affine {
                                 ptr, self.buffer.len() * std::mem::size_of::<i32>() / 32)
                     };
 
-                    for k in 0..num_regs {
-                        output_vec[k] = acc[k];
-                    }
+                    // for k in 0..num_regs {
+                    //     output_vec[k] = acc[k];
+                    // }
+                    output_vec[..num_regs].copy_from_slice(&acc[..num_regs]);
 
                     i += 2;
                 }

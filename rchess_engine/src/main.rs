@@ -3211,7 +3211,7 @@ fn main9() {
 
     // let fen = "r2q3r/1b1k1pbp/p4np1/2BP1pN1/p1B5/P1Q5/1PP3PP/R3K2R w KQ - 0 19"; // explosion
 
-    // let fen = "1Q6/8/4k3/8/8/4K3/8/8 w - - 0 1"; // endgame KQ v K, #7
+    let fen = "1Q6/8/4k3/8/8/4K3/8/8 w - - 0 1"; // endgame KQ v K, #7
 
     // let fen = "8/8/8/3k4/8/8/3P4/3K4 b - - 0 1"; // black king in center
     // let fen1 = "8/8/8/k7/8/8/3P4/3K4 b - - 0 1"; // black king A5
@@ -3221,8 +3221,8 @@ fn main9() {
     // let fen = "1kr5/3n4/q3p2p/p2n2p1/PppB1P2/5BP1/1P2Q2P/3R2K1 w - -";
     // let fen = "8/8/8/5k2/3Q4/2K5/8/8 w - - 0 1";
 
-    // let (fen,correct) = &games_sts(23, 2); // fen, set
-    let (fen,correct) = &games_sts(1, 3); // fen, set
+    // // let (fen,correct) = &games_sts(23, 2); // fen, set
+    // let (fen,correct) = &games_sts(1, 3); // fen, set
 
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
@@ -3231,8 +3231,8 @@ fn main9() {
     eprintln!("g.to_fen() = {:?}", g.to_fen());
     eprintln!("g = {:?}", g);
 
-    eprintln!();
-    eprintln!("correct = {:?}", correct);
+    // eprintln!();
+    // eprintln!("correct = {:?}", correct);
 
     // let st = ABStack::new();
     // let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
@@ -3267,19 +3267,6 @@ fn main9() {
     // let n = 12;
     // let n = 10;
     // let n = 2;
-
-    /// benches
-    /// 51970d5:
-    ///     hce:    0.221
-    ///     nn:     0.235
-    /// main:
-    ///     hce:    0.19
-    ///     nn:     0.505
-    /// main, prev_accum:
-    ///     hce:    0.19
-    ///     nn:     0.38
-    /// main with explorer as 51970d5:
-    ///     nn:     0.185(11), 0.351(12)
 
     let timesettings = TimeSettings::new_f64(0.0,t);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);

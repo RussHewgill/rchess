@@ -41,7 +41,7 @@ default = [
     # "syzygy",
     "nnue",
 
-    # "prev_accum",
+    "prev_accum",
 
     "null_pruning",
     "history_heuristic",

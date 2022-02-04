@@ -391,21 +391,21 @@ pub fn crit_bench_1(c: &mut Criterion) {
 
     let nn = NNUE4::read_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
-    let nns = {
-        let mut nns = vec![];
-        for g in (&wacs[50..60]).iter() {
-            let mut nn = nn.clone();
-            nn.ft.reset_accum(&g);
-            nns.push((g, nn));
-        }
-        nns
-    };
+    // let nns = {
+    //     let mut nns = vec![];
+    //     for g in (&wacs[50..60]).iter() {
+    //         let mut nn = nn.clone();
+    //         nn.ft.reset_accum(&g);
+    //         nns.push((g, nn));
+    //     }
+    //     nns
+    // };
 
-    group.bench_function("evaluation classic", |b| b.iter(|| {
-        for g in wacs.iter() {
-            let score = g.sum_evaluate(&ts, &ts.eval_params_mid, &ts.eval_params_mid, None);
-        }
-    }));
+    // group.bench_function("evaluation classic", |b| b.iter(|| {
+    //     for g in wacs.iter() {
+    //         let score = g.sum_evaluate(&ts, &ts.eval_params_mid, &ts.eval_params_mid, None);
+    //     }
+    // }));
 
     // group.bench_function("evaluation nnue", |b| b.iter(|| {
     //     for (g,nn) in nns.iter() {

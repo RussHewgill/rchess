@@ -60,7 +60,6 @@ impl ExHelper {
             + Pawn.score_tapered() * g.state.material.get(Pawn, White) as Score
             - g.state.npm[Black]
             - Pawn.score_tapered() * g.state.material.get(Pawn, Black) as Score;
-
         imbalance.taper(g) < 4 * Pawn.score()
     }
 

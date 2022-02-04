@@ -286,9 +286,10 @@ mod new {
                     cast_slice_to_m256i(&bs)
                 };
 
-                for i in 0..Self::NUM_REGS {
-                    acc[i] = biases_tile[i];
-                }
+                // for i in 0..Self::NUM_REGS {
+                //     acc[i] = biases_tile[i];
+                // }
+                acc[..Self::NUM_REGS].copy_from_slice(&biases_tile[..Self::NUM_REGS]);
 
                 for idx in active.iter() {
                     let offset = HALF_DIMS * idx.0 + k * Self::TILE_HEIGHT;
