@@ -27,6 +27,7 @@ use std::collections::{HashMap,HashSet,VecDeque};
 use std::slice::SliceIndex;
 use std::str::FromStr;
 
+use arrayvec::ArrayVec;
 use itertools::Itertools;
 
 use rchess_engine_lib::material::{MaterialTable,PawnTable,MatEval,PawnEval};
@@ -2907,13 +2908,52 @@ fn main_nn2() {
 
 #[allow(unreachable_code)]
 fn main_nnue3() {
-    use rchess_engine_lib::sf_compat::NNUE4;
+    use rchess_engine_lib::sf_compat::{NNUE4,NNIndex};
+    use rchess_engine_lib::sf_compat::accumulator::*;
 
     let fen = STARTPOS;
     init_logger();
     let ts = Tables::new();
 
-    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    #[cfg(feature = "nope")]
+    {
+        let fen = "1r1r1bk1/1bq2p1p/pn2p1p1/2p1P3/5P2/P1NBB3/1P3QPP/R2R2K1 b Qq - 0 1"; // 125
+        let fen1 = "1r1r1b2/1bq2pkp/pn2p1p1/2p1P3/5P2/P1NBB3/1P3QPP/R2R2K1 w Q - 1 2"; // 5
+
+        let mut g0 = Game::from_fen(&ts, fen).unwrap();
+
+        let path = "nn-63376713ba63.nnue";
+        let mut nn = NNUE4::read_nnue(path).unwrap();
+
+        #[cfg(not(feature = "prev_accum"))]
+        nn.ft.reset_feature_trans(&g0);
+        #[cfg(feature = "prev_accum")]
+        nn.ft.reset_accum(&g0);
+
+        let v0 = nn.evaluate(&g0, false);
+        eprintln!("v0 = {:?}", v0);
+
+        let mv1 = Move::new_quiet("g8", "g7", King);
+        let g1 = g0.make_move_unchecked(&ts, mv1).unwrap();
+        nn.ft.make_move(&g1, mv1);
+
+        eprintln!("g1.to_fen() == fen1 = {:?}", g1.to_fen() == fen1);
+
+        // let delta = nn.ft.accum.make_copy(Black);
+        // nn.ft.accum.stack_delta.push(NNDeltas::Copy);
+        // nn.ft.accum.stack_copies.push(delta);
+        // nn.ft.reset_accum(&g1);
+
+        let v0 = nn.evaluate(&g1, false);
+        eprintln!("v0 = {:?}", v0);
+
+        return;
+    }
+
+    let fen  = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    let fen2 = "r2r1k2/4npp1/1p1q2b1/1B2p1Q1/1B1P4/P3P3/5PP1/R3K2R w KQ - 3 3"; // Q cap d6b4, after, 806
+
+    // let fen = "r2r2k1/4npp1/1p1q2b1/1B2p1Q1/1B1P4/P3P3/5PP1/R3K2R b KQ - 2 2";
 
     let mut g = Game::from_fen(&ts, fen).unwrap();
 
@@ -2930,11 +2970,71 @@ fn main_nnue3() {
     // eprintln!("prev transform 1 = -1075");
 
     let v0 = nn2.evaluate(&g, false);
-    eprintln!("v0: {:>4} == -755 = {:?}", v0, v0 == -599);
+    eprintln!("v0: {:>4} == -599 = {:?}", v0, v0 == -599);
 
-    let mv2 = Move::new_quiet("e5", "e4", Pawn);
-    let g2 = g.make_move_unchecked(&ts, mv2).unwrap();
-    nn2.ft.make_move(&g2, mv2);
+    let mut fens: Vec<String> = vec![];
+    let mvs = vec![
+        Move::new_quiet("f8", "d8", Rook),
+        Move::new_quiet("g4", "g5", Queen),
+        Move::new_quiet("g8", "f8", King),
+    ];
+    for mv in mvs.iter() {
+        g = g.make_move_unchecked(&ts, *mv).unwrap();
+        fens.push(g.to_fen());
+        nn2.ft.make_move(&g, *mv);
+    }
+
+    // // let mv = Move::new_quiet("g8", "f8", King);
+    // // let g = g.make_move_unchecked(&ts, mv).unwrap();
+    // nn2.ft.reset_accum(&g);
+    // // nn2.ft.make_move(&g, mvs[0]);
+
+    let v0 = nn2.evaluate(&g, false);
+    eprintln!("v0 = {:?}", v0);
+
+    // // let mut g = Game::from_fen(&ts, &fens[2]).unwrap();
+    // let mut g2 = Game::from_fen(&ts, fen2).unwrap();
+
+    // assert_eq!(g, g2);
+
+    // nn2.ft.reset_accum(&g);
+    // let v0 = nn2.evaluate(&g, false);
+    // eprintln!("v0 = {:?}", v0);
+
+    return;
+
+    // let mv2 = Move::new_quiet("f1", "d1", Rook);
+    // let g2 = g.make_move_unchecked(&ts, mv2).unwrap();
+    // nn2.ft.make_move(&g2, mv2);
+
+    // let mv3 = Move::new_quiet("g4", "g5", Queen);
+    // let g3 = g2.make_move_unchecked(&ts, mv3).unwrap();
+    // nn2.ft.make_move(&g3, mv3);
+
+    // let mv3 = Move::new_quiet("g4", "g5", Queen);
+    // let mv4 = Move::new_quiet("g1", "f1", King);
+    // let g4 = g3.make_move_unchecked(&ts, mv4).unwrap();
+    // nn2.ft.make_move(&g4, mv4);
+
+    // let v0 = nn2.evaluate(&g2, false);
+    // eprintln!("v0 = {:?}", v0);
+    // // eprintln!("v0: {:>4} == 159 = {:?}", v0, v0 == 159);
+
+    // println!();
+
+    // // let fen = "r2r1k2/4npp1/1p1q2b1/1B2p1Q1/1B1P4/P3P3/5PP1/R3K2R w KQ - 3 3";
+    // let fen = "r2r2k1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R w KQ - 1 2";
+
+    // let mut g = Game::from_fen(&ts, fen).unwrap();
+    // nn.ft.reset_accum(&g);
+    // // nn2.ft.reset_feature_trans(&g);
+
+    // let v0 = nn.evaluate(&g, false);
+    // eprintln!("v0: {:>4} == 806 = {:?}", v0, v0 == 806);
+
+    // for d in nn2.ft.accum.lazy_stack_delta.iter() {
+    //     eprintln!("d = {:?}", d);
+    // }
 
     // let st = &nn2.ft.accum_stack;
     // for acc in st.iter() {
@@ -2943,12 +3043,12 @@ fn main_nnue3() {
 
     // eprintln!("prev transform 2 = -778");
 
-    let v0 = nn2.evaluate(&g2, false);
-    eprintln!("v0: {:>4} == -755 = {:?}", v0, v0 == 755);
+    // let v0 = nn2.evaluate(&g2, false);
+    // eprintln!("v0: {:>4} == -755 = {:?}", v0, v0 == 755);
 
-    nn2.ft.accum_pop();
-    let v0 = nn2.evaluate(&g, false);
-    eprintln!("v0: {:>4} == -755 = {:?}", v0, v0 == -599);
+    // nn2.ft.accum_pop();
+    // let v0 = nn2.evaluate(&g, false);
+    // eprintln!("v0: {:>4} == -755 = {:?}", v0, v0 == -599);
 
     // let mv3 = Move::new_capture("g4", "g6", Queen, Bishop);
     // let g3 = g2.make_move_unchecked(&ts, mv3).unwrap();
@@ -3259,12 +3359,12 @@ fn main9() {
 
     // let t = 10.0;
     // let t = 4.0;
-    let t = 1.0;
+    let t = 2.0;
     // let t = 0.125;
 
-    let n = MAX_SEARCH_PLY;
+    // let n = MAX_SEARCH_PLY;
     // let n = 35;
-    // let n = 12;
+    let n = 14;
     // let n = 10;
     // let n = 2;
 
@@ -3396,13 +3496,13 @@ fn main9() {
     // eprintln!("stats0.nodes = {:?}", stats0.nodes);
     // eprintln!("sum = {:?}", sum);
 
-    let perthread = ex.per_thread_data[0].take().unwrap();
-    let mt = perthread.mat_table;
-    eprintln!("mt.used_entries() = {:?}", mt.used_entries());
-    eprintln!("mt.capacity() = {:?}", mt.capacity());
-    eprintln!("ratio = {:.3}",
-              mt.used_entries() as f64 / mt.capacity() as f64
-    );
+    // let perthread = ex.per_thread_data[0].take().unwrap();
+    // let mt = perthread.mat_table;
+    // eprintln!("mt.used_entries() = {:?}", mt.used_entries());
+    // eprintln!("mt.capacity() = {:?}", mt.capacity());
+    // eprintln!("ratio = {:.3}",
+    //           mt.used_entries() as f64 / mt.capacity() as f64
+    // );
 
     // println!();
     // eprintln!("stats0.mt_hits       = {:?}", stats0.mt_hits);

@@ -91,37 +91,126 @@ pub mod old {
     use crate::types::*;
     use crate::sf_compat::{NNIndex, HALF_DIMS};
 
+    use arrayvec::ArrayVec;
+    use aligned::{Aligned,A32};
+
     #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
     pub enum NNDelta {
         Add(NNIndex,NNIndex),
         Remove(NNIndex,NNIndex),
-        Refresh,
     }
 
     impl NNDelta {
         pub fn get(self) -> (NNIndex,NNIndex) {
             match self {
-                Self::Add(a,b) => (a,b),
+                Self::Add(a,b)    => (a,b),
                 Self::Remove(a,b) => (a,b),
             }
         }
+
+        // pub fn reverse(self) -> Self {
+        //     match self {
+        //         Self::Add(a,b)    => Self::Remove(a,b),
+        //         Self::Remove(a,b) => Self::Add(a,b),
+        //     }
+        // }
+
     }
 
     #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
     pub enum NNDeltas {
-        Deltas(ArrayVec<NNDelta,3>),
-        Copy,
+        Deltas(i8, ArrayVec<NNDelta,3>),
+        Refresh,
     }
 
-    #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
+    #[derive(Debug,Eq,PartialEq,PartialOrd,Ord,Clone)]
+    pub enum NNAccumData {
+        Full(Aligned<A32,[[i16; 1024]; 2]>, Aligned<A32,[[i32; 8]; 2]>),
+    }
+
+    #[derive(Debug,Clone)]
     pub struct NNAccum {
         pub accum:           Aligned<A32,[[i16; 1024]; 2]>, // TransformedFeatureDimensions = 1024
         pub psqt:            Aligned<A32,[[i32; 8]; 2]>,    // PSQTBuckets = 8
 
-        pub stack_delta:        Vec<NNDeltas>,
-        pub stack_copies:       Vec<NNAccumData>,
+        pub undo_stack_delta:        Vec<NNDeltas>,
+        pub undo_stack_copies:       Vec<NNAccumData>,
+
+        pub lazy_stack_delta:        Vec<NNDeltas>,
+
+        pub dbg_move_history:        Vec<Move>,
+
+        pub computed:                bool,
 
     }
+
+    /// New
+    impl NNAccum {
+        pub fn new() -> Self {
+            Self {
+                accum:              Aligned([[0; 1024]; 2]),
+                psqt:               Aligned([[0; 8]; 2]),
+
+                undo_stack_delta:   Vec::with_capacity(1024),
+                undo_stack_copies:  Vec::with_capacity(1024),
+
+                lazy_stack_delta:   Vec::with_capacity(1024),
+
+                dbg_move_history:   Vec::with_capacity(1024),
+
+                computed:           false,
+            }
+        }
+    }
+
+    /// Delta
+    impl NNAccum {
+
+        pub fn make_copy(&self, side: Color) -> NNAccumData {
+            NNAccumData::Full(
+                self.accum.clone(),
+                self.psqt.clone(),
+            )
+        }
+
+        pub fn push_copy_full(&mut self, side: Color) {
+            let delta = self.make_copy(side);
+            self.undo_stack_delta.push(NNDeltas::Refresh);
+            self.undo_stack_copies.push(delta);
+        }
+
+        pub fn pop_prev(&mut self) {
+            if let Some(prev) = self.undo_stack_copies.pop() {
+                match prev {
+                    NNAccumData::Full(accum, psqt) => {
+                        self.accum = accum;
+                        self.psqt  = psqt;
+                    },
+                }
+            }
+        }
+
+    }
+
+    /// Append Active
+    impl NNAccum {
+
+        pub fn append_active(g: &Game, persp: Color, mut active: &mut ArrayVec<NNIndex, 64>) {
+            let king_sq = g.get(King,persp).bitscan();
+
+            for side in [White,Black] {
+                for pc in Piece::iter_pieces() {
+                    // if side == persp && pc == King { continue; }
+                    g.get(pc,side).into_iter().for_each(|sq| {
+                        let idx = crate::sf_compat::NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
+                        active.push(idx);
+                    });
+                }
+            }
+        }
+
+    }
+
 
 }
 

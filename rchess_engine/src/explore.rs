@@ -416,8 +416,10 @@ impl Explorer {
             // nnue.ft.accum.needs_refresh = [true; 2];
 
             #[cfg(feature = "prev_accum")]
+            // nnue.ft.accum.undo_stack_copies.clear();
             nnue.ft.accum.stack_copies.clear();
             #[cfg(feature = "prev_accum")]
+            // nnue.ft.accum.undo_stack_delta.clear();
             nnue.ft.accum.stack_delta.clear();
 
             #[cfg(feature = "prev_accum")]
