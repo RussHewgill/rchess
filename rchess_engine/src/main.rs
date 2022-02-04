@@ -3211,7 +3211,7 @@ fn main9() {
 
     // let fen = "r2q3r/1b1k1pbp/p4np1/2BP1pN1/p1B5/P1Q5/1PP3PP/R3K2R w KQ - 0 19"; // explosion
 
-    let fen = "1Q6/8/4k3/8/8/4K3/8/8 w - - 0 1"; // endgame KQ v K, #7
+    // let fen = "1Q6/8/4k3/8/8/4K3/8/8 w - - 0 1"; // endgame KQ v K, #7
 
     // let fen = "8/8/8/3k4/8/8/3P4/3K4 b - - 0 1"; // black king in center
     // let fen1 = "8/8/8/k7/8/8/3P4/3K4 b - - 0 1"; // black king A5
@@ -3396,19 +3396,26 @@ fn main9() {
     // eprintln!("stats0.nodes = {:?}", stats0.nodes);
     // eprintln!("sum = {:?}", sum);
 
-    // let perthread = ex.per_thread_data[0].take().unwrap();
-    // // let mt = perthread.mat_table;
-    // // eprintln!("mt.used_entries() = {:?}", mt.used_entries());
-    // // eprintln!("mt.capacity() = {:?}", mt.capacity());
-    // // eprintln!("ratio = {:.3}",
-    // //           mt.used_entries() as f64 / mt.capacity() as f64
-    // // );
+    let perthread = ex.per_thread_data[0].take().unwrap();
+    let mt = perthread.mat_table;
+    eprintln!("mt.used_entries() = {:?}", mt.used_entries());
+    eprintln!("mt.capacity() = {:?}", mt.capacity());
+    eprintln!("ratio = {:.3}",
+              mt.used_entries() as f64 / mt.capacity() as f64
+    );
+
+    // println!();
+    // eprintln!("stats0.mt_hits       = {:?}", stats0.mt_hits);
+    // eprintln!("stats0.mt_misses     = {:?}", stats0.mt_misses);
+    // eprintln!("stats0.mt_overwrites = {:?}", stats0.mt_overwrites);
+
     // let pt = perthread.pawn_table;
     // eprintln!("pt.used_entries() = {:?}", pt.used_entries());
     // eprintln!("pt.capacity() = {:?}", pt.capacity());
     // eprintln!("ratio = {:.3}",
     //           pt.used_entries() as f64 / pt.capacity() as f64
     // );
+    // eprintln!();
     // return;
 
     #[cfg(feature = "lockless_hashmap")]

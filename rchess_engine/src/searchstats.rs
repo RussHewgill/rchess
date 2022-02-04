@@ -92,6 +92,10 @@ mod ss {
         pub ph_hits:            u32,
         pub ph_misses:          u32,
 
+        pub mt_hits:            u32,
+        pub mt_misses:          u32,
+        pub mt_overwrites:      u32,
+
         pub qt_nodes:           u32,
         pub qt_hits:            u32,
         pub qt_misses:          u32,

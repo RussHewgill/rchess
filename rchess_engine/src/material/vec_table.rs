@@ -27,17 +27,27 @@ impl<T: Clone, const SIZE_KB: usize> VecTable<T, SIZE_KB> {
     }
 }
 
+/// queries
 impl<T: Clone, const SIZE_KB: usize> VecTable<T, SIZE_KB> {
 
+    /// note: slowish
     pub fn used_entries(&self) -> usize { self.vec.iter().flatten().count() }
 
     pub fn capacity(&self) -> usize { self.vec.len() }
 
+}
+
+/// Calc index
+impl<T: Clone, const SIZE_KB: usize> VecTable<T, SIZE_KB> {
     pub fn calc_index(&self, zb: Zobrist) -> (usize, u32) {
         let key = (zb.0 as u128 * self.vec.len() as u128).overflowing_shr(64).0;
         let ver = (zb.0 & LOW_FOUR_BYTES) as u32;
         (key as usize, ver)
     }
+}
+
+/// get, insert
+impl<T: Clone, const SIZE_KB: usize> VecTable<T, SIZE_KB> {
 
     pub fn get(&self, zb: Zobrist) -> Option<&T> {
         let (idx,ver) = self.calc_index(zb);

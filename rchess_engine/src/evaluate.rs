@@ -79,7 +79,7 @@ impl ExHelper {
 
         let use_nnue = cfg!(feature = "nnue")
             && self.nnue.is_some()
-            // && Self::use_nnue_imbalance(g)
+            && Self::use_nnue_imbalance(g)
             ;
 
         if use_nnue {
@@ -90,7 +90,7 @@ impl ExHelper {
                 score
             } else { unreachable!() }
         } else {
-            let stand_pat = self.evaluate_classical(ts, g);
+            let stand_pat = self.evaluate_classical(ts, g, stats);
             let score = if g.state.side_to_move == Black { -stand_pat } else { stand_pat };
             stats.eval_classical += 1;
             score
@@ -102,16 +102,19 @@ impl ExHelper {
 /// evaluate_classical
 impl ExHelper {
 
-    pub fn evaluate_classical(&mut self, ts: &Tables, g: &Game) -> Score {
-        let score = self._evaluate_classical::<false>(ts, g);
+    pub fn evaluate_classical(&mut self, ts: &Tables, g: &Game, stats: &mut SearchStats) -> Score {
+        let score = self._evaluate_classical::<false>(ts, g, stats);
         score.taper(g)
     }
 
-    pub fn _evaluate_classical<const TR: bool>(&mut self, ts: &Tables, g: &Game) -> TaperedScore {
+    pub fn _evaluate_classical<const TR: bool>(
+        &mut self, ts: &Tables, g: &Game, stats: &mut SearchStats) -> TaperedScore {
 
         let mut score = TaperedScore::default();
 
-        let me = self.material_table.get_or_insert(ts, g);
+        let (me,overwritten, hit) = self.material_table.get_or_insert(ts, g);
+        if overwritten { stats.mt_overwrites += 1; }
+        if hit { stats.mt_hits += 1; } else { stats.mt_misses += 1; }
 
         /// TODO: endgames
         if let Some(eg) = me.eg_val {

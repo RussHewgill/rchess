@@ -85,7 +85,48 @@ pub mod new {
 
 }
 
+// #[cfg(feature = "prev_accum")]
+#[cfg(feature = "nope")]
+pub mod old {
+    use crate::types::*;
+    use crate::sf_compat::{NNIndex, HALF_DIMS};
+
+    #[derive(Debug,Eq,PartialEq,PartialOrd,Clone,Copy)]
+    pub enum NNDelta {
+        Add(NNIndex,NNIndex),
+        Remove(NNIndex,NNIndex),
+        Refresh,
+    }
+
+    impl NNDelta {
+        pub fn get(self) -> (NNIndex,NNIndex) {
+            match self {
+                Self::Add(a,b) => (a,b),
+                Self::Remove(a,b) => (a,b),
+            }
+        }
+    }
+
+    #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
+    pub enum NNDeltas {
+        Deltas(ArrayVec<NNDelta,3>),
+        Copy,
+    }
+
+    #[derive(Debug,Eq,PartialEq,PartialOrd,Clone)]
+    pub struct NNAccum {
+        pub accum:           Aligned<A32,[[i16; 1024]; 2]>, // TransformedFeatureDimensions = 1024
+        pub psqt:            Aligned<A32,[[i32; 8]; 2]>,    // PSQTBuckets = 8
+
+        pub stack_delta:        Vec<NNDeltas>,
+        pub stack_copies:       Vec<NNAccumData>,
+
+    }
+
+}
+
 #[cfg(feature = "prev_accum")]
+// #[cfg(feature = "nope")]
 mod old {
     use crate::types::*;
     use crate::sf_compat::{NNIndex, HALF_DIMS};
