@@ -7,7 +7,7 @@ pub use mat_table::*;
 pub use pawn_table::*;
 
 use crate::endgame::*;
-use crate::endgame::helpers::is_kx_vs_k;
+// use crate::endgame::helpers::is_kx_vs_k;
 use crate::types::*;
 use crate::tables::*;
 

@@ -1074,8 +1074,6 @@ impl Game {
         self.pieces[from] = None;
         self.pieces[to]   = Some(pc);
 
-        // self.psqt_score_mid[side] += ts.get_psqt(pc, side, to, true) - ts.get_psqt(pc, side, from, true);
-        // self.psqt_score_end[side] += ts.get_psqt(pc, side, to, false) - ts.get_psqt(pc, side, from, false);
         self.psqt_score[side] += ts.get_psqt_tapered(pc, side, to) - ts.get_psqt_tapered(pc, side, from);
 
         if calc_zb {
@@ -1126,8 +1124,6 @@ impl Game {
             self.state.material.buf[side][pc.index()] -= 1;
         }
 
-        // self.psqt_score_mid[side] -= ts.get_psqt(pc, side, at, true);
-        // self.psqt_score_end[side] -= ts.get_psqt(pc, side, at, false);
         self.psqt_score[side] -= ts.get_psqt_tapered(pc, side, at);
 
         if calc_zb {
@@ -1157,8 +1153,6 @@ impl Game {
             self.state.material.buf[side][pc.index()] += 1;
         }
 
-        // self.psqt_score_mid[side] += ts.get_psqt(pc, side, at, true);
-        // self.psqt_score_end[side] += ts.get_psqt(pc, side, at, false);
         self.psqt_score[side] += ts.get_psqt_tapered(pc, side, at);
 
         if calc_zb {
@@ -1189,8 +1183,6 @@ impl Game {
             self.state.material.buf[side][pc] += 1;
         }
 
-        // self.psqt_score_mid[side] += ts.get_psqt(pc, side, at, true);
-        // self.psqt_score_end[side] += ts.get_psqt(pc, side, at, false);
         self.psqt_score[side] += ts.get_psqt_tapered(pc, side, at);
 
         self.pieces[at] = Some(pc);

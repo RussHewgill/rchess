@@ -2,7 +2,7 @@
 use std::collections::HashMap;
 
 use crate::endgame::*;
-use crate::endgame::helpers::is_kx_vs_k;
+// use crate::endgame::helpers::is_kx_vs_k;
 use crate::evaluate::TaperedScore;
 use crate::types::*;
 use crate::tables::*;
@@ -36,14 +36,14 @@ impl MaterialTable {
     /// (entry, overwrite, hit)
     pub fn get_or_insert(&mut self, ts: &Tables, g: &Game) -> (MatEval, bool, bool) {
         // if let Some(me) = self.0.get(&g.zobrist) {
-        if let Some(me) = self.get(g.zobrist) {
+        if let Some(me) = self.get(g.mat_zb) {
             return (*me, false, true);
         }
 
         let me = MatEval::new(ts, g);
 
         // self.0.insert(g.zobrist, me);
-        let ow = self.insert(g.zobrist, me);
+        let ow = self.insert(g.mat_zb, me);
 
         (me,ow, false)
     }

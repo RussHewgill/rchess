@@ -209,4 +209,3 @@ fn endgame_kp_vs_k(ts: &Tables, g: &Game, side: Color) -> Score {
 fn endgame_kbn_vs_k(ts: &Tables, g: &Game, side: Color) -> Score {
     unimplemented!()
 }
-

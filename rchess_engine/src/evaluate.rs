@@ -79,7 +79,7 @@ impl ExHelper {
 
         let use_nnue = cfg!(feature = "nnue")
             && self.nnue.is_some()
-            && Self::use_nnue_imbalance(g)
+            // && Self::use_nnue_imbalance(g)
             ;
 
         if use_nnue {
@@ -120,6 +120,10 @@ impl ExHelper {
             // return eg.evaluate(ts, g);
             unimplemented!()
         }
+
+        // let psqt = (g.sum_psqt_score(ts, White), g.sum_psqt_score(ts, Black));
+        // score += psqt.0 - psqt.1;
+        // if TR { eprintln!("psqt = {:?}", (psqt.0, psqt.1)); }
 
         score += g.psqt_score[White] - g.psqt_score[Black];
         if TR { eprintln!("psqt = {:?}", (g.psqt_score[White],g.psqt_score[Black])); }
@@ -169,6 +173,21 @@ impl Game {
     //         // ev.get_psqt(pc, side, sq)
     //     }).sum()
     // }
+
+}
+
+/// psqt scores
+impl Game {
+
+    pub fn sum_psqt_score(&self, ts: &Tables, side: Color) -> TaperedScore {
+        let mut score = TaperedScore::default();
+        for pc in Piece::iter_nonking_pieces() {
+            for sq in self.get(pc, side) {
+                score += ts.get_psqt_tapered(pc, side, sq);
+            }
+        }
+        score
+    }
 
 }
 

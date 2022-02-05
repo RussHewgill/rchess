@@ -3323,7 +3323,7 @@ fn main9() {
 
     // let fen = "r2q3r/1b1k1pbp/p4np1/2BP1pN1/p1B5/P1Q5/1PP3PP/R3K2R w KQ - 0 19"; // explosion
 
-    let fen = "1Q6/8/4k3/8/8/4K3/8/8 w - - 0 1"; // endgame KQ v K, #7
+    // let fen = "1Q6/8/4k3/8/8/4K3/8/8 w - - 0 1"; // endgame KQ v K, #7
 
     // let fen = "8/8/8/3k4/8/8/3P4/3K4 b - - 0 1"; // black king in center
     // let fen1 = "8/8/8/k7/8/8/3P4/3K4 b - - 0 1"; // black king A5
@@ -3362,8 +3362,9 @@ fn main9() {
 
     // // let k0 = std::mem::size_of::<SearchInfo>();
     // // eprintln!("k0 = {:?}", k0);
-    // print_size_of!(Game);
-    // print_size_of!(GameState);
+    // print_size_of!(Game);      // 288
+    // print_size_of!(GameState); // 176
+    // print_size_of!(TaperedScore);
     // return;
 
     // let t = 10.0;
@@ -3388,7 +3389,7 @@ fn main9() {
 
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
 
-    ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
+    // ex.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
     ex.cfg.late_move_reductions = true;
 
