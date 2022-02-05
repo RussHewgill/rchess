@@ -61,7 +61,7 @@ pub struct GameState {
     pub last_capture:       Option<Coord>,
     pub material:           Material,
 
-    pub check_squares:      [BitBoard; 5],
+    // pub check_squares:      [BitBoard; 5],
 
     checkers:               BitBoard,
     pub king_blocks_w:      BitBoard,
@@ -900,13 +900,13 @@ impl Game {
 
     fn update_check_squares_mut(&mut self, ts: &Tables) {
 
-        let ksq = self.get(King, !self.state.side_to_move).bitscan();
-        self.state.check_squares[Pawn]   = ts.get_pawn(ksq).get_capture(!self.state.side_to_move);
-        self.state.check_squares[Knight] = ts.get_knight(ksq);
-        self.state.check_squares[Bishop] = ts.attacks_bishop(ksq, self.all_occupied());
-        self.state.check_squares[Rook]   = ts.attacks_rook(ksq, self.all_occupied());
-        self.state.check_squares[Queen]  =
-            self.state.check_squares[Bishop] | self.state.check_squares[Rook];
+        // let ksq = self.get(King, !self.state.side_to_move).bitscan();
+        // self.state.check_squares[Pawn]   = ts.get_pawn(ksq).get_capture(!self.state.side_to_move);
+        // self.state.check_squares[Knight] = ts.get_knight(ksq);
+        // self.state.check_squares[Bishop] = ts.attacks_bishop(ksq, self.all_occupied());
+        // self.state.check_squares[Rook]   = ts.attacks_rook(ksq, self.all_occupied());
+        // self.state.check_squares[Queen]  =
+        //     self.state.check_squares[Bishop] | self.state.check_squares[Rook];
 
     }
 
