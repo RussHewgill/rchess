@@ -79,37 +79,13 @@ impl ExHelper {
 
         let use_nnue = cfg!(feature = "nnue")
             && self.nnue.is_some()
-            // && Self::use_nnue_imbalance(g)
+            && Self::use_nnue_imbalance(g)
             ;
 
         if use_nnue {
             stats.eval_nnue += 1;
             if let Some(nnue) = self.nnue.as_mut() {
-                // let score = nnue.evaluate(&g, true, ply);
                 let score = nnue.evaluate(&g, true);
-
-                // #[cfg(feature = "prev_accum")]
-                // if false {
-                //     let mut nn2 = nnue.clone();
-                //     nn2.ft.reset_accum(g);
-                //     let score2 = nn2.evaluate(&g, true);
-
-                //     if score != score2 {
-
-
-                //         eprintln!("g.to_fen() = {:?}", g.to_fen());
-                //         eprintln!("g = {:?}", g);
-
-                //         // eprintln!("moves:");
-                //         // for (n,mv) in nnue.ft.accum.dbg_move_history.iter().enumerate() {
-                //         //     eprintln!("    {} = {:?}", n, mv);
-                //         // }
-
-                //         panic!("mismatched NNUE score");
-                //     }
-                //     // assert_eq!(score, score2);
-                // }
-
                 score
             } else { unreachable!() }
         } else {

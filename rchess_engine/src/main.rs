@@ -296,9 +296,10 @@ fn main_endgame() {
     //     eprintln!();
     // }
 
-    play_from_pos(&ts, fen, 0.5);
 
-    return;
+
+    // play_from_pos(&ts, fen, 0.2);
+    // return;
 
     let t = 4.0;
 
@@ -316,6 +317,16 @@ fn main_endgame() {
     ex.time_settings.is_per_move = true;
     ex.time_settings.move_time = (t * 1000.0) as u64;
 
+
+    let perthread = ex.per_thread_data[0].take().unwrap();
+
+    let mut mt = perthread.mat_table.clone();
+
+    let (me,_,_) = mt.get_or_insert(&ts, &g);
+
+    eprintln!("me = {:?}", me);
+
+    return;
 
     let t0 = std::time::Instant::now();
     let (res,moves,stats0) = ex.lazy_smp_2(&ts);
@@ -338,7 +349,8 @@ pub fn play_from_pos(ts: &Tables, fen: &str, inc: f64) {
 
     let mut g = Game::from_fen(&ts, fen).unwrap();
 
-    let n = 35;
+    let n = MAX_SEARCH_PLY;
+    // let n = 35;
 
     let timesettings = TimeSettings::new_f64(0.0,inc);
     let mut ex = Explorer::new(g.state.side_to_move, g.clone(), n, timesettings);
@@ -3311,15 +3323,12 @@ fn main9() {
 
     // let fen = "r2q3r/1b1k1pbp/p4np1/2BP1pN1/p1B5/P1Q5/1PP3PP/R3K2R w KQ - 0 19"; // explosion
 
-    // let fen = "1Q6/8/4k3/8/8/4K3/8/8 w - - 0 1"; // endgame KQ v K, #7
+    let fen = "1Q6/8/4k3/8/8/4K3/8/8 w - - 0 1"; // endgame KQ v K, #7
 
     // let fen = "8/8/8/3k4/8/8/3P4/3K4 b - - 0 1"; // black king in center
     // let fen1 = "8/8/8/k7/8/8/3P4/3K4 b - - 0 1"; // black king A5
     // let fen2 = "3k4/8/8/8/8/8/3P4/3K4 b - - 0 1"; // black king D8
     // let fen3 = "k7/8/8/8/8/8/3P4/3K4 b - - 0 1"; // black king A8
-
-    // let fen = "1kr5/3n4/q3p2p/p2n2p1/PppB1P2/5BP1/1P2Q2P/3R2K1 w - -";
-    // let fen = "8/8/8/5k2/3Q4/2K5/8/8 w - - 0 1";
 
     // // let (fen,correct) = &games_sts(23, 2); // fen, set
     // let (fen,correct) = &games_sts(1, 3); // fen, set
