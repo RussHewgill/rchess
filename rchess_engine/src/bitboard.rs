@@ -155,7 +155,7 @@ mod bitwise {
     impl const std::ops::BitXor for BitBoard {
         type Output = Self;
         fn bitxor(self, rhs: Self) -> Self::Output {
-            Self(self.0 | rhs.0)
+            Self(self.0 ^ rhs.0)
         }
     }
 

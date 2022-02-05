@@ -37,7 +37,7 @@ use rchess_engine_lib::explore::*;
 use rchess_engine_lib::opening_book::*;
 use rchess_engine_lib::qsearch::*;
 use rchess_engine_lib::types::*;
-use rchess_engine_lib::search::*;
+// use rchess_engine_lib::search::*;
 use rchess_engine_lib::movegen::*;
 use rchess_engine_lib::tables::*;
 use rchess_engine_lib::parsing::*;
@@ -4157,6 +4157,71 @@ fn main_perft(depth: Option<u64>) {
     //     eprintln!("mv = {:?}", mv);
     // }
 
+    // let fen = fen2;
+    // let fen = "r3k2r/p1pPqpb1/bn3n2/4N1p1/1p2P3/2N2Q1p/PPPBBPPP/R3K2R b KQkq - 0 2";
+    // let fen = "r3k2r/p1ppqpb1/1n2pnp1/3PN3/1p2P3/2N2Q1p/PPPBbPPP/R2K3R w kq - 0 2";
+
+    // let fen = "r3k2r/p1ppqpb1/1n2pnp1/3PN3/1p2P3/2N2Q1p/PPPBbPPP/R4K1R w kq - 0 2";
+
+    let mut g = Game::from_fen(&ts, fen).unwrap();
+    // eprintln!("g = {:?}", g);
+
+    // let mv = Move::new_quiet("d7", "d6", Pawn);
+    // let mv = Move::new_capture("e7", "d7", Queen, Pawn);
+
+    // return;
+
+    let mv = Move::new_quiet("a6", "d3", Bishop);
+
+    // let k0 = MoveGen::new_move_is_legal(&ts, &g, mv);
+    // // let k0 = movegen.move_is_legal(mv);
+    // eprintln!("k0 = {:?}", k0);
+
+
+    // let b = g.find_checkers(&ts);
+    // eprintln!("b = {:?}", b);
+
+    // let to: Coord = g.get(King, g.state.side_to_move).bitscan();
+    // eprintln!("to = {:?}", to);
+
+    let side = g.state.side_to_move;
+
+    // let moves_r = MoveGen::_gen_sliding_single(&ts, &g, Rook, to, side, None);
+    // let moves_b = MoveGen::_gen_sliding_single(&ts, &g, Bishop, to, side, None);
+
+    // // eprintln!("moves_r = {:?}", moves_r);
+    // eprintln!("moves_b = {:?}", moves_b);
+
+    // let rooks   = moves_r & (g.get_piece(Rook) | g.get_piece(Queen));
+    // let bishops = moves_b & (g.get_piece(Bishop) | g.get_piece(Queen));
+
+    // eprintln!("rooks   = {:?}", rooks);
+    // eprintln!("bishops = {:?}", bishops);
+
+    // let ps = Tables::gen_pawn_move(c0).get_capture(Black);
+    // eprintln!("ps = {:?}", ps);
+
+    // let b = g.find_attackers_to(&ts, p0, !side, false);
+    // eprintln!("b = {:?}", b);
+
+    // let moves_b = g._search_sliding_single(&ts, Bishop, c0, side, None);
+    // let bishops = moves_b & (self.get_piece(Bishop) | self.get_piece(Queen));
+
+    // let b = ts.get_pawn(c0).get_capture(Black);
+    // eprintln!("b = {:?}", b);
+
+    // let b = g.get_checkers();
+    // eprintln!("b = {:?}", b);
+
+    // eprintln!("g.state.in_check = {:?}", g.state.in_check);
+
+    // let mvs = MoveGen::generate_list_legal(&ts, &g, None);
+    // for mv in mvs.iter() {
+    //     eprintln!("mv = {:?}", mv);
+    // }
+
+    // return;
+
     // let ((t,t_sf),(_,_)) = test_stockfish(&ts, fen, d as u64, true, true).unwrap();
 
     // let (k0,mvs0) = g.perft(&ts, d as u64);
@@ -4195,17 +4260,17 @@ fn main_perft(depth: Option<u64>) {
 
     const N: usize = 3;
 
-    let t0 = std::time::Instant::now();
-    for _ in 0..N {
-        for (k,fen) in fens.iter().enumerate() {
-            let mut g = Game::from_fen(&ts, fen).unwrap();
-            let (tot,_) = MoveGen::perft(&ts, &g, d);
-            eprintln!("{} = {:>8?}", k, tot);
-        }
-    }
-    let t1 = t0.elapsed().as_secs_f64();
-    println!("perft done in {} seconds.", t1);
-    return;
+    // let t0 = std::time::Instant::now();
+    // for _ in 0..N {
+    //     for (k,fen) in fens.iter().enumerate() {
+    //         let mut g = Game::from_fen(&ts, fen).unwrap();
+    //         let (tot,_) = MoveGen::perft(&ts, &g, d);
+    //         eprintln!("{} = {:>8?}", k, tot);
+    //     }
+    // }
+    // let t1 = t0.elapsed().as_secs_f64();
+    // println!("perft done in {} seconds.", t1);
+    // return;
 
     // const N: usize = 3;
     // let mut times = vec![];

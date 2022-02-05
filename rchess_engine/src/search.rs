@@ -484,11 +484,11 @@ impl Game {
         }
     }
 
-    pub fn find_checkers(&self, ts: &Tables, col: Color) -> BitBoard {
-        let p0: Coord = self.get(King, col).bitscan().into();
+    pub fn find_checkers(&self, ts: &Tables, side: Color) -> BitBoard {
+        let p0: Coord = self.get(King, side).bitscan();
 
-        let moves = self.find_attackers_to(&ts, p0, col, false);
-        let moves = moves & self.get_color(!col);
+        let moves = self.find_attackers_to(&ts, p0, !side, false);
+        // let moves = moves & self.get_color(!col);
         moves
     }
 
@@ -511,7 +511,7 @@ impl Game {
         let occ = self.all_occupied() ^ snipers;
 
         snipers.into_iter().for_each(|sq| {
-            let b = ts.between(c0, sq.into()) & occ;
+            let b = ts.between(c0, sq) & occ;
 
             if b.is_not_empty() & !b.more_than_one() {
                 blockers |= b;
@@ -606,11 +606,16 @@ impl Game {
             BitBoard::empty()
         };
 
-        ts.get_pawn(c0).get_capture(!side)
+        let pawns = ts.get_pawn(c0).get_capture(!side) & self.get_piece(Pawn);
+
+        let out = pawns
             | (ts.get_knight(c0) & self.get_piece(Knight))
             | rooks
             | bishops
-            | king
+            | king;
+
+        out & self.get_color(side)
+        // out
     }
 
     #[cfg(feature = "nope")]

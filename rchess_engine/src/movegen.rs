@@ -967,7 +967,7 @@ impl<'a> MoveGen<'a> {
         let stack = ABStack::new();
         let mut gen = Self::new(ts, &g, None, &stack, depth, 0);
 
-        let moves = Self::generate_list(ts, &g, None);
+        let moves = Self::generate_list_legal(ts, &g, None);
 
         for mv in moves {
             if let Ok(g2) = g.make_move_unchecked(&ts, mv) {
@@ -1219,6 +1219,97 @@ impl<'a> MoveGen<'a> {
     }
 }
 
+/// find_checkers, find_attacks_by_side, find_attackers_to, find_slider_blockers
+impl Game {
+    pub fn find_checkers(&self, ts: &Tables) -> BitBoard {
+        let ksq = self.get(King, self.state.side_to_move).bitscan();
+        self.find_attackers_to(ts, ksq, !self.state.side_to_move, false)
+    }
+
+    pub fn find_attackers_to(&self, ts: &Tables, to: Coord, side: Color, inc_king: bool) -> BitBoard {
+
+        let pawns = ts.get_pawn(to).get_capture(!side) & self.get_piece(Pawn);
+
+        let moves_r = MoveGen::_gen_sliding_single(ts, self, Rook, to, !side, None);
+        let moves_b = MoveGen::_gen_sliding_single(ts, self, Bishop, to, !side, None);
+
+        let rooks   = moves_r & (self.get_piece(Rook) | self.get_piece(Queen));
+        let bishops = moves_b & (self.get_piece(Bishop) | self.get_piece(Queen));
+
+        let king = if inc_king {
+            // self._search_king_attacks(&ts, c0, side) & self.get_piece(King)
+            unimplemented!()
+        } else {
+            BitBoard::empty()
+        };
+
+        let out = pawns
+            | (ts.get_knight(to) & self.get_piece(Knight))
+            | rooks
+            | bishops
+            | king;
+
+        out & self.get_color(side)
+    }
+
+    pub fn find_attacks_by_side(&self, ts: &Tables, to: Coord, side: Color, king: bool) -> bool {
+
+        let moves_k = ts.get_king(to);
+        if (moves_k & self.get(King, side)).is_not_empty() { return true; }
+
+        let moves_p = ts.get_pawn(to).get_capture(!side);
+        if (moves_p & self.get(Pawn, side)).is_not_empty() { return true; }
+
+        let moves_n = ts.get_knight(to);
+        if (moves_n & self.get(Knight, side)).is_not_empty() { return true; }
+
+        let occ = if king {
+            self.all_occupied() & !self.get(King, !side)
+        } else {
+            self.all_occupied()
+        };
+
+        let moves_r = MoveGen::_gen_sliding_single(&ts, &self, Rook, to, !side, Some(occ));
+        if ((moves_r & self.get(Rook, side)).is_not_empty())
+            | ((moves_r & self.get(Queen, side)).is_not_empty()) { return true; }
+
+        let moves_b = MoveGen::_gen_sliding_single(&ts, &self, Bishop, to, !side, Some(occ));
+        if ((moves_b & self.get(Bishop, side)).is_not_empty())
+            | ((moves_b & self.get(Queen, side)).is_not_empty()) { return true; }
+
+        false
+    }
+
+    pub fn find_slider_blockers(&self, ts: &Tables, c0: Coord, side: Color) -> BitBoard {
+
+        let mut blockers = BitBoard::empty();
+
+        let queens  = self.get_piece(Queen);
+        let bishops = self.get_piece(Bishop);
+        let rooks   = self.get_piece(Rook);
+        // let sliders = queens | bishops | rooks;
+
+        let snipers = (ts.get_pseudo_attacks(Rook, c0) & (queens | rooks))
+            | (ts.get_pseudo_attacks(Bishop, c0) & (queens | bishops));
+
+        // let snipers = snipers & self.all_occupied();
+        let snipers = snipers & self.get_color(!side);
+
+        let occ = self.all_occupied() ^ snipers;
+
+        snipers.into_iter().for_each(|sq| {
+            let b = ts.between(c0, sq) & occ;
+
+            if b.is_not_empty() & !b.more_than_one() {
+                blockers |= b;
+            }
+        });
+
+        blockers
+    }
+
+}
+
 /// Check legal
 impl<'a> MoveGen<'a> {
 
@@ -1244,7 +1335,8 @@ impl<'a> MoveGen<'a> {
             if self.game.state.en_passant.is_none() {
                 return false;
             } else if let Some(g2) = self.game.clone()._apply_move_unchecked(self.ts, mv, false) {
-                let checks = g2.find_checkers(self.ts, self.game.state.side_to_move);
+                // let checks = g2.find_checkers(self.ts, self.game.state.side_to_move);
+                let checks = g2.find_checkers(self.ts);
                 return checks.is_empty();
             } else {
                 return false;
@@ -1262,7 +1354,7 @@ impl<'a> MoveGen<'a> {
                 // OR moving along pin ray
                 let x = (BitBoard::single(mv.sq_from()) & pins).is_empty()
                     || self.ts.aligned(
-                        mv.sq_from(), mv.sq_to(), self.game.get(King, self.side).bitscan().into());
+                        mv.sq_from(), mv.sq_to(), self.game.get(King, self.side).bitscan());
 
                 // not in check
                 let x0 = x && !self.game.state.in_check;
@@ -1367,11 +1459,11 @@ mod pieces {
 
                     let mut ms = ps.shift_dir(dir);
 
-                    // ms &= self.game.state.check_squares[Pawn];
+                    ms &= self.game.state.check_squares[Pawn];
 
-                    let ksq = self.game.get(King, !self.game.state.side_to_move).bitscan();
-                    let check_squares = self.ts.get_pawn(ksq).get_capture(!self.game.state.side_to_move);
-                    ms &= check_squares;
+                    // let ksq = self.game.get(King, !self.game.state.side_to_move).bitscan();
+                    // let check_squares = self.ts.get_pawn(ksq).get_capture(!self.game.state.side_to_move);
+                    // ms &= check_squares;
 
                     let blockers = ps & self.game.get_pins(!self.side);
                     let blockers = blockers.shift_dir(dir);
@@ -1528,10 +1620,10 @@ mod pieces {
                 },
                 MoveGenType::QuietChecks => {
 
-                    // let check_squares = self.game.state.check_squares[Knight];
+                    let check_squares = self.game.state.check_squares[Knight];
 
-                    let ksq = self.game.get(King, !self.game.state.side_to_move).bitscan();
-                    let check_squares = self.ts.get_knight(ksq);
+                    // let ksq = self.game.get(King, !self.game.state.side_to_move).bitscan();
+                    // let check_squares = self.ts.get_knight(ksq);
 
                     let blockers = self.game.get_pins(!self.side);
 
@@ -1564,7 +1656,9 @@ mod pieces {
             match gen {
                 MoveGenType::Captures => {
                     for from in pieces.into_iter() {
-                        let moves   = self._gen_sliding_single(pc, from, None);
+                        // let moves   = self._gen_sliding_single(pc, from, None);
+                        let moves   = Self::_gen_sliding_single(
+                            &self.ts, &self.game, pc, from, self.side, None);
                         let mut captures = moves & self.game.get_color(!self.side);
                         if let Some(tgt) = target { captures &= tgt; }
                         captures.into_iter().for_each(|to| {
@@ -1576,7 +1670,10 @@ mod pieces {
                 },
                 MoveGenType::Quiets => {
                     for from in pieces.into_iter() {
-                        let moves   = self._gen_sliding_single(pc, from, None);
+                        // let moves   = self._gen_sliding_single(pc, from, None);
+                        // let moves   = Self::_gen_sliding_single(&self.ts, &self.game, pc, from, None);
+                        let moves   = Self::_gen_sliding_single(
+                            &self.ts, &self.game, pc, from, self.side, None);
                         let mut quiets  = moves & self.game.all_empty();
                         if let Some(tgt) = target { quiets &= tgt; }
                         quiets.into_iter().for_each(|sq2| {
@@ -1591,21 +1688,24 @@ mod pieces {
                 },
                 MoveGenType::QuietChecks => {
 
-                    // let check_squares = self.game.state.check_squares[pc];
+                    let check_squares = self.game.state.check_squares[pc];
 
-                    let ksq = self.game.get(King, !self.game.state.side_to_move).bitscan();
-                    let check_squares = match pc {
-                        Bishop => self.ts.attacks_bishop(ksq, self.game.all_occupied()),
-                        Rook   => self.ts.attacks_rook(ksq, self.game.all_occupied()),
-                        Queen  => self.ts.attacks_bishop(ksq, self.game.all_occupied())
-                            | self.ts.attacks_rook(ksq, self.game.all_occupied()),
-                        _ => unreachable!(),
-                    };
+                    // let ksq = self.game.get(King, !self.game.state.side_to_move).bitscan();
+                    // let check_squares = match pc {
+                    //     Bishop => self.ts.attacks_bishop(ksq, self.game.all_occupied()),
+                    //     Rook   => self.ts.attacks_rook(ksq, self.game.all_occupied()),
+                    //     Queen  => self.ts.attacks_bishop(ksq, self.game.all_occupied())
+                    //         | self.ts.attacks_rook(ksq, self.game.all_occupied()),
+                    //     _ => unreachable!(),
+                    // };
 
                     let blockers = self.game.get_pins(!self.side);
 
                     pieces.into_iter().for_each(|from| {
-                        let mut ms = self._gen_sliding_single(pc, from, None);
+                        // let mut ms = self._gen_sliding_single(pc, from, None);
+                        // let mut ms = Self::_gen_sliding_single(&self.ts, &self.game, pc, from, None);
+                        let mut ms = Self::_gen_sliding_single(
+                            &self.ts, &self.game, pc, from, self.side, None);
                         ms &= self.game.all_empty();
                         if blockers.is_zero_at(from) {
                             ms &= check_squares;
@@ -1625,22 +1725,25 @@ mod pieces {
         }
 
         pub fn _gen_sliding_single(
-            &self,
+            // &self,
+            ts:     &Tables,
+            g:      &Game,
             pc:     Piece,
             c0:     Coord,
+            side:   Color,
             occ:    Option<BitBoard>,
         ) -> BitBoard {
             let occ = match occ {
-                None    => self.game.all_occupied(),
+                None    => g.all_occupied(),
                 Some(b) => b,
             };
             let moves = match pc {
-                Rook   => self.ts.attacks_rook(c0, occ),
-                Bishop => self.ts.attacks_bishop(c0, occ),
-                Queen  => self.ts.attacks_bishop(c0, occ) | self.ts.attacks_rook(c0, occ),
+                Rook   => ts.attacks_rook(c0, occ),
+                Bishop => ts.attacks_bishop(c0, occ),
+                Queen  => ts.attacks_bishop(c0, occ) | ts.attacks_rook(c0, occ),
                 _      => panic!("search sliding: {:?}", pc),
             };
-            moves & !self.game.get_color(self.side)
+            moves & !g.get_color(side)
         }
 
     }
@@ -1678,6 +1781,7 @@ mod pieces {
                     if (between & self.game.all_occupied()).is_empty() {
                         if !between.into_iter().any(
                             |sq| self.game.find_attacks_by_side(self.ts, sq, !self.side, true)) {
+                            // |sq| Self::find_attacks_by_side(&self.ts, &self.game, sq, !self.side, true)) {
                             if let Some(mut buf) = buf.as_mut() {
                                 buf.push(mv);
                             } else {
@@ -1703,6 +1807,7 @@ mod pieces {
                     if (between_blocks & self.game.all_occupied()).is_empty() {
                         if !between_attacks.into_iter().any(
                             |sq| self.game.find_attacks_by_side(self.ts, sq, !self.side, true)) {
+                            // |sq| Self::find_attacks_by_side(&self.ts, &self.game, sq, !self.side, true)) {
                             if let Some(mut buf) = buf.as_mut() {
                                 buf.push(mv);
                             } else {

@@ -314,6 +314,12 @@ impl Tables {
         self.between_bb[s1][s2]
     }
 
+    // /// Excludes s1, Includes s2
+    // /// When not aligned, returns s2
+    // pub fn between(&self, s1: Coord, s2: Coord) -> BitBoard {
+    //     self.between_bb[s1][s2]
+    // }
+
     // pub fn between_exclusive<T: Into<Coord>>(&self, s1: T, s2: T) -> BitBoard {
     //     let (s1,s2): (Coord,Coord) = (s1.into(),s2.into());
     //     let (s1,s2): (u32,u32) = (s1.into(),s2.into());
@@ -734,7 +740,7 @@ impl Tables {
         out
     }
 
-    fn gen_pawn_move(c0: Coord) -> MoveSetPawn {
+    pub fn gen_pawn_move(c0: Coord) -> MoveSetPawn {
 
         let mut wq = BitBoard::empty();
         if let Some(b) = N.shift_coord(c0) { wq = wq.set_one(b); }

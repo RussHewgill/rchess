@@ -63,7 +63,7 @@ pub mod parsing;
 
 pub mod see;
 pub mod qsearch;
-pub mod search;
+// pub mod search;
 pub mod movegen;
 pub mod explore;
 pub mod alphabeta;
