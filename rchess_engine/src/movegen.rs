@@ -1238,7 +1238,9 @@ impl Game {
 
         let king = if inc_king {
             // self._search_king_attacks(&ts, c0, side) & self.get_piece(King)
-            unimplemented!()
+            // unimplemented!()
+            let ksq = self.get(King, side).bitscan();
+            ts.get_king(ksq) & !self.get_color(side)
         } else {
             BitBoard::empty()
         };
@@ -1247,7 +1249,8 @@ impl Game {
             | (ts.get_knight(to) & self.get_piece(Knight))
             | rooks
             | bishops
-            | king;
+            // | king
+            ;
 
         out & self.get_color(side)
     }
