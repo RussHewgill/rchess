@@ -55,13 +55,13 @@ mod tapered {
 /// Evaluate
 impl ExHelper {
 
-    fn use_nnue_imbalance(g: &Game) -> bool {
-        let imbalance = g.state.npm[White]
-            + Pawn.score_tapered() * g.state.material.get(Pawn, White) as Score
-            - g.state.npm[Black]
-            - Pawn.score_tapered() * g.state.material.get(Pawn, Black) as Score;
-        imbalance.taper(g) < 4 * Pawn.score()
-    }
+    // fn use_nnue_imbalance(g: &Game) -> bool {
+    //     let imbalance = g.state.npm[White]
+    //         + Pawn.score_tapered() * g.state.material.get(Pawn, White) as Score
+    //         - g.state.npm[Black]
+    //         - Pawn.score_tapered() * g.state.material.get(Pawn, Black) as Score;
+    //     imbalance.taper(g) < 4 * Pawn.score()
+    // }
 
     /// NNUE eval is ~18x slower than classic (only material and psqt)
     /// so fallback to classic for large material imbalance

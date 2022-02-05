@@ -65,10 +65,16 @@ impl MatEval {
     }
 
     pub fn imbalance(g: &Game) -> TaperedScore {
-        g.state.npm[White]
+
+        g.count_npm(White)
             + Pawn.score_tapered() * g.state.material.get(Pawn, White) as Score
-            - g.state.npm[Black]
+            - g.count_npm(Black)
             - Pawn.score_tapered() * g.state.material.get(Pawn, Black) as Score
+
+        // g.state.npm[White]
+        //     + Pawn.score_tapered() * g.state.material.get(Pawn, White) as Score
+        //     - g.state.npm[Black]
+        //     - Pawn.score_tapered() * g.state.material.get(Pawn, Black) as Score
     }
 
     pub fn new(ts: &Tables, g: &Game) -> Self {
