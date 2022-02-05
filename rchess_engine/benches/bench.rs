@@ -339,21 +339,21 @@ pub fn crit_bench_1(c: &mut Criterion) {
     //     let (m,stats) = ex.explore(&ts, None);
     // }));
 
-    // let mut moves = vec![];
-    // let st = ABStack::new();
-    // for g in wacs.iter() {
-    //     let mut movegen = MoveGen::new(&ts, g, None, &st, 0, 0);
-    //     let mv0 = movegen.next(&st).unwrap();
-    //     let mv1 = movegen.next(&st).unwrap();
-    //     moves.push((g,mv0,mv1));
-    // }
+    let mut moves = vec![];
+    let st = ABStack::new();
+    for g in wacs.iter() {
+        let mut movegen = MoveGen::new(&ts, g, None, &st, 0, 0);
+        let mv0 = movegen.next(&st).unwrap();
+        let mv1 = movegen.next(&st).unwrap();
+        moves.push((g,mv0,mv1));
+    }
 
-    // group.bench_function("make move", |b| b.iter(|| {
-    //     for (g,mv0,mv1) in moves.iter() {
-    //         let g0 = g.make_move_unchecked(&ts, *mv0).unwrap();
-    //         let g1 = g.make_move_unchecked(&ts, *mv1).unwrap();
-    //     }
-    // }));
+    group.bench_function("make move", |b| b.iter(|| {
+        for (g,mv0,mv1) in moves.iter() {
+            let g0 = g.make_move_unchecked(&ts, *mv0).unwrap();
+            let g1 = g.make_move_unchecked(&ts, *mv1).unwrap();
+        }
+    }));
 
     // group.bench_function("make move new", |b| b.iter(|| {
     //     for (g,mv0,mv1) in moves.iter() {

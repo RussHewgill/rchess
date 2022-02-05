@@ -1084,9 +1084,11 @@ impl<'a> MoveGen<'a> {
     }
 
     pub fn gives_check(&self, mv: Move) -> bool {
-        Self::_gives_check(&self.ts, &self.game, mv)
+        // Self::_gives_check(&self.ts, &self.game, mv)
+        false
     }
 
+    #[cfg(feature = "nope")]
     fn _gives_check(ts: &Tables, g: &Game, mv: Move) -> bool {
 
         let ksq_enemy = g.get(King, !g.state.side_to_move).bitscan();
@@ -1365,7 +1367,11 @@ mod pieces {
 
                     let mut ms = ps.shift_dir(dir);
 
-                    ms &= self.game.state.check_squares[Pawn];
+                    // ms &= self.game.state.check_squares[Pawn];
+
+                    let ksq = self.game.get(King, !self.game.state.side_to_move).bitscan();
+                    let check_squares = self.ts.get_pawn(ksq).get_capture(!self.game.state.side_to_move);
+                    ms &= check_squares;
 
                     let blockers = ps & self.game.get_pins(!self.side);
                     let blockers = blockers.shift_dir(dir);
@@ -1522,7 +1528,11 @@ mod pieces {
                 },
                 MoveGenType::QuietChecks => {
 
-                    let check_squares = self.game.state.check_squares[Knight];
+                    // let check_squares = self.game.state.check_squares[Knight];
+
+                    let ksq = self.game.get(King, !self.game.state.side_to_move).bitscan();
+                    let check_squares = self.ts.get_knight(ksq);
+
                     let blockers = self.game.get_pins(!self.side);
 
                     ks.into_iter().for_each(|from| {
@@ -1581,7 +1591,17 @@ mod pieces {
                 },
                 MoveGenType::QuietChecks => {
 
-                    let check_squares = self.game.state.check_squares[pc];
+                    // let check_squares = self.game.state.check_squares[pc];
+
+                    let ksq = self.game.get(King, !self.game.state.side_to_move).bitscan();
+                    let check_squares = match pc {
+                        Bishop => self.ts.attacks_bishop(ksq, self.game.all_occupied()),
+                        Rook   => self.ts.attacks_rook(ksq, self.game.all_occupied()),
+                        Queen  => self.ts.attacks_bishop(ksq, self.game.all_occupied())
+                            | self.ts.attacks_rook(ksq, self.game.all_occupied()),
+                        _ => unreachable!(),
+                    };
+
                     let blockers = self.game.get_pins(!self.side);
 
                     pieces.into_iter().for_each(|from| {

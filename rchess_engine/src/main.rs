@@ -3360,12 +3360,12 @@ fn main9() {
     //     hook(panicinfo)
     // }));
 
-    // let k0 = std::mem::size_of::<SearchInfo>();
-    // eprintln!("k0 = {:?}", k0);
-    print_size_of!(Game);      // 288
-    print_size_of!(GameState); // 176
-    print_size_of!(BitBoard);
-    return;
+    // // let k0 = std::mem::size_of::<SearchInfo>();
+    // // eprintln!("k0 = {:?}", k0);
+    // print_size_of!(Game);      // 288
+    // print_size_of!(GameState); // 176
+    // // print_size_of!(BitBoard);
+    // return;
 
     // let t = 10.0;
     // let t = 4.0;
