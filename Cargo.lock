@@ -951,6 +951,14 @@ dependencies = [
 [[package]]
 name = "rchess_tuner"
 version = "0.1.0"
+dependencies = [
+ "chrono",
+ "env_logger",
+ "gag",
+ "log",
+ "rchess_engine",
+ "simplelog",
+]
 
 [[package]]
 name = "rchess_uci"

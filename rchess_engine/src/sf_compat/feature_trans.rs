@@ -1647,10 +1647,14 @@ mod old {
     #[derive(Debug,Clone)]
     pub struct NNFeatureTrans {
         pub biases:         Aligned<A64,Vec<i16>>, // 1024
-        // pub biases:         Aligned<A64,Box<[i16; 1024]>>, // 1024
+        // pub biases:         Box<Aligned<A64,[i16; HALF_DIMS]>>, // 1024
 
         pub weights:        Aligned<A64,Vec<i16>>, // 1024 * INPUT = 23068672
         pub psqt_weights:   Aligned<A64,Vec<i32>>, // INPUT * PSQT_BUCKETS = 180224
+
+        // pub weights:        Box<Aligned<A64,[i16; HALF_DIMS * Self::DIMS_IN]>>, // 1024 * INPUT = 23068672
+        // // INPUT * PSQT_BUCKETS = 180224
+        // pub psqt_weights:   Box<Aligned<A64,[i32; Self::DIMS_IN * Self::PSQT_BUCKETS]>>,
 
         pub accum:          NNAccum,
 
@@ -1673,11 +1677,13 @@ mod old {
         pub fn new() -> Self {
             Self {
                 biases:         Aligned(vec![0; HALF_DIMS]),
-                // biases:         Aligned(Box::new([0; HALF_DIMS])),
+                // biases:         Box::new(Aligned([0; HALF_DIMS])),
 
                 weights:        Aligned(vec![0; HALF_DIMS * Self::DIMS_IN]),
-                // weights:        [0; HALF_DIMS * Self::DIMS_IN],
                 psqt_weights:   Aligned(vec![0; Self::DIMS_IN * Self::PSQT_BUCKETS]),
+
+                // weights:        Box::new(Aligned([0; HALF_DIMS * Self::DIMS_IN])),
+                // psqt_weights:   Box::new(Aligned([0; Self::DIMS_IN * Self::PSQT_BUCKETS])),
 
                 accum:          NNAccum::new(),
 
@@ -1799,9 +1805,9 @@ mod old {
             unsafe {
                 // let src = self.accum_stack[accum_idx - 1].accum[persp].as_ptr();
                 // let dst = self.accum_stack[accum_idx].accum[persp].as_mut_ptr();
-                let src = self.biases.as_ptr();
-                let dst = self.accum.accum[persp].as_ptr();
-                std::ptr::copy_nonoverlapping(src, dst, );
+                let src: *const i16 = self.biases.as_ptr();
+                let dst: *mut i16 = self.accum.accum[persp].as_mut_ptr();
+                std::ptr::copy_nonoverlapping(src, dst, HALF_DIMS);
             }
 
         }
@@ -1812,8 +1818,8 @@ mod old {
             use crate::simd_utils::safe_arch::*;
 
             assert!(self.biases.len() == self.accum.accum[persp].len());
-            // self.accum.accum[persp].copy_from_slice(&self.biases);
-            self.accum.accum[persp].copy_from_slice(self.biases.as_ref());
+            self.accum.accum[persp].copy_from_slice(&self.biases);
+            // self.accum.accum[persp].copy_from_slice(self.biases.as_ref().as_ref());
 
             let mut active = ArrayVec::default();
             NNAccum::append_active(g, persp, &mut active);
@@ -1960,139 +1966,6 @@ mod old {
             //     }
             // }
 
-        }
-
-    }
-
-    /// Directly Apply Moves
-    #[cfg(feature = "nope")]
-    impl NNFeatureTrans {
-
-        // #[cfg(feature = "nope")]
-        pub fn make_move_add(
-            // &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) -> NNDelta {
-            &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) -> NNIndex {
-            // eprintln!("adding ({:?},{:?}) {:?} {:?} at {:?}", persp, king_sq, side, pc, sq);
-            let d_add = super::NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
-            // eprintln!("d_add = {:?}", d_add);
-            self.accum_add(persp, d_add, true);
-            d_add
-        }
-
-        // #[cfg(feature = "nope")]
-        pub fn make_move_rem(
-            // &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) -> NNDelta {
-            &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color, sq: Coord) -> NNIndex {
-            let d_rem = super::NNUE4::make_index_half_ka_v2(king_sq, persp, pc, side, sq);
-            self.accum_rem(persp, d_rem, true);
-            d_rem
-        }
-
-        // #[cfg(feature = "nope")]
-        pub fn make_move_move(
-            &mut self, persp: Color, king_sq: Coord, pc: Piece, side: Color,
-            // from: Coord, to: Coord) -> [NNDelta; 2] {
-            from: Coord, to: Coord) -> [NNIndex; 2] {
-            let x = self.make_move_rem(persp, king_sq, pc, side, from);
-            let y = self.make_move_add(persp, king_sq, pc, side, to);
-            [x, y]
-        }
-
-        pub fn make_move(&mut self, g: &Game, mv: Move) {
-            if mv.piece() == Some(King) {
-                self.accum.push_copy();
-                self.reset_accum(g);
-            } else {
-                self.accum.push_copy();
-                self.reset_accum(g);
-                // self._make_move(g, White, mv);
-                // self._make_move(g, Black, mv);
-                // self._make_move(g, !g.state.side_to_move, mv);
-                // a.extend(b.into_iter());
-                // self.accum.stack_delta.push(a);
-            }
-        }
-
-        /// Noticable speed up
-        #[cfg(feature = "nope")]
-        pub fn make_move(&mut self, g: &Game, mv: Move) {
-            if mv.piece() == Some(King) {
-                self.accum.push_copy();
-                self.reset_accum(g);
-            } else {
-                let mut a = self._make_move(g, White, mv);
-                let b = self._make_move(g, Black, mv);
-                // self._make_move(g, !g.state.side_to_move, mv);
-                a.extend(b.into_iter());
-                self.accum.stack_delta.push(a);
-            }
-        }
-
-        // #[cfg(feature = "nope")]
-        pub fn _make_move(&mut self, g: &Game, persp: Color, mv: Move) -> NNDeltas {
-
-            // self.update_accum(g, White);
-            // self.update_accum(g, Black);
-            self.update_accum(g, persp);
-
-            let mut out = ArrayVec::new();
-
-            assert!(mv.piece() != Some(King));
-
-            let king_sq = g.get(King,persp).bitscan();
-            let side = !g.state.side_to_move;
-            // let side = g.state.side_to_move;
-            match mv {
-                Move::Quiet { from, to, pc } => {
-                    let a = self.make_move_move(persp, king_sq, pc, side, from, to);
-                    out.push(a[0]);
-                    out.push(a[1]);
-                },
-                Move::PawnDouble { from, to } => {
-                    let a = self.make_move_move(persp, king_sq, Pawn, side, from, to);
-                    out.push(a[0]);
-                    out.push(a[1]);
-                },
-                Move::Capture { from, to, pc, victim } => {
-                    let a = self.make_move_move(persp, king_sq, pc, side, from, to);
-                    let b = self.make_move_rem(persp, king_sq, victim, !side, to);
-                    out.push(a[0]);
-                    out.push(a[1]);
-                    out.push(b);
-                },
-                Move::EnPassant { from, to, capture } => {
-                    let a = self.make_move_move(persp, king_sq, Pawn, side, from, to);
-                    let b = self.make_move_rem(persp, king_sq, Pawn, !side, capture);
-                    out.push(a[0]);
-                    out.push(a[1]);
-                    out.push(b);
-                },
-                Move::Castle { from, to, rook_from, rook_to } => {
-                    // let a = self.make_move_move(persp, king_sq, King, side, from, to);
-                    // let b = self.make_move_move(persp, king_sq, Rook, side, rook_from, rook_to);
-                    // out.push(a[0]);
-                    // out.push(a[1]);
-                    // out.push(b[0]);
-                    // out.push(b[1]);
-                    unimplemented!()
-                },
-                Move::Promotion { from, to, new_piece } => {
-                    let a = self.make_move_rem(persp, king_sq, Pawn, side, from);
-                    let b = self.make_move_add(persp, king_sq, new_piece, side, to);
-                    out.push(a);
-                    out.push(b);
-                },
-                Move::PromotionCapture { from, to, new_piece, victim } => {
-                    let a = self.make_move_rem(persp, king_sq, Pawn, side, from);
-                    let b = self.make_move_add(persp, king_sq, new_piece, side, to);
-                    let c = self.make_move_rem(persp, king_sq, victim, !side, to);
-                    out.push(a);
-                    out.push(b);
-                    out.push(c);
-                },
-                Move::NullMove => {},
-            }
-            NNDeltas::Deltas(out)
         }
 
     }
@@ -2400,7 +2273,7 @@ mod old {
         pub fn _update_accum(&mut self, g: &Game, persp: Color) {
             assert!(self.biases.len() == self.accum.accum[persp].len());
             self.accum.accum[persp].copy_from_slice(&self.biases);
-            // self.accum.accum[persp].copy_from_slice(self.biases.as_ref());
+            // self.accum.accum[persp].copy_from_slice(self.biases.as_ref().as_ref());
 
             let mut active = ArrayVec::default();
             NNAccum::append_active(g, persp, &mut active);

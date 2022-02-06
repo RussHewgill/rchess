@@ -92,7 +92,6 @@ fn main() -> std::io::Result<()> {
     // let timer = Timer::default(should_stop.clone());
     // let searcher = Arc::new(Mutex::new(Searcher::new(EngineSettings::default(), timer)));
 
-    let should_stop  = Arc::new(AtomicBool::new(false));
     // let timesettings = TimeSettings::new_f64(10., 0.1);
     let timesettings = TimeSettings::new_f64(
         0.0,
@@ -221,7 +220,8 @@ fn main() -> std::io::Result<()> {
                             x => panic!("Position not fen? {:?},  {:?}", x, params),
                         }
                     },
-                    "stop"       => should_stop.store(true, Ordering::SeqCst),
+                    // "stop"       => should_stop.store(true, Ordering::SeqCst),
+                    "stop"       => explorer.stop.store(true, Ordering::SeqCst),
                     "ponderhit"  => unimplemented!(),
                     "quit"       => return Ok(()),
                     "go"         => {
