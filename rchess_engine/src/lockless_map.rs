@@ -262,7 +262,8 @@ impl TTEntry2 {
 /// Getters
 impl TTEntry {
     pub fn get_searchinfo(self) -> Option<SearchInfo> {
-        self.entry.map(|x| x.get_searchinfo()).flatten()
+        // self.entry.map(|x| x.get_searchinfo()).flatten()
+        self.entry.and_then(|x| x.get_searchinfo())
     }
 
     pub fn get_eval(self) -> Option<TTEval> {

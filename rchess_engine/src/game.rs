@@ -1114,7 +1114,7 @@ impl Game {
 
         if pc != King {
 
-            if !(self.state.material.buf[side][pc.index()] > 0) {
+            if self.state.material.buf[side][pc.index()] <= 0 {
                 panic!("wat: \n{:?}\n{:?}\n{:?}\n{:?}",
                        self.to_fen(), self,
                        (Coord::from(at), pc, side),

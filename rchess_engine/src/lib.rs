@@ -20,11 +20,11 @@
 // XXX: also brain allow ::all
 #![allow(
     // clippy::all,
-    clippy::restriction,
+    // clippy::restriction,
     clippy::pedantic,
     clippy::nursery,
-    clippy::cargo,
-    clippy::complexity,
+    // clippy::cargo,
+    // clippy::complexity,
     // clippy::correctness,
     clippy::nursery,
     // clippy::restriction,

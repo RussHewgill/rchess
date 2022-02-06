@@ -1808,9 +1808,7 @@ mod old {
                     cast_slice_to_m256i(&bs)
                 };
 
-                for i in 0..Self::NUM_REGS {
-                    acc[i] = biases_tile[i];
-                }
+                acc[..Self::NUM_REGS].copy_from_slice(&biases_tile[..Self::NUM_REGS]);
 
                 for idx in active.iter() {
                     let offset = HALF_DIMS * idx.0 + k * Self::TILE_HEIGHT;
@@ -1899,7 +1897,7 @@ mod old {
             for k in 0..Self::PSQT_BUCKETS / Self::TILE_HEIGHT_PSQT {
                 let acc_tile_psqt: &mut [m256i] = unsafe {
                     let xs = &mut self.accum.psqt[persp][k * Self::TILE_HEIGHT_PSQT..];
-                    cast_slice_to_m256i_mut(xs.as_mut())
+                    cast_slice_to_m256i_mut(xs)
                 };
                 for i in 0..Self::NUM_REGS_PSQT {
                     acc_psqt[i] = load_m256i(&acc_tile_psqt[i]);

@@ -4,6 +4,7 @@ members = [
     "rchess_uci",
     "rchess_engine",
     # "rchess_magics",
+    "rchess_tuner"
 ]
 # exclude = [
 #     "rchess_game",

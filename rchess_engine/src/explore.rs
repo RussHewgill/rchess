@@ -431,7 +431,7 @@ impl Explorer {
         self.game = g;
     }
 
-    pub fn _update_game_movelist<'a>(
+    pub fn _update_game_movelist(
         &mut self,
         ts:          &Tables,
         moves:       &[Move],

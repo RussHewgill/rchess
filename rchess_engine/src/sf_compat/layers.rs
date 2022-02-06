@@ -718,6 +718,7 @@ mod nn_affine {
 
         // #[cfg(feature = "nope")]
         #[cfg(target_feature = "avx2")]
+        /// TODO: when SIZE_OUTPUT % OUTPUTSIMD_WIDTH == 0
         pub fn _propagate_avx2_small<'a>(
             &'a mut self, trans_features: &'a [u8]
         ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
@@ -739,7 +740,7 @@ mod nn_affine {
             // };
 
             // if Self::SIZE_OUTPUT % OUTPUT_SIMD_WIDTH == 0 {
-            if false && Self::SIZE_OUTPUT % OUTPUT_SIMD_WIDTH == 0 {
+            if false {
                 let num_chunks: usize = IS / 4;
                 let num_regs: usize = Self::SIZE_OUTPUT / OUTPUT_SIMD_WIDTH;
 

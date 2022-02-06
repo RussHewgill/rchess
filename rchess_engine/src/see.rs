@@ -124,6 +124,63 @@ impl Game {
 impl Game {
 
     pub fn static_exchange(&self, ts: &Tables, mv: Move) -> Option<Score> {
+        assert!(mv.filter_all_captures());
+
+        let from = mv.sq_from();
+        let to = mv.sq_to();
+
+        let mut gain = [0i32; 32];
+        let mut d = 0;
+
+        let may_xray =
+            self.get_piece(Pawn) | self.get_piece(Bishop) | self.get_piece(Rook) | self.get_piece(Queen);
+
+        let mut from_set = BitBoard::single(from);
+        let mut occ = self.all_occupied();
+
+        let side0 = self.state.side_to_move;
+        let mut side = side0;
+
+        let mut attackers_own   = self.find_attackers_to(ts, to, !side, true);
+        let mut attackers_other = self.find_attackers_to(ts, to, side, true);
+
+        let mut attadef = attackers_own | attackers_other;
+
+        gain[d] = mv.victim().unwrap().score();
+
+        loop {
+            d += 1;
+            gain[d] = mv.piece().unwrap().score() - gain[d - 1];
+
+            if Score::max(-gain[d-1], gain[d]) < 0 { break; }
+
+            attadef ^= from_set;
+            occ     ^= from_set;
+
+            if (from_set & may_xray).is_not_empty() {
+                attadef |= self.consider_xrays(ts, to, occ);
+            }
+
+            // from_set = self.least_val_piece(attadef, side);
+            if let Some((pc2,fs)) = self.least_val_piece(attadef, side) {
+                from_set = fs;
+                // last_cap = pc;
+                // from_set = fs;
+                // pc = pc2;
+            } else {
+                // debug!("breaking, side, attadef, {:?}, \n{:?}", side, attadef);
+                // debug!("breaking, side, attadef, {:?}", side);
+                break;
+            }
+
+            if from_set.is_empty() { break; }
+        }
+
+        None
+    }
+
+    // #[cfg(feature = "nope")]
+    pub fn static_exchange2(&self, ts: &Tables, mv: Move) -> Option<Score> {
 
         if !mv.filter_all_captures() {
             return None;
@@ -188,7 +245,7 @@ impl Game {
 
             side = !side;
             if (from_set & may_xray).is_not_empty() {
-                let b0 = self.consider_xrays(ts, mv.sq_to(), side, occ);
+                let b0 = self.consider_xrays2(ts, mv.sq_to(), side, occ);
                 attadef |= b0;
                 // eprintln!("attadef = {:?}", attadef);
             }
@@ -213,7 +270,19 @@ impl Game {
         Some(score)
     }
 
-    fn consider_xrays(&self, ts: &Tables, c0: Coord, side: Color, occ: BitBoard) -> BitBoard {
+    fn consider_xrays(&self, ts: &Tables, c0: Coord, occ: BitBoard) -> BitBoard {
+        let moves_r = ts.attacks_rook(c0, occ) & occ;
+        let moves_b = ts.attacks_bishop(c0, occ) & occ;
+
+        let qs = self.get_piece(Queen);
+        let mut attackers = moves_r & (self.get_piece(Rook) | qs);
+        attackers |= moves_b & (self.get_piece(Bishop) | qs);
+
+        attackers
+    }
+
+    // #[cfg(feature = "nope")]
+    fn consider_xrays2(&self, ts: &Tables, c0: Coord, side: Color, occ: BitBoard) -> BitBoard {
         let moves_r = ts.attacks_rook(c0, occ) & occ;
         let moves_b = ts.attacks_bishop(c0, occ) & occ;
 
@@ -224,6 +293,11 @@ impl Game {
         attackers
     }
 
+    // fn least_val_piece(&self, attadef: BitBoard, side: Color) -> Option<(Piece,BitBoard)> {
+    //     unimplemented!()
+    // }
+
+    // #[cfg(feature = "nope")]
     fn least_val_piece(&self, attadef: BitBoard, side: Color) -> Option<(Piece,BitBoard)> {
         for pc in Piece::iter_pieces() {
             let subset = attadef & self.get(pc, side);
