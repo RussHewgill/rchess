@@ -18,9 +18,6 @@ use std::str::FromStr;
 use std::io;
 use std::io::{BufRead,Stdout};
 use std::sync::mpsc;
-use std::sync::mpsc::Receiver;
-use std::sync::mpsc::Sender;
-use std::sync::mpsc::TryRecvError;
 use std::{thread, time};
 use std::cell::RefCell;
 
