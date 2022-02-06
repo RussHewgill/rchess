@@ -111,6 +111,20 @@ pub mod std_simd {
 pub mod safe_arch {
     use safe_arch::*;
 
+    pub unsafe fn cast_slice_to_m256i_mut_unchecked<T: Sized>(xs: &mut [T]) -> &mut [m256i] {
+        let size = std::mem::size_of::<T>();
+        let ptr = xs.as_mut_ptr() as *mut m256i;
+        let len = xs.len() / (32 / size);
+        std::slice::from_raw_parts_mut(ptr, len)
+    }
+
+    pub unsafe fn cast_slice_to_m256i_unchecked<T: Sized>(xs: &[T]) -> &[m256i] {
+        let size = std::mem::size_of::<T>();
+        let ptr = xs.as_ptr() as *const m256i;
+        let len = xs.len() / (32 / size);
+        std::slice::from_raw_parts(ptr, len)
+    }
+
     pub unsafe fn cast_slice_to_m256i_mut<T: Sized>(xs: &mut [T]) -> &mut [m256i] {
         let size = std::mem::size_of::<T>();
         assert_eq!(xs.len() % (32 / size), 0);

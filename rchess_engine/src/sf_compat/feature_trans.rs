@@ -1799,15 +1799,84 @@ mod old {
             use safe_arch::*;
             use crate::simd_utils::safe_arch::*;
 
-            // self.accum.accum[persp].copy_from_slice(&self.biases);
-
-            // let len0 = self.accum_stack[accum_idx - 1].accum[persp].len();
             unsafe {
-                // let src = self.accum_stack[accum_idx - 1].accum[persp].as_ptr();
-                // let dst = self.accum_stack[accum_idx].accum[persp].as_mut_ptr();
                 let src: *const i16 = self.biases.as_ptr();
                 let dst: *mut i16 = self.accum.accum[persp].as_mut_ptr();
-                std::ptr::copy_nonoverlapping(src, dst, HALF_DIMS);
+                std::ptr::copy_nonoverlapping(src, dst, self.biases.len());
+            }
+
+            let mut active: ArrayVec<NNIndex, 32> = ArrayVec::default();
+            NNAccum::append_active(g, persp, &mut active);
+
+            let mut acc      = [m256i::default(); Self::NUM_REGS];
+            let mut acc_psqt = [m256i::default(); Self::NUM_REGS_PSQT];
+
+            for k in 0..HALF_DIMS / Self::TILE_HEIGHT {
+
+                let biases_tile: &[m256i] = unsafe {
+                    let bs = self.biases.get_unchecked(k * Self::TILE_HEIGHT..);
+                    cast_slice_to_m256i_unchecked(&bs)
+                };
+
+                unsafe {
+                    let src = biases_tile.as_ptr();
+                    let dst = acc.as_mut_ptr();
+                    std::ptr::copy_nonoverlapping(src, dst, Self::NUM_REGS);
+                }
+
+                for idx in active.iter() {
+                    let offset = HALF_DIMS * idx.0 + k * Self::TILE_HEIGHT;
+
+                    let column = unsafe {
+                        cast_slice_to_m256i_unchecked(&self.weights[offset..])
+                    };
+
+                    for i in 0..Self::NUM_REGS {
+                        acc[i] = add_i16_m256i(acc[i], column[i]);
+                    }
+                }
+
+                let acc_tile: &mut [m256i] = unsafe {
+                    let xs = &mut self.accum.accum[persp][k * Self::TILE_HEIGHT..];
+                    cast_slice_to_m256i_mut_unchecked(xs)
+                };
+
+                for i in 0..Self::NUM_REGS {
+                    // vec_store(&mut accTile[k], acc[k]);
+                    store_m256i(&mut acc_tile[i], acc[i]);
+                }
+
+            }
+
+            for k in 0..Self::PSQT_BUCKETS / Self::TILE_HEIGHT_PSQT {
+                self.accum.psqt[persp].fill(0);
+
+                for idx in active.iter() {
+                    let offset = Self::PSQT_BUCKETS * idx.0 + k * Self::TILE_HEIGHT_PSQT;
+
+                    let column_psqt = unsafe {
+                        cast_slice_to_m256i_unchecked(&self.psqt_weights.get_unchecked(offset..))
+                    };
+
+                    for i in 0..Self::NUM_REGS_PSQT {
+                        unsafe {
+                            let x = add_i32_m256i(
+                                *acc_psqt.get_unchecked(i), *column_psqt.get_unchecked(i));
+                            acc_psqt[i] = x;
+                        }
+                    }
+
+                }
+
+                let acc_tile_psqt: &mut [m256i] = unsafe {
+                    let xs = &mut self.accum.psqt[persp][k * Self::TILE_HEIGHT_PSQT..];
+                    cast_slice_to_m256i_mut_unchecked(xs)
+                };
+
+                for i in 0..Self::NUM_REGS_PSQT {
+                    store_m256i(&mut acc_tile_psqt[i], acc_psqt[i]);
+                }
+
             }
 
         }

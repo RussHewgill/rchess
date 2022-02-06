@@ -24,6 +24,10 @@ use gag::Redirect;
 fn main() {
     init_logger();
 
+    // let mut child = Command::new("stockfish")
+    //     .stdin(Stdio::piped())
+    //     .stdout(Stdio::piped())
+    //     .spawn()?;
 
 }
 
