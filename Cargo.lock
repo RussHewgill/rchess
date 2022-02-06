@@ -958,6 +958,7 @@ dependencies = [
  "itertools",
  "log",
  "rchess_engine",
+ "regex",
  "simplelog",
 ]
 

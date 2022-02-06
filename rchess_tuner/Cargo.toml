@@ -26,3 +26,5 @@ chrono = "0.4.19"
 
 itertools = "0.10.3"
 
+regex = "1.5.4"
+

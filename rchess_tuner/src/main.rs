@@ -29,6 +29,23 @@ use simplelog::*;
 use gag::Redirect;
 
 fn main() {
+
+    let lines = vec![
+        "Started game 1 of 100 (rchess vs rchess_prev)",
+        "Finished game 1 (rchess vs rchess_prev): 0-1 {White loses on time}",
+        "Score of rchess vs rchess_prev: 0 - 1 - 0  [0.000] 1",
+        "...      rchess playing White: 0 - 1 - 0  [0.000] 1",
+        "...      White vs Black: 0 - 1 - 0  [0.000] 1",
+        "Elo difference: -inf +/- nan, LOS: 15.9 %, DrawRatio: 0.0 %",
+    ];
+
+    let res = Match::parse(lines.into_iter().map(|s| s.to_owned()).collect());
+
+    eprintln!("res = {:?}", res);
+
+}
+
+fn main2() {
     init_logger();
 
     let now = chrono::Local::now();
@@ -85,11 +102,11 @@ fn main() {
         let s = format!("Panicking, Location: {:?}", loc);
         file.write(s.as_bytes()).unwrap();
 
+        // cutechess doesn't kill child processes when parent panics
         let child = Command::new("pkill")
             .args(["rchess_uci"])
             .spawn()
             .unwrap();
-
         hook(panicinfo)
     }));
 
