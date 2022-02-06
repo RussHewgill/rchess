@@ -1641,15 +1641,13 @@ mod old {
     use byteorder::{ReadBytesExt, LittleEndian, WriteBytesExt};
     use aligned::{Aligned,A64,A32};
 
+    use no_panic::no_panic;
+
     // #[derive(Debug,PartialEq,Clone)]
     #[derive(Debug,Clone)]
     pub struct NNFeatureTrans {
-        // pub biases:         Vec<i16>, // 1024
         pub biases:         Aligned<A64,Vec<i16>>, // 1024
-
-        // pub weights:        [i16; Self::DIMS_IN * HALF_DIMS], // stack overflows
-        // pub weights:        Vec<i16>, // 1024 * INPUT = 23068672
-        // pub psqt_weights:   Vec<i32>, // INPUT * PSQT_BUCKETS = 180224
+        // pub biases:         Aligned<A64,Box<[i16; 1024]>>, // 1024
 
         pub weights:        Aligned<A64,Vec<i16>>, // 1024 * INPUT = 23068672
         pub psqt_weights:   Aligned<A64,Vec<i32>>, // INPUT * PSQT_BUCKETS = 180224
@@ -1674,8 +1672,9 @@ mod old {
 
         pub fn new() -> Self {
             Self {
-                // nn,
                 biases:         Aligned(vec![0; HALF_DIMS]),
+                // biases:         Aligned(Box::new([0; HALF_DIMS])),
+
                 weights:        Aligned(vec![0; HALF_DIMS * Self::DIMS_IN]),
                 // weights:        [0; HALF_DIMS * Self::DIMS_IN],
                 psqt_weights:   Aligned(vec![0; Self::DIMS_IN * Self::PSQT_BUCKETS]),
@@ -1788,12 +1787,33 @@ mod old {
         /// AVX2 = 8
         const TILE_HEIGHT_PSQT: usize = Self::NUM_REGS_PSQT * std::mem::size_of::<safe_arch::m256i>() / 4;
 
+        // #[no_panic]
+        #[cfg(feature = "nope")]
+        pub fn _update_accum_simd(&mut self, g: &Game, persp: Color) {
+            use safe_arch::*;
+            use crate::simd_utils::safe_arch::*;
+
+            // self.accum.accum[persp].copy_from_slice(&self.biases);
+
+            // let len0 = self.accum_stack[accum_idx - 1].accum[persp].len();
+            unsafe {
+                // let src = self.accum_stack[accum_idx - 1].accum[persp].as_ptr();
+                // let dst = self.accum_stack[accum_idx].accum[persp].as_mut_ptr();
+                let src = self.biases.as_ptr();
+                let dst = self.accum.accum[persp].as_ptr();
+                std::ptr::copy_nonoverlapping(src, dst, );
+            }
+
+        }
+
+        // #[cfg(feature = "nope")]
         pub fn _update_accum_simd(&mut self, g: &Game, persp: Color) {
             use safe_arch::*;
             use crate::simd_utils::safe_arch::*;
 
             assert!(self.biases.len() == self.accum.accum[persp].len());
-            self.accum.accum[persp].copy_from_slice(&self.biases);
+            // self.accum.accum[persp].copy_from_slice(&self.biases);
+            self.accum.accum[persp].copy_from_slice(self.biases.as_ref());
 
             let mut active = ArrayVec::default();
             NNAccum::append_active(g, persp, &mut active);
@@ -2380,6 +2400,7 @@ mod old {
         pub fn _update_accum(&mut self, g: &Game, persp: Color) {
             assert!(self.biases.len() == self.accum.accum[persp].len());
             self.accum.accum[persp].copy_from_slice(&self.biases);
+            // self.accum.accum[persp].copy_from_slice(self.biases.as_ref());
 
             let mut active = ArrayVec::default();
             NNAccum::append_active(g, persp, &mut active);

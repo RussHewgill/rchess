@@ -147,36 +147,8 @@ impl ExHelper {
     }
 }
 
-/// prev
-impl Game {
-
-    // pub fn score_material(&self, side: Color, mid: bool) -> Score {
-    //     const PCS: [Piece; 6] = [Pawn,Knight,Bishop,Rook,Queen,King];
-    //     if mid {
-    //         PCS.iter().map(|&pc| self.state.material.get(pc, side) as Score * pc.score()).sum()
-    //     } else {
-    //         PCS.iter().map(|&pc| self.state.material.get(pc, side) as Score * pc.score_endgame()).sum()
-    //     }
-    // }
-
-    // pub fn score_psqt(&self, ts: &Tables, ev: &EvalParams, side: Color) -> Score {
-    //     const PCS: [Piece; 6] = [Pawn,Knight,Bishop,Rook,Queen,King];
-    //     PCS.iter().map(|&pc| {
-    //         self._score_psqt(ev, pc, side)
-    //     }).sum()
-    // }
-
-    // pub fn _score_psqt(&self, ev: &EvalParams, pc: Piece, side: Color) -> Score {
-    //     let pieces = self.get(pc, side);
-    //     pieces.into_iter().map(|sq| {
-    //         ev.psqt.get(pc, side, sq)
-    //         // ev.get_psqt(pc, side, sq)
-    //     }).sum()
-    // }
-
-}
-
 /// psqt scores
+#[cfg(feature = "nope")]
 impl Game {
 
     pub fn sum_psqt_score(&self, ts: &Tables, side: Color) -> TaperedScore {

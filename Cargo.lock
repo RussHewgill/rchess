@@ -589,6 +589,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "no-panic"
+version = "0.1.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b884e0f4a7a80970539a7757902675ce503d98615f5b564564b4bd0236f7f36"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "nom"
 version = "7.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -910,6 +921,7 @@ dependencies = [
  "lazy_static",
  "log",
  "mnist",
+ "no-panic",
  "nom",
  "num-derive",
  "num-integer",

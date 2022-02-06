@@ -35,6 +35,8 @@ pub struct Game {
     pub pieces:           [Option<Piece>; 64],
     // pieces:               [Option<Piece>; 64],
 
+    pub npm:                [TaperedScore; 2],
+
     // pub psqt_score_mid:   [Score; 2],
     // pub psqt_score_end:   [Score; 2],
     pub psqt_score:       [TaperedScore; 2],
@@ -54,14 +56,12 @@ pub struct GameState {
     pub en_passant:         Option<Coord>,
     pub castling:           Castling,
 
-    // pub npm:                [TaperedScore; 2],
-
     pub phase_unscaled:     i16,
     pub phase:              Phase,
     pub last_capture:       Option<Coord>,
     pub material:           Material,
 
-    // pub check_squares:      [BitBoard; 5],
+    pub check_squares:      [BitBoard; 5],
 
     checkers:               BitBoard,
     pub king_blocks_w:      BitBoard,
@@ -87,6 +87,8 @@ impl Default for Game {
             // psqt_score_mid:   [0; 2],
             // psqt_score_end:   [0; 2],
             psqt_score:       [TaperedScore::default(); 2],
+
+            npm:              [TaperedScore::default(); 2],
 
             // last_move_2:      None,
             // history,
@@ -829,8 +831,8 @@ impl Game {
     pub fn init_gameinfo_mut(&mut self, ts: &Tables) -> GameResult<()> {
         self.state.material = self.count_material();
 
-        // self.state.npm[White] = self.count_npm(White);
-        // self.state.npm[Black] = self.count_npm(Black);
+        self.npm[White] = self.count_npm(White);
+        self.npm[Black] = self.count_npm(Black);
 
         let (phase,phase_unscaled) = self.game_phase();
         self.state.phase = phase;
@@ -900,13 +902,13 @@ impl Game {
 
     fn update_check_squares_mut(&mut self, ts: &Tables) {
 
-        // let ksq = self.get(King, !self.state.side_to_move).bitscan();
-        // self.state.check_squares[Pawn]   = ts.get_pawn(ksq).get_capture(!self.state.side_to_move);
-        // self.state.check_squares[Knight] = ts.get_knight(ksq);
-        // self.state.check_squares[Bishop] = ts.attacks_bishop(ksq, self.all_occupied());
-        // self.state.check_squares[Rook]   = ts.attacks_rook(ksq, self.all_occupied());
-        // self.state.check_squares[Queen]  =
-        //     self.state.check_squares[Bishop] | self.state.check_squares[Rook];
+        let ksq = self.get(King, !self.state.side_to_move).bitscan();
+        self.state.check_squares[Pawn]   = ts.get_pawn(ksq).get_capture(!self.state.side_to_move);
+        self.state.check_squares[Knight] = ts.get_knight(ksq);
+        self.state.check_squares[Bishop] = ts.attacks_bishop(ksq, self.all_occupied());
+        self.state.check_squares[Rook]   = ts.attacks_rook(ksq, self.all_occupied());
+        self.state.check_squares[Queen]  =
+            self.state.check_squares[Bishop] | self.state.check_squares[Rook];
 
     }
 
@@ -1134,7 +1136,7 @@ impl Game {
         if pc == Pawn {
             self.pawn_zb = self.pawn_zb.update_piece(ts, pc, side, at.into())
         } else {
-            // self.state.npm[side] -= pc.score_tapered();
+            self.npm[side] -= pc.score_tapered();
         }
         self.mat_zb = self.mat_zb.update_piece(ts, pc, side, at);
     }
@@ -1163,7 +1165,7 @@ impl Game {
         if pc == Pawn {
             self.pawn_zb = self.pawn_zb.update_piece(ts, pc, side, at);
         } else {
-            // self.state.npm[side] += pc.score_tapered();
+            self.npm[side] += pc.score_tapered();
         }
         self.mat_zb = self.mat_zb.update_piece(ts, pc, side, at);
 

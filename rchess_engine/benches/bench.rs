@@ -12,7 +12,6 @@ use rchess_engine_lib::types::*;
 use rchess_engine_lib::tables::*;
 use rchess_engine_lib::explore::*;
 use rchess_engine_lib::util::*;
-use rchess_engine_lib::search::*;
 
 // use rchess_engine_lib::brain::*;
 // use rchess_engine_lib::brain::matrix::*;
@@ -339,21 +338,87 @@ pub fn crit_bench_1(c: &mut Criterion) {
     //     let (m,stats) = ex.explore(&ts, None);
     // }));
 
-    let mut moves = vec![];
-    let st = ABStack::new();
-    for g in wacs.iter() {
-        let mut movegen = MoveGen::new(&ts, g, None, &st, 0, 0);
-        let mv0 = movegen.next(&st).unwrap();
-        let mv1 = movegen.next(&st).unwrap();
-        moves.push((g,mv0,mv1));
-    }
+    let fen = "r4rk1/4npp1/1p1q2b1/1B2p3/1B1P2Q1/P3P3/5PP1/R3K2R b KQ - 1 1"; // Q cap d6b4
+    let timesettings = TimeSettings::new_f64(0.0,0.1);
+    let mut g = Game::from_fen(&ts, fen).unwrap();
+    let mut ex = Explorer::new(g.state.side_to_move, g.clone(), 35, timesettings);
 
-    group.bench_function("make move", |b| b.iter(|| {
-        for (g,mv0,mv1) in moves.iter() {
-            let g0 = g.make_move_unchecked(&ts, *mv0).unwrap();
-            let g1 = g.make_move_unchecked(&ts, *mv1).unwrap();
+    let max_threads = 6;
+
+    ex.per_thread_data = vec![Some(PerThreadData::default()); max_threads];
+
+    use crossbeam::utils::CachePadded;
+    use crossbeam::thread::ScopedJoinHandle;
+    use std::sync::atomic::{AtomicI8,AtomicI16};
+
+    let (tx,rx): (ExSender,ExReceiver) = crossbeam::channel::unbounded();
+    let thread_counter = Arc::new(CachePadded::new(AtomicI8::new(0)));
+    let best_depth     = Arc::new(CachePadded::new(AtomicI16::new(0)));
+    let root_moves: Vec<Move> = vec![];
+    let mut per_thread_data = vec![None; max_threads];
+
+    group.bench_function("thread spawning", |b| b.iter(|| {
+
+        crossbeam::scope(|s| {
+
+            let mut handles = Vec::with_capacity(max_threads);
+
+            for thread_id in 0..max_threads {
+
+                let thread_data = ex.per_thread_data[thread_id].take()
+                    .unwrap_or_default();
+
+                let mut helper = ex.build_exhelper(
+                    thread_id,
+                    ex.cfg.max_depth,
+                    best_depth.clone(),
+                    root_moves.clone(),
+                    tx.clone(),
+                    thread_data,
+                );
+
+                let size = 1024 * 1024 * 4;
+                let handle: ScopedJoinHandle<PerThreadData> = s.builder()
+                    .stack_size(size)
+                    .spawn(move |_| {
+                        // helper.lazy_smp_single(ts);
+                        PerThreadData::new(helper.material_table, helper.pawn_table)
+                    }).unwrap();
+
+                handles.push((thread_id,handle));
+
+                for (thread_id,handle) in handles.drain(..) {
+                    let thread_data = handle.join().unwrap();
+                    per_thread_data[thread_id] = Some(thread_data);
+                }
+
+            }
+
+        }).unwrap();
+
+        for (thread_id,thread_data) in per_thread_data.drain(..).enumerate() {
+            ex.per_thread_data[thread_id] = thread_data;
         }
+
+        per_thread_data = vec![None; max_threads];
+
     }));
+
+    // let mut moves = vec![];
+    // let st = ABStack::new();
+    // for g in wacs.iter() {
+    //     let mut movegen = MoveGen::new(&ts, g, None, &st, 0, 0);
+    //     let mv0 = movegen.next(&st).unwrap();
+    //     let mv1 = movegen.next(&st).unwrap();
+    //     moves.push((g,mv0,mv1));
+    // }
+
+    // group.bench_function("make move", |b| b.iter(|| {
+    //     for (g,mv0,mv1) in moves.iter() {
+    //         let g0 = g.make_move_unchecked(&ts, *mv0).unwrap();
+    //         let g1 = g.make_move_unchecked(&ts, *mv1).unwrap();
+    //     }
+    // }));
 
     // group.bench_function("make move new", |b| b.iter(|| {
     //     for (g,mv0,mv1) in moves.iter() {

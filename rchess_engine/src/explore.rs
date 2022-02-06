@@ -638,7 +638,6 @@ impl Explorer {
     }
 
     #[allow(unused_labels,unused_doc_comments)]
-    // pub fn lazy_smp_2(&self, ts: &'static Tables) -> (ABResults,Vec<Move>,SearchStats) {
     pub fn lazy_smp_2(&mut self, ts: &Tables) -> (ABResults,Vec<Move>,SearchStats) {
 
         #[cfg(feature = "one_thread")]
@@ -674,13 +673,10 @@ impl Explorer {
         let out: Arc<RwLock<(Depth,ABResults,Vec<Move>, SearchStats)>> =
             Arc::new(RwLock::new((0, ABResults::ABUninit, vec![], SearchStats::default())));
 
-        // let thread_counter = Arc::new(AtomicI8::new(0));
-        // let best_depth     = Arc::new(AtomicI16::new(0));
         let thread_counter = Arc::new(CachePadded::new(AtomicI8::new(0)));
         let best_depth     = Arc::new(CachePadded::new(AtomicI16::new(0)));
 
         let t0 = Instant::now();
-        // std::thread::sleep(Duration::from_micros(100));
 
         #[cfg(feature = "basic_time")]
         let t_max = Duration::from_secs_f64(self.timer.settings.increment[self.side]);
@@ -688,46 +684,17 @@ impl Explorer {
         #[cfg(feature = "basic_time")]
         debug!("searching with t_max = {:?}", t_max);
 
-        // #[cfg(not(feature = "basic_time"))]
-        // let cur_ply = self.current_ply.unwrap_or(1);
-        // #[cfg(not(feature = "basic_time"))]
-        // let (t_opt,t_max) = self.timer.allocate_time(self.game.state.side_to_move, cur_ply);
-        // // debug!("searching with (t_opt,t_max) = ({:?},{:?})", t_opt, t_max);
-
         #[cfg(not(feature = "basic_time"))]
         let mut timer = TimeManager::new(self.time_settings);
-        // let mut timer = TimeManager::new(self.time_settings);
         #[cfg(not(feature = "basic_time"))]
         debug!("searching with time limit (soft,hard) = ({:.3},{:.3})",
                timer.limit_soft as f64 / 1000.0,
                timer.limit_hard as f64 / 1000.0);
 
-        // let t_max = self.timer.allocate_time()
-
         // let root_moves = MoveGen::gen_all(ts, &self.game);
         let root_moves: Vec<Move> = vec![];
         let mut per_thread_data = vec![None; self.per_thread_data.len()];
 
-        // #[cfg(feature = "nope")]
-        // crossbeam::scope(|s| {
-        //     trace!("spawning listener");
-        //     /// Dispatch listener
-        //     let handle_listener = s.spawn(|_| {
-        //         self.lazy_smp_listener(
-        //             rx,
-        //             best_depth.clone(),
-        //             thread_counter.clone(),
-        //             t0,
-        //             out.clone(),
-        //         );
-        //     });
-        //     trace!("sending stop message to listener");
-        //     tx.send(ExMessage::Stop).unwrap();
-        //     handle_listener.join().unwrap();
-        // }).unwrap();
-        // trace!("done");
-
-        // #[cfg(feature = "nope")]
         crossbeam::scope(|s| {
 
             // let ord = SeqCst;
@@ -767,6 +734,7 @@ impl Explorer {
             let (tx_stop,rx_stop) = crossbeam::channel::unbounded();
 
             /// Dispatch listener
+            trace!("spawning listener");
             let handle_listener = s.spawn(|_| {
                 self.lazy_smp_listener(
                     rx,
@@ -800,7 +768,6 @@ impl Explorer {
                 }
 
                 /// Found mate, halt
-                // if self.best_mate.read().is_some() {
                 if self.best_mate.load(Relaxed) != -1 {
                     #[cfg(not(feature = "basic_time"))]
                     // let t1 = Instant::now().checked_duration_since(t0).unwrap();
@@ -814,7 +781,8 @@ impl Explorer {
                     break 'outer;
                 }
 
-                std::thread::sleep(Duration::from_millis(1));
+                // std::thread::sleep(Duration::from_millis(1));
+                std::thread::sleep(Duration::from_micros(100));
                 // std::thread::sleep(Duration::from_millis(10));
             }
 
@@ -1079,124 +1047,7 @@ impl Explorer {
     }
 }
 
-/// Lazy SMP Iterative Deepening with Aspiration window
-#[cfg(feature = "nope")]
-impl ExHelper {
-
-    fn lazy_smp_single(
-        &self,
-        // ts:               &'static Tables,
-        ts:               &Tables,
-    ) {
-
-        let mut stack = ABStack::new_with_moves(&self.move_history);
-        let mut stats = SearchStats::default();
-
-        let skip_size = Self::SKIP_SIZE[self.id % Self::SKIP_LEN];
-        let start_ply = Self::START_PLY[self.id % Self::SKIP_LEN];
-
-        let mut cur_depth = start_ply + 1;
-
-        let mut best_value;
-        let mut delta = -CHECKMATE_VALUE;
-        let mut alpha = -CHECKMATE_VALUE;
-        let mut beta  = CHECKMATE_VALUE;
-
-        /// Iterative deepening
-        while !self.stop.load(SeqCst)
-            && cur_depth <= self.cfg.max_depth
-            && self.best_mate.read().is_none()
-        {
-            if cur_depth >= 4 {
-            }
-
-            let mut res;
-
-            let mut failed_high = 0;
-            loop {
-                stack.pvs.fill(Move::NullMove);
-
-                let res2 = self.ab_search_single(ts, &mut stats, &mut stack, Some((alpha,beta)), cur_depth);
-
-                let res3 = match res2 {
-                    ABResults::ABList(r,_) => r.clone(),
-                    _                      => unimplemented!()
-                };
-                res = Some(res2);
-
-                best_value = res3.score;
-
-                {
-                    let mut mvs = self.root_moves.borrow_mut();
-                    let pv_mv  = stack.pvs[0];
-                    let pv_idx = mvs.iter().position(|&mv| mv == pv_mv).unwrap();
-                    mvs.swap(0, pv_idx);
-                }
-
-                if self.stop.load(SeqCst) { break; }
-
-                if best_value <= alpha {
-
-                    // beta = (alpha + beta) / 2;
-                    // alpha = (best_value - delta).max(-CHECKMATE_VALUE);
-
-                    beta = alpha.checked_add(beta).unwrap() / 2;
-                    alpha = best_value.checked_sub(delta).unwrap().max(-CHECKMATE_VALUE);
-
-                } else if best_value >= beta {
-                    // beta = (best_value + delta).min(CHECKMATE_VALUE);
-                    beta = best_value.checked_add(delta).unwrap().min(CHECKMATE_VALUE);
-                    failed_high += 1;
-                } else {
-                    break;
-                }
-
-                delta += delta / 4 + 5;
-
-                assert!(alpha >= -CHECKMATE_VALUE);
-                assert!(beta <= CHECKMATE_VALUE);
-            }
-
-
-            // let depth2 = 
-
-            /// Send result to listener
-            if !self.stop.load(SeqCst) && cur_depth >= self.best_depth.load(SeqCst) {
-                let moves = if self.cfg.return_moves {
-                    let mut v = stack.pvs.to_vec();
-                    v.retain(|&mv| mv != Move::NullMove);
-                    v
-                } else { vec![] };
-
-                if let Some(res) = res {
-                    match self.tx.try_send(ExMessage::Message(cur_depth, res, moves, stats)) {
-                        Ok(_)  => {
-                            stats = SearchStats::default();
-                        },
-                        Err(_) => {
-                            trace!("tx send error 0: id: {}, depth {}", self.id, cur_depth);
-                            break;
-                        },
-                    }
-                }
-            }
-
-            // cur_depth += skip_size;
-            cur_depth += 1;
-        }
-
-        match self.tx.try_send(ExMessage::End(self.id)) {
-            Ok(_)  => {},
-            Err(_) => {
-                trace!("tx send error 1: id: {}, depth {}", self.id, cur_depth);
-            },
-        }
-
-        trace!("exiting lazy_smp_single, id = {}", self.id);
-    }
-
-}
-
+/// TODO: add aspiration window
 /// Lazy SMP Iterative Deepening loop
 impl ExHelper {
 
@@ -1229,7 +1080,6 @@ impl ExHelper {
         // while !self.stop.load(SeqCst)
         while !self.stop.load(Relaxed)
             && depth <= self.cfg.max_depth
-            // && self.best_mate.read().is_none()
             && self.best_mate.load(Relaxed) == -1
         {
 
@@ -1253,6 +1103,7 @@ impl ExHelper {
                     v.retain(|&mv| mv != Move::NullMove);
                     v
                 } else { vec![] };
+                trace!("thread {} sending best move, depth {}", self.id, depth);
                 match self.tx.try_send(ExMessage::Message(depth, res, moves, Box::new(stats))) {
                     Ok(_)  => {
                         stats = SearchStats::default();

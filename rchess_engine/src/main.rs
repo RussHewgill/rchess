@@ -3333,8 +3333,6 @@ fn main9() {
     // // let (fen,correct) = &games_sts(23, 2); // fen, set
     // let (fen,correct) = &games_sts(1, 3); // fen, set
 
-    let fen = "4k3/8/2p5/3p4/4P3/2N1N3/8/4K3 w - - 0 1"; // SEE, white +1 pawn
-
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
@@ -3349,17 +3347,6 @@ fn main9() {
     // let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
     // while let Some(mv) = movegen.next(&st) { eprintln!("mv = {:?}", mv); }
     // return;
-
-    let mv = Move::new_capture("e5", "d5", Pawn, Pawn);
-
-    let see0 = g.static_exchange2(&ts, mv);
-
-    let see1 = g.static_exchange(&ts, mv);
-
-    eprintln!("see0 = {:?}", see0);
-    eprintln!("see1 = {:?}", see1);
-
-    return;
 
     // let im0 = MatEval::imbalance(&g.state.material, White);
     // let im1 = MatEval::imbalance(&g.state.material, Black);

@@ -226,3 +226,5 @@ bytemuck = { version = "^1.7", features = ["extern_crate_alloc"] }
 
 # deepsize = "0.2.0"
 
+no-panic = "0.1.15"
+
