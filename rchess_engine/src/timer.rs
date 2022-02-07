@@ -128,7 +128,7 @@ mod new {
         pub abort_now:     bool,
     }
 
-    const BUFFER_TIME: u64 = 10;
+    const BUFFER_TIME: u64 = 20;
 
     /// New
     impl TimeManager {
@@ -181,8 +181,8 @@ mod new {
     impl TimeManager {
 
         // const NODES_PER_TIME_CHECK: u64 = 2000;
-        const LOOPS_PER_TIME_CHECK: u64 = 10;
-        // const LOOPS_PER_TIME_CHECK: u64 = 1;
+        // const LOOPS_PER_TIME_CHECK: u64 = 10;
+        const LOOPS_PER_TIME_CHECK: u64 = 1;
 
         // pub fn _should_stop(&self, mut n: &mut u64) -> bool {
         //     if self.ponder {

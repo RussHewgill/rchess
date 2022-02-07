@@ -109,7 +109,8 @@ pub struct Explorer {
 
     // pub per_thread_data:   Vec<Option<PerThreadData>>,
 
-    pub helpers:           Vec<Option<ExHelper>>,
+    // pub helpers:           Vec<Option<ExHelper>>,
+    pub helpers:           Vec<Arc<Mutex<ExHelper>>>,
 
 }
 
@@ -411,7 +412,7 @@ impl Explorer {
                 self.tx.clone(),
                 PerThreadData::default(),
             );
-            self.helpers.push(Some(helper));
+            self.helpers.push(Arc::new(Mutex::new(helper)));
             thread_id += 1;
         }
 
@@ -672,6 +673,10 @@ impl Explorer {
     #[allow(unused_labels,unused_doc_comments)]
     pub fn lazy_smp_2(&mut self, ts: &Tables) -> (ABResults,Vec<Move>,SearchStats) {
 
+        if self.helpers.len() == 0 {
+            self.new_game();
+        }
+
         let t0 = Instant::now();
 
         #[cfg(feature = "basic_time")]
@@ -716,18 +721,20 @@ impl Explorer {
 
         self.reset_stop();
 
-        let (tx,rx): (ExSender,ExReceiver) = crossbeam::channel::unbounded();
+        // let (tx,rx): (ExSender,ExReceiver) = crossbeam::channel::unbounded();
 
         let out: Arc<RwLock<(Depth,ABResults,Vec<Move>, SearchStats)>> =
             Arc::new(RwLock::new((0, ABResults::ABUninit, vec![], SearchStats::default())));
 
         let thread_counter = Arc::new(CachePadded::new(AtomicI8::new(0)));
-        let best_depth     = Arc::new(CachePadded::new(AtomicI16::new(0)));
+        // let best_depth     = Arc::new(CachePadded::new(AtomicI16::new(0)));
+        self.best_depth.store(0, SeqCst);
+        let best_depth     = self.best_depth.clone();
 
         // let root_moves = MoveGen::gen_all(ts, &self.game);
         let root_moves: Vec<Move> = vec![];
         // let mut per_thread_data = vec![None; self.per_thread_data.len()];
-        let mut helpers_out = vec![None; self.helpers.len()];
+        // let mut helpers_out = vec![None; self.helpers.len()];
 
         crossbeam::scope(|s| {
 
@@ -736,28 +743,32 @@ impl Explorer {
             let (tx_stop,rx_stop) = crossbeam::channel::unbounded();
 
             /// Dispatch listener
-            trace!("spawning listener");
-            let stop = self.stop.clone();
-            let best_mate = self.best_mate.clone();
-            let handle_listener = s.spawn(|_| {
-                Self::lazy_smp_listener(
-                    rx,
-                    rx_stop,
-                    stop,
-                    best_mate,
-                    best_depth.clone(),
-                    thread_counter.clone(),
-                    t0,
-                    out.clone(),
-                );
-            });
+            let handle_listener = {
+                trace!("spawning listener");
+                let stop = self.stop.clone();
+                let best_mate = self.best_mate.clone();
+                let rx = self.rx.clone();
+                s.spawn(|_| {
+                    Self::lazy_smp_listener(
+                        rx,
+                        rx_stop,
+                        stop,
+                        best_mate,
+                        best_depth.clone(),
+                        thread_counter.clone(),
+                        t0,
+                        out.clone(),
+                    );
+                })
+            };
 
             let len = self.helpers.len();
-            let mut helpers = std::mem::replace(&mut self.helpers, vec![None; len]);
+            // let mut helpers = std::mem::replace(&mut self.helpers, vec![None; len]);
+            let helpers = self.helpers.clone();
 
             let thread_counter2 = thread_counter.clone();
             /// Dispatch threads
-            // #[cfg(feature = "nope")]
+            #[cfg(feature = "nope")]
             // let handles: ScopedJoinHandle<Vec<(usize,ScopedJoinHandle<ExHelper>)>> = s.spawn(move |s| {
             // let handles = s.spawn(move |s| {
             let handles: ScopedJoinHandle<Vec<(usize,ExHelper)>> = s.spawn(move |s| {
@@ -796,6 +807,29 @@ impl Explorer {
                 }
 
                 out
+            });
+
+            let handles = s.spawn(move |s| {
+                for thread_id in 0..max_threads as usize {
+                    trace!("Spawning thread, id = {}", thread_id);
+
+                    let helper = helpers[thread_id].clone();
+
+                    /// 4 MB is needed to prevent stack overflow
+                    let size = 1024 * 1024 * 4;
+                    let handle: ScopedJoinHandle<()> = s.builder()
+                        .stack_size(size)
+                        .spawn(move |_| {
+                            let mut helper = helper.lock();
+                            helper.lazy_smp_single(ts);
+                            drop(helper);
+                        }).unwrap();
+
+                    // handles.push((thread_id,handle));
+
+                    thread_counter2.fetch_add(1, SeqCst);
+                    trace!("Spawned thread, count = {}", thread_counter2.load(SeqCst));
+                }
             });
 
             /// Dispatch threads
@@ -877,18 +911,18 @@ impl Explorer {
 
             trace!("sending stop message to listener");
             tx_stop.send(()).unwrap_or(());
-            tx.send(ExMessage::Stop).unwrap_or(());
+            // tx.send(ExMessage::Stop).unwrap_or(());
             handle_listener.join().unwrap();
 
-            trace!("joining threads");
-            let helpers = handles.join().unwrap();
-            for (thread_id,helper) in helpers.into_iter() {
-                trace!("joining thread: {}", thread_id);
-                // let thread_data = handle.join().unwrap();
-                // per_thread_data[thread_id] = Some(thread_data);
-                // let helper = handle.join().unwrap();
-                helpers_out[thread_id] = Some(helper);
-            }
+            // trace!("joining threads");
+            // let helpers = handles.join().unwrap();
+            // for (thread_id,helper) in helpers.into_iter() {
+            //     trace!("joining thread: {}", thread_id);
+            //     // let thread_data = handle.join().unwrap();
+            //     // per_thread_data[thread_id] = Some(thread_data);
+            //     // let helper = handle.join().unwrap();
+            //     helpers_out[thread_id] = Some(helper);
+            // }
 
             trace!("exiting lazy_smp_2 loop");
 
@@ -940,13 +974,107 @@ impl Explorer {
         out:              Arc<RwLock<(Depth,ABResults,Vec<Move>,SearchStats)>>,
     ) {
         let mut any_move_stored = false;
-        loop {
+        trace!("starting lazy_smp_listener");
 
-            crossbeam::select! {
-                recv(rx_stop) -> _ => {
-                    trace!("lazy_smp_listener Stop 0");
+        #[cfg(feature = "nope")]
+        loop {
+            match rx.recv() {
+                Ok(ExMessage::Stop) => {
+                    trace!("lazy_smp_listener Stop 1");
                     break;
                 },
+                Ok(ExMessage::End(id)) => {
+                    thread_counter.fetch_sub(1, SeqCst);
+                    trace!("decrementing thread counter id = {}, new val = {}",
+                            id, thread_counter.load(SeqCst));
+                    // break;
+                },
+                Ok(ExMessage::Message(depth,res,moves,stats)) => {
+                    trace!("lazy_smp_listener recv Message, d {}", depth);
+                    match res.clone() {
+                        ABResults::ABList(bestres, _)
+                            | ABResults::ABSingle(bestres)
+                            | ABResults::ABSyzygy(bestres) => {
+                                if depth > best_depth.load(SeqCst)
+                                    // || bestres.score > CHECKMATE_VALUE - MAX_SEARCH_PLY as Score - 1
+                                    || bestres.score > CHECKMATE_VALUE - (MAX_SEARCH_PLY as Score * 2)
+                                    || !any_move_stored
+                                {
+                                    best_depth.store(depth,SeqCst);
+
+                                    // let t1 = t0.elapsed();
+                                    let t1 = Instant::now().checked_duration_since(t0).unwrap();
+                                    debug!("new best move d({}): {:.3}s: {}: {:?}",
+                                        depth, t1.as_secs_f64(),
+                                        // bestres.score, bestres.moves.front());
+                                        bestres.score, bestres.mv);
+
+                                    if bestres.score.abs() == CHECKMATE_VALUE {
+                                        stop.store(true, SeqCst);
+                                        debug!("in mate, nothing to do");
+                                        break;
+                                    }
+
+                                    if bestres.score > CHECKMATE_VALUE - (MAX_SEARCH_PLY as Score * 2) {
+                                    // if bestres.score > CHECKMATE_VALUE - MAX_SEARCH_PLY as Score - 1 {
+                                        let k = CHECKMATE_VALUE - bestres.score.abs();
+                                        debug!("Found mate in {}: d({}), {:?}",
+                                            // bestres.score, bestres.moves.front());
+                                            k, depth, bestres.mv);
+
+                                        // let mut best = self.best_mate.write();
+                                        // *best = Some(k as Depth);
+
+                                        best_mate.store(k as Depth, SeqCst);
+
+                                        stop.store(true, SeqCst);
+
+                                        let mut w = out.write();
+                                        *w = (depth, res, moves, w.3 + *stats);
+                                        // *w = (depth, scores, None);
+                                        break;
+                                    } else {
+                                        let mut w = out.write();
+                                        *w = (depth, res, moves, w.3 + *stats);
+                                        any_move_stored = true;
+                                    }
+                            } else {
+                                // XXX: add stats?
+                            }
+                        },
+                        // ABResults::ABSyzygy(res) => {
+                        //     panic!("TODO: Syzygy {:?}", res);
+                        // }
+                        ABResults::ABPrune(score, prune) => {
+                            panic!("TODO: Prune at root ?? {:?}, {:?}", score, prune);
+                        }
+                        x => {
+                            let mut w = out.write();
+                            w.3 = w.3 + *stats;
+                            // panic!("rx: ?? {:?}", x);
+                        },
+                    }
+
+                    // if let Some(id) = thread_dec {
+                    //     thread_counter.fetch_sub(1, SeqCst);
+                    //     trace!("decrementing thread counter id = {}, new val = {}",
+                    //            id, thread_counter.load(SeqCst));
+                    // }
+
+                },
+                // Err(TryRecvError::Empty)    => {
+                //     // std::thread::sleep(Duration::from_millis(1));
+                // },
+                Err(_)    => {
+                    trace!("Breaking thread counter loop (Disconnect)");
+                    break;
+                },
+            }
+        }
+
+        // #[cfg(feature = "nope")]
+        loop {
+            crossbeam::select! {
                 recv(rx) -> msg => match msg {
                     Ok(ExMessage::Stop) => {
                         trace!("lazy_smp_listener Stop 1");
@@ -1037,101 +1165,9 @@ impl Explorer {
                         trace!("Breaking thread counter loop (Disconnect)");
                         break;
                     },
-                }
-
-            }
-
-            // match rx.try_recv() {
-
-            #[cfg(feature = "nope")]
-            match rx.recv() {
-                Ok(ExMessage::Stop) => {
-                    trace!("lazy_smp_listener Stop");
-                    break;
                 },
-                Ok(ExMessage::End(id)) => {
-                    thread_counter.fetch_sub(1, SeqCst);
-                    trace!("decrementing thread counter id = {}, new val = {}",
-                            id, thread_counter.load(SeqCst));
-                    // break;
-                },
-                Ok(ExMessage::Message(depth,res,moves,stats)) => {
-                    match res.clone() {
-                        ABResults::ABList(bestres, _)
-                            | ABResults::ABSingle(bestres)
-                            | ABResults::ABSyzygy(bestres) => {
-                                if depth > best_depth.load(SeqCst)
-                                    // || bestres.score > CHECKMATE_VALUE - MAX_SEARCH_PLY as Score - 1
-                                    || bestres.score > CHECKMATE_VALUE - (MAX_SEARCH_PLY as Score * 2)
-                                    || !any_move_stored
-                                {
-                                    best_depth.store(depth,SeqCst);
-
-                                    // let t1 = t0.elapsed();
-                                    let t1 = Instant::now().checked_duration_since(t0).unwrap();
-                                    debug!("new best move d({}): {:.3}s: {}: {:?}",
-                                        depth, t1.as_secs_f64(),
-                                        // bestres.score, bestres.moves.front());
-                                        bestres.score, bestres.mv);
-
-                                    if bestres.score.abs() == CHECKMATE_VALUE {
-                                        self.stop.store(true, SeqCst);
-                                        debug!("in mate, nothing to do");
-                                        break;
-                                    }
-
-                                    if bestres.score > CHECKMATE_VALUE - (MAX_SEARCH_PLY as Score * 2) {
-                                    // if bestres.score > CHECKMATE_VALUE - MAX_SEARCH_PLY as Score - 1 {
-                                        let k = CHECKMATE_VALUE - bestres.score.abs();
-                                        debug!("Found mate in {}: d({}), {:?}",
-                                            // bestres.score, bestres.moves.front());
-                                            k, depth, bestres.mv);
-
-                                        // let mut best = self.best_mate.write();
-                                        // *best = Some(k as Depth);
-
-                                        self.best_mate.store(k as Depth, SeqCst);
-
-                                        self.stop.store(true, SeqCst);
-
-                                        let mut w = out.write();
-                                        *w = (depth, res, moves, w.3 + stats);
-                                        // *w = (depth, scores, None);
-                                        break;
-                                    } else {
-                                        let mut w = out.write();
-                                        *w = (depth, res, moves, w.3 + stats);
-                                        any_move_stored = true;
-                                    }
-                            } else {
-                                // XXX: add stats?
-                            }
-                        },
-                        // ABResults::ABSyzygy(res) => {
-                        //     panic!("TODO: Syzygy {:?}", res);
-                        // }
-                        ABResults::ABPrune(score, prune) => {
-                            panic!("TODO: Prune at root ?? {:?}, {:?}", score, prune);
-                        }
-                        x => {
-                            let mut w = out.write();
-                            w.3 = w.3 + stats;
-                            // panic!("rx: ?? {:?}", x);
-                        },
-                    }
-
-                    // if let Some(id) = thread_dec {
-                    //     thread_counter.fetch_sub(1, SeqCst);
-                    //     trace!("decrementing thread counter id = {}, new val = {}",
-                    //            id, thread_counter.load(SeqCst));
-                    // }
-
-                },
-                // Err(TryRecvError::Empty)    => {
-                //     // std::thread::sleep(Duration::from_millis(1));
-                // },
-                Err(_)    => {
-                    trace!("Breaking thread counter loop (Disconnect)");
+                recv(rx_stop) -> _ => {
+                    trace!("lazy_smp_listener Stop 0");
                     break;
                 },
             }
@@ -1433,10 +1469,10 @@ impl ExHelper {
             },
         }
 
-        if self.id == 0 {
-            let mut w = DEBUG_ABSTACK.lock();
-            *w = stack;
-        }
+        // if self.id == 0 {
+        //     let mut w = DEBUG_ABSTACK.lock();
+        //     *w = stack;
+        // }
 
         // if let Some(nn) = &self.nnue {
         //     let stats = nn.ft.stats;

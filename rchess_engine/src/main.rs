@@ -3467,14 +3467,13 @@ fn main9() {
     // ex.time_settings.time_remaining
     // ex.time_settings.move_time = 57;
 
+    // ex.cfg.num_threads = Some(6);
+    ex.cfg.num_threads = Some(1);
+
     ex.time_settings.is_per_move = false;
-    ex.time_settings.update_time_remaining(66, White, true);
+    ex.time_settings.update_time_remaining(100, White, true);
 
-    ex.new_game();
-
-    // while ex.per_thread_data.len() < 6 {
-    //     ex.per_thread_data.push(Some(PerThreadData::default()));
-    // }
+    // ex.new_game();
 
     // ex.update_game(g.clone());
     let t0 = std::time::Instant::now();
