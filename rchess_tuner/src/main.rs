@@ -32,8 +32,8 @@ use gag::Redirect;
 
 use crate::tuner_types::MatchResult;
 
-// fn main2() {
-fn main() {
+fn main2() {
+// fn main() {
 
     // let lines = vec![
     //     "Started game 1 of 100 (rchess vs rchess_prev)",
@@ -70,40 +70,10 @@ fn main() {
     // let res1 = Match::parse(lines1.into_iter().map(|s| s.to_owned()).collect());
     // eprintln!("res1 = {:?}", res1);
 
-    use std::fs::File;
-    use std::io::{Write, BufReader, BufRead};
-
-    let path = "matchlogs/test.log";
-
-    let input = File::open(path).unwrap();
-    let buf = BufReader::new(input);
-
-    let lines: Vec<String> = buf.lines().flatten().collect();
-
-    use once_cell::sync::Lazy;
-    use regex::Regex;
-
-    static RE0: Lazy<Regex> = Lazy::new(|| { Regex::new(
-        r"Finished game (\d+).+\{([^}]+)\}"
-    ).unwrap() });
-
-    let n = 442;
-
-    for (num, line) in lines[..n].iter().enumerate() {
-
-        let res = RE0.captures(line).unwrap();
-        let line = res.get(2).unwrap().as_str();
-        let res = MatchResult::parse(line);
-
-        if res.is_none() {
-            eprintln!("line.unwrap() {:>4} = {:?}", num+1, line);
-        }
-    }
-
 }
 
-// fn main() {
-fn main2() {
+fn main() {
+// fn main2() {
 
     init_logger();
 
@@ -180,8 +150,8 @@ fn main2() {
 
     let reader = BufReader::new(child.stdout.unwrap());
 
-    let mut game    = vec![];
-    // let mut matches = vec![];
+    let mut game: Vec<String>         = vec![];
+    let mut matches: Vec<MatchResult> = vec![];
 
     let mut state = InputParser::None;
 
@@ -199,8 +169,8 @@ fn main2() {
                 if line.starts_with("Elo difference") {
                     let v = std::mem::replace(&mut game, vec![]);
 
-                    // let res = Match::parse(v);
-                    // matches.push(res);
+                    let res = Match::parse(v).unwrap();
+                    matches.push(res);
 
                     for line in v {
                         eprintln!("{:?}", line);
@@ -211,32 +181,11 @@ fn main2() {
             },
         }
 
-        // eprintln!("{}", line.unwrap());
-
-        // if line.starts_with("Started Game ") {}
-
-        // if game.len() < 6 {
-        //     game.push(line.unwrap());
-        // } else {
-        //     let v = std::mem::replace(&mut game, vec![]);
-        //     game.push(line.unwrap());
-        //     for line in v {
-        //         eprintln!("{:?}", line);
-        //     }
-        //     eprintln!();
-        //     // let res = Match::parse(v);
-        //     // matches.push(res);
-        // }
-
     }
 
-    // for m in matches.iter() {
-    //     eprintln!("m = {:?}", m);
-    // }
-
-    // for game in reader.lines().tuples::<MatchOut>() {
-    //     eprintln!("line = {:?}", game);
-    // }
+    for m in matches.iter() {
+        eprintln!("m = {:?}", m);
+    }
 
 }
 
