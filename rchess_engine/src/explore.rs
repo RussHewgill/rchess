@@ -374,7 +374,7 @@ impl ABConfig {
 impl Explorer {
 
     pub fn new_game(&mut self, ts: &Tables) {
-        self.clear_tt();
+        // self.clear_tt();
 
         self.game = Game::from_fen(ts, STARTPOS).unwrap();
 

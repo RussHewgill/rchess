@@ -896,6 +896,7 @@ impl ExHelper {
         /// skip when TT hit suggests it will fail
         #[cfg(feature = "null_pruning")]
         if !is_pv_node
+            // && !is_root_node
             // && !stack.inside_null // don't ever recursively null prune
             && !in_check
             // && g.last_move != Some(Move::NullMove) // don't null prune twice in a row

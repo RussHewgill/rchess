@@ -30,6 +30,7 @@ use std::str::FromStr;
 use arrayvec::ArrayVec;
 use itertools::Itertools;
 
+use rchess_engine_lib::lockless_map::TransTable;
 use rchess_engine_lib::material::{MaterialTable,PawnTable,MatEval,PawnEval};
 use rchess_engine_lib::{heuristics::*, print_size_of};
 use rchess_engine_lib::{timer,timer_loop,eprint_self};
@@ -3472,7 +3473,12 @@ fn main9() {
     let params0 = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 c1f4 b8d7 f4d6 e7d6 f1a6 a8a6 a1c1 e8e7 e4e5 d7e5 d1e2 e7e8 f2f4 c8g4 e2b5 e5c6 c3e2 a6a2 d4c6 b7c6 b5b7 g4e2 h1g1 d8a5 b2b4 a5d8 f4f5 a2c2 c1c2 e2b5 c2e2 b5e2 b7c6 e8e7 e1e2 d8d7 c6a6 d7f5 g1e1 f6e4 a6b7 e7e6 b7c8 e6e5 c8e8 f5e6 e8a8 e6c4 e2d1 c4d4 d1c1 d4c3 c1b1 c3b4 b1a2 b4d2 a2b3 d2e1 a8e8 e5f6 e8d8 f6g6 d8d6 f8d6 g2g3 h8b8 b3c4";
     let params1 = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 c1f4 b8d7 f4d6 e7d6 f1a6 a8a6 a1c1 e8e7 e4e5 d7e5 d1e2 e7e8 f2f4 c8g4 e2b5 e5c6 c3e2 a6a2 d4c6 b7c6 b5b7 g4e2 h1g1 d8a5 b2b4 a5d8 f4f5 a2c2 c1c2 e2b5 c2e2 b5e2 b7c6 e8e7 e1e2 d8d7 c6a6 d7f5 g1e1 f6e4 a6b7 e7e6 b7c8 e6e5 c8e8 f5e6 e8a8 e6c4 e2d1 c4d4 d1c1 d4c3 c1b1 c3b4 b1a2 b4d2 a2b3 d2e1 a8e8 e5f6 e8d8 f6g6 d8d6 f8d6 g2g3";
 
+    // #[cfg(feature = "nope")]
     let mut ex = loop {
+
+        ex.new_game(&ts);
+        ex.clear_tt();
+
         let params = params1.split(" ");
         let moves: Vec<&str> = params.collect();
         ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
@@ -3480,6 +3486,10 @@ fn main9() {
         let g = ex.game;
         // eprintln!("g = {:?}", g);
         // eprintln!("g.to_fen() = {:?}", g.to_fen());
+
+        ex.cfg.blocked_moves.insert(Move::new_quiet("e1", "b1", Queen));
+        ex.cfg.blocked_moves.insert(Move::new_quiet("e1", "d1", Queen));
+        ex.cfg.blocked_moves.insert(Move::new_quiet("e1", "b4", Queen));
 
         let t0 = std::time::Instant::now();
         let (res,moves,stats0) = ex.lazy_smp_2(&ts);
@@ -3504,11 +3514,18 @@ fn main9() {
 
         // assert_eq!(best.mv, Some(Move::new_quiet("h8", "b8", Rook)));
         if best.mv == Some(Move::new_quiet("h8", "b8", Rook)) {
+            println!("dumping TT");
             let path = "tt.dump";
             ex.ptr_tt.write_to_file(path).unwrap();
             break ex;
         }
     };
+
+    ex.cfg.blocked_moves.clear();
+
+    let path = "tt.dump";
+    let tt = TransTable::read_from_file(path).unwrap();
+    ex.ptr_tt = Arc::new(tt);
 
     let params = params0.split(" ");
     let moves: Vec<&str> = params.collect();
