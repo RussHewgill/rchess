@@ -48,7 +48,9 @@ use derive_new::new;
 // use evmap::{ReadHandle,ReadHandleFactory,WriteHandle};
 
 lazy_static! { /// DEBUG_ABSTACK
-    pub static ref DEBUG_ABSTACK: Mutex<ABStack> = Mutex::new(ABStack::new());
+    pub static ref DEBUG_ABSTACK: [Mutex<Option<ABStack>>; 6] =
+        // array_init::array_init(|_| Mutex::new(ABStack::new()));
+        array_init::array_init(|_| Mutex::new(None));
 }
 
 /// used for persistent data between runs
@@ -408,7 +410,19 @@ impl Explorer {
         // }
     }
 
+    pub fn clear_channels(&mut self) {
+        loop {
+            match self.rx.try_recv() {
+                Ok(_)                           => {},
+                Err(TryRecvError::Empty)        => break,
+                Err(TryRecvError::Disconnected) => panic!(),
+            }
+        }
+    }
+
     pub fn sync_threads(&mut self) {
+        self.clear_channels();
+
         for helper in self.helpers.iter() {
             let mut helper = helper.lock();
             helper.side         = self.side;
@@ -946,6 +960,23 @@ impl Explorer {
             } else {
                 debug!("best move wasn't legal? {:?}\n{:?}\n{:?}", self.game, self.game.to_fen(), res);
                 // ABResults::ABNone
+
+                for id in 0..6 {
+
+                    let stack = DEBUG_ABSTACK[id].lock();
+
+                    if let Some(stack) = stack.as_ref() {
+                        eprintln!("stack id = {:?}", id);
+                        for st in stack.stacks.iter() {
+                            // if st.killers[0].is_some() {
+                            if st.static_eval.is_some() {
+                                eprintln!("(st.killers,st.static_eval) = {:?}", (st.killers,st.static_eval));
+                            }
+                        }
+                    }
+
+                }
+
                 panic!();
             };
             (out,moves,stats)
@@ -1469,6 +1500,10 @@ impl ExHelper {
         //     let mut w = DEBUG_ABSTACK.lock();
         //     *w = stack;
         // }
+        {
+            let mut w = DEBUG_ABSTACK[self.id].lock();
+            *w = Some(stack);
+        }
 
         // if let Some(nn) = &self.nnue {
         //     let stats = nn.ft.stats;

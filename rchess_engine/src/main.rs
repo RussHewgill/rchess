@@ -30,6 +30,7 @@ use std::str::FromStr;
 use arrayvec::ArrayVec;
 use itertools::Itertools;
 
+use parking_lot::Mutex;
 use rchess_engine_lib::lockless_map::TransTable;
 use rchess_engine_lib::material::{MaterialTable,PawnTable,MatEval,PawnEval};
 use rchess_engine_lib::{heuristics::*, print_size_of};
@@ -3537,6 +3538,13 @@ fn main9() {
     let t2 = t1.as_secs_f64();
     let time0 = t2;
     let best0 = res.get_result().unwrap();
+
+    // let stack = DEBUG_ABSTACK.lock();
+    // for st in stack.stacks.iter() {
+    //     if st.killers[0].is_some() {
+    //         eprintln!("(st.killers,st.static_eval) = {:?}", (st.killers,st.static_eval));
+    //     }
+    // }
 
     return;
 

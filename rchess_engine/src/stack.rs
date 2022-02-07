@@ -16,7 +16,7 @@ pub struct ABStack {
     pub double_ext_avg:         [RunningAverage; 2],
     pub exploding:              bool,
 
-    pub pieces:                 [Option<Piece>; 64],
+    // pub pieces:                 [Option<Piece>; 64],
 
     pub inside_null:            bool,
 
@@ -372,7 +372,7 @@ impl ABStack {
             double_ext_avg:         [RunningAverage::new(0,100); 2],
             exploding:              false,
 
-            pieces:                 [None; 64],
+            // pieces:                 [None; 64],
 
             inside_null:            false,
 
