@@ -128,7 +128,7 @@ mod new {
         pub abort_now:     bool,
     }
 
-    const BUFFER_TIME: u64 = 50;
+    const BUFFER_TIME: u64 = 10;
 
     /// New
     impl TimeManager {
@@ -159,7 +159,9 @@ mod new {
                 let t2 = move_time.checked_sub(BUFFER_TIME).unwrap_or(BUFFER_TIME);
 
                 limit_soft = u64::min(t1, t2);
-                limit_hard = u64::min(limit_soft * 10, move_time);
+
+                limit_hard = if move_time < BUFFER_TIME { move_time } else { move_time - BUFFER_TIME };
+                limit_hard = u64::min(limit_soft * 10, limit_hard);
             }
 
             Self {
@@ -180,6 +182,7 @@ mod new {
 
         // const NODES_PER_TIME_CHECK: u64 = 2000;
         const LOOPS_PER_TIME_CHECK: u64 = 10;
+        // const LOOPS_PER_TIME_CHECK: u64 = 1;
 
         // pub fn _should_stop(&self, mut n: &mut u64) -> bool {
         //     if self.ponder {
@@ -197,6 +200,15 @@ mod new {
         //     }
         // }
 
+        #[cfg(feature = "nope")]
+        pub fn should_stop(&mut self) -> bool {
+            let elapsed = Instant::now().checked_duration_since(self.start_time)
+                .unwrap()
+                .as_millis() as u64;
+            elapsed >= self.limit_hard
+        }
+
+        // #[cfg(feature = "nope")]
         pub fn should_stop(&mut self) -> bool {
 
             // eprintln!("should_stop = {:?}", nodes);

@@ -318,13 +318,10 @@ fn main_endgame() {
     ex.time_settings.move_time = (t * 1000.0) as u64;
 
 
-    let perthread = ex.per_thread_data[0].take().unwrap();
-
-    let mut mt = perthread.mat_table.clone();
-
-    let (me,_,_) = mt.get_or_insert(&ts, &g);
-
-    eprintln!("me = {:?}", me);
+    // let perthread = ex.per_thread_data[0].take().unwrap();
+    // let mut mt = perthread.mat_table.clone();
+    // let (me,_,_) = mt.get_or_insert(&ts, &g);
+    // eprintln!("me = {:?}", me);
 
     return;
 
@@ -3098,7 +3095,6 @@ fn main_eval() {
         0,
         n,
         ex.best_depth.clone(),
-        vec![],
         tx,
         thread_data,
     );
@@ -3333,6 +3329,8 @@ fn main9() {
     // // let (fen,correct) = &games_sts(23, 2); // fen, set
     // let (fen,correct) = &games_sts(1, 3); // fen, set
 
+    let fen = "rn1qkb1r/1p3ppp/p2pbn2/4p3/4P3/1NN1B3/PPP2PPP/R2QKB1R w KQkq -";
+
     eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
@@ -3372,9 +3370,9 @@ fn main9() {
     let t = 2.0;
     // let t = 0.125;
 
-    // let n = MAX_SEARCH_PLY;
+    let n = MAX_SEARCH_PLY;
     // let n = 35;
-    let n = 15;
+    // let n = 15;
     // let n = 10;
     // let n = 2;
 
@@ -3383,8 +3381,8 @@ fn main9() {
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(12);
-    // ex.cfg.num_threads = Some(6);
-    ex.cfg.num_threads = Some(1);
+    ex.cfg.num_threads = Some(6);
+    // ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
@@ -3466,7 +3464,17 @@ fn main9() {
 
     // return;
 
-    // ex.time_settings.move_time = 1100;
+    // ex.time_settings.time_remaining
+    // ex.time_settings.move_time = 57;
+
+    ex.time_settings.is_per_move = false;
+    ex.time_settings.update_time_remaining(66, White, true);
+
+    ex.new_game();
+
+    // while ex.per_thread_data.len() < 6 {
+    //     ex.per_thread_data.push(Some(PerThreadData::default()));
+    // }
 
     // ex.update_game(g.clone());
     let t0 = std::time::Instant::now();
@@ -3497,6 +3505,8 @@ fn main9() {
     debug!("Best move = {:>8} {:?}", best.score, best.mv);
     debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth.0, t2);
     println!();
+
+    return;
 
     // for (n,mv) in moves.iter().enumerate() {
     //     eprintln!("\t{} mv = {:?}", n, mv);
@@ -4283,8 +4293,8 @@ fn init_logger() {
     // return;
 
     let cfg = ConfigBuilder::new()
-        .set_time_level(LevelFilter::Off)
-        // .set_time_level(LevelFilter::Debug)
+        // .set_time_level(LevelFilter::Off)
+        .set_time_level(LevelFilter::Debug)
         .set_time_format_str("%H-%M-%S %.6f")
         .set_target_level(LevelFilter::Off)
         .set_thread_level(LevelFilter::Info)

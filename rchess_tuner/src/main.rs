@@ -64,11 +64,11 @@ fn main2() {
         "Elo difference: 120.4 +/- 123.5, LOS: 71.8 %, DrawRatio: 0.0 %",
     ];
 
-    // let res0 = Match::parse(lines0.into_iter().map(|s| s.to_owned()).collect());
-    // eprintln!("res0 = {:?}", res0);
+    let res0 = Match::parse(lines0.into_iter().map(|s| s.to_owned()).collect());
+    eprintln!("res0 = {:?}", res0);
 
-    // let res1 = Match::parse(lines1.into_iter().map(|s| s.to_owned()).collect());
-    // eprintln!("res1 = {:?}", res1);
+    let res1 = Match::parse(lines1.into_iter().map(|s| s.to_owned()).collect());
+    eprintln!("res1 = {:?}", res1);
 
 }
 
@@ -91,8 +91,8 @@ fn main() {
 
     let num_games = 50;
 
-    // let time = "tc=1+0.1";
-    let time = "tc=0.5+0.05";
+    let time = "tc=1+0.1";
+    // let time = "tc=0.5+0.05";
     // let time = "st=0.05";
 
     let (elo0, elo1) = (0, 50);
@@ -150,8 +150,8 @@ fn main() {
 
     let reader = BufReader::new(child.stdout.unwrap());
 
-    let mut game: Vec<String>         = vec![];
-    let mut matches: Vec<MatchResult> = vec![];
+    let mut game: Vec<String>   = vec![];
+    let mut matches: Vec<Match> = vec![];
 
     let mut state = InputParser::None;
 
@@ -169,12 +169,15 @@ fn main() {
                 if line.starts_with("Elo difference") {
                     let v = std::mem::replace(&mut game, vec![]);
 
-                    let res = Match::parse(v).unwrap();
-                    matches.push(res);
+                    // for line in v {
+                    //     eprintln!("{:?}", line);
+                    // }
 
-                    for line in v {
-                        eprintln!("{:?}", line);
-                    }
+                    let res = Match::parse(v).unwrap();
+
+                    eprintln!("{:?}", res);
+
+                    matches.push(res);
 
                     state = InputParser::Started;
                 }

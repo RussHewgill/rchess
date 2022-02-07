@@ -11,7 +11,7 @@ pub enum InputParser {
     Started,
 }
 
-#[derive(Debug,Clone,Copy)]
+#[derive(Clone,Copy)]
 pub struct Match {
     game_num:   u32,
     result:     MatchResult,
@@ -49,19 +49,26 @@ impl Match {
             ).unwrap()
         });
 
-        let elo = RE2.captures(&input.last().unwrap()).unwrap();
+        let elo_diff = RE2.captures(&input.last().unwrap()).unwrap();
+
+        let elo        = f64::from_str(elo_diff.get(1)?.as_str()).ok()?;
+        let bounds     = f64::from_str(elo_diff.get(2)?.as_str()).ok()?;
+        let los        = f64::from_str(elo_diff.get(3)?.as_str()).ok()?;
+        let draw_ratio = f64::from_str(elo_diff.get(4)?.as_str()).ok()?;
 
         // eprintln!("elo = {:?}", elo);
 
-        // Some(Self {
-        //     game_num,
-        //     result,
-        //     sum_score:  (w,b,d),
-        //     elo_diff:   
-        // })
+        Some(Self {
+            game_num,
+            result,
+            sum_score:  (w,b,d),
+            elo_diff:   (elo,bounds),
+            los,
+            draw_ratio,
+        })
 
         // unimplemented!()
-        None
+        // None
     }
 }
 
@@ -93,6 +100,17 @@ pub enum DrawType {
     FiftyMoveRule,
 }
 
+
+impl std::fmt::Debug for Match {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("Game {}:\n", self.game_num))?;
+        f.write_str(&format!("    result: {:?}\n", self.result))?;
+        f.write_str(&format!("    scores: {:>3} - {:>3} - {:>3}",
+                             self.sum_score.0, self.sum_score.1, self.sum_score.2))?;
+
+        Ok(())
+    }
+}
 
 
 
