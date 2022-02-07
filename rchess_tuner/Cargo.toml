@@ -28,3 +28,7 @@ itertools = "0.10.3"
 
 regex = "1.5.4"
 
+once_cell = "1.8.0"
+
+nom = "7.0.0"
+

@@ -7,12 +7,14 @@
 
 mod sprt;
 mod tuner_types;
+mod parsing;
 
 use rchess_engine_lib::alphabeta::ABResult;
 use rchess_engine_lib::types::*;
 use rchess_engine_lib::tables::*;
 use rchess_engine_lib::explore::*;
 use rchess_engine_lib::evaluate::*;
+use tuner_types::InputParser;
 use tuner_types::Match;
 
 // use sprt::*;
@@ -28,24 +30,81 @@ use log::{debug, error, log_enabled, info, Level};
 use simplelog::*;
 use gag::Redirect;
 
+use crate::tuner_types::MatchResult;
+
+// fn main2() {
 fn main() {
 
-    let lines = vec![
-        "Started game 1 of 100 (rchess vs rchess_prev)",
-        "Finished game 1 (rchess vs rchess_prev): 0-1 {White loses on time}",
-        "Score of rchess vs rchess_prev: 0 - 1 - 0  [0.000] 1",
-        "...      rchess playing White: 0 - 1 - 0  [0.000] 1",
-        "...      White vs Black: 0 - 1 - 0  [0.000] 1",
+    // let lines = vec![
+    //     "Started game 1 of 100 (rchess vs rchess_prev)",
+    //     "Finished game 1 (rchess vs rchess_prev): 0-1 {White loses on time}",
+    //     "Score of rchess vs rchess_prev: 0 - 1 - 0  [0.000] 1",
+    //     "...      rchess playing White: 0 - 1 - 0  [0.000] 1",
+    //     "...      White vs Black: 0 - 1 - 0  [0.000] 1",
+    //     "Elo difference: -inf +/- nan, LOS: 15.9 %, DrawRatio: 0.0 %",
+    // ];
+
+    let lines0 = vec![
+        "Started game 3 of 100 (rchess vs rchess_prev)",
+        "Finished game 3 (rchess vs rchess_prev): 0-1 {White loses on time}",
+        "Score of rchess vs rchess_prev: 2 - 1 - 0  [0.667] 3",
+        "...      rchess playing White: 1 - 1 - 0  [0.500] 2",
+        "...      rchess playing Black: 1 - 0 - 0  [1.000] 1",
+        "...      White vs Black: 1 - 2 - 0  [0.333] 3",
         "Elo difference: -inf +/- nan, LOS: 15.9 %, DrawRatio: 0.0 %",
     ];
 
-    let res = Match::parse(lines.into_iter().map(|s| s.to_owned()).collect());
+    let lines1 = vec![
+        "Started game 3 of 100 (rchess vs rchess_prev)",
+        "Finished game 3 (rchess vs rchess_prev): 0-1 {White loses on time}",
+        "Score of rchess vs rchess_prev: 2 - 1 - 0  [0.667] 3",
+        "...      rchess playing White: 1 - 1 - 0  [0.500] 2",
+        "...      rchess playing Black: 1 - 0 - 0  [1.000] 1",
+        "...      White vs Black: 1 - 2 - 0  [0.333] 3",
+        "Elo difference: 120.4 +/- 123.5, LOS: 71.8 %, DrawRatio: 0.0 %",
+    ];
 
-    eprintln!("res = {:?}", res);
+    // let res0 = Match::parse(lines0.into_iter().map(|s| s.to_owned()).collect());
+    // eprintln!("res0 = {:?}", res0);
+
+    // let res1 = Match::parse(lines1.into_iter().map(|s| s.to_owned()).collect());
+    // eprintln!("res1 = {:?}", res1);
+
+    use std::fs::File;
+    use std::io::{Write, BufReader, BufRead};
+
+    let path = "matchlogs/test.log";
+
+    let input = File::open(path).unwrap();
+    let buf = BufReader::new(input);
+
+    let lines: Vec<String> = buf.lines().flatten().collect();
+
+    use once_cell::sync::Lazy;
+    use regex::Regex;
+
+    static RE0: Lazy<Regex> = Lazy::new(|| { Regex::new(
+        r"Finished game (\d+).+\{([^}]+)\}"
+    ).unwrap() });
+
+    let n = 442;
+
+    for (num, line) in lines[..n].iter().enumerate() {
+
+        let res = RE0.captures(line).unwrap();
+        let line = res.get(2).unwrap().as_str();
+        let res = MatchResult::parse(line);
+
+        if res.is_none() {
+            eprintln!("line.unwrap() {:>4} = {:?}", num+1, line);
+        }
+    }
 
 }
 
+// fn main() {
 fn main2() {
+
     init_logger();
 
     let now = chrono::Local::now();
@@ -122,22 +181,58 @@ fn main2() {
     let reader = BufReader::new(child.stdout.unwrap());
 
     let mut game    = vec![];
-    let mut matches = vec![];
+    // let mut matches = vec![];
+
+    let mut state = InputParser::None;
 
     for line in reader.lines() {
+        let line = line.unwrap();
 
-        if game.len() < 6 {
-            game.push(line.unwrap());
-        } else {
-            let v = std::mem::replace(&mut game, vec![]);
-            let res = Match::parse(v);
-            matches.push(res);
+        match state {
+            InputParser::None => {
+                game.push(line);
+                state = InputParser::Started;
+            },
+            InputParser::Started => {
+                game.push(line.clone());
+
+                if line.starts_with("Elo difference") {
+                    let v = std::mem::replace(&mut game, vec![]);
+
+                    // let res = Match::parse(v);
+                    // matches.push(res);
+
+                    for line in v {
+                        eprintln!("{:?}", line);
+                    }
+
+                    state = InputParser::Started;
+                }
+            },
         }
+
+        // eprintln!("{}", line.unwrap());
+
+        // if line.starts_with("Started Game ") {}
+
+        // if game.len() < 6 {
+        //     game.push(line.unwrap());
+        // } else {
+        //     let v = std::mem::replace(&mut game, vec![]);
+        //     game.push(line.unwrap());
+        //     for line in v {
+        //         eprintln!("{:?}", line);
+        //     }
+        //     eprintln!();
+        //     // let res = Match::parse(v);
+        //     // matches.push(res);
+        // }
+
     }
 
-    for m in matches.iter() {
-        eprintln!("m = {:?}", m);
-    }
+    // for m in matches.iter() {
+    //     eprintln!("m = {:?}", m);
+    // }
 
     // for game in reader.lines().tuples::<MatchOut>() {
     //     eprintln!("line = {:?}", game);

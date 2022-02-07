@@ -2,8 +2,14 @@
 use std::io::{self};
 use std::str::FromStr;
 
-// type Out      = io::Result<String>;
-// type MatchOut = (Out,Out,Out,Out,Out,Out);
+use once_cell::sync::Lazy;
+use rchess_engine_lib::types::Color;
+
+#[derive(Debug,PartialEq,PartialOrd,Clone,Copy)]
+pub enum InputParser {
+    None,
+    Started,
+}
 
 #[derive(Debug,Clone,Copy)]
 pub struct Match {
@@ -15,55 +21,76 @@ pub struct Match {
     draw_ratio: f64,
 }
 
-// "Started game 1 of 100 (rchess vs rchess_prev)",
-// "Finished game 1 (rchess vs rchess_prev): 0-1 {White loses on time}",
-// "Score of rchess vs rchess_prev: 0 - 1 - 0  [0.000] 1",
-// "...      rchess playing White: 0 - 1 - 0  [0.000] 1",
-// "...      White vs Black: 0 - 1 - 0  [0.000] 1",
-// "Elo difference: -inf +/- nan, LOS: 15.9 %, DrawRatio: 0.0 %",
-
 impl Match {
     pub fn parse(input: Vec<String>) -> Option<Self> {
         use regex::Regex;
 
-        let reg0 = Regex::new(r"(\d+)").unwrap();
-        let game_num = u32::from_str(reg0.find(&input[0])?.as_str()).ok()?;
+        static RE0: Lazy<Regex> = Lazy::new(|| { Regex::new(
+            r"Finished game (\d+).+\{([^}]+)\}"
+        ).unwrap() });
 
-        let reg1 = Regex::new(r"(\d+) - (\d+) - (\d+)").unwrap();
-        // let scores = reg1.find_iter(&input[2]);
-        let scores = reg1.captures(&input[2]).unwrap();
+        let res = RE0.captures(&input[1])?;
+
+        let game_num = u32::from_str(res.get(1)?.as_str()).ok()?;
+        let result   = MatchResult::parse(res.get(2)?.as_str())?;
+
+        static RE1: Lazy<Regex> = Lazy::new(|| { Regex::new(r"(\d+) - (\d+) - (\d+)").unwrap() });
+        let scores = RE1.captures(&input[2]).unwrap();
 
         let w = u32::from_str(scores.get(1)?.as_str()).ok()?;
         let b = u32::from_str(scores.get(2)?.as_str()).ok()?;
         let d = u32::from_str(scores.get(3)?.as_str()).ok()?;
 
-        eprintln!("(w,b,d) = {:?}", (w,b,d));
+        // eprintln!("(w,b,d) = {:?}", (w,b,d));
 
-        // for s in scores {
-        //     eprintln!("s = {:?}", s);
-        // }
+        static RE2: Lazy<Regex> = Lazy::new(|| {
+            Regex::new(
+                r"(-?\d+\.\d+|-?inf) \+.- (nan|\d+\.\d+), LOS: (\d+\.\d+) %, DrawRatio: (\d+\.\d+) %"
+            ).unwrap()
+        });
 
-        unimplemented!()
+        let elo = RE2.captures(&input.last().unwrap()).unwrap();
+
+        // eprintln!("elo = {:?}", elo);
+
+        // Some(Self {
+        //     game_num,
+        //     result,
+        //     sum_score:  (w,b,d),
+        //     elo_diff:   
+        // })
+
+        // unimplemented!()
+        None
     }
 }
 
 #[derive(Debug,Clone,Copy)]
 pub enum MatchResult {
-    Win(WinType),
+    WinLoss(Color, WinLossType),
     Draw(DrawType),
-    Loss(LossType,)
 }
 
 #[derive(Debug,Clone,Copy)]
-pub enum WinType {
+pub enum WinLossType {
+    Resign,
+    Time,
+    AdjudicationSyzygy,
+    Adjudication,
+    IllegalMove,
+    Disconnect,
+    Stalled,
+    Agreement,
+    Checkmate,
 }
 
 #[derive(Debug,Clone,Copy)]
 pub enum DrawType {
-}
-
-#[derive(Debug,Clone,Copy)]
-pub enum LossType {
+    Timeout,
+    Adjudication,
+    Stalemate,
+    Repetition,
+    FiftyMoveRule,
 }
 
 
