@@ -277,25 +277,14 @@ pub struct ExHelper {
 
 }
 
-// /// Load EvalParams
-// impl ExHelper {
-//     pub fn load_evparams<P: AsRef<Path>>(&mut self, path: P) -> std::io::Result<()> {
-//         let (ev_mid,ev_end) = EvalParams::read_evparams(path)?;
-//         self.cfg.eval_params_mid = ev_mid;
-//         self.cfg.eval_params_end = ev_end;
-//         Ok(())
-//     }
-// }
-
 /// build_exhelper
 impl Explorer {
     pub fn build_exhelper(
         &self,
         id:               usize,
-        max_depth:        Depth,
-        best_depth:       Arc<CachePadded<AtomicI16>>,
+        // best_depth:       Arc<CachePadded<AtomicI16>>,
         // root_moves:       Vec<Move>,
-        tx:               ExSender,
+        // tx:               ExSender,
         thread_data:      PerThreadData,
     ) -> ExHelper {
         ExHelper {
@@ -320,8 +309,8 @@ impl Explorer {
             // nnue:            self.nnue.clone().map(|x| RefCell::new(x)),
             nnue:            self.nnue.clone(),
 
-            best_depth,
-            tx,
+            best_depth:      self.best_depth.clone(),
+            tx:              self.tx.clone(),
             // thread_dec,
 
             #[cfg(feature = "lockless_hashmap")]
@@ -383,12 +372,11 @@ impl ABConfig {
 
 /// new_game, misc
 impl Explorer {
-    // pub fn add_move_to_history(&mut self, zb: Zobrist, mv: Move) {
-    //     self.move_history.push((zb,mv));
-    // }
 
-    pub fn new_game(&mut self) {
+    pub fn new_game(&mut self, ts: &Tables) {
         self.clear_tt();
+
+        self.game = Game::from_fen(ts, STARTPOS).unwrap();
 
         #[cfg(feature = "one_thread")]
         let max_threads = 1;
@@ -407,9 +395,6 @@ impl Explorer {
         while self.helpers.len() < max_threads as usize {
             let mut helper = self.build_exhelper(
                 thread_id,
-                self.cfg.max_depth,
-                self.best_depth.clone(),
-                self.tx.clone(),
                 PerThreadData::default(),
             );
             self.helpers.push(Arc::new(Mutex::new(helper)));
@@ -421,19 +406,29 @@ impl Explorer {
         //         *pt = PerThreadData::default();
         //     }
         // }
-
-
-
     }
 
-    pub fn clear_tt(&self) {
+    pub fn sync_threads(&mut self) {
+        for helper in self.helpers.iter() {
+            let mut helper = helper.lock();
+            helper.side         = self.side;
+            helper.game         = self.game;
+            helper.cfg          = self.cfg.clone();
+            helper.params       = self.search_params;
+            helper.move_history = self.move_history.clone();
+        }
+    }
+
+    pub fn clear_tt(&mut self) {
         #[cfg(feature = "lockless_hashmap")]
         {
             // debug!("clearing table, unsafe");
             // unsafe {
             //     self.ptr_tt.clear_table();
             // }
-            self.ptr_tt.clear_table();
+            // self.ptr_tt.clear_table();
+
+            self.ptr_tt = Arc::new(TransTable::new_mb(DEFAULT_TT_SIZE_MB));
         }
         #[cfg(not(feature = "lockless_hashmap"))]
         {
@@ -462,13 +457,10 @@ impl Explorer {
         }
         self.side = g.state.side_to_move;
         self.game = g;
+        self.sync_threads();
     }
 
-    pub fn _update_game_movelist(
-        &mut self,
-        ts:          &Tables,
-        moves:       &[Move],
-    ) {
+    pub fn _update_game_movelist(&mut self, ts: &Tables, moves: &[Move]) {
         let mut g = self.game;
         for &mv in moves.iter() {
             g = g.make_move_unchecked(&ts, mv).unwrap();
@@ -674,8 +666,10 @@ impl Explorer {
     pub fn lazy_smp_2(&mut self, ts: &Tables) -> (ABResults,Vec<Move>,SearchStats) {
 
         if self.helpers.len() == 0 {
-            self.new_game();
+            self.new_game(ts);
         }
+
+        self.sync_threads();
 
         let t0 = Instant::now();
 
@@ -945,7 +939,9 @@ impl Explorer {
         if let Some(res) = out.get_result() {
 
             // let out = if self.game.move_is_legal(ts, res.mv.unwrap(), self.game.state.side_to_move) {
-            let out = if MoveGen::new_move_is_legal(ts, &self.game, res.mv.unwrap()) {
+            let out = if MoveGen::new_move_is_legal(ts, &self.game, res.mv.unwrap())
+                && MoveGen::new_move_is_pseudo_legal(ts, &self.game, res.mv.unwrap())
+            {
                 out
             } else {
                 debug!("best move wasn't legal? {:?}\n{:?}\n{:?}", self.game, self.game.to_fen(), res);

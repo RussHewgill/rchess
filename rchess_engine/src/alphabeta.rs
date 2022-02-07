@@ -682,6 +682,22 @@ impl ExHelper {
             self.check_tt2(ts, g.zobrist, depth, stats)
         };
 
+        // if g.zobrist == Zobrist(0x7f2f9473b5dbc9c0) {
+        //     if msi.is_some() {
+        //         println!("wat 0");
+        //     } else {
+        //         println!("wat 1");
+        //     }
+        // }
+
+        // if g.zobrist == Zobrist(0x05c314af9ca89e2b) {
+        //     if msi.is_some() {
+        //         println!("wat 2");
+        //     } else {
+        //         println!("wat 3");
+        //     }
+        // }
+
         // let (meval,msi): (Option<Score>,Option<SearchInfo>) = self.check_tt2(ts, g.zobrist, depth, stats);
 
         /// Step 4b. Check for returnable TT score

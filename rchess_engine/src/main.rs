@@ -3086,16 +3086,12 @@ fn main_eval() {
     ex.cfg.clear_table = false;
     ex.cfg.num_threads = Some(1);
 
-    let (tx,rx) = crossbeam::channel::unbounded();
     use rchess_engine_lib::material::*;
     let mt = MaterialTable::default();
     let pt = PawnTable::default();
     let thread_data = PerThreadData::new(mt,pt);
     let mut exhelper = ex.build_exhelper(
         0,
-        n,
-        ex.best_depth.clone(),
-        tx,
         thread_data,
     );
 
@@ -3453,57 +3449,77 @@ fn main9() {
     // eprintln!("avg = {:.3}", avg);
     // return;
 
-    // let params = "e2e4 c7c5 g1f3 d7d6";
-    // let params = params.split(" ");
-    // let moves: Vec<&str> = params.collect();
-    // ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
-    // // ex.update_game_movelist(&ts, fen, moves.into_iter());
-    // let g = ex.game;
-    // eprintln!("g = {:?}", g);
-    // eprintln!("g.to_fen() = {:?}", g.to_fen());
-
-    // return;
-
     // ex.time_settings.time_remaining
     // ex.time_settings.move_time = 57;
 
-    // ex.cfg.num_threads = Some(6);
-    ex.cfg.num_threads = Some(1);
+    ex.cfg.num_threads = Some(6);
+    // ex.cfg.num_threads = Some(1);
 
     ex.time_settings.is_per_move = false;
     ex.time_settings.update_time_remaining(100, White, true);
 
-    // ex.new_game();
+    ex.new_game(&ts);
 
-    // ex.update_game(g.clone());
+    // ex.new_game(&ts);
+
+    // let fen = "1r6/5ppp/3b2k1/8/2K1n3/6P1/7P/4q3 b - - 2 2";
+    // let g = Game::from_fen(&ts, fen).unwrap();
+    // eprintln!("g.zobrist = {:?}", g.zobrist);
+
+    let zb0 = Zobrist(0x7f2f9473b5dbc9c0);
+    let zb1 = Zobrist(0x05c314af9ca89e2b);
+
+    let params0 = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 c1f4 b8d7 f4d6 e7d6 f1a6 a8a6 a1c1 e8e7 e4e5 d7e5 d1e2 e7e8 f2f4 c8g4 e2b5 e5c6 c3e2 a6a2 d4c6 b7c6 b5b7 g4e2 h1g1 d8a5 b2b4 a5d8 f4f5 a2c2 c1c2 e2b5 c2e2 b5e2 b7c6 e8e7 e1e2 d8d7 c6a6 d7f5 g1e1 f6e4 a6b7 e7e6 b7c8 e6e5 c8e8 f5e6 e8a8 e6c4 e2d1 c4d4 d1c1 d4c3 c1b1 c3b4 b1a2 b4d2 a2b3 d2e1 a8e8 e5f6 e8d8 f6g6 d8d6 f8d6 g2g3 h8b8 b3c4";
+    let params1 = "e2e4 c7c5 g1f3 d7d6 d2d4 c5d4 f3d4 g8f6 b1c3 a7a6 c1f4 b8d7 f4d6 e7d6 f1a6 a8a6 a1c1 e8e7 e4e5 d7e5 d1e2 e7e8 f2f4 c8g4 e2b5 e5c6 c3e2 a6a2 d4c6 b7c6 b5b7 g4e2 h1g1 d8a5 b2b4 a5d8 f4f5 a2c2 c1c2 e2b5 c2e2 b5e2 b7c6 e8e7 e1e2 d8d7 c6a6 d7f5 g1e1 f6e4 a6b7 e7e6 b7c8 e6e5 c8e8 f5e6 e8a8 e6c4 e2d1 c4d4 d1c1 d4c3 c1b1 c3b4 b1a2 b4d2 a2b3 d2e1 a8e8 e5f6 e8d8 f6g6 d8d6 f8d6 g2g3";
+
+    let mut ex = loop {
+        let params = params1.split(" ");
+        let moves: Vec<&str> = params.collect();
+        ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
+        // ex.update_game_movelist(&ts, fen, moves.into_iter());
+        let g = ex.game;
+        // eprintln!("g = {:?}", g);
+        // eprintln!("g.to_fen() = {:?}", g.to_fen());
+
+        let t0 = std::time::Instant::now();
+        let (res,moves,stats0) = ex.lazy_smp_2(&ts);
+        let t1 = t0.elapsed();
+        let t2 = t1.as_secs_f64();
+        let time0 = t2;
+        let best0 = res.get_result().unwrap();
+
+        // let stack: &ABStack = &DEBUG_ABSTACK.lock();
+        // let bf = stack.history[Black];
+        // return;
+
+        let best   = res.get_result().unwrap();
+        let scores = res.get_scores().unwrap_or_default();
+
+        // for m in best.moves.iter() { eprintln!("\t{:?}", m); }
+        // eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
+        println!();
+        debug!("Best move = {:>8} {:?}", best.score, best.mv);
+        debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth.0, t2);
+        println!();
+
+        // assert_eq!(best.mv, Some(Move::new_quiet("h8", "b8", Rook)));
+        if best.mv == Some(Move::new_quiet("h8", "b8", Rook)) {
+            let path = "tt.dump";
+            ex.ptr_tt.write_to_file(path).unwrap();
+            break ex;
+        }
+    };
+
+    let params = params0.split(" ");
+    let moves: Vec<&str> = params.collect();
+    ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
+
     let t0 = std::time::Instant::now();
     let (res,moves,stats0) = ex.lazy_smp_2(&ts);
     let t1 = t0.elapsed();
     let t2 = t1.as_secs_f64();
     let time0 = t2;
     let best0 = res.get_result().unwrap();
-
-    // let stack: &ABStack = &DEBUG_ABSTACK.lock();
-    // let bf = stack.history[Black];
-    // return;
-
-    // for (thread_id,per_thread) in ex.per_thread_data.iter().enumerate() {
-    //     let mt = &per_thread.as_ref().unwrap().mat_table;
-    //     // eprintln!("{} = {:?}", thread_id, mt.inner().len());
-    //     eprintln!("{} = {} / {}, {:.3}", thread_id, mt.used_entries(), mt.capacity(),
-    //               mt.used_entries() as f64 / mt.capacity() as f64);
-    // }
-    // return;
-
-    let best   = res.get_result().unwrap();
-    let scores = res.get_scores().unwrap_or_default();
-
-    // for m in best.moves.iter() { eprintln!("\t{:?}", m); }
-    // eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
-    println!();
-    debug!("Best move = {:>8} {:?}", best.score, best.mv);
-    debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth.0, t2);
-    println!();
 
     return;
 

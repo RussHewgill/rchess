@@ -12,6 +12,8 @@ use aligned::{Aligned,A64,A32};
 use std::cell::UnsafeCell;
 use std::sync::atomic::{AtomicUsize, AtomicU8};
 
+use serde::{Serialize,Deserialize};
+
 /// https://www.chess2u.com/t1820-setting-correct-hashtable-size?highlight=hash+size
 /// HT[KB] = 2.0 * PFreq[MHz] * t[s]
 
@@ -44,8 +46,72 @@ pub struct TransTable {
     cycles:        AtomicU8,
 }
 
-unsafe impl Send for TransTable {}
-unsafe impl Sync for TransTable {}
+// unsafe impl Send for TransTable {}
+// unsafe impl Sync for TransTable {}
+
+#[derive(Debug,Clone,Serialize,Deserialize)]
+/// only used for de/serializing
+struct STransTable {
+    buf:           Vec<[TTEntry; ENTRIES_PER_BUCKET]>,
+    num_buckets:   usize,
+    used_entries:  usize,
+    cycles:        u8,
+}
+
+/// dump to file
+impl TransTable {
+    pub fn write_to_file<P: AsRef<std::path::Path>>(&self, path: P) -> std::io::Result<()> {
+        use std::io::Write;
+        use std::fs::OpenOptions;
+
+        let mut buf = vec![];
+
+        for bucket in self.buf.iter() {
+            let bucket: [TTEntry; ENTRIES_PER_BUCKET] = *bucket.bucket.read();
+            buf.push(bucket);
+        }
+
+        let st = STransTable {
+            buf,
+            num_buckets:  self.num_buckets,
+            used_entries: self.used_entries.load(std::sync::atomic::Ordering::SeqCst),
+            cycles:       self.cycles.load(std::sync::atomic::Ordering::SeqCst),
+        };
+
+        let b: Vec<u8> = bincode::serialize(&st).unwrap();
+        let mut file = OpenOptions::new()
+            .truncate(true)
+            .read(true)
+            .create(true)
+            .write(true)
+            .open(path)?;
+
+        file.write_all(&b)
+    }
+
+    pub fn read_from_file<P: AsRef<std::path::Path>>(path: P) -> std::io::Result<Self> {
+
+        let b = std::fs::read(&path)?;
+        let st: STransTable = bincode::deserialize(&b).unwrap();
+
+        let mut buf = vec![];
+
+        for sbucket in st.buf.iter() {
+            let bucket = Bucket {
+                bucket:  RwLock::new(*sbucket),
+            };
+            buf.push(bucket);
+        }
+
+        Ok(Self {
+            buf,
+            num_buckets:  st.num_buckets,
+            used_entries: AtomicUsize::new(st.used_entries),
+            cycles:       AtomicU8::new(st.cycles),
+        })
+    }
+
+}
 
 /// New, Insert, Probe
 impl TransTable {
@@ -218,21 +284,21 @@ impl TransTable {
     }
 }
 
-#[derive(Debug,Default,Clone,Copy,new)]
+#[derive(Debug,Default,Clone,Copy,new,Serialize,Deserialize)]
 pub struct TTEntry {
     age:                u8,
     // entry:              Option<(u32,SearchInfo)>,
     entry:              Option<TTEntry2>,
 }
 
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug,Clone,Copy,Serialize,Deserialize)]
 pub enum TTEntry2 {
     Eval { ver: u32, eval: TTEval },
     // SI   { ver: u32, si: SearchInfo },
     Both { ver: u32, eval: TTEval, si: SearchInfo },
 }
 
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug,Clone,Copy,Serialize,Deserialize)]
 pub enum TTEval {
     // None,
     Check,

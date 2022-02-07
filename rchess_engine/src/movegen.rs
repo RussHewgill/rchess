@@ -733,7 +733,7 @@ impl<'a> MoveGen<'a> {
 
             QSearchHash => {
                 if let Some(mv) = self.hashmove {
-                    if self.move_is_legal(mv) {
+                    if self.move_is_legal(mv) && self.move_is_pseudo_legal(mv) {
                         self.stage = self.stage.next()?;
                         return Some(mv);
                     }
@@ -1320,6 +1320,12 @@ impl<'a> MoveGen<'a> {
         let st = ABStack::new();
         let movegen = Self::new(ts, g, None, &st, 0, 0);
         movegen.move_is_legal(mv)
+    }
+
+    pub fn new_move_is_pseudo_legal(ts: &'a Tables, g: &'a Game, mv: Move) -> bool {
+        let st = ABStack::new();
+        let mut movegen = Self::new(ts, g, None, &st, 0, 0);
+        movegen.move_is_pseudo_legal(mv)
     }
 
     pub fn move_is_legal(&self, mv: Move) -> bool {

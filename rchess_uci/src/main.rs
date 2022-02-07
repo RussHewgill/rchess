@@ -147,11 +147,13 @@ fn main() -> std::io::Result<()> {
                         // timeset = false;
                         explorer.side = Black;
                         explorer.game = g;
-                        explorer.new_game();
+                        explorer.new_game(&ts);
                         #[cfg(feature = "threadpool")]
                         explorer.clear_threads();
                     },
                     "setoption"   => {
+                        // eprintln!("setoption = {:?}", params);
+                        // unimplemented!();
                     },
                     "position"   => {
                         match params.next().unwrap() {
