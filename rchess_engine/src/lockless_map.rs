@@ -266,8 +266,21 @@ impl TransTable {
     }
 
     pub fn used_entries(&self) -> usize {
-        self.used_entries.load(std::sync::atomic::Ordering::Relaxed)
+        let mut n = 0;
+        for bucket in self.buf.iter() {
+            let bucket = bucket.bucket.read();
+            for e in bucket.iter() {
+                if e.entry.is_some() {
+                    n += 1;
+                }
+            }
+        }
+        n
     }
+
+    // pub fn used_entries(&self) -> usize {
+    //     self.used_entries.load(std::sync::atomic::Ordering::Relaxed)
+    // }
 
 }
 

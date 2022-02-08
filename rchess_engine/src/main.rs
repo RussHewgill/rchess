@@ -3362,8 +3362,8 @@ fn main9() {
     // return;
 
     // let t = 10.0;
-    // let t = 4.0;
-    let t = 2.0;
+    let t = 4.0;
+    // let t = 2.0;
     // let t = 0.125;
 
     // let n = MAX_SEARCH_PLY;
@@ -3392,43 +3392,7 @@ fn main9() {
 
     // let mut ex2 = ex.clone();
 
-    // let fen0 = "4k3/8/8/3q4/8/8/8/4K3 w - - 0 1";
-    // let fen1 = "4k3/8/8/8/3Q4/8/8/4K3 w - - 0 1";
-    // let g0 = Game::from_fen(&ts, fen0).unwrap();
-    // let g1 = Game::from_fen(&ts, fen1).unwrap();
-    // let (tx,rx) = crossbeam::channel::unbounded();
-    // use rchess_engine_lib::material::*;
-    // let mt = MaterialTable::default();
-    // let pt = PawnTable::default();
-    // let thread_data = PerThreadData::new(mt,pt);
-    // let mut helper = ex.build_exhelper(
-    //     0,
-    //     n,
-    //     ex.best_depth.clone(),
-    //     vec![],
-    //     tx,
-    //     thread_data,
-    // );
-    // // let score0 = helper._evaluate_classical::<true>(&ts, &g0);
-    // // let score1 = helper._evaluate_classical::<true>(&ts, &g1);
-    // let score0 = helper.evaluate(&ts, &mut SearchStats::default(), &g0, 0, true);
-    // let score1 = helper.evaluate(&ts, &mut SearchStats::default(), &g1, 0, true);
-    // eprintln!();
-    // // eprintln!("score0.taper(&g) = {:?}", score0.taper(&g));
-    // // eprintln!("score1.taper(&g) = {:?}", score1.taper(&g));
-    // eprintln!("score0 = {:?}", score0);
-    // eprintln!("score1 = {:?}", score1);
-    // // return;
-    // eprintln!();
-    // let path = "nn-63376713ba63.nnue";
-    // let mut nn = rchess_engine_lib::sf_compat::NNUE4::read_nnue(path).unwrap();
-    // nn.ft.reset_feature_trans(&g0);
-    // let s0 = nn.evaluate(&g0, true);
-    // nn.ft.reset_feature_trans(&g1);
-    // let s1 = nn.evaluate(&g1, true);
-    // eprintln!("s0 = {:?}", s0);
-    // eprintln!("s1 = {:?}", s1);
-    // return;
+    ex.new_game(&ts);
 
     // // XXX: avg of N runs
     // const N: usize = 10;
@@ -3471,8 +3435,6 @@ fn main9() {
     // // eprintln!("g = {:?}", g);
     // // eprintln!("g.to_fen() = {:?}", g.to_fen());
 
-    ex.new_game(&ts);
-
     let t0 = std::time::Instant::now();
     let (res,moves,stats0) = ex.lazy_smp_2(&ts);
     let t1 = t0.elapsed();
@@ -3487,7 +3449,7 @@ fn main9() {
     //     }
     // }
 
-    return;
+    // return;
 
     // for (n,mv) in moves.iter().enumerate() {
     //     eprintln!("\t{} mv = {:?}", n, mv);

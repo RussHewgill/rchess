@@ -822,6 +822,7 @@ impl Explorer {
                 out
             });
 
+            // #[cfg(feature = "nope")]
             let handles = s.spawn(move |s| {
                 for thread_id in 0..max_threads as usize {
                     trace!("Spawning thread, id = {}", thread_id);
@@ -858,11 +859,7 @@ impl Explorer {
 
                     let mut helper = self.build_exhelper(
                         thread_id,
-                        self.cfg.max_depth,
-                        best_depth.clone(),
-                        root_moves.clone(),
-                        tx.clone(),
-                        thread_data,
+                        PerThreadData::default(),
                     );
 
                     /// 4 MB is needed to prevent stack overflow
@@ -881,6 +878,38 @@ impl Explorer {
                 }
                 handles
             });
+
+            #[cfg(feature = "nope")]
+            let handles = {
+                let mut handles = vec![];
+                for thread_id in 0..max_threads as usize {
+                    trace!("Spawning thread, id = {}", thread_id);
+
+                    // let thread_data = self.per_thread_data[thread_id].take()
+                    //     .unwrap_or_default();
+                    let thread_data = PerThreadData::default();
+
+                    let mut helper = self.build_exhelper(
+                        thread_id,
+                        PerThreadData::default(),
+                    );
+
+                    /// 4 MB is needed to prevent stack overflow
+                    let size = 1024 * 1024 * 4;
+                    let handle: ScopedJoinHandle<PerThreadData> = s.builder()
+                        .stack_size(size)
+                        .spawn(move |_| {
+                            helper.lazy_smp_single(ts);
+                            PerThreadData::new(helper.material_table, helper.pawn_table)
+                        }).unwrap();
+
+                    handles.push((thread_id,handle));
+
+                    thread_counter.fetch_add(1, SeqCst);
+                    trace!("Spawned thread, count = {}", thread_counter.load(SeqCst));
+                }
+                handles
+            };
 
             /// stoppage checking loop
             'outer: loop {
