@@ -3377,8 +3377,8 @@ fn main9() {
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(12);
-    ex.cfg.num_threads = Some(6);
-    // ex.cfg.num_threads = Some(1);
+    // ex.cfg.num_threads = Some(6);
+    ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
@@ -3392,7 +3392,7 @@ fn main9() {
 
     // let mut ex2 = ex.clone();
 
-    ex.new_game(&ts);
+    ex.new_game(&ts, g);
 
     // // XXX: avg of N runs
     // const N: usize = 10;

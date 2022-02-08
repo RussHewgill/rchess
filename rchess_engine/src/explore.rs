@@ -375,10 +375,11 @@ impl ABConfig {
 /// new_game, misc
 impl Explorer {
 
-    pub fn new_game(&mut self, ts: &Tables) {
+    pub fn new_game(&mut self, ts: &Tables, g: Game) {
         // self.clear_tt();
 
-        self.game = Game::from_fen(ts, STARTPOS).unwrap();
+        // self.game = Game::from_fen(ts, STARTPOS).unwrap();
+        self.game = g;
 
         #[cfg(feature = "one_thread")]
         let max_threads = 1;
@@ -685,7 +686,7 @@ impl Explorer {
     pub fn lazy_smp_2(&mut self, ts: &Tables) -> (ABResults,Vec<Move>,SearchStats) {
 
         if self.helpers.len() == 0 {
-            self.new_game(ts);
+            self.new_game(ts, self.game);
         }
 
         self.sync_threads();
