@@ -49,17 +49,16 @@ pub struct TransTable {
 // unsafe impl Send for TransTable {}
 // unsafe impl Sync for TransTable {}
 
-// #[derive(Debug,Clone,Serialize,Deserialize)]
-// /// only used for de/serializing
-// struct STransTable {
-//     buf:           Vec<[TTEntry; ENTRIES_PER_BUCKET]>,
-//     num_buckets:   usize,
-//     used_entries:  usize,
-//     cycles:        u8,
-// }
+#[derive(Debug,Clone,Serialize,Deserialize)]
+/// only used for de/serializing
+struct STransTable {
+    buf:           Vec<[TTEntry; ENTRIES_PER_BUCKET]>,
+    num_buckets:   usize,
+    used_entries:  usize,
+    cycles:        u8,
+}
 
 /// dump to file
-#[cfg(feature = "nope")]
 impl TransTable {
     pub fn write_to_file<P: AsRef<std::path::Path>>(&self, path: P) -> std::io::Result<()> {
         use std::io::Write;
@@ -298,24 +297,21 @@ impl TransTable {
     }
 }
 
-// #[derive(Debug,Default,Clone,Copy,new,Serialize,Deserialize)]
-#[derive(Debug,Default,Clone,Copy,new)]
+#[derive(Debug,Default,Clone,Copy,new,Serialize,Deserialize)]
 pub struct TTEntry {
     age:                u8,
     // entry:              Option<(u32,SearchInfo)>,
     entry:              Option<TTEntry2>,
 }
 
-// #[derive(Debug,Clone,Copy,Serialize,Deserialize)]
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug,Clone,Copy,Serialize,Deserialize)]
 pub enum TTEntry2 {
     Eval { ver: u32, eval: TTEval },
     // SI   { ver: u32, si: SearchInfo },
     Both { ver: u32, eval: TTEval, si: SearchInfo },
 }
 
-// #[derive(Debug,Clone,Copy,Serialize,Deserialize)]
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug,Clone,Copy,Serialize,Deserialize)]
 pub enum TTEval {
     // None,
     Check,

@@ -8,6 +8,10 @@
 mod sprt;
 mod tuner_types;
 mod parsing;
+mod supervisor;
+mod json_config;
+
+use self::json_config::*;
 
 use rchess_engine_lib::alphabeta::ABResult;
 use rchess_engine_lib::types::*;
@@ -73,7 +77,11 @@ fn main2() {
 }
 
 fn main() {
-// fn main2() {
+    json_test();
+}
+
+// fn main() {
+fn main3() {
 
     init_logger();
 
