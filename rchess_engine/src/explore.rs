@@ -430,6 +430,11 @@ impl Explorer {
             helper.cfg          = self.cfg.clone();
             helper.params       = self.search_params;
             helper.move_history = self.move_history.clone();
+
+            if let Some(nn) = helper.nnue.as_mut() {
+                nn.ft.reset_accum(&self.game);
+            }
+
         }
     }
 
