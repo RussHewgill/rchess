@@ -872,9 +872,8 @@ impl ExHelper {
         if depth == 1
             && !is_pv_node
             && !in_check
-            && static_eval.unwrap() - FUTILITY_MARGIN >= beta
-            // && static_eval.unwrap() + FUTILITY_MARGIN <= alpha
-            && static_eval.unwrap() < FUTILITY_MIN_ALPHA
+            && static_eval.unwrap() - self.params.futility_margin >= beta
+            && static_eval.unwrap() < self.params.futility_min_alpha
         {
             // let eval = self.cfg.evaluate(ts, g, &self.ph_rw);
             // if eval + FUTILITY_MARGIN 
@@ -886,8 +885,8 @@ impl ExHelper {
         /// Step 7. Reverse Futility Pruning, Static Null Pruning
         if !is_pv_node
             && !in_check
-            && depth <= RFP_MIN_DEPTH
-            && static_eval.unwrap() - RFP_MARGIN * depth as Score > beta
+            && depth <= self.params.rfp_min_depth
+            && static_eval.unwrap() - self.params.rfp_margin * depth as Score > beta
         {
             return ABPrune(static_eval.unwrap(), Prune::Futility);
         }
@@ -902,8 +901,8 @@ impl ExHelper {
             // && g.last_move != Some(Move::NullMove) // don't null prune twice in a row
             && stack.get_with(ply - 1, |st| st.current_move != Some(Move::NullMove)).unwrap_or(true)
             && stack.get_with(ply - 2, |st| st.current_move != Some(Move::NullMove)).unwrap_or(true)
-            && depth >= NULL_PRUNE_MIN_DEPTH
-            && g.state.phase < NULL_PRUNE_MIN_PHASE
+            && depth >= self.params.null_prune_min_depth
+            && g.state.phase < self.params.null_prune_min_phase
             && g.state.material.any_non_pawn(g.state.side_to_move)
             // && msi.map(|si| si.node_type != Node::Upper || si.score >= beta).unwrap_or(false)
             && (msi.is_none()

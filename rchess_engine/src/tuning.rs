@@ -123,23 +123,23 @@ mod const_params {
     // pub const LMR_MIN_PLY: Depth = 3;
     // pub const LMR_MIN_DEPTH: Depth = 3;
 
-    pub const LMR_REDUCTION: Depth = 3;
-    pub const LMR_PLY_CONST: Depth = 6;
+    // pub const LMR_REDUCTION: Depth = 3;
+    // pub const LMR_PLY_CONST: Depth = 6;
 
     pub const QS_RECAPS_ONLY: Depth = 5;
     // pub static QS_RECAPS_ONLY: Depth = 100;
 
-    pub const NULL_PRUNE_MIN_DEPTH: Depth = 3;
-    pub const NULL_PRUNE_MIN_PHASE: Phase = 200;
-    pub const NULL_PRUNE_REDUCTION: Depth = 2;
+    // pub const NULL_PRUNE_MIN_DEPTH: Depth = 3;
+    // pub const NULL_PRUNE_MIN_PHASE: Phase = 200;
+    // pub const NULL_PRUNE_REDUCTION: Depth = 2;
 
-    pub const RFP_MIN_DEPTH: Depth = 8;
-    pub const RFP_MARGIN: Score = 100;
+    // pub const RFP_MIN_DEPTH: Depth = 8;
+    // pub const RFP_MARGIN: Score = 100;
 
-    // pub const FUTILITY_MIN_ALPHA: Score = 95_000_000;
-    pub const FUTILITY_MIN_ALPHA: Score = 31000;
-    // pub const FUTILITY_MARGIN: Score = 200;
-    pub const FUTILITY_MARGIN: Score = 300;
+    // // pub const FUTILITY_MIN_ALPHA: Score = 95_000_000;
+    // pub const FUTILITY_MIN_ALPHA: Score = 31000;
+    // // pub const FUTILITY_MARGIN: Score = 200;
+    // pub const FUTILITY_MARGIN: Score = 300;
 
     // pub const HISTORY_MAX: Score = 400; // 20 * 20
     pub const HISTORY_MAX: Score = 512; // to saturate i16
@@ -180,6 +180,7 @@ mod misc_functions {
 
         // (d / 3).min(1)
         (d / params.lmr_reduction).min(1)
+        // (2 * d / params.lmr_reduction).min(1)
 
         // let mut r =
         // unimplemented!()

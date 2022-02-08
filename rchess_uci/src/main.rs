@@ -115,7 +115,7 @@ fn main() -> std::io::Result<()> {
                 let mut params = line.split_whitespace();
 
                 match params.next().unwrap() {
-                    "uci"        => uci(),
+                    "uci"        => uci(&explorer),
                     "isready"    => println!("readyok"),
                     "ucinewgame" => {
                         // let mut g = Game::new();
@@ -240,18 +240,25 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-fn uci() {
+fn uci(ex: &Explorer) {
     println!("id name RChess");
     println!("id author me");
 
-    // println!("option name ")
+    ex.options.print();
 
     println!("uciok");
 }
 
 fn set_option(mut ex: &mut Explorer, params: Vec<&str>) {
+    let mut ps = params.clone().into_iter();
+    // println!("params = {:?}", params);
 
-    unimplemented!()
+    ps.next().unwrap(); // name
+    let name = ps.next().unwrap();
+    ps.next().unwrap(); // value
+    let val = ps.next().unwrap();
+
+    ex.set_option(name, val);
 }
 
 // fn parse_go(mut ex: &mut Explorer,params: Vec<&str>) {
