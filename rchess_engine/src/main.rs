@@ -3449,6 +3449,16 @@ fn main9() {
     //     }
     // }
 
+    let best   = res.get_result().unwrap();
+    let scores = res.get_scores().unwrap_or_default();
+
+    // for m in best.moves.iter() { eprintln!("\t{:?}", m); }
+    // eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
+    println!();
+    debug!("Best move = {:>8} {:?}", best.score, best.mv);
+    debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth.0, t2);
+    println!();
+
     // return;
 
     // for (n,mv) in moves.iter().enumerate() {

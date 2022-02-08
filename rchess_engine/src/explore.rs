@@ -1534,6 +1534,7 @@ impl ExHelper {
         //     let mut w = DEBUG_ABSTACK.lock();
         //     *w = stack;
         // }
+
         {
             let mut w = DEBUG_ABSTACK[self.id].lock();
             *w = Some(stack);
