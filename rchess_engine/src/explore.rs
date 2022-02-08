@@ -13,6 +13,7 @@ use crate::opening_book::*;
 // use crate::pawn_hash_table::*;
 // use crate::heuristics::*;
 pub use crate::stack::{ABStack,ABStackPly};
+pub use crate::options::*;
 
 #[cfg(feature = "syzygy")]
 use crate::syzygy::SyzygyTB;
@@ -82,6 +83,7 @@ pub struct Explorer {
     pub rx:                ExReceiver,
 
     pub cfg:               ExConfig,
+    pub options:           EngineOptions,
 
     pub search_params:     SParams,
 
@@ -158,6 +160,7 @@ impl Explorer {
             rx,
 
             cfg,
+            options:        EngineOptions::new(),
             search_params:  SParams::default(),
 
             // move_history:   VecDeque::default(),

@@ -63,7 +63,7 @@ impl Default for SParams {
 
             lmr_min_moves:            2,
             lmr_min_ply:              3,
-            lmr_min_depth:            3,
+            lmr_min_depth:            4,
 
             lmr_reduction:            3,
             lmr_ply_const:            6,
@@ -150,6 +150,8 @@ pub use self::misc_functions::*;
 mod misc_functions {
     use crate::{types::*, searchstats::SearchStats, tables::DRAW_VALUE};
 
+    use super::SParams;
+
     // // TODO: tune
     // pub fn depth_stat_bonus(ply: Depth) -> Score {
     //     let ply = ply as Score;
@@ -170,12 +172,14 @@ mod misc_functions {
         (3 + depth * depth) / (2 - i)
     }
 
-    pub fn lmr_reduction(d: Depth, ms: i16) -> Depth {
-        if ms < 4 {
+    pub fn lmr_reduction(params: SParams, d: Depth, ms: i16) -> Depth {
+        // if ms < 4 {
+        if ms < params.lmr_min_depth {
             return 1;
         }
 
-        (d / 3).min(1)
+        // (d / 3).min(1)
+        (d / params.lmr_reduction).min(1)
 
         // let mut r =
         // unimplemented!()

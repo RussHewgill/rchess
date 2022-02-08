@@ -2,7 +2,10 @@
     {
         "name": "rchess",
         "command": "/home/me/code/rust/rchess/target/release/rchess_uci",
-        "protocol": "uci"
+        "protocol": "uci",
+        "options": [
+            { "name": "wat", "value": 20 }
+        ]
     },
     {
         "name": "rchess_prev",

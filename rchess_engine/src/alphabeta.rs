@@ -1178,7 +1178,7 @@ impl ExHelper {
                     && !g2.state.in_check
                     // && !gives_check // redundant
                 {
-                    let mut r = lmr_reduction(next_depth, moves_searched) as i16;
+                    let mut r = lmr_reduction(self.params, next_depth, moves_searched) as i16;
 
                     if mv.filter_quiet() {
 

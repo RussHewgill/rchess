@@ -5,8 +5,6 @@
 
 #![allow(clippy::all)]
 
-pub mod notation;
-
 use rchess_engine_lib::alphabeta::ABResult;
 use rchess_engine_lib::types::*;
 use rchess_engine_lib::tables::*;
@@ -35,14 +33,6 @@ use rayon::ThreadPoolBuilder;
 const STARTPOS: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 fn main() -> std::io::Result<()> {
-
-    // let _ = ThreadPoolBuilder::new()
-    //     .num_threads(6)
-    //     .build_global()
-    //     .unwrap();
-
-    // let depth = 35;
-    // let depth = 25;
 
     let now = chrono::Local::now();
     let mut logpath = format!(
@@ -86,18 +76,7 @@ fn main() -> std::io::Result<()> {
     //     hook(panicinfo)
     // }));
 
-    // let timer = Timer::default(should_stop.clone());
-    // let searcher = Arc::new(Mutex::new(Searcher::new(EngineSettings::default(), timer)));
-
-    // let timesettings = TimeSettings::new_f64(10., 0.1);
-    let timesettings = TimeSettings::new_f64(
-        0.0,
-        // 2.0,
-        // 1.0,
-        0.5,
-        // 0.4,
-    );
-    // let mut timeset = false;
+    let timesettings = TimeSettings::new_f64(0.0, 0.5);
 
     let ts = Tables::new();
     // let ts = &_TABLES;
@@ -110,7 +89,6 @@ fn main() -> std::io::Result<()> {
     #[cfg(feature = "threadpool")]
     let mut explorer = Explorer2::new(White,g, MAX_SEARCH_PLY, timesettings);
 
-    // XXX: NNUE must be loaded before threads are spawned
     explorer.load_nnue("/home/me/code/rust/rchess/nn-63376713ba63.nnue").unwrap();
 
     #[cfg(feature = "threadpool")]
@@ -145,15 +123,15 @@ fn main() -> std::io::Result<()> {
                         // explorer.lock().unwrap().side = Black;
                         // explorer.lock().unwrap().game = g;
                         // timeset = false;
-                        explorer.side = Black;
-                        explorer.game = g;
-                        explorer.new_game(&ts);
+                        // explorer.side = Black;
+                        // explorer.game = g;
+                        explorer.update_game(g);
+                        explorer.new_game(&ts, g);
                         #[cfg(feature = "threadpool")]
                         explorer.clear_threads();
                     },
                     "setoption"   => {
-                        // eprintln!("setoption = {:?}", params);
-                        // unimplemented!();
+                        set_option(&mut explorer, params.clone().collect());
                     },
                     "position"   => {
                         match params.next().unwrap() {
@@ -260,6 +238,20 @@ fn main() -> std::io::Result<()> {
 
     }
     Ok(())
+}
+
+fn uci() {
+    println!("id name RChess");
+    println!("id author me");
+
+    // println!("option name ")
+
+    println!("uciok");
+}
+
+fn set_option(mut ex: &mut Explorer, params: Vec<&str>) {
+
+    unimplemented!()
 }
 
 // fn parse_go(mut ex: &mut Explorer,params: Vec<&str>) {
@@ -412,11 +404,5 @@ fn format_move(mv: Move) -> String {
             mm
         },
     }
-}
-
-fn uci() {
-    println!("id name RChess");
-    println!("id author me");
-    println!("uciok");
 }
 

@@ -74,6 +74,7 @@ pub mod hashing;
 pub mod trans_table;
 pub mod stack;
 pub mod endgame;
+pub mod options;
 
 // pub mod threading;
 // pub mod ab_threadpool;

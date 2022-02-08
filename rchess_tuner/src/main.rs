@@ -36,6 +36,10 @@ use gag::Redirect;
 
 use crate::tuner_types::MatchResult;
 
+fn main() {
+    // json_test();
+}
+
 fn main2() {
 // fn main() {
 
@@ -74,10 +78,6 @@ fn main2() {
     let res1 = Match::parse(lines1.into_iter().map(|s| s.to_owned()).collect());
     eprintln!("res1 = {:?}", res1);
 
-}
-
-fn main() {
-    json_test();
 }
 
 // fn main() {
