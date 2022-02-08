@@ -146,35 +146,32 @@ mod nn_affine {
         pub buffer:  Aligned<A64,[<NNAffine<Prev,OS,IS> as NNLayer>::OutputType; OS]>,
     }
 
-    /// Consts
+    /// Consts, AVX2
+    #[cfg(target_feature = "avx2")]
     impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
 
-        /// AVX2
         const INPUT_SIMD_WIDTH: usize = 32;
         const MAX_NUM_OUTPUT_REGS: usize = 8;
 
-        // /// sse ?
-        // const INPUT_SIMD_WIDTH: usize = 16;
-        // const MAX_NUM_OUTPUT_REGS: usize = 8;
+        const NUM_OUTPUT_REGS: usize  = if OS > Self::MAX_NUM_OUTPUT_REGS {
+            Self::MAX_NUM_OUTPUT_REGS } else { OS };
+        const SMALL_BLOCK_SIZE: usize = Self::INPUT_SIMD_WIDTH;
+        const BIG_BLOCK_SIZE: usize   = Self::NUM_OUTPUT_REGS * Self::SIZE_INPUT_PADDED;
 
-        // const INPUT_SIMD_WIDTH: usize = 1;
-        // const MAX_NUM_OUTPUT_REGS: usize = 1;
+        const NUM_SMALL_BLOCKS_PER_BIG_BLOCK: usize = Self::BIG_BLOCK_SIZE / Self::SMALL_BLOCK_SIZE;
+        const NUM_SMALL_BLOCKS_PER_OUTPUT: usize = Self::SIZE_INPUT_PADDED / Self::SMALL_BLOCK_SIZE;
 
-        // const INPUT_SIMD_WIDTH: usize = {
-        //     // #[cfg(feature = "null_pruning")]
-        //     if is_x86_feature_detected!("avx2") {
-        //         32
-        //     } else {
-        //         1
-        //     }
-        // };
-        // const MAX_NUM_OUTPUT_REGS: usize = {
-        //     if is_x86_feature_detected!("avx2") {
-        //         8
-        //     } else {
-        //         1
-        //     }
-        // };
+        const NUM_BIG_BLOCKS: usize = Self::SIZE_OUTPUT / Self::NUM_OUTPUT_REGS;
+
+        const SIZE_INPUT_PADDED: usize = ceil_to_multiple(Self::SIZE_INPUT, 32);
+
+    }
+
+    #[cfg(all(not(target_feature = "avx2"), target_feature = "ssse3"))]
+    impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
+
+        const INPUT_SIMD_WIDTH: usize = 16;
+        const MAX_NUM_OUTPUT_REGS: usize = 8;
 
         const NUM_OUTPUT_REGS: usize  = if OS > Self::MAX_NUM_OUTPUT_REGS {
             Self::MAX_NUM_OUTPUT_REGS } else { OS };
@@ -836,7 +833,15 @@ mod nn_affine {
             self.buffer.as_ref()
         }
 
+        #[cfg(all(not(target_feature = "avx2"), target_feature = "ssse3"))]
+        pub fn _propagate_avx2_small<'a>(
+            &'a mut self, trans_features: &'a [u8]
+        ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
+            unimplemented!()
+        }
+
         #[cfg(target_feature = "avx2")]
+        // #[cfg(feature = "nope")]
         pub fn _propagate_avx2_large<'a>(
             &'a mut self, trans_features: &'a [u8]
         ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
@@ -908,6 +913,58 @@ mod nn_affine {
             }
 
             self.buffer.as_ref()
+        }
+
+        #[cfg(all(not(target_feature = "avx2"), target_feature = "ssse3"))]
+        // #[cfg(feature = "nope")]
+        pub fn _propagate_avx2_large<'a>(
+            &'a mut self, trans_features: &'a [u8]
+        ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
+            use safe_arch::*;
+            use crate::simd_utils::safe_arch::*;
+
+            let input = self.prev.propagate(trans_features);
+            assert_eq!(input.len() % 32, 0);
+
+            let input_vec: &[m128i] = unsafe {
+                // let ptr = input.as_ptr() as *const m128i;
+                // std::slice::from_raw_parts(ptr, input.len() / 32)
+                cast_slice_to_m128i(&input)
+            };
+
+            let weight_vec: &[m128i] = unsafe {
+                // let ptr = self.weights.as_ptr() as *const m128i;
+                // std::slice::from_raw_parts(ptr, self.weights.len() / 32)
+                cast_slice_to_m128i(&self.weights)
+            };
+
+            for big_block in 0..Self::NUM_BIG_BLOCKS {
+                let mut acc = [m128i::default(); OS];
+
+                let mut small_block = 0;
+                while small_block < Self::NUM_SMALL_BLOCKS_PER_OUTPUT {
+
+                    let w_offset = big_block * Self::BIG_BLOCK_SIZE
+                        + small_block * Self::SMALL_BLOCK_SIZE * Self::NUM_OUTPUT_REGS;
+                    let w_offset = w_offset / 32;
+
+                    let weight_vec = &weight_vec[w_offset..];
+
+                    let in0 = input_vec[small_block + 0];
+                    let in1 = input_vec[small_block + 1];
+
+                    for k in 0..Self::NUM_OUTPUT_REGS {
+                        let b0 = weight_vec[k];
+                        let b1 = weight_vec[k + Self::NUM_OUTPUT_REGS];
+                        m128_add_dpbusd_epi32x2(&mut acc[k], in0, b0, in1, b1)
+                    }
+
+                    small_block += 2
+                }
+
+            }
+
+            unimplemented!()
         }
 
     }

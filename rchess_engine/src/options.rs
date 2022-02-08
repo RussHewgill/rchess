@@ -76,17 +76,18 @@ impl EngineOptions {
     }
 }
 
-/// new, get, insert
+/// get, insert
 impl EngineOptions {
-
     pub fn get(&self, name: &str) -> Option<&EngineOption> {
         self.opts.get(name)
     }
-
     pub fn insert(&mut self, opt: EngineOption) {
         self.opts.insert(opt.name.to_string(), opt);
     }
+}
 
+/// new
+impl EngineOptions {
     pub fn new() -> Self {
         let mut out = Self {
             opts: HashMap::default(),
@@ -94,15 +95,10 @@ impl EngineOptions {
 
         out.insert(EngineOption {
             name:    "lmr_reduction",
-            // default: Some(6),
             default: Some(3),
             min:     Some(2),
-            // max:     Some(10),
             max:     Some(5),
             func:    opt_lmr_reduction,
-            // func:    Some(Box::new(|sp, val| {
-            //     sp.lmr_reduction = val as i16;
-            // })),
         });
 
         out

@@ -107,7 +107,35 @@ pub mod std_simd {
 
 }
 
+#[cfg(all(not(target_feature = "avx2"), target_feature = "ssse3"))]
+pub mod safe_arch {
+    use safe_arch::*;
+
+    pub unsafe fn cast_slice_to_m128i<T: Sized>(xs: &[T]) -> &[m128i] {
+        let size = std::mem::size_of::<T>();
+        assert_eq!(xs.len() % (16 / size), 0);
+        let ptr = xs.as_ptr() as *const m128i;
+        let len = xs.len() / (16 / size);
+        std::slice::from_raw_parts(ptr, len)
+    }
+
+    pub fn m128_add_dpbusd_epi32x2(
+        mut acc: &mut safe_arch::m128i,
+        a0: safe_arch::m128i, b0: safe_arch::m128i,
+        a1: safe_arch::m128i, b1: safe_arch::m128i,
+    ) {
+        use safe_arch::*;
+        let mut prod0 = mul_u8i8_add_horizontal_saturating_m128i(a0, b0);
+        let prod1 = mul_u8i8_add_horizontal_saturating_m128i(a1, b1);
+        prod0 = add_saturating_i16_m128i(prod0, prod1);
+        prod0 = add_saturating_i16_m128i(prod0, set_splat_i16_m128i(1));
+        *acc  = add_i32_m128i(*acc, prod0);
+    }
+
+}
+
 #[cfg(target_feature = "avx2")]
+// #[cfg(feature = "nope")]
 pub mod safe_arch {
     use safe_arch::*;
 

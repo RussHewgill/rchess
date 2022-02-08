@@ -688,9 +688,6 @@ impl Explorer {
     #[allow(unused_labels,unused_doc_comments)]
     pub fn lazy_smp_2(&mut self, ts: &Tables) -> (ABResults,Vec<Move>,SearchStats) {
 
-        let x = self.search_params.lmr_reduction;
-        debug!("lmr_reduction = {:?}", x);
-
         if self.helpers.len() == 0 {
             self.new_game(ts, self.game);
         }

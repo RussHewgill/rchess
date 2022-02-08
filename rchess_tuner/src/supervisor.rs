@@ -6,18 +6,17 @@ use crate::json_config::Engine;
 pub struct Supervisor {
     engine:   Engine,
 
-    // tunable:  Tunable<>
+    tunable:  Tunable,
 
 }
 
-
-
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Copy)]
-pub struct Tunable<T> {
-    min:     T,
-    max:     T,
-    start:   T,
-    step:    T,
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone)]
+pub struct Tunable {
+    name:    String,
+    min:     u64,
+    max:     u64,
+    start:   u64,
+    step:    u64,
 }
 
 
