@@ -12,11 +12,11 @@ use once_cell::sync::Lazy;
 
 #[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct Engine {
-    name:     String,
-    command:  String,
-    protocol: String,
+    pub name:     String,
+    pub command:  String,
+    pub protocol: String,
     #[serde(default)]
-    options:  Vec<HashMap<String,Value>>,
+    pub options:  Vec<HashMap<String,Value>>,
 }
 
 impl Engine {

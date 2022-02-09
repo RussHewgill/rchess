@@ -18,8 +18,7 @@ use rchess_engine_lib::types::*;
 use rchess_engine_lib::tables::*;
 use rchess_engine_lib::explore::*;
 use rchess_engine_lib::evaluate::*;
-use tuner_types::InputParser;
-use tuner_types::Match;
+use tuner_types::*;
 
 // use sprt::*;
 
@@ -35,48 +34,59 @@ use simplelog::*;
 use gag::Redirect;
 
 use crate::tuner_types::MatchResult;
+use crate::supervisor::*;
+
+// fn main() {
+// }
 
 fn main() {
-    // json_test();
-}
+// fn main2() {
 
-fn main2() {
-// fn main() {
+    let engine1 = "rchess";
+    let engine2 = "rchess";
 
-    // let lines = vec![
-    //     "Started game 1 of 100 (rchess vs rchess_prev)",
-    //     "Finished game 1 (rchess vs rchess_prev): 0-1 {White loses on time}",
-    //     "Score of rchess vs rchess_prev: 0 - 1 - 0  [0.000] 1",
-    //     "...      rchess playing White: 0 - 1 - 0  [0.000] 1",
-    //     "...      White vs Black: 0 - 1 - 0  [0.000] 1",
-    //     "Elo difference: -inf +/- nan, LOS: 15.9 %, DrawRatio: 0.0 %",
-    // ];
+    let timecontrol = TimeControl::new_f64(0.5, 0.05);
+    let output_label = "test";
+    let (elo0,elo1) = (0,50);
+    let num_games = 50;
 
-    let lines0 = vec![
-        "Started game 3 of 100 (rchess vs rchess_prev)",
-        "Finished game 3 (rchess vs rchess_prev): 0-1 {White loses on time}",
-        "Score of rchess vs rchess_prev: 2 - 1 - 0  [0.667] 3",
-        "...      rchess playing White: 1 - 1 - 0  [0.500] 2",
-        "...      rchess playing Black: 1 - 0 - 0  [1.000] 1",
-        "...      White vs Black: 1 - 2 - 0  [0.333] 3",
-        "Elo difference: -inf +/- nan, LOS: 15.9 %, DrawRatio: 0.0 %",
-    ];
+    // let hook = std::panic::take_hook();
+    // std::panic::set_hook(Box::new(move |panicinfo| {
+    //     let loc = panicinfo.location();
+    //     let mut file = std::fs::File::create("/home/me/code/rust/rchess/panic.log").unwrap();
+    //     let s = format!("Panicking, Location: {:?}", loc);
+    //     file.write(s.as_bytes()).unwrap();
+    //     // cutechess doesn't kill child processes when parent panics
+    //     let child = Command::new("pkill")
+    //         .args(["rchess_uci"])
+    //         .spawn()
+    //         .unwrap();
+    //     hook(panicinfo)
+    // }));
 
-    let lines1 = vec![
-        "Started game 3 of 100 (rchess vs rchess_prev)",
-        "Finished game 3 (rchess vs rchess_prev): 0-1 {White loses on time}",
-        "Score of rchess vs rchess_prev: 2 - 1 - 0  [0.667] 3",
-        "...      rchess playing White: 1 - 1 - 0  [0.500] 2",
-        "...      rchess playing Black: 1 - 0 - 0  [1.000] 1",
-        "...      White vs Black: 1 - 2 - 0  [0.333] 3",
-        "Elo difference: 120.4 +/- 123.5, LOS: 71.8 %, DrawRatio: 0.0 %",
-    ];
+    let cutechess = CuteChess::run_cutechess(
+        engine1,
+        engine2,
+        timecontrol,
+        output_label,
+        num_games,
+        (elo0,elo1),
+        0.05);
 
-    let res0 = Match::parse(lines0.into_iter().map(|s| s.to_owned()).collect());
-    eprintln!("res0 = {:?}", res0);
+    loop {
+        match cutechess.rx.recv() {
+            Ok(m)  => eprintln!("m = {:?}", m),
+            Err(e) => {
+                println!("recv err = {:?}", e);
+                break;
+            },
+        }
+    }
 
-    let res1 = Match::parse(lines1.into_iter().map(|s| s.to_owned()).collect());
-    eprintln!("res1 = {:?}", res1);
+    // let child = Command::new("pkill")
+    //     .args(["rchess_uci"])
+    //     .spawn()
+    //     .unwrap();
 
 }
 
@@ -138,7 +148,6 @@ fn main3() {
         let mut file = std::fs::File::create("/home/me/code/rust/rchess/panic.log").unwrap();
         let s = format!("Panicking, Location: {:?}", loc);
         file.write(s.as_bytes()).unwrap();
-
         // cutechess doesn't kill child processes when parent panics
         let child = Command::new("pkill")
             .args(["rchess_uci"])

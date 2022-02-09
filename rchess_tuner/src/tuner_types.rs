@@ -1,9 +1,35 @@
 
-use std::io::{self};
-use std::str::FromStr;
+use crate::json_config::Engine;
 
+use std::io::{self};
+use std::process::Child;
+use std::str::FromStr;
+use std::sync::Arc;
+
+use crossbeam::channel::Receiver;
 use once_cell::sync::Lazy;
+use rchess_engine_lib::explore::AtomicBool;
 use rchess_engine_lib::types::Color;
+
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Copy)]
+pub enum TimeControl {
+    Increment(u64),
+    TimePlusInc(u64,u64),
+}
+
+impl TimeControl {
+
+    pub fn new_f64(t: f64, inc: f64) -> Self {
+        Self::TimePlusInc((t * 1000.0) as u64, (inc * 1000.0) as u64)
+    }
+
+    pub fn print(self) -> String {
+        match self {
+            Self::Increment(inc)     => format!("st={:.3}", inc as f64 / 1000.0),
+            Self::TimePlusInc(t,inc) => format!("tc={:.3}+{:.3}", t as f64 / 1000.0, inc as f64 / 1000.0),
+        }
+    }
+}
 
 #[derive(Debug,PartialEq,PartialOrd,Clone,Copy)]
 pub enum InputParser {
