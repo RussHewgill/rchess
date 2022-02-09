@@ -101,28 +101,33 @@ impl Match {
 
         static RE3: Lazy<Regex> = Lazy::new(|| {
             Regex::new(
-                r"SPRT: llr (-?\d+\.\d+) \((-?\d+\.\d+)%\) "
+                r"(-?\d+\.\d+) \((-?\d+\.\d+).+ (-?\d+\.\d+).+ (-?\d+\.\d+)"
             ).unwrap()
         });
 
-        // let llr:        f64,
-        // let llr_pct:    f64,
-        // let lbound:     f64,
-        // let ubound:     f64,
+        let sprt = if let Some(line_sprt) = line_sprt {
+            let sprt = RE3.captures(line_sprt).unwrap();
+            Some(SPRT {
+                llr:      f64::from_str(sprt.get(1)?.as_str()).ok()?,
+                llr_pct:  f64::from_str(sprt.get(2)?.as_str()).ok()?,
+                lbound:   f64::from_str(sprt.get(3)?.as_str()).ok()?,
+                ubound:   f64::from_str(sprt.get(4)?.as_str()).ok()?,
+            })
+        } else { None };
 
         // eprintln!("elo = {:?}", elo);
 
-        // Some(Self {
-        //     game_num,
-        //     result,
-        //     sum_score:  (w,b,d),
-        //     elo_diff:   (elo,bounds),
-        //     los,
-        //     draw_ratio,
-        //     sprt,
-        // })
+        Some(Self {
+            game_num,
+            result,
+            sum_score:  (w,b,d),
+            elo_diff:   (elo,bounds),
+            los,
+            draw_ratio,
+            sprt,
+        })
 
-        unimplemented!()
+        // unimplemented!()
         // None
     }
 }
