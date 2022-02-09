@@ -41,12 +41,21 @@ pub enum InputParser {
 
 #[derive(Clone,Copy)]
 pub struct Match {
-    game_num:   u32,
-    result:     MatchResult,
-    sum_score:  (u32,u32,u32),
-    elo_diff:   (f64,f64),
-    los:        f64,
-    draw_ratio: f64,
+    pub game_num:   u32,
+    pub result:     MatchResult,
+    pub sum_score:  (u32,u32,u32),
+    pub elo_diff:   (Option<f64>,Option<f64>),
+    pub los:        Option<f64>,
+    pub draw_ratio: f64,
+    pub sprt:       Option<SPRT>,
+}
+
+#[derive(Clone,Copy)]
+pub struct SPRT {
+    pub llr:        f64,
+    pub llr_pct:    f64,
+    pub lbound:     f64,
+    pub ubound:     f64,
 }
 
 impl Match {
@@ -73,29 +82,47 @@ impl Match {
 
         static RE2: Lazy<Regex> = Lazy::new(|| {
             Regex::new(
-                r"(-?\d+\.\d+|-?inf) \+.- (nan|\d+\.\d+), LOS: (\d+\.\d+) %, DrawRatio: (\d+\.\d+) %"
+                r"(-?\d+\.\d+|-?inf) \+.- (nan|\d+\.\d+), LOS: (nan|\d+\.\d+) %, DrawRatio: (\d+\.\d+) %"
             ).unwrap()
         });
 
-        let elo_diff = RE2.captures(&input.last().unwrap()).unwrap();
+        let (line_elo,line_sprt): (&str,Option<&str>) = if input.last().unwrap().starts_with("SPRT") {
+            (&input[input.len() - 2],Some(&input.last().unwrap()))
+        } else {
+            (&input.last().unwrap(),None)
+        };
 
-        let elo        = f64::from_str(elo_diff.get(1)?.as_str()).ok()?;
-        let bounds     = f64::from_str(elo_diff.get(2)?.as_str()).ok()?;
-        let los        = f64::from_str(elo_diff.get(3)?.as_str()).ok()?;
+        let elo_diff = RE2.captures(line_elo).unwrap();
+
+        let elo        = f64::from_str(elo_diff.get(1)?.as_str()).ok();
+        let bounds     = f64::from_str(elo_diff.get(2)?.as_str()).ok();
+        let los        = f64::from_str(elo_diff.get(3)?.as_str()).ok();
         let draw_ratio = f64::from_str(elo_diff.get(4)?.as_str()).ok()?;
+
+        static RE3: Lazy<Regex> = Lazy::new(|| {
+            Regex::new(
+                r"SPRT: llr (-?\d+\.\d+) \((-?\d+\.\d+)%\) "
+            ).unwrap()
+        });
+
+        // let llr:        f64,
+        // let llr_pct:    f64,
+        // let lbound:     f64,
+        // let ubound:     f64,
 
         // eprintln!("elo = {:?}", elo);
 
-        Some(Self {
-            game_num,
-            result,
-            sum_score:  (w,b,d),
-            elo_diff:   (elo,bounds),
-            los,
-            draw_ratio,
-        })
+        // Some(Self {
+        //     game_num,
+        //     result,
+        //     sum_score:  (w,b,d),
+        //     elo_diff:   (elo,bounds),
+        //     los,
+        //     draw_ratio,
+        //     sprt,
+        // })
 
-        // unimplemented!()
+        unimplemented!()
         // None
     }
 }

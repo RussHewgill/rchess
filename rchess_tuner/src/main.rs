@@ -37,11 +37,43 @@ use gag::Redirect;
 use crate::tuner_types::MatchResult;
 use crate::supervisor::*;
 
-// fn main() {
-// }
-
 fn main() {
-// fn main2() {
+
+    // let lines = vec![
+    //     "SPRT: llr -0.187 (-6.4%), lbound -2.94, ubound 2.94".to_string(),
+    //     "Started game 7 of 100 (rchess vs rchess)".to_string(),
+    //     "Finished game 7 (rchess vs rchess): 1-0 {White wins by adjudication: SyzygyTB}".to_string(),
+    //     "Score of rchess vs rchess: 2 - 1 - 4  [0.571] 7".to_string(),
+    //     "...      rchess playing White: 2 - 0 - 2  [0.750] 4".to_string(),
+    //     "...      rchess playing Black: 0 - 1 - 2  [0.333] 3".to_string(),
+    //     "...      White vs Black: 3 - 0 - 4  [0.714] 7".to_string(),
+    //     "Elo difference: 50.0 +/- 184.2, LOS: 71.8 %, DrawRatio: 57.1 %".to_string(),
+    // ];
+
+    let line = "SPRT: llr -0.248 (-8.4%), lbound -2.94, ubound 2.94";
+
+    use once_cell::sync::Lazy;
+    use regex::Regex;
+
+    static RE3: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            // r"SPRT: llr (-?\d+\.\d+) \((-?\d+\.\d+)%\) "
+            r"(-?\d+\.\d+)"
+        ).unwrap()
+    });
+
+    let caps = RE3.captures(line).unwrap();
+
+    eprintln!("caps = {:?}", caps);
+
+    // let res = Match::parse(lines);
+    // eprintln!("res = {:?}", res);
+}
+
+// fn main() {
+fn main2() {
+
+    init_logger();
 
     let engine1 = "rchess";
     let engine2 = "rchess";
@@ -239,8 +271,15 @@ fn init_logger() {
         .set_location_level(LevelFilter::Off)
         .build();
 
-    WriteLogger::init(LevelFilter::Debug, cfg, logfile).unwrap();
-    // WriteLogger::init(LevelFilter::Trace, cfg, logfile).unwrap();
+    // WriteLogger::init(LevelFilter::Debug, cfg, logfile).unwrap();
+    // // WriteLogger::init(LevelFilter::Trace, cfg, logfile).unwrap();
+
+    let log1 = TermLogger::new(LevelFilter::Debug, cfg.clone(), TerminalMode::Stderr, ColorChoice::Auto);
+
+    CombinedLogger::init(vec![
+        // log0,
+        log1,
+    ]).unwrap();
 
     let mut errfile = std::fs::File::create("/home/me/code/rust/rchess/panic.log").unwrap();
     let err_redirect = Redirect::stderr(errfile).unwrap();

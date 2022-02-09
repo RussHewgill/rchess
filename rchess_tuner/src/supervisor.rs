@@ -1,5 +1,5 @@
 
-use crate::tuner_types::{Match,MatchResult,TimeControl,InputParser};
+use crate::tuner_types::*;
 use crate::json_config::Engine;
 
 use once_cell::sync::Lazy;
@@ -66,13 +66,9 @@ pub struct CuteChess {
 impl Drop for CuteChess {
     fn drop(&mut self) {
         for child in self.children.iter() {
-            println!("killing child pid {}", child);
-            // std::process::Command::new("kill").arg(&format!("{}", child));
             nix::sys::signal::kill(
                 nix::unistd::Pid::from_raw(*child as i32), nix::sys::signal::SIGKILL).unwrap();
         }
-        println!("killing pid {}", self.pid);
-        // std::process::Command::new("kill").arg(&format!("{}", self.pid));
         nix::sys::signal::kill(
             nix::unistd::Pid::from_raw(self.pid as i32), nix::sys::signal::SIGKILL).unwrap();
     }
@@ -180,38 +176,45 @@ impl CuteChess {
 
         for line in reader.lines() {
 
+            // trace!("line = {:?}", &line);
+            println!("line = {:?}", &line);
+            let line = line.unwrap();
+
             if self.stop.load(std::sync::atomic::Ordering::SeqCst) {
                 println!("exiting _run_cutechess, pid = {:>5}", self.pid);
                 break;
             }
-
-            let line = line.unwrap();
 
             match state {
                 InputParser::None => {
                     game.push(line);
                     state = InputParser::Started;
                 },
+
                 InputParser::Started => {
-                    game.push(line.clone());
-
-                    if line.starts_with("Elo difference") {
+                    if line.starts_with("Started game") {
                         let v = std::mem::replace(&mut game, vec![]);
-
-                        // for line in v {
-                        //     eprintln!("{:?}", line);
-                        // }
-
                         let res = Match::parse(v).unwrap();
-
-                        // eprintln!("{:?}", res);
-
-                        // matches.push(res);
                         tx.send(res).unwrap();
-
-                        state = InputParser::Started;
+                        game.push(line);
+                    } else {
+                        game.push(line);
                     }
                 },
+
+                // InputParser::Started => {
+                //     game.push(line.clone());
+                //     if line.starts_with("Elo difference") {
+                //         let v = std::mem::replace(&mut game, vec![]);
+                //         // let res = Match::parse(v.clone()).unwrap_or_else(move || {
+                //         //     eprintln!("v = {:?}", v);
+                //         //     panic!();
+                //         // });
+                //         tx.send(res).unwrap();
+                //         state = InputParser::Started;
+                //     }
+                // },
+
             }
 
         }
