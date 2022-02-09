@@ -1,6 +1,8 @@
 
 use crate::json_config::Engine;
 
+pub use log::{info,warn,debug,trace};
+
 use std::io::{self};
 use std::process::Child;
 use std::str::FromStr;

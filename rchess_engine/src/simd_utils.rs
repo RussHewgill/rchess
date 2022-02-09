@@ -119,6 +119,14 @@ pub mod safe_arch {
         std::slice::from_raw_parts(ptr, len)
     }
 
+    pub unsafe fn cast_slice_to_m128i_mut<T: Sized>(xs: &mut [T]) -> &mut [m128i] {
+        let size = std::mem::size_of::<T>();
+        assert_eq!(xs.len() % (16 / size), 0);
+        let ptr = xs.as_ptr() as *mut m128i;
+        let len = xs.len() / (16 / size);
+        std::slice::from_raw_parts_mut(ptr, len)
+    }
+
     pub fn m128_add_dpbusd_epi32x2(
         mut acc: &mut safe_arch::m128i,
         a0: safe_arch::m128i, b0: safe_arch::m128i,

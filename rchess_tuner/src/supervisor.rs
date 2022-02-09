@@ -31,19 +31,27 @@ use crossbeam::channel::{Sender,Receiver};
 
 #[derive(Debug,Clone)]
 pub struct Supervisor {
-    engine:   Engine,
+    pub engine_tuning:     Engine,
+    pub engine_baseline:   Engine,
 
-    tunable:  Tunable,
+    pub tunable:           Tunable,
+
+    pub timecontrol:       TimeControl,
 
 }
 
 #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone)]
+pub struct TunableOpt {
+    pub name:    String,
+    pub min:     u64,
+    pub max:     u64,
+    pub start:   u64,
+    pub step:    u64,
+}
+
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone)]
 pub struct Tunable {
-    name:    String,
-    min:     u64,
-    max:     u64,
-    start:   u64,
-    step:    u64,
+    pub opt:     TunableOpt,
 }
 
 #[derive(Debug,Clone)]

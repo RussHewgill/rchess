@@ -149,30 +149,24 @@ mod nn_affine {
     /// Consts, AVX2
     #[cfg(target_feature = "avx2")]
     impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
-
         const INPUT_SIMD_WIDTH: usize = 32;
         const MAX_NUM_OUTPUT_REGS: usize = 8;
-
-        const NUM_OUTPUT_REGS: usize  = if OS > Self::MAX_NUM_OUTPUT_REGS {
-            Self::MAX_NUM_OUTPUT_REGS } else { OS };
-        const SMALL_BLOCK_SIZE: usize = Self::INPUT_SIMD_WIDTH;
-        const BIG_BLOCK_SIZE: usize   = Self::NUM_OUTPUT_REGS * Self::SIZE_INPUT_PADDED;
-
-        const NUM_SMALL_BLOCKS_PER_BIG_BLOCK: usize = Self::BIG_BLOCK_SIZE / Self::SMALL_BLOCK_SIZE;
-        const NUM_SMALL_BLOCKS_PER_OUTPUT: usize = Self::SIZE_INPUT_PADDED / Self::SMALL_BLOCK_SIZE;
-
-        const NUM_BIG_BLOCKS: usize = Self::SIZE_OUTPUT / Self::NUM_OUTPUT_REGS;
-
-        const SIZE_INPUT_PADDED: usize = ceil_to_multiple(Self::SIZE_INPUT, 32);
-
     }
 
-    #[cfg(all(not(target_feature = "avx2"), target_feature = "ssse3"))]
+    // #[cfg(all(not(target_feature = "avx2"), target_feature = "ssse3"))]
+    // impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
+    //     const INPUT_SIMD_WIDTH: usize = 16;
+    //     const MAX_NUM_OUTPUT_REGS: usize = 8;
+    // }
+
+    // #[cfg(all(not(target_feature = "avx2"), not(target_feature = "ssse3")))]
+    #[cfg(not(target_feature = "avx2"))]
     impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
+        const INPUT_SIMD_WIDTH: usize = 1;
+        const MAX_NUM_OUTPUT_REGS: usize = 1;
+    }
 
-        const INPUT_SIMD_WIDTH: usize = 16;
-        const MAX_NUM_OUTPUT_REGS: usize = 8;
-
+    impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
         const NUM_OUTPUT_REGS: usize  = if OS > Self::MAX_NUM_OUTPUT_REGS {
             Self::MAX_NUM_OUTPUT_REGS } else { OS };
         const SMALL_BLOCK_SIZE: usize = Self::INPUT_SIMD_WIDTH;

@@ -1781,7 +1781,7 @@ mod old {
 
     }
 
-    /// SIMD
+    /// SIMD, AVX2
     #[cfg(target_feature = "avx2")]
     impl NNFeatureTrans {
 
@@ -2036,6 +2036,176 @@ mod old {
             // }
 
         }
+
+    }
+
+    /// SIMD, SSSE3
+    // #[cfg(all(not(target_feature = "avx2"), target_feature = "ssse3"))]
+    #[cfg(feature = "nope")]
+    impl NNFeatureTrans {
+
+        const NUM_REGS: usize = 16; // SSSE3
+        const NUM_REGS_PSQT: usize = 1; // SSSE3
+
+        /// AVX2 = 256
+        const TILE_HEIGHT: usize = Self::NUM_REGS * std::mem::size_of::<safe_arch::m256i>() / 2;
+        /// AVX2 = 8
+        const TILE_HEIGHT_PSQT: usize = Self::NUM_REGS_PSQT * std::mem::size_of::<safe_arch::m256i>() / 4;
+
+        pub fn _update_accum_simd(&mut self, g: &Game, persp: Color) {
+            use safe_arch::*;
+            use crate::simd_utils::safe_arch::*;
+
+            assert!(self.biases.len() == self.accum.accum[persp].len());
+            self.accum.accum[persp].copy_from_slice(&self.biases);
+
+            let mut active = ArrayVec::default();
+            NNAccum::append_active(g, persp, &mut active);
+
+            let mut acc      = [m128i::default(); Self::NUM_REGS];
+            let mut acc_psqt = [m128i::default(); Self::NUM_REGS_PSQT];
+
+            for k in 0..HALF_DIMS / Self::TILE_HEIGHT {
+
+                let biases_tile: &[m128i] = unsafe {
+                    let bs = &self.biases[k * Self::TILE_HEIGHT..];
+                    cast_slice_to_m128i(&bs)
+                };
+
+                acc[..Self::NUM_REGS].copy_from_slice(&biases_tile[..Self::NUM_REGS]);
+
+                for idx in active.iter() {
+                    let offset = HALF_DIMS * idx.0 + k * Self::TILE_HEIGHT;
+
+                    let column = unsafe { cast_slice_to_m128i(&self.weights[offset..]) };
+
+                    for i in 0..Self::NUM_REGS {
+                        acc[i] = add_i16_m128i(acc[i], column[i]);
+                    }
+                }
+
+                let acc_tile: &mut [m128i] = unsafe {
+                    let xs = &mut self.accum.accum[persp][k * Self::TILE_HEIGHT..];
+                    cast_slice_to_m128i_mut(xs)
+                };
+
+                for i in 0..Self::NUM_REGS {
+                    // vec_store(&mut accTile[k], acc[k]);
+                    store_m128i(&mut acc_tile[i], acc[i]);
+                }
+
+            }
+
+            for k in 0..Self::PSQT_BUCKETS / Self::TILE_HEIGHT_PSQT {
+                self.accum.psqt[persp].fill(0);
+
+                for idx in active.iter() {
+                    let offset = Self::PSQT_BUCKETS * idx.0 + k * Self::TILE_HEIGHT_PSQT;
+
+                    let column_psqt = unsafe { cast_slice_to_m128i(&self.psqt_weights[offset..]) };
+
+                    for i in 0..Self::NUM_REGS_PSQT {
+                        acc_psqt[i] = add_i32_m128i(acc_psqt[i], column_psqt[i]);
+                    }
+                }
+
+                let acc_tile_psqt: &mut [m128i] = unsafe {
+                    let xs = &mut self.accum.psqt[persp][k * Self::TILE_HEIGHT_PSQT..];
+                    cast_slice_to_m128i_mut(xs)
+                };
+
+                for i in 0..Self::NUM_REGS_PSQT {
+                    store_m128i(&mut acc_tile_psqt[i], acc_psqt[i]);
+                }
+
+            }
+
+        }
+
+        pub fn _accum_inc_simd<const ADD: bool>(&mut self, persp: Color, idx: NNIndex) {
+            use safe_arch::*;
+            use crate::simd_utils::safe_arch::*;
+
+            let mut acc = [m128i::default(); Self::NUM_REGS];
+
+            for k in 0..HALF_DIMS / Self::TILE_HEIGHT {
+                let acc_tile: &mut [m128i] = unsafe {
+                    let xs = &mut self.accum.accum[persp][k * Self::TILE_HEIGHT..];
+                    cast_slice_to_m128i_mut(xs)
+                };
+
+                for i in 0..Self::NUM_REGS {
+                    acc[i] = load_m128i(&acc_tile[i]);
+                }
+
+                let offset = HALF_DIMS * idx.0 + k * Self::TILE_HEIGHT;
+                let column = unsafe { cast_slice_to_m128i(&self.weights[offset..]) };
+
+                for i in 0..Self::NUM_REGS {
+                    if ADD {
+                        acc[i] = add_i16_m128i(acc[i], column[i]);
+                    } else {
+                        acc[i] = sub_i16_m128i(acc[i], column[i]);
+                    }
+                }
+
+                for i in 0..Self::NUM_REGS {
+                    store_m128i(&mut acc_tile[i], acc[i]);
+                    // acc_tile[i] = acc[i];
+                }
+            }
+
+            // drop(acc);
+            let mut acc_psqt = [m128i::default(); Self::NUM_REGS_PSQT];
+
+            for k in 0..Self::PSQT_BUCKETS / Self::TILE_HEIGHT_PSQT {
+                let acc_tile_psqt: &mut [m128i] = unsafe {
+                    let xs = &mut self.accum.psqt[persp][k * Self::TILE_HEIGHT_PSQT..];
+                    cast_slice_to_m128i_mut(xs)
+                };
+                for i in 0..Self::NUM_REGS_PSQT {
+                    acc_psqt[i] = load_m128i(&acc_tile_psqt[i]);
+                    // acc_psqt[i] = acc_tile_psqt[i];
+                }
+                let offset = Self::PSQT_BUCKETS * idx.0 + k * Self::TILE_HEIGHT_PSQT;
+                let column_psqt = unsafe { cast_slice_to_m128i(&self.psqt_weights[offset..]) };
+                for i in 0..Self::NUM_REGS_PSQT {
+                    if ADD {
+                        acc_psqt[i] = add_i32_m128i(acc_psqt[i], column_psqt[i]);
+                    } else {
+                        acc_psqt[i] = sub_i32_m128i(acc_psqt[i], column_psqt[i]);
+                    }
+                }
+                for i in 0..Self::NUM_REGS_PSQT {
+                    store_m128i(&mut acc_tile_psqt[i], acc_psqt[i]);
+                    // acc_tile_psqt[i] = acc_psqt[i];
+                }
+            }
+
+            // let idx = idx.0;
+            // let offset = HALF_DIMS * idx;
+
+            // let mut accum = &mut self.accum.accum[persp][..HALF_DIMS];
+            // let weights = &self.weights[offset..offset + HALF_DIMS];
+
+            // for j in 0..HALF_DIMS {
+            //     if ADD {
+            //         accum[j] += weights[j];
+            //     } else {
+            //         accum[j] -= weights[j];
+            //     }
+            // }
+
+            // for k in 0..Self::PSQT_BUCKETS {
+            //     if ADD {
+            //         self.accum.psqt[persp][k] += self.psqt_weights[idx * Self::PSQT_BUCKETS + k];
+            //     } else {
+            //         self.accum.psqt[persp][k] -= self.psqt_weights[idx * Self::PSQT_BUCKETS + k];
+            //     }
+            // }
+
+        }
+
 
     }
 
@@ -2329,12 +2499,16 @@ mod old {
         // }
 
         pub fn reset_accum(&mut self, g: &Game) {
-            #[cfg(not(target_feature = "avx2"))]
+            // #[cfg(all(not(target_feature = "avx2"), not(target_feature = "ssse3")))]
+            #[cfg(all(not(target_feature = "avx2")))]
             self._update_accum(g, White);
-            #[cfg(not(target_feature = "avx2"))]
+            // #[cfg(all(not(target_feature = "avx2"), not(target_feature = "ssse3")))]
+            #[cfg(all(not(target_feature = "avx2")))]
             self._update_accum(g, Black);
+            // #[cfg(any(target_feature = "avx2",target_feature = "ssse3"))]
             #[cfg(target_feature = "avx2")]
             self._update_accum_simd(g, White);
+            // #[cfg(any(target_feature = "avx2",target_feature = "ssse3"))]
             #[cfg(target_feature = "avx2")]
             self._update_accum_simd(g, Black);
         }

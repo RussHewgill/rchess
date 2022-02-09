@@ -10,6 +10,7 @@ mod tuner_types;
 mod parsing;
 mod supervisor;
 mod json_config;
+mod optimizer;
 
 use self::json_config::*;
 
@@ -46,6 +47,7 @@ fn main() {
     let engine2 = "rchess";
 
     let timecontrol = TimeControl::new_f64(0.5, 0.05);
+    // let timecontrol = TimeControl::new_f64(1.0, 0.1);
     let output_label = "test";
     let (elo0,elo1) = (0,50);
     let num_games = 50;
