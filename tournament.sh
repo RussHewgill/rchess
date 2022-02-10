@@ -45,10 +45,10 @@ ELO1=250
     # esac
 # done
 
-ENGINE2=rchess_prev
+# ENGINE2=rchess_prev
 # ENGINE2=stockfish
 # ENGINE2=arasan
-# ENGINE2=gnuchess
+ENGINE2=gnuchess
 # ENGINE2=TSCP
 # ENGINE2=rustic
 
@@ -74,7 +74,8 @@ echo Elo diff = $ELO1, 0.05
     # -engine conf=rchess st=$time timemargin=50 restart=off \
     # -engine conf=$ENGINE2 st=$time timemargin=50 restart=off \
 
-TC="tc=1+0.1"
+# TC="tc=1+0.1"
+TC="tc=0.2+0.025"
 # TC="st=$time"
 
 echo ENGINE1 = rchess

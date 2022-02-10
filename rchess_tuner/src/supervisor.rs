@@ -49,9 +49,19 @@ pub struct TunableOpt {
     pub step:    u64,
 }
 
-#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone)]
+#[derive(Debug,Clone)]
 pub struct Tunable {
-    pub opt:     TunableOpt,
+    pub opt:        TunableOpt,
+    pub attempts:   Vec<(u64, Hypothesis)>,
+}
+
+impl Tunable {
+    pub fn new(name: String, min: u64, max: u64, start: u64, step: u64) -> Self {
+        Self {
+            opt: TunableOpt { name, min, max, start, step},
+            attempts: vec![],
+        }
+    }
 }
 
 #[derive(Debug,Clone)]
@@ -60,7 +70,7 @@ pub struct CuteChess {
     pub pid:         u32,
     pub children:    Vec<u32>,
     pub stop:        Arc<AtomicBool>,
-    pub rx:          Arc<Receiver<Match>>,
+    pub rx:          Arc<Receiver<MatchOutcome>>,
 }
 
 impl Drop for CuteChess {
@@ -76,9 +86,92 @@ impl Drop for CuteChess {
     }
 }
 
+/// kill
+impl CuteChess {
+    pub fn kill(self) {}
+}
+
+/// run
 impl CuteChess {
 
     pub fn run_cutechess(
+        engine1:          &str,
+        engine2:          &str,
+        timecontrol:      TimeControl,
+        output_label:     &str,
+        num_games:        u64,
+    ) -> CuteChess {
+        let timestamp   = get_timestamp();
+        let output_file = &format!("tuning_logs/out_{}_{}.pgn", output_label, timestamp);
+        let log_file    = &format!("tuning_logs/log_{}_{}.pgn", output_label, timestamp);
+        let time        = timecontrol.print();
+
+        let args = [
+            "-tournament gauntlet",
+            "-concurrency 1",
+            &format!("-pgnout {}", output_file),
+            &format!("-engine conf={} {} timemargin=50 restart=off", engine1, time),
+            &format!("-engine conf={} {} timemargin=50 restart=off", engine2, time),
+            "-each proto=uci",
+            "-openings file=tables/openings-10ply-100k.pgn policy=round",
+            "-tb tables/syzygy/",
+            "-tbpieces 5",
+            "-repeat",
+            &format!("-rounds {}", num_games),
+            "-games 2",
+            "-draw movenumber=40 movecount=4 score=8",
+            "-resign movecount=4 score=500",
+            "-ratinginterval 1",
+        ];
+
+        let args = args.into_iter()
+            .flat_map(|arg| arg.split_ascii_whitespace())
+            .collect::<Vec<_>>();
+
+        let (tx,rx) = crossbeam::channel::unbounded();
+
+        let mut child: Child = Command::new("cutechess-cli")
+            .args(args)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("failed to spawn cutechess-cli");
+
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        let pid = child.id();
+        eprintln!("pid = {:?}", pid);
+
+        let children = Command::new("pgrep")
+            .args(["--parent", &format!("{}", pid)])
+            .output().unwrap();
+
+        let children = String::from_utf8(children.stdout).unwrap()
+            .lines()
+            .map(|line| u32::from_str(line).unwrap())
+            .collect();
+
+        eprintln!("children = {:?}", children);
+
+        let cutechess = CuteChess {
+            // child:    Arc::new(child),
+            pid,
+            children,
+            stop:     Arc::new(AtomicBool::new(false)),
+            rx:       Arc::new(rx),
+        };
+
+        // let pid = cutechess.id();
+        // eprintln!("pid = {:?}", pid);
+
+        let cutechess2 = cutechess.clone();
+        std::thread::spawn(move || {
+            cutechess2._run_cutechess(child,tx);
+        });
+
+        cutechess
+    }
+
+    pub fn run_cutechess_tournament(
         // engine1:          Engine,
         // engine2:          Engine,
         engine1:          &str,
@@ -89,15 +182,10 @@ impl CuteChess {
         (elo0,elo1):      (u64,u64),
         confidence:       f64,
     ) -> CuteChess {
-
-        // let _ = PANIC_INIT
-
-        let timestamp = get_timestamp();
-
+        let timestamp   = get_timestamp();
         let output_file = &format!("tuning_logs/out_{}_{}.pgn", output_label, timestamp);
         let log_file    = &format!("tuning_logs/log_{}_{}.pgn", output_label, timestamp);
-
-        let time = timecontrol.print();
+        let time        = timecontrol.print();
 
         let args = [
             "-tournament gauntlet",
@@ -166,7 +254,7 @@ impl CuteChess {
         cutechess
     }
 
-    fn _run_cutechess(&self, child: Child, tx: Sender<Match>) {
+    fn _run_cutechess(&self, child: Child, tx: Sender<MatchOutcome>) {
         println!("starting _run_cutechess, pid = {:>5}", self.pid);
 
         let mut game: Vec<String>   = vec![];
@@ -196,7 +284,7 @@ impl CuteChess {
                 InputParser::Started => {
                     if line.starts_with("Started game") {
                         let v = std::mem::replace(&mut game, vec![]);
-                        let res = Match::parse(v).unwrap();
+                        let res = MatchOutcome::parse(v).unwrap();
                         tx.send(res).unwrap();
                         game.push(line);
                     } else {

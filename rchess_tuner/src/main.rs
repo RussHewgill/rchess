@@ -11,15 +11,19 @@ mod parsing;
 mod supervisor;
 mod json_config;
 mod optimizer;
+mod gamerunner;
 
 use self::json_config::*;
 
+use once_cell::sync::Lazy;
 use rchess_engine_lib::alphabeta::ABResult;
 use rchess_engine_lib::types::*;
 use rchess_engine_lib::tables::*;
 use rchess_engine_lib::explore::*;
 use rchess_engine_lib::evaluate::*;
+use regex::Regex;
 use serde_json::json;
+use supervisor::Tunable;
 use tuner_types::*;
 
 // use sprt::*;
@@ -38,25 +42,53 @@ use gag::Redirect;
 use crate::tuner_types::MatchResult;
 use crate::supervisor::*;
 
-fn main() {
-    json_test();
+// fn main() {
+fn main3() {
+
+    let lines = vec![
+        "Started game 3 of 100 (rchess vs rchess_prev)".to_string(),
+        "Finished game 15 (rchess vs gnuchess): 1/2-1/2 {Draw by adjudication: SyzygyTB}".to_string(),
+        "Score of rchess vs gnuchess: 13 - 1 - 1  [0.900] 15".to_string(),
+        "...      rchess playing White: 6 - 1 - 1  [0.813] 8".to_string(),
+        "...      rchess playing Black: 7 - 0 - 0  [1.000] 7".to_string(),
+        "...      White vs Black: 6 - 8 - 1  [0.433] 15".to_string(),
+        "Elo difference: 381.7 +/- nan, LOS: 99.9 %, DrawRatio: 6.7 %".to_string(),
+        "SPRT: llr 6.42 (218.1%), lbound -2.94, ubound 2.94 - H1 was accepted".to_string(),
+        "Finished match".to_string(),
+    ];
+
+    let res = MatchOutcome::parse(lines);
+    eprintln!("res = {:?}", res);
+
 }
 
-pub fn json_test() {
+// pub fn json_test() {
+//     let path = "engines-test.json";
+//     let engines = Engine::read_all_from_file(&path).unwrap();
+//     for eng in engines.iter() {
+//         eprintln!("eng = {:?}", eng);
+//     }
+//     let mut eng = engines.get("rchess").unwrap().clone();
+//     eng.options.insert("wat2".to_string(), json!(22));
+//     eng.write(&path).unwrap();
+// }
 
-    let path = "engines-test.json";
+fn main() {
 
-    let engines = Engine::read_all_from_file(&path).unwrap();
+    let engine = Engine::read_from_file("rchess", "engines-test.json").unwrap();
 
-    for eng in engines.iter() {
-        eprintln!("eng = {:?}", eng);
-    }
+    let timecontrol = TimeControl::new_f64(1.0, 0.1);
 
-    let mut eng = engines.get("rchess").unwrap().clone();
+    let tunable = Tunable::new("lmr_reduction".to_string(), 2, 5, 3, 1);
 
-    eng.options.insert("wat2".to_string(), json!(22));
+    let mut sup = Supervisor {
+        engine_baseline: engine.clone(),
+        engine_tuning:   engine.clone(),
+        tunable,
+        timecontrol,
+    };
 
-    eng.write(&path).unwrap();
+    sup.find_optimum();
 
 }
 
@@ -88,7 +120,7 @@ fn main2() {
     //     hook(panicinfo)
     // }));
 
-    let cutechess = CuteChess::run_cutechess(
+    let cutechess = CuteChess::run_cutechess_tournament(
         engine1,
         engine2,
         timecontrol,
@@ -115,6 +147,7 @@ fn main2() {
 }
 
 // fn main() {
+#[cfg(feature = "nope")]
 fn main3() {
 
     init_logger();

@@ -40,25 +40,47 @@ pub enum InputParser {
 }
 
 #[derive(Clone,Copy)]
+pub enum MatchOutcome {
+    Match(Match),
+    SPRTFinished(Match, Elo, SPRT),
+}
+
+#[derive(Clone,Copy)]
 pub struct Match {
     pub game_num:   u32,
     pub result:     MatchResult,
     pub sum_score:  (u32,u32,u32),
-    pub elo_diff:   (Option<f64>,Option<f64>),
-    pub los:        Option<f64>,
-    pub draw_ratio: f64,
+    pub elo:        Option<Elo>,
     pub sprt:       Option<SPRT>,
 }
 
 #[derive(Clone,Copy)]
-pub struct SPRT {
-    pub llr:        f64,
-    pub llr_pct:    f64,
-    pub lbound:     f64,
-    pub ubound:     f64,
+/// LOS: likelihood of superiority
+pub struct Elo {
+    pub elo:        f64,
+    pub bounds:     f64,
+    pub los:        f64,
+    pub draw_ratio: f64,
 }
 
-impl Match {
+#[derive(Clone,Copy)]
+/// LLR: log-likelihood ratio
+pub struct SPRT {
+    pub llr:           f64,
+    pub llr_pct:       f64,
+    pub lbound:        f64,
+    pub ubound:        f64,
+    pub hyp_accepted:  Option<Hypothesis>,
+}
+
+#[derive(Debug,Clone,Copy)]
+pub enum Hypothesis {
+    H0,
+    H1,
+}
+
+/// parse
+impl MatchOutcome {
     pub fn parse(input: Vec<String>) -> Option<Self> {
         use regex::Regex;
 
@@ -86,10 +108,13 @@ impl Match {
             ).unwrap()
         });
 
-        let (line_elo,line_sprt): (&str,Option<&str>) = if input.last().unwrap().starts_with("SPRT") {
-            (&input[input.len() - 2],Some(&input.last().unwrap()))
+        let last = input.last().unwrap();
+        let (line_elo,line_sprt,finished): (&str,Option<&str>,bool) = if last.starts_with("Finished match") {
+            (&input[input.len() - 3],Some(&input[input.len() - 2]),true)
+        } else if last.starts_with("SPRT") {
+            (&input[input.len() - 2],Some(&last),false)
         } else {
-            (&input.last().unwrap(),None)
+            (&last,None,false)
         };
 
         let elo_diff = RE2.captures(line_elo).unwrap();
@@ -99,33 +124,58 @@ impl Match {
         let los        = f64::from_str(elo_diff.get(3)?.as_str()).ok();
         let draw_ratio = f64::from_str(elo_diff.get(4)?.as_str()).ok()?;
 
+        let elo = match (elo,bounds,los) {
+            (Some(elo),Some(bounds),Some(los)) => Some(Elo {
+                elo,
+                bounds,
+                los,
+                draw_ratio,
+            }),
+            _ => None,
+        };
+
         static RE3: Lazy<Regex> = Lazy::new(|| {
             Regex::new(
-                r"(-?\d+\.\d+) \((-?\d+\.\d+).+ (-?\d+\.\d+).+ (-?\d+\.\d+)"
+                r"(-?\d+\.\d+) \((-?\d+\.\d+).+ (-?\d+\.\d+).+ (-?\d+\.\d+)(?: - H(\d) was accepted)?"
             ).unwrap()
         });
 
         let sprt = if let Some(line_sprt) = line_sprt {
             let sprt = RE3.captures(line_sprt).unwrap();
+
+            let hyp_accepted = if let Some(h) = sprt.get(5) {
+                let x = i32::from_str(h.as_str()).unwrap();
+                match x {
+                    0 => Some(Hypothesis::H0),
+                    1 => Some(Hypothesis::H1),
+                    _ => panic!("bad hypothesis?"),
+                }
+            } else { None };
+
             Some(SPRT {
                 llr:      f64::from_str(sprt.get(1)?.as_str()).ok()?,
                 llr_pct:  f64::from_str(sprt.get(2)?.as_str()).ok()?,
                 lbound:   f64::from_str(sprt.get(3)?.as_str()).ok()?,
                 ubound:   f64::from_str(sprt.get(4)?.as_str()).ok()?,
+                hyp_accepted,
             })
         } else { None };
 
         // eprintln!("elo = {:?}", elo);
 
-        Some(Self {
+        let m = Match {
             game_num,
             result,
             sum_score:  (w,b,d),
-            elo_diff:   (elo,bounds),
-            los,
-            draw_ratio,
+            elo,
             sprt,
-        })
+        };
+
+        if finished {
+            Some(MatchOutcome::SPRTFinished(m, elo.unwrap(), sprt.unwrap()))
+        } else {
+            Some(MatchOutcome::Match(m))
+        }
 
         // unimplemented!()
         // None
@@ -161,16 +211,51 @@ pub enum DrawType {
 }
 
 
+impl std::fmt::Debug for MatchOutcome {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            &MatchOutcome::Match(m)            => {
+                f.write_str(&format!("Match: {:?}", m))?;
+            },
+            &MatchOutcome::SPRTFinished(m,_,_) => {
+                f.write_str(&format!("SPRTFinished: {:?}", m))?;
+            },
+        }
+        Ok(())
+    }
+}
+
 impl std::fmt::Debug for Match {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&format!("Game {}:\n", self.game_num))?;
         f.write_str(&format!("    result: {:?}\n", self.result))?;
-        f.write_str(&format!("    scores: {:>3} - {:>3} - {:>3}",
+        f.write_str(&format!("    scores: {:>3} - {:>3} - {:>3}\n",
                              self.sum_score.0, self.sum_score.1, self.sum_score.2))?;
+        f.write_str(&format!("    {:?}\n", self.elo))?;
+        f.write_str(&format!("    {:?}", self.sprt))?;
 
         Ok(())
     }
 }
 
+impl std::fmt::Debug for Elo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("Elo: {:.1} +/- {:.1}, LOS: {:.1}%",
+                             self.elo, self.bounds, self.los))?;
+        Ok(())
+    }
+}
+
+impl std::fmt::Debug for SPRT {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!("LLR: {:.2}, ({:.1}%) l[{:.2},{:.2}]u",
+                             self.llr, self.llr_pct, self.lbound, self.ubound,
+        ))?;
+        if let Some(h) = self.hyp_accepted {
+            f.write_str(&format!(" - {:?} was accepted", h))?;
+        }
+        Ok(())
+    }
+}
 
 

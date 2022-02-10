@@ -1,11 +1,11 @@
 
 
 
-fn log_likelyhood(x: f64) -> f64 {
+pub fn log_likelyhood(x: f64) -> f64 {
     1.0 / (1.0 + 10.0f64.powf(-x / 400.0))
 }
 
-fn ll_ratio((win,draw,loss): (u32,u32,u32), elo0: f64, elo1: f64) -> f64 {
+pub fn ll_ratio((win,draw,loss): (u32,u32,u32), elo0: f64, elo1: f64) -> f64 {
     if win == 0 || draw == 0 || loss == 0 {
         return 0.0;
     }

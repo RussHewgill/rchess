@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, path::Path};
 
-use std::io::Write;
+use std::io::{self,Write};
 use std::fs::OpenOptions;
 
 use serde_json::{json,Value};
@@ -28,8 +28,10 @@ struct EngineSer {
 
 impl Engine {
 
-    pub fn write_option_val(&mut self, opt: &str, val: Value) {
-        unimplemented!()
+    pub fn write_option_val<P: AsRef<Path>>(&mut self, opt: &str, val: Value, path: P) -> io::Result<()> {
+        self.options.insert(opt.to_string(), val);
+        self.write(path)?;
+        Ok(())
     }
 
 }
@@ -37,7 +39,7 @@ impl Engine {
 /// read, write
 impl Engine {
 
-    pub fn write<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
+    pub fn write<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         let eng_ser = self.convert_to_ser();
 
         let mut engines = EngineSer::_read_all_from_file(&path)?;
@@ -49,7 +51,7 @@ impl Engine {
         Ok(())
     }
 
-    pub fn read_from_file<P: AsRef<Path>>(name: &str, path: P) -> std::io::Result<Self> {
+    pub fn read_from_file<P: AsRef<Path>>(name: &str, path: P) -> io::Result<Self> {
         let engines = Self::read_all_from_file(path)?;
         if let Some(e) = engines.get(name) {
             return Ok(e.clone());
@@ -57,7 +59,7 @@ impl Engine {
         panic!("engine {} not found", name);
     }
 
-    pub fn read_all_from_file<P: AsRef<Path>>(path: P) -> std::io::Result<HashMap<String,Self>> {
+    pub fn read_all_from_file<P: AsRef<Path>>(path: P) -> io::Result<HashMap<String,Self>> {
         let b = std::fs::read_to_string(path)?;
         let json: Vec<EngineSer> = serde_json::from_str(&b).unwrap();
         let mut out = HashMap::default();
@@ -102,7 +104,7 @@ impl Engine {
 
 impl EngineSer {
 
-    fn write_all<P: AsRef<Path>>(path: P, engines: HashMap<String,Self>) -> std::io::Result<()> {
+    fn write_all<P: AsRef<Path>>(path: P, engines: HashMap<String,Self>) -> io::Result<()> {
         let mut file = OpenOptions::new()
             .truncate(true)
             .read(true)
@@ -115,7 +117,7 @@ impl EngineSer {
         Ok(())
     }
 
-    fn _read_all_from_file<P: AsRef<Path>>(path: P) -> std::io::Result<HashMap<String,EngineSer>> {
+    fn _read_all_from_file<P: AsRef<Path>>(path: P) -> io::Result<HashMap<String,EngineSer>> {
         let b = std::fs::read_to_string(path)?;
         let json: Vec<EngineSer> = serde_json::from_str(&b).unwrap();
         let mut out = HashMap::default();
