@@ -67,10 +67,12 @@ impl Drop for CuteChess {
     fn drop(&mut self) {
         for child in self.children.iter() {
             nix::sys::signal::kill(
-                nix::unistd::Pid::from_raw(*child as i32), nix::sys::signal::SIGKILL).unwrap();
+                nix::unistd::Pid::from_raw(*child as i32), nix::sys::signal::SIGKILL)
+                .unwrap_or_else(|_| {});
         }
         nix::sys::signal::kill(
-            nix::unistd::Pid::from_raw(self.pid as i32), nix::sys::signal::SIGKILL).unwrap();
+            nix::unistd::Pid::from_raw(self.pid as i32), nix::sys::signal::SIGKILL)
+            .unwrap_or_else(|_| {});
     }
 }
 

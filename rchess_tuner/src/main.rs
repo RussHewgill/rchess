@@ -19,6 +19,7 @@ use rchess_engine_lib::types::*;
 use rchess_engine_lib::tables::*;
 use rchess_engine_lib::explore::*;
 use rchess_engine_lib::evaluate::*;
+use serde_json::json;
 use tuner_types::*;
 
 // use sprt::*;
@@ -37,11 +38,30 @@ use gag::Redirect;
 use crate::tuner_types::MatchResult;
 use crate::supervisor::*;
 
-// fn main() {
-// }
-
 fn main() {
-// fn main2() {
+    json_test();
+}
+
+pub fn json_test() {
+
+    let path = "engines-test.json";
+
+    let engines = Engine::read_all_from_file(&path).unwrap();
+
+    for eng in engines.iter() {
+        eprintln!("eng = {:?}", eng);
+    }
+
+    let mut eng = engines.get("rchess").unwrap().clone();
+
+    eng.options.insert("wat2".to_string(), json!(22));
+
+    eng.write(&path).unwrap();
+
+}
+
+// fn main() {
+fn main2() {
 
     // init_logger();
 

@@ -3366,9 +3366,9 @@ fn main9() {
     // let t = 2.0;
     // let t = 0.125;
 
-    // let n = MAX_SEARCH_PLY;
+    let n = MAX_SEARCH_PLY;
     // let n = 35;
-    let n = 15;
+    // let n = 15;
     // let n = 10;
     // let n = 2;
 
@@ -3426,14 +3426,14 @@ fn main9() {
     // let g = Game::from_fen(&ts, fen).unwrap();
     // eprintln!("g.zobrist = {:?}", g.zobrist);
 
-    // let params = "e2e4 c7c5 g1f3";
+    // let params = "e2e4 c7c5 g1f3 d7d6";
     // let params = params.split(" ");
     // let moves: Vec<&str> = params.collect();
     // ex.update_game_movelist(&ts, STARTPOS, moves.into_iter());
     // // ex.update_game_movelist(&ts, fen, moves.into_iter());
     // let g = ex.game;
-    // // eprintln!("g = {:?}", g);
-    // // eprintln!("g.to_fen() = {:?}", g.to_fen());
+    // eprintln!("g = {:?}", g);
+    // eprintln!("g.to_fen() = {:?}", g.to_fen());
 
     let t0 = std::time::Instant::now();
     let (res,moves,stats0) = ex.lazy_smp_2(&ts);

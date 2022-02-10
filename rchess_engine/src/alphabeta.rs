@@ -572,7 +572,7 @@ impl ExHelper {
             assert!(is_pv_node || (alpha == beta - 1));
             assert!(!(is_pv_node && is_cut_node));
         }
-        assert!(depth < MAX_SEARCH_PLY);
+        assert!(ply < MAX_SEARCH_PLY);
         if depth < 0 {
             eprintln!("wat: depth = {:?}", depth);
         }

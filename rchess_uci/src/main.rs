@@ -219,19 +219,18 @@ fn main() -> std::io::Result<()> {
                         // let m = explorer.lock().unwrap().explore(&ts, depth).unwrap();
                         // let (m,stats) = explorer.explore(&ts);
 
-                        // #[cfg(feature = "threadpool")]
-                        // let (m,stats) = explorer.explore();
-                        // #[cfg(not(feature = "threadpool"))]
-                        // let (m,stats) = explorer.explore(&ts);
+                        #[cfg(feature = "threadpool")]
+                        let (m,stats) = explorer.explore();
+                        #[cfg(not(feature = "threadpool"))]
+                        let (m,stats) = explorer.explore(&ts);
 
-                        // debug!("m = {:?}", m);
-                        // let (mv,score) = m.unwrap();
+                        debug!("m = {:?}", m);
+                        let (mv,score) = m.unwrap();
 
-                        let mvs = MoveGen::generate_list_legal(&ts, &explorer.game, None);
-                        let mv = mvs[0];
-
-                        let score = ABResult::new_single(mv, 0);
-                        let stats = SearchStats::default();
+                        // let mvs = MoveGen::generate_list_legal(&ts, &explorer.game, None);
+                        // let mv = mvs[0];
+                        // let score = ABResult::new_single(mv, 0);
+                        // let stats = SearchStats::default();
 
                         let mm = format_move(mv);
                         // print_info(&explorer, (mv,score), stats);

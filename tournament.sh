@@ -13,7 +13,7 @@ games=10
 # OUTPUT_FILE=out_pgn.pgn
 
 ELO0=0
-ELO1=50
+ELO1=250
 
 # Hypthesis H0: A is not stronger than B by at least elo1 points
 # Hypthesis H1: A is stronger than B by elo0 points
