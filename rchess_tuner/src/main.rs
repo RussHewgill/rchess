@@ -74,10 +74,41 @@ fn main3() {
 // }
 
 fn main() {
+    use crate::sprt::*;
+    use crate::sprt::gsprt::*;
+
+    let (s0,s1) = (50.0,0.0);
+
+    // let results = vec![
+    //     ((3,2,1), (58.5, 349.5), (0.0991)),
+    //     ((3,3,1), (0.0, 291.2), (-0.0843)),
+    // ];
+
+    // let pdf0 = results_to_pdf(results[0].0);
+    // let pdf1 = results_to_pdf(results[1].0);
+
+    let pdf0 = results_to_pdf((1,0,0));
+    let pdf1 = results_to_pdf((1000,20,10));
+
+    eprintln!("pdf0 = {:?}", pdf0);
+    eprintln!("pdf1 = {:?}", pdf1);
+
+    let llr0 = llr_alt(&pdf0.1, s0, s1);
+    let llr1 = llr_alt(&pdf1.1, s0, s1);
+
+    eprintln!();
+    eprintln!("llr0 = {:?}", llr0);
+    eprintln!("llr1 = {:?}", llr1);
+
+}
+
+// fn main() {
+fn main4() {
 
     let engine = Engine::read_from_file("rchess", "engines-test.json").unwrap();
 
-    let timecontrol = TimeControl::new_f64(1.0, 0.1);
+    // let timecontrol = TimeControl::new_f64(1.0, 0.1);
+    let timecontrol = TimeControl::new_f64(0.2, 0.025);
 
     let tunable = Tunable::new("lmr_reduction".to_string(), 2, 5, 3, 1);
 
