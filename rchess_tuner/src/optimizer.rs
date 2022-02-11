@@ -36,18 +36,25 @@ impl Supervisor {
         let output_label = format!("{}", &self.tunable.opt.name);
 
         let (elo0,elo1) = (0,50);
-        let num_games = 50;
+        let num_games = 1000;
 
         let (alpha,beta) = (0.05, 0.05);
 
-        let cutechess = CuteChess::run_cutechess_tournament(
+        // let cutechess = CuteChess::run_cutechess_tournament(
+        //     &self.engine_tuning.name,
+        //     &self.engine_baseline.name,
+        //     self.timecontrol,
+        //     &self.tunable.opt.name,
+        //     num_games,
+        //     (elo0,elo1),
+        //     alpha);
+
+        let cutechess = CuteChess::run_cutechess(
             &self.engine_tuning.name,
             &self.engine_baseline.name,
             self.timecontrol,
             &self.tunable.opt.name,
-            num_games,
-            (elo0,elo1),
-            alpha);
+            num_games);
 
         // let mut total = RunningTotal::default();
         let mut total = (0,0,0);
@@ -57,24 +64,18 @@ impl Supervisor {
 
         loop {
             match cutechess.rx.recv() {
-                Ok(MatchOutcome::Match(m))  => {
-
+                Ok(MatchOutcome::Match(m) | MatchOutcome::SPRTFinished(m,_,_))  => {
                     pair.push(m);
-
-                    // let wdl = m.sum_score;
-                    // let llr = ll_ratio(wdl, elo0 as f64, elo1 as f64);
-                    // let sprt = sprt(wdl, (elo0 as f64, elo1 as f64), alpha, beta);
-
-                    // eprintln!("llr = {:?}, sprt = {:?}", llr, sprt);
-                    // eprintln!("m = {:?}", m);
                 },
-                Ok(_)  => {
-                    unimplemented!()
-                }
                 Err(e) => {
                     debug!("recv err = {:?}", e);
                     break;
                 },
+            }
+
+            {
+                let m = &pair[0];
+                debug!("(m.engine_a,m.result) = {:?}", (m.engine_a,m.result));
             }
 
             match pair.pop().and_then(|m| Some((m.engine_a, m.result))) {
@@ -89,14 +90,13 @@ impl Supervisor {
                 _ => panic!(),
             }
 
-            debug!("(w,d,l) = {:?}", total);
-
             let llr = ll_ratio(total, elo0 as f64, elo1 as f64);
             let sprt = sprt(total, (elo0 as f64,elo1 as f64), alpha, beta);
 
+            debug!("");
+            debug!("(w,d,l) = {:?}", total);
             debug!("llr  = {:?}", llr);
             debug!("sprt = {:?}", sprt);
-            debug!("");
 
             #[cfg(feature = "nope")]
             if pair.len() == 2 {
@@ -128,8 +128,6 @@ impl Supervisor {
             }
 
         }
-
-        unimplemented!()
     }
 }
 

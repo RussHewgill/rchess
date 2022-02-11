@@ -63,11 +63,15 @@ fn main5() {
 
     // simulate(200.0);
 
-    let wdl = (660480, 199643, 139877);
+    let wdl = (1,4,12);
 
     let llr = ll_ratio(wdl, elo0, elo1);
 
     eprintln!("llr = {:?}", llr);
+
+    let sprt = sprt(wdl, (elo0, elo1), 0.05, 0.05);
+
+    eprintln!("sprt = {:?}", sprt);
 
     // let (sum, pdf) = results_to_pdf(wdl);
 
@@ -102,12 +106,15 @@ fn main5() {
 
 }
 
-fn main() {
-// fn main4() {
+// fn main() {
+fn main4() {
 
     init_logger();
 
     let engine = Engine::read_from_file("rchess", "engines-test.json").unwrap();
+    // let engine2 = Engine::read_from_file("gnuchess", "engines.json").unwrap();
+    // let engine2 = Engine::read_from_file("stockfish", "engines.json").unwrap();
+    let engine2 = Engine::read_from_file("rchess_prev", "engines.json").unwrap();
 
     // let timecontrol = TimeControl::new_f64(1.0, 0.1);
     let timecontrol = TimeControl::new_f64(0.2, 0.025);
@@ -115,8 +122,8 @@ fn main() {
     let tunable = Tunable::new("lmr_reduction".to_string(), 2, 5, 3, 1);
 
     let mut sup = Supervisor {
-        engine_baseline: engine.clone(),
         engine_tuning:   engine.clone(),
+        engine_baseline: engine2.clone(),
         tunable,
         timecontrol,
     };
