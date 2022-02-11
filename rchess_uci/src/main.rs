@@ -289,23 +289,20 @@ fn parse_go(
                 unimplemented!()
             },
             "wtime"       => {
-                let val = u64::from_str(ps.next().unwrap()).unwrap();
-                // let t = val as f64 / 1000.0;
-                // ex.timer.time_left[White] = t;
-                // ex.time_settings.time_remaining[White] = val;
-                // if ex.side == White { ex.time_settings.move_time = val; }
-
-                ex.time_settings.update_time_remaining(val, White, ex.side == White);
+                let val = i64::from_str(ps.next().unwrap()).unwrap();
+                if val < 0 {
+                    ex.time_settings.update_time_remaining(0, White, ex.side == White);
+                } else {
+                    ex.time_settings.update_time_remaining(val as u64, White, ex.side == White);
+                }
             },
             "btime"       => {
-                let val = u64::from_str(ps.next().unwrap()).unwrap();
-                // let t = val as f64 / 1000.0;
-                // ex.timer.time_left[Black] = t;
-
-                // ex.time_settings.time_remaining[Black] = val;
-                // if ex.side == Black { ex.time_settings.move_time = val; }
-
-                ex.time_settings.update_time_remaining(val, Black, ex.side == Black);
+                let val = i64::from_str(ps.next().unwrap()).unwrap();
+                if val < 0 {
+                    ex.time_settings.update_time_remaining(0, Black, ex.side == Black);
+                } else {
+                    ex.time_settings.update_time_remaining(val as u64, Black, ex.side == Black);
+                }
             },
             "winc"        => {
                 let val = u64::from_str(ps.next().unwrap()).unwrap();

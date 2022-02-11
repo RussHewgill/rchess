@@ -49,8 +49,8 @@ use gag::Redirect;
 use crate::tuner_types::MatchResult;
 use crate::supervisor::*;
 
-// fn main() {
-fn main5() {
+fn main() {
+// fn main5() {
     use crate::sprt::*;
     // use crate::sprt::gsprt::*;
     use crate::sprt::sprt_penta::*;
@@ -63,51 +63,18 @@ fn main5() {
 
     // simulate(200.0);
 
-    let wdl = (1,4,12);
+    let wdl = (22,9,14);
 
     let llr = ll_ratio(wdl, elo0, elo1);
-
-    eprintln!("llr = {:?}", llr);
-
     let sprt = sprt(wdl, (elo0, elo1), 0.05, 0.05);
 
+    eprintln!("llr = {:?}", llr);
     eprintln!("sprt = {:?}", sprt);
-
-    // let (sum, pdf) = results_to_pdf(wdl);
-
-    // for (a,p) in pdf.iter() {
-    //     eprintln!("(a,p) = ({:.3},{:.3})", a,p);
-    // }
-
-    // let pdf0 = mle(&pdf, s0);
-
-    // let mut rng: StdRng = SeedableRng::seed_from_u64(seed);
-
-    // let results = vec![
-    //     ((3,2,1), (58.5, 349.5), (0.0991)),
-    //     ((3,3,1), (0.0, 291.2), (-0.0843)),
-    // ];
-
-    // let pdf0 = results_to_pdf(results[0].0);
-    // let pdf1 = results_to_pdf(results[1].0);
-
-    // let win_prob = log_likelyhood(200.0);
-    // eprintln!("win_prob = {:?}", win_prob);
-
-    // let pdf0 = results_to_pdf((1,0,0));
-    // let pdf1 = results_to_pdf((1000,20,10));
-    // eprintln!("pdf0 = {:?}", pdf0);
-    // eprintln!("pdf1 = {:?}", pdf1);
-    // let llr0 = llr_alt(&pdf0.1, s0, s1);
-    // let llr1 = llr_alt(&pdf1.1, s0, s1);
-    // eprintln!();
-    // eprintln!("llr0 = {:?}", llr0);
-    // eprintln!("llr1 = {:?}", llr1);
 
 }
 
-fn main() {
-// fn main4() {
+// fn main() {
+fn main4() {
 
     init_logger();
 

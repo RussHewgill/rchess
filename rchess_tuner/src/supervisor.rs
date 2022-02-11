@@ -105,13 +105,14 @@ impl CuteChess {
         let output_file = &format!("tuning_logs/out_{}_{}.pgn", output_label, timestamp);
         let log_file    = &format!("tuning_logs/log_{}_{}.pgn", output_label, timestamp);
         let time        = timecontrol.print();
+        let margin      = 10;
 
         let args = [
             "-tournament gauntlet",
             "-concurrency 1",
             &format!("-pgnout {}", output_file),
-            &format!("-engine conf={} {} timemargin=50 restart=off", engine1, time),
-            &format!("-engine conf={} {} timemargin=50 restart=off", engine2, time),
+            &format!("-engine conf={} {} timemargin={margin} restart=off", engine1, time),
+            &format!("-engine conf={} {} timemargin={margin} restart=off", engine2, time),
             "-each proto=uci",
             "-openings file=tables/openings-10ply-100k.pgn policy=round",
             "-tb tables/syzygy/",
@@ -128,7 +129,7 @@ impl CuteChess {
             .flat_map(|arg| arg.split_ascii_whitespace())
             .collect::<Vec<_>>();
 
-        Self::start_cutechess(&args)
+        Self::start_cutechess(&args, log_file)
     }
 
     pub fn run_cutechess_tournament(
@@ -144,13 +145,14 @@ impl CuteChess {
         let output_file = &format!("tuning_logs/out_{}_{}.pgn", output_label, timestamp);
         let log_file    = &format!("tuning_logs/log_{}_{}.pgn", output_label, timestamp);
         let time        = timecontrol.print();
+        let margin      = 10;
 
         let args = [
             "-tournament gauntlet",
             "-concurrency 1",
             &format!("-pgnout {}", output_file),
-            &format!("-engine conf={} {} timemargin=50 restart=off", engine1, time),
-            &format!("-engine conf={} {} timemargin=50 restart=off", engine2, time),
+            &format!("-engine conf={} {} timemargin={margin} restart=off", engine1, time),
+            &format!("-engine conf={} {} timemargin={margin} restart=off", engine2, time),
             "-each proto=uci",
             "-openings file=tables/openings-10ply-100k.pgn policy=round",
             "-tb tables/syzygy/",
@@ -169,10 +171,10 @@ impl CuteChess {
             .flat_map(|arg| arg.split_ascii_whitespace())
             .collect::<Vec<_>>();
 
-        Self::start_cutechess(&args)
+        Self::start_cutechess(&args, log_file)
     }
 
-    fn start_cutechess(args: &[&str]) -> CuteChess {
+    fn start_cutechess(args: &[&str], log_file: &str) -> CuteChess {
         let (tx,rx) = crossbeam::channel::unbounded();
 
         let mut child: Child = Command::new("cutechess-cli")
