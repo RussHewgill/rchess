@@ -2,6 +2,7 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 #![allow(unused_mut)]
+#![allow(unused_doc_comments)]
 
 #![allow(clippy::all)]
 
@@ -42,40 +43,10 @@ use gag::Redirect;
 use crate::tuner_types::MatchResult;
 use crate::supervisor::*;
 
-// fn main() {
-fn main3() {
-
-    let lines = vec![
-        "Started game 3 of 100 (rchess vs rchess_prev)".to_string(),
-        "Finished game 15 (rchess vs gnuchess): 1/2-1/2 {Draw by adjudication: SyzygyTB}".to_string(),
-        "Score of rchess vs gnuchess: 13 - 1 - 1  [0.900] 15".to_string(),
-        "...      rchess playing White: 6 - 1 - 1  [0.813] 8".to_string(),
-        "...      rchess playing Black: 7 - 0 - 0  [1.000] 7".to_string(),
-        "...      White vs Black: 6 - 8 - 1  [0.433] 15".to_string(),
-        "Elo difference: 381.7 +/- nan, LOS: 99.9 %, DrawRatio: 6.7 %".to_string(),
-        "SPRT: llr 6.42 (218.1%), lbound -2.94, ubound 2.94 - H1 was accepted".to_string(),
-        "Finished match".to_string(),
-    ];
-
-    let res = MatchOutcome::parse(lines);
-    eprintln!("res = {:?}", res);
-
-}
-
-// pub fn json_test() {
-//     let path = "engines-test.json";
-//     let engines = Engine::read_all_from_file(&path).unwrap();
-//     for eng in engines.iter() {
-//         eprintln!("eng = {:?}", eng);
-//     }
-//     let mut eng = engines.get("rchess").unwrap().clone();
-//     eng.options.insert("wat2".to_string(), json!(22));
-//     eng.write(&path).unwrap();
-// }
-
 fn main() {
+// fn main5() {
     use crate::sprt::*;
-    use crate::sprt::gsprt::*;
+    // use crate::sprt::gsprt::*;
 
     let (s0,s1) = (50.0,0.0);
 
@@ -87,18 +58,19 @@ fn main() {
     // let pdf0 = results_to_pdf(results[0].0);
     // let pdf1 = results_to_pdf(results[1].0);
 
-    let pdf0 = results_to_pdf((1,0,0));
-    let pdf1 = results_to_pdf((1000,20,10));
+    let win_prob = log_likelyhood(200.0);
 
-    eprintln!("pdf0 = {:?}", pdf0);
-    eprintln!("pdf1 = {:?}", pdf1);
+    eprintln!("win_prob = {:?}", win_prob);
 
-    let llr0 = llr_alt(&pdf0.1, s0, s1);
-    let llr1 = llr_alt(&pdf1.1, s0, s1);
-
-    eprintln!();
-    eprintln!("llr0 = {:?}", llr0);
-    eprintln!("llr1 = {:?}", llr1);
+    // let pdf0 = results_to_pdf((1,0,0));
+    // let pdf1 = results_to_pdf((1000,20,10));
+    // eprintln!("pdf0 = {:?}", pdf0);
+    // eprintln!("pdf1 = {:?}", pdf1);
+    // let llr0 = llr_alt(&pdf0.1, s0, s1);
+    // let llr1 = llr_alt(&pdf1.1, s0, s1);
+    // eprintln!();
+    // eprintln!("llr0 = {:?}", llr0);
+    // eprintln!("llr1 = {:?}", llr1);
 
 }
 

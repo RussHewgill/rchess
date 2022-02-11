@@ -105,9 +105,9 @@ pub mod gsprt {
 
 }
 
-
-pub fn log_likelyhood(x: f64) -> f64 {
-    1.0 / (1.0 + 10.0f64.powf(-x / 400.0))
+/// expected score = prob(win) + 0.5 * prob(draw)
+pub fn log_likelyhood(elo_diff: f64) -> f64 {
+    1.0 / (1.0 + 10.0f64.powf(-elo_diff / 400.0))
 }
 
 pub fn ll_ratio((win,draw,loss): (u32,u32,u32), elo0: f64, elo1: f64) -> f64 {

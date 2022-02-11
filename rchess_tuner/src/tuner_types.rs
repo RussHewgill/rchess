@@ -39,14 +39,25 @@ pub enum InputParser {
     Started,
 }
 
+#[derive(Debug,Default,PartialEq,PartialOrd,Clone,Copy)]
+pub struct RunningTotal {
+    pub ll:     u32,
+    pub ld_dl:  u32,
+    pub lw_dd:  u32,
+    pub dw_wd:  u32,
+    pub ww:     u32,
+}
+
 #[derive(Clone,Copy)]
 pub enum MatchOutcome {
     Match(Match),
+    // MatchPair(Match, Match),
     SPRTFinished(Match, Elo, SPRT),
 }
 
 #[derive(Clone,Copy)]
 pub struct Match {
+    pub engine_a:   Color,
     pub game_num:   u32,
     pub result:     MatchResult,
     pub sum_score:  (u32,u32,u32),
@@ -163,7 +174,10 @@ impl MatchOutcome {
 
         // eprintln!("elo = {:?}", elo);
 
+        let engine_a = if game_num % 2 == 0 { Color::Black } else { Color:: White };
+
         let m = Match {
+            engine_a,
             game_num,
             result,
             sum_score:  (w,b,d),
@@ -217,6 +231,9 @@ impl std::fmt::Debug for MatchOutcome {
             &MatchOutcome::Match(m)            => {
                 f.write_str(&format!("Match: {:?}", m))?;
             },
+            // &MatchOutcome::MatchPair(m1,m2)            => {
+            //     f.write_str(&format!("{:?}\n{:?}", m1, m2))?;
+            // },
             &MatchOutcome::SPRTFinished(m,_,_) => {
                 f.write_str(&format!("SPRTFinished: {:?}", m))?;
             },
