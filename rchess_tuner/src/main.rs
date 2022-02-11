@@ -46,6 +46,7 @@ use log::{debug, error, log_enabled, info, Level};
 use simplelog::*;
 use gag::Redirect;
 
+use crate::sprt::log_likelyhood;
 use crate::tuner_types::MatchResult;
 use crate::supervisor::*;
 
@@ -75,11 +76,17 @@ fn main5() {
 }
 
 fn main() {
-// fn main4() {
+    use crate::simulate::*;
+    // simulate(200.0);
+    simulate(0.0, 0.02);
+}
+
+// fn main() {
+fn main4() {
 
     init_logger();
 
-    let engine = Engine::read_from_file("rchess", "engines-test.json").unwrap();
+    let engine = Engine::read_from_file("rchess", "engines.json").unwrap();
     // let engine2 = Engine::read_from_file("gnuchess", "engines.json").unwrap();
     // let engine2 = Engine::read_from_file("stockfish", "engines.json").unwrap();
     // let engine2 = Engine::read_from_file("rchess_prev", "engines.json").unwrap();

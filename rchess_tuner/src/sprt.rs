@@ -189,6 +189,26 @@ pub mod sprt_penta {
         sum * llr
     }
 
+    pub fn ll_ratio_normalized_penta(results: RunningTotal, nelo0: f64, nelo1: f64) -> f64 {
+        let (sum,pdf) = results_penta_to_pdf(results);
+
+        let (mu,var) = stats(&pdf);
+
+        let sigma_pg = (2. * var).powf(0.5);
+        let games    = 2. * sum;
+
+        let nelo_divided_by_nt = 800.0 / f64::ln(10.); // 347.43558552260146
+
+        let nt0 = nelo0 / nelo_divided_by_nt;
+        let nt1 = nelo1 / nelo_divided_by_nt;
+
+        let nt = (mu - 0.5) / sigma_pg;
+
+        (games / 2.0) * f64::ln(
+            (1. + (nt - nt0) * (nt - nt0)) / (1. + (nt - nt1) * (nt - nt1))
+        )
+    }
+
     pub fn sprt(
         wdl:          (u32,u32,u32),
         (elo0,elo1):  (f64,f64),
@@ -216,6 +236,7 @@ pub mod sprt_penta {
         beta:         f64,
     ) -> Option<bool> {
         let llr = ll_ratio_penta(results, elo0, elo1);
+        // let llr = ll_ratio_normalized_penta(results, elo0, elo1);
 
         let la = f64::ln(beta / (1.0 - alpha));
         let lb = f64::ln((1.0 - beta) / alpha);

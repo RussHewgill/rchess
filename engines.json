@@ -4,7 +4,7 @@
         "command": "/home/me/code/rust/rchess/target/release/rchess_uci",
         "protocol": "uci",
         "options": [
-            { "name":  "lmr_reduction", "value": 4 }
+            { "name":  "lmr_reduction", "value": 3 }
         ]
     },
     {
