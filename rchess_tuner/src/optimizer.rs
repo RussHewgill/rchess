@@ -2,6 +2,7 @@
 
 use rchess_engine_lib::types::Color;
 
+use crate::sprt::sprt_penta::sprt;
 use crate::tuner_types::*;
 use crate::sprt::*;
 use crate::supervisor::{Supervisor,Tunable, CuteChess};
@@ -15,6 +16,17 @@ use crate::supervisor::{Supervisor,Tunable, CuteChess};
 ///          increase opt by 1 step again
 ///       if H1 (A is stronger than B by at least X points):
 ///          
+
+impl Supervisor {
+
+    fn update_stats(&mut self, wdl: (u32,u32,u32)) {
+        unimplemented!()
+    }
+
+    fn update_stats_penta(&mut self, total: &RunningTotal) {
+        unimplemented!()
+    }
+}
 
 impl Supervisor {
     pub fn find_optimum(&mut self) {
@@ -36,7 +48,8 @@ impl Supervisor {
             (elo0,elo1),
             alpha);
 
-        let mut total = RunningTotal::default();
+        // let mut total = RunningTotal::default();
+        let mut total = (0,0,0);
 
         let mut pair: Vec<Match>          = vec![];
         let mut pairs: Vec<(Match,Match)> = vec![];
@@ -47,13 +60,12 @@ impl Supervisor {
 
                     pair.push(m);
 
-                    let wdl = m.sum_score;
+                    // let wdl = m.sum_score;
+                    // let llr = ll_ratio(wdl, elo0 as f64, elo1 as f64);
+                    // let sprt = sprt(wdl, (elo0 as f64, elo1 as f64), alpha, beta);
 
-                    let llr = ll_ratio(wdl, elo0 as f64, elo1 as f64);
-                    let sprt = sprt(wdl, (elo0 as f64, elo1 as f64), alpha, beta);
-
-                    eprintln!("llr = {:?}, sprt = {:?}", llr, sprt);
-                    eprintln!("m = {:?}", m);
+                    // eprintln!("llr = {:?}, sprt = {:?}", llr, sprt);
+                    // eprintln!("m = {:?}", m);
                 },
                 Ok(_)  => {
                     unimplemented!()
@@ -64,6 +76,23 @@ impl Supervisor {
                 },
             }
 
+            match pair.pop().and_then(|m| Some((m.engine_a, m.result))) {
+                Some((ca, MatchResult::WinLoss(c, _))) => {
+                    if ca == c {
+                        total.0 += 1;
+                    } else {
+                        total.2 += 1;
+                    }
+                },
+                Some((_,MatchResult::Draw(_)))       => total.1 += 1,
+                _ => panic!(),
+            }
+
+            let sprt = sprt(total, (elo0 as f64,elo1 as f64), alpha, beta);
+
+            eprintln!("sprt = {:?}", sprt);
+
+            #[cfg(feature = "nope")]
             if pair.len() == 2 {
                 assert!(pair[0].engine_a == Color::White);
                 use MatchResult::*;
@@ -85,6 +114,8 @@ impl Supervisor {
 
                     (WinLoss(White,_),WinLoss(Black,_)) => total.ww += 1,
                 }
+
+                self.update_stats(&total);
 
                 pairs.push((pair[0], pair[1]));
                 pair.clear();

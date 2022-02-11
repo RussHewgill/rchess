@@ -13,6 +13,7 @@ mod supervisor;
 mod json_config;
 mod optimizer;
 mod gamerunner;
+mod simulate;
 
 use self::json_config::*;
 
@@ -26,6 +27,7 @@ use regex::Regex;
 use serde_json::json;
 use supervisor::Tunable;
 use tuner_types::*;
+use simulate::*;
 
 // use sprt::*;
 
@@ -35,6 +37,10 @@ use std::process::{Command,Stdio};
 
 use itertools::Itertools;
 
+use rand::prelude::SliceRandom;
+use rand::{Rng,SeedableRng};
+use rand::prelude::StdRng;
+
 use chrono::{Datelike,Timelike};
 use log::{debug, error, log_enabled, info, Level};
 use simplelog::*;
@@ -43,12 +49,35 @@ use gag::Redirect;
 use crate::tuner_types::MatchResult;
 use crate::supervisor::*;
 
-fn main() {
-// fn main5() {
+// fn main() {
+fn main5() {
     use crate::sprt::*;
     // use crate::sprt::gsprt::*;
+    use crate::sprt::sprt_penta::*;
+    use crate::sprt::*;
 
-    let (s0,s1) = (50.0,0.0);
+    let (elo0,elo1) = (200.0,0.0);
+
+    // let s0 = log_likelyhood(s0);
+    // let s1 = log_likelyhood(s1);
+
+    // simulate(200.0);
+
+    let wdl = (660480, 199643, 139877);
+
+    let llr = ll_ratio(wdl, elo0, elo1);
+
+    eprintln!("llr = {:?}", llr);
+
+    // let (sum, pdf) = results_to_pdf(wdl);
+
+    // for (a,p) in pdf.iter() {
+    //     eprintln!("(a,p) = ({:.3},{:.3})", a,p);
+    // }
+
+    // let pdf0 = mle(&pdf, s0);
+
+    // let mut rng: StdRng = SeedableRng::seed_from_u64(seed);
 
     // let results = vec![
     //     ((3,2,1), (58.5, 349.5), (0.0991)),
@@ -58,9 +87,8 @@ fn main() {
     // let pdf0 = results_to_pdf(results[0].0);
     // let pdf1 = results_to_pdf(results[1].0);
 
-    let win_prob = log_likelyhood(200.0);
-
-    eprintln!("win_prob = {:?}", win_prob);
+    // let win_prob = log_likelyhood(200.0);
+    // eprintln!("win_prob = {:?}", win_prob);
 
     // let pdf0 = results_to_pdf((1,0,0));
     // let pdf1 = results_to_pdf((1000,20,10));
@@ -76,6 +104,8 @@ fn main() {
 
 // fn main() {
 fn main4() {
+
+    init_logger();
 
     let engine = Engine::read_from_file("rchess", "engines-test.json").unwrap();
 
@@ -271,16 +301,20 @@ fn main3() {
 
 fn init_logger() {
     let now = chrono::Local::now();
-    let mut logpath = format!(
-        "/home/me/code/rust/rchess/logs/log_tuner_{:0>4}-{:0>2}-{:0>2}_{:0>2}:{:0>2}:{:0>2}-1.log",
-        now.year(), now.month(), now.day(),
-        now.hour(), now.minute(), now.second());
-    if std::path::Path::new(&logpath).exists() {
-        logpath = format!(
-            "/home/me/code/rust/rchess/logs/log_tuner_{:0>4}-{:0>2}-{:0>2}_{:0>2}:{:0>2}:{:0>2}-2.log",
-            now.year(), now.month(), now.day(),
-            now.hour(), now.minute(), now.second());
-    };
+
+    // let mut logpath = format!(
+    //     "/home/me/code/rust/rchess/logs/log_tuner_{:0>4}-{:0>2}-{:0>2}_{:0>2}:{:0>2}:{:0>2}-1.log",
+    //     now.year(), now.month(), now.day(),
+    //     now.hour(), now.minute(), now.second());
+    // if std::path::Path::new(&logpath).exists() {
+    //     logpath = format!(
+    //         "/home/me/code/rust/rchess/logs/log_tuner_{:0>4}-{:0>2}-{:0>2}_{:0>2}:{:0>2}:{:0>2}-2.log",
+    //         now.year(), now.month(), now.day(),
+    //         now.hour(), now.minute(), now.second());
+    // };
+
+    let logpath = "test.log";
+
     let mut logfile = std::fs::OpenOptions::new()
         .truncate(true)
         .read(true)
@@ -298,12 +332,12 @@ fn init_logger() {
         .build();
 
     // WriteLogger::init(LevelFilter::Debug, cfg, logfile).unwrap();
-    // // WriteLogger::init(LevelFilter::Trace, cfg, logfile).unwrap();
+    let log0 = WriteLogger::new(LevelFilter::Trace, cfg.clone(), logfile);
 
     let log1 = TermLogger::new(LevelFilter::Debug, cfg.clone(), TerminalMode::Stderr, ColorChoice::Auto);
 
     CombinedLogger::init(vec![
-        // log0,
+        log0,
         log1,
     ]).unwrap();
 

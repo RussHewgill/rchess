@@ -48,6 +48,12 @@ pub struct RunningTotal {
     pub ww:     u32,
 }
 
+impl RunningTotal {
+    pub fn to_vec(&self) -> Vec<u32> {
+        vec![self.ll,self.ld_dl,self.lw_dd,self.dw_wd,self.ww]
+    }
+}
+
 #[derive(Clone,Copy)]
 pub enum MatchOutcome {
     Match(Match),
