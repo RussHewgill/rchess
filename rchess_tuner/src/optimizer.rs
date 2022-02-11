@@ -2,8 +2,7 @@
 
 use rchess_engine_lib::types::Color;
 
-use crate::sprt::sprt_penta::ll_ratio;
-use crate::sprt::sprt_penta::sprt;
+use crate::sprt::sprt_penta::*;
 use crate::tuner_types::*;
 use crate::sprt::*;
 use crate::supervisor::{Supervisor,Tunable, CuteChess};
@@ -20,12 +19,37 @@ use crate::supervisor::{Supervisor,Tunable, CuteChess};
 
 impl Supervisor {
 
-    fn update_stats(&mut self, wdl: (u32,u32,u32)) {
-        unimplemented!()
-    }
+    fn update_stats(&mut self, wdl: (u32,u32,u32), total: RunningTotal, pairs: &[(Match,Match)]) {
 
-    fn update_stats_penta(&mut self, total: &RunningTotal) {
-        unimplemented!()
+        // let (elo0,elo1) = (0,50);
+        let (alpha,beta) = (0.05, 0.05);
+
+        // for elo_diff in self.hyps.iter() {
+        for elo_diff in [50.0] {
+
+            let llr  = ll_ratio(wdl, 0.0, elo_diff);
+            let sprt = sprt(wdl, (0.0, elo_diff), alpha, beta);
+
+            let llr_penta  = ll_ratio_penta(total, 0.0, elo_diff);
+            let sprt_penta = sprt_penta(total, (0.0, elo_diff), alpha, beta);
+
+            debug!("");
+            debug!("(w,d,l) = {:?}", wdl);
+            debug!("penta   = {:?}", total);
+
+            debug!("");
+            debug!("llr  = {:?}", llr);
+            debug!("sprt = {:?}", sprt);
+
+            debug!("");
+            debug!("llr_p  = {:?}", llr_penta);
+            debug!("sprt_p = {:?}", sprt_penta);
+
+        }
+
+        // let llr = ll_ratio(wdl, elo0 as f64, elo1 as f64);
+        // let sprt = sprt(wdl, (elo0 as f64,elo1 as f64), alpha, beta);
+
     }
 }
 
@@ -35,10 +59,10 @@ impl Supervisor {
 
         let output_label = format!("{}", &self.tunable.opt.name);
 
-        let (elo0,elo1) = (0,50);
+        // let (elo0,elo1) = (0,50);
         let num_games = 1000;
 
-        let (alpha,beta) = (0.05, 0.05);
+        // let (alpha,beta) = (0.05, 0.05);
 
         // let cutechess = CuteChess::run_cutechess_tournament(
         //     &self.engine_tuning.name,
@@ -56,8 +80,8 @@ impl Supervisor {
             &self.tunable.opt.name,
             num_games);
 
-        // let mut total = RunningTotal::default();
-        let mut total = (0,0,0);
+        let mut total = RunningTotal::default();
+        let mut wdl = (0,0,0);
 
         let mut pair: Vec<Match>          = vec![];
         let mut pairs: Vec<(Match,Match)> = vec![];
@@ -66,6 +90,16 @@ impl Supervisor {
             match cutechess.rx.recv() {
                 Ok(MatchOutcome::Match(m) | MatchOutcome::SPRTFinished(m,_,_))  => {
                     pair.push(m);
+                    match (m.engine_a, m.result) {
+                        (ca, MatchResult::WinLoss(c, _)) => {
+                            if ca == c {
+                                wdl.0 += 1;
+                            } else {
+                                wdl.2 += 1;
+                            }
+                        },
+                        (_,MatchResult::Draw(_))       => wdl.1 += 1,
+                    }
                 },
                 Err(e) => {
                     debug!("recv err = {:?}", e);
@@ -73,32 +107,24 @@ impl Supervisor {
                 },
             }
 
-            {
-                let m = &pair[0];
-                debug!("(m.engine_a,m.result) = {:?}", (m.engine_a,m.result));
-            }
+            // {
+            //     let m = &pair[0];
+            //     debug!("(m.engine_a,m.result) = {:?}", (m.engine_a,m.result));
+            // }
 
-            match pair.pop().and_then(|m| Some((m.engine_a, m.result))) {
-                Some((ca, MatchResult::WinLoss(c, _))) => {
-                    if ca == c {
-                        total.0 += 1;
-                    } else {
-                        total.2 += 1;
-                    }
-                },
-                Some((_,MatchResult::Draw(_)))       => total.1 += 1,
-                _ => panic!(),
-            }
+            // match pair.pop().and_then(|m| Some((m.engine_a, m.result))) {
+            //     Some((ca, MatchResult::WinLoss(c, _))) => {
+            //         if ca == c {
+            //             wdl.0 += 1;
+            //         } else {
+            //             wdl.2 += 1;
+            //         }
+            //     },
+            //     Some((_,MatchResult::Draw(_)))       => wdl.1 += 1,
+            //     _ => panic!(),
+            // }
 
-            let llr = ll_ratio(total, elo0 as f64, elo1 as f64);
-            let sprt = sprt(total, (elo0 as f64,elo1 as f64), alpha, beta);
-
-            debug!("");
-            debug!("(w,d,l) = {:?}", total);
-            debug!("llr  = {:?}", llr);
-            debug!("sprt = {:?}", sprt);
-
-            #[cfg(feature = "nope")]
+            // #[cfg(feature = "nope")]
             if pair.len() == 2 {
                 assert!(pair[0].engine_a == Color::White);
                 use MatchResult::*;
@@ -121,10 +147,11 @@ impl Supervisor {
                     (WinLoss(White,_),WinLoss(Black,_)) => total.ww += 1,
                 }
 
-                self.update_stats(&total);
-
                 pairs.push((pair[0], pair[1]));
                 pair.clear();
+
+                self.update_stats(wdl, total, &pairs);
+
             }
 
         }

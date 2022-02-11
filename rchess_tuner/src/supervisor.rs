@@ -13,6 +13,8 @@ use std::sync::Arc;
 
 use crossbeam::channel::{Sender,Receiver};
 
+use derive_new::new;
+
 // static PANIC_INIT: Lazy<()> = Lazy::new(|| {
 //     let hook = std::panic::take_hook();
 //     std::panic::set_hook(Box::new(move |panicinfo| {
@@ -38,6 +40,28 @@ pub struct Supervisor {
 
     pub timecontrol:       TimeControl,
 
+    pub hyps:              Vec<f64>,
+    pub hyp_accepted:      Vec<f64>,
+    pub hyp_rejected:      Vec<f64>,
+}
+
+impl Supervisor {
+    pub fn new(
+        engine_tuning:      Engine,
+        engine_baseline:    Engine,
+        tunable:            Tunable,
+        timecontrol:        TimeControl,
+    ) -> Self {
+        Self {
+            engine_tuning,
+            engine_baseline,
+            tunable,
+            timecontrol,
+            hyps:           vec![5.,10.,15.,20.,30.,40.,50.,60.,80.,100.,150.,200.],
+            hyp_accepted:   vec![],
+            hyp_rejected:   vec![],
+        }
+    }
 }
 
 #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone)]
@@ -51,15 +75,15 @@ pub struct TunableOpt {
 
 #[derive(Debug,Clone)]
 pub struct Tunable {
-    pub opt:        TunableOpt,
-    pub attempts:   Vec<(u64, Hypothesis)>,
+    pub opt:            TunableOpt,
+    // pub attempts:   Vec<(u64, Hypothesis)>,
 }
 
 impl Tunable {
     pub fn new(name: String, min: u64, max: u64, start: u64, step: u64) -> Self {
         Self {
             opt: TunableOpt { name, min, max, start, step},
-            attempts: vec![],
+            // attempts: vec![],
         }
     }
 }

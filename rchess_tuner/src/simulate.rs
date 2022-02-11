@@ -12,7 +12,7 @@ pub fn simulate(elo_diff: f64) {
     /// prob(W + 0.5 * D)
     let w_prob = log_likelyhood(elo_diff);
 
-    let draw_ratio = 0.2;
+    let draw_ratio = 0.1;
 
     eprintln!("win prob   = {:.2}", w_prob);
     eprintln!("draw_ratio = {:.2}", draw_ratio);

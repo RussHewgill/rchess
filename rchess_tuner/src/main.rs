@@ -49,14 +49,15 @@ use gag::Redirect;
 use crate::tuner_types::MatchResult;
 use crate::supervisor::*;
 
-fn main() {
-// fn main5() {
+// fn main() {
+fn main5() {
     use crate::sprt::*;
     // use crate::sprt::gsprt::*;
     use crate::sprt::sprt_penta::*;
     use crate::sprt::*;
 
     let (elo0,elo1) = (200.0,0.0);
+    // let (elo0,elo1) = (0.0,200.0);
 
     // let s0 = log_likelyhood(s0);
     // let s1 = log_likelyhood(s1);
@@ -73,8 +74,8 @@ fn main() {
 
 }
 
-// fn main() {
-fn main4() {
+fn main() {
+// fn main4() {
 
     init_logger();
 
@@ -84,17 +85,17 @@ fn main4() {
     // let engine2 = Engine::read_from_file("rchess_prev", "engines.json").unwrap();
 
     // let timecontrol = TimeControl::new_f64(1.0, 0.1);
-    let timecontrol = TimeControl::new_f64(0.2, 0.025);
+    let timecontrol = TimeControl::new_f64(0.2, 0.05);
 
     let tunable = Tunable::new("lmr_reduction".to_string(), 2, 5, 3, 1);
 
-    let mut sup = Supervisor {
-        engine_tuning:   engine.clone(),
-        // engine_baseline: engine2.clone(),
-        engine_baseline: engine.clone(),
+    let mut sup = Supervisor::new(
+        engine.clone(),
+        // engine2.clone(),
+        engine.clone(),
         tunable,
         timecontrol,
-    };
+    );
 
     sup.find_optimum();
 
