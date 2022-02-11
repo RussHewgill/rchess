@@ -106,15 +106,15 @@ fn main5() {
 
 }
 
-// fn main() {
-fn main4() {
+fn main() {
+// fn main4() {
 
     init_logger();
 
     let engine = Engine::read_from_file("rchess", "engines-test.json").unwrap();
     // let engine2 = Engine::read_from_file("gnuchess", "engines.json").unwrap();
     // let engine2 = Engine::read_from_file("stockfish", "engines.json").unwrap();
-    let engine2 = Engine::read_from_file("rchess_prev", "engines.json").unwrap();
+    // let engine2 = Engine::read_from_file("rchess_prev", "engines.json").unwrap();
 
     // let timecontrol = TimeControl::new_f64(1.0, 0.1);
     let timecontrol = TimeControl::new_f64(0.2, 0.025);
@@ -123,7 +123,8 @@ fn main4() {
 
     let mut sup = Supervisor {
         engine_tuning:   engine.clone(),
-        engine_baseline: engine2.clone(),
+        // engine_baseline: engine2.clone(),
+        engine_baseline: engine.clone(),
         tunable,
         timecontrol,
     };

@@ -669,8 +669,15 @@ impl Explorer {
             (Some((best.mv.unwrap(),best)),stats)
         } else {
             debug!("explore: no best move? = {:?}", ress);
+
+            let mvs = MoveGen::generate_list_legal(&ts, &self.game, None);
+
+            if let Some(mv) = mvs.get(0) {
+                (Some((*mv, ABResult::new_single(*mv, 0))),stats)
+            } else {
+                (None,stats)
+            }
             // panic!();
-            (None,stats)
         }
     }
 }
