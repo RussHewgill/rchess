@@ -102,8 +102,8 @@ fn main5() {
 
 }
 
-// fn main() {
-fn main4() {
+fn main() {
+// fn main4() {
 
     init_logger();
 

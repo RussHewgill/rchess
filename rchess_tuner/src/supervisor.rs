@@ -128,52 +128,10 @@ impl CuteChess {
             .flat_map(|arg| arg.split_ascii_whitespace())
             .collect::<Vec<_>>();
 
-        let (tx,rx) = crossbeam::channel::unbounded();
-
-        let mut child: Child = Command::new("cutechess-cli")
-            .args(args)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("failed to spawn cutechess-cli");
-
-        std::thread::sleep(std::time::Duration::from_millis(10));
-        let pid = child.id();
-        eprintln!("pid = {:?}", pid);
-
-        let children = Command::new("pgrep")
-            .args(["--parent", &format!("{}", pid)])
-            .output().unwrap();
-
-        let children = String::from_utf8(children.stdout).unwrap()
-            .lines()
-            .map(|line| u32::from_str(line).unwrap())
-            .collect();
-
-        eprintln!("children = {:?}", children);
-
-        let cutechess = CuteChess {
-            // child:    Arc::new(child),
-            pid,
-            children,
-            stop:     Arc::new(AtomicBool::new(false)),
-            rx:       Arc::new(rx),
-        };
-
-        // let pid = cutechess.id();
-        // eprintln!("pid = {:?}", pid);
-
-        let cutechess2 = cutechess.clone();
-        std::thread::spawn(move || {
-            cutechess2._run_cutechess(child,tx);
-        });
-
-        cutechess
+        Self::start_cutechess(&args)
     }
 
     pub fn run_cutechess_tournament(
-        // engine1:          Engine,
-        // engine2:          Engine,
         engine1:          &str,
         engine2:          &str,
         timecontrol:      TimeControl,
@@ -211,6 +169,10 @@ impl CuteChess {
             .flat_map(|arg| arg.split_ascii_whitespace())
             .collect::<Vec<_>>();
 
+        Self::start_cutechess(&args)
+    }
+
+    fn start_cutechess(args: &[&str]) -> CuteChess {
         let (tx,rx) = crossbeam::channel::unbounded();
 
         let mut child: Child = Command::new("cutechess-cli")
@@ -220,20 +182,25 @@ impl CuteChess {
             .spawn()
             .expect("failed to spawn cutechess-cli");
 
-        std::thread::sleep(std::time::Duration::from_millis(10));
+
         let pid = child.id();
-        eprintln!("pid = {:?}", pid);
+        debug!("cutechess pid = {:?}", pid);
 
-        let children = Command::new("pgrep")
-            .args(["--parent", &format!("{}", pid)])
-            .output().unwrap();
+        let mut children = vec![];
+        while children.len() < 2 {
+            std::thread::sleep(std::time::Duration::from_millis(10));
 
-        let children = String::from_utf8(children.stdout).unwrap()
-            .lines()
-            .map(|line| u32::from_str(line).unwrap())
-            .collect();
+            let pgrep = Command::new("pgrep")
+                .args(["--parent", &format!("{}", pid)])
+                .output().unwrap();
 
-        eprintln!("children = {:?}", children);
+            children = String::from_utf8(pgrep.stdout).unwrap()
+                .lines()
+                .map(|line| u32::from_str(line).unwrap())
+                .collect();
+        }
+
+        debug!("cutechess children = {:?}", children);
 
         let cutechess = CuteChess {
             // child:    Arc::new(child),
@@ -255,7 +222,7 @@ impl CuteChess {
     }
 
     fn _run_cutechess(&self, child: Child, tx: Sender<MatchOutcome>) {
-        println!("starting _run_cutechess, pid = {:>5}", self.pid);
+        debug!("starting _run_cutechess, pid = {:>5}", self.pid);
 
         let mut game: Vec<String>   = vec![];
         // let mut matches: Vec<Match> = vec![];
@@ -267,11 +234,11 @@ impl CuteChess {
         for line in reader.lines() {
 
             // trace!("line = {:?}", &line);
-            println!("line = {:?}", &line);
+            trace!("line = {:?}", &line);
             let line = line.unwrap();
 
             if self.stop.load(std::sync::atomic::Ordering::SeqCst) {
-                println!("exiting _run_cutechess, pid = {:>5}", self.pid);
+                debug!("exiting _run_cutechess, pid = {:>5}", self.pid);
                 break;
             }
 

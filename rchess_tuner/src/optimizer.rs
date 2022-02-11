@@ -2,6 +2,7 @@
 
 use rchess_engine_lib::types::Color;
 
+use crate::sprt::sprt_penta::ll_ratio;
 use crate::sprt::sprt_penta::sprt;
 use crate::tuner_types::*;
 use crate::sprt::*;
@@ -71,7 +72,7 @@ impl Supervisor {
                     unimplemented!()
                 }
                 Err(e) => {
-                    println!("recv err = {:?}", e);
+                    debug!("recv err = {:?}", e);
                     break;
                 },
             }
@@ -88,9 +89,14 @@ impl Supervisor {
                 _ => panic!(),
             }
 
+            debug!("(w,d,l) = {:?}", total);
+
+            let llr = ll_ratio(total, elo0 as f64, elo1 as f64);
             let sprt = sprt(total, (elo0 as f64,elo1 as f64), alpha, beta);
 
-            eprintln!("sprt = {:?}", sprt);
+            debug!("llr  = {:?}", llr);
+            debug!("sprt = {:?}", sprt);
+            debug!("");
 
             #[cfg(feature = "nope")]
             if pair.len() == 2 {
