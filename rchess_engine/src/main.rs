@@ -3233,22 +3233,37 @@ fn main_eval() {
 }
 
 fn main9() {
-    std::thread::Builder::new()
-        .stack_size(8 * 1024 * 1024)
-        .spawn(|| {
-            // let ts = Tables::new();
-            _main9();
-        })
-        .unwrap()
-        .join()
-        .unwrap()
-        ;
+
+    let num_cpus  = num_cpus::get();
+    let num_pcpus = num_cpus::get_physical();
+
+    let n = 6;
+
+    let mut handles = vec![];
+    // for id in 0..num_pcpus {
+    // for id in 0..num_cpus {
+    for id in 0..n {
+        println!("spawning {id}");
+        let handle = std::thread::Builder::new()
+            .stack_size(1024 * 1024)
+            .spawn(move || {
+                // let ts = Tables::new();
+                _main9(id);
+            })
+            .unwrap();
+        handles.push(handle);
+    }
+
+    for handle in handles.into_iter() {
+        handle.join().unwrap();
+    }
+
 }
 
 #[allow(unreachable_code)]
-fn _main9() {
+fn _main9(id: usize) {
     let fen = STARTPOS;
-    init_logger();
+    // init_logger();
 
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
 
@@ -3340,12 +3355,12 @@ fn _main9() {
     // // let (fen,correct) = &games_sts(23, 2); // fen, set
     // let (fen,correct) = &games_sts(1, 3); // fen, set
 
-    eprintln!("fen = {:?}", fen);
+    // eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
 
-    eprintln!("g.to_fen() = {:?}", g.to_fen());
-    eprintln!("g = {:?}", g);
+    // eprintln!("g.to_fen() = {:?}", g.to_fen());
+    // eprintln!("g = {:?}", g);
 
     // eprintln!();
     // eprintln!("correct = {:?}", correct);
@@ -3392,7 +3407,8 @@ fn _main9() {
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(12);
     // ex.cfg.num_threads = Some(6);
-    ex.cfg.num_threads = Some(1);
+    // ex.cfg.num_threads = Some(1);
+    ex.cfg.num_threads = Some(2);
     // ex.cfg.num_threads = None;
 
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
@@ -3466,12 +3482,15 @@ fn _main9() {
     let best   = res.get_result().unwrap();
     let scores = res.get_scores().unwrap_or_default();
 
-    // for m in best.moves.iter() { eprintln!("\t{:?}", m); }
-    // eprintln!("\nBest move = {:>8} {:?}", best.score, best.moves[0]);
-    println!();
-    debug!("Best move = {:>8} {:?}", best.score, best.mv);
-    debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth.0, t2);
-    println!();
+    // println!();
+    // debug!("Best move = {:>8} {:?}", best.score, best.mv);
+    // debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth.0, t2);
+    // println!();
+
+    println!("Best move = {:>8} {:?}", best.score, best.mv);
+    println!("{id:>3}: explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth.0, t2);
+
+    return;
 
     // return;
 

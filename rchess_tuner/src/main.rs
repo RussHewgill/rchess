@@ -99,32 +99,35 @@ fn main5() {
 
 }
 
-fn main() {
-// fn main6() {
+// fn main() {
+fn main6() {
     use crate::simulate::*;
-    // simulate(200.0);
-    simulate(4.17, 0.05);
+    simulate(20.0, 0.05);
 }
 
-// fn main() {
-fn main4() {
+fn main() {
+// fn main4() {
 
     init_logger();
 
-    let engine = Engine::read_from_file("rchess", "engines.json").unwrap();
+    // let engine = Engine::read_from_file("rchess", "engines.json").unwrap();
     // let engine2 = Engine::read_from_file("gnuchess", "engines.json").unwrap();
     // let engine2 = Engine::read_from_file("stockfish", "engines.json").unwrap();
     // let engine2 = Engine::read_from_file("rchess_prev", "engines.json").unwrap();
 
-    // let timecontrol = TimeControl::new_f64(1.0, 0.1);
-    let timecontrol = TimeControl::new_f64(0.2, 0.05);
+    let engine1 = Engine::read_from_file("rchess_tuning_0", "engines.json").unwrap();
+    let engine2 = Engine::read_from_file("rchess_tuning_1", "engines.json").unwrap();
+
+    let timecontrol = TimeControl::new_f64(1.0, 0.1);
+    // let timecontrol = TimeControl::new_f64(0.2, 0.1);
+    // let timecontrol = TimeControl::new_f64(0.2, 0.05);
 
     let tunable = Tunable::new("lmr_reduction".to_string(), 2, 5, 3, 1);
 
     let mut sup = Supervisor::new(
-        engine.clone(),
-        // engine2.clone(),
-        engine.clone(),
+        engine1,
+        engine2,
+        // engine.clone(),
         tunable,
         timecontrol,
     );

@@ -1,4 +1,5 @@
 
+use crate::sprt::sprt_penta::SPRT;
 use crate::tuner_types::*;
 use crate::json_config::Engine;
 
@@ -40,12 +41,14 @@ pub struct Supervisor {
 
     pub timecontrol:       TimeControl,
 
+    pub sprts:             Vec<(u32,SPRT)>,
+
     tx_rx:                 Option<(Arc<Sender<MatchOutcome>>,Arc<Receiver<MatchOutcome>>)>,
 
     pub brackets:          [f64; 2],
-    pub hyps:              Vec<f64>,
-    pub hyp_accepted:      Vec<f64>,
-    pub hyp_rejected:      Vec<f64>,
+    // pub hyps:              Vec<f64>,
+    // pub hyp_accepted:      Vec<f64>,
+    // pub hyp_rejected:      Vec<f64>,
 }
 
 impl Supervisor {
@@ -55,17 +58,29 @@ impl Supervisor {
         tunable:            Tunable,
         timecontrol:        TimeControl,
     ) -> Self {
+
+        let mut sprts = vec![];
+
+        for elo in [0.,5.,10.,15.,20.,30.,40.,50.,60.,80.,100.,150.,200.] {
+            sprts.push((elo as u32, SPRT::new(0., elo, 0.05, 0.05)));
+        }
+
         Self {
             engine_tuning,
             engine_baseline,
             tunable,
             timecontrol,
+            sprts,
             tx_rx:          None,
             brackets:       [0.0; 2],
-            hyps:           vec![0.,5.,10.,15.,20.,30.,40.,50.,60.,80.,100.,150.,200.],
-            hyp_accepted:   vec![],
-            hyp_rejected:   vec![],
+            // hyps:           vec![0.,5.,10.,15.,20.,30.,40.,50.,60.,80.,100.,150.,200.],
+            // hyp_accepted:   vec![],
+            // hyp_rejected:   vec![],
         }
+    }
+
+    pub fn get_rx(&self) -> Arc<Receiver<MatchOutcome>> {
+        self.tx_rx.as_ref().unwrap().1.clone()
     }
 
     pub fn tx_rx(&mut self) -> (Arc<Sender<MatchOutcome>>,Arc<Receiver<MatchOutcome>>) {
@@ -112,7 +127,7 @@ pub struct CuteChess {
     pub pid:         u32,
     pub children:    Vec<u32>,
     pub stop:        Arc<AtomicBool>,
-    pub rx:          Arc<Receiver<MatchOutcome>>,
+    // pub rx:          Arc<Receiver<MatchOutcome>>,
 }
 
 impl Drop for CuteChess {
@@ -260,7 +275,7 @@ impl CuteChess {
             pid,
             children,
             stop:     Arc::new(AtomicBool::new(false)),
-            rx:       rx,
+            // rx:       rx,
         };
 
         // let pid = cutechess.id();

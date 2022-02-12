@@ -76,7 +76,15 @@ pub fn simulate(elo_diff: f64, ab: f64) {
     let elo0 = 0.0;
     let elo1 = 10.0;
 
-    let mut sprt = SPRT::new(elo0, elo1, alpha, beta);
+    // let mut sprt = SPRT::new(elo0, elo1, alpha, beta);
+
+    let mut sprts = vec![];
+    for elo in [0.,5.,10.,15.,20.,30.,40.,50.,60.,80.,100.,150.,200.] {
+        sprts.push((elo as u32, SPRT::new(0., elo, 0.05, 0.05)));
+    }
+    let mut min: Option<u32> = None;
+    let mut max: Option<u32> = None;
+    let mut brackets = [0.0f64; 2];
 
     let mut total = RunningTotal::default();
 
@@ -106,6 +114,43 @@ pub fn simulate(elo_diff: f64, ab: f64) {
             (Win,Win)                             => total.ww += 1,
         }
 
+        // #[cfg(feature = "nope")]
+        {
+            if sprts.len() == 0 {
+                eprintln!("brackets = {:?}", brackets);
+                break;
+            }
+            // let mut removes = vec![];
+            for (elo, sprt) in sprts.iter_mut() {
+                if let Some(hyp) = sprt.sprt_penta(total) {
+                    if hyp == Hypothesis::H0 {
+                        // println!("H0: {elo}");
+                        println!("H0 (null): is that A is NOT stronger than B by at least {elo0} ELO points");
+                        max = Some(*elo);
+                        brackets[1] = *elo as f64;
+                    } else {
+                        // println!("H1: {elo}");
+                        println!("H1: is that A is stronger than B by at least {elo1} ELO points");
+                        min = Some(*elo);
+                        brackets[0] = *elo as f64;
+                    }
+                    // removes.push(*elo);
+                }
+            }
+            // for rm in removes.into_iter() {
+            //     sprts.retain(|(elo,sprt)| *elo != rm);
+            // }
+            if let Some(_min) = min {
+                sprts.retain(|(elo, sprt)| *elo > _min);
+                min = None;
+            }
+            if let Some(_max) = max {
+                sprts.retain(|(elo, sprt)| *elo < _max);
+                max = None;
+            }
+        }
+
+        #[cfg(feature = "nope")]
         if let Some(h) = sprt.sprt_penta(total) {
             eprintln!("elo_diff = {:?}", elo_diff);
             eprintln!("(elo0,elo1) = ({:.0},{:.0})", elo0, elo1);
@@ -113,11 +158,13 @@ pub fn simulate(elo_diff: f64, ab: f64) {
             // eprintln!("sprt_penta = {:?}", h);
 
             if h == Hypothesis::H0 {
-                println!("H0");
-                // println!("H0 (null): is that A is NOT stronger than B by at least {elo1} ELO points");
+                // println!("H0");
+                // println!("H0: elo_diff = 0");
+                println!("H0 (null): is that A is NOT stronger than B by at least {elo0} ELO points");
             } else {
-                println!("H1");
-                // println!("Hypothesis H1: is that A is stronger than B by at least {elo0} ELO points");
+                // println!("H1");
+                // println!("H1: elo_diff = at least {elo1}");
+                println!("Hypothesis H1: is that A is stronger than B by at least {elo1} ELO points");
             }
 
             eprintln!();

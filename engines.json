@@ -4,7 +4,24 @@
         "command": "/home/me/code/rust/rchess/target/release/rchess_uci",
         "protocol": "uci",
         "options": [
-            { "name":  "max_threads", "value": 0 }
+            { "name":  "max_threads", "value": 2 }
+        ]
+    },
+    {
+        "name": "rchess_tuning_0",
+        "command": "/home/me/code/rust/rchess/target/release/rchess_uci",
+        "protocol": "uci",
+        "options": [
+            { "name":  "max_threads", "value": 1 },
+            { "name":  "lmr_reduction", "value": 4 }
+        ]
+    },
+    {
+        "name": "rchess_tuning_1",
+        "command": "/home/me/code/rust/rchess/target/release/rchess_uci",
+        "protocol": "uci",
+        "options": [
+            { "name":  "max_threads", "value": 1 }
         ]
     },
     {

@@ -229,6 +229,7 @@ pub mod sprt_penta {
         }
     }
 
+    #[derive(Debug,Clone,Copy)]
     pub struct SPRT {
         pub elo0:     f64,
         pub elo1:     f64,
