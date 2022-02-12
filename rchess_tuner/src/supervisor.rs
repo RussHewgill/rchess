@@ -75,9 +75,7 @@ impl Supervisor {
             let (tx,rx) = crossbeam::channel::unbounded();
             let tx = Arc::new(tx);
             let rx = Arc::new(rx);
-            // let (tx,rx) = (Arc::new(tx),Arc::new(rx));
-            self.tx_rx = Some(tx.clone(),rx.clone());
-            // self.tx_rx = None;
+            self.tx_rx = Some((tx.clone(),rx.clone()));
             (tx,rx)
         }
     }

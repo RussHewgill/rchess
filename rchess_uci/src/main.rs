@@ -266,6 +266,9 @@ fn set_option(mut ex: &mut Explorer, params: Vec<&str>) {
     let val = ps.next().unwrap();
 
     ex.set_option(name, val);
+
+    println!("ex.cfg.num_threads = {:?}", ex.cfg.num_threads);
+
 }
 
 // fn parse_go(mut ex: &mut Explorer,params: Vec<&str>) {

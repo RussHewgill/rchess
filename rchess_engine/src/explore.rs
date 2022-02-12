@@ -196,7 +196,7 @@ impl Explorer {
 #[derive(Debug,Clone)]
 pub struct ExConfig {
     pub max_depth:             Depth,
-    pub num_threads:           Option<u8>,
+    pub num_threads:           Option<u16>,
 
     pub blocked_moves:         HashSet<Move>,
     pub only_moves:            Option<HashSet<Move>>,
@@ -391,7 +391,7 @@ impl Explorer {
             x as i8
         } else {
             let max_threads = num_cpus::get_physical();
-            self.cfg.num_threads = Some(max_threads as u8);
+            self.cfg.num_threads = Some(max_threads as u16);
             max_threads as i8
         };
 
@@ -723,7 +723,7 @@ impl Explorer {
             x as i8
         } else {
             let max_threads = num_cpus::get_physical();
-            self.cfg.num_threads = Some(max_threads as u8);
+            self.cfg.num_threads = Some(max_threads as u16);
             max_threads as i8
         };
 

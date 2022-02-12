@@ -1,5 +1,5 @@
 
-use crate::{explore::Explorer, tables::SParams};
+use crate::{explore::{Explorer, ExConfig}, tables::SParams};
 
 use std::{str::FromStr, collections::HashMap};
 
@@ -12,16 +12,13 @@ use std::{str::FromStr, collections::HashMap};
 //     String,
 // }
 
-// #[derive(Debug,Default,Clone)]
 #[derive(Clone)]
 pub struct EngineOption {
     name:     &'static str,
-    default:  Option<u64>,
-    min:      Option<u64>,
-    max:      Option<u64>,
-    // step:     Option<u64>,
-    // func:     Option<Box<dyn FnMut(SParams, u64)>>,
-    func:     fn(&mut SParams, u64),
+    default:  Option<i64>,
+    min:      Option<i64>,
+    max:      Option<i64>,
+    func:     fn(&mut SParams, &mut ExConfig, i64),
 }
 
 impl std::fmt::Debug for EngineOption {
@@ -56,10 +53,10 @@ pub struct EngineOptions {
 impl Explorer {
     pub fn set_option(&mut self, name: &str, val: &str) {
 
-        let val = u64::from_str(val).unwrap();
+        let val = i64::from_str(val).unwrap();
 
         if let Some(opt) = self.options.get(name) {
-            (opt.func)(&mut self.search_params, val);
+            (opt.func)(&mut self.search_params, &mut self.cfg, val);
             self.sync_threads();
         } else {
             panic!();
@@ -94,6 +91,14 @@ impl EngineOptions {
         };
 
         out.insert(EngineOption {
+            name:    "num_threads",
+            default: Some(0),
+            min:     Some(0),
+            max:     Some(num_cpus::get() as i64),
+            func:    opt_num_threads,
+        });
+
+        out.insert(EngineOption {
             name:    "lmr_reduction",
             default: Some(3),
             min:     Some(2),
@@ -105,7 +110,15 @@ impl EngineOptions {
     }
 }
 
-fn opt_lmr_reduction(sp: &mut SParams, val: u64) {
+fn opt_num_threads(sp: &mut SParams, cfg: &mut ExConfig, val: i64) {
+    if val <= 0 {
+        cfg.num_threads = None;
+    } else {
+        cfg.num_threads = Some(val as u16);
+    }
+}
+
+fn opt_lmr_reduction(sp: &mut SParams, cfg: &mut ExConfig, val: i64) {
     sp.lmr_reduction = val as i16;
 }
 

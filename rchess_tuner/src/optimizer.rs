@@ -57,7 +57,7 @@ impl Supervisor {
 
     pub fn spawn_cutechess(&mut self, num_games: u64) -> CuteChess {
 
-        let (tx,rx) = self.rx_tx();
+        let (tx,rx) = self.tx_rx();
 
         CuteChess::run_cutechess(
             rx,
