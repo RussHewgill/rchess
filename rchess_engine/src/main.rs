@@ -3232,26 +3232,28 @@ fn main_eval() {
 
 }
 
-#[allow(unreachable_code)]
 fn main9() {
-    let fen = STARTPOS;
-    // init_logger();
-
     std::thread::Builder::new()
-        .stack_size(1024 * 1024)
+        .stack_size(8 * 1024 * 1024)
         .spawn(|| {
-            let ts = Tables::new();
+            // let ts = Tables::new();
+            _main9();
         })
         .unwrap()
         .join()
-        .unwrap();
+        .unwrap()
+        ;
+}
 
-    return;
+#[allow(unreachable_code)]
+fn _main9() {
+    let fen = STARTPOS;
+    init_logger();
 
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
 
-    // ts.write_to_file_def().unwrap();
     // let ts = Tables::new();
+    // ts.write_to_file_def().unwrap();
     let ts = Tables::read_from_file_def().unwrap();
 
     fn games_wac(i: usize) -> String {
@@ -3373,13 +3375,14 @@ fn main9() {
     // return;
 
     // let t = 10.0;
-    let t = 4.0;
-    // let t = 2.0;
+    // let t = 4.0;
+    let t = 2.0;
     // let t = 0.125;
 
-    let n = MAX_SEARCH_PLY;
+    // let n = MAX_SEARCH_PLY;
     // let n = 35;
     // let n = 15;
+    let n = 12;
     // let n = 10;
     // let n = 2;
 
@@ -3388,8 +3391,8 @@ fn main9() {
     ex.cfg.return_moves = true;
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(12);
-    ex.cfg.num_threads = Some(6);
-    // ex.cfg.num_threads = Some(1);
+    // ex.cfg.num_threads = Some(6);
+    ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();
