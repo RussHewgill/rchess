@@ -299,6 +299,8 @@ impl CuteChess {
 
         let reader = BufReader::new(child.stdout.unwrap());
 
+        let mut pair = vec![];
+
         for line in reader.lines() {
 
             // trace!("line = {:?}", &line);
@@ -320,26 +322,25 @@ impl CuteChess {
                     if line.starts_with("Started game") {
                         let v = std::mem::replace(&mut game, vec![]);
                         let res = MatchOutcome::parse(v).unwrap();
-                        tx.send(res).unwrap();
+
+                        pair.push(res);
+
                         game.push(line);
                     } else {
                         game.push(line);
                     }
                 },
+            }
 
-                // InputParser::Started => {
-                //     game.push(line.clone());
-                //     if line.starts_with("Elo difference") {
-                //         let v = std::mem::replace(&mut game, vec![]);
-                //         // let res = Match::parse(v.clone()).unwrap_or_else(move || {
-                //         //     eprintln!("v = {:?}", v);
-                //         //     panic!();
-                //         // });
-                //         tx.send(res).unwrap();
-                //         state = InputParser::Started;
-                //     }
-                // },
+            if pair.len() == 2 {
 
+                match (pair[0], pair[1]) {
+                    (MatchOutcome::Match(m0),MatchOutcome::Match(m1)) => {
+                        tx.send(MatchOutcome::MatchPair(m0, m1)).unwrap();
+                        pair.clear();
+                    },
+                    _ => panic!(),
+                }
             }
 
         }

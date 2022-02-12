@@ -36,8 +36,8 @@ impl Supervisor {
 
             if let Some(hyp) = sprt.sprt_penta(total) {
                 if hyp == Hypothesis::H0 {
-                    println!("H0 (null): is that A is NOT stronger than B by at least {} ELO points",
-                             sprt.elo0);
+                    println!("H0 (null): A is NOT stronger than B by at least {} ELO points, elo1 = {}",
+                             sprt.elo0, sprt.elo1);
                     max = Some(*elo);
                     self.brackets[1] = *elo as f64;
                 } else {
@@ -84,10 +84,10 @@ impl Supervisor {
 
     pub fn spawn_cutechess_mult(&mut self, num_games: u64, threads_per_engine: u32) -> Vec<CuteChess> {
 
-        let num_cpus  = num_cpus::get();
-        // let num_pcpus = num_cpus::get_physical();
+        // let num_cpus  = num_cpus::get();
+        let num_pcpus = num_cpus::get_physical();
 
-        let n = num_cpus / (threads_per_engine as usize * 2);
+        let n = num_pcpus / (threads_per_engine as usize * 2);
         debug!("spawning {n} instances of cutechess");
 
         let mut out = vec![];
@@ -142,17 +142,22 @@ impl Supervisor {
         loop {
             match rx.recv() {
                 Ok(MatchOutcome::Match(m) | MatchOutcome::SPRTFinished(m,_,_))  => {
-                    pair.push(m);
-                    match (m.engine_a, m.result) {
-                        (ca, MatchResult::WinLoss(c, _)) => {
-                            if ca == c {
-                                wdl.0 += 1;
-                            } else {
-                                wdl.2 += 1;
-                            }
-                        },
-                        (_,MatchResult::Draw(_))       => wdl.1 += 1,
-                    }
+                    // pair.push(m);
+                    // match (m.engine_a, m.result) {
+                    //     (ca, MatchResult::WinLoss(c, _)) => {
+                    //         if ca == c {
+                    //             wdl.0 += 1;
+                    //         } else {
+                    //             wdl.2 += 1;
+                    //         }
+                    //     },
+                    //     (_,MatchResult::Draw(_))       => wdl.1 += 1,
+                    // }
+                    panic!();
+                },
+                Ok(MatchOutcome::MatchPair(m0, m1)) => {
+                    pair.push(m0);
+                    pair.push(m1);
                 },
                 Err(e) => {
                     debug!("recv err = {:?}", e);

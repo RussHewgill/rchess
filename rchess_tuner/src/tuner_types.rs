@@ -57,7 +57,7 @@ impl RunningTotal {
 #[derive(Clone,Copy)]
 pub enum MatchOutcome {
     Match(Match),
-    // MatchPair(Match, Match),
+    MatchPair(Match, Match),
     SPRTFinished(Match, Elo, SPRTResult),
 }
 
@@ -239,9 +239,9 @@ impl std::fmt::Debug for MatchOutcome {
             &MatchOutcome::Match(m)            => {
                 f.write_str(&format!("Match: {:?}", m))?;
             },
-            // &MatchOutcome::MatchPair(m1,m2)            => {
-            //     f.write_str(&format!("{:?}\n{:?}", m1, m2))?;
-            // },
+            &MatchOutcome::MatchPair(m1,m2)            => {
+                f.write_str(&format!("{:?}\n{:?}", m1, m2))?;
+            },
             &MatchOutcome::SPRTFinished(m,_,_) => {
                 f.write_str(&format!("SPRTFinished: {:?}", m))?;
             },
