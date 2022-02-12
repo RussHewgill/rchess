@@ -43,8 +43,10 @@ impl Magic {
 }
 
 pub fn gen_magics(bishop: bool)
-                        -> std::result::Result<([Magic; 64], [BitBoard; 0x1480]),
-                                               ([Magic; 64], [BitBoard; 0x19000])>
+                  // -> std::result::Result<([Magic; 64], [BitBoard; 0x1480]),
+                  //                        ([Magic; 64], [BitBoard; 0x19000])>
+                  -> std::result::Result<([Magic; 64], Vec<BitBoard>),
+                                         ([Magic; 64], Vec<BitBoard>)>
 {
     #[cfg(target_feature = "bmi2")]
     return _gen_magics_pext(bishop);
@@ -53,16 +55,24 @@ pub fn gen_magics(bishop: bool)
 }
 
 pub fn _gen_magics_pext(bishop: bool)
-                        -> std::result::Result<([Magic; 64], [BitBoard; 0x1480]),
-                                               ([Magic; 64], [BitBoard; 0x19000])>
+                        // -> std::result::Result<([Magic; 64], [BitBoard; 0x1480]),
+                        //                        ([Magic; 64], [BitBoard; 0x19000])>
+                        -> std::result::Result<([Magic; 64], Vec<BitBoard>),
+                                               ([Magic; 64], Vec<BitBoard>)>
 {
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
-    let mut reference: [BitBoard; 4096] = [BitBoard::empty(); 4096];
-    let mut occupancy: [BitBoard; 4096] = [BitBoard::empty(); 4096];
+    // let mut reference: <BitBoard; 4096> = vec![BitBoard::empty(); 4096];
+    // let mut occupancy: <BitBoard; 4096> = vec![BitBoard::empty(); 4096];
 
-    let mut table_b: [BitBoard; 0x1480]  = [BitBoard::empty(); 0x1480];
-    let mut table_r: [BitBoard; 0x19000] = [BitBoard::empty(); 0x19000];
+    // let mut table_b: <BitBoard; 0x1480>  = vec![BitBoard::empty(); 0x1480];
+    // let mut table_r: <BitBoard; 0x19000> = vec![BitBoard::empty(); 0x19000];
+
+    let mut reference: Vec<BitBoard> = vec![BitBoard::empty(); 4096];
+    let mut occupancy: Vec<BitBoard> = vec![BitBoard::empty(); 4096];
+
+    let mut table_b: Vec<BitBoard>  = vec![BitBoard::empty(); 0x1480];
+    let mut table_r: Vec<BitBoard> = vec![BitBoard::empty(); 0x19000];
 
     // let mut magics: [Option<Magic>; 64] = [None; 64];
     let mut magics: [Magic; 64] = [Magic::default(); 64];

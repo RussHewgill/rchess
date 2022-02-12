@@ -3235,7 +3235,18 @@ fn main_eval() {
 #[allow(unreachable_code)]
 fn main9() {
     let fen = STARTPOS;
-    init_logger();
+    // init_logger();
+
+    std::thread::Builder::new()
+        .stack_size(1024 * 1024)
+        .spawn(|| {
+            let ts = Tables::new();
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+
+    return;
 
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
 

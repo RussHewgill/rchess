@@ -126,7 +126,10 @@ pub struct Tables {
     #[serde(with = "BigArray")]
     pub magics_bishop:    [Magic; 64],
     #[serde(with = "BigArray")]
+    #[cfg(not(feature = "smallstack"))]
     pub table_bishop:     [BitBoard; 0x1480],
+    #[cfg(feature = "smallstack")]
+    pub table_bishop:     Vec<BitBoard>,
     #[serde(skip)]
     pub zobrist_tables:   ZbTable,
 
@@ -244,17 +247,17 @@ impl Tables {
             gen_magics(false).unwrap_err()
         } else {
             ([Magic::new(0, BitBoard::empty(), BitBoard::empty(), 0); 64],
-             [BitBoard::empty(); 0x19000])
+             vec![BitBoard::empty(); 0x19000])
         };
 
-        #[cfg(feature = "smallstack")]
-        let table_rook = table_rook.to_vec();
+        // #[cfg(feature = "smallstack")]
+        // let table_rook = table_rook.to_vec();
 
         let (magics_bishop, table_bishop) = if magics {
             gen_magics(true).unwrap()
         } else {
             ([Magic::new(0, BitBoard::empty(), BitBoard::empty(), 0); 64],
-            [BitBoard::empty(); 0x1480])
+             vec![BitBoard::empty(); 0x1480])
         };
 
         // let (piece_tables_midgame,piece_tables_endgame) = PcTables::new();
