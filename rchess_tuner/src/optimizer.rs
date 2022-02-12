@@ -55,16 +55,18 @@ impl Supervisor {
 
 impl Supervisor {
 
-    pub fn spawn_cutechess(&mut self) -> CuteChess {
+    pub fn spawn_cutechess(&mut self, num_games: u64) -> CuteChess {
 
-        // CuteChess::run_cutechess(
-        //     &self.engine_tuning.name,
-        //     &self.engine_baseline.name,
-        //     self.timecontrol,
-        //     &self.tunable.opt.name,
-        //     num_games)
+        let (tx,rx) = self.rx_tx();
 
-        unimplemented!()
+        CuteChess::run_cutechess(
+            rx,
+            tx,
+            &self.engine_tuning.name,
+            &self.engine_baseline.name,
+            self.timecontrol,
+            &self.tunable.opt.name,
+            num_games)
     }
 
     pub fn find_optimum(&mut self) {
@@ -86,7 +88,7 @@ impl Supervisor {
         //     (elo0,elo1),
         //     alpha);
 
-        let cutechess = self.spawn_cutechess();
+        let cutechess = self.spawn_cutechess(num_games);
 
         let mut total = RunningTotal::default();
         let mut wdl = (0,0,0);

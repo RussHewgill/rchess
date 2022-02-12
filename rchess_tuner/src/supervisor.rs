@@ -40,7 +40,7 @@ pub struct Supervisor {
 
     pub timecontrol:       TimeControl,
 
-    rx_tx:                 Option<(Arc<Receiver<MatchOutcome>>,Arc<Receiver<MatchOutcome>>)>,
+    tx_rx:                 Option<(Arc<Sender<MatchOutcome>>,Arc<Receiver<MatchOutcome>>)>,
 
     pub brackets:          [f64; 2],
     pub hyps:              Vec<f64>,
@@ -60,13 +60,28 @@ impl Supervisor {
             engine_baseline,
             tunable,
             timecontrol,
-            rx_tx:          None,
+            tx_rx:          None,
             brackets:       [0.0; 2],
             hyps:           vec![0.,5.,10.,15.,20.,30.,40.,50.,60.,80.,100.,150.,200.],
             hyp_accepted:   vec![],
             hyp_rejected:   vec![],
         }
     }
+
+    pub fn tx_rx(&mut self) -> (Arc<Sender<MatchOutcome>>,Arc<Receiver<MatchOutcome>>) {
+        if let Some((tx,rx)) = self.tx_rx.as_ref() {
+            (tx.clone(),rx.clone())
+        } else {
+            let (tx,rx) = crossbeam::channel::unbounded();
+            let tx = Arc::new(tx);
+            let rx = Arc::new(rx);
+            // let (tx,rx) = (Arc::new(tx),Arc::new(rx));
+            self.tx_rx = Some(tx.clone(),rx.clone());
+            // self.tx_rx = None;
+            (tx,rx)
+        }
+    }
+
 }
 
 #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone)]
