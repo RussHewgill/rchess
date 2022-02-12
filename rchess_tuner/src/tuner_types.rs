@@ -58,7 +58,7 @@ impl RunningTotal {
 pub enum MatchOutcome {
     Match(Match),
     // MatchPair(Match, Match),
-    SPRTFinished(Match, Elo, SPRT),
+    SPRTFinished(Match, Elo, SPRTResult),
 }
 
 #[derive(Clone,Copy)]
@@ -68,7 +68,7 @@ pub struct Match {
     pub result:     MatchResult,
     pub sum_score:  (u32,u32,u32),
     pub elo:        Option<Elo>,
-    pub sprt:       Option<SPRT>,
+    pub sprt:       Option<SPRTResult>,
 }
 
 #[derive(Clone,Copy)]
@@ -82,7 +82,7 @@ pub struct Elo {
 
 #[derive(Clone,Copy)]
 /// LLR: log-likelihood ratio
-pub struct SPRT {
+pub struct SPRTResult {
     pub llr:           f64,
     pub llr_pct:       f64,
     pub lbound:        f64,
@@ -90,7 +90,9 @@ pub struct SPRT {
     pub hyp_accepted:  Option<Hypothesis>,
 }
 
-#[derive(Debug,Clone,Copy)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Copy)]
+/// Hypothesis H1:        is that A is stronger than B by at least ELO0 ELO points
+/// H0 (null hypothesis): is that A is NOT stronger than B by at least ELO1 ELO points
 pub enum Hypothesis {
     H0,
     H1,
@@ -169,7 +171,7 @@ impl MatchOutcome {
                 }
             } else { None };
 
-            Some(SPRT {
+            Some(SPRTResult {
                 llr:      f64::from_str(sprt.get(1)?.as_str()).ok()?,
                 llr_pct:  f64::from_str(sprt.get(2)?.as_str()).ok()?,
                 lbound:   f64::from_str(sprt.get(3)?.as_str()).ok()?,
@@ -269,7 +271,7 @@ impl std::fmt::Debug for Elo {
     }
 }
 
-impl std::fmt::Debug for SPRT {
+impl std::fmt::Debug for SPRTResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&format!("LLR: {:.2}, ({:.1}%) l[{:.2},{:.2}]u",
                              self.llr, self.llr_pct, self.lbound, self.ubound,

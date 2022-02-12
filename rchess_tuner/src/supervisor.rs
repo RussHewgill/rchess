@@ -40,6 +40,9 @@ pub struct Supervisor {
 
     pub timecontrol:       TimeControl,
 
+    rx_tx:                 Option<(Arc<Receiver<MatchOutcome>>,Arc<Receiver<MatchOutcome>>)>,
+
+    pub brackets:          [f64; 2],
     pub hyps:              Vec<f64>,
     pub hyp_accepted:      Vec<f64>,
     pub hyp_rejected:      Vec<f64>,
@@ -57,7 +60,9 @@ impl Supervisor {
             engine_baseline,
             tunable,
             timecontrol,
-            hyps:           vec![5.,10.,15.,20.,30.,40.,50.,60.,80.,100.,150.,200.],
+            rx_tx:          None,
+            brackets:       [0.0; 2],
+            hyps:           vec![0.,5.,10.,15.,20.,30.,40.,50.,60.,80.,100.,150.,200.],
             hyp_accepted:   vec![],
             hyp_rejected:   vec![],
         }
@@ -119,6 +124,8 @@ impl CuteChess {
 impl CuteChess {
 
     pub fn run_cutechess(
+        rx:               Arc<Receiver<MatchOutcome>>,
+        tx:               Arc<Sender<MatchOutcome>>,
         engine1:          &str,
         engine2:          &str,
         timecontrol:      TimeControl,
@@ -153,10 +160,12 @@ impl CuteChess {
             .flat_map(|arg| arg.split_ascii_whitespace())
             .collect::<Vec<_>>();
 
-        Self::start_cutechess(&args, log_file)
+        Self::start_cutechess(rx, tx, &args, log_file)
     }
 
     pub fn run_cutechess_tournament(
+        rx:               Arc<Receiver<MatchOutcome>>,
+        tx:               Arc<Sender<MatchOutcome>>,
         engine1:          &str,
         engine2:          &str,
         timecontrol:      TimeControl,
@@ -195,11 +204,16 @@ impl CuteChess {
             .flat_map(|arg| arg.split_ascii_whitespace())
             .collect::<Vec<_>>();
 
-        Self::start_cutechess(&args, log_file)
+        Self::start_cutechess(rx, tx, &args, log_file)
     }
 
-    fn start_cutechess(args: &[&str], log_file: &str) -> CuteChess {
-        let (tx,rx) = crossbeam::channel::unbounded();
+    fn start_cutechess(
+        rx:         Arc<Receiver<MatchOutcome>>,
+        tx:         Arc<Sender<MatchOutcome>>,
+        args:       &[&str],
+        log_file:   &str,
+    ) -> CuteChess {
+        // let (tx,rx) = crossbeam::channel::unbounded();
 
         let mut child: Child = Command::new("cutechess-cli")
             .args(args)
@@ -233,7 +247,7 @@ impl CuteChess {
             pid,
             children,
             stop:     Arc::new(AtomicBool::new(false)),
-            rx:       Arc::new(rx),
+            rx:       rx,
         };
 
         // let pid = cutechess.id();
@@ -241,14 +255,14 @@ impl CuteChess {
 
         let cutechess2 = cutechess.clone();
         std::thread::spawn(move || {
-            cutechess2._run_cutechess(child,tx);
+            cutechess2.listen_cutechess(child,tx);
         });
 
         cutechess
     }
 
-    fn _run_cutechess(&self, child: Child, tx: Sender<MatchOutcome>) {
-        debug!("starting _run_cutechess, pid = {:>5}", self.pid);
+    fn listen_cutechess(&self, child: Child, tx: Arc<Sender<MatchOutcome>>) {
+        debug!("starting listen_cutechess, pid = {:>5}", self.pid);
 
         let mut game: Vec<String>   = vec![];
         // let mut matches: Vec<Match> = vec![];
@@ -264,7 +278,7 @@ impl CuteChess {
             let line = line.unwrap();
 
             if self.stop.load(std::sync::atomic::Ordering::SeqCst) {
-                debug!("exiting _run_cutechess, pid = {:>5}", self.pid);
+                debug!("exiting listen_cutechess, pid = {:>5}", self.pid);
                 break;
             }
 

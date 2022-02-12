@@ -56,8 +56,9 @@ fn main5() {
     // use crate::sprt::gsprt::*;
     use crate::sprt::sprt_penta::*;
     use crate::sprt::*;
+    use crate::sprt::helpers::*;
 
-    let (elo0,elo1) = (200.0,0.0);
+    let (elo0,elo1) = (10.0,0.0);
     // let (elo0,elo1) = (0.0,200.0);
 
     // let s0 = log_likelyhood(s0);
@@ -65,20 +66,44 @@ fn main5() {
 
     // simulate(200.0);
 
-    let wdl = (22,9,14);
+    // let wdl = (22,9,14);
 
-    let llr = ll_ratio(wdl, elo0, elo1);
-    let sprt = sprt(wdl, (elo0, elo1), 0.05, 0.05);
+    // let total = RunningTotal {
+    //     ll:     2424,
+    //     ld_dl:  1106,
+    //     lw_dd:  5159,
+    //     dw_wd:  1187,
+    //     ww:     2625,
+    // };
 
-    eprintln!("llr = {:?}", llr);
-    eprintln!("sprt = {:?}", sprt);
+    let total = RunningTotal {
+        ll:     157,
+        ld_dl:  395,
+        lw_dd:  538,
+        dw_wd:  384,
+        ww:     154,
+    };
+
+    // let (s0,s1) = (log_likelyhood(elo0), log_likelyhood(elo1));
+    // let (sum,pdf) = results_penta_to_pdf(total);
+    // let jumps = llr_jumps(&pdf, s0, s1);
+    // eprintln!("jumps = {:?}", jumps);
+    // let llr = ll_ratio_penta(total, elo0, elo1);
+    // eprintln!("llr = {:?}", llr);
+
+    // let llr = ll_ratio(wdl, elo0, elo1);
+    // let sprt = sprt(wdl, (elo0, elo1), 0.05, 0.05);
+
+    // eprintln!("llr = {:?}", llr);
+    // eprintln!("sprt = {:?}", sprt);
 
 }
 
 fn main() {
+// fn main6() {
     use crate::simulate::*;
     // simulate(200.0);
-    simulate(0.0, 0.02);
+    simulate(4.17, 0.05);
 }
 
 // fn main() {
@@ -105,60 +130,6 @@ fn main4() {
     );
 
     sup.find_optimum();
-
-}
-
-// fn main() {
-fn main2() {
-
-    // init_logger();
-
-    let engine1 = "rchess";
-    let engine2 = "rchess_prev";
-
-    let timecontrol = TimeControl::new_f64(0.5, 0.05);
-    // let timecontrol = TimeControl::new_f64(1.0, 0.1);
-    let output_label = "test";
-    let (elo0,elo1) = (0,50);
-    let num_games = 50;
-
-    // let hook = std::panic::take_hook();
-    // std::panic::set_hook(Box::new(move |panicinfo| {
-    //     let loc = panicinfo.location();
-    //     let mut file = std::fs::File::create("/home/me/code/rust/rchess/panic.log").unwrap();
-    //     let s = format!("Panicking, Location: {:?}", loc);
-    //     file.write(s.as_bytes()).unwrap();
-    //     // cutechess doesn't kill child processes when parent panics
-    //     let child = Command::new("pkill")
-    //         .args(["rchess_uci"])
-    //         .spawn()
-    //         .unwrap();
-    //     hook(panicinfo)
-    // }));
-
-    let cutechess = CuteChess::run_cutechess_tournament(
-        engine1,
-        engine2,
-        timecontrol,
-        output_label,
-        num_games,
-        (elo0,elo1),
-        0.05);
-
-    loop {
-        match cutechess.rx.recv() {
-            Ok(m)  => eprintln!("m = {:?}", m),
-            Err(e) => {
-                println!("recv err = {:?}", e);
-                break;
-            },
-        }
-    }
-
-    // let child = Command::new("pkill")
-    //     .args(["rchess_uci"])
-    //     .spawn()
-    //     .unwrap();
 
 }
 

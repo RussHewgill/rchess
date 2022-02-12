@@ -99,7 +99,7 @@ pub mod sprt_penta {
     use argmin::core::{ArgminOp, ArgminSlogLogger, Error, Executor, ObserverMode};
 
     use crate::sprt::log_likelyhood;
-    use crate::tuner_types::RunningTotal;
+    use crate::tuner_types::{RunningTotal, Hypothesis};
     use super::helpers::*;
 
     struct BrentFunc {
@@ -229,6 +229,73 @@ pub mod sprt_penta {
         }
     }
 
+    pub struct SPRT {
+        pub elo0:     f64,
+        pub elo1:     f64,
+        pub alpha:    f64,
+        pub beta:     f64,
+        la:           f64,
+        lb:           f64,
+
+        sq0:          f64,
+        sq1:          f64,
+        max_llr:      f64,
+        min_llr:      f64,
+        o0:           f64,
+        o1:           f64,
+
+    }
+
+    /// new
+    impl SPRT {
+        pub fn new(elo0: f64, elo1: f64, alpha: f64, beta: f64) -> Self {
+            Self {
+                elo0,
+                elo1,
+                alpha,
+                beta,
+                la: f64::ln(beta / (1.0 - alpha)),
+                lb: f64::ln((1.0 - beta) / alpha),
+
+                sq0:     0.0,
+                sq1:     0.0,
+                max_llr: 0.0,
+                min_llr: 0.0,
+                o0:      0.0,
+                o1:      0.0,
+            }
+        }
+    }
+
+    impl SPRT {
+        pub fn sprt_penta(&mut self, results: RunningTotal) -> Option<Hypothesis> {
+
+            let llr = ll_ratio_penta(results, self.elo0, self.elo1);
+
+            /// Dynamic overshoot correction using
+            /// Siegmund - Sequential Analysis - Corollary 8.33.
+            if llr > self.max_llr {
+                self.sq1 += (llr - self.max_llr).powi(2);
+                self.max_llr = llr;
+                self.o1 = self.sq1 / llr / 2.0;
+            }
+            if llr > self.min_llr {
+                self.sq1 += (llr - self.min_llr).powi(2);
+                self.min_llr = llr;
+                self.o0 = -self.sq0 / llr / 2.0;
+            }
+
+            if llr > self.lb - self.o1 {
+                Some(Hypothesis::H1)
+            } else if llr < self.la + self.o0 {
+                Some(Hypothesis::H0)
+            } else {
+                None
+            }
+        }
+    }
+
+    #[cfg(feature = "nope")]
     pub fn sprt_penta(
         results:      RunningTotal,
         (elo0,elo1):  (f64,f64),
@@ -252,8 +319,9 @@ pub mod sprt_penta {
 
 }
 
-#[cfg(feature = "nope")]
-mod prev {
+// #[cfg(feature = "nope")]
+pub mod prev {
+    use super::log_likelyhood;
 
     pub fn ll_ratio((win,draw,loss): (u32,u32,u32), elo0: f64, elo1: f64) -> f64 {
         if win == 0 || draw == 0 || loss == 0 {
@@ -308,6 +376,57 @@ pub mod helpers {
         1.0 / (1.0 + 10.0f64.powf(-elo_diff / 400.0))
     }
 
+    #[cfg(feature = "nope")]
+    pub fn elo_to_bayes_elo(elo: f64) -> f64 {
+        use argmin::solver::brent::Brent;
+        use argmin::core::{ArgminOp, ArgminSlogLogger, Error, Executor, ObserverMode};
+
+        let draw_elo = 327.;
+        let biases   = [-90., 200.];
+
+        struct BrentFunc {
+            s: f64,
+        }
+
+        // fn _probs(biases: [f64; 2], )
+
+        // fn score(probs: &[f64]) -> 
+
+        impl ArgminOp for BrentFunc {
+            type Param    = f64;
+            type Output   = f64;
+            type Hessian  = ();
+            type Jacobian = ();
+            type Float    = f64;
+
+            fn apply(&self, x: &Self::Param) -> Result<Self::Output, Error> {
+                // Ok(self.pdf.iter().map(|(a,p)| p * (a - self.s) / (1. + x * (a - self.s))).sum::<f64>())
+                unimplemented!()
+            }
+        }
+
+        let bb = f64::ln(10.0) / 400.0;
+
+        let s = if elo >= 0.0 {
+            1. / (1. + f64::exp(-bb * elo))
+        } else {
+            let e = f64::exp(bb * elo);
+            e / (e + 1.)
+        };
+
+        // let b = BrentFunc { s, };
+
+        // let solver = Brent::new(-1000, 1000, 2e-12);
+        // let res = Executor::new(b, solver, 0.0)
+        // // .add_observer(ArgminSlogLogger::term(), ObserverMode::Always)
+        //     .max_iters(100)
+        //     .run()
+        //     .unwrap();
+        // let x = res.state.best_param;
+
+        unimplemented!()
+    }
+
     pub fn stats(pdf: &[(f64,f64)]) -> (f64,f64) {
 
         let eps = 1e-6;
@@ -354,7 +473,6 @@ pub mod helpers {
         }
         (sum, out)
     }
-
 
     pub fn regularize_mut(xs: &mut [f64]) {
         let eps = 1e-3;

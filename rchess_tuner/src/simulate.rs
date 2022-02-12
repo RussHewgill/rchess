@@ -1,7 +1,7 @@
 
 use crate::sprt::*;
 use crate::sprt::sprt_penta::*;
-use crate::tuner_types::RunningTotal;
+use crate::tuner_types::{RunningTotal, Hypothesis};
 
 use log::{debug,trace};
 
@@ -47,6 +47,9 @@ impl WDL {
         }
 
     }
+
+    // pub fn gen_penta()
+
 }
 
 pub fn simulate(elo_diff: f64, ab: f64) {
@@ -56,7 +59,8 @@ pub fn simulate(elo_diff: f64, ab: f64) {
     /// prob(W + 0.5 * D)
     let w_prob = log_likelyhood(elo_diff);
 
-    let draw_ratio = 0.1;
+    // let draw_ratio = 0.1;
+    let draw_ratio = 0.4;
     // let draw_ratio = 0.02;
 
     // let (alpha,beta) = (0.05,0.05);
@@ -68,6 +72,11 @@ pub fn simulate(elo_diff: f64, ab: f64) {
     let mut wins   = 0;
     let mut draws  = 0;
     let mut losses = 0;
+
+    let elo0 = 0.0;
+    let elo1 = 10.0;
+
+    let mut sprt = SPRT::new(elo0, elo1, alpha, beta);
 
     let mut total = RunningTotal::default();
 
@@ -97,7 +106,38 @@ pub fn simulate(elo_diff: f64, ab: f64) {
             (Win,Win)                             => total.ww += 1,
         }
 
-        let elo = 10.;
+        if let Some(h) = sprt.sprt_penta(total) {
+            eprintln!("elo_diff = {:?}", elo_diff);
+            eprintln!("(elo0,elo1) = ({:.0},{:.0})", elo0, elo1);
+            eprintln!("n        = {:?}", n);
+            // eprintln!("sprt_penta = {:?}", h);
+
+            if h == Hypothesis::H0 {
+                println!("H0");
+                // println!("H0 (null): is that A is NOT stronger than B by at least {elo1} ELO points");
+            } else {
+                println!("H1");
+                // println!("Hypothesis H1: is that A is stronger than B by at least {elo0} ELO points");
+            }
+
+            eprintln!();
+            eprintln!("total.ll    = {:.2}", total.ll );
+            eprintln!("total.ld_dl = {:.2}", total.ld_dl );
+            eprintln!("total.lw_dd = {:.2}", total.lw_dd );
+            eprintln!("total.dw_wd = {:.2}", total.dw_wd );
+            eprintln!("total.ww    = {:.2}", total.ww );
+
+            let tot = wins + draws + losses;
+            let tot = tot as f64;
+            let w = wins as f64 / tot;
+            let d = draws as f64 / tot;
+            let l = losses as f64 / tot;
+            eprintln!("(w,d,l) = ({:.2},{:.2},{:.2})", w,d,l);
+
+            break;
+        }
+
+        // let elo = 10.;
 
         // let sprt_penta = sprt_penta(total, (0.0,elo), alpha, beta);
         // // let sprt_penta = sprt_penta(total, (elo,0.0), alpha, beta);
@@ -110,31 +150,33 @@ pub fn simulate(elo_diff: f64, ab: f64) {
         //     // eprintln!("total.lw_dd = {:.2}", total.lw_dd as f64 / tot);
         //     // eprintln!("total.dw_wd = {:.2}", total.dw_wd as f64 / tot);
         //     // eprintln!("total.ww    = {:.2}", total.ww as f64 / tot);
+        //     // eprintln!("total.ll    = {:.2}", total.ll );
+        //     // eprintln!("total.ld_dl = {:.2}", total.ld_dl );
+        //     // eprintln!("total.lw_dd = {:.2}", total.lw_dd );
+        //     // eprintln!("total.dw_wd = {:.2}", total.dw_wd );
+        //     // eprintln!("total.ww    = {:.2}", total.ww );
         //     break;
         // }
 
-        // let sprt = sprt((wins,draws,losses), (0.0,elo), alpha, beta);
-        let sprt = sprt((wins,draws,losses), (elo,0.0), alpha, beta);
-        if let Some(sprt) = sprt {
-            eprintln!("n = {:?}", n);
-            eprintln!("sprt = {:?}", sprt);
-
-            let llr = ll_ratio((wins,draws,losses), elo, 0.0);
-            eprintln!("llr = {:?}", llr);
-
-            let tot = wins + draws + losses;
-            let tot = tot as f64;
-            let w = wins as f64 / tot;
-            let d = draws as f64 / tot;
-            let l = losses as f64 / tot;
-            eprintln!("(w,d,l) = ({:.2},{:.2},{:.2})", w,d,l);
-
-            // eprintln!("wins   = {:?}", wins);
-            // eprintln!("draws  = {:?}", draws);
-            // eprintln!("losses = {:?}", losses);
-
-            break;
-        }
+        // // let sprt = sprt((wins,draws,losses), (0.0,elo), alpha, beta);
+        // // let sprt = sprt((wins,draws,losses), (elo,0.0), alpha, beta);
+        // let sprt = crate::sprt::prev::sprt((wins,draws,losses), (0.0,elo), alpha, beta);
+        // if let Some(sprt) = sprt {
+        //     eprintln!("n = {:?}", n);
+        //     eprintln!("sprt = {:?}", sprt);
+        //     let llr = ll_ratio((wins,draws,losses), elo, 0.0);
+        //     eprintln!("llr = {:?}", llr);
+        //     let tot = wins + draws + losses;
+        //     let tot = tot as f64;
+        //     let w = wins as f64 / tot;
+        //     let d = draws as f64 / tot;
+        //     let l = losses as f64 / tot;
+        //     eprintln!("(w,d,l) = ({:.2},{:.2},{:.2})", w,d,l);
+        //     // eprintln!("wins   = {:?}", wins);
+        //     // eprintln!("draws  = {:?}", draws);
+        //     // eprintln!("losses = {:?}", losses);
+        //     break;
+        // }
 
         n += 1;
         #[cfg(feature = "nope")]

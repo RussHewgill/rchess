@@ -27,23 +27,23 @@ impl Supervisor {
         // for elo_diff in self.hyps.iter() {
         for elo_diff in [50.0] {
 
-            let llr  = ll_ratio(wdl, 0.0, elo_diff);
-            let sprt = sprt(wdl, (0.0, elo_diff), alpha, beta);
+            // let llr  = ll_ratio(wdl, 0.0, elo_diff);
+            // let sprt = sprt(wdl, (0.0, elo_diff), alpha, beta);
 
-            let llr_penta  = ll_ratio_penta(total, 0.0, elo_diff);
-            let sprt_penta = sprt_penta(total, (0.0, elo_diff), alpha, beta);
+            // let llr_penta  = ll_ratio_penta(total, 0.0, elo_diff);
+            // let sprt_penta = sprt_penta(total, (0.0, elo_diff), alpha, beta);
 
-            debug!("");
-            debug!("(w,d,l) = {:?}", wdl);
-            debug!("penta   = {:?}", total);
+            // debug!("");
+            // debug!("(w,d,l) = {:?}", wdl);
+            // debug!("penta   = {:?}", total);
 
-            debug!("");
-            debug!("llr  = {:?}", llr);
-            debug!("sprt = {:?}", sprt);
+            // debug!("");
+            // debug!("llr  = {:?}", llr);
+            // debug!("sprt = {:?}", sprt);
 
-            debug!("");
-            debug!("llr_p  = {:?}", llr_penta);
-            debug!("sprt_p = {:?}", sprt_penta);
+            // debug!("");
+            // debug!("llr_p  = {:?}", llr_penta);
+            // debug!("sprt_p = {:?}", sprt_penta);
 
         }
 
@@ -54,6 +54,19 @@ impl Supervisor {
 }
 
 impl Supervisor {
+
+    pub fn spawn_cutechess(&mut self) -> CuteChess {
+
+        // CuteChess::run_cutechess(
+        //     &self.engine_tuning.name,
+        //     &self.engine_baseline.name,
+        //     self.timecontrol,
+        //     &self.tunable.opt.name,
+        //     num_games)
+
+        unimplemented!()
+    }
+
     pub fn find_optimum(&mut self) {
         debug!("starting find_optimum, param: {}", &self.tunable.opt.name);
 
@@ -73,12 +86,7 @@ impl Supervisor {
         //     (elo0,elo1),
         //     alpha);
 
-        let cutechess = CuteChess::run_cutechess(
-            &self.engine_tuning.name,
-            &self.engine_baseline.name,
-            self.timecontrol,
-            &self.tunable.opt.name,
-            num_games);
+        let cutechess = self.spawn_cutechess();
 
         let mut total = RunningTotal::default();
         let mut wdl = (0,0,0);
