@@ -1882,7 +1882,7 @@ mod old {
         }
 
         // #[cfg(feature = "nope")]
-        pub fn _update_accum_simd(&mut self, g: &Game, persp: Color) {
+        pub fn _update_accum(&mut self, g: &Game, persp: Color) {
             use safe_arch::*;
             use crate::simd_utils::safe_arch::*;
 
@@ -2545,8 +2545,8 @@ mod old {
         //     self._update_accum_simd(g, Black);
         // }
 
-        // #[cfg(all(not(target_feature = "avx2"), not(target_feature = "ssse3")))]
-        #[cfg(not(feature = "test_simd"))]
+        #[cfg(all(not(target_feature = "avx2"), not(target_feature = "ssse3")))]
+        // #[cfg(not(feature = "test_simd"))]
         pub fn _update_accum(&mut self, g: &Game, persp: Color) {
             assert!(self.biases.len() == self.accum.accum[persp].len());
             self.accum.accum[persp].copy_from_slice(&self.biases);

@@ -153,14 +153,14 @@ mod nn_affine {
         const MAX_NUM_OUTPUT_REGS: usize = 8;
     }
 
-    // #[cfg(all(not(target_feature = "avx2"), target_feature = "ssse3"))]
-    // impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
-    //     const INPUT_SIMD_WIDTH: usize = 16;
-    //     const MAX_NUM_OUTPUT_REGS: usize = 8;
-    // }
+    #[cfg(all(not(target_feature = "avx2"), target_feature = "ssse3"))]
+    impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
+        const INPUT_SIMD_WIDTH: usize = 16;
+        const MAX_NUM_OUTPUT_REGS: usize = 8;
+    }
 
-    // #[cfg(all(not(target_feature = "avx2"), not(target_feature = "ssse3")))]
-    #[cfg(not(target_feature = "avx2"))]
+    #[cfg(all(not(target_feature = "avx2"), not(target_feature = "ssse3")))]
+    // #[cfg(not(target_feature = "avx2"))]
     impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
         const INPUT_SIMD_WIDTH: usize = 1;
         const MAX_NUM_OUTPUT_REGS: usize = 1;
@@ -183,12 +183,22 @@ mod nn_affine {
 
     impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
 
+        #[cfg(all(not(target_feature = "avx2"), not(target_feature = "ssse3")))]
+        pub fn get_weight_index(idx: usize) -> usize {
+            idx
+        }
+
         // XXX: fix
+        #[cfg(any(target_feature = "avx2", target_feature = "ssse3"))]
         pub fn get_weight_index(idx: usize) -> usize {
             if Self::INPUT_SIMD_WIDTH == 1 {
                 idx
             } else if Self::SIZE_INPUT_PADDED >= 128 {
-                Self::_get_weight_index(idx)
+                // #[cfg(target_feature = "ssse3")]
+                // // return Self::_get_weight_index_scrambled(idx);
+                // return idx;
+                // #[cfg(not(target_feature = "ssse3"))]
+                return Self::_get_weight_index(idx);
                 // idx
             } else {
                 // Self::_get_weight_index_scrambled(idx)
@@ -686,29 +696,11 @@ mod nn_affine {
 
     }
 
+    /// AVX2
+    #[cfg(target_feature = "avx2")]
     impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
 
-        pub fn _propagate_avx2_small_nosimd<'a>(
-            &'a mut self,
-            trans_features: &'a [u8]
-        ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
-            let input = self.prev.propagate(trans_features);
-            let input = &input[..Self::SIZE_INPUT]; // TODO: bench
-            for i in 0..Self::SIZE_OUTPUT {
-                let offset = i * Self::SIZE_INPUT_PADDED;
-                let mut sum: i32 = self.biases[i];
-                for (j,x) in input.iter().enumerate() {
-                    let x: i32 = x.as_();
-                    let x0 = self.weights[offset + j] as i32 * x;
-                    sum += x0;
-                }
-                self.buffer[i] = sum as i32;
-            }
-            self.buffer.as_ref()
-        }
-
         // #[cfg(feature = "nope")]
-        #[cfg(target_feature = "avx2")]
         /// TODO: when SIZE_OUTPUT % OUTPUTSIMD_WIDTH == 0
         pub fn _propagate_avx2_small<'a>(
             &'a mut self, trans_features: &'a [u8]
@@ -827,15 +819,7 @@ mod nn_affine {
             self.buffer.as_ref()
         }
 
-        #[cfg(all(not(target_feature = "avx2"), target_feature = "ssse3"))]
-        pub fn _propagate_avx2_small<'a>(
-            &'a mut self, trans_features: &'a [u8]
-        ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
-            unimplemented!()
-        }
-
         #[cfg(target_feature = "avx2")]
-        // #[cfg(feature = "nope")]
         pub fn _propagate_avx2_large<'a>(
             &'a mut self, trans_features: &'a [u8]
         ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
@@ -909,8 +893,18 @@ mod nn_affine {
             self.buffer.as_ref()
         }
 
-        #[cfg(all(not(target_feature = "avx2"), target_feature = "ssse3"))]
-        // #[cfg(feature = "nope")]
+    }
+
+    /// SSSE3
+    #[cfg(all(not(target_feature = "avx2"), target_feature = "ssse3"))]
+    impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
+
+        pub fn _propagate_avx2_small<'a>(
+            &'a mut self, trans_features: &'a [u8]
+        ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
+            self._propagate_nosimd(trans_features)
+        }
+
         pub fn _propagate_avx2_large<'a>(
             &'a mut self, trans_features: &'a [u8]
         ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
@@ -921,14 +915,10 @@ mod nn_affine {
             assert_eq!(input.len() % 32, 0);
 
             let input_vec: &[m128i] = unsafe {
-                // let ptr = input.as_ptr() as *const m128i;
-                // std::slice::from_raw_parts(ptr, input.len() / 32)
                 cast_slice_to_m128i(&input)
             };
 
             let weight_vec: &[m128i] = unsafe {
-                // let ptr = self.weights.as_ptr() as *const m128i;
-                // std::slice::from_raw_parts(ptr, self.weights.len() / 32)
                 cast_slice_to_m128i(&self.weights)
             };
 
@@ -940,7 +930,10 @@ mod nn_affine {
 
                     let w_offset = big_block * Self::BIG_BLOCK_SIZE
                         + small_block * Self::SMALL_BLOCK_SIZE * Self::NUM_OUTPUT_REGS;
-                    let w_offset = w_offset / 32;
+
+                    /// XXX: 16 or 32 and why?
+                    // let w_offset = w_offset / 32;
+                    let w_offset = w_offset / 16;
 
                     let weight_vec = &weight_vec[w_offset..];
 
@@ -956,11 +949,48 @@ mod nn_affine {
                     small_block += 2
                 }
 
+                let output_vec: &mut [m128i] = unsafe {
+                    cast_slice_to_m128i_mut(self.buffer.as_mut())
+                };
+
+                let bias_vec: &[m128i] = unsafe {
+                    cast_slice_to_m128i(self.biases.as_ref())
+                };
+
+                let mut k = 0;
+                while k < Self::NUM_OUTPUT_REGS {
+                    let idx = (big_block * Self::NUM_OUTPUT_REGS + k) / 4;
+                    output_vec[idx] = m128_haddx4(acc[k+0],acc[k+1],acc[k+2],acc[k+3],bias_vec[idx]);
+                    k += 4;
+                }
+
             }
 
-            unimplemented!()
+            self.buffer.as_ref()
         }
 
+    }
+
+    // #[cfg(all(not(target_feature = "avx2"), not(target_feature = "ssse3")))]
+    impl<Prev: NNLayer, const OS: usize, const IS: usize> NNAffine<Prev,OS,IS> {
+        pub fn _propagate_nosimd<'a>(
+            &'a mut self,
+            trans_features: &'a [u8]
+        ) -> &'a [<NNAffine<Prev,IS,OS> as NNLayer>::OutputType] {
+            let input = self.prev.propagate(trans_features);
+            let input = &input[..Self::SIZE_INPUT]; // TODO: bench
+            for i in 0..Self::SIZE_OUTPUT {
+                let offset = i * Self::SIZE_INPUT_PADDED;
+                let mut sum: i32 = self.biases[i];
+                for (j,x) in input.iter().enumerate() {
+                    let x: i32 = x.as_();
+                    let x0 = self.weights[offset + j] as i32 * x;
+                    sum += x0;
+                }
+                self.buffer[i] = sum as i32;
+            }
+            self.buffer.as_ref()
+        }
     }
 
     impl<Prev: NNLayer, const OS: usize, const IS: usize> NNLayer for NNAffine<Prev,OS,IS> {
@@ -1010,8 +1040,18 @@ mod nn_affine {
 
         // fn propagate<'a>(&'a mut self, trans_features: &'a [u8]) -> &'a [Self::OutputType] {}
 
+        #[cfg(all(not(target_feature = "avx2"), target_feature = "ssse3"))]
+        fn propagate<'a>(&'a mut self, trans_features: &'a [u8]) -> &'a [Self::OutputType] {
+            if Self::SIZE_INPUT_PADDED >= 128 {
+                self._propagate_avx2_large(trans_features)
+            } else {
+                self._propagate_avx2_small(trans_features)
+                // self._propagate_avx2_small_nosimd(trans_features)
+            }
+        }
+
         // #[cfg(feature = "nope")]
-        #[cfg(not(target_feature = "avx2"))]
+        #[cfg(all(not(target_feature = "avx2"), not(target_feature = "ssse3")))]
         // fn propagate(&mut self, trans_features: &[u8]) {
         fn propagate<'a>(&'a mut self, trans_features: &'a [u8]) -> &'a [Self::OutputType] {
 

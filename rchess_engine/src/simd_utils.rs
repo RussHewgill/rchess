@@ -134,10 +134,27 @@ pub mod safe_arch {
     ) {
         use safe_arch::*;
         let mut prod0 = mul_u8i8_add_horizontal_saturating_m128i(a0, b0);
-        let prod1 = mul_u8i8_add_horizontal_saturating_m128i(a1, b1);
+        let prod1     = mul_u8i8_add_horizontal_saturating_m128i(a1, b1);
         prod0 = add_saturating_i16_m128i(prod0, prod1);
-        prod0 = add_saturating_i16_m128i(prod0, set_splat_i16_m128i(1));
+        prod0 = mul_i16_horizontal_add_m128i(prod0, set_splat_i16_m128i(1));
         *acc  = add_i32_m128i(*acc, prod0);
+    }
+
+    pub fn m128_haddx4(
+        mut sum0: safe_arch::m128i,
+        sum1:     safe_arch::m128i,
+        mut sum2: safe_arch::m128i,
+        sum3:     safe_arch::m128i,
+        bias:     safe_arch::m128i
+    ) -> safe_arch::m128i {
+        use safe_arch::*;
+
+        sum0 = add_horizontal_i32_m128i(sum0, sum1);
+        sum2 = add_horizontal_i32_m128i(sum2, sum3);
+
+        sum0 = add_horizontal_i32_m128i(sum0, sum2);
+
+        add_i32_m128i(sum0, bias)
     }
 
 }
