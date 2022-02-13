@@ -132,7 +132,7 @@ fn main() -> std::io::Result<()> {
                         explorer.clear_threads();
                     },
                     "setoption"   => {
-                        // set_option(&mut explorer, params.clone().collect());
+                        set_option(&mut explorer, params.clone().collect());
                     },
                     "position"   => {
                         match params.next().unwrap() {
