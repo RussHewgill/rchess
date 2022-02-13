@@ -15,11 +15,10 @@ use crate::supervisor::{Supervisor,Tunable, CuteChess};
 ///       if H0 (null hyp):
 ///          increase opt by 1 step again
 ///       if H1 (A is stronger than B by at least X points):
-///          
 
 impl Supervisor {
 
-    fn update_stats(&mut self, wdl: (u32,u32,u32), total: RunningTotal, pairs: &[(Match,Match)]) {
+    fn update_stats(&mut self, wdl: (u32,u32,u32), total: RunningTotal, pairs: &[(Match,Match)]) -> bool {
 
         // let (elo0,elo1) = (0,50);
         let (alpha,beta) = (0.05, 0.05);
@@ -29,7 +28,8 @@ impl Supervisor {
         let mut max: Option<u32> = None;
 
         if self.sprts.len() == 0 {
-            debug!("elo: [{:>3} : {:>3}]", self.brackets[0] as u32, self.brackets[1] as u32)
+            debug!("elo: [{:>3} : {:>3}]", self.brackets[0] as u32, self.brackets[1] as u32);
+            return true;
         }
 
         for (elo, sprt) in self.sprts.iter_mut() {
@@ -62,26 +62,7 @@ impl Supervisor {
             self.sprts.retain(|(elo, sprt)| *elo < _max);
         }
 
-        // // for elo_diff in self.hyps.iter() {
-        // for elo_diff in [50.0] {
-        //     // let llr  = ll_ratio(wdl, 0.0, elo_diff);
-        //     // let sprt = sprt(wdl, (0.0, elo_diff), alpha, beta);
-        //     // let llr_penta  = ll_ratio_penta(total, 0.0, elo_diff);
-        //     // let sprt_penta = sprt_penta(total, (0.0, elo_diff), alpha, beta);
-        //     // debug!("");
-        //     // debug!("(w,d,l) = {:?}", wdl);
-        //     // debug!("penta   = {:?}", total);
-        //     // debug!("");
-        //     // debug!("llr  = {:?}", llr);
-        //     // debug!("sprt = {:?}", sprt);
-        //     // debug!("");
-        //     // debug!("llr_p  = {:?}", llr_penta);
-        //     // debug!("sprt_p = {:?}", sprt_penta);
-        // }
-
-        // let llr = ll_ratio(wdl, elo0 as f64, elo1 as f64);
-        // let sprt = sprt(wdl, (elo0 as f64,elo1 as f64), alpha, beta);
-
+        false
     }
 }
 
@@ -142,6 +123,11 @@ impl Supervisor {
         } else {
             vec![]
         };
+
+        self.listen_loop();
+    }
+
+    pub fn listen_loop(&mut self) -> [f64; 2] {
 
         let mut total = RunningTotal::default();
         let mut wdl = (0,0,0);
@@ -219,12 +205,19 @@ impl Supervisor {
                 pairs.push((pair[0], pair[1]));
                 pair.clear();
 
-                self.update_stats(wdl, total, &pairs);
+                if self.update_stats(wdl, total, &pairs) {
+                    break;
+                }
 
             }
 
         }
+
+        // debug!("elo: [{:>3} : {:>3}]", self.brackets[0] as u32, self.brackets[1] as u32);
+
+        self.brackets
     }
+
 }
 
 

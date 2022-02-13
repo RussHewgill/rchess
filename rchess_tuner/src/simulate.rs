@@ -133,7 +133,7 @@ pub fn simulate_supervisor(elo_diff: f64, ab: f64) {
 
             let m = MatchOutcome::MatchPair(m0,m1);
 
-            tx.send(m).unwrap();
+            tx.send(m).unwrap_or_else(|_| {});
 
             n += 2;
         }

@@ -102,8 +102,11 @@ fn main5() {
 fn main() {
 // fn main6() {
     use crate::simulate::*;
+
+    init_logger();
+
     // simulate(5.0, 0.05);
-    simulate_supervisor(5.0, 0.05);
+    simulate_supervisor(100.0, 0.05);
 }
 
 // fn main() {
