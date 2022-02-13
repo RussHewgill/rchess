@@ -2,6 +2,7 @@
 use crate::{explore::{Explorer, ExConfig}, tables::SParams};
 
 use std::{str::FromStr, collections::HashMap};
+use log::debug;
 
 
 // pub enum EngOptType {
@@ -59,7 +60,7 @@ impl Explorer {
             (opt.func)(&mut self.search_params, &mut self.cfg, val);
             self.sync_threads();
         } else {
-            panic!();
+            debug!("no option: {:?} = {:?}", name, val);
         }
     }
 }

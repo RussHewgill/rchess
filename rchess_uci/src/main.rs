@@ -132,7 +132,7 @@ fn main() -> std::io::Result<()> {
                         explorer.clear_threads();
                     },
                     "setoption"   => {
-                        set_option(&mut explorer, params.clone().collect());
+                        // set_option(&mut explorer, params.clone().collect());
                     },
                     "position"   => {
                         match params.next().unwrap() {
@@ -266,6 +266,7 @@ fn set_option(mut ex: &mut Explorer, params: Vec<&str>) {
     let val = ps.next().unwrap();
 
     ex.set_option(name, val);
+
     // println!("ex.cfg.num_threads = {:?}", ex.cfg.num_threads);
 }
 

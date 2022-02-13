@@ -3232,7 +3232,8 @@ fn main_eval() {
 
 }
 
-fn main9() {
+#[cfg(feature = "nope")]
+fn _main9() {
 
     let num_cpus  = num_cpus::get();
     let num_pcpus = num_cpus::get_physical();
@@ -3261,7 +3262,7 @@ fn main9() {
 }
 
 #[allow(unreachable_code)]
-fn _main9(id: usize) {
+fn main9() {
     let fen = STARTPOS;
     // init_logger();
 
@@ -3482,13 +3483,13 @@ fn _main9(id: usize) {
     let best   = res.get_result().unwrap();
     let scores = res.get_scores().unwrap_or_default();
 
-    // println!();
-    // debug!("Best move = {:>8} {:?}", best.score, best.mv);
-    // debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth.0, t2);
-    // println!();
+    println!();
+    debug!("Best move = {:>8} {:?}", best.score, best.mv);
+    debug!("explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth.0, t2);
+    println!();
 
-    println!("Best move = {:>8} {:?}", best.score, best.mv);
-    println!("{id:>3}: explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth.0, t2);
+    // println!("Best move = {:>8} {:?}", best.score, best.mv);
+    // println!("{id:>3}: explore lazy_smp_negamax (depth: {}) done in {:.3} seconds.", stats0.max_depth.0, t2);
 
     return;
 

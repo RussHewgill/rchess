@@ -40,11 +40,13 @@ impl Supervisor {
                              sprt.elo0, sprt.elo1);
                     max = Some(*elo);
                     self.brackets[1] = *elo as f64;
+                    println!("brackets = {:?}", self.brackets);
                 } else {
                     println!("H1: is that A is stronger than B by at least {} ELO points",
                              sprt.elo1);
                     min = Some(*elo);
                     self.brackets[0] = *elo as f64;
+                    println!("brackets = {:?}", self.brackets);
                 }
             }
 
