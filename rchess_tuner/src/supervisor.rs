@@ -41,6 +41,7 @@ pub struct Supervisor {
 
     pub timecontrol:       TimeControl,
 
+    pub t0:                std::time::Instant,
     pub sprts:             Vec<(u32,SPRT)>,
 
     tx_rx:                 Option<(Arc<Sender<MatchOutcome>>,Arc<Receiver<MatchOutcome>>)>,
@@ -70,6 +71,7 @@ impl Supervisor {
             engine_baseline,
             tunable,
             timecontrol,
+            t0:             std::time::Instant::now(),
             sprts,
             tx_rx:          None,
             brackets:       [0.0; 2],

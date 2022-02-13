@@ -29,24 +29,27 @@ impl Supervisor {
         let mut max: Option<u32> = None;
 
         if self.sprts.len() == 0 {
-            println!("elo: [{:>3} : {:>3}]", self.brackets[0] as u32, self.brackets[1] as u32)
+            debug!("elo: [{:>3} : {:>3}]", self.brackets[0] as u32, self.brackets[1] as u32)
         }
 
         for (elo, sprt) in self.sprts.iter_mut() {
 
             if let Some(hyp) = sprt.sprt_penta(total) {
+                let t1 = self.t0.elapsed().as_secs_f64();
                 if hyp == Hypothesis::H0 {
-                    println!("H0 (null): A is NOT stronger than B by at least {} ELO points, elo1 = {}",
-                             sprt.elo0, sprt.elo1);
+                    debug!("{:.0} H0 (null): A is NOT stronger than B by at least {} ELO points, elo1 = {}",
+                             t1, sprt.elo0, sprt.elo1);
+                    debug!("found in {} games", pairs.len() * 2);
                     max = Some(*elo);
                     self.brackets[1] = *elo as f64;
-                    println!("brackets = {:?}", self.brackets);
+                    debug!("brackets = {:?}", self.brackets);
                 } else {
-                    println!("H1: is that A is stronger than B by at least {} ELO points",
-                             sprt.elo1);
+                    debug!("{:.0} H1: is that A is stronger than B by at least {} ELO points",
+                             t1, sprt.elo1);
+                    debug!("found in {} games", pairs.len() * 2);
                     min = Some(*elo);
                     self.brackets[0] = *elo as f64;
-                    println!("brackets = {:?}", self.brackets);
+                    debug!("brackets = {:?}", self.brackets);
                 }
             }
 
@@ -120,6 +123,8 @@ impl Supervisor {
 
         // let (elo0,elo1) = (0,50);
         let num_games = 1000;
+
+        self.t0 = std::time::Instant::now();
 
         // let (alpha,beta) = (0.05, 0.05);
 

@@ -3264,13 +3264,13 @@ fn _main9() {
 #[allow(unreachable_code)]
 fn main9() {
     let fen = STARTPOS;
-    // init_logger();
+    init_logger();
 
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
 
-    // let ts = Tables::new();
+    let ts = Tables::new();
     // ts.write_to_file_def().unwrap();
-    let ts = Tables::read_from_file_def().unwrap();
+    // let ts = Tables::read_from_file_def().unwrap();
 
     fn games_wac(i: usize) -> String {
         let mut games = read_epd("testpositions/WAC.epd").unwrap();
@@ -3356,19 +3356,31 @@ fn main9() {
     // // let (fen,correct) = &games_sts(23, 2); // fen, set
     // let (fen,correct) = &games_sts(1, 3); // fen, set
 
-    // eprintln!("fen = {:?}", fen);
+    eprintln!("fen = {:?}", fen);
     let mut g = Game::from_fen(&ts, fen).unwrap();
     // let g = g.flip_sides(&ts);
 
-    // eprintln!("g.to_fen() = {:?}", g.to_fen());
-    // eprintln!("g = {:?}", g);
+    eprintln!("g.to_fen() = {:?}", g.to_fen());
+    eprintln!("g = {:?}", g);
 
     // eprintln!();
     // eprintln!("correct = {:?}", correct);
 
+    // {
+    //     let c0 = Coord::from("a4");
+    //     let occ = g.all_occupied();
+    //     let mvs = ts.attacks_rook(c0, occ);
+    //     eprintln!("mvs = {:?}", mvs);
+    //     let k0 = cfg!(target_feature = "bmi2");
+    //     eprintln!("k0 = {:?}", k0);
+    //     return;
+    // }
+
     // let st = ABStack::new();
     // let mut movegen = MoveGen::new(&ts, &g, None, &st, 0, 0);
     // while let Some(mv) = movegen.next(&st) { eprintln!("mv = {:?}", mv); }
+    // let mvs = MoveGen::generate_list_legal(&ts, &g, None);
+    // for mv in mvs.iter() { eprintln!("mv = {:?}", mv); }
     // return;
 
     // let im0 = MatEval::imbalance(&g.state.material, White);
@@ -3408,8 +3420,7 @@ fn main9() {
     ex.cfg.clear_table = false;
     // ex.cfg.num_threads = Some(12);
     // ex.cfg.num_threads = Some(6);
-    // ex.cfg.num_threads = Some(1);
-    ex.cfg.num_threads = Some(2);
+    ex.cfg.num_threads = Some(1);
     // ex.cfg.num_threads = None;
 
     // ex.load_syzygy("/home/me/code/rust/rchess/tables/syzygy/").unwrap();

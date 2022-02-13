@@ -13,7 +13,7 @@
         "protocol": "uci",
         "options": [
             { "name":  "num_threads", "value": 1 },
-            { "name":  "lmr_reduction", "value": 6 }
+            { "name":  "lmr_reduction", "value": 5 }
         ]
     },
     {

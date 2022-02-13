@@ -133,12 +133,11 @@ pub struct MoveGen<'a> {
 
     stage:               MoveGenStage,
 
-    buf:                 ArrayVec<Move,256>,
-    // pub buf:                 ArrayVec<Move,256>,
+    // buf:                 ArrayVec<Move,256>,
+    pub buf:                 ArrayVec<Move,256>,
 
-    // buf_scored:          ArrayVec<(Move,OrdMove),256>,
-    buf_scored:          ArrayVec<(Move,Score),256>,
-    // pub buf_scored:          ArrayVec<(Move,Score),256>,
+    // buf_scored:          ArrayVec<(Move,Score),256>,
+    pub buf_scored:          ArrayVec<(Move,Score),256>,
 
     // buf_all:             ArrayVec<Move,256>,
 
@@ -878,7 +877,7 @@ impl<'a> MoveGen<'a> {
         }
 
         let mut moves = self.buf.clone();
-        moves.retain(|mv| self.move_is_legal(*mv));
+        // moves.retain(|mv| self.move_is_legal(*mv));
 
         moves
     }
@@ -891,7 +890,7 @@ impl<'a> MoveGen<'a> {
         }
     }
 
-    fn _gen_all(&mut self, gen: MoveGenType) {
+    pub fn _gen_all(&mut self, gen: MoveGenType) {
         self.gen_pawns(gen, None);
         self.gen_knights(gen, None);
         self.gen_sliding(gen, Bishop, None);
@@ -1072,6 +1071,10 @@ impl<'a> MoveGen<'a> {
 /// Misc helpers
 // #[cfg(feature = "nope")]
 impl<'a> MoveGen<'a> {
+
+    pub fn stage(&self) -> MoveGenStage {
+        self.stage
+    }
 
     pub fn is_checkmate(ts: &'a Tables, g: &'a Game) -> bool {
 

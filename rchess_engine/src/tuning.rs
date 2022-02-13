@@ -65,8 +65,7 @@ impl Default for SParams {
             lmr_min_ply:              3,
             lmr_min_depth:            4,
 
-            // lmr_reduction:            3,
-            lmr_reduction:            4,
+            lmr_reduction:            3,
             lmr_ply_const:            6,
 
             qs_recaps_only:           5,
