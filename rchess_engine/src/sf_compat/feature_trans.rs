@@ -2040,19 +2040,48 @@ mod old {
     }
 
     /// SIMD, SSSE3
-    // #[cfg(all(not(target_feature = "avx2"), target_feature = "ssse3"))]
-    #[cfg(feature = "nope")]
+    #[cfg(all(not(target_feature = "avx2"), target_feature = "ssse3"))]
+    // #[cfg(feature = "test_simd")]
+    // #[cfg(feature = "nope")]
     impl NNFeatureTrans {
 
-        const NUM_REGS: usize = 16; // SSSE3
-        const NUM_REGS_PSQT: usize = 1; // SSSE3
+        // const NUM_REGS: usize = 16; // SSSE3
+        // const NUM_REGS_PSQT: usize = 1; // SSSE3
 
-        /// AVX2 = 256
-        const TILE_HEIGHT: usize = Self::NUM_REGS * std::mem::size_of::<safe_arch::m256i>() / 2;
-        /// AVX2 = 8
-        const TILE_HEIGHT_PSQT: usize = Self::NUM_REGS_PSQT * std::mem::size_of::<safe_arch::m256i>() / 4;
+        const NUM_REGS: usize = Self::best_register_count::<safe_arch::m128i, i16>(1024); // SSSE3
+        const NUM_REGS_PSQT: usize = Self::best_register_count::<safe_arch::m128i, i32>(8); // SSSE3
 
-        pub fn _update_accum_simd(&mut self, g: &Game, persp: Color) {
+        /// SSSE3 = 16
+        const TILE_HEIGHT: usize = Self::NUM_REGS * std::mem::size_of::<safe_arch::m128i>() / 2;
+        /// SSSE3 = 2
+        const TILE_HEIGHT_PSQT: usize = Self::NUM_REGS_PSQT * std::mem::size_of::<safe_arch::m128i>() / 4;
+
+        pub const fn best_register_count<V: Sized, W: Sized>(num_lanes: usize) -> usize {
+
+            // let num_lanes = 1024;
+            let lane_size = std::mem::size_of::<W>();
+            let reg_size  = std::mem::size_of::<safe_arch::m128i>();
+
+            let max_registers = 16; /// only for 64 bit
+
+            let ideal = (num_lanes * lane_size) / reg_size;
+
+            if ideal <= max_registers {
+                return ideal;
+            }
+
+            let mut divisor = max_registers;
+            while divisor > 1 {
+                if ideal % divisor == 0 {
+                    return divisor;
+                }
+            }
+
+            1
+        }
+
+        // pub fn _update_accum_simd(&mut self, g: &Game, persp: Color) {
+        pub fn _update_accum(&mut self, g: &Game, persp: Color) {
             use safe_arch::*;
             use crate::simd_utils::safe_arch::*;
 
@@ -2205,7 +2234,6 @@ mod old {
             // }
 
         }
-
 
     }
 
@@ -2407,18 +2435,25 @@ mod old {
 
         pub fn accum_add(&mut self, i_w: NNIndex, i_b: NNIndex) -> NNDelta {
 
-            #[cfg(not(target_feature = "avx2"))]
-            self._accum_add(White, i_w);
-            #[cfg(not(target_feature = "avx2"))]
-            self._accum_add(Black, i_b);
-
-            #[cfg(target_feature = "avx2")]
-            self._accum_inc_simd::<true>(White, i_w);
-            #[cfg(target_feature = "avx2")]
-            self._accum_inc_simd::<true>(Black, i_b);
-
+            // #[cfg(not(target_feature = "avx2"))]
             // self._accum_add(White, i_w);
+            // #[cfg(not(target_feature = "avx2"))]
             // self._accum_add(Black, i_b);
+
+            // #[cfg(target_feature = "avx2")]
+            // self._accum_inc_simd::<true>(White, i_w);
+            // #[cfg(target_feature = "avx2")]
+            // self._accum_inc_simd::<true>(Black, i_b);
+
+            #[cfg(not(any(target_feature = "avx2",target_feature = "ssse3")))]
+            self._accum_rem(White, i_w);
+            #[cfg(not(any(target_feature = "avx2",target_feature = "ssse3")))]
+            self._accum_rem(Black, i_b);
+
+            #[cfg(any(target_feature = "avx2",target_feature = "ssse3"))]
+            self._accum_inc_simd::<false>(White, i_w);
+            #[cfg(any(target_feature = "avx2",target_feature = "ssse3"))]
+            self._accum_inc_simd::<false>(Black, i_b);
 
             NNDelta::Remove(i_w,i_b)
         }
@@ -2426,18 +2461,15 @@ mod old {
         pub fn accum_rem(&mut self, i_w: NNIndex, i_b: NNIndex) -> NNDelta {
             // eprintln!("rem (i_w,i_b) = {:?}", (i_w,i_b));
 
-            #[cfg(not(target_feature = "avx2"))]
+            #[cfg(not(any(target_feature = "avx2",target_feature = "ssse3")))]
             self._accum_rem(White, i_w);
-            #[cfg(not(target_feature = "avx2"))]
+            #[cfg(not(any(target_feature = "avx2",target_feature = "ssse3")))]
             self._accum_rem(Black, i_b);
 
-            #[cfg(target_feature = "avx2")]
+            #[cfg(any(target_feature = "avx2",target_feature = "ssse3"))]
             self._accum_inc_simd::<false>(White, i_w);
-            #[cfg(target_feature = "avx2")]
+            #[cfg(any(target_feature = "avx2",target_feature = "ssse3"))]
             self._accum_inc_simd::<false>(Black, i_b);
-
-            // self._accum_rem(White, i_w);
-            // self._accum_rem(Black, i_b);
 
             NNDelta::Add(i_w,i_b)
         }
@@ -2492,27 +2524,29 @@ mod old {
 
         }
 
-        // /// temp no simd
-        // pub fn reset_accum(&mut self, g: &Game) {
-        //     self._update_accum(g, White);
-        //     self._update_accum(g, Black);
-        // }
-
+        /// temp no simd
         pub fn reset_accum(&mut self, g: &Game) {
-            // #[cfg(all(not(target_feature = "avx2"), not(target_feature = "ssse3")))]
-            #[cfg(all(not(target_feature = "avx2")))]
             self._update_accum(g, White);
-            // #[cfg(all(not(target_feature = "avx2"), not(target_feature = "ssse3")))]
-            #[cfg(all(not(target_feature = "avx2")))]
             self._update_accum(g, Black);
-            // #[cfg(any(target_feature = "avx2",target_feature = "ssse3"))]
-            #[cfg(target_feature = "avx2")]
-            self._update_accum_simd(g, White);
-            // #[cfg(any(target_feature = "avx2",target_feature = "ssse3"))]
-            #[cfg(target_feature = "avx2")]
-            self._update_accum_simd(g, Black);
         }
 
+        // pub fn reset_accum(&mut self, g: &Game) {
+        //     // #[cfg(all(not(target_feature = "avx2"), not(target_feature = "ssse3")))]
+        //     #[cfg(all(not(target_feature = "avx2")))]
+        //     self._update_accum(g, White);
+        //     // #[cfg(all(not(target_feature = "avx2"), not(target_feature = "ssse3")))]
+        //     #[cfg(all(not(target_feature = "avx2")))]
+        //     self._update_accum(g, Black);
+        //     // #[cfg(any(target_feature = "avx2",target_feature = "ssse3"))]
+        //     #[cfg(target_feature = "avx2")]
+        //     self._update_accum_simd(g, White);
+        //     // #[cfg(any(target_feature = "avx2",target_feature = "ssse3"))]
+        //     #[cfg(target_feature = "avx2")]
+        //     self._update_accum_simd(g, Black);
+        // }
+
+        // #[cfg(all(not(target_feature = "avx2"), not(target_feature = "ssse3")))]
+        #[cfg(not(feature = "test_simd"))]
         pub fn _update_accum(&mut self, g: &Game, persp: Color) {
             assert!(self.biases.len() == self.accum.accum[persp].len());
             self.accum.accum[persp].copy_from_slice(&self.biases);

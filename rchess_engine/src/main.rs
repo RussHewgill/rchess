@@ -2920,6 +2920,7 @@ fn main_nn2() {
 #[allow(unreachable_code)]
 fn main_nnue3() {
     use rchess_engine_lib::sf_compat::{NNUE4,NNIndex};
+    use rchess_engine_lib::sf_compat::NNFeatureTrans;
     use rchess_engine_lib::sf_compat::accumulator::*;
 
     let fen = STARTPOS;
@@ -3002,6 +3003,7 @@ fn main_nnue3() {
 
     let v0 = nn2.evaluate(&g, false);
     eprintln!("v0 = {:?}", v0);
+    eprintln!("v0: {:>4} == 806 = {:?}", v0, v0 == 806);
 
     // // let mut g = Game::from_fen(&ts, &fens[2]).unwrap();
     // let mut g2 = Game::from_fen(&ts, fen2).unwrap();
