@@ -144,17 +144,23 @@ pub fn _gen_magics_pext(bishop: bool)
 
 #[allow(unreachable_code)]
 pub fn _gen_magics(bishop: bool)
-                    -> std::result::Result<([Magic; 64], [BitBoard; 0x1480]),
-                                            ([Magic; 64], [BitBoard; 0x19000])>
+                    // -> std::result::Result<([Magic; 64], [BitBoard; 0x1480]),
+                    //                         ([Magic; 64], [BitBoard; 0x19000])>
+                   -> std::result::Result<([Magic; 64], Vec<BitBoard>),
+                                          ([Magic; 64], Vec<BitBoard>)>
 {
     // let mut rng = rand::thread_rng();
     let mut rng: StdRng = SeedableRng::seed_from_u64(1234u64);
 
     let mut reference: [BitBoard; 4096] = [BitBoard::empty(); 4096];
     let mut occupancy: [BitBoard; 4096] = [BitBoard::empty(); 4096];
-
     let mut table_b: [BitBoard; 0x1480]  = [BitBoard::empty(); 0x1480];
     let mut table_r: [BitBoard; 0x19000] = [BitBoard::empty(); 0x19000];
+
+    let mut reference = vec![BitBoard::empty(); 4096];
+    let mut occupancy = vec![BitBoard::empty(); 4096];
+    let mut table_b = vec![BitBoard::empty(); 0x1480];
+    let mut table_r = vec![BitBoard::empty(); 0x19000];
 
     let mut magics: [Option<Magic>; 64] = [None; 64];
     let (r1bb,r8bb) = (BitBoard::mask_rank(0),BitBoard::mask_rank(7));
@@ -405,7 +411,8 @@ impl Tables {
         x0 & x1 & x2
     }
 
-    pub fn gen_magics() -> (([Magic; 64], [BitBoard; 0x1480]), ([Magic; 64], [BitBoard; 0x19000])) {
+    // pub fn gen_magics() -> (([Magic; 64], [BitBoard; 0x1480]), ([Magic; 64], [BitBoard; 0x19000])) {
+    pub fn gen_magics() -> (([Magic; 64], Vec<BitBoard>), ([Magic; 64], Vec<BitBoard>)) {
 
         let (magics_b,table_b) = _gen_magics(true).unwrap();
         if let Err((magics_r,table_r)) = _gen_magics(false) {
