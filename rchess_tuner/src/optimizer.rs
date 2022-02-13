@@ -116,13 +116,13 @@ impl Supervisor {
             num_games)
     }
 
-    pub fn find_optimum(&mut self) {
+    pub fn find_optimum(&mut self, num_games: u64, spawn: bool) {
         debug!("starting find_optimum, param: {}", &self.tunable.opt.name);
 
         let output_label = format!("{}", &self.tunable.opt.name);
 
         // let (elo0,elo1) = (0,50);
-        let num_games = 1000;
+        // let num_games = 1000;
 
         self.t0 = std::time::Instant::now();
 
@@ -137,7 +137,11 @@ impl Supervisor {
         //     (elo0,elo1),
         //     alpha);
 
-        let cutechess = self.spawn_cutechess_mult(num_games, 1);
+        let cutechess = if spawn {
+            self.spawn_cutechess_mult(num_games, 1)
+        } else {
+            vec![]
+        };
 
         let mut total = RunningTotal::default();
         let mut wdl = (0,0,0);

@@ -1,13 +1,16 @@
 
+use crate::json_config::Engine;
 use crate::sprt::*;
 use crate::sprt::sprt_penta::*;
-use crate::tuner_types::{RunningTotal, Hypothesis};
+use crate::supervisor::{Supervisor, Tunable};
+use crate::tuner_types::{RunningTotal, Hypothesis, TimeControl, MatchOutcome, Match, MatchResult, WinLossType, DrawType};
 
 use log::{debug,trace};
 
 use rand::prelude::SliceRandom;
 use rand::{Rng,SeedableRng};
 use rand::prelude::StdRng;
+use rchess_engine_lib::types::Color;
 
 #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Copy)]
 pub enum WDL {
@@ -49,6 +52,95 @@ impl WDL {
     }
 
     // pub fn gen_penta()
+
+}
+
+pub fn simulate_supervisor(elo_diff: f64, ab: f64) {
+
+    let engine = Engine {
+        name:     "Engine".to_string(),
+        command:  "Engine".to_string(),
+        options:  Default::default(),
+    };
+    let timecontrol = TimeControl::new_f64(1.0, 0.1);
+    let tunable = Tunable::new("lmr_reduction".to_string(), 2, 5, 3, 1);
+    let mut sv = Supervisor::new(engine.clone(), engine.clone(), tunable, timecontrol);
+
+    let (tx,rx) = sv.tx_rx();
+
+    let handle = std::thread::spawn(move || {
+        let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
+
+        /// prob(W + 0.5 * D)
+        let w_prob = log_likelyhood(elo_diff);
+
+        let draw_ratio = 0.4;
+
+        let (mut w,mut d,mut l) = (0,0,0);
+
+        let mut n = 0;
+        loop {
+            let m0: WDL = WDL::gen(w_prob, draw_ratio, &mut rng);
+            let m1: WDL = WDL::gen(w_prob, draw_ratio, &mut rng);
+
+            let result0 = match m0 {
+                WDL::Win  => {
+                    w += 1;
+                    MatchResult::WinLoss(Color::White, WinLossType::Checkmate)
+                },
+                WDL::Loss => {
+                    l += 1;
+                    MatchResult::WinLoss(Color::Black, WinLossType::Checkmate)
+                },
+                WDL::Draw => {
+                    d += 1;
+                    MatchResult::Draw(DrawType::Stalemate)
+                },
+            };
+
+            let m0 = Match {
+                engine_a:   Color::White,
+                game_num:   n,
+                result:     result0,
+                sum_score:  (w,d,l),
+                elo:        None,
+                sprt:       None,
+            };
+
+            let result1 = match m1 {
+                WDL::Win  => {
+                    w += 1;
+                    MatchResult::WinLoss(Color::Black, WinLossType::Checkmate)
+                },
+                WDL::Loss => {
+                    l += 1;
+                    MatchResult::WinLoss(Color::White, WinLossType::Checkmate)
+                },
+                WDL::Draw => {
+                    d += 1;
+                    MatchResult::Draw(DrawType::Stalemate)
+                },
+            };
+
+            let m1 = Match {
+                engine_a:   Color::Black,
+                game_num:   n+1,
+                result:     result1,
+                sum_score:  (w,d,l),
+                elo:        None,
+                sprt:       None,
+            };
+
+            let m = MatchOutcome::MatchPair(m0,m1);
+
+            tx.send(m).unwrap();
+
+            n += 2;
+        }
+
+    });
+
+    sv.find_optimum(1_000_000, false);
 
 }
 

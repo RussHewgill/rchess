@@ -377,57 +377,6 @@ pub mod helpers {
         1.0 / (1.0 + 10.0f64.powf(-elo_diff / 400.0))
     }
 
-    #[cfg(feature = "nope")]
-    pub fn elo_to_bayes_elo(elo: f64) -> f64 {
-        use argmin::solver::brent::Brent;
-        use argmin::core::{ArgminOp, ArgminSlogLogger, Error, Executor, ObserverMode};
-
-        let draw_elo = 327.;
-        let biases   = [-90., 200.];
-
-        struct BrentFunc {
-            s: f64,
-        }
-
-        // fn _probs(biases: [f64; 2], )
-
-        // fn score(probs: &[f64]) -> 
-
-        impl ArgminOp for BrentFunc {
-            type Param    = f64;
-            type Output   = f64;
-            type Hessian  = ();
-            type Jacobian = ();
-            type Float    = f64;
-
-            fn apply(&self, x: &Self::Param) -> Result<Self::Output, Error> {
-                // Ok(self.pdf.iter().map(|(a,p)| p * (a - self.s) / (1. + x * (a - self.s))).sum::<f64>())
-                unimplemented!()
-            }
-        }
-
-        let bb = f64::ln(10.0) / 400.0;
-
-        let s = if elo >= 0.0 {
-            1. / (1. + f64::exp(-bb * elo))
-        } else {
-            let e = f64::exp(bb * elo);
-            e / (e + 1.)
-        };
-
-        // let b = BrentFunc { s, };
-
-        // let solver = Brent::new(-1000, 1000, 2e-12);
-        // let res = Executor::new(b, solver, 0.0)
-        // // .add_observer(ArgminSlogLogger::term(), ObserverMode::Always)
-        //     .max_iters(100)
-        //     .run()
-        //     .unwrap();
-        // let x = res.state.best_param;
-
-        unimplemented!()
-    }
-
     pub fn stats(pdf: &[(f64,f64)]) -> (f64,f64) {
 
         let eps = 1e-6;
@@ -496,5 +445,115 @@ pub mod helpers {
     }
 }
 
+pub mod elo {
+    use super::helpers::*;
 
+    pub fn get_elo(wdl: (u32,u32,u32)) -> f64 {
+        let wdl = regularize(&[wdl.0 as f64,wdl.1 as f64,wdl.2 as f64]);
+        unimplemented!()
+    }
+
+    pub fn elo_logistic_to_normalized(lelo: f64) -> f64 {
+        unimplemented!()
+    }
+
+    pub fn elo_normalized_to_logistic(nelo: f64) -> f64 {
+        unimplemented!()
+    }
+
+    pub fn elo_to_bayes_elo(elo: f64, draw_ratio: f64) -> (f64,f64) {
+        assert!(draw_ratio >= 0.);
+
+        let s = log_likelyhood(elo);
+
+        let w = s - draw_ratio / 2.0;
+        let d = draw_ratio;
+        let l = 1.0 - d - w;
+
+        if w <= 0.0 || l <= 0.0 {
+            panic!();
+        }
+
+        prob_to_bayes_elo(w,l)
+    }
+
+    pub fn prob_to_bayes_elo(w: f64, l: f64) -> (f64,f64) {
+        assert!(0.0 < w && w < 1.0 && 0.0 < l && l < 1.0);
+        let elo = 200.0 * f64::log10(w / l * (1. - l) / (1. - w));
+        let draw_elo = 200.0 * f64::log10((1. - l) / l * (1. - w) / w);
+        (elo,draw_elo)
+    }
+
+    pub fn bayes_elo_to_prob(belo: f64, draw_elo: f64) -> (f64,f64,f64) {
+        let w = 1. / (1. + 10.0f64.powf(-belo + draw_elo) / 400.);
+        let l = 1. / (1. + 10.0f64.powf(belo + draw_elo) / 400.);
+        let d = 1.0 - w - l;
+        (w,l,d)
+    }
+
+    pub fn bayes_elo_to_elo(belo: f64, draw_elo: f64) -> f64 {
+        let (w,d,l) = bayes_elo_to_prob(belo, draw_elo);
+        elo(w + 0.5 * d)
+    }
+
+    pub fn elo(mut x: f64) -> f64 {
+        let eps = 1e-3;
+        x = x.max(eps);
+        x = x.min(1. - eps);
+        -400. * f64::log10(1. / x - 1.)
+    }
+
+    #[cfg(feature = "nope")]
+    pub fn elo_to_bayes_elo(elo: f64) -> f64 {
+        use argmin::solver::brent::Brent;
+        use argmin::core::{ArgminOp, ArgminSlogLogger, Error, Executor, ObserverMode};
+
+        let draw_elo = 327.;
+        let biases   = [-90., 200.];
+
+        struct BrentFunc {
+            s: f64,
+        }
+
+        // fn _probs(biases: [f64; 2], )
+
+        // fn score(probs: &[f64]) -> 
+
+        impl ArgminOp for BrentFunc {
+            type Param    = f64;
+            type Output   = f64;
+            type Hessian  = ();
+            type Jacobian = ();
+            type Float    = f64;
+
+            fn apply(&self, x: &Self::Param) -> Result<Self::Output, Error> {
+                // Ok(self.pdf.iter().map(|(a,p)| p * (a - self.s) / (1. + x * (a - self.s))).sum::<f64>())
+                unimplemented!()
+            }
+        }
+
+        let bb = f64::ln(10.0) / 400.0;
+
+        let s = if elo >= 0.0 {
+            1. / (1. + f64::exp(-bb * elo))
+        } else {
+            let e = f64::exp(bb * elo);
+            e / (e + 1.)
+        };
+
+        // let b = BrentFunc { s, };
+
+        // let solver = Brent::new(-1000, 1000, 2e-12);
+        // let res = Executor::new(b, solver, 0.0)
+        // // .add_observer(ArgminSlogLogger::term(), ObserverMode::Always)
+        //     .max_iters(100)
+        //     .run()
+        //     .unwrap();
+        // let x = res.state.best_param;
+
+        unimplemented!()
+    }
+
+
+}
 

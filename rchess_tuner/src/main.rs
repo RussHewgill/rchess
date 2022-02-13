@@ -99,14 +99,41 @@ fn main5() {
 
 }
 
-// fn main() {
-fn main6() {
+fn main() {
+// fn main6() {
     use crate::simulate::*;
-    simulate(20.0, 0.05);
+    // simulate(5.0, 0.05);
+    simulate_supervisor(5.0, 0.05);
 }
 
-fn main() {
-// fn main4() {
+// fn main() {
+fn main7() {
+    use crate::sprt::helpers::*;
+    use crate::sprt::elo::*;
+
+    // let wdl = (20,20,20);
+    // let elo = get_elo(wdl);
+    // eprintln!("elo = {:?}", elo);
+
+
+    let elo = 5.0;
+    // let nelo = elo_logistic_to_normalized(elo);
+    // let lelo = elo_normalized_to_logistic(elo);
+    let belo = elo_to_bayes_elo(elo, 0.4);
+
+    let elo2 = bayes_elo_to_elo(5.0, 327.0);
+
+    eprintln!();
+    eprintln!("elo  = {:.1}", elo);
+    // eprintln!("nelo = {:.1}", nelo);
+    // eprintln!("lelo = {:.1}", lelo);
+    eprintln!("belo = {:.1}", belo.0);
+    eprintln!("elo2 = {:?}", elo2);
+
+}
+
+// fn main() {
+fn main4() {
 
     init_logger();
 
@@ -132,7 +159,7 @@ fn main() {
         timecontrol,
     );
 
-    sup.find_optimum();
+    sup.find_optimum(2000, true);
 
 }
 
