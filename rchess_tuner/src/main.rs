@@ -46,19 +46,22 @@ use log::{debug, error, log_enabled, info, Level};
 use simplelog::*;
 use gag::Redirect;
 
+use crate::sprt::elo::get_elo_penta;
 use crate::sprt::log_likelyhood;
+use crate::sprt::sprt_penta::*;
 use crate::tuner_types::MatchResult;
 use crate::supervisor::*;
 
-// fn main() {
-fn main5() {
+fn main() {
+// fn main5() {
     use crate::sprt::*;
     // use crate::sprt::gsprt::*;
     use crate::sprt::sprt_penta::*;
     use crate::sprt::*;
     use crate::sprt::helpers::*;
+    use crate::sprt::elo::*;
 
-    let (elo0,elo1) = (10.0,0.0);
+    // let (elo0,elo1) = (10.0,0.0);
     // let (elo0,elo1) = (0.0,200.0);
 
     // let s0 = log_likelyhood(s0);
@@ -68,21 +71,160 @@ fn main5() {
 
     // let wdl = (22,9,14);
 
+    // let wdl = (865,1126,876);
+    // let (elo,err) = get_elo(wdl);
+    // eprintln!("elo = {:.1}", elo);
+    // eprintln!("err = {:.2}", err);
+
+    // let wdl = (4821,15060,4858);
+
+    // let ldw = (4858,15060,4821);
     // let total = RunningTotal {
-    //     ll:     2424,
-    //     ld_dl:  1106,
-    //     lw_dd:  5159,
-    //     dw_wd:  1187,
-    //     ww:     2625,
+    //     ll:     457,
+    //     ld_dl:  2906,
+    //     lw_dd:  5608,
+    //     dw_wd:  2928,
+    //     ww:     433,
     // };
 
+    let ldw = (4542,7919,4771);
     let total = RunningTotal {
-        ll:     157,
-        ld_dl:  395,
-        lw_dd:  538,
-        dw_wd:  384,
-        ww:     154,
+        ll:     14,
+        ld_dl:  1655,
+        lw_dd:  5048,
+        dw_wd:  1886,
+        ww:     13,
     };
+
+    // let (s0,s1) = (-3.0, 3.0);
+    let (s0,s1) = (0.0, 5.0);
+    // let (s0,s1) = (0.466, 2.796);
+
+    // eprintln!("s0 = {:.2},{:.2}", s0, s1);
+
+    // let mut sprt = SPRT::new_def_ab(0.5, 3.0);
+    // let mut sprt = SPRT::new_def_ab(0.23, 1.379);
+    // let mut sprt = SPRT::new_def_ab(1.0, 6.0);
+    let mut sprt = SPRT::new_def_ab(s0, s1);
+    let h = sprt.sprt_penta(total);
+
+    // eprintln!("h = {:?}", h);
+
+    if let Some(hyp) = h {
+        if hyp == Hypothesis::H0 {
+            println!("H0 (null): A is NOT stronger than B by at least {} ELO points, elo1 = {}",
+                     sprt.elo0, sprt.elo1);
+        } else {
+            println!("H1: is that A is stronger than B by at least {} ELO points",
+                     sprt.elo1);
+        }
+    }
+
+    #[cfg(feature = "nope")]
+    {
+        let mut sprts = vec![];
+        for elo in [0.,1.,2.,3.,4.,5.,6.,7.,8.,9.,10.,15.,20.,30.,40.,50.,60.,80.,100.,150.,200.] {
+            sprts.push((elo as u32, SPRT::new(0., elo, 0.05)));
+        }
+        let mut min: Option<u32> = None;
+        let mut max: Option<u32> = None;
+        let mut brackets = [0.0f64; 2];
+
+        for (elo, sprt) in sprts.iter_mut() {
+
+            if let Some(hyp) = sprt.sprt_penta(total) {
+                if hyp == Hypothesis::H0 {
+                    println!(" H0 (null): A is NOT stronger than B by at least {} ELO points, elo1 = {}",
+                                sprt.elo0, sprt.elo1);
+
+                    // let tot = total.to_vec().into_iter().sum::<u32>() as f64;
+                    // debug!("total.ll    = {:.2}", total.ll as f64 / tot);
+                    // debug!("total.ld_dl = {:.2}", total.ld_dl as f64 / tot);
+                    // debug!("total.lw_dd = {:.2}", total.lw_dd as f64 / tot);
+                    // debug!("total.dw_wd = {:.2}", total.dw_wd as f64 / tot);
+                    // debug!("total.ww    = {:.2}", total.ww as f64 / tot);
+
+                    max = Some(*elo);
+                    brackets[1] = *elo as f64;
+                    println!("brackets = {:?}", brackets);
+                } else {
+                    println!(" H1: is that A is stronger than B by at least {} ELO points",
+                                sprt.elo1);
+
+                    // let tot = total.to_vec().into_iter().sum::<u32>() as f64;
+                    // debug!("total.ll    = {:.2}", total.ll as f64 / tot);
+                    // debug!("total.ld_dl = {:.2}", total.ld_dl as f64 / tot);
+                    // debug!("total.lw_dd = {:.2}", total.lw_dd as f64 / tot);
+                    // debug!("total.dw_wd = {:.2}", total.dw_wd as f64 / tot);
+                    // debug!("total.ww    = {:.2}", total.ww as f64 / tot);
+
+                    min = Some(*elo);
+                    brackets[0] = *elo as f64;
+                    println!("brackets = {:?}", brackets);
+                }
+            }
+
+        }
+
+        eprintln!("min = {:?}", min);
+        eprintln!("max = {:?}", max);
+    }
+
+    // let llr = ll_ratio(wdl, -1.0, 3.0);
+    // eprintln!("llr = {:?}", llr);
+
+    // let lelo = (-1.0, 3.0);
+    // let nelo = (-1.62, 4.861);
+    // let belo = (-1.589, 4.767);
+
+    // let (k0,_) = elo_logistic_to_bayes_elo(lelo.0, 0.609);
+
+    // let draw_elo = calc_draw_elo(ldw);
+    // eprintln!("draw_elo = {:?}", draw_elo);
+
+    // let (w,d,l) = bayes_elo_to_prob(belo.0, draw_elo);
+    // eprintln!("(w,d,l) = {:?}", (w,d,l));
+
+    // let k1 = bayes_elo_to_logistic(belo.0, draw_elo);
+    // eprintln!("k1 = {:.2}", k1);
+
+    // let (elo0,elo1) = (-1.0, 3.0);
+    // let (elo0,elo1) = (0.23, 1.379);
+
+    // let (s0,s1) = (log_likelyhood(elo0), log_likelyhood(elo1));
+    // eprintln!("(s0,s1) = ({:.2},{:.2})", s0, s1);
+
+    // let (sum,pdf) = results_to_pdf(ldw);
+    // let (sum,pdf) = results_to_pdf(wdl);
+    // let (sum,pdf) = results_penta_to_pdf(total);
+
+    // let llr3 = ll_ratio(ldw, elo0, elo1);
+    // eprintln!("llr3 = {:.3}", llr3);
+
+    // let llr5 = ll_ratio_penta(total, elo0, elo1);
+    // eprintln!("llr5 = {:.3}", llr5);
+
+    // let (elo, elo95, los) = get_elo(ldw);
+    // // let (elo, elo95, los) = get_elo_penta(total);
+
+    // eprintln!("elo   = {:.3}", elo);
+    // eprintln!("elo95 = {:.3}", elo95);
+    // eprintln!("los   = {:.3}", los);
+
+    // let llr = ll_ratio_penta(total, elo0, elo1);
+    // eprintln!("llr = {:?}", llr);
+
+    // let llr_alt = gsprt::llr_alt(&pdf, s0, s1);
+    // eprintln!("llr_alt  = {:?}", llr_alt);
+
+    // let jumps = llr_jumps(&pdf, s0, s1);
+    // for j in jumps.iter() {
+    //     eprintln!("j = ({:.4},{:.4})", j.0, j.1);
+    // }
+
+    // let (elo,err) = get_elo(wdl);
+    // eprintln!("elo = {:.1}", elo);
+    // eprintln!("err = {:.2}", err);
 
     // let (s0,s1) = (log_likelyhood(elo0), log_likelyhood(elo1));
     // let (sum,pdf) = results_penta_to_pdf(total);
@@ -99,14 +241,26 @@ fn main5() {
 
 }
 
-fn main() {
-// fn main6() {
+// fn main() {
+fn main6() {
     use crate::simulate::*;
-
     init_logger();
 
-    // simulate(5.0, 0.05);
-    simulate_supervisor(100.0, 0.05);
+    /// approx +4.4 Elo
+    let ldw = (4542,7919,4771);
+    let total = RunningTotal {
+        ll:     14,
+        ld_dl:  1655,
+        lw_dd:  5048,
+        dw_wd:  1886,
+        ww:     13,
+    };
+
+    // let (elo,elo95,los) = get_elo_penta(total);
+    // eprintln!("elo   = {:?}", elo);
+    // eprintln!("elo95 = {:?}", elo95);
+
+    simulate_supervisor(None, total, 0.05);
 }
 
 // fn main() {
@@ -122,9 +276,9 @@ fn main7() {
     let elo = 5.0;
     // let nelo = elo_logistic_to_normalized(elo);
     // let lelo = elo_normalized_to_logistic(elo);
-    let belo = elo_to_bayes_elo(elo, 0.4);
+    let belo = elo_logistic_to_bayes_elo(elo, 0.4);
 
-    let elo2 = bayes_elo_to_elo(5.0, 327.0);
+    let elo2 = bayes_elo_to_logistic(5.0, 327.0);
 
     eprintln!();
     eprintln!("elo  = {:.1}", elo);

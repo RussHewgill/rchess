@@ -6,29 +6,29 @@ pub use self::helpers::log_likelyhood;
 
 /// https://github.com/glinscott/fishtest/blob/master/server/fishtest/stats/LLRcalc.py
 #[cfg(feature = "nope")]
-mod gsprt {
+pub mod gsprt {
 
     // fn wdr_to_penta(win: u64, draw: u64, loss: u64) -> (u64,u64,u64,u64,u64) {
     //     ()
     // }
 
-    pub fn stats(pdf: &[(f64,f64)]) -> (f64,f64) {
+    // pub fn stats(pdf: &[(f64,f64)]) -> (f64,f64) {
 
-        let eps = 1e-6;
-        for x in pdf.iter() {
-            assert!(-eps <= x.1);
-            assert!(x.1 <= 1.0 + eps);
-        }
+    //     let eps = 1e-6;
+    //     for x in pdf.iter() {
+    //         assert!(-eps <= x.1);
+    //         assert!(x.1 <= 1.0 + eps);
+    //     }
 
-        let n: f64 = pdf.iter().map(|x| x.1).sum();
+    //     let n: f64 = pdf.iter().map(|x| x.1).sum();
 
-        assert!((n - 1.0).abs() < eps);
+    //     assert!((n - 1.0).abs() < eps);
 
-        let s: f64   = pdf.iter().map(|(value,prob)| value * prob).sum();
-        let var: f64 = pdf.iter().map(|(value,prob)| prob * (value - s).powi(2)).sum();
+    //     let s: f64   = pdf.iter().map(|(value,prob)| value * prob).sum();
+    //     let var: f64 = pdf.iter().map(|(value,prob)| prob * (value - s).powi(2)).sum();
 
-        (s,var)
-    }
+    //     (s,var)
+    // }
 
     // fn llr_jumps(pdf: &[(f64,f64)], s0: f64, s1: f64) -> f64 {
     //     let mut out = vec![];
@@ -42,8 +42,8 @@ mod gsprt {
     // }
 
     pub fn llr_alt(pdf: &[(f64,f64)], s0: f64, s1: f64) -> f64 {
-        let r0: f64 = pdf.iter().map(|(prob,value)| prob * (value - s0).powi(2)).sum();
-        let r1: f64 = pdf.iter().map(|(prob,value)| prob * (value - s1).powi(2)).sum();
+        let r0: f64 = pdf.iter().map(|(value,prob)| prob * (value - s0).powi(2)).sum();
+        let r1: f64 = pdf.iter().map(|(value,prob)| prob * (value - s1).powi(2)).sum();
 
         1.0 / 2.0 * f64::ln(r0 / r1)
     }
@@ -64,26 +64,23 @@ mod gsprt {
         1.0 / (1.0 + 10.0f64.powf(-x / 400.0))
     }
 
-    pub fn llr_logistic(wdl: (u32,u32,u32), s0: f64, s1: f64) -> f64 {
+    // pub fn llr_logistic(wdl: (u32,u32,u32), s0: f64, s1: f64) -> f64 {
+    //     let elo0 = log_likelyhood(s0);
+    //     let elo1 = log_likelyhood(s1);
+    //     let (n,pdf) = results_to_pdf(wdl);
+    //     unimplemented!()
+    // }
 
-        let elo0 = log_likelyhood(s0);
-        let elo1 = log_likelyhood(s1);
-
-        let (n,pdf) = results_to_pdf(wdl);
-
-        unimplemented!()
-    }
-
-    fn regularize(xs: &[f64]) -> Vec<f64> {
-        let eps = 1e-3;
-        let mut xs = xs.to_vec();
-        for x in xs.iter_mut() {
-            if *x == 0.0 {
-                *x = eps;
-            }
-        }
-        xs
-    }
+    // fn regularize(xs: &[f64]) -> Vec<f64> {
+    //     let eps = 1e-3;
+    //     let mut xs = xs.to_vec();
+    //     for x in xs.iter_mut() {
+    //         if *x == 0.0 {
+    //             *x = eps;
+    //         }
+    //     }
+    //     xs
+    // }
 
     // fn draw_elo_calc()
 
@@ -102,24 +99,26 @@ pub mod sprt_penta {
     use crate::tuner_types::{RunningTotal, Hypothesis};
     use super::helpers::*;
 
-    struct BrentFunc {
-        s:      f64,
-        pdf:    Vec<(f64,f64)>,
-    }
-
-    impl ArgminOp for BrentFunc {
-        type Param    = f64;
-        type Output   = f64;
-        type Hessian  = ();
-        type Jacobian = ();
-        type Float    = f64;
-
-        fn apply(&self, x: &Self::Param) -> Result<Self::Output, Error> {
-            Ok(self.pdf.iter().map(|(a,p)| p * (a - self.s) / (1. + x * (a - self.s))).sum::<f64>())
-        }
-    }
-
+    // #[cfg(feature = "nope")]
     pub fn mle(pdf: &[(f64,f64)], s: f64) -> Vec<(f64,f64)> {
+
+        struct BrentFunc {
+            s:      f64,
+            pdf:    Vec<(f64,f64)>,
+        }
+
+        impl ArgminOp for BrentFunc {
+            type Param    = f64;
+            type Output   = f64;
+            type Hessian  = ();
+            type Jacobian = ();
+            type Float    = f64;
+
+            fn apply(&self, x: &Self::Param) -> Result<Self::Output, Error> {
+                Ok(self.pdf.iter().map(|(a,p)| p * (a - self.s) / (1. + x * (a - self.s))).sum::<f64>())
+            }
+        }
+
         let eps = 1e-9;
 
         let v = pdf[0].0;
@@ -151,6 +150,15 @@ pub mod sprt_penta {
         // unimplemented!()
     }
 
+    pub fn mle_expected(pdfhat: &[(f64,f64)], s: f64) -> Vec<(f64,f64)> {
+        // let pdf1 = pdfhat.iter().map(|(ai,pi)| (ai - s, pi))
+        unimplemented!()
+    }
+
+    pub fn mle_t_value(pdf: &[(f64,f64)], s: f64) -> Vec<(f64,f64)> {
+        unimplemented!()
+    }
+
     pub fn llr_jumps(pdf: &[(f64,f64)], s0: f64, s1: f64) -> Vec<(f64,f64)> {
         let pdf0 = mle(&pdf, s0);
         let pdf1 = mle(&pdf, s1);
@@ -164,10 +172,10 @@ pub mod sprt_penta {
         out
     }
 
-    pub fn ll_ratio(wdl: (u32,u32,u32), elo0: f64, elo1: f64) -> f64 {
+    pub fn ll_ratio(ldw: (u32,u32,u32), elo0: f64, elo1: f64) -> f64 {
         let (s0,s1) = (log_likelyhood(elo0), log_likelyhood(elo1));
 
-        let (sum,pdf) = results_to_pdf(wdl);
+        let (sum,pdf) = results_to_pdf(ldw);
 
         let jumps = llr_jumps(&pdf, s0, s1);
 
@@ -209,26 +217,6 @@ pub mod sprt_penta {
         )
     }
 
-    pub fn sprt(
-        wdl:          (u32,u32,u32),
-        (elo0,elo1):  (f64,f64),
-        alpha:        f64,
-        beta:         f64,
-    ) -> Option<bool> {
-        let llr = ll_ratio(wdl, elo0, elo1);
-
-        let la = f64::ln(beta / (1.0 - alpha));
-        let lb = f64::ln((1.0 - beta) / alpha);
-
-        if llr > lb {
-            return Some(true);
-        } else if llr < la {
-            return Some(false);
-        } else {
-            None
-        }
-    }
-
     #[derive(Debug,Clone,Copy)]
     pub struct SPRT {
         pub elo0:     f64,
@@ -249,7 +237,11 @@ pub mod sprt_penta {
 
     /// new
     impl SPRT {
-        pub fn new(elo0: f64, elo1: f64, alpha: f64, beta: f64) -> Self {
+        pub fn new_def_ab(elo0: f64, elo1: f64) -> Self {
+            Self::new(elo0, elo1, 0.05)
+        }
+        pub fn new(elo0: f64, elo1: f64, ab: f64) -> Self {
+            let (alpha,beta) = (ab,ab);
             Self {
                 elo0,
                 elo1,
@@ -268,6 +260,7 @@ pub mod sprt_penta {
         }
     }
 
+    /// run
     impl SPRT {
         pub fn sprt_penta(&mut self, results: RunningTotal) -> Option<Hypothesis> {
 
@@ -297,6 +290,27 @@ pub mod sprt_penta {
     }
 
     #[cfg(feature = "nope")]
+    pub fn sprt(
+        wdl:          (u32,u32,u32),
+        (elo0,elo1):  (f64,f64),
+        alpha:        f64,
+        beta:         f64,
+    ) -> Option<bool> {
+        let llr = ll_ratio(wdl, elo0, elo1);
+
+        let la = f64::ln(beta / (1.0 - alpha));
+        let lb = f64::ln((1.0 - beta) / alpha);
+
+        if llr > lb {
+            return Some(true);
+        } else if llr < la {
+            return Some(false);
+        } else {
+            None
+        }
+    }
+
+    #[cfg(feature = "nope")]
     pub fn sprt_penta(
         results:      RunningTotal,
         (elo0,elo1):  (f64,f64),
@@ -320,7 +334,7 @@ pub mod sprt_penta {
 
 }
 
-// #[cfg(feature = "nope")]
+#[cfg(feature = "nope")]
 pub mod prev {
     use super::log_likelyhood;
 
@@ -396,6 +410,7 @@ pub mod helpers {
     }
 
     pub fn results_penta_to_pdf(results: RunningTotal) -> (f64, Vec<(f64,f64)>) {
+
         let mut results: Vec<f64> = results.to_vec().into_iter().map(|x| x as f64).collect();
         regularize_mut(&mut results);
 
@@ -410,18 +425,21 @@ pub mod helpers {
         (sum, out)
     }
 
-    pub fn results_to_pdf((win,draw,loss): (u32,u32,u32)) -> (f64, Vec<(f64,f64)>) {
-        let wdl = regularize(&[win as f64,draw as f64,loss as f64]);
+    // pub fn results_to_pdf((win,draw,loss): (u32,u32,u32)) -> (f64, Vec<(f64,f64)>) {
+    //     let wdl = regularize(&[win as f64,draw as f64,loss as f64]);
+    pub fn results_to_pdf(ldw: (u32,u32,u32)) -> (f64, Vec<(f64,f64)>) {
+        let ldw = regularize(&[ldw.0 as f64, ldw.1 as f64, ldw.2 as f64]);
 
-        let sum: f64 = wdl.iter().sum();
-        let len = wdl.len();
+        let sum: f64 = ldw.iter().sum();
+        let len = ldw.len();
 
         let mut out = vec![];
 
         for i in 0..len {
-            out.push((i as f64 / (len as f64 - 1.0), wdl[i] / sum))
+            out.push((i as f64 / (len as f64 - 1.0), ldw[i] / sum))
         }
         (sum, out)
+        // unimplemented!()
     }
 
     pub fn regularize_mut(xs: &mut [f64]) {
@@ -446,22 +464,129 @@ pub mod helpers {
 }
 
 pub mod elo {
+    use crate::tuner_types::RunningTotal;
+
     use super::helpers::*;
+    use statrs::distribution::{Continuous,ContinuousCDF};
 
-    pub fn get_elo(wdl: (u32,u32,u32)) -> f64 {
-        let wdl = regularize(&[wdl.0 as f64,wdl.1 as f64,wdl.2 as f64]);
+    pub fn stats2(results: &[f64]) -> (f64,f64,f64) {
+        let len = results.len();
+        let n: f64 = results.iter().sum();
+
+        let games = n * (len as f64 - 1.0) / 2.0;
+
+        let mu = (0..len).map(|i| results[i] * (i as f64 / 2.0)).sum::<f64>() / games;
+
+        let mu2 = (len as f64 - 1.0) / 2.0 * mu;
+
+        let var = (0..len).map(|i| results[i] * (i as f64 / 2.0 - mu2).powi(2)).sum::<f64>() / games;
+
+        (games,mu,var)
+    }
+
+    fn phi(q: f64) -> f64 {
+        let n = statrs::distribution::Normal::new(0.0, 1.0).unwrap();
+        n.cdf(q)
+    }
+
+    fn phi_inv(p: f64) -> f64 {
+        let n = statrs::distribution::Normal::new(0.0, 1.0).unwrap();
+        n.inverse_cdf(p)
+    }
+
+    pub fn get_elo(ldw: (u32,u32,u32)) -> (f64,f64,f64) {
+        let mut results = vec![ldw.0 as f64,ldw.1 as f64,ldw.2 as f64];
+        regularize_mut(&mut results);
+        _get_elo(&results)
+    }
+
+    pub fn get_elo_penta(results: RunningTotal) -> (f64,f64,f64) {
+        let mut results: Vec<f64> = results.to_vec().into_iter().map(|x| x as f64).collect();
+        regularize_mut(&mut results);
+        _get_elo(&results)
+    }
+
+    pub fn _get_elo(results: &[f64]) -> (f64,f64,f64) {
+        let (games,mu,var) = stats2(&results);
+
+        let stddev = var.sqrt();
+
+        let mu_min = mu + phi_inv(0.025) * stddev / games.sqrt();
+        let mu_max = mu + phi_inv(0.975) * stddev / games.sqrt();
+
+        fn f_elo(mut x: f64) -> f64 {
+            let eps = 1e-3;
+            x = x.max(eps);
+            x = x.min(1. - eps);
+            -400.0 * f64::log10(1. / x - 1.)
+        }
+
+        let elo = f_elo(mu);
+
+        let elo95 = (f_elo(mu_max) - f_elo(mu_min)) / 2.0;
+
+        let los = phi((mu - 0.5) / (stddev / games.sqrt()));
+
+        (elo, elo95, los)
+    }
+
+    #[cfg(feature = "nope")]
+    /// from cutechess
+    pub fn get_elo(wdl: (u32,u32,u32)) -> (f64,f64) {
+        // let wdl = regularize(&[wdl.0 as f64,wdl.1 as f64,wdl.2 as f64]);
+        let (w,d,l) = wdl;
+        let (wins,draws,losses) = (w as f64,d as f64,l as f64);
+
+        let n = wins + draws + losses;
+        let w = wins / n;
+        let d = draws / n;
+        let l = losses / n;
+
+        let mu = w + d / 2.0;
+
+        let dev_w = w * f64::powi(1.0 - mu, 2);
+        let dev_l = l * f64::powi(0.0 - mu, 2);
+        let dev_d = d * f64::powi(0.5 - mu, 2);
+
+        let std_dev = f64::sqrt(dev_w + dev_l + dev_d) / f64::sqrt(n);
+
+        let mu_min = mu + phi_inv(0.025) * std_dev;
+        let mu_max = mu + phi_inv(0.975) * std_dev;
+
+        fn diff(x: f64) -> f64 {
+            -400.0 * f64::log10(1.0 / x - 1.0)
+        }
+
+        let err = (diff(mu_max) - diff(mu_min)) / 2.0;
+
+        let elo = diff(mu);
+
+        eprintln!("mu      = {:.3}", mu);
+        eprintln!("std_dev = {:.3}", std_dev);
+        eprintln!("err     = {:.3}", err);
+        eprintln!("elo     = {:?}", elo);
+
         unimplemented!()
     }
 
-    pub fn elo_logistic_to_normalized(lelo: f64) -> f64 {
-        unimplemented!()
+    // pub fn elo_logistic_to_normalized(lelo: f64) -> f64 {
+    //     // let score = log_likelyhood(lelo);
+    //     unimplemented!()
+    // }
+
+    // pub fn elo_normalized_to_logistic(nelo: f64) -> f64 {
+    //     unimplemented!()
+    // }
+
+    pub fn calc_draw_elo(ldw: (u32,u32,u32)) -> f64 {
+        let ldw = [ldw.0 as f64, ldw.1 as f64, ldw.2 as f64];
+        let n: f64 = ldw.iter().sum();
+        let p = ldw.iter().map(|p| *p / n).collect::<Vec<_>>();
+        let (_,draw_elo) = prob_to_bayes_elo(p[2], p[0]);
+        draw_elo
     }
 
-    pub fn elo_normalized_to_logistic(nelo: f64) -> f64 {
-        unimplemented!()
-    }
-
-    pub fn elo_to_bayes_elo(elo: f64, draw_ratio: f64) -> (f64,f64) {
+    pub fn elo_logistic_to_bayes_elo(elo: f64, draw_ratio: f64) -> (f64,f64) {
         assert!(draw_ratio >= 0.);
 
         let s = log_likelyhood(elo);
@@ -485,13 +610,13 @@ pub mod elo {
     }
 
     pub fn bayes_elo_to_prob(belo: f64, draw_elo: f64) -> (f64,f64,f64) {
-        let w = 1. / (1. + 10.0f64.powf(-belo + draw_elo) / 400.);
-        let l = 1. / (1. + 10.0f64.powf(belo + draw_elo) / 400.);
+        let w = 1.0 / (1.0 + f64::powf(10.0, (-belo + draw_elo) / 400.0));
+        let l = 1.0 / (1.0 + f64::powf(10.0, (belo + draw_elo) / 400.0));
         let d = 1.0 - w - l;
         (w,l,d)
     }
 
-    pub fn bayes_elo_to_elo(belo: f64, draw_elo: f64) -> f64 {
+    pub fn bayes_elo_to_logistic(belo: f64, draw_elo: f64) -> f64 {
         let (w,d,l) = bayes_elo_to_prob(belo, draw_elo);
         elo(w + 0.5 * d)
     }

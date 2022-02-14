@@ -42,7 +42,7 @@ pub struct Supervisor {
     pub timecontrol:       TimeControl,
 
     pub t0:                std::time::Instant,
-    pub sprts:             Vec<(u32,SPRT)>,
+    pub sprts:             Vec<(i32,SPRT)>,
 
     tx_rx:                 Option<(Arc<Sender<MatchOutcome>>,Arc<Receiver<MatchOutcome>>)>,
 
@@ -62,8 +62,17 @@ impl Supervisor {
 
         let mut sprts = vec![];
 
-        for elo in [0.,5.,10.,15.,20.,30.,40.,50.,60.,80.,100.,150.,200.] {
-            sprts.push((elo as u32, SPRT::new(0., elo, 0.05, 0.05)));
+        // for elo in [0.,5.,10.,15.,20.,30.,40.,50.,60.,80.,100.,150.,200.].iter().rev() {
+        //     let elo = -elo;
+        //     sprts.push((elo as i32, SPRT::new(0., elo, 0.05, 0.05)));
+        // }
+
+        // for elo in [0.,5.,10.,15.,20.,30.,40.,50.,60.,80.,100.,150.,200.] {
+        //     sprts.push((elo as i32, SPRT::new(0., elo, 0.05)));
+        // }
+
+        for elo in 0..50 {
+            sprts.push((elo as i32, SPRT::new(0., elo as f64, 0.05)));
         }
 
         Self {

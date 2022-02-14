@@ -3,7 +3,7 @@ use crate::json_config::Engine;
 use crate::sprt::*;
 use crate::sprt::sprt_penta::*;
 use crate::supervisor::{Supervisor, Tunable};
-use crate::tuner_types::{RunningTotal, Hypothesis, TimeControl, MatchOutcome, Match, MatchResult, WinLossType, DrawType};
+use crate::tuner_types::*;
 
 use log::{debug,trace};
 
@@ -51,11 +51,34 @@ impl WDL {
 
     }
 
-    // pub fn gen_penta()
+    pub fn gen_penta(total: RunningTotal, rng: &mut StdRng) -> (Self,Self) {
+        use WDL::*;
+
+        let tot = total.to_vec().into_iter().sum::<u32>() as f64;
+        let ll    = total.ll as f64 / tot;
+        let ld_dl = total.ld_dl as f64 / tot;
+        let lw_dd = total.lw_dd as f64 / tot;
+        let dw_wd = total.dw_wd as f64 / tot;
+        let ww    = total.ww as f64 / tot;
+
+        let x0 = rng.gen_range(0.0..1.0);
+
+        if x0 <= ll {
+            (Loss,Loss)
+        } else if x0 <= ll + ld_dl {
+            (Loss,Draw)
+        } else if x0 <= ll + ld_dl + lw_dd {
+            (Draw,Draw)
+        } else if x0 <= ll + ld_dl + lw_dd + dw_wd {
+            (Win,Draw)
+        } else {
+            (Win,Win)
+        }
+    }
 
 }
 
-pub fn simulate_supervisor(elo_diff: f64, ab: f64) {
+pub fn simulate_supervisor(elo_diff: Option<f64>, penta_template: RunningTotal, ab: f64) {
 
     let engine = Engine {
         name:     "Engine".to_string(),
@@ -71,17 +94,18 @@ pub fn simulate_supervisor(elo_diff: f64, ab: f64) {
     let handle = std::thread::spawn(move || {
         let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
 
-        /// prob(W + 0.5 * D)
-        let w_prob = log_likelyhood(elo_diff);
-
-        let draw_ratio = 0.4;
+        // /// prob(W + 0.5 * D)
+        // let w_prob = log_likelyhood(elo_diff);
+        // let draw_ratio = 0.4;
 
         let (mut w,mut d,mut l) = (0,0,0);
 
         let mut n = 0;
         loop {
-            let m0: WDL = WDL::gen(w_prob, draw_ratio, &mut rng);
-            let m1: WDL = WDL::gen(w_prob, draw_ratio, &mut rng);
+            // let m0: WDL = WDL::gen(w_prob, draw_ratio, &mut rng);
+            // let m1: WDL = WDL::gen(w_prob, draw_ratio, &mut rng);
+
+            let (m0,m1) = WDL::gen_penta(penta_template, &mut rng);
 
             let result0 = match m0 {
                 WDL::Win  => {
@@ -172,7 +196,7 @@ pub fn simulate(elo_diff: f64, ab: f64) {
 
     let mut sprts = vec![];
     for elo in [0.,5.,10.,15.,20.,30.,40.,50.,60.,80.,100.,150.,200.] {
-        sprts.push((elo as u32, SPRT::new(0., elo, 0.05, 0.05)));
+        sprts.push((elo as u32, SPRT::new(0., elo, 0.05)));
     }
     let mut min: Option<u32> = None;
     let mut max: Option<u32> = None;

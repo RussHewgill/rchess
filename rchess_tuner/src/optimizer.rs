@@ -24,29 +24,58 @@ impl Supervisor {
         let (alpha,beta) = (0.05, 0.05);
 
         // let mut removes = vec![];
-        let mut min: Option<u32> = None;
-        let mut max: Option<u32> = None;
+        let mut min: Option<i32> = None;
+        let mut max: Option<i32> = None;
 
         if self.sprts.len() == 0 {
             debug!("elo: [{:>3} : {:>3}]", self.brackets[0] as u32, self.brackets[1] as u32);
             return true;
         }
 
+        let tot = wdl.0 + wdl.1 + wdl.2;
+        let tot = tot as f64;
+        let w = wdl.0 as f64 / tot;
+        let d = wdl.1 as f64 / tot;
+        let l = wdl.2 as f64 / tot;
+
+
         for (elo, sprt) in self.sprts.iter_mut() {
 
             if let Some(hyp) = sprt.sprt_penta(total) {
                 let t1 = self.t0.elapsed().as_secs_f64();
                 if hyp == Hypothesis::H0 {
+                    println!();
                     debug!("{:.0} H0 (null): A is NOT stronger than B by at least {} ELO points, elo1 = {}",
                              t1, sprt.elo0, sprt.elo1);
                     debug!("found in {} games", pairs.len() * 2);
+                    debug!("(w,d,l) = ({:.2},{:.2},{:.2})", w,d,l);
+                    // debug!("{:?}", wdl);
+
+                    // let tot = total.to_vec().into_iter().sum::<u32>() as f64;
+                    // debug!("total.ll    = {:.2}", total.ll as f64 / tot);
+                    // debug!("total.ld_dl = {:.2}", total.ld_dl as f64 / tot);
+                    // debug!("total.lw_dd = {:.2}", total.lw_dd as f64 / tot);
+                    // debug!("total.dw_wd = {:.2}", total.dw_wd as f64 / tot);
+                    // debug!("total.ww    = {:.2}", total.ww as f64 / tot);
+
                     max = Some(*elo);
                     self.brackets[1] = *elo as f64;
                     debug!("brackets = {:?}", self.brackets);
                 } else {
+                    println!();
                     debug!("{:.0} H1: is that A is stronger than B by at least {} ELO points",
                              t1, sprt.elo1);
                     debug!("found in {} games", pairs.len() * 2);
+                    debug!("(w,d,l) = ({:.2},{:.2},{:.2})", w,d,l);
+                    // debug!("{:?}", wdl);
+
+                    // let tot = total.to_vec().into_iter().sum::<u32>() as f64;
+                    // debug!("total.ll    = {:.2}", total.ll as f64 / tot);
+                    // debug!("total.ld_dl = {:.2}", total.ld_dl as f64 / tot);
+                    // debug!("total.lw_dd = {:.2}", total.lw_dd as f64 / tot);
+                    // debug!("total.dw_wd = {:.2}", total.dw_wd as f64 / tot);
+                    // debug!("total.ww    = {:.2}", total.ww as f64 / tot);
+
                     min = Some(*elo);
                     self.brackets[0] = *elo as f64;
                     debug!("brackets = {:?}", self.brackets);
@@ -185,6 +214,12 @@ impl Supervisor {
                 use MatchResult::*;
                 use Color::*;
 
+                match pair[0].result {
+                    WinLoss(White,_) => wdl.0 += 1,
+                    WinLoss(Black,_) => wdl.2 += 1,
+                    Draw(_)          => wdl.1 += 1,
+                }
+
                 /// LL,LD+DL,LW+DD+WL,DW+WD,WW
                 match (pair[0].result, pair[1].result) {
                     (WinLoss(Black,_),WinLoss(White,_)) => total.ll += 1,
@@ -196,8 +231,8 @@ impl Supervisor {
                     (WinLoss(Black,_),WinLoss(Black,_)) => total.lw_dd += 1,
                     (WinLoss(White,_),WinLoss(White,_)) => total.lw_dd += 1,
 
-                    (WinLoss(White,_),Draw(_))          => total.lw_dd += 1,
-                    (Draw(_),WinLoss(Black,_))          => total.lw_dd += 1,
+                    (WinLoss(White,_),Draw(_))          => total.dw_wd += 1,
+                    (Draw(_),WinLoss(Black,_))          => total.dw_wd += 1,
 
                     (WinLoss(White,_),WinLoss(Black,_)) => total.ww += 1,
                 }

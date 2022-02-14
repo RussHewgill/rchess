@@ -46,6 +46,8 @@ nix = "0.23.0"
 rand = "0.8.4"
 rand_distr = "0.4.2"
 
+statrs = "0.15.0"
+
 argmin = "0.5.0"
 
 num_cpus = "1.13.1"
