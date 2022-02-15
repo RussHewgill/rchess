@@ -2,6 +2,7 @@
 use crate::sprt::sprt_penta::SPRT;
 use crate::tuner_types::*;
 use crate::json_config::Engine;
+use crate::sprt::elo::EloType;
 
 use once_cell::sync::Lazy;
 use rchess_engine_lib::explore::AtomicBool;
@@ -72,7 +73,8 @@ impl Supervisor {
         // }
 
         for elo in 0..50 {
-            sprts.push((elo as i32, SPRT::new(0., elo as f64, 0.05)));
+            // sprts.push((elo as i32, SPRT::new(0., elo as f64, 0.05)));
+            sprts.push((elo as i32, SPRT::new_with_elo_type(0., elo as f64, 0.05, EloType::Normalized)));
         }
 
         Self {

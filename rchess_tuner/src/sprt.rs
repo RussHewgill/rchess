@@ -95,9 +95,12 @@ pub mod sprt_penta {
     use argmin::solver::brent::Brent;
     use argmin::core::{ArgminOp, ArgminSlogLogger, Error, Executor, ObserverMode};
 
+    use crate::brownian::*;
     use crate::sprt::log_likelyhood;
     use crate::tuner_types::{RunningTotal, Hypothesis};
-    use super::helpers::*;
+    use crate::sprt::elo::EloType;
+    use crate::sprt::helpers::*;
+    use crate::sprt::elo::*;
 
     // #[cfg(feature = "nope")]
     pub fn mle(pdf: &[(f64,f64)], s: f64) -> Vec<(f64,f64)> {
@@ -184,7 +187,7 @@ pub mod sprt_penta {
         sum * llr
     }
 
-    pub fn ll_ratio_penta(results: RunningTotal, elo0: f64, elo1: f64) -> f64 {
+    pub fn ll_ratio_logistic_penta(results: RunningTotal, elo0: f64, elo1: f64) -> f64 {
 
         let (s0,s1) = (log_likelyhood(elo0), log_likelyhood(elo1));
 
@@ -223,8 +226,16 @@ pub mod sprt_penta {
         pub elo1:     f64,
         pub alpha:    f64,
         pub beta:     f64,
-        la:           f64,
-        lb:           f64,
+
+        /// LA
+        llr_lower:           f64,
+        /// LB
+        llr_upper:           f64,
+
+        elo_type:     EloType,
+        sigma_pg:     f64,
+        t:            f64,
+        llr:          f64,
 
         sq0:          f64,
         sq1:          f64,
@@ -240,6 +251,11 @@ pub mod sprt_penta {
         pub fn new_def_ab(elo0: f64, elo1: f64) -> Self {
             Self::new(elo0, elo1, 0.05)
         }
+        pub fn new_with_elo_type(elo0: f64, elo1: f64, ab: f64, elo_type: EloType) -> Self {
+            let mut out = Self::new(elo0, elo1, 0.05);
+            out.elo_type = elo_type;
+            out
+        }
         pub fn new(elo0: f64, elo1: f64, ab: f64) -> Self {
             let (alpha,beta) = (ab,ab);
             Self {
@@ -247,8 +263,13 @@ pub mod sprt_penta {
                 elo1,
                 alpha,
                 beta,
-                la: f64::ln(beta / (1.0 - alpha)),
-                lb: f64::ln((1.0 - beta) / alpha),
+                llr_lower: f64::ln(beta / (1.0 - alpha)),
+                llr_upper: f64::ln((1.0 - beta) / alpha),
+
+                elo_type: EloType::Logistic,
+                sigma_pg: 0.0,
+                t:        0.0,
+                llr:      0.0,
 
                 sq0:     0.0,
                 sq1:     0.0,
@@ -260,11 +281,186 @@ pub mod sprt_penta {
         }
     }
 
-    /// run
+    /// run, fishtest
+    #[cfg(feature = "nope")]
     impl SPRT {
         pub fn sprt_penta(&mut self, results: RunningTotal) -> Option<Hypothesis> {
 
-            let llr = ll_ratio_penta(results, self.elo0, self.elo1);
+            let (sum,pdf) = results_penta_to_pdf(results);
+
+            if self.elo_type == EloType::Normalized {
+                let (mu,var) = stats(&pdf);
+                if pdf.len() == 5 {
+                    self.sigma_pg = (2. * var).powf(0.5);
+                } else if pdf.len() == 3 {
+                    self.sigma_pg = var.powf(0.5);
+                } else { panic!(); }
+            }
+
+            let (s0,s1) = (self.elo_to_score(self.elo0),self.elo_to_score(self.elo1));
+
+            let (mu_llr,var_llr) = Self::llr_drift_variance(&pdf, s0, s1, None);
+
+            self.llr = sum * mu_llr;
+            self.t = sum;
+
+            let mut clamped = false;
+
+            eprintln!("llr = {:?}", self.llr);
+
+            let slope = self.llr / sum;
+
+            if self.llr > 1.03 * self.llr_upper || self.llr < 1.03 * self.llr_lower {
+                // clamped = true;
+            }
+            if self.llr < self.llr_lower {
+                self.t   = self.llr_lower / slope;
+                self.llr = self.llr_lower;
+            } else if self.llr > self.llr_upper {
+                self.t   = self.llr_upper / slope;
+                self.llr = self.llr_upper;
+            }
+
+            let outcome_prob = self.outcome_prob(&pdf, 0.0);
+
+            eprintln!("outcome_prob = {:?}", outcome_prob);
+
+            // let elo = 
+
+            unimplemented!()
+        }
+
+        fn outcome_prob(&self, pdf: &[(f64,f64)], elo: f64) -> f64 {
+            let s = log_likelyhood(elo);
+
+            let (s0,s1) = (self.elo_to_score(self.elo0),self.elo_to_score(self.elo1));
+
+            let (mu_llr, var_llr) = Self::llr_drift_variance(pdf, s0, s1, Some(s));
+
+            let sigma_llr = f64::sqrt(var_llr);
+
+            Brownian::new(self.llr_lower, self.llr_upper, mu_llr, sigma_llr)
+                .outcome_cdf(self.t, self.llr)
+        }
+
+        fn lower_cb(&self, p: f64) -> f64 {
+
+            struct BrentFunc {
+                p: f64
+            }
+
+            impl ArgminOp for BrentFunc {
+                type Param    = f64;
+                type Output   = f64;
+                type Hessian  = ();
+                type Jacobian = ();
+                type Float    = f64;
+
+                fn apply(&self, elo: &Self::Param) -> Result<Self::Output, Error> {
+                    // Ok(self.pdf.iter().map(|(a,p)| p * (a - self.s) / (1. + x * (a - self.s))).sum::<f64>())
+                    // Ok()
+                    unimplemented!()
+                }
+            }
+
+            let avg_elo = (self.elo0 + self.elo1) / 2.0;
+            let delta = self.elo1 - self.elo0;
+
+            let n = 30;
+
+            // let mut elo0;
+            // let mut elo1;
+
+            loop {
+
+                // elo0 = f64::max(avg_elo - n as f64 * delta, -1000.);
+                // elo1 = f64::max(avg_elo + n as f64 * delta, 1000.);
+
+                // let b = BrentFunc { s, pdf: pdf.to_vec() };
+
+                // let solver = Brent::new(u - eps, l + eps, 2e-12);
+
+                // let res = Executor::new(b, solver, 0.0)
+                // // .add_observer(ArgminSlogLogger::term(), ObserverMode::Always)
+                //     .max_iters(100)
+                //     .run()
+                //     .unwrap();
+                // let x = res.state.best_param;
+
+                break;
+            }
+
+            unimplemented!()
+        }
+
+        fn llr_drift_variance(pdf: &[(f64,f64)], s0: f64, s1: f64, s: Option<f64>) -> (f64,f64) {
+
+            let (s2,v2) = stats(pdf);
+
+            let (s,v) = if let Some(s) = s {
+                (s, v2 + (s - s2).powi(2))
+            } else {
+                (s2,v2)
+            };
+
+            let mu = (s - (s0 + s1) / 2.0) * (s1 - s0) / v;
+            let var = (s1 - s0).powi(2) / v;
+
+            (mu,var)
+        }
+
+        fn elo_to_score(&self, elo: f64) -> f64 {
+            match self.elo_type {
+                EloType::Normalized => {
+                    let nt = elo / (800. / f64::ln(10.));
+                    nt * self.sigma_pg + 0.5
+                },
+                EloType::Logistic => log_likelyhood(elo),
+                _ => unimplemented!(),
+            }
+        }
+    }
+
+    /// run
+    // #[cfg(feature = "nope")]
+    impl SPRT {
+
+        pub fn sprt_tri(&self, wins: u32, draws: u32, losses: u32) -> Option<Hypothesis> {
+            if !(wins > 0 && draws > 0 && losses > 0) { return None; }
+            let (wins,draws,losses) = (wins as f64,draws as f64,losses as f64);
+            let sum = wins + draws + losses;
+
+            let (elo, draw_elo) = prob_to_bayes_elo(wins / sum, losses / sum);
+
+            let (p0win, p0draw, p0loss) = bayes_elo_to_prob(self.elo0, draw_elo);
+            let (p1win, p1draw, p1loss) = bayes_elo_to_prob(self.elo1, draw_elo);
+
+            let llr = wins * f64::ln(p1win / p0win)
+                + losses * f64::ln(p1loss / p0loss)
+                + draws * f64::ln(p1draw / p0draw);
+
+            eprintln!("llr = {:?}", llr);
+
+            if llr > self.llr_upper {
+                // passed
+                Some(Hypothesis::H1)
+            } else if llr < self.llr_lower {
+                // failed
+                Some(Hypothesis::H0)
+            } else {
+                None
+            }
+        }
+
+        pub fn sprt_penta(&mut self, results: RunningTotal) -> Option<Hypothesis> {
+
+            let llr = match self.elo_type {
+                EloType::Logistic   => ll_ratio_logistic_penta(results, self.elo0, self.elo1),
+                EloType::Normalized => ll_ratio_normalized_penta(results, self.elo0, self.elo1),
+                _                   => unimplemented!(),
+            };
+
+            eprintln!("llr = {:?}", llr);
 
             /// Dynamic overshoot correction using
             /// Siegmund - Sequential Analysis - Corollary 8.33.
@@ -279,13 +475,28 @@ pub mod sprt_penta {
                 self.o0 = -self.sq0 / llr / 2.0;
             }
 
-            if llr > self.lb - self.o1 {
+            if llr > self.llr_upper - self.o1 {
                 Some(Hypothesis::H1)
-            } else if llr < self.la + self.o0 {
+            } else if llr < self.llr_lower + self.o0 {
                 Some(Hypothesis::H0)
             } else {
                 None
             }
+        }
+
+    }
+
+    impl SPRT {
+        pub fn elo_logistic_to_elo(&mut self, lelo: f64) -> f64 {
+
+            if self.elo_type == EloType::Logistic {
+                panic!();
+            }
+
+            let score = log_likelyhood(lelo);
+            let nt = (score - 0.5) / self.sigma_pg;
+
+            nt * (800.0 / f64::ln(10.))
         }
     }
 
@@ -469,6 +680,13 @@ pub mod elo {
     use super::helpers::*;
     use statrs::distribution::{Continuous,ContinuousCDF};
 
+    #[derive(Debug,PartialEq,Clone,Copy)]
+    pub enum EloType {
+        Normalized,
+        Logistic,
+        Bayes,
+    }
+
     pub fn stats2(results: &[f64]) -> (f64,f64,f64) {
         let len = results.len();
         let n: f64 = results.iter().sum();
@@ -484,12 +702,12 @@ pub mod elo {
         (games,mu,var)
     }
 
-    fn phi(q: f64) -> f64 {
+    pub fn phi(q: f64) -> f64 {
         let n = statrs::distribution::Normal::new(0.0, 1.0).unwrap();
         n.cdf(q)
     }
 
-    fn phi_inv(p: f64) -> f64 {
+    pub fn phi_inv(p: f64) -> f64 {
         let n = statrs::distribution::Normal::new(0.0, 1.0).unwrap();
         n.inverse_cdf(p)
     }
@@ -528,6 +746,34 @@ pub mod elo {
         let los = phi((mu - 0.5) / (stddev / games.sqrt()));
 
         (elo, elo95, los)
+    }
+
+    /// from OpenBench
+    pub fn elo_tri(wins: u32, draws: u32, losses: u32) -> (f64,(f64,f64)) {
+        let (wins,draws,losses) = (wins as f64,draws as f64,losses as f64);
+
+        fn _elo(x: f64) -> f64 {
+            if x <= 0. || x >= 1. { panic!()
+            } else { -400. * f64::log10(1. / x - 1.) }
+        }
+
+        let sum = wins + draws + losses;
+
+        let w = wins / sum;
+        let d = draws / sum;
+        let l = losses / sum;
+
+        let mu = w + d / 2.0;
+
+        let stddev = f64::sqrt(w * (1. - mu).powi(2)
+                               + l * (0.0 - mu).powi(2)
+                               + d * (0.5 - mu).powi(2))
+            / sum.sqrt();
+
+        let mu_min = mu + phi_inv(0.025) * stddev;
+        let mu_max = mu + phi_inv(0.975) * stddev;
+
+        (_elo(mu), (_elo(mu_min), _elo(mu_max)))
     }
 
     #[cfg(feature = "nope")]
@@ -602,10 +848,10 @@ pub mod elo {
         prob_to_bayes_elo(w,l)
     }
 
-    pub fn prob_to_bayes_elo(w: f64, l: f64) -> (f64,f64) {
-        assert!(0.0 < w && w < 1.0 && 0.0 < l && l < 1.0);
-        let elo = 200.0 * f64::log10(w / l * (1. - l) / (1. - w));
-        let draw_elo = 200.0 * f64::log10((1. - l) / l * (1. - w) / w);
+    pub fn prob_to_bayes_elo(p_win: f64, p_loss: f64) -> (f64,f64) {
+        assert!(0.0 < p_win && p_win < 1.0 && 0.0 < p_loss && p_loss < 1.0);
+        let elo      = 200.0 * f64::log10(p_win / p_loss * (1. - p_loss) / (1. - p_win));
+        let draw_elo = 200.0 * f64::log10((1. - p_loss) / p_loss * (1. - p_win) / p_win);
         (elo,draw_elo)
     }
 

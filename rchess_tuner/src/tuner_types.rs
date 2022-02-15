@@ -52,6 +52,15 @@ impl RunningTotal {
     pub fn to_vec(&self) -> Vec<u32> {
         vec![self.ll,self.ld_dl,self.lw_dd,self.dw_wd,self.ww]
     }
+    pub fn from_vec(xs: &[u32]) -> Self {
+        Self {
+            ll:    xs[0],
+            ld_dl: xs[1],
+            lw_dd: xs[2],
+            dw_wd: xs[3],
+            ww:    xs[4],
+        }
+    }
 }
 
 #[derive(Clone,Copy)]

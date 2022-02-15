@@ -14,6 +14,7 @@ mod json_config;
 mod optimizer;
 mod gamerunner;
 mod simulate;
+mod brownian;
 
 use self::json_config::*;
 
@@ -52,8 +53,8 @@ use crate::sprt::sprt_penta::*;
 use crate::tuner_types::MatchResult;
 use crate::supervisor::*;
 
-fn main() {
-// fn main5() {
+// fn main() {
+fn main5() {
     use crate::sprt::*;
     // use crate::sprt::gsprt::*;
     use crate::sprt::sprt_penta::*;
@@ -96,27 +97,46 @@ fn main() {
         ww:     13,
     };
 
+    // let total = RunningTotal::from_vec(&[39, 2226, 31451, 2412, 40]); // (0.2, 0.9), (0.764, 3.439)
+
+    // let (losses, draws, wins) = (4542,7919,4771);
+
     // let (s0,s1) = (-3.0, 3.0);
     let (s0,s1) = (0.0, 5.0);
     // let (s0,s1) = (0.466, 2.796);
+    // let (s0,s1) = (0.2, 0.9);
+    // let (s0,s1) = (0.764, 3.439);
 
     // eprintln!("s0 = {:.2},{:.2}", s0, s1);
 
-    // let mut sprt = SPRT::new_def_ab(0.5, 3.0);
-    // let mut sprt = SPRT::new_def_ab(0.23, 1.379);
-    // let mut sprt = SPRT::new_def_ab(1.0, 6.0);
-    let mut sprt = SPRT::new_def_ab(s0, s1);
+    // let mut sprt = SPRT::new_def_ab(s0, s1);
+    let mut sprt = SPRT::new_with_elo_type(s0, s1, 0.05, EloType::Normalized);
+
+    // let (elo,(elo_min,elo_max)) = elo_tri(wins, draws, losses);
+    // eprintln!("elo = {:.2}", elo);
+
     let h = sprt.sprt_penta(total);
+    // let h = sprt.sprt_tri(wins, draws, losses);
 
     // eprintln!("h = {:?}", h);
 
     if let Some(hyp) = h {
         if hyp == Hypothesis::H0 {
-            println!("H0 (null): A is NOT stronger than B by at least {} ELO points, elo1 = {}",
-                     sprt.elo0, sprt.elo1);
-        } else {
-            println!("H1: is that A is stronger than B by at least {} ELO points",
+            // println!("H0 (null): A is NOT stronger than B by at least {} ELO points, elo1 = {}",
+            //          sprt.elo0, sprt.elo1);
+
+            println!("failed");
+            println!("H0 (null): A is not stronger than B by at least {} (ELO1) ELO points",
                      sprt.elo1);
+
+        } else {
+            // println!("H1: is that A is stronger than B by at least {} ELO points",
+            //          sprt.elo1);
+
+            println!("passed");
+            println!("H1: A is stronger than B by at least {} (ELO0) ELO points",
+                     sprt.elo0);
+
         }
     }
 
@@ -241,8 +261,8 @@ fn main() {
 
 }
 
-// fn main() {
-fn main6() {
+fn main() {
+// fn main6() {
     use crate::simulate::*;
     init_logger();
 
