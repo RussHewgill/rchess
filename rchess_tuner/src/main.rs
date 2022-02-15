@@ -29,6 +29,7 @@ use serde_json::json;
 use supervisor::Tunable;
 use tuner_types::*;
 use simulate::*;
+use crate::sprt::elo::EloType;
 
 // use sprt::*;
 
@@ -264,6 +265,10 @@ fn main5() {
 fn main() {
 // fn main6() {
     use crate::simulate::*;
+    use crate::sprt::sprt_penta::*;
+    use crate::sprt::helpers::*;
+    use crate::sprt::elo::*;
+
     init_logger();
 
     /// approx +4.4 Elo
@@ -276,11 +281,36 @@ fn main() {
         ww:     13,
     };
 
-    // let (elo,elo95,los) = get_elo_penta(total);
-    // eprintln!("elo   = {:?}", elo);
-    // eprintln!("elo95 = {:?}", elo95);
+    // let sum = total.to_vec().into_iter().map(|x| x as f64).sum::<f64>();
+    // let penta = total.to_vec().into_iter().map(|x| x as f64 / sum).collect::<Vec<_>>();
+    // println!("(ll,ld_dl,lw_dd,dw_wd,ww) = ({:>3.2},{:>3.2},{:>3.2},{:>3.2},{:>3.2})",
+    //        penta[0], penta[1], penta[2], penta[3], penta[4]);
+
+    // let (elo,(elo95,los,stddev)) = get_elo_penta(total);
+    // eprintln!("elo    = {:.2}", elo);
+    // eprintln!("elo95  = {:.2}", elo95);
+    // eprintln!("stddev = {:.2}", stddev);
+
+    fn test(total: RunningTotal, elo0: f64, elo1: f64) -> Option<Hypothesis> {
+        let mut sprt = SPRT::new_with_elo_type(elo0, elo1, 0.05, EloType::Logistic);
+        sprt.sprt_penta(total)
+    }
+
+    let elos = vec![
+        (0., 5.0),
+        (0., 10.0),
+        (0., 15.0),
+        (0., 20.0),
+        (0., 25.0),
+    ];
+
+    // for (elo0,elo1) in elos.into_iter() {
+    //     let h = test(total, elo0, elo1);
+    //     eprintln!("({elo0:>2.0},{elo1:>2.0}) = {:?}", h);
+    // }
 
     simulate_supervisor(None, total, 0.05);
+
 }
 
 // fn main() {

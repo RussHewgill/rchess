@@ -425,6 +425,7 @@ pub mod sprt_penta {
     // #[cfg(feature = "nope")]
     impl SPRT {
 
+        #[cfg(feature = "nope")]
         pub fn sprt_tri(&self, wins: u32, draws: u32, losses: u32) -> Option<Hypothesis> {
             if !(wins > 0 && draws > 0 && losses > 0) { return None; }
             let (wins,draws,losses) = (wins as f64,draws as f64,losses as f64);
@@ -439,7 +440,7 @@ pub mod sprt_penta {
                 + losses * f64::ln(p1loss / p0loss)
                 + draws * f64::ln(p1draw / p0draw);
 
-            eprintln!("llr = {:?}", llr);
+            // eprintln!("llr = {:?}", llr);
 
             if llr > self.llr_upper {
                 // passed
@@ -452,6 +453,17 @@ pub mod sprt_penta {
             }
         }
 
+        pub fn sprt_tri(&self, wins: u32, draws: u32, losses: u32) -> Option<Hypothesis> {
+            use super::prev::*;
+
+            match sprt((wins,draws,losses), (self.elo0, self.elo1), self.alpha, self.beta) {
+                None        => None,
+                Some(true)  => Some(Hypothesis::H1),
+                Some(false) => Some(Hypothesis::H0),
+            }
+
+        }
+
         pub fn sprt_penta(&mut self, results: RunningTotal) -> Option<Hypothesis> {
 
             let llr = match self.elo_type {
@@ -460,7 +472,7 @@ pub mod sprt_penta {
                 _                   => unimplemented!(),
             };
 
-            eprintln!("llr = {:?}", llr);
+            // eprintln!("llr = {:?}", llr);
 
             /// Dynamic overshoot correction using
             /// Siegmund - Sequential Analysis - Corollary 8.33.
@@ -487,11 +499,19 @@ pub mod sprt_penta {
     }
 
     impl SPRT {
-        pub fn elo_logistic_to_elo(&mut self, lelo: f64) -> f64 {
+        pub fn elo_logistic_to_elo(&mut self, pdf: &[(f64,f64)], lelo: f64) -> f64 {
 
             if self.elo_type == EloType::Logistic {
                 panic!();
             }
+
+            let (mu,var) = stats(pdf);
+
+            if pdf.len() == 5 {
+                self.sigma_pg = (2. * var).powf(0.5);
+            } else if pdf.len() == 3 {
+                self.sigma_pg = var.powf(0.5);
+            } else { panic!(); }
 
             let score = log_likelyhood(lelo);
             let nt = (score - 0.5) / self.sigma_pg;
@@ -545,7 +565,7 @@ pub mod sprt_penta {
 
 }
 
-#[cfg(feature = "nope")]
+// #[cfg(feature = "nope")]
 pub mod prev {
     use super::log_likelyhood;
 
@@ -712,19 +732,19 @@ pub mod elo {
         n.inverse_cdf(p)
     }
 
-    pub fn get_elo(ldw: (u32,u32,u32)) -> (f64,f64,f64) {
+    pub fn get_elo(ldw: (u32,u32,u32)) -> (f64,(f64,f64,f64)) {
         let mut results = vec![ldw.0 as f64,ldw.1 as f64,ldw.2 as f64];
         regularize_mut(&mut results);
         _get_elo(&results)
     }
 
-    pub fn get_elo_penta(results: RunningTotal) -> (f64,f64,f64) {
+    pub fn get_elo_penta(results: RunningTotal) -> (f64,(f64,f64,f64)) {
         let mut results: Vec<f64> = results.to_vec().into_iter().map(|x| x as f64).collect();
         regularize_mut(&mut results);
         _get_elo(&results)
     }
 
-    pub fn _get_elo(results: &[f64]) -> (f64,f64,f64) {
+    pub fn _get_elo(results: &[f64]) -> (f64,(f64,f64,f64)) {
         let (games,mu,var) = stats2(&results);
 
         let stddev = var.sqrt();
@@ -745,7 +765,7 @@ pub mod elo {
 
         let los = phi((mu - 0.5) / (stddev / games.sqrt()));
 
-        (elo, elo95, los)
+        (elo, (elo95, los, stddev))
     }
 
     /// from OpenBench

@@ -74,7 +74,11 @@ impl Supervisor {
 
         for elo in 0..50 {
             // sprts.push((elo as i32, SPRT::new(0., elo as f64, 0.05)));
-            sprts.push((elo as i32, SPRT::new_with_elo_type(0., elo as f64, 0.05, EloType::Normalized)));
+            sprts.push((elo as i32,
+                        SPRT::new_with_elo_type(0., elo as f64, 0.05,
+                                                // EloType::Normalized
+                                                EloType::Logistic
+                        )));
         }
 
         Self {

@@ -19,6 +19,76 @@ use crate::supervisor::{Supervisor,Tunable, CuteChess};
 impl Supervisor {
 
     fn update_stats(&mut self, wdl: (u32,u32,u32), total: RunningTotal, pairs: &[(Match,Match)]) -> bool {
+        if self.sprts.len() == 0 {
+            debug!("elo: [{:>3} : {:>3}]", self.brackets[0] as u32, self.brackets[1] as u32);
+            return true;
+        }
+
+        let tot = wdl.0 + wdl.1 + wdl.2;
+        let tot = tot as f64;
+        let w = wdl.0 as f64 / tot;
+        let d = wdl.1 as f64 / tot;
+        let l = wdl.2 as f64 / tot;
+
+        let sum = total.to_vec().into_iter().map(|x| x as f64).sum::<f64>();
+        let penta = total.to_vec().into_iter().map(|x| x as f64 / sum).collect::<Vec<_>>();
+
+        let mut min: Option<i32> = None;
+        let mut max: Option<i32> = None;
+
+        let mut found = false;
+        let t1 = self.t0.elapsed().as_secs_f64();
+        for (elo, sprt) in self.sprts.iter_mut() {
+            if let Some(hyp) = sprt.sprt_penta(total) {
+                if hyp == Hypothesis::H0 {
+                    println!();
+                    debug!("{:.0} H0 (null): A is NOT stronger than B by at least {} (elo0) points, elo1 = {}",
+                           t1, sprt.elo0, sprt.elo1);
+                    debug!("found in {} games", pairs.len() * 2);
+                    debug!("(w,d,l) = ({:.2},{:.2},{:.2})", w,d,l);
+                    debug!("(ll,ld_dl,lw_dd,dw_wd,ww) = ({:>3.2},{:>3.2},{:>3.2},{:>3.2},{:>3.2})",
+                           penta[0], penta[1], penta[2], penta[3], penta[4]);
+                    max = Some(*elo);
+                    self.brackets[1] = *elo as f64;
+                    debug!("brackets = {:?}", self.brackets);
+                    found = true;
+                } else {
+                    println!();
+                    debug!("{:.0} H1: is that A is stronger than B by at least {} (elo1) ELO points",
+                           t1, sprt.elo1);
+                    debug!("found in {} games", pairs.len() * 2);
+                    debug!("(w,d,l) = ({:.2},{:.2},{:.2})", w,d,l);
+                    debug!("(ll,ld_dl,lw_dd,dw_wd,ww) = ({:>3.2},{:>3.2},{:>3.2},{:>3.2},{:>3.2})",
+                           penta[0], penta[1], penta[2], penta[3], penta[4]);
+                    min = Some(*elo);
+                    self.brackets[0] = *elo as f64;
+                    debug!("brackets = {:?}", self.brackets);
+                    found = true;
+                }
+                break;
+            }
+        }
+
+        if let Some(_min) = min {
+            self.sprts.retain(|(elo, sprt)| *elo > _min);
+        }
+        if let Some(_max) = max {
+            self.sprts.retain(|(elo, sprt)| *elo < _max);
+        }
+
+        if found {
+            let mut elos = vec![];
+            for (elo,_) in self.sprts.iter() {
+                elos.push(elo);
+            }
+            eprintln!("elos = {:?}", elos);
+        }
+
+        false
+    }
+
+    #[cfg(feature = "nope")]
+    fn update_stats(&mut self, wdl: (u32,u32,u32), total: RunningTotal, pairs: &[(Match,Match)]) -> bool {
 
         // let (elo0,elo1) = (0,50);
         let (alpha,beta) = (0.05, 0.05);
@@ -42,6 +112,7 @@ impl Supervisor {
         for (elo, sprt) in self.sprts.iter_mut() {
 
             if let Some(hyp) = sprt.sprt_penta(total) {
+            // if let Some(hyp) = sprt.sprt_tri(wdl.0, wdl.1, wdl.2) {
                 let t1 = self.t0.elapsed().as_secs_f64();
                 if hyp == Hypothesis::H0 {
                     println!();
