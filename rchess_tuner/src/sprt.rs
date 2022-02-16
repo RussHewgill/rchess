@@ -865,7 +865,8 @@ pub mod elo {
             panic!();
         }
 
-        prob_to_bayes_elo(w,l)
+        let (elo,draw_elo) = prob_to_bayes_elo(w,l);
+        (elo,draw_elo)
     }
 
     pub fn prob_to_bayes_elo(p_win: f64, p_loss: f64) -> (f64,f64) {
@@ -945,6 +946,145 @@ pub mod elo {
         unimplemented!()
     }
 
+
+}
+
+pub mod random {
+    use crate::simulate::{WDL, PentaWDL};
+    use crate::sprt::elo::elo_logistic_to_bayes_elo;
+
+    use rand::prelude::SliceRandom;
+    use rand::{Rng,SeedableRng};
+    use rand::prelude::StdRng;
+
+    // pub fn pick(elo: f64, draw_elo: f64, biases: [f64; 2], rng: &mut StdRng) -> PentaWDL {
+    // #[cfg(feature = "nope")]
+    pub fn pick(elo: f64, biases: [f64; 2], rng: &mut StdRng) -> PentaWDL {
+
+        let draw_ratio = 0.74; /// gives ~327 draw_elo
+
+        // let belo = elo_to_belo(elo);
+        let (belo, draw_elo) = elo_logistic_to_bayes_elo(elo, draw_ratio);
+        let bias = *biases.choose(rng).unwrap();
+
+        // eprintln!("draw_elo = {:?}", draw_elo);
+
+        let ldw1 = ldw(belo, draw_elo, bias);
+        let ldw2 = ldw(belo, draw_elo, -bias);
+
+        // eprintln!("ldw1 = {:?}", ldw1);
+        // eprintln!("ldw2 = {:?}", ldw2);
+
+        let i = pentanomial_pick(&ldw1, rng);
+        let j = pentanomial_pick(&ldw2, rng);
+
+        // eprintln!("i = {:?}", i);
+        // eprintln!("j = {:?}", j);
+
+        PentaWDL::from_int(i + j)
+        // unimplemented!()
+    }
+
+    fn pentanomial_pick(probs: &[f64], rng: &mut StdRng) -> usize {
+        let x = rng.gen_range(0.0..1.0);
+
+        let mut p = 0.0;
+
+        for i in 0..probs.len() {
+            let pp = probs[i];
+            p += pp;
+            if p >= x {
+                return i;
+            }
+        }
+
+        panic!("pentanomial_pick");
+    }
+
+    fn ldw(belo: f64, draw_elo: f64, bias: f64) -> Vec<f64> {
+        let w = l(belo - draw_elo + bias);
+        let l = l(-belo - draw_elo - bias);
+        let d = 1. - w - l;
+        vec![l, d, w]
+    }
+
+    fn l(x: f64) -> f64 {
+        let bb = f64::ln(10.) / 400.;
+        if x >= 0. {
+            1. / (1. + f64::exp(-bb * x))
+        } else {
+            let e = f64::exp(bb * x);
+            e / (e + 1.)
+        }
+    }
+
+    fn elo_to_belo(elo: f64) -> f64 {
+        use argmin::solver::brent::Brent;
+        use argmin::core::{ArgminOp, ArgminSlogLogger, Error, Executor, ObserverMode};
+
+        struct BrentFunc {
+            // s:      f64,
+            // pdf:    Vec<(f64,f64)>,
+        }
+
+        impl ArgminOp for BrentFunc {
+            type Param    = f64;
+            type Output   = f64;
+            type Hessian  = ();
+            type Jacobian = ();
+            type Float    = f64;
+
+            fn apply(&self, x: &Self::Param) -> Result<Self::Output, Error> {
+                // Ok(self.pdf.iter().map(|(a,p)| p * (a - self.s) / (1. + x * (a - self.s))).sum::<f64>())
+                unimplemented!()
+            }
+        }
+
+
+        let s = l(elo);
+
+        // let b = BrentFunc { s, pdf: pdf.to_vec() };
+
+        // let solver = Brent::new(u - eps, l + eps, 2e-12);
+
+        // let res = Executor::new(b, solver, 0.0)
+        // // .add_observer(ArgminSlogLogger::term(), ObserverMode::Always)
+        //     .max_iters(100)
+        //     .run()
+        //     .unwrap();
+        // let x = res.state.best_param;
+
+        unimplemented!()
+    }
+
+    fn _probs(belo: f64, draw_elo: f64, biases: [f64; 2]) -> (Vec<f64>,Vec<f64>) {
+
+        let mut ps3 = vec![];
+        let mut ps5 = vec![];
+
+        for bias in biases.iter() {
+            let (p3,p5) = probs_(belo, draw_elo, *bias);
+
+            ps3.push(p3);
+            ps5.push(p5);
+
+        }
+
+        unimplemented!()
+    }
+
+    // fn add(xs: &[f64]) -> Vec<f64> {
+    //     let l = xs.len();
+    // }
+
+    fn avg(xs: &[f64]) -> Vec<f64> {
+        // let l = 
+        unimplemented!()
+    }
+
+    fn probs_(belo: f64, draw_elo: f64, bias: f64) -> (f64,f64) {
+        unimplemented!()
+    }
 
 }
 

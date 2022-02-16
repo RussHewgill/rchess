@@ -5,13 +5,14 @@ use crate::json_config::Engine;
 use crate::sprt::elo::EloType;
 
 use once_cell::sync::Lazy;
-use rchess_engine_lib::explore::AtomicBool;
 
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use std::io::BufReader;
 use std::io::{self,Write,BufRead,Stdout,Stdin};
 use std::process::{Command,Stdio, Child};
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 
 use crossbeam::channel::{Sender,Receiver};
 
@@ -104,7 +105,8 @@ impl Supervisor {
         if let Some((tx,rx)) = self.tx_rx.as_ref() {
             (tx.clone(),rx.clone())
         } else {
-            let (tx,rx) = crossbeam::channel::unbounded();
+            // let (tx,rx) = crossbeam::channel::unbounded();
+            let (tx,rx) = crossbeam::channel::bounded(2);
             let tx = Arc::new(tx);
             let rx = Arc::new(rx);
             self.tx_rx = Some((tx.clone(),rx.clone()));
@@ -117,25 +119,66 @@ impl Supervisor {
 #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone)]
 pub struct TunableOpt {
     pub name:    String,
-    pub min:     u64,
-    pub max:     u64,
-    pub start:   u64,
-    pub step:    u64,
+    pub min:     i64,
+    pub max:     i64,
+    pub start:   i64,
+    pub step:    i64,
 }
 
 #[derive(Debug,Clone)]
 pub struct Tunable {
     pub opt:            TunableOpt,
-    // pub attempts:   Vec<(u64, Hypothesis)>,
+    pub current:        i64,
+    pub best:           Option<(i64, ((f64, f64), [f64; 2]))>,
+
+    // pub attempts:       HashMap<i64, ((f64, f64), [f64; 2])>,
+    pub attempts:       HashMap<i64, TAttempt>,
+
+    pub available:      HashSet<i64>,
 }
 
+#[derive(Debug,Clone,Copy,new)]
+pub struct TAttempt {
+    pub val:        i64,
+    pub elo:        f64,
+    pub elo95:      f64,
+    pub brackets:   [f64; 2],
+}
+
+/// insert attempt
 impl Tunable {
-    pub fn new(name: String, min: u64, max: u64, start: u64, step: u64) -> Self {
-        Self {
-            opt: TunableOpt { name, min, max, start, step},
-            // attempts: vec![],
-        }
+    pub fn insert_attempt(&mut self, val: i64, elo: f64, elo95: f64, brackets: [f64; 2]) {
+        let t = TAttempt::new(val, elo, elo95, brackets);
+        self.attempts.insert(val, t);
     }
+}
+
+/// new
+impl Tunable {
+    pub fn new(name: String, min: i64, max: i64, start: i64, step: i64) -> Self {
+        let mut out = Self {
+            opt:          TunableOpt { name, min, max, start, step},
+            current:      start,
+            best:         None,
+            attempts:     HashMap::default(),
+            available:    HashSet::default(),
+        };
+        out.available_values();
+        out
+    }
+
+    fn available_values(&mut self) {
+        let mut out = HashSet::new();
+        let mut k = self.opt.min;
+        loop {
+            out.insert(k);
+            k += self.opt.step;
+            if k > self.opt.max { break; }
+        }
+        out.remove(&self.opt.start);
+        self.available = out;
+    }
+
 }
 
 #[derive(Debug,Clone)]

@@ -100,11 +100,35 @@ impl EngineOptions {
         });
 
         out.insert(EngineOption {
+            name:    "lmr_min_moves",
+            default: Some(2),
+            min:     Some(1),
+            max:     Some(10),
+            func:    opt_lmr_min_moves,
+        });
+
+        out.insert(EngineOption {
+            name:    "lmr_min_ply",
+            default: Some(3),
+            min:     Some(1),
+            max:     Some(10),
+            func:    opt_lmr_min_ply,
+        });
+
+        out.insert(EngineOption {
             name:    "lmr_reduction",
             default: Some(3),
             min:     Some(2),
             max:     Some(5),
             func:    opt_lmr_reduction,
+        });
+
+        out.insert(EngineOption {
+            name:    "lmr_ply_const",
+            default: Some(6),
+            min:     Some(2),
+            max:     Some(10),
+            func:    opt_lmr_ply_const,
         });
 
         out
@@ -119,12 +143,21 @@ fn opt_num_threads(sp: &mut SParams, cfg: &mut ExConfig, val: i64) {
     }
 }
 
+fn opt_lmr_min_moves(sp: &mut SParams, cfg: &mut ExConfig, val: i64) {
+    sp.lmr_min_moves = val as i16;
+}
+
+fn opt_lmr_min_ply(sp: &mut SParams, cfg: &mut ExConfig, val: i64) {
+    sp.lmr_min_ply = val as i16;
+}
+
 fn opt_lmr_reduction(sp: &mut SParams, cfg: &mut ExConfig, val: i64) {
     sp.lmr_reduction = val as i16;
 }
 
-
-
+fn opt_lmr_ply_const(sp: &mut SParams, cfg: &mut ExConfig, val: i64) {
+    sp.lmr_ply_const = val as i16;
+}
 
 
 

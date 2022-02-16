@@ -6,7 +6,7 @@ pub use self::old::*;
 #[cfg(not(feature = "basic_time"))]
 pub use self::new::*;
 
-pub use std::sync::{
+use std::sync::{
     Arc,
     atomic::{AtomicBool,Ordering},
 };

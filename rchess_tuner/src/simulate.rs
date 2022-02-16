@@ -1,6 +1,9 @@
 
+use std::sync::atomic::AtomicI64;
+
 use crate::json_config::Engine;
 use crate::sprt::*;
+use crate::sprt::random::pick;
 use crate::sprt::sprt_penta::*;
 use crate::supervisor::{Supervisor, Tunable};
 use crate::tuner_types::*;
@@ -12,11 +15,35 @@ use rand::{Rng,SeedableRng};
 use rand::prelude::StdRng;
 use rchess_engine_lib::types::Color;
 
+#[allow(non_camel_case_types)]
+#[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Copy)]
+pub enum PentaWDL {
+    LL    = 0,
+    LD_DL = 1,
+    LW_DD = 2,
+    DW_WD = 3,
+    WW    = 4,
+}
+
+impl PentaWDL {
+    pub fn from_int<T: Into<usize>>(t: T) -> Self {
+        let t: usize = t.into();
+        match t {
+            0 => Self::LL,
+            1 => Self::LD_DL,
+            2 => Self::LW_DD,
+            3 => Self::DW_WD,
+            4 => Self::WW,
+            _ => unimplemented!(),
+        }
+    }
+}
+
 #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Copy)]
 pub enum WDL {
-    Win,
-    Draw,
-    Loss,
+    Win  = 0,
+    Draw = 1,
+    Loss = 2,
 }
 
 impl WDL {
@@ -78,7 +105,9 @@ impl WDL {
 
 }
 
-pub fn simulate_supervisor(elo_diff: Option<f64>, penta_template: RunningTotal, ab: f64) {
+// pub fn simulate_supervisor(elo_diff: Option<f64>, penta_template: RunningTotal, ab: f64) {
+pub fn simulate_supervisor(elo_diff: Option<f64>, ab: f64) {
+// pub fn simulate_supervisor(ab: f64) {
 
     let engine = Engine {
         name:     "Engine".to_string(),
@@ -86,10 +115,14 @@ pub fn simulate_supervisor(elo_diff: Option<f64>, penta_template: RunningTotal, 
         options:  Default::default(),
     };
     let timecontrol = TimeControl::new_f64(1.0, 0.1);
-    let tunable = Tunable::new("lmr_reduction".to_string(), 2, 5, 3, 1);
-    let mut sv = Supervisor::new(engine.clone(), engine.clone(), tunable, timecontrol);
+    let tunable = Tunable::new("rng_elo_diff".to_string(), -10, 10, -5, 1);
+    let mut sv = Supervisor::new(engine.clone(), engine.clone(), tunable.clone(), timecontrol);
+
+    let mut tunable = tunable;
 
     let (tx,rx) = sv.tx_rx();
+
+    let elo_cur = AtomicI64::new(tunable.current);
 
     let handle = std::thread::spawn(move || {
         let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
@@ -101,6 +134,60 @@ pub fn simulate_supervisor(elo_diff: Option<f64>, penta_template: RunningTotal, 
         let (mut w,mut d,mut l) = (0,0,0);
 
         let mut n = 0;
+
+        loop {
+
+            let penta_wdl = pick(elo_diff.unwrap(), [-90.0, 200.0], &mut rng);
+
+            // let elo = elo_cur.load(std::sync::atomic::Ordering::SeqCst) as f64;
+            // let penta_wdl = pick(elo, [-90.0, 200.0], &mut rng);
+
+            let (result0, result1) = {
+                use MatchResult::*;
+                use Color::*;
+                use WinLossType::*;
+                use DrawType::*;
+                match penta_wdl {
+                    PentaWDL::LL    =>
+                        (WinLoss(Black, Checkmate), WinLoss(White, Checkmate)),
+                    PentaWDL::LD_DL =>
+                        (WinLoss(Black, Checkmate), Draw(Stalemate)),
+                    PentaWDL::LW_DD =>
+                        (Draw(Stalemate),Draw(Stalemate)),
+                    PentaWDL::DW_WD =>
+                        (WinLoss(White, Checkmate), Draw(Stalemate)),
+                    PentaWDL::WW    =>
+                        (WinLoss(White, Checkmate), WinLoss(Black, Checkmate)),
+                }
+            };
+
+            let m0 = Match {
+                engine_a:   Color::White,
+                game_num:   n,
+                result:     result0,
+                sum_score:  (0,0,0),
+                elo:        None,
+                sprt:       None,
+            };
+
+            let m1 = Match {
+                engine_a:   Color::Black,
+                game_num:   n+1,
+                result:     result1,
+                sum_score:  (0,0,0),
+                elo:        None,
+                sprt:       None,
+            };
+
+            let m = MatchOutcome::MatchPair(m0,m1);
+            tx.send(m).unwrap_or_else(|_| {
+                // std::thread::sleep(std::time::Duration::from_millis(1));
+            });
+
+            n += 2;
+        }
+
+        #[cfg(feature = "nope")]
         loop {
             // let m0: WDL = WDL::gen(w_prob, draw_ratio, &mut rng);
             // let m1: WDL = WDL::gen(w_prob, draw_ratio, &mut rng);
@@ -164,7 +251,23 @@ pub fn simulate_supervisor(elo_diff: Option<f64>, penta_template: RunningTotal, 
 
     });
 
-    sv.find_optimum(1_000_000, false);
+    let mut n = 0;
+    loop {
+        debug!("starting loop {n:>3}");
+        let total = sv.find_optimum(1_000_000, false);
+        if let Some((val, new_best_elo)) = tunable.push_result(total, sv.brackets) {
+            debug!("found new best elo: {:>4.2}, for val = {:>3}", new_best_elo, val);
+            // break;
+        }
+
+        let next_val = if let Some(v) = tunable.next_value() { v } else { break; };
+        elo_cur.store(next_val, std::sync::atomic::Ordering::SeqCst);
+        debug!("next_val = {:?}", next_val);
+
+        n += 1;
+    }
+
+    // let total = sv.find_optimum(1_000_000, false);
 
 }
 

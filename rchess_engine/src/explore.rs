@@ -29,8 +29,9 @@ use std::cell::RefCell;
 use std::path::Path;
 use std::collections::{VecDeque,HashMap,HashSet};
 use std::hash::BuildHasher;
-use std::sync::atomic::{Ordering,Ordering::SeqCst,Ordering::Relaxed,AtomicU8,AtomicI8,AtomicI16};
+use std::sync::atomic::{Ordering,Ordering::SeqCst,Ordering::Relaxed,AtomicU8,AtomicI8,AtomicI16,AtomicBool};
 use std::time::{Instant,Duration};
+use std::sync::Arc;
 
 use arrayvec::ArrayVec;
 use crossbeam::channel::{Sender,Receiver,RecvError,TryRecvError};

@@ -10,7 +10,6 @@ use std::sync::Arc;
 
 use crossbeam::channel::Receiver;
 use once_cell::sync::Lazy;
-use rchess_engine_lib::explore::AtomicBool;
 use rchess_engine_lib::types::Color;
 
 #[derive(Debug,PartialEq,Eq,PartialOrd,Ord,Clone,Copy)]

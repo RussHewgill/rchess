@@ -48,16 +48,6 @@ pub struct SParams {
 impl Default for SParams {
     fn default() -> Self {
 
-        // // XXX: worse than sf formula
-        // let mut lmr_table = [[0; 64]; 64];
-        // for depth in 1..64 {
-        //     for played in 1..64 {
-        //         /// magic from Ethereal
-        //         let x = 0.75 + f64::ln(depth as f64) * f64::ln(played as f64) / 2.25;
-        //         lmr_table[depth][played] = x as Depth;
-        //     }
-        // }
-
         Self {
             max_ply:                  220,
 
@@ -151,6 +141,16 @@ mod misc_functions {
     use crate::{types::*, searchstats::SearchStats, tables::DRAW_VALUE};
 
     use super::SParams;
+
+    // // XXX: worse than sf formula
+    // let mut lmr_table = [[0; 64]; 64];
+    // for depth in 1..64 {
+    //     for played in 1..64 {
+    //         /// magic from Ethereal
+    //         let x = 0.75 + f64::ln(depth as f64) * f64::ln(played as f64) / 2.25;
+    //         lmr_table[depth][played] = x as Depth;
+    //     }
+    // }
 
     // // TODO: tune
     // pub fn depth_stat_bonus(ply: Depth) -> Score {

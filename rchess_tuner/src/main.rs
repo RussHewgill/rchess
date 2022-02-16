@@ -283,7 +283,7 @@ fn main() {
 
     // let sum = total.to_vec().into_iter().map(|x| x as f64).sum::<f64>();
     // let penta = total.to_vec().into_iter().map(|x| x as f64 / sum).collect::<Vec<_>>();
-    // println!("(ll,ld_dl,lw_dd,dw_wd,ww) = ({:>3.2},{:>3.2},{:>3.2},{:>3.2},{:>3.2})",
+    // println!("(ll,ld_dl,lw_dd,dw_wd,ww) = ({:>3.3},{:>3.3},{:>3.3},{:>3.3},{:>3.3})",
     //        penta[0], penta[1], penta[2], penta[3], penta[4]);
 
     // let (elo,(elo95,los,stddev)) = get_elo_penta(total);
@@ -297,6 +297,8 @@ fn main() {
     }
 
     let elos = vec![
+        (5.0, 0.),
+        (0., 0.),
         (0., 5.0),
         (0., 10.0),
         (0., 15.0),
@@ -305,11 +307,22 @@ fn main() {
     ];
 
     // for (elo0,elo1) in elos.into_iter() {
-    //     let h = test(total, elo0, elo1);
-    //     eprintln!("({elo0:>2.0},{elo1:>2.0}) = {:?}", h);
+    //     let h   = test(total, elo0, elo1);
+    //     let llr = ll_ratio_logistic_penta(total, elo0, elo1);
+    //     let h   = format!("{:?}", h);
+    //     eprintln!("({elo0:>2.0},{elo1:>2.0}) = {:>10}, llr = {:>8.2}", h, llr);
     // }
 
-    simulate_supervisor(None, total, 0.05);
+    // let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
+    // let elo_diff = 0.0;
+    // let penta_wdl = crate::sprt::random::pick(elo_diff, [-90.0, 200.0], &mut rng);
+    // eprintln!("penta_wdl = {:?}", penta_wdl);
+
+    // let elo = 5.0;
+    // let belo = elo_logistic_to_bayes_elo(elo, 0.8);
+    // eprintln!("belo = {:.3}", belo.0);
+
+    simulate_supervisor(Some(5.0), 0.05);
 
 }
 

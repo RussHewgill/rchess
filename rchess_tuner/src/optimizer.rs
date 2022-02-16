@@ -1,5 +1,7 @@
 
 
+use std::collections::HashSet;
+
 use rchess_engine_lib::types::Color;
 
 use crate::sprt::sprt_penta::*;
@@ -30,6 +32,12 @@ impl Supervisor {
     // #[cfg(feature = "nope")]
     fn update_stats(&mut self, wdl: (u32,u32,u32), total: RunningTotal, pairs: &[(Match,Match)]) -> bool {
         if self.sprts.len() == 0 {
+
+            // eprintln!("elo, elo95, stddev = {:>4.2}, {:>4.2}, {:>4.2}", elo, elo95, stddev);
+            println!();
+            let (elo,(elo95,los,stddev)) = get_elo_penta(total);
+            debug!("elo = {:>3.1} +/- {:>3.1}", elo, elo95);
+
             debug!("elo: [{:>3} : {:>3}]", self.brackets[0] as u32, self.brackets[1] as u32);
             return true;
         }
@@ -62,6 +70,9 @@ impl Supervisor {
                     self.brackets[1] = *elo as f64;
                     debug!("brackets = {:?}", self.brackets);
                     found = true;
+                    let (elo,(elo95,los,stddev)) = get_elo_penta(total);
+                    debug!("elo = {:>3.1} +/- {:>3.1}, [{:>3.1} : {:>3.1}]",
+                           elo, elo95, elo - elo95, elo + elo95);
                 } else {
                     println!();
                     debug!("{:.0} H1: is that A is stronger than B by at least {} (elo1) ELO points",
@@ -74,16 +85,21 @@ impl Supervisor {
                     self.brackets[0] = *elo as f64;
                     debug!("brackets = {:?}", self.brackets);
                     found = true;
+                    let (elo,(elo95,los,stddev)) = get_elo_penta(total);
+                    debug!("elo = {:>3.1} +/- {:>3.1}, [{:>3.1} : {:>3.1}]",
+                           elo, elo95, elo - elo95, elo + elo95);
                 }
                 break;
             }
         }
 
-        if let Some(_min) = min {
-            self.sprts.retain(|(elo, sprt)| *elo > _min);
-        }
-        if let Some(_max) = max {
-            self.sprts.retain(|(elo, sprt)| *elo < _max);
+        if found {
+            if let Some(_min) = min {
+                self.sprts.retain(|(elo, sprt)| *elo > _min);
+            }
+            if let Some(_max) = max {
+                self.sprts.retain(|(elo, sprt)| *elo < _max);
+            }
         }
 
         if found {
@@ -176,6 +192,46 @@ impl Supervisor {
     }
 }
 
+impl Tunable {
+
+    pub fn push_result(&mut self, total: RunningTotal, brackets: [f64; 2]) -> Option<(i64,f64)> {
+        let (elo,(elo95,los,stddev)) = get_elo_penta(total);
+        self.insert_attempt(self.current, elo, elo95, brackets)
+
+        if let Some((_,((best_elo,_),_))) = self.best {
+            if elo > best_elo {
+                self.best = Some((self.current, ((elo, elo95), brackets)));
+                Some((self.current, elo))
+            } else { None }
+        } else {
+            self.best = Some((self.current, ((elo, elo95), brackets)));
+            Some((self.current, elo))
+        }
+    }
+
+    pub fn next_value(&mut self) -> Option<i64> {
+        // let ((elo,elo95),brackets) = self.attempts.get(&self.current)
+        //     .expect("Tunable: tried to get next value, but no prev value");
+
+        if self.available.is_empty() { return None; }
+
+        let next = self.current + self.opt.step;
+        if self.available.contains(&next) {
+            self.available.remove(&next);
+            return Some(next);
+        }
+
+        let next = self.current - self.opt.step;
+        if self.available.contains(&next) {
+            self.available.remove(&next);
+            return Some(next);
+        }
+
+        unimplemented!()
+    }
+
+}
+
 impl Supervisor {
 
     pub fn spawn_cutechess_mult(&mut self, num_games: u64, threads_per_engine: u32) -> Vec<CuteChess> {
@@ -207,17 +263,12 @@ impl Supervisor {
             num_games)
     }
 
-    pub fn find_optimum(&mut self, num_games: u64, spawn: bool) {
+    pub fn find_optimum(&mut self, num_games: u64, spawn: bool) -> RunningTotal {
         debug!("starting find_optimum, param: {}", &self.tunable.opt.name);
 
         let output_label = format!("{}", &self.tunable.opt.name);
 
-        // let (elo0,elo1) = (0,50);
-        // let num_games = 1000;
-
         self.t0 = std::time::Instant::now();
-
-        // let (alpha,beta) = (0.05, 0.05);
 
         // let cutechess = CuteChess::run_cutechess_tournament(
         //     &self.engine_tuning.name,
@@ -234,10 +285,10 @@ impl Supervisor {
             vec![]
         };
 
-        self.listen_loop();
+        self.listen_loop()
     }
 
-    pub fn listen_loop(&mut self) -> [f64; 2] {
+    pub fn listen_loop(&mut self) -> RunningTotal {
 
         let mut total = RunningTotal::default();
         let mut wdl = (0,0,0);
@@ -249,17 +300,6 @@ impl Supervisor {
         loop {
             match rx.recv() {
                 Ok(MatchOutcome::Match(m) | MatchOutcome::SPRTFinished(m,_,_))  => {
-                    // pair.push(m);
-                    // match (m.engine_a, m.result) {
-                    //     (ca, MatchResult::WinLoss(c, _)) => {
-                    //         if ca == c {
-                    //             wdl.0 += 1;
-                    //         } else {
-                    //             wdl.2 += 1;
-                    //         }
-                    //     },
-                    //     (_,MatchResult::Draw(_))       => wdl.1 += 1,
-                    // }
                     panic!();
                 },
                 Ok(MatchOutcome::MatchPair(m0, m1)) => {
@@ -272,24 +312,6 @@ impl Supervisor {
                 },
             }
 
-            // {
-            //     let m = &pair[0];
-            //     debug!("(m.engine_a,m.result) = {:?}", (m.engine_a,m.result));
-            // }
-
-            // match pair.pop().and_then(|m| Some((m.engine_a, m.result))) {
-            //     Some((ca, MatchResult::WinLoss(c, _))) => {
-            //         if ca == c {
-            //             wdl.0 += 1;
-            //         } else {
-            //             wdl.2 += 1;
-            //         }
-            //     },
-            //     Some((_,MatchResult::Draw(_)))       => wdl.1 += 1,
-            //     _ => panic!(),
-            // }
-
-            // #[cfg(feature = "nope")]
             if pair.len() == 2 {
                 assert!(pair[0].engine_a == Color::White);
                 use MatchResult::*;
@@ -298,6 +320,11 @@ impl Supervisor {
                 match pair[0].result {
                     WinLoss(White,_) => wdl.0 += 1,
                     WinLoss(Black,_) => wdl.2 += 1,
+                    Draw(_)          => wdl.1 += 1,
+                }
+                match pair[1].result {
+                    WinLoss(Black,_) => wdl.0 += 1,
+                    WinLoss(White,_) => wdl.2 += 1,
                     Draw(_)          => wdl.1 += 1,
                 }
 
@@ -331,7 +358,8 @@ impl Supervisor {
 
         // debug!("elo: [{:>3} : {:>3}]", self.brackets[0] as u32, self.brackets[1] as u32);
 
-        self.brackets
+        // self.brackets
+        total
     }
 
 }
