@@ -5,6 +5,7 @@ use rchess_engine_lib::types::Color;
 use crate::sprt::sprt_penta::*;
 use crate::tuner_types::*;
 use crate::sprt::*;
+use crate::sprt::elo::*;
 use crate::supervisor::{Supervisor,Tunable, CuteChess};
 
 /// algorithm:
@@ -18,6 +19,15 @@ use crate::supervisor::{Supervisor,Tunable, CuteChess};
 
 impl Supervisor {
 
+    #[cfg(feature = "nope")]
+    fn update_stats(&mut self, wdl: (u32,u32,u32), total: RunningTotal, pairs: &[(Match,Match)]) -> bool {
+        let (elo,(elo95,los,stddev)) = get_elo_penta(total);
+        // eprintln!("elo, elo95, stddev = {:>4.2}, {:>4.2}, {:>4.2}", elo, elo95, stddev);
+        eprintln!("elo = {:>3.1} +/- {:>3.1}", elo, elo95);
+        false
+    }
+
+    // #[cfg(feature = "nope")]
     fn update_stats(&mut self, wdl: (u32,u32,u32), total: RunningTotal, pairs: &[(Match,Match)]) -> bool {
         if self.sprts.len() == 0 {
             debug!("elo: [{:>3} : {:>3}]", self.brackets[0] as u32, self.brackets[1] as u32);
