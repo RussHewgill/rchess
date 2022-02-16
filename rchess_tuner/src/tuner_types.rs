@@ -60,6 +60,9 @@ impl RunningTotal {
             ww:    xs[4],
         }
     }
+    pub fn num_pairs(&self) -> u32 {
+        self.to_vec().into_iter().sum()
+    }
 }
 
 #[derive(Clone,Copy)]

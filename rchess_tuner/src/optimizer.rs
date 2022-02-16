@@ -34,11 +34,11 @@ impl Supervisor {
         if self.sprts.len() == 0 {
 
             // eprintln!("elo, elo95, stddev = {:>4.2}, {:>4.2}, {:>4.2}", elo, elo95, stddev);
-            println!();
+            // println!();
             let (elo,(elo95,los,stddev)) = get_elo_penta(total);
-            debug!("elo = {:>3.1} +/- {:>3.1}", elo, elo95);
+            trace!("elo = {:>3.1} +/- {:>3.1}", elo, elo95);
 
-            debug!("elo: [{:>3} : {:>3}]", self.brackets[0] as u32, self.brackets[1] as u32);
+            trace!("elo: [{:>3} : {:>3}]", self.brackets[0] as u32, self.brackets[1] as u32);
             return true;
         }
 
@@ -59,34 +59,34 @@ impl Supervisor {
         for (elo, sprt) in self.sprts.iter_mut() {
             if let Some(hyp) = sprt.sprt_penta(total) {
                 if hyp == Hypothesis::H0 {
-                    println!();
-                    debug!("{:.0} H0 (null): A is NOT stronger than B by at least {} (elo0) points, elo1 = {}",
+                    // println!();
+                    trace!("{:.0} H0 (null): A is NOT stronger than B by at least {} (elo0) points, elo1 = {}",
                            t1, sprt.elo0, sprt.elo1);
-                    debug!("found in {} games", pairs.len() * 2);
-                    debug!("(w,d,l) = ({:.2},{:.2},{:.2})", w,d,l);
-                    debug!("(ll,ld_dl,lw_dd,dw_wd,ww) = ({:>3.2},{:>3.2},{:>3.2},{:>3.2},{:>3.2})",
+                    trace!("found in {} games", pairs.len() * 2);
+                    trace!("(w,d,l) = ({:.2},{:.2},{:.2})", w,d,l);
+                    trace!("(ll,ld_dl,lw_dd,dw_wd,ww) = ({:>3.2},{:>3.2},{:>3.2},{:>3.2},{:>3.2})",
                            penta[0], penta[1], penta[2], penta[3], penta[4]);
                     max = Some(*elo);
                     self.brackets[1] = *elo as f64;
-                    debug!("brackets = {:?}", self.brackets);
+                    trace!("brackets = {:?}", self.brackets);
                     found = true;
                     let (elo,(elo95,los,stddev)) = get_elo_penta(total);
-                    debug!("elo = {:>3.1} +/- {:>3.1}, [{:>3.1} : {:>3.1}]",
+                    trace!("elo = {:>3.1} +/- {:>3.1}, [{:>3.1} : {:>3.1}]",
                            elo, elo95, elo - elo95, elo + elo95);
                 } else {
-                    println!();
-                    debug!("{:.0} H1: is that A is stronger than B by at least {} (elo1) ELO points",
+                    // println!();
+                    trace!("{:.0} H1: is that A is stronger than B by at least {} (elo1) ELO points",
                            t1, sprt.elo1);
-                    debug!("found in {} games", pairs.len() * 2);
-                    debug!("(w,d,l) = ({:.2},{:.2},{:.2})", w,d,l);
-                    debug!("(ll,ld_dl,lw_dd,dw_wd,ww) = ({:>3.2},{:>3.2},{:>3.2},{:>3.2},{:>3.2})",
+                    trace!("found in {} games", pairs.len() * 2);
+                    trace!("(w,d,l) = ({:.2},{:.2},{:.2})", w,d,l);
+                    trace!("(ll,ld_dl,lw_dd,dw_wd,ww) = ({:>3.2},{:>3.2},{:>3.2},{:>3.2},{:>3.2})",
                            penta[0], penta[1], penta[2], penta[3], penta[4]);
                     min = Some(*elo);
                     self.brackets[0] = *elo as f64;
-                    debug!("brackets = {:?}", self.brackets);
+                    trace!("brackets = {:?}", self.brackets);
                     found = true;
                     let (elo,(elo95,los,stddev)) = get_elo_penta(total);
-                    debug!("elo = {:>3.1} +/- {:>3.1}, [{:>3.1} : {:>3.1}]",
+                    trace!("elo = {:>3.1} +/- {:>3.1}, [{:>3.1} : {:>3.1}]",
                            elo, elo95, elo - elo95, elo + elo95);
                 }
                 break;
@@ -102,13 +102,13 @@ impl Supervisor {
             }
         }
 
-        if found {
-            let mut elos = vec![];
-            for (elo,_) in self.sprts.iter() {
-                elos.push(elo);
-            }
-            eprintln!("elos = {:?}", elos);
-        }
+        // if found {
+        //     let mut elos = vec![];
+        //     for (elo,_) in self.sprts.iter() {
+        //         elos.push(elo);
+        //     }
+        //     eprintln!("elos = {:?}", elos);
+        // }
 
         false
     }
@@ -196,7 +196,7 @@ impl Tunable {
 
     pub fn push_result(&mut self, total: RunningTotal, brackets: [f64; 2]) -> Option<(i64,f64)> {
         let (elo,(elo95,los,stddev)) = get_elo_penta(total);
-        self.insert_attempt(self.current, elo, elo95, brackets)
+        self.insert_attempt(self.current, elo, elo95, brackets);
 
         if let Some((_,((best_elo,_),_))) = self.best {
             if elo > best_elo {
@@ -209,23 +209,76 @@ impl Tunable {
         }
     }
 
+    /// returns (elo increasing, value increasing)
+    pub fn is_increasing(&self) -> Option<(bool, bool)> {
+        let t_cur  = self.attempts.get(&self.current)?;
+        let prev   = t_cur.prev_val?;
+        let t_prev = self.attempts.get(&prev)?;
+
+        let elo_inc = t_cur.elo > t_prev.elo;
+        let val_inc = self.current > prev;
+
+        Some((elo_inc, val_inc))
+    }
+
     pub fn next_value(&mut self) -> Option<i64> {
         // let ((elo,elo95),brackets) = self.attempts.get(&self.current)
         //     .expect("Tunable: tried to get next value, but no prev value");
 
         if self.available.is_empty() { return None; }
 
-        let next = self.current + self.opt.step;
+        let increasing = self.is_increasing();
+
+        let next = match self.is_increasing() {
+            Some((true, v_inc)) => {
+                if v_inc {
+                    // self.current + self.opt.step
+                    self.available.iter().filter(|&x| x > &self.current).min().copied()
+                } else {
+                    // self.current - self.opt.step
+                    self.available.iter().filter(|&x| x < &self.current).max().copied()
+                }
+            },
+            Some((false, v_inc)) => {
+                if v_inc {
+                    // self.current - self.opt.step
+                    self.available.iter().filter(|&x| x < &self.current).max().copied()
+                } else {
+                    // self.current + self.opt.step
+                    self.available.iter().filter(|&x| x > &self.current).min().copied()
+                }
+            }
+            None => self.available.iter().min_by_key(|&x| (x - &self.current).abs()).copied(),
+        };
+
+        let next = if let Some(n) = next { n } else {
+            self.available.iter().min_by_key(|&x| (x - &self.current).abs()).copied().unwrap()
+        };
+
         if self.available.contains(&next) {
             self.available.remove(&next);
+            self.prev = Some(self.current);
+            self.current = next;
             return Some(next);
         }
 
-        let next = self.current - self.opt.step;
-        if self.available.contains(&next) {
-            self.available.remove(&next);
-            return Some(next);
-        }
+        // if let Some(inc) = increasing {
+        //     let next = if inc {
+        //         self.current + self.opt.step;
+        //     } else {
+        //         self.current - self.opt.step;
+        //     }
+        //     if self.available.contains(&next) {
+        //         self.available.remove(&next);
+        //         return Some(next);
+        //     }
+        // }
+
+        // let next = self.current - self.opt.step;
+        // if self.available.contains(&next) {
+        //     self.available.remove(&next);
+        //     return Some(next);
+        // }
 
         unimplemented!()
     }
@@ -264,7 +317,7 @@ impl Supervisor {
     }
 
     pub fn find_optimum(&mut self, num_games: u64, spawn: bool) -> RunningTotal {
-        debug!("starting find_optimum, param: {}", &self.tunable.opt.name);
+        trace!("starting find_optimum, param: {}", &self.tunable.opt.name);
 
         let output_label = format!("{}", &self.tunable.opt.name);
 

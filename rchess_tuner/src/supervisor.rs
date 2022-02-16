@@ -55,14 +55,25 @@ pub struct Supervisor {
 }
 
 impl Supervisor {
+
+    pub fn reset(&mut self) {
+        for elo in 0..50 {
+            self.sprts.push((elo as i32,
+                        SPRT::new_with_elo_type(0., elo as f64, 0.05,
+                                                // EloType::Normalized
+                                                EloType::Logistic
+                        )));
+        }
+        self.brackets = [f64::MIN, f64::MAX];
+        self.t0 = std::time::Instant::now();
+    }
+
     pub fn new(
         engine_tuning:      Engine,
         engine_baseline:    Engine,
         tunable:            Tunable,
         timecontrol:        TimeControl,
     ) -> Self {
-
-        let mut sprts = vec![];
 
         // for elo in [0.,5.,10.,15.,20.,30.,40.,50.,60.,80.,100.,150.,200.].iter().rev() {
         //     let elo = -elo;
@@ -73,28 +84,19 @@ impl Supervisor {
         //     sprts.push((elo as i32, SPRT::new(0., elo, 0.05)));
         // }
 
-        for elo in 0..50 {
-            // sprts.push((elo as i32, SPRT::new(0., elo as f64, 0.05)));
-            sprts.push((elo as i32,
-                        SPRT::new_with_elo_type(0., elo as f64, 0.05,
-                                                // EloType::Normalized
-                                                EloType::Logistic
-                        )));
-        }
 
-        Self {
+        let mut out = Self {
             engine_tuning,
             engine_baseline,
             tunable,
             timecontrol,
             t0:             std::time::Instant::now(),
-            sprts,
+            sprts:          vec![],
             tx_rx:          None,
             brackets:       [0.0; 2],
-            // hyps:           vec![0.,5.,10.,15.,20.,30.,40.,50.,60.,80.,100.,150.,200.],
-            // hyp_accepted:   vec![],
-            // hyp_rejected:   vec![],
-        }
+        };
+        out.reset();
+        out
     }
 
     pub fn get_rx(&self) -> Arc<Receiver<MatchOutcome>> {
@@ -129,8 +131,8 @@ pub struct TunableOpt {
 pub struct Tunable {
     pub opt:            TunableOpt,
     pub current:        i64,
+    pub prev:           Option<i64>,
     pub best:           Option<(i64, ((f64, f64), [f64; 2]))>,
-
     // pub attempts:       HashMap<i64, ((f64, f64), [f64; 2])>,
     pub attempts:       HashMap<i64, TAttempt>,
 
@@ -140,6 +142,7 @@ pub struct Tunable {
 #[derive(Debug,Clone,Copy,new)]
 pub struct TAttempt {
     pub val:        i64,
+    pub prev_val:   Option<i64>,
     pub elo:        f64,
     pub elo95:      f64,
     pub brackets:   [f64; 2],
@@ -147,9 +150,9 @@ pub struct TAttempt {
 
 /// insert attempt
 impl Tunable {
-    pub fn insert_attempt(&mut self, val: i64, elo: f64, elo95: f64, brackets: [f64; 2]) {
-        let t = TAttempt::new(val, elo, elo95, brackets);
-        self.attempts.insert(val, t);
+    pub fn insert_attempt(&mut self, prev_val: i64, elo: f64, elo95: f64, brackets: [f64; 2]) {
+        let t = TAttempt::new(self.current, self.prev, elo, elo95, brackets);
+        self.attempts.insert(self.current, t);
     }
 }
 
@@ -159,6 +162,7 @@ impl Tunable {
         let mut out = Self {
             opt:          TunableOpt { name, min, max, start, step},
             current:      start,
+            prev:         None,
             best:         None,
             attempts:     HashMap::default(),
             available:    HashSet::default(),

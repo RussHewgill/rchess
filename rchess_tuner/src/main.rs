@@ -322,7 +322,10 @@ fn main() {
     // let belo = elo_logistic_to_bayes_elo(elo, 0.8);
     // eprintln!("belo = {:.3}", belo.0);
 
-    simulate_supervisor(Some(5.0), 0.05);
+    // simulate_supervisor(Some(5.0), 0.05);
+
+    let elo_diff = -5.0;
+    simulate_get_elo(elo_diff, 1_000_000);
 
 }
 

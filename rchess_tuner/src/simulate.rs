@@ -3,6 +3,7 @@ use std::sync::atomic::AtomicI64;
 
 use crate::json_config::Engine;
 use crate::sprt::*;
+use crate::sprt::elo::get_elo_penta;
 use crate::sprt::random::pick;
 use crate::sprt::sprt_penta::*;
 use crate::supervisor::{Supervisor, Tunable};
@@ -102,6 +103,32 @@ impl WDL {
             (Win,Win)
         }
     }
+
+}
+
+pub fn simulate_get_elo(elo_diff: f64, n: usize) {
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
+
+    let mut total = RunningTotal::default();
+
+    for _ in 0..n {
+        let penta_wdl = pick(elo_diff, [-90.0, 200.0], &mut rng);
+        match penta_wdl {
+            PentaWDL::LL    => total.ll += 1,
+            PentaWDL::LD_DL => total.ld_dl += 1,
+            PentaWDL::LW_DD => total.lw_dd += 1,
+            PentaWDL::DW_WD => total.dw_wd += 1,
+            PentaWDL::WW    => total.ww += 1,
+        }
+    }
+
+    let penta = total.to_vec();
+    println!("(ll,ld_dl,lw_dd,dw_wd,ww) = ({:>3.2},{:>3.2},{:>3.2},{:>3.2},{:>3.2})",
+             penta[0], penta[1], penta[2], penta[3], penta[4]);
+
+    let (elo,(elo95,los,stddev)) = get_elo_penta(total);
+    println!("elo = {:>3.1} +/- {:>3.1}, [{:>3.1} : {:>3.1}]",
+             elo, elo95, elo - elo95, elo + elo95);
 
 }
 
@@ -253,10 +280,20 @@ pub fn simulate_supervisor(elo_diff: Option<f64>, ab: f64) {
 
     let mut n = 0;
     loop {
-        debug!("starting loop {n:>3}");
+        // debug!("starting loop {n:>3}");
+        sv.reset();
         let total = sv.find_optimum(1_000_000, false);
+
+        debug!("finished run {n:>3}, val = {} with {:>6} games",
+               elo_cur.load(std::sync::atomic::Ordering::SeqCst), total.num_pairs() * 2);
+
+        let (elo,(elo95,los,stddev)) = get_elo_penta(total);
+        debug!("finished run {n:>3}, elo = {:>3.1} +/- {:>3.1}, [{:>3.1} : {:>3.1}]",
+                   elo, elo95, elo - elo95, elo + elo95);
+
         if let Some((val, new_best_elo)) = tunable.push_result(total, sv.brackets) {
-            debug!("found new best elo: {:>4.2}, for val = {:>3}", new_best_elo, val);
+            debug!("found new best elo: {:>4.2}, for val = {:>3}, in {:>6} games",
+                   new_best_elo, val, total.num_pairs() * 2);
             // break;
         }
 
