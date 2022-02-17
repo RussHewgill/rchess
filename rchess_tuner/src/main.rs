@@ -15,6 +15,7 @@ mod optimizer;
 mod gamerunner;
 mod simulate;
 mod brownian;
+mod spsa;
 
 use self::json_config::*;
 
@@ -263,7 +264,28 @@ fn main5() {
 }
 
 fn main() {
-// fn main6() {
+    use crate::sprt::elo::*;
+    use crate::sprt::sprt_penta::*;
+
+    /// approx +4.4 Elo
+    let ldw = (4542,7919,4771);
+    let total = RunningTotal {
+        ll:     14,
+        ld_dl:  1655,
+        lw_dd:  5048,
+        dw_wd:  1886,
+        ww:     13,
+    };
+
+    let (elo,(elo95,los,stddev)) = get_elo_penta(total);
+
+    println!("elo = {:>3.1} +/- {:>3.1}, [{:>3.1} : {:>3.1}]",
+             elo, elo95, elo - elo95, elo + elo95);
+
+}
+
+// fn main() {
+fn main6() {
     use crate::simulate::*;
     use crate::sprt::sprt_penta::*;
     use crate::sprt::helpers::*;
@@ -322,10 +344,10 @@ fn main() {
     // let belo = elo_logistic_to_bayes_elo(elo, 0.8);
     // eprintln!("belo = {:.3}", belo.0);
 
-    // simulate_supervisor(Some(5.0), 0.05);
+    simulate_supervisor(Some(5.0), 0.05);
 
-    let elo_diff = -5.0;
-    simulate_get_elo(elo_diff, 1_000_000);
+    // let elo_diff = -5.0;
+    // simulate_get_elo(elo_diff, 1_000_000);
 
 }
 

@@ -222,6 +222,11 @@ impl Tunable {
     }
 
     pub fn next_value(&mut self) -> Option<i64> {
+        unimplemented!()
+    }
+
+    #[cfg(feature = "nope")]
+    pub fn next_value(&mut self) -> Option<i64> {
         // let ((elo,elo95),brackets) = self.attempts.get(&self.current)
         //     .expect("Tunable: tried to get next value, but no prev value");
 

@@ -57,6 +57,7 @@ pub struct Supervisor {
 impl Supervisor {
 
     pub fn reset(&mut self) {
+        self.sprts.clear();
         for elo in 0..50 {
             self.sprts.push((elo as i32,
                         SPRT::new_with_elo_type(0., elo as f64, 0.05,
