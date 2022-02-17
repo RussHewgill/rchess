@@ -267,30 +267,7 @@ fn main5() {
 }
 
 fn main() {
-    use crate::spsa::*;
-
-    use std::iter::{from_fn,FromFn};
-
-    let mut x = 0;
-    let mut xs = from_fn(|| {
-        if x == 5 {
-            panic!();
-        }
-        x += 1;
-        Some(x)
-    });
-
-    eprintln!("xs.next() = {:?}", xs.next());
-    eprintln!("xs.next() = {:?}", xs.next());
-    eprintln!("xs.next() = {:?}", xs.next());
-    eprintln!("xs.next() = {:?}", xs.next());
-    eprintln!("xs.next() = {:?}", xs.next());
-    eprintln!("xs.next() = {:?}", xs.next());
-
-}
-
-// fn main() {
-fn main8() {
+// fn main8() {
     init_logger();
     use crate::sprt::elo::*;
     use crate::sprt::sprt_penta::*;
@@ -312,7 +289,8 @@ fn main8() {
     // debug!("elo = {:>4.1} +/- {:>4.1}, [{:>4.1} : {:>4.1}], LOS = {:>4.3}, games = {:>8}",
     //        elo, elo95, elo_min, elo_max, los, games);
 
-    simulate_supervisor(Some(5.0), 0.05);
+    // simulate_supervisor(Some(5.0), 0.05);
+    simulate_supervisor(0.05);
 
     // let mut tunable = Tunable::new("rng_elo_diff".to_string(), -10, 10, -5, 1);
     // let next = tunable.next_value();

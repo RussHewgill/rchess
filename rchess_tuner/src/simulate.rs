@@ -12,7 +12,7 @@ use crate::tuner_types::*;
 
 use log::{debug,trace};
 
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use rand::prelude::SliceRandom;
 use rand::{Rng,SeedableRng};
 use rand::prelude::StdRng;
@@ -135,8 +135,8 @@ pub fn simulate_get_elo(elo_diff: f64, n: usize) {
 }
 
 // pub fn simulate_supervisor(elo_diff: Option<f64>, penta_template: RunningTotal, ab: f64) {
-pub fn simulate_supervisor(elo_diff: Option<f64>, ab: f64) {
-// pub fn simulate_supervisor(ab: f64) {
+// pub fn simulate_supervisor(elo_diff: Option<f64>, ab: f64) {
+pub fn simulate_supervisor(ab: f64) {
 
     let engine = Engine {
         name:     "Engine".to_string(),
@@ -152,7 +152,7 @@ pub fn simulate_supervisor(elo_diff: Option<f64>, ab: f64) {
     let (tx,rx) = sv.tx_rx();
 
     // let elo_cur = AtomicI64::new(tunable.current);
-    let elo_cur: Arc<Mutex<Option<i64>>> = Arc::new(Mutex::new(None));
+    let elo_cur: Arc<RwLock<Option<i64>>> = Arc::new(RwLock::new(None));
     let elo_cur2 = elo_cur.clone();
 
     let handle = std::thread::spawn(move || {
@@ -168,11 +168,11 @@ pub fn simulate_supervisor(elo_diff: Option<f64>, ab: f64) {
 
         loop {
 
-            let lock = elo_cur.lock();
+            let lock = elo_cur.read();
             let penta_wdl = if let Some(elo_diff) = *lock {
                 pick(elo_diff as f64, [-90.0, 200.0], &mut rng)
             } else {
-                std::thread::sleep(std::time::Duration::from_micros(10));
+                // std::thread::sleep(std::time::Duration::from_micros(10));
                 continue;
             };
             drop(lock);
@@ -292,7 +292,7 @@ pub fn simulate_supervisor(elo_diff: Option<f64>, ab: f64) {
     });
 
     {
-        let mut lock = elo_cur2.lock();
+        let mut lock = elo_cur2.write();
         *lock = Some(tunable.current);
     }
 
@@ -307,7 +307,7 @@ pub fn simulate_supervisor(elo_diff: Option<f64>, ab: f64) {
         sv.reset();
         let total = sv.find_optimum(1_000_000, false);
 
-        let mut lock = elo_cur2.lock();
+        let mut lock = elo_cur2.write();
         let cur      = lock.take().unwrap();
 
         // debug!("finished run {n:>3}, val = {} with {:>6} games",

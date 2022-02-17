@@ -5,6 +5,47 @@ use rand::prelude::StdRng;
 
 use std::iter::{from_fn,FromFn, Zip};
 
+pub fn test_spsa() {
+
+    let p = 20;
+
+    let theta = vec![1.0; p];
+
+    fn gen_a(a: f64, aa: f64, alpha: f64, len: usize) -> Vec<f64> {
+        (0..len).map(|k| a / (k as f64 + 1.0 + aa).powf(alpha)).collect()
+    }
+
+    fn gen_c(c: f64, gamma: f64, len: usize) -> Vec<f64> {
+        (0..len).map(|k| c / (k as f64 + 1.0).powf(gamma)).collect()
+    }
+
+    let a = gen_a(1.0, 100.0, 0.602, theta.len());
+    let c = gen_c(1.0, 0.101, theta.len());
+
+    fn y(xs: &[f64]) -> f64 {
+        unimplemented!()
+    }
+
+    fn delta(rng: &mut StdRng) -> Vec<f64> {
+        unimplemented!()
+    }
+
+    fn constraint(_: &mut [f64]) {}
+
+    let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
+
+    let mut spsa = SPSAGenerator::new(
+        &theta,
+        &a,
+        &c,
+        y,
+        delta,
+        constraint,
+        rng,
+    );
+
+}
+
 pub struct SPSAGenerator {
     theta:   Vec<f64>,
     ak_ck:   Vec<(f64,f64)>,
@@ -57,49 +98,6 @@ impl SPSAGenerator {
         }
     }
 
-    // pub fn spsa_next(
-    //     &mut self,
-    //     y:          fn(&[f64]) -> f64,
-    //     theta0:     &[f64],
-    //     a:          &[f64],
-    //     c:          &[f64],
-    //     delta:      fn(&mut StdRng) -> Vec<f64>,
-    //     rng:        &mut StdRng,
-    //     constraint: fn(Vec<f64>) -> Vec<f64>,
-    // ) -> Option<Vec<f64>> {
-    //     unimplemented!()
-    // }
-
-    // /// y:  fn(theta: &[f64]) -> f64
-    // pub fn spsa(
-    //     y:          fn(&[f64]) -> f64,
-    //     theta0:     &[f64],
-    //     a:          &[f64],
-    //     c:          &[f64],
-    //     delta:      fn(&mut StdRng) -> Vec<f64>,
-    //     rng:        &mut StdRng,
-    //     constraint: fn(Vec<f64>) -> Vec<f64>,
-    // ) -> Self {
-
-    //     let mut theta = theta0.to_vec();
-
-    //     let xs = a.iter();
-    //     // let xs = a.iter().zip(c.iter());
-
-    //     for (ak,ck) in a.iter().zip(c.iter()) {
-    //         let gk = Self::estimate_gk(y, &theta, delta, *ck, rng);
-
-    //         for (t, gkk) in theta.iter_mut().zip(gk.iter()) {
-    //             *t = *t - ak * gkk;
-    //         }
-
-    //         theta = constraint(theta);
-
-    //     }
-
-    //     unimplemented!()
-    // }
-
     fn estimate_gk(
         &mut self,
         ck:      f64,
@@ -122,60 +120,5 @@ impl SPSAGenerator {
         gk
     }
 
-    // fn estimate_gk(
-    //     y:       fn(&[f64]) -> f64,
-    //     theta:   &[f64],
-    //     delta:   fn(&mut StdRng) -> Vec<f64>,
-    //     ck:      f64,
-    //     rng:     &mut StdRng,
-    // ) -> Vec<f64> {
-
-    //     let delta_k = delta(rng);
-
-    //     /// Get the two perturbed values of theta
-    //     let ta = theta.iter().zip(delta_k.iter())
-    //         .map(|(t,dk)| t + ck * dk).collect::<Vec<_>>();
-    //     let tb = theta.iter().zip(delta_k.iter())
-    //         .map(|(t,dk)| t - ck * dk).collect::<Vec<_>>();
-
-    //     let ya = y(&ta);
-    //     let yb = y(&tb);
-
-    //     let gk = delta_k.into_iter().map(|dk| {
-    //         (ya - yb) / (2.0 * ck * dk)
-    //     }).collect::<Vec<_>>();
-    //     gk
-    // }
-
 }
-
-pub fn spsa2(
-    a: f64,
-    mut params: Vec<i64>,
-    rng: &mut StdRng
-) {
-
-    let a     = 1.0;
-    let b     = 1.0;
-    let c     = 1.0;
-    let alpha = 0.602;
-    let gamma = 0.101;
-
-    let n = 10;
-
-    for k in 0..n {
-        let ak = a / (k as f64 + 1.0 + a).powf(alpha);
-        let ck = c / (k as f64 + 1.0).powf(gamma);
-
-        for p in params.iter_mut() {
-            let x: f64 = rng.gen_range(0.0..1.0);
-            let dp = 2.0 * (x / (1.0 + 1.0)).round() - 1.0;
-        }
-
-    }
-
-}
-
-
-
 
