@@ -1,4 +1,5 @@
 
+use std::sync::Arc;
 use std::sync::atomic::AtomicI64;
 
 use crate::json_config::Engine;
@@ -11,6 +12,7 @@ use crate::tuner_types::*;
 
 use log::{debug,trace};
 
+use parking_lot::Mutex;
 use rand::prelude::SliceRandom;
 use rand::{Rng,SeedableRng};
 use rand::prelude::StdRng;
@@ -149,7 +151,9 @@ pub fn simulate_supervisor(elo_diff: Option<f64>, ab: f64) {
 
     let (tx,rx) = sv.tx_rx();
 
-    let elo_cur = AtomicI64::new(tunable.current);
+    // let elo_cur = AtomicI64::new(tunable.current);
+    let elo_cur: Arc<Mutex<Option<i64>>> = Arc::new(Mutex::new(None));
+    let elo_cur2 = elo_cur.clone();
 
     let handle = std::thread::spawn(move || {
         let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
@@ -164,7 +168,16 @@ pub fn simulate_supervisor(elo_diff: Option<f64>, ab: f64) {
 
         loop {
 
-            let penta_wdl = pick(elo_diff.unwrap(), [-90.0, 200.0], &mut rng);
+            let lock = elo_cur.lock();
+            let penta_wdl = if let Some(elo_diff) = *lock {
+                pick(elo_diff as f64, [-90.0, 200.0], &mut rng)
+            } else {
+                std::thread::sleep(std::time::Duration::from_micros(10));
+                continue;
+            };
+            drop(lock);
+
+            // let penta_wdl = pick(elo_diff.unwrap(), [-90.0, 200.0], &mut rng);
 
             // let elo = elo_cur.load(std::sync::atomic::Ordering::SeqCst) as f64;
             // let penta_wdl = pick(elo, [-90.0, 200.0], &mut rng);
@@ -278,14 +291,33 @@ pub fn simulate_supervisor(elo_diff: Option<f64>, ab: f64) {
 
     });
 
+    {
+        let mut lock = elo_cur2.lock();
+        *lock = Some(tunable.current);
+    }
+
+    let mut stops_sprts = 0;
+    let mut stops_los   = 0;
+
     let mut n = 0;
+    // #[cfg(feature = "nope")]
     loop {
-        // debug!("starting loop {n:>3}");
+        println!();
+        debug!("starting loop {n:>3}");
         sv.reset();
         let total = sv.find_optimum(1_000_000, false);
 
-        debug!("finished run {n:>3}, val = {} with {:>6} games",
-               elo_cur.load(std::sync::atomic::Ordering::SeqCst), total.num_pairs() * 2);
+        let mut lock = elo_cur2.lock();
+        let cur      = lock.take().unwrap();
+
+        // debug!("finished run {n:>3}, val = {} with {:>6} games",
+        //        elo_cur.load(std::sync::atomic::Ordering::SeqCst), total.num_pairs() * 2);
+
+        if sv.sprts.len() == 0 {
+            stops_sprts += 1;
+        } else {
+            stops_los += 1;
+        }
 
         let (elo,(elo95,los,stddev)) = get_elo_penta(total);
         debug!("finished run {n:>3}, elo = {:>3.1} +/- {:>3.1}, [{:>3.1} : {:>3.1}]",
@@ -298,11 +330,25 @@ pub fn simulate_supervisor(elo_diff: Option<f64>, ab: f64) {
         }
 
         let next_val = if let Some(v) = tunable.next_value() { v } else { break; };
-        elo_cur.store(next_val, std::sync::atomic::Ordering::SeqCst);
+        // elo_cur.store(next_val, std::sync::atomic::Ordering::SeqCst);
+        *lock = Some(next_val);
+        drop(lock);
         debug!("next_val = {:?}", next_val);
 
         n += 1;
     }
+
+    eprintln!("stops_sprts = {:?}", stops_sprts);
+    eprintln!("stops_los   = {:?}", stops_los  );
+
+    println!();
+    if let Some(tt) = tunable.best {
+        eprintln!("best val = {:?}", tt.val);
+        eprintln!("best elo = {:>4.2} +/- {:>3.1}", tt.elo, tt.elo95);
+        eprintln!("brackets = {:?}", tt.brackets);
+    }
+
+    // eprintln!("best_elo = {:?}", tunable.best);
 
     // let total = sv.find_optimum(1_000_000, false);
 

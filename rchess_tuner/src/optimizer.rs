@@ -5,6 +5,7 @@ use std::collections::HashSet;
 use rchess_engine_lib::types::Color;
 
 use crate::sprt::sprt_penta::*;
+use crate::supervisor::TAttempt;
 use crate::tuner_types::*;
 use crate::sprt::*;
 use crate::sprt::elo::*;
@@ -21,11 +22,54 @@ use crate::supervisor::{Supervisor,Tunable, CuteChess};
 
 impl Supervisor {
 
+    /// using LOS never stops when elo_diff is near zero
     #[cfg(feature = "nope")]
     fn update_stats(&mut self, wdl: (u32,u32,u32), total: RunningTotal, pairs: &[(Match,Match)]) -> bool {
         let (elo,(elo95,los,stddev)) = get_elo_penta(total);
         // eprintln!("elo, elo95, stddev = {:>4.2}, {:>4.2}, {:>4.2}", elo, elo95, stddev);
-        eprintln!("elo = {:>3.1} +/- {:>3.1}", elo, elo95);
+        // debug!("elo = {:>3.1} +/- {:>3.1}", elo, elo95);
+
+        let elo_min = elo - elo95;
+        let elo_max = elo + elo95;
+
+        let games = total.num_pairs() * 2;
+
+        if games % 1_000 == 0 {
+            trace!("elo = {:>4.1} +/- {:>4.1}, [{:>4.1} : {:>4.1}], LOS = {:>4.3}, games = {:>8}",
+                   elo, elo95, elo_min, elo_max, los, games);
+        }
+
+        let los_margin = 0.001;
+        let eps = 0.1;
+
+        if games >= 100
+            && ((los >= 1.0 - los_margin && elo_min > eps)
+                || (los <= los_margin && elo_max < -eps)) {
+            debug!("elo = {:>4.1} +/- {:>4.1}, [{:>4.1} : {:>4.1}], LOS = {:>4.3}, games = {:>8}",
+                   elo, elo95, elo_min, elo_max, los, games);
+            return true;
+        }
+
+        false
+    }
+
+    fn check_stop_los(&self, total: RunningTotal) -> bool {
+        let (elo,(elo95,los,stddev)) = get_elo_penta(total);
+        let elo_min = elo - elo95;
+        let elo_max = elo + elo95;
+
+        let games = total.num_pairs() * 2;
+
+        let eps = 0.1;
+
+        if games >= 100
+            && ((los >= 1.0 - self.los_margin && elo_min > eps)
+                || (los <= self.los_margin && elo_max < -eps)) {
+                debug!("stopping by LOS after {games:>6} games");
+                trace!("elo = {:>4.1} +/- {:>4.1}, [{:>4.1} : {:>4.1}], LOS = {:>4.3}",
+                       elo, elo95, elo_min, elo_max, los);
+                return true;
+            }
         false
     }
 
@@ -35,10 +79,16 @@ impl Supervisor {
 
             // eprintln!("elo, elo95, stddev = {:>4.2}, {:>4.2}, {:>4.2}", elo, elo95, stddev);
             // println!();
+
+            debug!("stopping by all SPRTs after {:>6} games", total.num_pairs() * 2);
             let (elo,(elo95,los,stddev)) = get_elo_penta(total);
             trace!("elo = {:>3.1} +/- {:>3.1}", elo, elo95);
 
             trace!("elo: [{:>3} : {:>3}]", self.brackets[0] as u32, self.brackets[1] as u32);
+            return true;
+        }
+
+        if self.use_los && self.check_stop_los(total) {
             return true;
         }
 
@@ -198,13 +248,14 @@ impl Tunable {
         let (elo,(elo95,los,stddev)) = get_elo_penta(total);
         self.insert_attempt(self.current, elo, elo95, brackets);
 
-        if let Some((_,((best_elo,_),_))) = self.best {
-            if elo > best_elo {
-                self.best = Some((self.current, ((elo, elo95), brackets)));
+        if let Some(best) = self.best {
+            if elo > best.elo {
+                self.best = self.attempts.get(&self.current).copied();
                 Some((self.current, elo))
             } else { None }
         } else {
-            self.best = Some((self.current, ((elo, elo95), brackets)));
+            // self.best = Some((self.current, ((elo, elo95), brackets)));
+            self.best = self.attempts.get(&self.current).copied();
             Some((self.current, elo))
         }
     }
@@ -221,11 +272,12 @@ impl Tunable {
         Some((elo_inc, val_inc))
     }
 
+    #[cfg(feature = "nope")]
     pub fn next_value(&mut self) -> Option<i64> {
         unimplemented!()
     }
 
-    #[cfg(feature = "nope")]
+    // #[cfg(feature = "nope")]
     pub fn next_value(&mut self) -> Option<i64> {
         // let ((elo,elo95),brackets) = self.attempts.get(&self.current)
         //     .expect("Tunable: tried to get next value, but no prev value");
@@ -233,6 +285,7 @@ impl Tunable {
         if self.available.is_empty() { return None; }
 
         let increasing = self.is_increasing();
+        eprintln!("increasing = {:?}", increasing);
 
         let next = match self.is_increasing() {
             Some((true, v_inc)) => {

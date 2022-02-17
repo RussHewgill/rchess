@@ -1167,6 +1167,7 @@ dependencies = [
  "nom",
  "num_cpus",
  "once_cell",
+ "parking_lot",
  "rand",
  "rand_distr",
  "rchess_engine",

@@ -4,6 +4,8 @@
 #![allow(unused_mut)]
 #![allow(unused_doc_comments)]
 
+#![feature(generators, generator_trait)]
+
 #![allow(clippy::all)]
 
 mod sprt;
@@ -16,6 +18,7 @@ mod gamerunner;
 mod simulate;
 mod brownian;
 mod spsa;
+mod clop;
 
 use self::json_config::*;
 
@@ -264,23 +267,59 @@ fn main5() {
 }
 
 fn main() {
+    use crate::spsa::*;
+
+    use std::iter::{from_fn,FromFn};
+
+    let mut x = 0;
+    let mut xs = from_fn(|| {
+        if x == 5 {
+            panic!();
+        }
+        x += 1;
+        Some(x)
+    });
+
+    eprintln!("xs.next() = {:?}", xs.next());
+    eprintln!("xs.next() = {:?}", xs.next());
+    eprintln!("xs.next() = {:?}", xs.next());
+    eprintln!("xs.next() = {:?}", xs.next());
+    eprintln!("xs.next() = {:?}", xs.next());
+    eprintln!("xs.next() = {:?}", xs.next());
+
+}
+
+// fn main() {
+fn main8() {
+    init_logger();
     use crate::sprt::elo::*;
     use crate::sprt::sprt_penta::*;
 
-    /// approx +4.4 Elo
-    let ldw = (4542,7919,4771);
-    let total = RunningTotal {
-        ll:     14,
-        ld_dl:  1655,
-        lw_dd:  5048,
-        dw_wd:  1886,
-        ww:     13,
-    };
+    // /// approx +4.4 Elo
+    // let ldw = (4542,7919,4771);
+    // let total = RunningTotal {
+    //     ll:     14,
+    //     ld_dl:  1655,
+    //     lw_dd:  5048,
+    //     dw_wd:  1886,
+    //     ww:     13,
+    // };
 
-    let (elo,(elo95,los,stddev)) = get_elo_penta(total);
+    // let (elo,(elo95,los,stddev)) = get_elo_penta(total);
+    // let elo_min = elo - elo95;
+    // let elo_max = elo + elo95;
+    // let games = total.num_pairs() * 2;
+    // debug!("elo = {:>4.1} +/- {:>4.1}, [{:>4.1} : {:>4.1}], LOS = {:>4.3}, games = {:>8}",
+    //        elo, elo95, elo_min, elo_max, los, games);
 
-    println!("elo = {:>3.1} +/- {:>3.1}, [{:>3.1} : {:>3.1}]",
-             elo, elo95, elo - elo95, elo + elo95);
+    simulate_supervisor(Some(5.0), 0.05);
+
+    // let mut tunable = Tunable::new("rng_elo_diff".to_string(), -10, 10, -5, 1);
+    // let next = tunable.next_value();
+    // eprintln!("next = {:?}", next);
+
+    // let x = tunable.available.iter().min_by_key(|&x| (x - tunable.current).abs());
+    // eprintln!("x = {:?}", x);
 
 }
 
@@ -293,14 +332,22 @@ fn main6() {
 
     init_logger();
 
-    /// approx +4.4 Elo
-    let ldw = (4542,7919,4771);
+    // /// approx +4.4 Elo
+    // let ldw = (4542,7919,4771);
+    // let total = RunningTotal {
+    //     ll:     14,
+    //     ld_dl:  1655,
+    //     lw_dd:  5048,
+    //     dw_wd:  1886,
+    //     ww:     13,
+    // };
+
     let total = RunningTotal {
-        ll:     14,
-        ld_dl:  1655,
+        ll:     13,
+        ld_dl:  1886,
         lw_dd:  5048,
-        dw_wd:  1886,
-        ww:     13,
+        dw_wd:  1655,
+        ww:     14,
     };
 
     // let sum = total.to_vec().into_iter().map(|x| x as f64).sum::<f64>();
@@ -320,7 +367,7 @@ fn main6() {
 
     let elos = vec![
         (5.0, 0.),
-        (0., 0.),
+        // (0., 0.), // never stops
         (0., 5.0),
         (0., 10.0),
         (0., 15.0),
@@ -337,14 +384,26 @@ fn main6() {
 
     // let mut rng: StdRng = SeedableRng::seed_from_u64(1234);
     // let elo_diff = 0.0;
-    // let penta_wdl = crate::sprt::random::pick(elo_diff, [-90.0, 200.0], &mut rng);
-    // eprintln!("penta_wdl = {:?}", penta_wdl);
+    // let mut sprt = SPRT::new(0.0, 0.0, 0.05);
+    // let mut total = RunningTotal::default();
+    // let mut n = 0;
+    // loop {
+    //     let penta_wdl = crate::sprt::random::pick(elo_diff, [-90.0, 200.0], &mut rng);
+    //     // eprintln!("penta_wdl = {:?}", penta_wdl);
+    //     total.add_one_mut(penta_wdl);
+    //     if let Some(h) = sprt.sprt_penta(total) {
+    //         eprintln!("n = {:?}", n);
+    //         eprintln!("h = {:?}", h);
+    //         break;
+    //     }
+    //     n += 1;
+    // }
 
     // let elo = 5.0;
     // let belo = elo_logistic_to_bayes_elo(elo, 0.8);
     // eprintln!("belo = {:.3}", belo.0);
 
-    simulate_supervisor(Some(5.0), 0.05);
+    // simulate_supervisor(Some(5.0), 0.05);
 
     // let elo_diff = -5.0;
     // simulate_get_elo(elo_diff, 1_000_000);

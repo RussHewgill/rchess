@@ -48,6 +48,9 @@ pub struct Supervisor {
 
     tx_rx:                 Option<(Arc<Sender<MatchOutcome>>,Arc<Receiver<MatchOutcome>>)>,
 
+    pub use_los:           bool,
+    pub los_margin:        f64,
+
     pub brackets:          [f64; 2],
     // pub hyps:              Vec<f64>,
     // pub hyp_accepted:      Vec<f64>,
@@ -58,7 +61,7 @@ impl Supervisor {
 
     pub fn reset(&mut self) {
         self.sprts.clear();
-        for elo in 0..50 {
+        for elo in 1..50 {
             self.sprts.push((elo as i32,
                         SPRT::new_with_elo_type(0., elo as f64, 0.05,
                                                 // EloType::Normalized
@@ -94,6 +97,8 @@ impl Supervisor {
             t0:             std::time::Instant::now(),
             sprts:          vec![],
             tx_rx:          None,
+            use_los:        false,
+            los_margin:     0.001,
             brackets:       [0.0; 2],
         };
         out.reset();
@@ -133,7 +138,8 @@ pub struct Tunable {
     pub opt:            TunableOpt,
     pub current:        i64,
     pub prev:           Option<i64>,
-    pub best:           Option<(i64, ((f64, f64), [f64; 2]))>,
+    // pub best:           Option<(i64, ((f64, f64), [f64; 2]))>,
+    pub best:           Option<TAttempt>,
     // pub attempts:       HashMap<i64, ((f64, f64), [f64; 2])>,
     pub attempts:       HashMap<i64, TAttempt>,
 
@@ -169,6 +175,17 @@ impl Tunable {
             available:    HashSet::default(),
         };
         out.available_values();
+        out
+    }
+
+    pub fn all_values(&self) -> Vec<i64> {
+        let mut out = vec![];
+        let mut k = self.opt.min;
+        loop {
+            out.push(k);
+            k += self.opt.step;
+            if k > self.opt.max { break; }
+        }
         out
     }
 

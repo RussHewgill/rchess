@@ -1,5 +1,6 @@
 
 use crate::json_config::Engine;
+use crate::simulate::PentaWDL;
 
 pub use log::{info,warn,debug,trace};
 
@@ -48,6 +49,17 @@ pub struct RunningTotal {
 }
 
 impl RunningTotal {
+
+    pub fn add_one_mut(&mut self, wdl: PentaWDL) {
+        match wdl {
+            PentaWDL::LL    => self.ll += 1,
+            PentaWDL::LD_DL => self.ld_dl += 1,
+            PentaWDL::LW_DD => self.lw_dd += 1,
+            PentaWDL::DW_WD => self.dw_wd += 1,
+            PentaWDL::WW    => self.ww += 1,
+        }
+    }
+
     pub fn to_vec(&self) -> Vec<u32> {
         vec![self.ll,self.ld_dl,self.lw_dd,self.dw_wd,self.ww]
     }
